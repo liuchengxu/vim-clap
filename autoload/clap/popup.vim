@@ -235,7 +235,7 @@ function! s:popup_filter(winid, key) abort
 
   " Ctrl-[ / Esc
   elseif a:key == "\<Esc>"
-    call s:callback()
+    call clap#handler#exit()
 
   elseif a:key == "\<CR>"
     call clap#handler#sink()
