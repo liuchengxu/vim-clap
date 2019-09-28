@@ -1,0 +1,19 @@
+setlocal
+  \ nonumber
+  \ norelativenumber
+  \ nopaste
+  \ nomodeline
+  \ noswapfile
+  \ nocursorcolumn
+  \ colorcolumn=
+  \ nobuflisted
+  \ buftype=nofile
+  \ bufhidden=hide
+  \ textwidth=0
+  \ nolist
+  \ winfixwidth
+  \ winfixheight
+  \ nospell
+  \ nofoldenable
+  \ foldcolumn=0
+  \ nowrap
