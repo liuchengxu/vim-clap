@@ -86,20 +86,24 @@ else
 endif
 
 function! clap#handler#sink() abort
-  if s:use_multi_selection
-    let selected = clap#sign#get()
-    if empty(selected)
+  try
+    if s:use_multi_selection
+      let selected = clap#sign#get()
+      if empty(selected)
+        let curline = g:clap.display.getcurline()
+        call g:clap.provider.sink(curline)
+      else
+        let lines = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+        call g:clap.provider.sink_star(lines)
+      endif
+    else
       let curline = g:clap.display.getcurline()
       call g:clap.provider.sink(curline)
-    else
-      let lines = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
-      call g:clap.provider.sink_star(lines)
     endif
-  else
-    let curline = g:clap.display.getcurline()
-    call g:clap.provider.sink(curline)
-  endif
-  call clap#exit()
+    call clap#exit()
+  catch
+    call clap#error('clap#handler#sink: '.v:exception)
+  endtry
 endfunction
 
 function! clap#handler#exit() abort
