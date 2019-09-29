@@ -124,11 +124,12 @@ Command                                | List                               | Re
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-- `g:clap_popup_input_delay`: delay for actually responsing to the input, vim only.
+- `g:clap_popup_input_delay`: 200ms by default, delay for actually responsing to the input, vim only.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_opt`.
 
-- `g:clap_provider_grep_delay`: delay for actually spawning the grep job in the background.
+- `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
+- `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
 
 ### Movement
 
