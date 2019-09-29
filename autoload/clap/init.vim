@@ -5,6 +5,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let s:is_nvim = has('nvim')
+let s:default_priority = 10
 
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
@@ -35,11 +36,12 @@ endif
 
 function! s:matchadd(patterns) abort
   let w:clap_match_ids = []
-  call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0]))
+  call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
   let idx = 1
-  for p in a:patterns[1:5]
+  " As most 8 submatches
+  for p in a:patterns[1:8]
     try
-      call add(w:clap_match_ids, matchadd("ClapMatches".idx, p))
+      call add(w:clap_match_ids, matchadd("ClapMatches".idx, p, s:default_priority - 1))
       let idx += 1
     catch
       call clap#error(v:exception)
@@ -400,6 +402,7 @@ function! s:hi_spinner() abort
         \ [170 , '#bc6ec5'] ,
         \ [178 , '#ffbb7d'] ,
         \ [136 , '#b1951d'] ,
+        \ [29  , '#2d9574'] ,
         \ ]
 
   let pmenu_ctermbg = s:extract('Pmenu', 'bg', 'cterm')
