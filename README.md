@@ -110,6 +110,8 @@ Command                                | List                               | Re
 
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 
+- Use `Clap grep <cword>` to grep the word under cursor.
+
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
 ### Global variables
@@ -121,6 +123,8 @@ Command                                | List                               | Re
   " now you can call it via both `:Clap command_history` and `:Clap hist:`.
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
+
+- `g:clap_popup_input_delay`: delay for actually responsing to the input, vim only.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_opt`.
 
