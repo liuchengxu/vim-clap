@@ -2,8 +2,8 @@
 
 [![Gitter][G1]][G2]
 
-[G1]: https://badges.gitter.im/vim-clap/community.svg
-[G2]: https://gitter.im/vim-clap/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
+[G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
+[G2]: https://gitter.im/liuchengxu/vim-clap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
@@ -96,6 +96,7 @@ Command                                | List                               | Re
 `Clap filetypes`                       | File types                         | _none_
 `Clap gfiles` or `Clap git_files`      | Files managed by git               | **[git][git]**
 `Clap grep`**<sup>+</sup>**            | Grep on the fly                    | **[rg][rg]**
+`Clap jumps`                           | Jumps                              | _none_
 `Clap marks`                           | Marks                              | _none_
 `Clap tags`                            | Tags in the current buffer         | **[vista.vim][vista.vim]**
 `Clap windows` **<sup>!</sup>**        | Windows                            | _none_
