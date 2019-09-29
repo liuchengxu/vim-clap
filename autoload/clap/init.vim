@@ -392,11 +392,11 @@ function! s:hi_spinner() abort
   let clap_sub_matches = [
         \ [173 , '#e18254'] ,
         \ [196 , '#f2241f'] ,
-        \ [136 , '#b1951d'] ,
-        \ [32  , '#4f97d7'] ,
         \ [184 , '#e5d11c'] ,
+        \ [32  , '#4f97d7'] ,
         \ [170 , '#bc6ec5'] ,
-        \ [70  , '#67b11d'] ,
+        \ [178 , '#ffbb7d'] ,
+        \ [136 , '#b1951d'] ,
         \ ]
 
   let pmenu_ctermbg = s:extract('Pmenu', 'bg', 'cterm')

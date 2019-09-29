@@ -126,7 +126,7 @@ Command                                | List                               | Re
 
 - `g:clap_popup_input_delay`: 200ms by default, delay for actually responsing to the input, vim only.
 
-The option naming convention for provider is `g:clap_provider_{provider_id}_opt`.
+The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
@@ -136,6 +136,8 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_opt`
 - Use <kbd>Ctrl-j</kbd> or <kbd>Ctrl-k</kbd> to navigate the result list up and down.
 - Use <kbd>Ctrl-a</kbd> to go to the start of the input.
 - Use <kbd>Ctrl-e</kbd> to go to the end of the input.
+- Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
+- Use <kbd>Ctrl-d</kbd> to delete one character.
 - Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - Use <kbd>Enter</kbd> to select the entry and exit.
