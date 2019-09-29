@@ -46,6 +46,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 TODOs:
 
 - [ ] Support builtin fuzzy match.
+  - [x] Substring filter mode for sync providers. If the query contains spaces, the substring filter mode will be used.
 - [ ] Formalize provider args.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
