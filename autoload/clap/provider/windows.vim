@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the windows.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:windows = {}
 
 function! s:jump(t, w)
@@ -39,3 +42,6 @@ function! s:windows.sink(line)
 endfunction
 
 let g:clap#provider#windows# = s:windows
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the marks.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:marks = {}
 
 function! s:format_mark(line)
@@ -20,3 +23,6 @@ function! s:marks.sink(line)
 endfunction
 
 let g:clap#provider#marks# = s:marks
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

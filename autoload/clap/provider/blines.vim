@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the buffer lines.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:blines = {}
 
 function! s:blines.sink(selected) abort
@@ -22,3 +25,6 @@ function! s:blines.on_enter() abort
 endfunction
 
 let g:clap#provider#blines# = s:blines
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

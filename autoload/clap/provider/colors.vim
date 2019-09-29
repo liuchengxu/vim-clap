@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the colorschemes.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:colors = {}
 
 " Derived from fzf.vim
@@ -46,3 +49,6 @@ function! s:colors.on_exit() abort
 endfunction
 
 let g:clap#provider#colors# = s:colors
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the command history.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 " Derived from fzf.vim
 function! s:command_history() abort
   let max  = histnr(':')
@@ -35,3 +38,6 @@ let s:command_history.source = function('s:command_history_source')
 let s:command_history.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_command_history') }
 
 let g:clap#provider#command_history# = s:command_history
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

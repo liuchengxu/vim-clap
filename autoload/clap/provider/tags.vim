@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the tags based on vista.vim.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:tags = {}
 
 function! s:tags.source(...) abort
@@ -17,3 +20,6 @@ let s:tags.sink = function('vista#finder#fzf#sink')
 let s:tags.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_tags') }
 
 let g:clap#provider#tags# = s:tags
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the commits.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:commits = {}
 
 function! s:commits.source() abort
@@ -38,3 +41,6 @@ endfunction
 let s:commits.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_commits') }
 
 let g:clap#provider#commits# = s:commits
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

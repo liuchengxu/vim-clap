@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Default implementation for various hooks.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:is_nvim = has('nvim')
 
 let s:NO_MATCHES = 'NO MATCHES FOUND'
@@ -75,3 +78,6 @@ function! clap#impl#on_typed() abort
 
   call g:clap.display.add_highlight()
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Grep on the fly with smart cache strategy in async way.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:grep_delay = get(g:, 'clap_provider_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 
@@ -331,3 +334,6 @@ let s:grep.jobstop = function('s:jobstop')
 let s:grep.on_exit = function('s:grep_exit')
 
 let g:clap#provider#grep# = s:grep
+
+let &cpo = s:save_cpo
+unlet s:save_cpo
