@@ -47,7 +47,7 @@ function! clap#impl#on_typed() abort
 
   let l:has_no_matches = v:false
 
-  let l:lines = clap#filter#(l:lines, l:cur_input)
+  let l:lines = call(g:clap.provider.filter(), [l:lines, l:cur_input])
 
   if empty(l:lines)
     let l:lines = [s:NO_MATCHES]

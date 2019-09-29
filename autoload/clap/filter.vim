@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Filter out the candidate lines given input.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:pattern_builder = {}
 
 function! s:pattern_builder._force_case() abort
@@ -50,3 +53,6 @@ function! clap#filter#(lines, input) abort
   let l:filter_pattern = s:pattern_builder.build()
   return filter(a:lines, 's:filter(v:val, l:filter_pattern)')
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

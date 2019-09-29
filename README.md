@@ -214,7 +214,7 @@ Field      | Type                | Required      | Has default implementation
 
 - `filter`: given what you have typed, use `filter(entry)` to evaluate each entry in the display window, when the result is zero remove the item from the current result list. The default implementation is to match the input using vim's regex.
 
-- `on_typed`: reference to function to filter or spawn an async job.
+- `on_typed`: reference to function to filter the `source`.
 
 - `on_move`: when navigating the result list, can be used for the preview purpose, see [clap/provider/colors](autoload/clap/provider/colors.vim).
 
@@ -234,7 +234,8 @@ Field      | Type    | Required      | Has default implementation
 `on_enter` | funcref | optional      | No
 `jobstop`  | funcref | **mandatory** | No
 
-- `jobstop`: Reference to function to stop the current job of a async provider.
+- `on_typed`: reference to function to spawn an async job.
+- `jobstop`: Reference to function to stop the current job of an async provider.
 
 You must provide `sink`, `on_typed` and `jojbstop` option. It's a bit of complex to write an asynchornous provider, you should take care of the job control as well as the display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
 
