@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the files.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:files = {}
 
 function! s:chain_try() abort
@@ -27,3 +30,6 @@ endif
 let s:files.sink = 'e'
 
 let g:clap#provider#files# = s:files
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

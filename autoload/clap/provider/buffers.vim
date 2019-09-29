@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the open buffers.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 " TODO more fancy buffers, e.g., append icon.
 function! s:buffers() abort
   redir => l:buffers
@@ -27,3 +30,6 @@ let s:buffers.source = function('s:buffers')
 let s:buffers.on_enter = function('s:buffers_on_enter')
 
 let g:clap#provider#buffers# = s:buffers
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

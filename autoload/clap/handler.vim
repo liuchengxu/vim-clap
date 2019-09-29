@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Handle the movement.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:old_input = ''
 let s:support_multi_selection = v:false
 let s:use_multi_selection = v:false
@@ -125,3 +128,6 @@ function! clap#handler#select_toggle() abort
 
   return ''
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

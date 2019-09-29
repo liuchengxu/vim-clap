@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Primiary code path for the plugin.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 if has('nvim')
   let s:has_features = has('nvim-0.4')
 else
@@ -189,3 +192,6 @@ function! clap#(bang, ...) abort
 
   call clap#for(provider_id_or_alias)
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

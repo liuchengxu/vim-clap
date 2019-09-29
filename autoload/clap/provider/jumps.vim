@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the jump list with the preview.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:jumps = {}
 
 function! s:jumps.source() abort
@@ -31,3 +34,6 @@ function! s:jumps.sink(line) abort
 endfunction
 
 let g:clap#provider#jumps# = s:jumps
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

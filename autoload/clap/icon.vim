@@ -168,3 +168,6 @@ function! clap#icon#get_all() abort
   call add(all, g:clap#icon#default)
   return uniq(all)
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

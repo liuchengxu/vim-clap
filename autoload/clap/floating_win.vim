@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Neovim floating_win UI.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let g:clap#floating_win#input = {}
 let g:clap#floating_win#display = {}
 let g:clap#floating_win#spinner = {}
@@ -196,3 +199,6 @@ function! clap#floating_win#close() abort
   " thus I have to go back to the start window in grep.vim
   noautocmd call clap#util#nvim_win_close_safe(g:clap.display.winid)
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

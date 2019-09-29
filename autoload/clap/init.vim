@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Initialize and make a compatible layer between neovim and vim.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:is_nvim = has('nvim')
 
 function! s:_goto_win() dict abort
@@ -448,3 +451,6 @@ function! clap#init#() abort
     let g:clap.close_win = function('clap#popup#close')
   endif
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

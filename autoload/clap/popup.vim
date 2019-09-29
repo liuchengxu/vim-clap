@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Vim popup UI and interaction.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:input = ''
 let s:input_timer = -1
 
@@ -376,3 +379,6 @@ function! clap#popup#close() abort
   call s:hide_all()
   silent autocmd! ClapEnsureAllClosed
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

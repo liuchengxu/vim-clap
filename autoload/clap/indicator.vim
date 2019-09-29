@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Matches indicator.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 if has('nvim')
   let s:ns_id = nvim_create_namespace('clap')
 
@@ -36,3 +39,6 @@ function! clap#indicator#set_matches(indicator) abort
   " endif
   call s:apply_indicator(a:indicator)
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Multi selection support.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:signed = []
 let s:sign_group = 'clapSelected'
 
@@ -33,3 +36,6 @@ function! clap#sign#reset() abort
   call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr})
   let s:signed = []
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

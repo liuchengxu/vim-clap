@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Utilities.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:blink = {}
 
 function! s:blink.tick(_) dict abort
@@ -89,3 +92,6 @@ function! clap#util#expand(args) abort
   endif
   return a:args
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo

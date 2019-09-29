@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Gather some info useful for debugging.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 function! s:get_global_variables() abort
   let variable_list = []
 
@@ -54,3 +57,6 @@ function! clap#debugging#info_to_clipboard() abort
   echohl Function | echon 'Vim-clap info'             | echohl NONE
   echohl Normal   | echon ' copied to your clipboard' | echohl NONE
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo
