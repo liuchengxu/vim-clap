@@ -8,6 +8,8 @@ let s:old_input = ''
 let s:support_multi_selection = v:false
 let s:use_multi_selection = v:false
 
+let s:lazy_load_size = 100
+
 let s:motions = {
       \ 'up': 'k',
       \ 'down': 'j',
@@ -42,12 +44,15 @@ function! s:navigate(direction) abort
       let g:__clap_display_curlnum = 1
     else
       let cache = g:clap.display.cache
-      if len(cache) <= 100
+      if len(cache) <= s:lazy_load_size
         let to_append = cache
         let g:clap.display.cache = []
       else
-        let to_append = cache[:99]
-        let g:clap.display.cache = cache[100:]
+        let to_append = cache[:s:lazy_load_size-1]
+        let g:clap.display.cache = cache[s:lazy_load_size:]
+      endif
+      if has_key(g:clap.provider._(), 'converter')
+        let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
       endif
       call g:clap.display.append_lines(to_append)
       normal! j
@@ -89,20 +94,24 @@ else
 endif
 
 function! clap#handler#sink() abort
-  if s:use_multi_selection
-    let selected = clap#sign#get()
-    if empty(selected)
+  try
+    if s:use_multi_selection
+      let selected = clap#sign#get()
+      if empty(selected)
+        let curline = g:clap.display.getcurline()
+        call g:clap.provider.sink(curline)
+      else
+        let lines = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+        call g:clap.provider.sink_star(lines)
+      endif
+    else
       let curline = g:clap.display.getcurline()
       call g:clap.provider.sink(curline)
-    else
-      let lines = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
-      call g:clap.provider.sink_star(lines)
     endif
-  else
-    let curline = g:clap.display.getcurline()
-    call g:clap.provider.sink(curline)
-  endif
-  call clap#exit()
+    call clap#exit()
+  catch
+    call clap#error('clap#handler#sink: '.v:exception)
+  endtry
 endfunction
 
 function! clap#handler#exit() abort

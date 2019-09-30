@@ -4,7 +4,8 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
-let s:grep_delay = get(g:, 'clap_provider_grep_delay', 500)
+let s:grep_delay = get(g:, 'clap_provider_grep_delay', 300)
+let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 
 let s:old_query = ''
 let s:grep_timer = -1
@@ -268,7 +269,7 @@ function! s:grep_sink(selected) abort
   endif
   noautocmd call cursor(linenr, column)
   normal! zz
-  call clap#util#blink(2, 100)
+  call call('clap#util#blink', s:grep_blink)
 endfunction
 
 function! s:grep_sink_star(lines) abort
@@ -327,6 +328,8 @@ let s:grep['sink*'] = function('s:grep_sink_star')
 let s:grep.on_typed = function('s:grep_with_delay')
 
 let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
+
+let s:grep.converter = function('s:draw_icon')
 
 let s:grep.jobstop = function('s:jobstop')
 

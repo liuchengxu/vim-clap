@@ -46,6 +46,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 TODOs:
 
 - [ ] Support builtin fuzzy match.
+  - [x] Substring filter mode for sync providers. If the query contains spaces, the substring filter mode will be used.
 - [ ] Formalize provider args.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
@@ -110,6 +111,8 @@ Command                                | List                               | Re
 
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 
+- Use `Clap grep <cword>` to grep the word under cursor.
+
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
 ### Global variables
@@ -122,15 +125,20 @@ Command                                | List                               | Re
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-The option naming convention for provider is `g:clap_provider_{provider_id}_opt`.
+- `g:clap_popup_input_delay`: 200ms by default, delay for actually responsing to the input, vim only.
 
-- `g:clap_provider_grep_delay`: delay for actually spawning the grep job in the background.
+The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
+
+- `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
+- `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
 
 ### Movement
 
 - Use <kbd>Ctrl-j</kbd> or <kbd>Ctrl-k</kbd> to navigate the result list up and down.
 - Use <kbd>Ctrl-a</kbd> to go to the start of the input.
 - Use <kbd>Ctrl-e</kbd> to go to the end of the input.
+- Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
+- Use <kbd>Ctrl-d</kbd> to delete one character.
 - Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - Use <kbd>Enter</kbd> to select the entry and exit.
@@ -206,7 +214,7 @@ Field      | Type                | Required      | Has default implementation
 
 - `filter`: given what you have typed, use `filter(entry)` to evaluate each entry in the display window, when the result is zero remove the item from the current result list. The default implementation is to match the input using vim's regex.
 
-- `on_typed`: reference to function to filter or spawn an async job.
+- `on_typed`: reference to function to filter the `source`.
 
 - `on_move`: when navigating the result list, can be used for the preview purpose, see [clap/provider/colors](autoload/clap/provider/colors.vim).
 
@@ -226,7 +234,8 @@ Field      | Type    | Required      | Has default implementation
 `on_enter` | funcref | optional      | No
 `jobstop`  | funcref | **mandatory** | No
 
-- `jobstop`: Reference to function to stop the current job of a async provider.
+- `on_typed`: reference to function to spawn an async job.
+- `jobstop`: Reference to function to stop the current job of an async provider.
 
 You must provide `sink`, `on_typed` and `jojbstop` option. It's a bit of complex to write an asynchornous provider, you should take care of the job control as well as the display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
 

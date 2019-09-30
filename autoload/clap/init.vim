@@ -5,6 +5,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let s:is_nvim = has('nvim')
+let s:default_priority = 10
 
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
@@ -32,6 +33,21 @@ else
     return len(lines) == 1 && empty(lines[0]) ? [] : lines
   endfunction
 endif
+
+function! s:matchadd(patterns) abort
+  let w:clap_match_ids = []
+  call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+  let idx = 1
+  " As most 8 submatches
+  for p in a:patterns[1:8]
+    try
+      call add(w:clap_match_ids, matchadd("ClapMatches".idx, p, s:default_priority - 1))
+      let idx += 1
+    catch
+      call clap#error(v:exception)
+    endtry
+  endfor
+endfunction
 
 function! s:init_display() abort
   let display = {}
@@ -71,13 +87,10 @@ function! s:init_display() abort
       call g:clap.input.goto_win()
     endfunction
 
-    function! display._apply_matchadd(pattern) abort
+    " Argument: list, multiple pattern to be highlighed
+    function! display._apply_matchadd(patterns) abort
       call g:clap.display.goto_win()
-      try
-        let w:clap_matches_hi_id = matchadd("ClapMatches", a:pattern)
-      catch
-        call clap#error(v:exception)
-      endtry
+      call s:matchadd(a:patterns)
       call g:clap.input.goto_win()
     endfunction
 
@@ -123,8 +136,8 @@ function! s:init_display() abort
       call win_execute(self.winid, 'call g:clap.display.matchdelete()')
     endfunction
 
-    function! display._apply_matchadd(pattern) abort
-      call win_execute(self.winid, 'let w:clap_matches_hi_id = matchadd("ClapMatches", a:pattern)')
+    function! display._apply_matchadd(patterns) abort
+      call win_execute(self.winid, 'call s:matchadd(a:patterns)')
     endfunction
 
   endif
@@ -146,19 +159,17 @@ function! s:init_display() abort
   " Optional argument: pattern to match
   " Default: input
   function! display.add_highlight(...) abort
-    let pattern = a:0 > 0 ? a:1 : g:clap.input.get()
-    if pattern =~? '\u'
-      let pattern = '\C'.pattern
-    else
-      let pattern = '\c'.pattern
+    let pattern = a:0 > 0 ? a:1 : clap#filter#matchadd_pattern()
+    if type(pattern) != v:t_list
+      let pattern = [pattern]
     endif
     call self._apply_matchadd(pattern)
   endfunction
 
   function! display.matchdelete() abort
-    if exists('w:clap_matches_hi_id')
-      call matchdelete(w:clap_matches_hi_id)
-      unlet w:clap_matches_hi_id
+    if exists('w:clap_match_ids')
+      call map(w:clap_match_ids, 'matchdelete(v:val)')
+      unlet w:clap_match_ids
     endif
   endfunction
 
@@ -245,7 +256,8 @@ function! s:init_provider() abort
     try
       call self._().on_typed()
     catch
-      call g:clap.display.set_lines([v:exception])
+      call g:clap.display.set_lines(['provider.on_typed: '.v:exception])
+      call clap#spinner#set_idle()
     endtry
   endfunction
 
@@ -301,10 +313,11 @@ function! s:init_provider() abort
         endif
         return lines
       elseif self.is_sync()
-        return ['No source, this should not happen.']
+        return ['provider.get_source: No source, this should not happen.']
       endif
     catch
-      return [v:exception]
+      call clap#spinner#set_idle()
+      return ['provider.get_source: '.v:exception]
     endtry
   endfunction
 
@@ -380,6 +393,38 @@ function! s:hi_spinner() abort
         \ vis_ctermbg,
         \ vis_guibg,
         \ )
+
+  let clap_sub_matches = [
+        \ [173 , '#e18254'] ,
+        \ [196 , '#f2241f'] ,
+        \ [184 , '#e5d11c'] ,
+        \ [32  , '#4f97d7'] ,
+        \ [170 , '#bc6ec5'] ,
+        \ [178 , '#ffbb7d'] ,
+        \ [136 , '#b1951d'] ,
+        \ [29  , '#2d9574'] ,
+        \ ]
+
+  let pmenu_ctermbg = s:extract('Pmenu', 'bg', 'cterm')
+  if empty(pmenu_ctermbg)
+    let pmenu_ctermbg = '60'
+  endif
+  let pmenu_guibg = s:extract('Pmenu', 'bg', 'gui')
+  if empty(pmenu_guibg)
+    let pmenu_guibg = '#544a65'
+  endif
+
+  let idx = 1
+  for g in clap_sub_matches
+    execute printf(
+          \ "hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold", idx,
+          \ g[1],
+          \ g[0],
+          \ pmenu_ctermbg,
+          \ pmenu_guibg,
+          \ )
+    let idx += 1
+  endfor
 endfunction
 
 function! s:init_hi_groups() abort

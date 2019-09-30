@@ -6,6 +6,7 @@ set cpo&vim
 
 let s:input = ''
 let s:input_timer = -1
+let s:input_delay = get(g:, 'clap_popup_input_delay', 200)
 
 let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
@@ -114,7 +115,6 @@ function! s:create_spinner() abort
   if !exists('s:spinner_winid') || empty(popup_getpos(s:spinner_winid))
     let pos = popup_getpos(s:display_winid)
     let pos.line = pos.line - 1
-    " FIXME adjust the spinner size on provider open
     let pos.minwidth = clap#spinner#width() + 2
     let pos.maxwidth = pos.minwidth
     let pos.highlight = 'ClapSpinner'
@@ -223,94 +223,108 @@ function! s:apply_input_with_delay() abort
   if s:input_timer != -1
     call timer_stop(s:input_timer)
   endif
-  let s:input_timer = timer_start(300, function('s:apply_input'))
+  let s:input_timer = timer_start(s:input_delay, function('s:apply_input'))
+endfunction
+
+let s:move_manager = {}
+
+function! s:move_manager.ctrl_a(_winid) abort
+  let s:cursor_idx = 0
+  call s:mock_input()
+endfunction
+
+function! s:move_manager.ctrl_b(_winid) abort
+  let s:cursor_idx -= 1
+  if s:cursor_idx < 0
+    let s:cursor_idx = 0
+  endif
+  call s:mock_input()
+endfunction
+
+function! s:move_manager.ctrl_f(_winid) abort
+  let s:cursor_idx += 1
+  let input_len = strlen(s:input)
+  if s:cursor_idx > input_len
+    let s:cursor_idx = input_len
+  endif
+  call s:mock_input()
+endfunction
+
+function! s:move_manager.ctrl_e(_winid) abort
+  let s:cursor_idx = strlen(s:input)
+  call s:mock_input()
+endfunction
+
+function! s:move_manager.bs(_winid) abort
+  if empty(s:input) || s:cursor_idx == 0
+    return 1
+  endif
+  let to_truncate = s:input[:s:cursor_idx]
+  let truncated = s:remove_last_item(to_truncate)
+  let s:input = truncated . s:input[s:cursor_idx+1:]
+  let s:cursor_idx -= 1
+  if s:cursor_idx < 0
+    let s:cursor_idx = 0
+  endif
+  if g:clap.provider.is_sync()
+    let g:__clap_should_refilter = v:true
+  endif
+  call g:clap.provider.on_typed()
+  call s:mock_input()
+endfunction
+
+let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
+let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("up")') }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
+let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
+let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
+let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
+let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
+let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
+let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
+let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
+let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
+let s:move_manager["\<BS>"] = s:move_manager.bs
+let s:move_manager["\<C-D>"] = s:move_manager.bs
+
+function! s:move_manager.printable(key) abort
+  " FIXME still problematic
+  if s:input == '' || s:cursor_idx == strlen(s:input)
+    let s:input .= a:key
+  else
+    if s:cursor_idx == 0
+      let s:input = a:key . s:input
+    else
+      let s:input = s:input[:s:cursor_idx].a:key.s:input[s:cursor_idx+1:]
+    endif
+  endif
+  let s:cursor_idx += 1
+
+  " If the privder is async, react immediately, otherwise hold a delay.
+  " FIXME
+  " If the slow renderring of vim job is resolved, this cuold be removed.
+  if g:clap.provider.is_sync()
+    " apply_input should happen earlier than mock_input
+    call s:apply_input('')
+
+    " FIXME s:mock_input would conflict with clap#indicator#set_matches()
+    call s:mock_input()
+  else
+    call s:apply_input_with_delay()
+    call s:mock_input()
+  endif
 endfunction
 
 function! s:popup_filter(winid, key) abort
-  if a:key == "\<C-J>"
-    call win_execute(a:winid, 'call clap#handler#navigate_result("down")')
+  if has_key(s:move_manager, a:key)
+    call s:move_manager[a:key](a:winid)
+    return 1
+  endif
 
-  elseif a:key == "\<C-K>"
-    call win_execute(a:winid, 'call clap#handler#navigate_result("up")')
-
-  elseif a:key == "\<Tab>"
-    call win_execute(a:winid, 'call clap#handler#select_toggle()')
-
-  " Ctrl-[ / Esc
-  elseif a:key == "\<Esc>"
-    call clap#handler#exit()
-
-  elseif a:key == "\<CR>"
-    call clap#handler#sink()
-
-  elseif a:key == "\<C-A>"
-    let s:cursor_idx = 0
-    call s:mock_input()
-
-  elseif a:key == "\<C-B>" || a:key == "\<Left>"
-    let s:cursor_idx -= 1
-    if s:cursor_idx < 0
-      let s:cursor_idx = 0
-    endif
-    call s:mock_input()
-
-  elseif a:key == "\<C-F>" || a:key == "\<Right>"
-    let s:cursor_idx += 1
-    let input_len = strlen(s:input)
-    if s:cursor_idx > input_len
-      let s:cursor_idx = input_len
-    endif
-    call s:mock_input()
-
-  elseif a:key == "\<C-E>"
-    let s:cursor_idx = strlen(s:input)
-    call s:mock_input()
-
-  elseif a:key == "\<BS>" || a:key == "\<C-D>"
-    if empty(s:input) || s:cursor_idx == 0
-      return 1
-    endif
-    let to_truncate = s:input[:s:cursor_idx]
-    let truncated = s:remove_last_item(to_truncate)
-    let s:input = truncated . s:input[s:cursor_idx+1:]
-    let s:cursor_idx -= 1
-    if s:cursor_idx < 0
-      let s:cursor_idx = 0
-    endif
-    if g:clap.provider.is_sync()
-      let g:__clap_should_refilter = v:true
-    endif
-    call g:clap.provider.on_typed()
-    call s:mock_input()
-
+  let char_nr = char2nr(a:key)
   " ASCII printable characters
-  elseif char2nr(a:key) >= 32 && char2nr(a:key) <= 126
-    " FIXME still problematic
-    if s:input == '' || s:cursor_idx == strlen(s:input)
-      let s:input .= a:key
-    else
-      if s:cursor_idx == 0
-        let s:input = a:key . s:input
-      else
-        let s:input = s:input[:s:cursor_idx].a:key.s:input[s:cursor_idx+1:]
-      endif
-    endif
-    let s:cursor_idx += 1
-
-    " If the privder is async, react immediately, otherwise hold a delay.
-    " FIXME
-    " If the slow renderring of vim job is resolved, this cuold be removed.
-    if g:clap.provider.is_sync()
-      " apply_input should happen earlier than mock_input
-      call s:apply_input('')
-
-      " FIXME s:mock_input would conflict with clap#indicator#set_matches()
-      call s:mock_input()
-    else
-      call s:apply_input_with_delay()
-      call s:mock_input()
-    endif
-
+  if char_nr >= 32 && char_nr < 126
+    call s:move_manager.printable(a:key)
   endif
 
   return 1

@@ -8,15 +8,6 @@ let s:is_nvim = has('nvim')
 
 let s:NO_MATCHES = 'NO MATCHES FOUND'
 
-function! clap#impl#filter(line, input) abort
-  " Smart case-sensitive
-  if a:input =~? '\u'
-    return a:line =~# a:input
-  else
-    return a:line =~? a:input
-  endif
-endfunction
-
 "                          filter
 "                       /  (sync)
 "             on_typed -
@@ -56,8 +47,7 @@ function! clap#impl#on_typed() abort
 
   let l:has_no_matches = v:false
 
-  let l:Filter = g:clap.provider.filter()
-  let l:lines = filter(l:lines, 'l:Filter(v:val, l:cur_input)')
+  let l:lines = call(g:clap.provider.filter(), [l:lines, l:cur_input])
 
   if empty(l:lines)
     let l:lines = [s:NO_MATCHES]
