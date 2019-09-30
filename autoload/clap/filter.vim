@@ -27,6 +27,8 @@ function! s:pattern_builder.substring() abort
   let s:matchadd_pattern = []
   for l:s in split(self.input)
     call add(filter_pattern, printf('\.\*\zs%s\ze', l:s))
+    " FIXME can not distinguish `f f` highlight
+    " these two f should be highlighed with different colors
     call add(s:matchadd_pattern, l:s)
   endfor
   return join(l:filter_pattern, '')
