@@ -51,7 +51,6 @@ function! s:create_display() abort
     let g:clap#popup#display.width = &columns * 2 / 3
 
     call popup_hide(s:display_winid)
-    " call win_execute(s:display_winid, 'setlocal nonumber')
 
     let g:clap.display.winid = s:display_winid
   endif
@@ -362,6 +361,12 @@ function! clap#popup#open() abort
 
   call s:open_popup()
   call s:adjust_spinner()
+
+  if g:clap.provider.is_sync()
+    call win_execute(s:display_winid, 'setlocal number')
+  else
+    call win_execute(s:display_winid, 'setlocal nonumber')
+  endif
 
   call g:clap.provider.init_display_win()
 

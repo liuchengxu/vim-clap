@@ -10,145 +10,11 @@ let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 let s:old_query = ''
 let s:grep_timer = -1
 
-let s:NO_MATCHES = 'NO MATCHES FOUND'
-
 if has('nvim')
-
   let s:default_prompt = "Type anything you want to find"
-
-  function! s:apply_append_or_cache(data) abort
-    let data = a:data
-
-    " Here are dragons!
-    let line_count = g:clap.display.line_count()
-
-    " Reach the preload capacity for the first time
-    " Append the minimum data, the rest goes to the cache.
-    if len(data) + line_count >= g:clap.display.preload_capacity
-      let start = g:clap.display.preload_capacity - line_count
-      let to_append = data[:start-1]
-      let to_cache = data[start:]
-
-      " Discard?
-      call extend(g:clap.display.cache, to_cache)
-
-      let to_append = map(to_append, 's:draw_icon(v:val)')
-      call g:clap.display.append_lines(to_append)
-
-      let s:preload_is_complete = v:true
-      let s:loaded_size = line_count + len(to_append)
-    else
-      let s:loaded_size = line_count + len(data)
-      let data = map(data, 's:draw_icon(v:val)')
-      call g:clap.display.append_lines(data)
-    endif
-  endfunction
-
-  function! s:append_output(data) abort
-    if empty(a:data)
-      return
-    endif
-
-    if s:preload_is_complete
-      call extend(g:clap.display.cache, a:data)
-    else
-      call s:apply_append_or_cache(a:data)
-    endif
-
-    let matches_count = s:loaded_size + len(g:clap.display.cache)
-
-    call clap#indicator#set_matches('['.matches_count.']')
-  endfunction
-
-  function! s:on_event(job_id, data, event) abort
-    if a:event == 'stdout'
-      if len(a:data) > 1
-        " Second last is the real last one for neovim.
-        call s:append_output(a:data[:-2])
-      endif
-    elseif a:event == 'stderr'
-      " Ignore the errors?
-    else
-      call s:check_if_no_matches()
-      let g:clap.is_busy = 0
-    endif
-  endfunction
-
-  function! s:job_start(cmd) abort
-    let s:jobid = jobstart(a:cmd, {
-          \ 'on_exit': function('s:on_event'),
-          \ 'on_stdout': function('s:on_event'),
-          \ 'on_stderr': function('s:on_event'),
-          \ })
-  endfunction
-
 else
-
   let s:default_prompt = "Search ??"
-
-  function! s:append_output(preload) abort
-    let to_append = a:preload
-    let to_append = map(to_append, 's:draw_icon(v:val)')
-    call g:clap.display.append_lines(to_append)
-    let s:loaded_size = len(to_append)
-    let s:preload_is_complete = v:true
-    let s:did_preload = v:true
-  endfunction
-
-  function! s:post_check() abort
-    if !s:preload_is_complete
-      call s:append_output(s:vim_output)
-    endif
-    call s:check_if_no_matches()
-    call clap#spinner#set_idle()
-    call s:update_indicator()
-  endfunction
-
-  function! s:out_cb(channel, message) abort
-    if s:preload_is_complete
-      call add(g:clap.display.cache, a:message)
-    else
-      call add(s:vim_output, a:message)
-      if len(s:vim_output) >= g:clap.display.preload_capacity
-        call s:append_output(s:vim_output)
-      endif
-    endif
-  endfunction
-
-  function! s:err_cb(channel, message) abort
-    call g:clap.abort(channel.", ".a:message)
-  endfunction
-
-  function! s:close_cb(_channel) abort
-    call s:post_check()
-  endfunction
-
-  function! s:exit_cb(_job, _exit_code) abort
-    call s:post_check()
-  endfunction
-
-  function! s:job_start(cmd) abort
-    let s:jobid = job_start(['bash', '-c', a:cmd], {
-          \ 'in_io': 'null',
-          \ 'err_cb': function('s:err_cb'),
-          \ 'out_cb': function('s:out_cb'),
-          \ 'exit_cb': function('s:exit_cb'),
-          \ 'close_cb': function('s:close_cb'),
-          \ 'noblock': 1,
-          \ })
-  endfunction
-
 endif
-
-function! s:update_indicator() abort
-  if s:preload_is_complete
-    let matches_count = s:loaded_size + len(g:clap.display.cache)
-  else
-    let matches_count = g:clap.display.line_count()
-  endif
-
-  call clap#indicator#set_matches('['.matches_count.']')
-endfunction
 
 " Caveat: This function can have a peformance issue.
 function! s:draw_icon(line) abort
@@ -161,16 +27,9 @@ function! s:draw_icon(line) abort
   return a:line
 endfunction
 
-function! s:check_if_no_matches() abort
-  if g:clap.display.is_empty()
-    call g:clap.display.set_lines([s:NO_MATCHES])
-    call clap#indicator#set_matches('[0]')
-  endif
-endfunction
-
 function! s:cmd(query) abort
   if !executable('rg')
-    call g:clap.provider.abort('rg not found')
+    call g:clap.abort('rg not found')
     return
   endif
   let cmd = 'rg -H --no-heading --vimgrep --smart-case "'.a:query.'"'
@@ -178,19 +37,8 @@ function! s:cmd(query) abort
   return cmd
 endfunction
 
-function! s:jobstop() abort
-  if exists('s:jobid')
-    if has('nvim')
-      silent! call jobstop(s:jobid)
-    else
-      silent! call jobstop(s:jobid, 'kill')
-    endif
-    unlet s:jobid
-  endif
-endfunction
-
 function! s:clear_job_and_matches() abort
-  call s:jobstop()
+  call clap#dispatcher#jobstop()
 
   call g:clap.display.clear_highlight()
 endfunction
@@ -217,14 +65,7 @@ function! s:spawn(query) abort
   " This should happen before the new job.
   call g:clap.display.clear()
 
-  let s:cache_size = 0
-  let s:loaded_size = 0
-  let s:preload_is_complete = v:false
-
-  let s:vim_output = []
-  let g:clap.display.cache = []
-
-  call s:job_start(s:cmd(query))
+  call clap#dispatcher#jobstart(s:cmd(query))
 
   " Add an option for highlighting the query string?
   " let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
@@ -240,7 +81,7 @@ function! s:spawn(query) abort
 endfunction
 
 function! s:grep_exit() abort
-  call s:jobstop()
+  call clap#dispatcher#jobstop()
 endfunction
 
 function! s:grep_sink(selected) abort
@@ -331,7 +172,7 @@ let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 
 let s:grep.converter = function('s:draw_icon')
 
-let s:grep.jobstop = function('s:jobstop')
+let s:grep.jobstop = function('clap#dispatcher#jobstop')
 
 let s:grep.on_exit = function('s:grep_exit')
 
