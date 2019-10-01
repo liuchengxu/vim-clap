@@ -53,6 +53,7 @@ function! g:clap#floating_win#display.open() abort
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
+  call matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern, 10, 1001, {'window': s:display_winid})
   " call setwinvar(s:display_winid, '&winblend', 15)
 
   let g:clap.display.winid = s:display_winid

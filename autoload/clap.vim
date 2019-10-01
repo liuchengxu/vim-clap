@@ -37,6 +37,9 @@ let s:default_action = {
   \ 'ctrl-v': 'vsplit',
   \ }
 
+let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
+let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
+
 function! clap#action_for(action) abort
   return get(s:default_action, a:action, '')
 endfunction

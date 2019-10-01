@@ -50,6 +50,7 @@ function! s:create_display() abort
 
     let g:clap#popup#display.width = &columns * 2 / 3
 
+    call win_execute(s:display_winid, 'let w:clap_no_matches_id = matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern)')
     call popup_hide(s:display_winid)
 
     let g:clap.display.winid = s:display_winid

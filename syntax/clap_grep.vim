@@ -62,7 +62,6 @@ if !exists('s:hi_icon')
   let s:hi_icon = 1
 endif
 
-syntax match ClapNoMatchesFound /^NO MATCHES FOUND$/
 syntax match ClapLinNr /^.*:\zs\d\+\ze:\d\+:/hs=s+1,he=e-1
 syntax match ClapColumn /:\d\+:\zs\d\+\ze:/ contains=ClapLinNr
 syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn
@@ -73,4 +72,3 @@ hi default link ClapFpath            Keyword
 hi default link ClapLinNr            LineNr
 hi default link ClapColumn           Comment
 hi default link ClapLinNrColumn      Type
-hi default link ClapNoMatchesFound   ErrorMsg

@@ -6,8 +6,6 @@ set cpo&vim
 
 let s:is_nvim = has('nvim')
 
-let s:NO_MATCHES = 'NO MATCHES FOUND'
-
 "                          filter
 "                       /  (sync)
 "             on_typed -
@@ -40,7 +38,7 @@ function! clap#impl#on_typed() abort
     let l:lines = g:clap.display.get_lines()
 
     " If there is no matches for the current filtered result, restore to the original source.
-    if l:lines == [s:NO_MATCHES]
+    if l:lines == [g:clap_no_matches_msg]
       let l:lines = g:clap.provider.get_source()
     endif
   endif
@@ -50,7 +48,7 @@ function! clap#impl#on_typed() abort
   let l:lines = call(g:clap.provider.filter(), [l:lines, l:cur_input])
 
   if empty(l:lines)
-    let l:lines = [s:NO_MATCHES]
+    let l:lines = [g:clap_no_matches_msg]
     let l:has_no_matches = v:true
   endif
 

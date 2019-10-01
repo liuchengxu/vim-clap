@@ -461,6 +461,10 @@ function! s:init_hi_groups() abort
     hi default link ClapMatches Search
   endif
   hi default link ClapQuery   IncSearch
+
+  if !hlexists('ClapNoMatchesFound')
+    hi default link ClapNoMatchesFound ErrorMsg
+  endif
 endfunction
 
 function! clap#init#() abort

@@ -126,6 +126,7 @@ Command                                | List                               | Re
   ```
 
 - `g:clap_popup_input_delay`: 200ms by default, delay for actually responsing to the input, vim only.
+- `g:clap_no_matches_msg`: "NO MATCHES FOUND", message to show when there is no matches found.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 

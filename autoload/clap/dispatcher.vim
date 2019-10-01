@@ -1,8 +1,6 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Job control of async provider.
 
-let s:NO_MATCHES = 'NO MATCHES FOUND'
-
 if has('nvim')
 
   function! s:apply_append_or_cache(raw_output) abort
@@ -164,7 +162,7 @@ endif
 
 function! s:check_if_no_matches() abort
   if g:clap.display.is_empty()
-    call g:clap.display.set_lines([s:NO_MATCHES])
+    call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
   endif
 endfunction
