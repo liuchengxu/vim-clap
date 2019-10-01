@@ -172,8 +172,6 @@ let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 
 let s:grep.converter = function('s:draw_icon')
 
-let s:grep.jobstop = function('clap#dispatcher#jobstop')
-
 let s:grep.on_exit = function('s:grep_exit')
 
 let g:clap#provider#grep# = s:grep

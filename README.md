@@ -226,18 +226,20 @@ You have to provide `sink` and `source` option. The `source` field is indispensa
 
 ### Create async provider
 
-Field      | Type    | Required      | Has default implementation
-:----      | :----   | :----         | :----
-`sink`     | funcref | **mandatory** | No
-`on_typed` | funcref | **mandatory** | No
-`on_move`  | funcref | optional      | No
-`on_enter` | funcref | optional      | No
-`jobstop`  | funcref | **mandatory** | No
+Field       | Type    | Required      | Has default implementation
+:----       | :----   | :----         | :----
+`sink`      | funcref | **mandatory** | No
+`on_typed`  | funcref | **mandatory** | No
+`on_move`   | funcref | optional      | No
+`on_enter`  | funcref | optional      | No
+`converter` | funcref | optional      | No
+`jobstop`   | funcref | **mandatory** | Yes
 
 - `on_typed`: reference to function to spawn an async job.
-- `jobstop`: Reference to function to stop the current job of an async provider.
+- `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
+- `jobstop`: Reference to function to stop the current job of an async provider. By default you could utilize `clap#dispatcher#jobstart(cmd)` to start a new job, and then the job stop part will be handled by vim-clap as well, otherwise you'll have to take care of the `jobstart` and `jobstop` on your own.
 
-You must provide `sink`, `on_typed` and `jojbstop` option. It's a bit of complex to write an asynchornous provider, you should take care of the job control as well as the display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
+You must provide `sink`, `on_typed` option. It's a bit of complex to write an asynchornous provider, you'll need to prepare the command for spawning the job and overal workflow, although you could use `clap#dispatcher#jobstart(cmd)` to let vim-clap deal with the job control and display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
 
 ### Register provider
 

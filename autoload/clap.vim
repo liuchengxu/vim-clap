@@ -63,6 +63,9 @@ function! s:inject_default_impl_is_ok(provider_info) abort
       call clap#error('Provider without source must specify on_moved, but only has: '.keys(provider_info))
       return v:false
     endif
+    if !has_key(provider_info, 'jobstop')
+      let provider_info.jobstop = function('clap#dispatcher#jobstop')
+    endif
   endif
 
   return v:true
