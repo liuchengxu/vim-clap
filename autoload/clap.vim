@@ -37,6 +37,9 @@ let s:default_action = {
   \ 'ctrl-v': 'vsplit',
   \ }
 
+let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
+let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
+
 function! clap#action_for(action) abort
   return get(s:default_action, a:action, '')
 endfunction
@@ -62,6 +65,9 @@ function! s:inject_default_impl_is_ok(provider_info) abort
     if !has_key(provider_info, 'on_typed')
       call clap#error('Provider without source must specify on_moved, but only has: '.keys(provider_info))
       return v:false
+    endif
+    if !has_key(provider_info, 'jobstop')
+      let provider_info.jobstop = function('clap#dispatcher#jobstop')
     endif
   endif
 
