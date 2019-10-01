@@ -1,6 +1,6 @@
 # vim-clap
 
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fliuchengxu%2Fvim-clap%2Fbadge&style=flat)](https://actions-badge.atrox.dev/liuchengxu/vim-clap/goto)
+![](https://github.com/liuchengxu/vim-clap/.github/workflows/ci.yml/badge.svg)
 [![Gitter][G1]][G2]
 
 [G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
