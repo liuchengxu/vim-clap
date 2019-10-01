@@ -29,7 +29,7 @@ function! s:pattern_builder.substring() abort
     call add(filter_pattern, printf('\.\*\zs%s\ze', l:s))
     " FIXME can not distinguish `f f` highlight
     " these two f should be highlighed with different colors
-    call add(s:matchadd_pattern, l:s)
+    call add(s:matchadd_pattern, l:_force_case.l:s)
   endfor
   return join(l:filter_pattern, '')
 endfunction
