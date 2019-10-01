@@ -91,7 +91,7 @@ Command                                | List                               | Re
 `Clap blines`                          | Lines in the current buffer        | _none_
 `Clap buffers`                         | Open buffers                       | _none_
 `Clap colors`                          | Colorschemes                       | _none_
-`Clap hist:` or `Clap command_hisotry` | Command history                    | _none_
+`Clap hist:` or `Clap command_history` | Command history                    | _none_
 `Clap commits` **<sup>!</sup>**        | Git commits                        | **[git][git]**
 `Clap files`                           | Files                              | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
 `Clap filetypes`                       | File types                         | _none_
@@ -120,7 +120,7 @@ Command                                | List                               | Re
 - `g:clap_provider_alias`: Dict, if you don't want to invoke some clap provider by its id(name), as it's too long or somehow, you can add an alias for that provider.
 
   ```vim
-  " The provider name is `command_hisotry`, with the following alias config,
+  " The provider name is `command_history`, with the following alias config,
   " now you can call it via both `:Clap command_history` and `:Clap hist:`.
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
