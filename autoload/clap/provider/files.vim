@@ -6,27 +6,27 @@ set cpo&vim
 
 let s:files = {}
 
-function! s:chain_try() abort
-  for exe in keys(s:tools)
-    if executable(exe)
-      return join([exe, s:tools[exe]], ' ')
-    endif
-  endfor
-  return ['No usable tools found for the files provider']
-endfunction
+let s:tools = {
+      \ 'fd': '',
+      \ 'rg': '--files',
+      \ 'git': 'ls-tree -r --name-only HEAD',
+      \ 'find': '.',
+      \ }
 
-if has('win32')
-  let s:tools = {
-        \ 'fd': '',
-        \ 'rg': '--files',
-        \ 'git': 'ls-tree -r --name-only HEAD',
-        \ 'find': '.',
-        \ }
-  let s:files.source = s:chain_try()
-else
-  let s:files.source = 'fd || git ls-tree -r --name-only HEAD || rg --files || find .'
+let s:find_cmd = v:null
+
+for exe in keys(s:tools)
+  if executable(exe)
+    let s:find_cmd = join([exe, s:tools[exe]], ' ')
+    break
+  endif
+endfor
+
+if s:find_cmd is v:null
+  let s:find_cmd = ['No usable tools found for the files provider']
 endif
 
+let s:files.source = s:find_cmd
 let s:files.sink = 'e'
 
 let g:clap#provider#files# = s:files
