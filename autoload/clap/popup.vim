@@ -154,6 +154,7 @@ function! s:create_input() abort
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
+    call win_execute(s:input_winid, 'setlocal completeopt=')
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
