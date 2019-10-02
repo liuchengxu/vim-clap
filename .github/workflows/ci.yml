@@ -9,4 +9,4 @@ jobs:
     steps:
 
     - name: Autoload files should check cpo
-      run: echo $(pwd) && ls
+      run: bash $(pwd)/test/autoload_should_check_cpo.sh
