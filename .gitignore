@@ -6,5 +6,6 @@ __pycache__
 /doc/tags
 
 !.editorconfig
+!.travis.yml
 !.gitignore
 !.github
