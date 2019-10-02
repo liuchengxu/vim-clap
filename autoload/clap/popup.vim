@@ -154,6 +154,7 @@ function! s:create_input() abort
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
+    call win_execute(s:input_winid, 'setlocal completeopt=')
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
@@ -360,6 +361,12 @@ function! clap#popup#open() abort
   let s:cursor_idx = 0
   let g:__clap_display_curlnum = 1
 
+  redir => s:old_signcolumn
+  silent hi SignColumn
+  redir END
+
+  hi! link SignColumn ClapDisplay
+
   call s:open_popup()
   call s:adjust_spinner()
 
@@ -396,6 +403,8 @@ function! clap#popup#open() abort
 endfunction
 
 function! clap#popup#close() abort
+  let old_signcolumn = split(s:old_signcolumn)[2:]
+  silent execute 'hi SignColumn' join(old_signcolumn, ' ')
   call s:hide_all()
   silent autocmd! ClapEnsureAllClosed
 endfunction

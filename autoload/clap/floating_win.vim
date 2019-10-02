@@ -93,8 +93,6 @@ function! g:clap#floating_win#spinner.open() abort
 
   call setwinvar(s:spinner_winid, '&winhl', 'Normal:ClapSpinner')
   call setbufvar(s:spinner_bufnr, '&filetype', 'clap_spinner')
-
-  " FIXME consistened?
   call setbufvar(s:spinner_bufnr, '&signcolumn', 'no')
 
   let g:clap.spinner = get(g:clap, 'spinner', {})
@@ -113,6 +111,7 @@ function! g:clap#floating_win#input.open() abort
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
+  call setbufvar(s:input_bufnr, '&completeopt', '')
 
   let g:clap.input.winid = s:input_winid
 endfunction

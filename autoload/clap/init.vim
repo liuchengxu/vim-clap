@@ -6,6 +6,9 @@ set cpo&vim
 
 let s:is_nvim = has('nvim')
 let s:default_priority = 10
+let s:input_default_hi_group = 'Visual'
+let s:display_default_hi_group = 'Pmenu'
+let s:preview_defaualt_hi_group = 'PmenuSel'
 
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
@@ -340,17 +343,22 @@ function! s:init_provider() abort
   return provider
 endfunction
 
-function! s:extract(group, what, ...) abort
-  if a:0 == 1
-    return synIDattr(synIDtrans(hlID(a:group)), a:what, a:1)
-  else
-    return synIDattr(synIDtrans(hlID(a:group)), a:what)
+function! s:extract(group, what, gui_or_cterm) abort
+  return synIDattr(synIDtrans(hlID(a:group)), a:what, a:gui_or_cterm)
+endfunction
+
+function! s:extract_or(group, what, gui_or_cterm, default) abort
+  let v = s:extract(a:group, a:what, a:gui_or_cterm)
+  if empty(v)
+    return a:default
   endif
+  return v
 endfunction
 
 function! s:hi_display_invisible() abort
-  let guibg = s:extract(s:display_group, 'bg', 'gui')
-  let ctermbg = s:extract(s:display_group, 'bg', 'cterm')
+  " People can use their own display highlight group, so can't use s:display_default_hi_group here.
+  let guibg = s:extract_or(s:display_group, 'bg', 'gui', '#544a65')
+  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', 60)
   execute printf(
         \ "hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s",
         \ ctermbg,
@@ -359,8 +367,8 @@ function! s:hi_display_invisible() abort
 endfunction
 
 function! s:hi_preview_invisible() abort
-  let guibg = s:extract(s:preview_group, 'bg', 'gui')
-  let ctermbg = s:extract(s:preview_group, 'bg', 'cterm')
+  let guibg = s:extract_or(s:preview_group, 'bg', 'gui', '#5e5079')
+  let ctermbg = s:extract_or(s:preview_group, 'bg', 'cterm', '60')
   execute printf(
         \ "hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s",
         \ ctermbg,
@@ -370,22 +378,10 @@ endfunction
 
 " Try to sync the spinner bg with input window.
 function! s:hi_spinner() abort
-  let vis_ctermbg = s:extract('Visual', 'bg', 'cterm')
-  if empty(vis_ctermbg)
-    let vis_ctermbg = '60'
-  endif
-  let vis_guibg = s:extract('Visual', 'bg', 'gui')
-  if empty(vis_guibg)
-    let vis_guibg = '#544a65'
-  endif
-  let fn_ctermfg = s:extract('Function', 'fg', 'cterm')
-  if empty(fn_ctermfg)
-    let fn_ctermfg = '170'
-  endif
-  let fn_guifg = s:extract('Function', 'fg', 'gui')
-  if empty(fn_guifg)
-    let fn_guifg = '#bc6ec5'
-  endif
+  let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
+  let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
+  let fn_ctermfg = s:extract_or('Function', 'fg', 'cterm', '170')
+  let fn_guifg = s:extract_or('Function', 'fg', 'gui', '#bc6ec5')
   execute printf(
         \ "hi ClapSpinner guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold",
         \ fn_guifg,
@@ -405,14 +401,8 @@ function! s:hi_spinner() abort
         \ [29  , '#2d9574'] ,
         \ ]
 
-  let pmenu_ctermbg = s:extract('Pmenu', 'bg', 'cterm')
-  if empty(pmenu_ctermbg)
-    let pmenu_ctermbg = '60'
-  endif
-  let pmenu_guibg = s:extract('Pmenu', 'bg', 'gui')
-  if empty(pmenu_guibg)
-    let pmenu_guibg = '#544a65'
-  endif
+  let pmenu_ctermbg = s:extract_or(s:display_default_hi_group, 'bg', 'cterm', '60')
+  let pmenu_guibg = s:extract_or(s:display_default_hi_group, 'bg', 'gui', '#544a65')
 
   let idx = 1
   for g in clap_sub_matches
@@ -434,12 +424,12 @@ function! s:init_hi_groups() abort
   endif
 
   if !hlexists('ClapInput')
-    hi default link ClapInput Visual
+    execute 'hi default link ClapInput' s:input_default_hi_group
   endif
 
   if !hlexists('ClapDisplay')
-    hi default link ClapDisplay Pmenu
-    let s:display_group = 'Pmenu'
+    execute 'hi default link ClapDisplay' s:display_default_hi_group
+    let s:display_group = s:display_default_hi_group
   else
     let s:display_group = 'ClapDisplay'
   endif
@@ -448,8 +438,8 @@ function! s:init_hi_groups() abort
   autocmd ColorScheme * call s:hi_display_invisible()
 
   if !hlexists('ClapPreview')
-    hi default link ClapPreview PmenuSel
-    let s:preview_group = 'PmenuSel'
+    execute 'hi default link ClapPreview' s:preview_defaualt_hi_group
+    let s:preview_group = s:preview_defaualt_hi_group
   else
     let s:preview_group = 'ClapPreview'
   endif
