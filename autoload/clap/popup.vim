@@ -366,14 +366,6 @@ function! clap#popup#open() abort
   let s:cursor_idx = 0
   let g:__clap_display_curlnum = 1
 
-  " Currently the syntax can't local in vim.
-  " Remove this once vim support win local syntax.
-  redir => s:old_signcolumn
-  silent hi SignColumn
-  redir END
-
-  hi! link SignColumn ClapDisplay
-
   call s:open_popup()
   call s:adjust_spinner()
 
@@ -387,6 +379,14 @@ function! clap#popup#open() abort
 
   if g:clap.provider.support_multi_selection()
     call win_execute(s:display_winid, 'setlocal signcolumn=yes')
+
+    " Currently the highlight can't be local in vim.
+    " Remove this once vim support win local highlight.
+    redir => s:old_signcolumn
+    silent hi SignColumn
+    redir END
+
+    hi! link SignColumn ClapDisplay
   endif
 
   let g:clap_indicator_winid = s:indicator_winid
@@ -408,8 +408,11 @@ function! clap#popup#open() abort
 endfunction
 
 function! clap#popup#close() abort
-  let old_signcolumn = split(s:old_signcolumn)[2:]
-  silent execute 'hi SignColumn' join(old_signcolumn, ' ')
+  if exists('s:old_signcolumn')
+    let old_signcolumn = split(s:old_signcolumn)[2:]
+    silent execute 'hi SignColumn' join(old_signcolumn, ' ')
+    unlet s:old_signcolumn
+  endif
   call s:hide_all()
   silent autocmd! ClapEnsureAllClosed
 endfunction
