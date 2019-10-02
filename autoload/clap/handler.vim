@@ -94,6 +94,12 @@ else
 endif
 
 function! clap#handler#sink() abort
+  " This could be more robust by checking the exact matches count, but this should also be enough.
+  if g:clap.display.get_lines() == [g:clap_no_matches_msg]
+    call clap#handler#exit()
+    return
+  endif
+
   try
     if s:use_multi_selection
       let selected = clap#sign#get()
@@ -108,9 +114,10 @@ function! clap#handler#sink() abort
       let curline = g:clap.display.getcurline()
       call g:clap.provider.sink(curline)
     endif
-    call clap#exit()
   catch
     call clap#error('clap#handler#sink: '.v:exception)
+  finally
+    call clap#handler#exit()
   endtry
 endfunction
 

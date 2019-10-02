@@ -259,15 +259,6 @@ function! s:move_manager.ctrl_e(_winid) abort
   call s:mock_input()
 endfunction
 
-function! s:move_manager.enter(_winid) abort
-  call clap#handler#exit()
-  " This could be more robust by checking the exact matches count, but this should also be enough.
-  if g:clap.display.get_lines() == [g:clap_no_matches_msg]
-    return
-  endif
-  call clap#handler#sink()
-endfunction
-
 function! s:move_manager.bs(_winid) abort
   if empty(s:input) || s:cursor_idx == 0
     return 1
@@ -289,8 +280,8 @@ endfunction
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
 let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("up")') }
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
+let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
-let s:move_manager["\<CR>"] = s:move_manager.enter
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
 let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
