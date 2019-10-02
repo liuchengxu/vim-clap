@@ -145,6 +145,17 @@ function! s:init_display() abort
 
   endif
 
+  function! display.set_lines_lazy(raw_lines) abort
+    if len(a:raw_lines) >= g:clap.display.preload_capacity
+      let to_set = a:raw_lines[:g:clap.display.preload_capacity-1]
+      let to_cache = a:raw_lines[g:clap.display.preload_capacity:]
+      call self.set_lines(to_set)
+      let g:clap.display.cache = to_cache
+    else
+      call self.set_lines(a:raw_lines)
+    endif
+  endfunction
+
   function! display.getcurline() abort
     return get(getbufline(self.bufnr, g:__clap_display_curlnum), 0, '')
   endfunction
@@ -317,6 +328,8 @@ function! s:init_provider() abort
         return lines
       elseif self.is_sync()
         return ['provider.get_source: No source, this should not happen.']
+      else
+        return []
       endif
     catch
       call clap#spinner#set_idle()
@@ -334,8 +347,9 @@ function! s:init_provider() abort
 
   function! provider.init_display_win() abort
     let lines = self.get_source()
+    let g:clap.display.initial_size = len(lines)
     if !empty(lines)
-      call g:clap.display.set_lines(lines)
+      call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
     endif
   endfunction

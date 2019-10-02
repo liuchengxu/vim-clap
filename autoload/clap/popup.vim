@@ -378,8 +378,6 @@ function! clap#popup#open() abort
 
   call g:clap.provider.init_display_win()
 
-  let g:clap.display.initial_size = g:clap.display.line_count()
-
   if g:clap.provider.support_multi_selection()
     call win_execute(s:display_winid, 'setlocal signcolumn=yes')
   endif

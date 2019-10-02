@@ -160,6 +160,7 @@ function! clap#for(provider_id_or_alias) abort
   endif
 
   let g:clap.provider.id = provider_id
+  let g:clap.display.cache = []
 
   " If the registrar is not aware of this provider, try registering it.
   if !has_key(g:clap.registrar, provider_id) && !s:try_register_is_ok(provider_id)
