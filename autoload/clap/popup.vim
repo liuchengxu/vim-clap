@@ -189,10 +189,13 @@ function! s:mock_input() abort
         \ || type(s:cursor_idx) ==# v:t_string
         \ || s:cursor_idx == strlen(s:input)
     let input = s:input.'|'
+  elseif s:insert_at_the_begin
+    let input = s:input[0].'|'.s:input[1:]
+    let s:cursor_idx = 1
   elseif s:cursor_idx == 0
     let input = '|'.s:input
   else
-    let input = join([s:input[:s:cursor_idx], s:input[s:cursor_idx+1:]], '|')
+    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx:]], '|')
   endif
   call popup_settext(s:input_winid, input)
 endfunction
@@ -289,17 +292,19 @@ let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-D>"] = s:move_manager.bs
 
 function! s:move_manager.printable(key) abort
-  " FIXME still problematic
+  let s:insert_at_the_begin = v:false
   if s:input == '' || s:cursor_idx == strlen(s:input)
     let s:input .= a:key
+    let s:cursor_idx += 1
   else
     if s:cursor_idx == 0
       let s:input = a:key . s:input
+      let s:insert_at_the_begin = v:true
     else
-      let s:input = s:input[:s:cursor_idx].a:key.s:input[s:cursor_idx+1:]
+      let s:input = s:input[:s:cursor_idx-1].a:key.s:input[s:cursor_idx:]
+      let s:cursor_idx += 1
     endif
   endif
-  let s:cursor_idx += 1
 
   " If the privder is async, react immediately, otherwise hold a delay.
   " FIXME
@@ -361,6 +366,8 @@ function! clap#popup#open() abort
   let s:cursor_idx = 0
   let g:__clap_display_curlnum = 1
 
+  " Currently the syntax can't local in vim.
+  " Remove this once vim support win local syntax.
   redir => s:old_signcolumn
   silent hi SignColumn
   redir END
@@ -377,8 +384,6 @@ function! clap#popup#open() abort
   endif
 
   call g:clap.provider.init_display_win()
-
-  let g:clap.display.initial_size = g:clap.display.line_count()
 
   if g:clap.provider.support_multi_selection()
     call win_execute(s:display_winid, 'setlocal signcolumn=yes')

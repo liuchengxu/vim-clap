@@ -22,8 +22,9 @@ function! clap#impl#on_typed() abort
   let l:cur_input = g:clap.input.get()
 
   if empty(l:cur_input)
-    call g:clap.display.set_lines(g:clap.provider.get_source())
-    call clap#indicator#set_matches('['.g:clap.display.line_count().']')
+    call g:clap.display.set_lines_lazy(g:clap.provider.get_source())
+    let l:matches_cnt = g:clap.display.line_count() + len(g:clap.display.cache)
+    call clap#indicator#set_matches('['.l:matches_cnt.']')
     call g:clap#display_win.compact_if_undersize()
     return
   endif
@@ -35,7 +36,7 @@ function! clap#impl#on_typed() abort
     let g:__clap_should_refilter = v:false
   else
     " Assuming in the middle of typing, we are continuing to filter.
-    let l:lines = g:clap.display.get_lines()
+    let l:lines = g:clap.display.get_lines() + g:clap.display.cache
 
     " If there is no matches for the current filtered result, restore to the original source.
     if l:lines == [g:clap_no_matches_msg]
@@ -52,7 +53,7 @@ function! clap#impl#on_typed() abort
     let l:has_no_matches = v:true
   endif
 
-  call g:clap.display.set_lines(lines)
+  call g:clap.display.set_lines_lazy(lines)
 
   " NOTE: some local variable without explicit l:, e.g., count,
   " may run into some erratic read-only error.
@@ -64,7 +65,7 @@ function! clap#impl#on_typed() abort
     endif
     call clap#indicator#set_matches('['.l:count.']')
   else
-    let l:matches_cnt = g:clap.display.line_count()
+    let l:matches_cnt = string(len(lines))
     if get(g:clap.display, 'initial_size', -1) > 0
       let l:matches_cnt .= '/'.g:clap.display.initial_size
     endif

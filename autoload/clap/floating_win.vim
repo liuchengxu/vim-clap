@@ -158,8 +158,6 @@ function! clap#floating_win#open() abort
 
   call g:clap.provider.init_display_win()
 
-  let g:clap.display.initial_size = g:clap.display.line_count()
-
   " Set cursorline?
   " if !g:clap.display.is_empty()
     " call setbufvar(s:display_bufnr, '&cursorline', 1)
