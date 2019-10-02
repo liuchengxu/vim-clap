@@ -9,4 +9,4 @@ jobs:
     steps:
 
     - name: Autoload files should check cpo
-      run: ./test/autoload_should_check_cpo.sh
+      run: bash test/autoload_should_check_cpo.sh
