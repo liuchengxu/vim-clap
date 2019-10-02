@@ -6,12 +6,14 @@ jobs:
   one:
     runs-on: ubuntu-16.04
     steps:
+      - name: Dump pwd
+        run: echo "$pwd"
+      - name: Dump ls
+        run: echo "$(ls)"
       - name: Dump GitHub context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
-      - name: Dump pwd
-        run: echo "$pwd"
       - name: Dump job context
         env:
           JOB_CONTEXT: ${{ toJson(job) }}
