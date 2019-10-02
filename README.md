@@ -1,5 +1,6 @@
 # vim-clap
 
+![](https://github.com/liuchengxu/vim-clap/workflows/.github/workflows/ci.yml/badge.svg)
 [![Gitter][G1]][G2]
 
 [G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg

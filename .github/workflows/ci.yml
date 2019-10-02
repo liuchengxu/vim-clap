@@ -1,0 +1,12 @@
+name: ci
+on:
+  pull_request:
+  push:
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Autoload files should check cpo
+      run: ./test/autoload_should_check_cpo.sh

@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Job control of async provider.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 if has('nvim')
 
   function! s:apply_append_or_cache(raw_output) abort
@@ -184,3 +187,6 @@ endfunction
 function! clap#dispatcher#jobstop() abort
   call s:jobstop()
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo
