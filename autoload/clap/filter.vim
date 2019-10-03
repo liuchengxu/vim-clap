@@ -6,17 +6,20 @@ set cpo&vim
 
 let s:pattern_builder = {}
 
+let s:default_ext_filter = v:null
+
 let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
+let s:ext_cmd.sk = 'sk --filter="%s"'
 
-if executable('fzy')
-  let s:default_ext_filter = 'fzy'
-elseif executable('fzf')
-  let s:default_ext_filter = 'fzf'
-else
-  let s:default_ext_filter = v:null
-endif
+" TODO support skim, skim seems to have a score at the beginning.
+for ext in ['fzy', 'fzf']
+  if executable(ext)
+    let s:default_ext_filter = ext
+    break
+  endif
+endfor
 
 function! s:pattern_builder._force_case() abort
   " Smart case
