@@ -34,9 +34,6 @@ function! clap#indicator#set_matches(indicator) abort
   if get(g:, 'clap_disable_matches_indicator', v:false)
     return
   endif
-  " if g:clap.provider.is_async()
-    " return
-  " endif
   call s:apply_indicator(a:indicator)
 endfunction
 

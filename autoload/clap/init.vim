@@ -302,6 +302,28 @@ function! s:init_provider() abort
     return has_key(self._(), 'sink*')
   endfunction
 
+  function! provider.apply_args() abort
+    if !empty(g:clap.provider.args)
+          \ && g:clap.provider.args[0] !~# '^+'
+      if s:is_nvim
+        call feedkeys(join(g:clap.provider.args, ' '))
+      else
+        call g:clap.input.set(join(g:clap.provider.args, ' '))
+      endif
+      call clap#indicator#set_matches('')
+      call g:clap.provider.on_typed()
+    endif
+  endfunction
+
+  function! provider.source_async() abort
+    if has_key(self._(), 'source_async')
+      return self._().source_async()
+    else
+      call g:clap.abort("source_async is unavailable")
+      return
+    endif
+  endfunction
+
   function! provider.get_source() abort
     let provider_info = self._()
     " Catch any exceptions and show them in the display window.
@@ -322,12 +344,9 @@ function! s:init_provider() abort
           endif
           return split(lines, "\n")
         else
-          call clap#error('source must be a list, string or funcref')
-          return ['source can only be a list, string or funcref']
+          return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
         endif
         return lines
-      elseif self.is_sync()
-        return ['provider.get_source: No source, this should not happen.']
       else
         return []
       endif
@@ -341,7 +360,7 @@ function! s:init_provider() abort
     return has_key(self._(), 'source')
   endfunction
 
-  function! provider.is_async() abort
+  function! provider.is_pure_async() abort
     return !has_key(self._(), 'source')
   endfunction
 

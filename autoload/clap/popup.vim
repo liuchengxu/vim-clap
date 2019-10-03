@@ -189,7 +189,7 @@ function! s:mock_input() abort
         \ || type(s:cursor_idx) ==# v:t_string
         \ || s:cursor_idx == strlen(s:input)
     let input = s:input.'|'
-  elseif s:insert_at_the_begin
+  elseif get(s:, 'insert_at_the_begin', v:false)
     let input = s:input[0].'|'.s:input[1:]
     let s:cursor_idx = 1
   elseif s:cursor_idx == 0
@@ -217,7 +217,7 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! s:apply_input(_timer) abort
-  if g:clap.provider.is_async()
+  if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
   endif
   call g:clap.provider.on_typed()
@@ -401,10 +401,7 @@ function! clap#popup#open() abort
 
   silent doautocmd <nomodeline> User ClapOnEnter
 
-  if has_key(g:clap.provider, 'args')
-    call g:clap.input.set(join(g:clap.provider.args, ' '))
-    call g:clap.provider.on_typed()
-  endif
+  call g:clap.provider.apply_args()
 endfunction
 
 function! clap#popup#close() abort
