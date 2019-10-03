@@ -259,6 +259,7 @@ function! s:move_manager.ctrl_e(_winid) abort
   call s:mock_input()
 endfunction
 
+" FIXME this is still problematic.
 function! s:move_manager.bs(_winid) abort
   if empty(s:input) || s:cursor_idx == 0
     return 1
@@ -312,13 +313,11 @@ function! s:move_manager.printable(key) abort
   if g:clap.provider.is_sync()
     " apply_input should happen earlier than mock_input
     call s:apply_input('')
-
-    " FIXME s:mock_input would conflict with clap#indicator#set_matches()
-    call s:mock_input()
   else
     call s:apply_input_with_delay()
-    call s:mock_input()
   endif
+
+  call s:mock_input()
 endfunction
 
 function! s:popup_filter(winid, key) abort

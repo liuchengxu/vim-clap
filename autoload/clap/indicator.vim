@@ -34,7 +34,7 @@ function! clap#indicator#set_matches(indicator) abort
   if get(g:, 'clap_disable_matches_indicator', v:false)
     return
   endif
- call s:apply_indicator(a:indicator)
+  call s:apply_indicator(a:indicator)
 endfunction
 
 let &cpo = s:save_cpo

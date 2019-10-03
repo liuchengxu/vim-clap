@@ -26,6 +26,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
 * [How to add a new provider](#how-to-add-a-new-provider)
+  * [Provider arguments](#provider-arguments)
   * [Create sync provider](#create-sync-provider)
   * [Create async provider](#create-async-provider)
   * [Register provider](#register-provider)
@@ -190,6 +191,18 @@ There are generally two kinds of providers in vim-clap.
 1. Sync provider: suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history. It's extremely easy to introduce a new synchoronous clap provider.
 
 2. Async provider: suitable for the time-consuming jobs, e.g., grep a word in a directory.
+
+### Provider arguments
+
+Note: unimplemented.
+
+```
+Clap [provider_id_or_alias] [++opt] [+opt]
+```
+
+The form of `[++opt]` is `++{optname}={value}`, e.g., `++externalfilter=fzf` or `++ef=fzf`.
+
+`[+opt]` is used for the bool arguments, e.g., `+async`.
 
 ### Create sync provider
 
