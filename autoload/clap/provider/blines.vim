@@ -20,6 +20,18 @@ function! s:blines.source() abort
   return map(lines, 'printf(linefmt, v:key + 1, v:val)')
 endfunction
 
+function! s:blines.source_async() abort
+  let lines = self.source()
+  let tmp = tempname()
+  if writefile(lines, tmp) == 0
+    let l:cur_input = g:clap.input.get()
+    let cmd = printf('cat %s | fzy --show-matches="%s"', tmp, l:cur_input)
+    return cmd
+  else
+    call g:clap.abort("Fail to write source to a temp file")
+  endif
+endfunction
+
 function! s:blines.on_enter() abort
   call g:clap.display.setbufvar('&ft', 'clap_blines')
 endfunction
