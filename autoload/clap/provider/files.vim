@@ -30,7 +30,8 @@ let s:files.source = s:find_cmd
 let s:files.sink = 'e'
 
 function! s:files.source_async() abort
-  let cmd = printf('find . -type f | fzy --show-matches="%s" --show-scores', l:cur_input)
+  let l:cur_input = g:clap.input.get()
+  let cmd = printf('find . -type f | fzy --show-matches="%s"', l:cur_input)
   return cmd
 endfunction
 

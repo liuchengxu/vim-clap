@@ -179,11 +179,7 @@ function! clap#floating_win#open() abort
 
   startinsert
 
-  if !empty(g:clap.provider.args) && g:clap.provider.args[0] !~# '^+'
-    call feedkeys(join(g:clap.provider.args, ' '))
-    call clap#indicator#set_matches('')
-    call g:clap.provider.on_typed()
-  endif
+  call g:clap.provider.apply_args()
 endfunction
 
 function! clap#floating_win#close() abort
