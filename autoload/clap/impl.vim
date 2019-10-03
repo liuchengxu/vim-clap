@@ -6,17 +6,7 @@ set cpo&vim
 
 let s:is_nvim = has('nvim')
 
-"                          filter
-"                       /  (sync)
-"             on_typed -
-"           /           \
-"          /              dispatcher
-" on_enter                 (async)        --> on_exit
-"          \
-"           \
-"             on_move
-"
-function! clap#impl#on_typed() abort
+function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
 
   let l:cur_input = g:clap.input.get()
@@ -76,6 +66,20 @@ function! clap#impl#on_typed() abort
   call clap#spinner#set_idle()
 
   call g:clap.display.add_highlight()
+endfunction
+
+"                          filter
+"                       /  (sync)
+"             on_typed -
+"           /           \
+"          /              dispatcher
+" on_enter                 (async)        --> on_exit
+"          \
+"           \
+"             on_move
+"
+function! clap#impl#on_typed() abort
+  call s:on_typed_sync_impl()
 endfunction
 
 let &cpo = s:save_cpo

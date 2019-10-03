@@ -364,7 +364,14 @@ function! s:init_provider() abort
     return !has_key(self._(), 'source')
   endfunction
 
+  function! provider.can_async() abort
+    return !has_key(self._(), 'source') || has_key(self._(), 'source_async')
+  endfunction
+
   function! provider.init_display_win() abort
+    if self.is_pure_async()
+      return
+    endif
     let lines = self.get_source()
     let g:clap.display.initial_size = len(lines)
     if !empty(lines)

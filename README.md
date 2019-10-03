@@ -194,6 +194,8 @@ There are generally two kinds of providers in vim-clap.
 
 ### Provider arguments
 
+Note: unimplemented.
+
 ```
 Clap [provider_id_or_alias] [++opt] [+opt]
 ```
