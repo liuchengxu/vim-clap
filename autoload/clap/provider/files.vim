@@ -7,15 +7,15 @@ set cpo&vim
 let s:files = {}
 
 let s:tools = {
-      \ 'fd': '',
+      \ 'fd': '--type f',
       \ 'rg': '--files',
       \ 'git': 'ls-tree -r --name-only HEAD',
-      \ 'find': '.',
+      \ 'find': '. -type f',
       \ }
 
 let s:find_cmd = v:null
 
-for exe in keys(s:tools)
+for exe in ['fd', 'rg', 'git', 'find']
   if executable(exe)
     let s:find_cmd = join([exe, s:tools[exe]], ' ')
     break
@@ -31,13 +31,8 @@ let s:files.sink = 'e'
 
 function! s:files.source_async() abort
   let l:cur_input = g:clap.input.get()
-  if executable('fzy')
-    let cmd = printf('find . -type f | fzy --show-matches="%s"', l:cur_input)
-  elseif executable('fzf')
-    let cmd = printf('find . -type f | fzf --filter="%s"', l:cur_input)
-  else
-    call g:clap.abort("Unable to run files async")
-  endif
+  let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+  let cmd = s:find_cmd.' | '.ext_filter_cmd
   return cmd
 endfunction
 

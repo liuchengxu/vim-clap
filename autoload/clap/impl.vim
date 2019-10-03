@@ -97,7 +97,7 @@ endfunction
 function! clap#impl#on_typed() abort
   if g:clap.provider.can_async()
     " Run async explicitly
-    if g:clap.provider.args == ['+async']
+    if get(g:clap.context, 'async') is v:true
       call s:on_typed_async_impl()
     else
       " Choose the suitable way according to the source size.

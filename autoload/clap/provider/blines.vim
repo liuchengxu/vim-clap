@@ -25,11 +25,8 @@ function! s:blines.source_async() abort
   let tmp = tempname()
   if writefile(lines, tmp) == 0
     let l:cur_input = g:clap.input.get()
-    if executable('fzy')
-      let cmd = printf('cat %s | fzy --show-matches="%s"', tmp, l:cur_input)
-    else
-      let cmd = printf('cat %s | fzf --filter="%s"', tmp, l:cur_input)
-    endif
+    let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+    let cmd = printf('cat %s | %s', tmp, ext_filter_cmd)
     call add(s:tmps, tmp)
     return cmd
   else

@@ -6,6 +6,18 @@ set cpo&vim
 
 let s:pattern_builder = {}
 
+let s:ext_cmd = {}
+let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
+let s:ext_cmd.fzf = 'fzf --filter="%s"'
+
+if executable('fzy')
+  let s:default_ext_filter = 'fzy'
+elseif executable('fzf')
+  let s:default_ext_filter = 'fzf'
+else
+  let s:default_ext_filter = v:null
+endif
+
 function! s:pattern_builder._force_case() abort
   " Smart case
   if self.input =~? '\u'
@@ -44,6 +56,20 @@ endfunction
 
 function! clap#filter#matchadd_pattern() abort
   return s:matchadd_pattern
+endfunction
+
+function! clap#filter#get_external_cmd_or_default() abort
+  if has_key(g:clap.context, 'externalfilter')
+    let ext_filter = g:clap.context.externalfilter
+  elseif has_key(g:clap.context, 'ef')
+    let ext_filter = g:clap.context.ef
+  elseif s:default_ext_filter is v:null
+    call g:clap.abort("No external filter available")
+    return
+  else
+    let ext_filter = s:default_ext_filter
+  endif
+  return printf(s:ext_cmd[ext_filter], g:clap.input.get())
 endfunction
 
 function! s:filter(line, pattern) abort
