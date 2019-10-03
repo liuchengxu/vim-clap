@@ -95,8 +95,18 @@ endfunction
 "             on_move
 "
 function! clap#impl#on_typed() abort
-  if g:clap.provider.args == ['+async']
-    call s:on_typed_async_impl()
+  if g:clap.provider.can_async()
+    " Run async explicitly
+    if g:clap.provider.args == ['+async']
+      call s:on_typed_async_impl()
+    else
+      " Choose the suitable way according to the source size.
+      if len(g:clap.provider.get_source()) > 5000
+        call s:on_typed_async_impl()
+      else
+        call s:on_typed_sync_impl()
+      endif
+    endif
   else
     call s:on_typed_sync_impl()
   endif

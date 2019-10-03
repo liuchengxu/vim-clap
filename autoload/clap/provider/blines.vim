@@ -25,7 +25,12 @@ function! s:blines.source_async() abort
   let tmp = tempname()
   if writefile(lines, tmp) == 0
     let l:cur_input = g:clap.input.get()
-    let cmd = printf('cat %s | fzy --show-matches="%s"', tmp, l:cur_input)
+    if executable('fzy')
+      let cmd = printf('cat %s | fzy --show-matches="%s"', tmp, l:cur_input)
+    else
+      let cmd = printf('cat %s | fzf --filter="%s"', tmp, l:cur_input)
+    endif
+    call add(s:tmps, tmp)
     return cmd
   else
     call g:clap.abort("Fail to write source to a temp file")
@@ -33,7 +38,12 @@ function! s:blines.source_async() abort
 endfunction
 
 function! s:blines.on_enter() abort
+  let s:tmps = []
   call g:clap.display.setbufvar('&ft', 'clap_blines')
+endfunction
+
+function! s:blines.on_exit() abort
+  call map(s:tmps, 'delete(v:val)')
 endfunction
 
 let g:clap#provider#blines# = s:blines

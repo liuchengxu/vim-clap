@@ -31,7 +31,13 @@ let s:files.sink = 'e'
 
 function! s:files.source_async() abort
   let l:cur_input = g:clap.input.get()
-  let cmd = printf('find . -type f | fzy --show-matches="%s"', l:cur_input)
+  if executable('fzy')
+    let cmd = printf('find . -type f | fzy --show-matches="%s"', l:cur_input)
+  elseif executable('fzf')
+    let cmd = printf('find . -type f | fzf --filter="%s"', l:cur_input)
+  else
+    call g:clap.abort("Unable to run files async")
+  endif
   return cmd
 endfunction
 

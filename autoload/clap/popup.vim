@@ -217,7 +217,7 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! s:apply_input(_timer) abort
-  if g:clap.provider.is_async()
+  if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
   endif
   call g:clap.provider.on_typed()

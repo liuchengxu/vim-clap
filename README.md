@@ -193,16 +193,17 @@ There are generally two kinds of providers in vim-clap.
 
 ### Create sync provider
 
-Field      | Type                | Required      | Has default implementation
-:----      | :----               | :----         | :----
-`sink`     | Funcref             | **mandatory** | No
-`sink*`    | Funcref             | optional      | No
-`source`   | String/List/Funcref | **mandatory** | No
-`filter`   | Funcref             | **mandatory** | **Yes**
-`on_typed` | Funcref             | **mandatory** | **Yes**
-`on_move`  | Funcref             | optional      | No
-`on_enter` | Funcref             | optional      | No
-`on_exit`  | Funcref             | optional      | No
+Field          | Type                | Required      | Has default implementation
+:----          | :----               | :----         | :----
+`sink`         | Funcref             | **mandatory** | No
+`sink*`        | Funcref             | optional      | No
+`source`       | String/List/Funcref | **mandatory** | No
+`source_async` | String              | optional      | No
+`filter`       | Funcref             | **mandatory** | **Yes**
+`on_typed`     | Funcref             | **mandatory** | **Yes**
+`on_move`      | Funcref             | optional      | No
+`on_enter`     | Funcref             | optional      | No
+`on_exit`      | Funcref             | optional      | No
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -214,6 +215,8 @@ Field      | Type                | Required      | Has default implementation
   - List: vim List as input to vim-clap.
   - String: external command to generate input to vim-clap (e.g. `find .`).
   - Funcref: reference to function that returns a List to generate input to vim-clap.
+
+- `source_async`: String, job command to filter the items of `source` based on the external tools.
 
 - `filter`: given what you have typed, use `filter(entry)` to evaluate each entry in the display window, when the result is zero remove the item from the current result list. The default implementation is to match the input using vim's regex.
 

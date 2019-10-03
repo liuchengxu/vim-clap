@@ -360,17 +360,23 @@ function! s:init_provider() abort
     return has_key(self._(), 'source')
   endfunction
 
-  function! provider.is_async() abort
+  function! provider.is_pure_async() abort
     return !has_key(self._(), 'source')
   endfunction
 
+  function! provider.can_async() abort
+    return !has_key(self._(), 'source') || has_key(self._(), 'source_async')
+  endfunction
+
   function! provider.init_display_win() abort
-    if g:clap.provider.args == ['+async']
-          \ || self.is_async()
+    if self.is_pure_async()
       return
     endif
     let lines = self.get_source()
     let g:clap.display.initial_size = len(lines)
+    if g:clap.provider.args == ['+async']
+      return
+    endif
     if !empty(lines)
       call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
