@@ -122,6 +122,29 @@ function! clap#register(provider_id, provider_info) abort
   let g:clap.registrar[a:provider_id] = provider_info
 endfunction
 
+function! s:validate_provider(registration_info) abort
+  if !has_key(a:registration_info, 'sink')
+    call clap#error('A valid provider must provide sink option')
+    return v:false
+  endif
+  if has_key(a:registration_info, 'source')
+    let ty_source = type(a:registration_info.source)
+    if ty_source == v:t_list
+          \ || ty_source == v:t_string
+          \ || ty_source == v:t_func
+    else
+      call clap#error('source must be a list, string or funcref')
+      return v:false
+    endif
+  else
+    if !has_key(a:registration_info, 'on_typed')
+      call clap#error('An async provider must provide on_typed option')
+      return v:false
+    endif
+  endif
+  return v:true
+endfunction
+
 function! s:try_register_is_ok(provider_id) abort
   let provider_id = a:provider_id
 
@@ -149,7 +172,7 @@ function! s:try_register_is_ok(provider_id) abort
     let s:alias_cache[registration_info.alias] = provider_id
   endif
 
-  return v:true
+  return s:validate_provider(registration_info)
 endfunction
 
 function! clap#for(provider_id_or_alias) abort
@@ -184,6 +207,7 @@ function! clap#(bang, ...) abort
 
   if a:0 == 0
     let provider_id_or_alias = '_'
+    let g:clap.provider.args = []
   else
     if a:000 == ['debug']
       call clap#debugging#info()
