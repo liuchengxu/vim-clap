@@ -189,7 +189,7 @@ function! s:mock_input() abort
         \ || type(s:cursor_idx) ==# v:t_string
         \ || s:cursor_idx == strlen(s:input)
     let input = s:input.'|'
-  elseif s:insert_at_the_begin
+  elseif get(s:, 'insert_at_the_begin', v:false)
     let input = s:input[0].'|'.s:input[1:]
     let s:cursor_idx = 1
   elseif s:cursor_idx == 0
@@ -217,7 +217,7 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! s:apply_input(_timer) abort
-  if g:clap.provider.is_async()
+  if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
   endif
   call g:clap.provider.on_typed()
@@ -259,6 +259,7 @@ function! s:move_manager.ctrl_e(_winid) abort
   call s:mock_input()
 endfunction
 
+" FIXME this is still problematic.
 function! s:move_manager.bs(_winid) abort
   if empty(s:input) || s:cursor_idx == 0
     return 1
@@ -312,13 +313,11 @@ function! s:move_manager.printable(key) abort
   if g:clap.provider.is_sync()
     " apply_input should happen earlier than mock_input
     call s:apply_input('')
-
-    " FIXME s:mock_input would conflict with clap#indicator#set_matches()
-    call s:mock_input()
   else
     call s:apply_input_with_delay()
-    call s:mock_input()
   endif
+
+  call s:mock_input()
 endfunction
 
 function! s:popup_filter(winid, key) abort
@@ -401,10 +400,7 @@ function! clap#popup#open() abort
 
   silent doautocmd <nomodeline> User ClapOnEnter
 
-  if has_key(g:clap.provider, 'args')
-    call g:clap.input.set(join(g:clap.provider.args, ' '))
-    call g:clap.provider.on_typed()
-  endif
+  call g:clap.provider.apply_args()
 endfunction
 
 function! clap#popup#close() abort
