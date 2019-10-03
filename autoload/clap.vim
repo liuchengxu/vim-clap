@@ -123,6 +123,7 @@ function! clap#register(provider_id, provider_info) abort
 endfunction
 
 function! s:validate_provider(registration_info) abort
+  " Every provider should specify the sink option.
   if !has_key(a:registration_info, 'sink')
     call clap#error('A valid provider must provide sink option')
     return v:false
@@ -137,6 +138,7 @@ function! s:validate_provider(registration_info) abort
       return v:false
     endif
   else
+    " Pure async provider
     if !has_key(a:registration_info, 'on_typed')
       call clap#error('An async provider must provide on_typed option')
       return v:false
