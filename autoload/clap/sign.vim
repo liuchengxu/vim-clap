@@ -25,28 +25,18 @@ function! s:unplace_sign_at(sign_id) abort
 endfunction
 
 function! s:place_cur_sign_at(lnum) abort
-  try
-    call sign_place(a:lnum, s:sign_cur_group, 'clapCurrentSelected', g:clap.display.bufnr, {'lnum': a:lnum})
-  catch
-    echom "a:lnum:".a:lnum." ex:".v:exception
-  endtry
+  call sign_place(a:lnum, s:sign_cur_group, 'clapCurrentSelected', g:clap.display.bufnr, {'lnum': a:lnum})
 endfunction
 
 function! s:unplace_cur_sign_at(sign_id) abort
-  try
-    call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr, 'id': a:sign_id})
-  catch
-    echom "cursor_idx: sign_id: ".a:sign_id
-  endtry
+  call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr, 'id': a:sign_id})
 endfunction
 
 function! clap#sign#toggle_cursorline() abort
   if s:last_signed_id != -1
-    echom "unplace:".s:last_signed_id
     call s:unplace_cur_sign_at(s:last_signed_id)
   endif
   let curlnum = g:clap.display.getcurlnum()
-  echom "curlnum:".curlnum
   call s:place_cur_sign_at(curlnum)
   let s:last_signed_id = curlnum
 endfunction

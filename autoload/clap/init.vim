@@ -397,7 +397,7 @@ function! s:init_provider() abort
     let lines = self.get_source()
     let initial_size = len(lines)
     let g:clap.display.initial_size = initial_size
-    if !empty(lines)
+    if initial_size > 0
       call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
       call clap#indicator#set_matches('['.initial_size.']')
