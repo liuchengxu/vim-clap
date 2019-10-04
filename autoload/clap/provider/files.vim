@@ -6,18 +6,20 @@ set cpo&vim
 
 let s:files = {}
 
-let s:tools = {
-      \ 'fd': '--type f',
-      \ 'rg': '--files',
-      \ 'git': 'ls-tree -r --name-only HEAD',
-      \ 'find': '. -type f',
-      \ }
+let s:find_cmd = v:null
+
+let s:tools = [
+      \ ['fd', '--type f'],
+      \ ['rg', '--files'],
+      \ ['git', 'ls-tree -r --name-only HEAD'],
+      \ ['find', '. -type f'],
+      \ ]
 
 let s:find_cmd = v:null
 
-for exe in ['fd', 'rg', 'git', 'find']
+for [exe, opt] in s:tools
   if executable(exe)
-    let s:find_cmd = join([exe, s:tools[exe]], ' ')
+    let s:find_cmd = join([exe, opt], ' ')
     break
   endif
 endfor
