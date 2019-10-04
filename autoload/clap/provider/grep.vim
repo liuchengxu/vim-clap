@@ -128,6 +128,7 @@ function! s:grep_sink_star(lines) abort
   endfor
   let s:icon_appended = v:false
   call setqflist(qflist)
+  call g:clap.start.goto_win()
   copen
   cc
 endfunction
