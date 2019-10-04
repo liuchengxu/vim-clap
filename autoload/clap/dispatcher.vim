@@ -182,7 +182,7 @@ function! clap#dispatcher#jobstart(cmd) abort
   call s:jobstop()
 
   call s:job_start(a:cmd)
-  let s:executed_cmd = a:cmd
+  let s:executed_cmd = strftime("%Y-%m-%d %H:%M:%S").' '.a:cmd
 endfunction
 
 function! clap#dispatcher#jobstop() abort

@@ -80,6 +80,10 @@ function! s:init_display() abort
       call clap#util#nvim_buf_append_lines(self.bufnr, a:lines)
     endfunction
 
+    function! display.append_lines_uncheck(lines) abort
+      call self.append_lines(a:lines)
+    endfunction
+
     function! display.first_line() abort
       return clap#util#nvim_buf_get_first_line(self.bufnr)
     endfunction
@@ -121,6 +125,12 @@ function! s:init_display() abort
     endfunction
 
     " Due to the smart cache strategy, this should not be expensive.
+    " :e nonexist.vim
+    " :call appendbufline('', '$', [1, 2])
+    "
+    " 1:
+    " 2: 1
+    " 3: 2
     function! display.append_lines(lines) abort
       " call appendbufline(self.bufnr, '$', a:lines)
       " FIXME do not know why '$' doesn't work
@@ -129,6 +139,12 @@ function! s:init_display() abort
       if empty(getbufline(self.bufnr, '$')[0])
         silent call deletebufline(self.bufnr, '$')
       endif
+    endfunction
+
+    " Do not check the last line is empty or not.
+    " It's safe for the non-empty files.
+    function! display.append_lines_uncheck(lines) abort
+      call appendbufline(self.bufnr, '$', a:lines)
     endfunction
 
     function! display.first_line() abort
@@ -379,10 +395,12 @@ function! s:init_provider() abort
       return
     endif
     let lines = self.get_source()
-    let g:clap.display.initial_size = len(lines)
+    let initial_size = len(lines)
+    let g:clap.display.initial_size = initial_size
     if !empty(lines)
       call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
+      call clap#indicator#set_matches('['.initial_size.']')
     endif
   endfunction
 

@@ -54,7 +54,7 @@ function! s:navigate(direction) abort
       if has_key(g:clap.provider._(), 'converter')
         let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
       endif
-      call g:clap.display.append_lines(to_append)
+      call g:clap.display.append_lines_uncheck(to_append)
       normal! j
       let g:__clap_display_curlnum += 1
     endif
@@ -70,6 +70,9 @@ function! s:navigate(direction) abort
       normal! k
       let g:__clap_display_curlnum -=1
     endif
+  endif
+  if !s:support_multi_selection
+    call clap#sign#toggle_cursorline()
   endif
 endfunction
 
