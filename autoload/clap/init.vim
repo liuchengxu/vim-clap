@@ -239,8 +239,14 @@ function! s:init_provider() abort
     return g:clap.registrar[self.id]
   endfunction
 
+  " Argument: String or List of String
   function! provider.abort(msg) abort
-    throw 'clap: '.a:msg
+    if type(a:msg) == v:t_list
+      let msg = string(a:msg)
+    else
+      let msg = a:msg
+    endif
+    throw 'clap:'.msg
   endfunction
 
   function! provider.sink(selected) abort
