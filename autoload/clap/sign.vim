@@ -11,8 +11,16 @@ let s:sign_cur_group = 'clapCurrentSelected'
 let s:last_signed_id = -1
 
 if !exists('s:sign_inited')
-  call sign_define(s:sign_group, {'text': ' >', 'texthl': "WarningMsg", "linehl": "PmenuSel"})
-  call sign_define(s:sign_cur_group, {'text': '>>', 'texthl': "WarningMsg", "linehl": "PmenuSel"})
+  call sign_define(s:sign_group, {
+        \ 'text': ' >',
+        \ 'texthl': "WarningMsg",
+        \ "linehl": "PmenuSel"
+        \ })
+  call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign_definition', {
+        \ 'text': '>>',
+        \ 'texthl': "WarningMsg",
+        \ "linehl": "PmenuSel",
+        \ }))
   let s:sign_inited = 1
 endif
 
