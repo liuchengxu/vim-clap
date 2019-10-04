@@ -8,7 +8,7 @@ let s:old_input = ''
 let s:support_multi_selection = v:false
 let s:use_multi_selection = v:false
 
-let s:lazy_load_size = 100
+let s:lazy_load_size = 50
 
 let s:motions = {
       \ 'up': 'k',
@@ -54,6 +54,7 @@ function! s:navigate(direction) abort
       if has_key(g:clap.provider._(), 'converter')
         let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
       endif
+      " The buffer is not empty, qed.
       call g:clap.display.append_lines_uncheck(to_append)
       normal! j
       let g:__clap_display_curlnum += 1

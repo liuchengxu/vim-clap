@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Make a compatible layer between neovim and vim.
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 let s:is_nvim = has('nvim')
 let s:default_priority = 10
 
@@ -130,6 +133,9 @@ function! s:init_display() abort
       " FIXME do not know why '$' doesn't work
       call appendbufline(self.bufnr, self.line_count() - 1, a:lines)
       " Is this check avoidable?
+      " An empty buffer consists of one empty line. If you append, this line is still there.
+      " https://github.com/vim/vim/issues/5016
+      " Thus this is unavoidable.
       if empty(getbufline(self.bufnr, '$')[0])
         silent call deletebufline(self.bufnr, '$')
       endif
@@ -380,6 +386,7 @@ function! s:init_provider() abort
     return !has_key(self._(), 'source')
   endfunction
 
+  " A provider can be async if it's pure async or sync provider with `source_async`
   function! provider.can_async() abort
     return !has_key(self._(), 'source') || has_key(self._(), 'source_async')
   endfunction
@@ -432,3 +439,6 @@ function! clap#api#bake() abort
     let g:clap.close_win = function('clap#popup#close')
   endif
 endfunction
+
+let &cpo = s:save_cpo
+unlet s:save_cpo
