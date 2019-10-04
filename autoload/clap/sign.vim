@@ -4,6 +4,7 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:is_nvim = has('nvim')
 let s:signed = []
 let s:sign_group = 'clapSelected'
 let s:sign_cur_group = 'clapCurrentSelected'
@@ -61,14 +62,23 @@ function! clap#sign#get() abort
   return s:signed
 endfunction
 
-function! clap#sign#reset() abort
+if s:is_nvim
+  function! s:unplace_all_signs() abort
+    if nvim_buf_is_valid(g:clap.display.bufnr)
+      call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr})
+      call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
+    endif
+  endfunction
+else
   " Now we close the popups, so don't have to clear the signs manually,
   " as the window and associated buffer will be deleted when you call
   " popup_close().
-  "
-  " call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr})
-  " call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
+  function! s:unplace_all_signs() abort
+  endfunction
+endif
 
+function! clap#sign#reset() abort
+  call s:unplace_all_signs()
   let s:signed = []
   let s:last_signed_id = -1
 endfunction
