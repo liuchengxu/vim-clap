@@ -45,12 +45,10 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Untouch your current window layout, less eye movement.
 - Support multi-selection, use vim's regexp as filter by default.
 - Support the preview functionality when navigating the result list.
+- Support builtin match and external fuzzy filter tools.
 
 TODOs:
 
-- [ ] Support builtin fuzzy match.
-  - [x] Substring filter mode for sync providers. If the query contains spaces, the substring filter mode will be used.
-- [ ] Formalize provider args.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
 - [ ] More UI layout.
@@ -200,6 +198,8 @@ There are generally two kinds of providers in vim-clap.
 ```
 Clap [provider_id_or_alias] [++opt] [+opt]
 ```
+
+All the opts are accessible via `g:clap.context[opt]`.
 
 The form of `[++opt]` is `++{optname}={value}`:
 
