@@ -169,6 +169,11 @@ function! s:init_display() abort
       let g:clap.display.cache = to_cache
     else
       call self.set_lines(a:raw_lines)
+      " b -> b0
+      " Continuing to input more chars leads to the number of filtered result smaller,
+      " in which case the get_lines() could overlap with current cache, thus
+      " we should not use the cache next time.
+      let g:__clap_do_not_use_cache = v:true
     endif
   endfunction
 

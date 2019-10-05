@@ -23,8 +23,10 @@ function! s:on_typed_sync_impl() abort
   call clap#spinner#set_busy()
 
   if get(g:, '__clap_should_refilter', v:false)
+        \ || get(g:, '__clap_do_not_use_cache', v:false)
     let l:lines = g:clap.provider.get_source()
     let g:__clap_should_refilter = v:false
+    let g:__clap_do_not_use_cache = v:false
   else
     " Assuming in the middle of typing, we are continuing to filter.
     let l:lines = g:clap.display.get_lines() + g:clap.display.cache
