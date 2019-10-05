@@ -34,6 +34,7 @@ function! s:create_display() abort
     let col += &number ? &numberwidth : 0
 
     let s:display_winid = popup_create([], #{
+          \ zindex: 1000,
           \ wrap: v:false,
           \ mapping: v:false,
           \ cursorline: 0,
@@ -83,6 +84,7 @@ function! s:create_preview() abort
     let minwidth = pos.width
     " If the preview win has border, then minwidth - 2.
     let s:preview_winid = popup_create([], #{
+          \ zindex: 100,
           \ col: col,
           \ line: line,
           \ minwidth: minwidth - 2,
@@ -106,6 +108,7 @@ function! s:create_indicator() abort
     let pos.maxwidth = s:indicator_width
     let pos.highlight = 'ClapInput'
     let pos.wrap = v:false
+    let pos.zindex = 100
     let s:indicator_winid = popup_create([], pos)
     call popup_hide(s:indicator_winid)
     call win_execute(s:indicator_winid, 'setlocal nonumber')
@@ -120,6 +123,7 @@ function! s:create_spinner() abort
     let pos.maxwidth = pos.minwidth
     let pos.highlight = 'ClapSpinner'
     let pos.wrap = v:false
+    let pos.zindex = 100
     let s:spinner_winid = popup_create([], pos)
     call popup_hide(s:spinner_winid)
     call win_execute(s:spinner_winid, 'setlocal nonumber')
@@ -152,6 +156,7 @@ function! s:create_input() abort
     let pos.maxwidth = pos.minwidth
     let pos.highlight = 'ClapInput'
     let pos.wrap = v:false
+    let pos.zindex = 100
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
