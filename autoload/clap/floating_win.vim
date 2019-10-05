@@ -66,9 +66,9 @@ function! g:clap#floating_win#display.open() abort
   " Is there a better solution?
   call g:clap.display.setbufvar_batch({
         \ '&wrap': 0,
-        \ '&number': 1,
+        \ '&number': 0,
         \ '&cursorline': 1,
-        \ '&signcolumn': 'no',
+        \ '&signcolumn': 'yes',
         \ })
 endfunction
 
@@ -162,9 +162,6 @@ function! clap#floating_win#open() abort
   " if !g:clap.display.is_empty()
     " call setbufvar(s:display_bufnr, '&cursorline', 1)
   " endif
-  if g:clap.provider.support_multi_selection()
-    call setbufvar(s:display_bufnr, '&signcolumn', 'yes')
-  endif
 
   augroup ClapEnsureAllClosed
     autocmd!

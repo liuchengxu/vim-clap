@@ -4,13 +4,51 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:is_nvim = has('nvim')
 let s:signed = []
 let s:sign_group = 'clapSelected'
+let s:sign_cur_group = 'clapCurrentSelected'
+let s:last_signed_id = -1
 
 if !exists('s:sign_inited')
-  call sign_define(s:sign_group, {'text': ' >', 'texthl': "WarningMsg", "linehl": "PmenuSel"})
+  call sign_define(s:sign_group, {
+        \ 'text': ' >',
+        \ 'texthl': "WarningMsg",
+        \ "linehl": "PmenuSel"
+        \ })
+  call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign_definition', {
+        \ 'text': '>>',
+        \ 'texthl': "WarningMsg",
+        \ "linehl": "PmenuSel",
+        \ }))
   let s:sign_inited = 1
 endif
+
+" lnum is the sign id
+function! s:place_sign_at(lnum) abort
+  call sign_place(a:lnum, s:sign_group, 'clapSelected', g:clap.display.bufnr, {'lnum': a:lnum})
+endfunction
+
+function! s:unplace_sign_at(sign_id) abort
+  call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr, 'id': a:sign_id})
+endfunction
+
+function! s:place_cur_sign_at(lnum) abort
+  call sign_place(a:lnum, s:sign_cur_group, 'clapCurrentSelected', g:clap.display.bufnr, {'lnum': a:lnum})
+endfunction
+
+function! s:unplace_cur_sign_at(sign_id) abort
+  call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr, 'id': a:sign_id})
+endfunction
+
+function! clap#sign#toggle_cursorline() abort
+  if s:last_signed_id != -1
+    call s:unplace_cur_sign_at(s:last_signed_id)
+  endif
+  let curlnum = g:clap.display.getcurlnum()
+  call s:place_cur_sign_at(curlnum)
+  let s:last_signed_id = curlnum
+endfunction
 
 function! clap#sign#toggle() abort
   let curlnum = g:clap.display.getcurlnum()
@@ -32,9 +70,25 @@ function! clap#sign#get() abort
   return s:signed
 endfunction
 
+if s:is_nvim
+  function! s:unplace_all_signs() abort
+    if nvim_buf_is_valid(g:clap.display.bufnr)
+      call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr})
+      call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
+    endif
+  endfunction
+else
+  " Now we close the popups, so don't have to clear the signs manually,
+  " as the window and associated buffer will be deleted when you call
+  " popup_close().
+  function! s:unplace_all_signs() abort
+  endfunction
+endif
+
 function! clap#sign#reset() abort
-  call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr})
+  call s:unplace_all_signs()
   let s:signed = []
+  let s:last_signed_id = -1
 endfunction
 
 let &cpo = s:save_cpo

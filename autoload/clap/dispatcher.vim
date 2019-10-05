@@ -131,7 +131,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    call g:clap.abort(channel.", ".a:message)
+    call g:clap.abort(['channel: '.a:channel, 'message: '.a:message, 'cmd: '.s:executed_cmd])
   endfunction
 
   function! s:close_cb(_channel) abort
@@ -182,6 +182,7 @@ function! clap#dispatcher#jobstart(cmd) abort
   call s:jobstop()
 
   call s:job_start(a:cmd)
+  let s:executed_cmd = strftime("%Y-%m-%d %H:%M:%S").' '.a:cmd
 endfunction
 
 function! clap#dispatcher#jobstop() abort

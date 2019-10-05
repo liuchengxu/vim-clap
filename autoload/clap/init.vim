@@ -1,5 +1,6 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Initialize and make a compatible layer between neovim and vim.
+" Description: Initialize the plugin, including making a compatible API layer
+" and flexiable highlight groups.
 
 let s:save_cpo = &cpo
 set cpo&vim

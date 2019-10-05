@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Make a compatible API layer between neovim and vim.
+" Description: Make a compatible layer between neovim and vim.
 
 let s:save_cpo = &cpo
 set cpo&vim
@@ -77,6 +77,10 @@ function! s:init_display() abort
       call clap#util#nvim_buf_append_lines(self.bufnr, a:lines)
     endfunction
 
+    function! display.append_lines_uncheck(lines) abort
+      call self.append_lines(a:lines)
+    endfunction
+
     function! display.first_line() abort
       return clap#util#nvim_buf_get_first_line(self.bufnr)
     endfunction
@@ -118,14 +122,29 @@ function! s:init_display() abort
     endfunction
 
     " Due to the smart cache strategy, this should not be expensive.
+    " :e nonexist.vim
+    " :call appendbufline('', '$', [1, 2])
+    "
+    " 1:
+    " 2: 1
+    " 3: 2
     function! display.append_lines(lines) abort
       " call appendbufline(self.bufnr, '$', a:lines)
       " FIXME do not know why '$' doesn't work
       call appendbufline(self.bufnr, self.line_count() - 1, a:lines)
       " Is this check avoidable?
+      " An empty buffer consists of one empty line. If you append, this line is still there.
+      " https://github.com/vim/vim/issues/5016
+      " Thus this is unavoidable.
       if empty(getbufline(self.bufnr, '$')[0])
         silent call deletebufline(self.bufnr, '$')
       endif
+    endfunction
+
+    " Do not check the last line is empty or not.
+    " It's safe for the non-empty files.
+    function! display.append_lines_uncheck(lines) abort
+      call appendbufline(self.bufnr, '$', a:lines)
     endfunction
 
     function! display.first_line() abort
@@ -236,8 +255,14 @@ function! s:init_provider() abort
     return g:clap.registrar[self.id]
   endfunction
 
+  " Argument: String or List of String
   function! provider.abort(msg) abort
-    throw 'clap: '.a:msg
+    if type(a:msg) == v:t_list
+      let msg = string(a:msg)
+    else
+      let msg = a:msg
+    endif
+    throw 'clap:'.msg
   endfunction
 
   function! provider.sink(selected) abort
@@ -361,6 +386,7 @@ function! s:init_provider() abort
     return !has_key(self._(), 'source')
   endfunction
 
+  " A provider can be async if it's pure async or sync provider with `source_async`
   function! provider.can_async() abort
     return !has_key(self._(), 'source') || has_key(self._(), 'source_async')
   endfunction
@@ -370,10 +396,12 @@ function! s:init_provider() abort
       return
     endif
     let lines = self.get_source()
-    let g:clap.display.initial_size = len(lines)
-    if !empty(lines)
+    let initial_size = len(lines)
+    let g:clap.display.initial_size = initial_size
+    if initial_size > 0
       call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
+      call clap#indicator#set_matches('['.initial_size.']')
     endif
   endfunction
 

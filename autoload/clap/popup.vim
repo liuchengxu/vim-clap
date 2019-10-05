@@ -51,6 +51,7 @@ function! s:create_display() abort
     let g:clap#popup#display.width = &columns * 2 / 3
 
     call win_execute(s:display_winid, 'let w:clap_no_matches_id = matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern)')
+    call win_execute(s:display_winid, 'setlocal signcolumn=yes')
     call popup_hide(s:display_winid)
 
     let g:clap.display.winid = s:display_winid
@@ -159,6 +160,8 @@ function! s:create_input() abort
   endif
 endfunction
 
+" Now we don't choose the hide way for the benefit of reusing the popup buffer,
+" for it could be very problematic.
 function! s:hide_all() abort
   call popup_hide(s:display_winid)
   call popup_hide(s:preview_winid)
@@ -167,9 +170,21 @@ function! s:hide_all() abort
   call popup_hide(s:spinner_winid)
 endfunction
 
+function! s:close_all() abort
+  call popup_close(s:display_winid)
+  call popup_close(s:preview_winid)
+  call popup_close(s:indicator_winid)
+  call popup_close(s:input_winid)
+  call popup_close(s:spinner_winid)
+endfunction
+
 " This somehow doesn't get called if you don't map <C-C> to <C-[>.
 function! s:callback(_id, _result) abort
-  call s:hide_all()
+  if get(s:, 'dont_invoke_callback', v:false)
+    let s:dont_invoke_callback = v:false
+    return
+  endif
+  call s:close_all()
   call clap#exit()
 endfunction
 
@@ -245,6 +260,10 @@ function! s:move_manager.ctrl_b(_winid) abort
   call s:mock_input()
 endfunction
 
+function! s:move_manager.ctrl_g(_winid) abort
+  echom "Unimplemented: could be used for showing some useful env info"
+endfunction
+
 function! s:move_manager.ctrl_f(_winid) abort
   let s:cursor_idx += 1
   let input_len = strlen(s:input)
@@ -291,6 +310,7 @@ let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
 let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-D>"] = s:move_manager.bs
+let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:move_manager.printable(key) abort
   let s:insert_at_the_begin = v:false
@@ -368,27 +388,17 @@ function! clap#popup#open() abort
   call s:open_popup()
   call s:adjust_spinner()
 
-  if g:clap.provider.is_sync()
-    call win_execute(s:display_winid, 'setlocal number')
-  else
-    call win_execute(s:display_winid, 'setlocal nonumber')
-  endif
+  let g:clap_indicator_winid = s:indicator_winid
 
   call g:clap.provider.init_display_win()
 
-  if g:clap.provider.support_multi_selection()
-    call win_execute(s:display_winid, 'setlocal signcolumn=yes')
+  " Currently the highlight can't be local in vim.
+  " Remove this once vim support win local highlight.
+  redir => s:old_signcolumn
+  silent hi SignColumn
+  redir END
 
-    " Currently the highlight can't be local in vim.
-    " Remove this once vim support win local highlight.
-    redir => s:old_signcolumn
-    silent hi SignColumn
-    redir END
-
-    hi! link SignColumn ClapDisplay
-  endif
-
-  let g:clap_indicator_winid = s:indicator_winid
+  hi! link SignColumn ClapDisplay
 
   call g:clap.provider.on_enter()
 
@@ -409,7 +419,8 @@ function! clap#popup#close() abort
     silent execute 'hi SignColumn' join(old_signcolumn, ' ')
     unlet s:old_signcolumn
   endif
-  call s:hide_all()
+  let s:dont_invoke_callback = v:true
+  call s:close_all()
   silent autocmd! ClapEnsureAllClosed
 endfunction
 

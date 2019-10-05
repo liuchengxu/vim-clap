@@ -128,8 +128,11 @@ Command                                | List                               | Re
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-- `g:clap_popup_input_delay`: 200ms by default, delay for actually responsing to the input, vim only.
-- `g:clap_no_matches_msg`: "NO MATCHES FOUND", message to show when there is no matches found.
+- `g:clap_popup_input_delay`: Number, 200ms by default, delay for actually responsing to the input, vim only.
+
+- `g:clap_no_matches_msg`: String, "NO MATCHES FOUND", message to show when there is no matches found.
+
+- `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "PmenuSel"}`.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
