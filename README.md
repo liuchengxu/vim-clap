@@ -126,7 +126,7 @@ Command                                | List                               | Re
 
 - `g:clap_no_matches_msg`: String, "NO MATCHES FOUND", message to show when there is no matches found.
 
-- `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "PmenuSel"}`.
+- `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 

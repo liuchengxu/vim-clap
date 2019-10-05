@@ -66,6 +66,7 @@ if has('nvim')
       " Ignore the errors?
     else
       call s:check_if_no_matches()
+      call clap#sign#toggle_cursorline()
       call clap#spinner#set_idle()
     endif
   endfunction
@@ -114,7 +115,9 @@ else
     if !s:preload_is_complete
       call s:append_output(s:vim_output)
     endif
-    call s:check_if_no_matches()
+    if s:check_if_no_matches() is v:false
+      call clap#sign#toggle_cursorline()
+    endif
     call clap#spinner#set_idle()
     call s:update_indicator()
   endfunction
@@ -167,6 +170,10 @@ function! s:check_if_no_matches() abort
   if g:clap.display.is_empty()
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
+    call clap#sign#disable_cursorline()
+    return v:true
+  else
+    return v:false
   endif
 endfunction
 
