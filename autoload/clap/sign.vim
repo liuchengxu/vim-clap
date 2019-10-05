@@ -51,10 +51,7 @@ function! clap#sign#toggle_cursorline() abort
 endfunction
 
 function! clap#sign#disable_cursorline() abort
-  if s:last_signed_id != -1
-    call s:unplace_cur_sign_at(s:last_signed_id)
-    let s:last_signed_id = -1
-  endif
+  call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
 endfunction
 
 function! clap#sign#toggle() abort

@@ -65,9 +65,7 @@ if has('nvim')
     elseif a:event == 'stderr'
       " Ignore the errors?
     else
-      call s:check_if_no_matches()
-      call clap#sign#toggle_cursorline()
-      call clap#spinner#set_idle()
+      call s:on_exit_common()
     endif
   endfunction
 
@@ -115,10 +113,7 @@ else
     if !s:preload_is_complete
       call s:append_output(s:vim_output)
     endif
-    if s:check_if_no_matches() is v:false
-      call clap#sign#toggle_cursorline()
-    endif
-    call clap#spinner#set_idle()
+    call s:on_exit_common()
     call s:update_indicator()
   endfunction
 
@@ -166,11 +161,19 @@ else
 
 endif
 
-function! s:check_if_no_matches() abort
-  if g:clap.display.is_empty()
+function! s:on_exit_common() abort
+  if s:has_no_matches()
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
+  else
+    call clap#sign#toggle_cursorline()
+  endif
+  call clap#spinner#set_idle()
+endfunction
+
+function! s:has_no_matches() abort
+  if g:clap.display.is_empty()
     return v:true
   else
     return v:false
