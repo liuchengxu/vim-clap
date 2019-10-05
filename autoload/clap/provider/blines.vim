@@ -21,12 +21,7 @@ function! s:blines.source() abort
 endfunction
 
 function! s:blines.on_enter() abort
-  let s:tmps = []
   call g:clap.display.setbufvar('&ft', 'clap_blines')
-endfunction
-
-function! s:blines.on_exit() abort
-  call map(s:tmps, 'delete(v:val)')
 endfunction
 
 let g:clap#provider#blines# = s:blines
