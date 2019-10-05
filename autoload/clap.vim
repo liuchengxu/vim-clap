@@ -7,11 +7,11 @@ set cpo&vim
 if has('nvim')
   let s:has_features = has('nvim-0.4')
 else
-  let s:has_features = has('patch-8.1.1967')
+  let s:has_features = has('patch-8.1.2114')
 endif
 
 if !s:has_features
-  echoerr 'Vim-clap requires NeoVim >= 0.4.0 or Vim 8.1.1967+'
+  echoerr 'Vim-clap requires NeoVim >= 0.4.0 or Vim 8.1.2114+'
   echoerr 'Please upgrade your editor accordingly.'
   finish
 endif

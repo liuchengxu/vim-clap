@@ -61,15 +61,9 @@ TODOs:
 
 - Although a lot of effort has been made to unify the behavior of vim-clap between vim and neovim, and most part works in the same way, it just can't be exactly the same, for `floating_win` and `popup` are actually two different things anyway.
 
-- For Vim users, please map `<C-C>` to `<C-[>` if you want `<C-C>` to close vim-clap otherwise the popup may not closed as expected due to the related event is not triggered.
-
-```vim
-nnoremap <C-C> <C-[>
-```
-
 ## Requirement
 
-- Vim: `:echo has('patch-8.1.1967')`, tested with `8.1.2052`.
+- Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
 ## Installation
