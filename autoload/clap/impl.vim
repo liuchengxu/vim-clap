@@ -15,6 +15,7 @@ function! s:on_typed_sync_impl() abort
     call g:clap.display.set_lines_lazy(g:clap.provider.get_source())
     let l:matches_cnt = g:clap.display.line_count() + len(g:clap.display.cache)
     call clap#indicator#set_matches('['.l:matches_cnt.']')
+    call clap#sign#toggle_cursorline()
     call g:clap#display_win.compact_if_undersize()
     return
   endif
