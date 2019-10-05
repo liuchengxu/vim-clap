@@ -345,7 +345,7 @@ function! s:init_provider() abort
       let source_ty = type(Source)
       if source_ty == v:t_string
         let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        " FIXME Windows support
+        " FIXME Does it work well in Windows?
         let cmd = Source.' | '.ext_filter_cmd
         return cmd
       endif
@@ -361,8 +361,8 @@ function! s:init_provider() abort
       let tmp = tempname()
       if writefile(lines, tmp) == 0
         let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        " FIXME Windows support
-        let cmd = printf('cat %s | %s', tmp, ext_filter_cmd)
+        let cat_or_type = has('win32') ? 'type' : 'cat'
+        let cmd = printf('%s %s | %s', cat_or_type, tmp, ext_filter_cmd)
         call add(g:clap.tmps, tmp)
         return cmd
       else
