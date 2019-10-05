@@ -179,6 +179,7 @@ endfunction
 
 " This somehow doesn't get called if you don't map <C-C> to <C-[>.
 function! s:callback(_id, _result) abort
+  unlet s:display_winid
   call clap#handler#exit()
 endfunction
 
@@ -412,6 +413,9 @@ function! clap#popup#close() abort
     let old_signcolumn = split(s:old_signcolumn)[2:]
     silent execute 'hi SignColumn' join(old_signcolumn, ' ')
     unlet s:old_signcolumn
+  endif
+  if exists('s:display_winid')
+    call popup_close(s:display_winid)
   endif
   call s:close_others()
   silent autocmd! ClapEnsureAllClosed
