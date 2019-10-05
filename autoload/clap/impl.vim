@@ -54,12 +54,14 @@ function! s:on_typed_sync_impl() abort
       let l:count = '0'
     endif
     call clap#indicator#set_matches('['.l:count.']')
+    call clap#sign#disable_cursorline()
   else
     let l:matches_cnt = string(len(lines))
     if get(g:clap.display, 'initial_size', -1) > 0
       let l:matches_cnt .= '/'.g:clap.display.initial_size
     endif
     call clap#indicator#set_matches('['.l:matches_cnt.']')
+    call clap#sign#toggle_cursorline()
   endif
 
   call g:clap#display_win.compact_if_undersize()

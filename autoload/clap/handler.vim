@@ -33,7 +33,6 @@ function! clap#handler#on_typed() abort
 endfunction
 
 function! s:navigate(direction) abort
-  setlocal cursorline
   let curlnum = line('.')
   let lastlnum = line('$')
   if curlnum == lastlnum && a:direction ==# 'down'
@@ -72,9 +71,7 @@ function! s:navigate(direction) abort
       let g:__clap_display_curlnum -=1
     endif
   endif
-  if !s:support_multi_selection
-    call clap#sign#toggle_cursorline()
-  endif
+  call clap#sign#toggle_cursorline()
 endfunction
 
 if has('nvim')
