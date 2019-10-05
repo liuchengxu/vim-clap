@@ -27,8 +27,8 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Change highlights](#change-highlights)
 * [How to add a new provider](#how-to-add-a-new-provider)
   * [Provider arguments](#provider-arguments)
-  * [Create sync provider](#create-sync-provider)
-  * [Create async provider](#create-async-provider)
+  * [Create non-pure-async provider](#create-non-pure-async-provider)
+  * [Create pure async provider](#create-pure-async-provider)
   * [Register provider](#register-provider)
 * [Contribution](#contribution)
 * [Credit](#credit)
@@ -197,24 +197,30 @@ There are generally two kinds of providers in vim-clap.
 
 ### Provider arguments
 
-Note: unimplemented.
-
 ```
 Clap [provider_id_or_alias] [++opt] [+opt]
 ```
 
-The form of `[++opt]` is `++{optname}={value}`, e.g., `++externalfilter=fzf` or `++ef=fzf`.
+The form of `[++opt]` is `++{optname}={value}`:
 
-`[+opt]` is used for the bool arguments, e.g., `+async`.
+  - `++externalfilter=fzf` or `++ef=fzf`.
 
-### Create sync provider
+`[+opt]` is used for the bool arguments:
+
+ - `+async`
+
+`Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async`.
+
+### Create non-pure-async provider
+
+For the non-pure-async providers, you could run it in async or sync way. By default vim-clap will choose the best strategy, running async for the source consisted of 5000+ lines or otherwise run it in sync way. [See the discussion about the non-pure-async providers](https://github.com/liuchengxu/vim-clap/issues/17#issue-501470657).
 
 Field          | Type                | Required      | Has default implementation
 :----          | :----               | :----         | :----
 `sink`         | Funcref             | **mandatory** | No
 `sink*`        | Funcref             | optional      | No
 `source`       | String/List/Funcref | **mandatory** | No
-`source_async` | String              | optional      | No
+`source_async` | String              | optional      | **Yes**
 `filter`       | Funcref             | **mandatory** | **Yes**
 `on_typed`     | Funcref             | **mandatory** | **Yes**
 `on_move`      | Funcref             | optional      | No
@@ -232,7 +238,7 @@ Field          | Type                | Required      | Has default implementatio
   - String: external command to generate input to vim-clap (e.g. `find .`).
   - Funcref: reference to function that returns a List to generate input to vim-clap.
 
-- `source_async`: String, job command to filter the items of `source` based on the external tools.
+- `source_async`: String, job command to filter the items of `source` based on the external tools. The default implementation is to feed the output of `source` into the external fuzzy filters and then display the filtered result, which could have some limitations, e.g., the matched input is not highlighted.
 
 - `filter`: given what you have typed, use `filter(entry)` to evaluate each entry in the display window, when the result is zero remove the item from the current result list. The default implementation is to match the input using vim's regex.
 
@@ -246,7 +252,7 @@ Field          | Type                | Required      | Has default implementatio
 
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchoronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
-### Create async provider
+### Create pure async provider
 
 Field       | Type    | Required      | Has default implementation
 :----       | :----   | :----         | :----
