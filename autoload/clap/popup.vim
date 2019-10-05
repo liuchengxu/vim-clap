@@ -170,22 +170,16 @@ function! s:hide_all() abort
   call popup_hide(s:spinner_winid)
 endfunction
 
-function! s:close_all() abort
-  call popup_close(s:display_winid)
-  call popup_close(s:preview_winid)
-  call popup_close(s:indicator_winid)
-  call popup_close(s:input_winid)
-  call popup_close(s:spinner_winid)
+function! s:close_others() abort
+  noautocmd call popup_close(s:preview_winid)
+  noautocmd call popup_close(s:indicator_winid)
+  noautocmd call popup_close(s:input_winid)
+  noautocmd call popup_close(s:spinner_winid)
 endfunction
 
 " This somehow doesn't get called if you don't map <C-C> to <C-[>.
 function! s:callback(_id, _result) abort
-  if get(s:, 'dont_invoke_callback', v:false)
-    let s:dont_invoke_callback = v:false
-    return
-  endif
-  call s:close_all()
-  call clap#exit()
+  call clap#handler#exit()
 endfunction
 
 function! s:remove_last_item(str) abort
@@ -419,8 +413,7 @@ function! clap#popup#close() abort
     silent execute 'hi SignColumn' join(old_signcolumn, ' ')
     unlet s:old_signcolumn
   endif
-  let s:dont_invoke_callback = v:true
-  call s:close_all()
+  call s:close_others()
   silent autocmd! ClapEnsureAllClosed
 endfunction
 
