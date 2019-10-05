@@ -99,6 +99,9 @@ function! clap#exit() abort
 
   call clap#sign#reset()
 
+  call map(g:clap.tmps, 'delete(v:val)')
+  let g:clap.tmps = []
+
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
@@ -209,7 +212,6 @@ function! s:parse_opts(args) abort
       let matched = matchlist(arg, '^++\(\w*\)=\(\w*\)')
       let [k, v] = [matched[1], matched[2]]
       let g:clap.context[k] = v
-      echom
     elseif arg =~? '^+\w*'
       let opt = arg[1:]
       let g:clap.context[opt] = v:true
@@ -227,6 +229,11 @@ function! clap#(bang, ...) abort
   let g:clap.start.old_pos = getpos('.')
 
   let g:clap.context = {}
+  let g:clap.tmps = []
+
+  if a:bang
+    let g:clap.context.async = v:true
+  endif
 
   if a:0 == 0
     let provider_id_or_alias = '_'

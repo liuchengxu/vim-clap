@@ -337,6 +337,41 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider.source_async_or_default() abort
+    if has_key(self._(), 'source_async')
+      return self._().source_async()
+    else
+      let Source = self._().source
+      let source_ty = type(Source)
+      if source_ty == v:t_string
+        let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+        " FIXME Windows support
+        let cmd = Source.' | '.ext_filter_cmd
+        return cmd
+      endif
+
+      if source_ty == v:t_func
+        let lines = Source()
+      elseif source_ty == v:t_list
+        let lines = copy(Source)
+      else
+        call g:clap.abort("source_ty is neither func nor list, this should not happen")
+        return
+      endif
+      let tmp = tempname()
+      if writefile(lines, tmp) == 0
+        let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+        " FIXME Windows support
+        let cmd = printf('cat %s | %s', tmp, ext_filter_cmd)
+        call add(g:clap.tmps, tmp)
+        return cmd
+      else
+        call g:clap.abort("Fail to write source to a temp file")
+        return
+      endif
+    endif
+  endfunction
+
   function! provider.source_async() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
@@ -387,14 +422,20 @@ function! s:init_provider() abort
   endfunction
 
   " A provider can be async if it's pure async or sync provider with `source_async`
+  " Since now we have the default source_async implementation, everything
+  " could be async theoretically.
+  "
+  " But the default async impl may not work in Windows at the moment,
+  " So we have a flag for people to disable it.
   function! provider.can_async() abort
-    return !has_key(self._(), 'source') || has_key(self._(), 'source_async')
+    return !get(g:, 'clap_disable_optional_async', v:false)
   endfunction
 
   function! provider.init_display_win() abort
-    if self.is_pure_async() || get(g:clap.context, 'async') is v:true
+    if self.is_pure_async()
       return
     endif
+    " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
     let lines = self.get_source()
     let initial_size = len(lines)
     let g:clap.display.initial_size = initial_size

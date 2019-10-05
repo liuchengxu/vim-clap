@@ -5,6 +5,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let s:is_nvim = has('nvim')
+let s:async_threshold = 5000
 
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
@@ -78,7 +79,7 @@ function! s:on_typed_async_impl() abort
 
   call g:clap.display.clear()
 
-  let cmd = g:clap.provider.source_async()
+  let cmd = g:clap.provider.source_async_or_default()
   call clap#dispatcher#jobstart(cmd)
 
   call g:clap.display.add_highlight(l:cur_input)
@@ -101,7 +102,7 @@ function! clap#impl#on_typed() abort
       call s:on_typed_async_impl()
     else
       " Choose the suitable way according to the source size.
-      if len(g:clap.provider.get_source()) > 5000
+      if len(g:clap.provider.get_source()) > s:async_threshold
         call s:on_typed_async_impl()
       else
         call s:on_typed_sync_impl()

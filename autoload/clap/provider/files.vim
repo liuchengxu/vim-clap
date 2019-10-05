@@ -31,13 +31,6 @@ endif
 let s:files.source = s:find_cmd
 let s:files.sink = 'e'
 
-function! s:files.source_async() abort
-  let l:cur_input = g:clap.input.get()
-  let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-  let cmd = s:find_cmd.' | '.ext_filter_cmd
-  return cmd
-endfunction
-
 let g:clap#provider#files# = s:files
 
 let &cpo = s:save_cpo
