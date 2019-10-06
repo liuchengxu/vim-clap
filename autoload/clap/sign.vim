@@ -14,7 +14,7 @@ if !exists('s:sign_inited')
   call sign_define(s:sign_group, {
         \ 'text': ' >',
         \ 'texthl': "WarningMsg",
-        \ "linehl": "PmenuSel"
+        \ "linehl": "ClapSelected"
         \ })
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign_definition', {
         \ 'text': '>>',

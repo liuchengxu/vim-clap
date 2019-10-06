@@ -164,6 +164,7 @@ hi default link ClapDisplay Pmenu
 hi default link ClapPreview PmenuSel
 hi default link ClapMatches Search
 
+hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
 hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
 ```
 
@@ -197,7 +198,7 @@ Clap [provider_id_or_alias] [++opt] [+opt]
 
 All the opts are accessible via `g:clap.context[opt]`.
 
-The form of `[++opt]` is `++{optname}={value}`:
+The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
   - `++externalfilter=fzf` or `++ef=fzf`.
 
