@@ -137,7 +137,8 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - Use <kbd>Ctrl-a</kbd> to go to the start of the input.
 - Use <kbd>Ctrl-e</kbd> to go to the end of the input.
 - Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
-- Use <kbd>Ctrl-d</kbd> to delete one character.
+- [ ] Use <kbd>Ctrl-h</kbd> to delete previous character.
+- [ ] Use <kbd>Ctrl-d</kbd> to delete next character.
 - Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - Use <kbd>Enter</kbd> to select the entry and exit.
@@ -186,9 +187,9 @@ The provider of vim-clap is actually a Dict that specifies the action of your mo
 
 There are generally two kinds of providers in vim-clap.
 
-1. Sync provider: suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history. It's extremely easy to introduce a new synchoronous clap provider.
+1. Non-pure-async provider: suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history.It will run sync if the source is not large. But it's also able to deal with the list that is huge, let's say 100,000+ lines/items, in which case vim-clap will choose to run the external filter in async. In a word, vim-clap can always be fast responsive. What's more, it's extremely easy to introduce a new non-pure-async clap provider as vim-clap provides the default implementation of `on_typed` and `source_async`.
 
-2. Async provider: suitable for the time-consuming jobs, e.g., grep a word in a directory.
+2. Pure async provider: suitable for the time-consuming jobs, e.g., grep a word in a directory.
 
 ### Provider arguments
 
