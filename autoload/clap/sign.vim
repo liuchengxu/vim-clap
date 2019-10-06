@@ -19,7 +19,7 @@ if !exists('s:sign_inited')
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign_definition', {
         \ 'text': '>>',
         \ 'texthl': "WarningMsg",
-        \ "linehl": "PmenuSel",
+        \ "linehl": "ClapCurrentSelection",
         \ }))
   let s:sign_inited = 1
 endif
@@ -48,6 +48,10 @@ function! clap#sign#toggle_cursorline() abort
   let curlnum = g:clap.display.getcurlnum()
   call s:place_cur_sign_at(curlnum)
   let s:last_signed_id = curlnum
+endfunction
+
+function! clap#sign#disable_cursorline() abort
+  call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
 endfunction
 
 function! clap#sign#toggle() abort

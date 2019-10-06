@@ -121,6 +121,7 @@ function! s:init_hi_groups() abort
   if !hlexists('ClapNoMatchesFound')
     hi default link ClapNoMatchesFound ErrorMsg
   endif
+  hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
 endfunction
 
 function! clap#init#() abort

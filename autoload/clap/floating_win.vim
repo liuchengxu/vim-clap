@@ -67,7 +67,7 @@ function! g:clap#floating_win#display.open() abort
   call g:clap.display.setbufvar_batch({
         \ '&wrap': 0,
         \ '&number': 0,
-        \ '&cursorline': 1,
+        \ '&cursorline': 0,
         \ '&signcolumn': 'yes',
         \ })
 endfunction
@@ -157,11 +157,6 @@ function! clap#floating_win#open() abort
   call clap#spinner#init()
 
   call g:clap.provider.init_display_win()
-
-  " Set cursorline?
-  " if !g:clap.display.is_empty()
-    " call setbufvar(s:display_bufnr, '&cursorline', 1)
-  " endif
 
   augroup ClapEnsureAllClosed
     autocmd!
