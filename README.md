@@ -165,6 +165,8 @@ hi default link ClapInput   Visual
 hi default link ClapDisplay Pmenu
 hi default link ClapPreview PmenuSel
 hi default link ClapMatches Search
+
+hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
 ```
 
 If you want a different highlight for the matches found, try:
