@@ -40,7 +40,7 @@ let s:display_opts = {
       \ }
 
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
-let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer:SignColumn:ClapPreview'
+let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
 
 "  -----------------------------
 " | spinner | input             |
@@ -89,7 +89,7 @@ function! g:clap#floating_win#spinner.open() abort
   let opts.height = 1
   let opts.focusable = v:false
 
-  silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:true, opts)
+  silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:false, opts)
 
   call setwinvar(s:spinner_winid, '&winhl', 'Normal:ClapSpinner')
   call setbufvar(s:spinner_bufnr, '&filetype', 'clap_spinner')
@@ -122,7 +122,7 @@ function! clap#floating_win#preview.show(lines) abort
     let opts.row += opts.height
     let opts.height = opts.height / 2
 
-    silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:true, opts)
+    silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
 
     call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
     " call setwinvar(s:preview_winid, '&winblend', 15)
