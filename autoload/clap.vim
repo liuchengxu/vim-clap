@@ -99,6 +99,9 @@ function! clap#exit() abort
 
   call clap#sign#reset()
 
+  call map(g:clap.tmps, 'delete(v:val)')
+  let g:clap.tmps = []
+
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
@@ -202,10 +205,35 @@ if !exists('g:clap')
   call clap#register('_', {'source': s:builtin_providers, 'sink': function('s:_sink')})
 endif
 
+function! s:parse_opts(args) abort
+  let idx = 0
+  for arg in a:args
+    if arg =~? '^++\w*=\w*'
+      let matched = matchlist(arg, '^++\(\w*\)=\(\w*\)')
+      let [k, v] = [matched[1], matched[2]]
+      let g:clap.context[k] = v
+    elseif arg =~? '^+\w*'
+      let opt = arg[1:]
+      let g:clap.context[opt] = v:true
+    else
+      break
+    endif
+    let idx += 1
+  endfor
+  let g:clap.provider.args = clap#util#expand(a:args[idx:])
+endfunction
+
 function! clap#(bang, ...) abort
   let g:clap.start.bufnr = bufnr('')
   let g:clap.start.winid = win_getid()
   let g:clap.start.old_pos = getpos('.')
+
+  let g:clap.context = {}
+  let g:clap.tmps = []
+
+  if a:bang
+    let g:clap.context.async = v:true
+  endif
 
   if a:0 == 0
     let provider_id_or_alias = '_'
@@ -219,8 +247,7 @@ function! clap#(bang, ...) abort
       return
     endif
     let provider_id_or_alias = a:1
-    let args = a:000[1:]
-    let g:clap.provider.args = clap#util#expand(args)
+    call s:parse_opts(a:000[1:])
   endif
 
   call clap#for(provider_id_or_alias)

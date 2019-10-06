@@ -416,8 +416,13 @@ endfunction
 function! clap#popup#close() abort
   if exists('s:old_signcolumn')
     let old_signcolumn = split(s:old_signcolumn)[2:]
-    silent execute 'hi SignColumn' join(old_signcolumn, ' ')
-    unlet s:old_signcolumn
+    try
+      silent execute 'hi! SignColumn' join(old_signcolumn, ' ')
+    catch
+      " Ignore E416
+    finally
+      unlet s:old_signcolumn
+    endtry
   endif
   if exists('s:display_winid')
     call popup_close(s:display_winid)

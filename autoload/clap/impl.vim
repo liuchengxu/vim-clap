@@ -5,6 +5,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let s:is_nvim = has('nvim')
+let s:async_threshold = 5000
 
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
@@ -23,8 +24,10 @@ function! s:on_typed_sync_impl() abort
   call clap#spinner#set_busy()
 
   if get(g:, '__clap_should_refilter', v:false)
+        \ || get(g:, '__clap_do_not_use_cache', v:false)
     let l:lines = g:clap.provider.get_source()
     let g:__clap_should_refilter = v:false
+    let g:__clap_do_not_use_cache = v:false
   else
     " Assuming in the middle of typing, we are continuing to filter.
     let l:lines = g:clap.display.get_lines() + g:clap.display.cache
@@ -71,6 +74,22 @@ function! s:on_typed_sync_impl() abort
   call g:clap.display.add_highlight()
 endfunction
 
+function! s:on_typed_async_impl() abort
+  call g:clap.display.clear_highlight()
+  let l:cur_input = g:clap.input.get()
+
+  if empty(l:cur_input)
+    return
+  endif
+
+  call g:clap.display.clear()
+
+  let cmd = g:clap.provider.source_async_or_default()
+  call clap#dispatcher#jobstart(cmd)
+
+  call g:clap.display.add_highlight(l:cur_input)
+endfunction
+
 "                          filter
 "                       /  (sync)
 "             on_typed -
@@ -82,7 +101,21 @@ endfunction
 "             on_move
 "
 function! clap#impl#on_typed() abort
-  call s:on_typed_sync_impl()
+  if g:clap.provider.can_async()
+    " Run async explicitly
+    if get(g:clap.context, 'async') is v:true
+      call s:on_typed_async_impl()
+    else
+      " Choose the suitable way according to the source size.
+      if len(g:clap.provider.get_source()) > s:async_threshold
+        call s:on_typed_async_impl()
+      else
+        call s:on_typed_sync_impl()
+      endif
+    endif
+  else
+    call s:on_typed_sync_impl()
+  endif
 endfunction
 
 let &cpo = s:save_cpo

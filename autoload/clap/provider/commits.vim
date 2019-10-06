@@ -17,7 +17,7 @@ function! s:commits.source() abort
   let current = bufname(g:clap.start.bufnr)
   let managed = 0
   if !empty(current)
-    call system('git show '.fzf#shellescape(current).' 2> '.(has('win32') ? 'nul' : '/dev/null'))
+    call system('git show '.current.' 2> '.(has('win32') ? 'nul' : '/dev/null'))
     let managed = !v:shell_error
   endif
 
@@ -27,7 +27,7 @@ function! s:commits.source() abort
       call clap#error('The current buffer is not in the working tree')
       return []
     endif
-    let source .= ' --follow '.fzf#shellescape(current)
+    let source .= ' --follow '.current
   else
     let source .= ' --graph'
   endif
