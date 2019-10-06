@@ -448,6 +448,7 @@ function! s:init_provider() abort
       call g:clap.display.set_lines_lazy(lines)
       call g:clap#display_win.compact_if_undersize()
       call clap#indicator#set_matches('['.initial_size.']')
+      call clap#sign#toggle_cursorline()
     endif
   endfunction
 
