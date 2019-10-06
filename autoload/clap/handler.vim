@@ -38,7 +38,7 @@ function! s:navigate(direction) abort
   if curlnum == lastlnum && a:direction ==# 'down'
     " Lazy append!
     " Append 100 more line from the cache when you need.
-    if empty(g:clap.display.cache)
+    if empty(g:clap.display.cache) || get(g:, '__clap_do_not_use_cache', v:false)
       normal! 1gg
       let g:__clap_display_curlnum = 1
     else
