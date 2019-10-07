@@ -85,6 +85,18 @@ function! clap#util#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
+function! clap#util#find_git_root(bufnr) abort
+  let fname = fnameescape(fnamemodify(bufname(a:bufnr), ':p'))
+
+  let relative_path = finddir('.git', fname . ';')
+
+  if !empty(relative_path)
+    return fnamemodify(relative_path, ':p:h:h')
+  endif
+
+  return ''
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']
