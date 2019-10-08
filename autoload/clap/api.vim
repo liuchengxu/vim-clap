@@ -412,19 +412,7 @@ function! s:init_provider() abort
     " Catch any exceptions and show them in the display window.
     try
       if has_key(provider_info, 'source')
-        let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-        if empty(git_root)
-          let lines = self._apply_source()
-        else
-          let save_cwd = getcwd()
-          try
-            execute 'lcd' git_root
-            let lines = self._apply_source()
-          finally
-            execute 'lcd' save_cwd
-          endtry
-        endif
-        return lines
+        return clap#util#run_from_project_root(self._apply_source)
       else
         return []
       endif

@@ -109,6 +109,22 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
   return ''
 endfunction
 
+function! clap#util#run_from_project_root(Run) abort
+  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+  if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
+    let result = a:Run()
+  else
+    let save_cwd = getcwd()
+    try
+      execute 'lcd' git_root
+      let result = a:Run()
+    finally
+      execute 'lcd' save_cwd
+    endtry
+  endif
+  return result
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']

@@ -74,6 +74,11 @@ function! s:on_typed_sync_impl() abort
   call g:clap.display.add_highlight()
 endfunction
 
+function! s:apply_source_async() abort
+  let cmd = g:clap.provider.source_async_or_default()
+  call clap#dispatcher#jobstart(cmd)
+endfunction
+
 function! s:on_typed_async_impl() abort
   call g:clap.display.clear_highlight()
   let l:cur_input = g:clap.input.get()
@@ -84,20 +89,7 @@ function! s:on_typed_async_impl() abort
 
   call g:clap.display.clear()
 
-  let cmd = g:clap.provider.source_async_or_default()
-
-  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-  if empty(git_root)
-    call clap#dispatcher#jobstart(cmd)
-  else
-    let save_cwd = getcwd()
-    try
-      execute 'lcd' git_root
-      call clap#dispatcher#jobstart(cmd)
-    finally
-      execute 'lcd' save_cwd
-    endtry
-  endif
+  call clap#util#run_from_project_root(function('s:apply_source_async'))
 
   call g:clap.display.add_highlight(l:cur_input)
 endfunction
