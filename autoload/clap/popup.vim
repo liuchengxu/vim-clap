@@ -299,7 +299,9 @@ function! s:move_manager.bs(_winid) abort
 endfunction
 
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
+let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
 let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("up")') }
+let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
