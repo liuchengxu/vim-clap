@@ -124,7 +124,7 @@ Command                                | List                               | Re
 
 - `g:clap_no_matches_msg`: String, "NO MATCHES FOUND", message to show when there is no matches found.
 
-- `g:clap_disable_run_from_project_root`: Bool, v:false, vim-clap by default will try to run from the project root by changing `cwd` temporarily. The pejct root here means the git base directory. Create an issue if you want to see more support about the project root.
+- `g:clap_disable_run_from_project_root`: Bool, v:false, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
 
 - `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
 
