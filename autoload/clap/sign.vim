@@ -50,6 +50,20 @@ function! clap#sign#toggle_cursorline() abort
   let s:last_signed_id = curlnum
 endfunction
 
+function! clap#sign#reset_to_first_line() abort
+  if s:last_signed_id == 1
+    return
+  endif
+  if s:last_signed_id != -1
+    call s:unplace_cur_sign_at(s:last_signed_id)
+  endif
+  call g:clap.display.set_cursor(1, 1)
+  let curlnum = 1
+  let g:__clap_display_curlnum = curlnum
+  call s:place_cur_sign_at(curlnum)
+  let s:last_signed_id = curlnum
+endfunction
+
 function! clap#sign#disable_cursorline() abort
   call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
 endfunction
