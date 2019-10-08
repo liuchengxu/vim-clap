@@ -59,6 +59,9 @@ inoremap <silent> <buffer> <Esc> <Esc>:call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-j> <C-R>=clap#handler#navigate_result('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#handler#navigate_result('up')<CR>
 
+inoremap <silent> <buffer> <Down> <C-R>=clap#handler#navigate_result('down')<CR>
+inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
+
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
 inoremap <silent> <buffer> <C-t> <Esc>:call <SID>action('ctrl-t')<CR>

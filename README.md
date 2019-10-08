@@ -135,7 +135,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 
 ### Movement
 
-- Use <kbd>Ctrl-j</kbd> or <kbd>Ctrl-k</kbd> to navigate the result list up and down.
+- Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
 - Use <kbd>Ctrl-a</kbd> to go to the start of the input.
 - Use <kbd>Ctrl-e</kbd> to go to the end of the input.
 - Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
