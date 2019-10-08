@@ -112,6 +112,7 @@ function! g:clap#floating_win#input.open() abort
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
   call setbufvar(s:input_bufnr, '&completeopt', '')
+  call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
 
   let g:clap.input.winid = s:input_winid
 endfunction

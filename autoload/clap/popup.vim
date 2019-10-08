@@ -161,6 +161,7 @@ function! s:create_input() abort
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
     call win_execute(s:input_winid, 'setlocal completeopt=')
+    call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
