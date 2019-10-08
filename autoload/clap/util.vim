@@ -85,13 +85,25 @@ function! clap#util#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
+" This is faster than clap#util#get_git_root() which uses the system call.
 function! clap#util#find_git_root(bufnr) abort
+  let git_dir = clap#util#find_nearest_dir(a:bufnr, '.git')
+  if !empty(git_dir)
+    return fnamemodify(git_dir, ':h:h')
+  endif
+  return ''
+endfunction
+
+" Find the nearest directory by searching upwards
+" through the paths relative to the given buffer,
+" given a bufnr and a directory name.
+function! clap#util#find_nearest_dir(bufnr, dir) abort
   let fname = fnameescape(fnamemodify(bufname(a:bufnr), ':p'))
 
-  let relative_path = finddir('.git', fname . ';')
+  let relative_path = finddir(a:dir, fname . ';')
 
   if !empty(relative_path)
-    return fnamemodify(relative_path, ':p:h:h')
+    return fnamemodify(relative_path, ':p')
   endif
 
   return ''
