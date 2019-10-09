@@ -83,15 +83,19 @@ function! s:hi_spinner() abort
   endfor
 endfunction
 
+function! s:ensure_hl_exists(group, default) abort
+  if !hlexists(a:group)
+    execute 'hi default link' a:group a:default
+  endif
+endfunction
+
 function! s:init_hi_groups() abort
   if !hlexists('ClapSpinner')
     call s:hi_spinner()
     autocmd ColorScheme * call s:hi_spinner()
   endif
 
-  if !hlexists('ClapInput')
-    execute 'hi default link ClapInput' s:input_default_hi_group
-  endif
+  call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)
 
   if !hlexists('ClapDisplay')
     execute 'hi default link ClapDisplay' s:display_default_hi_group
@@ -113,14 +117,10 @@ function! s:init_hi_groups() abort
   autocmd ColorScheme * call s:hi_preview_invisible()
 
   " For the found matches highlight
-  if !hlexists('ClapMatches')
-    hi default link ClapMatches Search
-  endif
-  hi default link ClapQuery   IncSearch
+  call s:ensure_hl_exists('ClapMatches', 'Search')
+  call s:ensure_hl_exists('ClapQuery', 'IncSearch')
+  call s:ensure_hl_exists('ClapNoMatchesFound', 'ErrorMsg')
 
-  if !hlexists('ClapNoMatchesFound')
-    hi default link ClapNoMatchesFound ErrorMsg
-  endif
   if !hlexists('ClapCurrentSelection')
     hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
   endif

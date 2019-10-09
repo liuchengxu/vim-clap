@@ -169,6 +169,7 @@ function! s:create_input() abort
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
+    call win_execute(s:input_winid, 'let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])')
     let s:save_completeopt = &completeopt
     call win_execute(s:input_winid, 'set completeopt=')
     call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
