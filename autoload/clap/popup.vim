@@ -14,6 +14,8 @@ let g:clap#popup#input = {}
 
 let s:indicator_width = 10
 
+let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
+
 "  ----------------------------------------
 " | spinner |     input        | indicator |
 " |----------------------------------------|
@@ -169,9 +171,13 @@ function! s:create_input() abort
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
+    call win_execute(s:input_winid, 'let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])')
     let s:save_completeopt = &completeopt
     call win_execute(s:input_winid, 'set completeopt=')
     call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
+    if s:exists_deoplete
+      call deoplete#custom#buffer_option('auto_complete', v:false)
+    endif
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
@@ -322,7 +328,7 @@ let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
 let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
 let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
-let s:move_manager["\<C-D>"] = s:move_manager.bs
+let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:move_manager.printable(key) abort
@@ -448,6 +454,9 @@ function! clap#popup#close() abort
     call popup_close(s:display_winid)
   endif
   let &completeopt = s:save_completeopt
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:true)
+  endif
   call s:close_others()
   silent autocmd! ClapEnsureAllClosed
 endfunction

@@ -87,11 +87,23 @@ if has('nvim')
     " Must return '' explicitly
     return ''
   endfunction
+
+  function! clap#handler#internal_navigate(direction) abort
+    call g:clap.display.goto_win()
+    call s:navigate(a:direction)
+    call g:clap.input.goto_win()
+  endfunction
+
 else
   function! clap#handler#navigate_result(direction) abort
     call s:navigate(a:direction)
     call g:clap.provider.on_move()
   endfunction
+
+  function! clap#handler#internal_navigate(direction) abort
+    call win_execute(g:clap.display.winid, 'call s:navigate(a:direction)')
+  endfunction
+
 endif
 
 function! clap#handler#sink() abort
@@ -139,7 +151,7 @@ function! clap#handler#select_toggle() abort
     return ''
   endif
 
-  call clap#sign#toggle()
+  noautocmd call clap#sign#toggle_cursorline_multi()
 
   let s:use_multi_selection = v:true
 

@@ -38,17 +38,14 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 ## Features
 
-- Pure vimscript.
-- Work out of the box, without any extra dependency.
-- Extensible, easy to add new source providers.
-- Find or dispatch anything on the fly, with smart cache strategy.
-- Untouch your current window layout, less eye movement.
-- Support multi-selection, use vim's regexp as filter by default.
-- Support the preview functionality when navigating the result list.
-- Support builtin match and external fuzzy filter tools.
-
-TODOs:
-
+- [x] Pure vimscript.
+- [x] Work out of the box, without any extra dependency.
+- [x] Extensible, easy to add new source providers.
+- [x] Find or dispatch anything on the fly, with smart cache strategy.
+- [x] Avoid touching the current window layout, less eye movement.
+- [x] Support multi-selection, use vim's regexp as filter by default.
+- [x] Support the preview functionality when navigating the result list.
+- [x] Support builtin match and external fuzzy filter tools.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
 - [ ] More UI layout.
@@ -135,17 +132,17 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 
 ### Movement
 
-- Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
-- Use <kbd>Ctrl-a</kbd> to go to the start of the input.
-- Use <kbd>Ctrl-e</kbd> to go to the end of the input.
-- Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
-- [ ] Use <kbd>Ctrl-h</kbd> to delete previous character.
+- [x] Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
+- [x] Use <kbd>Ctrl-a</kbd> to go to the start of the input.
+- [x] Use <kbd>Ctrl-e</kbd> to go to the end of the input.
+- [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
+- [x] Use <kbd>Ctrl-h</kbd> to delete previous character.
 - [ ] Use <kbd>Ctrl-d</kbd> to delete next character.
-- Use <kbd>Ctrl-b</kbd> to move cursor left one character.
-- Use <kbd>Ctrl-f</kbd> to move cursor right one character.
-- Use <kbd>Enter</kbd> to select the entry and exit.
-- Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
-- [ ] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
+- [x] Use <kbd>Ctrl-b</kbd> to move cursor left one character.
+- [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
+- [x] Use <kbd>Enter</kbd> to select the entry and exit.
+- [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
+- [ ] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split. (See #34)
 
 ### Execute some code during the process
 
@@ -166,6 +163,8 @@ hi default link ClapInput   Visual
 hi default link ClapDisplay Pmenu
 hi default link ClapPreview PmenuSel
 hi default link ClapMatches Search
+
+" By default ClapQuery will use the bold fg of Normal and the same bg of ClapInput
 
 hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
 hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
