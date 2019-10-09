@@ -67,9 +67,6 @@ function! s:spawn(query) abort
 
   call clap#dispatcher#jobstart(s:cmd(query))
 
-  " Add an option for highlighting the query string?
-  " let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
-
   " Consistent with --smart-case of rg
   " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
   let ignore_case = query =~ '\u' ? '\C' : '\c'

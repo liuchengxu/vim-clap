@@ -121,6 +121,8 @@ function! g:clap#floating_win#input.open() abort
 
   silent let s:input_winid = nvim_open_win(s:input_bufnr, v:true, opts)
 
+  let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
+
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
   let s:save_completeopt = &completeopt
