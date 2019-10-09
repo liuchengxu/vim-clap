@@ -28,6 +28,15 @@ let s:display_opts = {
       \ 'col': &columns * 2 / 3 / 4,
       \ }
 
+function! s:reconfigure_display_opts() abort
+  let s:display_opts = {
+        \ 'width': &columns * 2 / 3,
+        \ 'height': &lines  * 1 / 3,
+        \ 'row': &lines / 3 - 1,
+        \ 'col': &columns * 2 / 3 / 4,
+        \ }
+endfunction
+
 function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let col = &signcolumn ==# 'yes' ? 2 : 1
@@ -411,6 +420,13 @@ function! clap#popup#open() abort
     autocmd!
     autocmd BufEnter,WinEnter,WinLeave * call clap#popup#close()
   augroup END
+
+  if !exists('#ClapResize')
+    augroup ClapResize
+      autocmd!
+      autocmd VimResized * call s:reconfigure_display_opts()
+    augroup END
+  endif
 
   silent doautocmd <nomodeline> User ClapOnEnter
 
