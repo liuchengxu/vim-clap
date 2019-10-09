@@ -283,6 +283,8 @@ function! s:init_provider() abort
 
   function! provider.sink(selected) abort
     call g:clap.start.goto_win()
+    " FIXME what if the sink function changes cwd intentionally? Then we
+    " should not restore to the current cwd after executing the sink function.
     call clap#util#run_from_project_root(self._apply_sink, a:selected)
   endfunction
 
