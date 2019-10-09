@@ -98,6 +98,20 @@ function! s:init_hi_groups() abort
   endif
 
   call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)
+  if !hlexists('ClapQuery')
+    " A bit repeatation code here in case of ClapSpinner is defined explicitly.
+    let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
+    let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
+    let ident_ctermfg = s:extract_or('Identifier', 'fg', 'cterm', '68')
+    let ident_guifg = s:extract_or('Identifier', 'fg', 'gui', '#7590db')
+    execute printf(
+          \ "hi ClapQuery guifg=%s ctermfg=%s ctermbg=%s guibg=%s",
+          \ ident_guifg,
+          \ ident_ctermfg,
+          \ vis_ctermbg,
+          \ vis_guibg,
+          \ )
+  endif
 
   if !hlexists('ClapDisplay')
     execute 'hi default link ClapDisplay' s:display_default_hi_group
@@ -120,15 +134,13 @@ function! s:init_hi_groups() abort
 
   " For the found matches highlight
   call s:ensure_hl_exists('ClapMatches', 'Search')
-  call s:ensure_hl_exists('ClapQuery', 'IncSearch')
   call s:ensure_hl_exists('ClapNoMatchesFound', 'ErrorMsg')
 
-  if !hlexists('ClapCurrentSelection')
-    hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
-  endif
-  if !hlexists('ClapSelected')
-    hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-  endif
+  hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
+  hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
+
+  call s:ensure_hl_exists('ClapSelected', 'ClapDefaultSelected')
+  call s:ensure_hl_exists('ClapCurrentSelection', 'ClapDefaultCurrentSelection')
 
   call s:init_hi_submatches()
 endfunction
