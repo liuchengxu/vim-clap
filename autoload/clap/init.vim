@@ -55,7 +55,9 @@ function! s:hi_spinner() abort
         \ vis_ctermbg,
         \ vis_guibg,
         \ )
+endfunction
 
+function! s:init_hi_submatches() abort
   let clap_sub_matches = [
         \ [173 , '#e18254'] ,
         \ [196 , '#f2241f'] ,
@@ -127,6 +129,8 @@ function! s:init_hi_groups() abort
   if !hlexists('ClapSelected')
     hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
   endif
+
+  call s:init_hi_submatches()
 endfunction
 
 function! clap#init#() abort
