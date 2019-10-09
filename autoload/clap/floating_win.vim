@@ -39,6 +39,16 @@ let s:display_opts = {
       \ 'relative': 'editor',
       \ }
 
+function! s:reconfigure_display_opts() abort
+  let s:display_opts = {
+        \ 'width': &columns * 2 / 3,
+        \ 'height': &lines  * 1 / 3,
+        \ 'row': &lines / 3 - 1,
+        \ 'col': &columns * 2 / 3 / 4,
+        \ 'relative': 'editor',
+        \ }
+endfunction
+
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
 
@@ -164,6 +174,15 @@ function! clap#floating_win#open() abort
     autocmd!
     autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
   augroup END
+
+  " This augroup should be retained after closing vim-clap for the benefit
+  " of next run.
+  if !exists('#ClapResize')
+    augroup ClapResize
+      autocmd!
+      autocmd VimResized * call s:reconfigure_display_opts()
+    augroup END
+  endif
 
   call g:clap.input.goto_win()
 
