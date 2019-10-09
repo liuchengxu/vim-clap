@@ -71,7 +71,9 @@ function! s:on_typed_sync_impl() abort
   call g:clap#display_win.compact_if_undersize()
   call clap#spinner#set_idle()
 
-  call g:clap.display.add_highlight()
+  if !l:has_no_matches
+    call g:clap.display.add_highlight()
+  endif
 endfunction
 
 function! s:on_typed_async_impl() abort
