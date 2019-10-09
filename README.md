@@ -162,7 +162,7 @@ hi default link ClapDisplay Pmenu
 hi default link ClapPreview PmenuSel
 hi default link ClapMatches Search
 
-" By default ClapQuery will use the fg of Identifier with the same bg of ClapInput
+" By default ClapQuery will use the bold fg of Normal and the same bg of ClapInput
 
 hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
 hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7

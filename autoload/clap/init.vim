@@ -102,10 +102,10 @@ function! s:init_hi_groups() abort
     " A bit repeatation code here in case of ClapSpinner is defined explicitly.
     let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
     let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
-    let ident_ctermfg = s:extract_or('Identifier', 'fg', 'cterm', '68')
-    let ident_guifg = s:extract_or('Identifier', 'fg', 'gui', '#7590db')
+    let ident_ctermfg = s:extract_or('Normal', 'fg', 'cterm', '249')
+    let ident_guifg = s:extract_or('Normal', 'fg', 'gui', '#b2b2b2')
     execute printf(
-          \ "hi ClapQuery guifg=%s ctermfg=%s ctermbg=%s guibg=%s",
+          \ "hi ClapQuery guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold gui=bold",
           \ ident_guifg,
           \ ident_ctermfg,
           \ vis_ctermbg,
