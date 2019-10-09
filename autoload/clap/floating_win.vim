@@ -111,7 +111,8 @@ function! g:clap#floating_win#input.open() abort
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
-  call setbufvar(s:input_bufnr, '&completeopt', '')
+  let s:save_completeopt = &completeopt
+  call nvim_set_option('completeopt', '')
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
 
   let g:clap.input.winid = s:input_winid
@@ -185,6 +186,8 @@ function! clap#floating_win#close() abort
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim
   noautocmd call clap#util#nvim_win_close_safe(g:clap.display.winid)
+
+  let &completeopt = s:save_completeopt
 endfunction
 
 let &cpo = s:save_cpo
