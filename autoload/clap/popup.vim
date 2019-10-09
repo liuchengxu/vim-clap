@@ -327,7 +327,7 @@ let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
 let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
 let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
-let s:move_manager["\<C-D>"] = s:move_manager.bs
+let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:move_manager.printable(key) abort
