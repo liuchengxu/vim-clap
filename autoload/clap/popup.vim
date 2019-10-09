@@ -14,6 +14,8 @@ let g:clap#popup#input = {}
 
 let s:indicator_width = 10
 
+let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
+
 "  ----------------------------------------
 " | spinner |     input        | indicator |
 " |----------------------------------------|
@@ -172,6 +174,9 @@ function! s:create_input() abort
     let s:save_completeopt = &completeopt
     call win_execute(s:input_winid, 'set completeopt=')
     call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
+    if s:exists_deoplete
+      call deoplete#custom#buffer_option('auto_complete', v:false)
+    endif
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
@@ -448,6 +453,9 @@ function! clap#popup#close() abort
     call popup_close(s:display_winid)
   endif
   let &completeopt = s:save_completeopt
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:true)
+  endif
   call s:close_others()
   silent autocmd! ClapEnsureAllClosed
 endfunction
