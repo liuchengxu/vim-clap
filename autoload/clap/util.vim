@@ -109,15 +109,15 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
   return ''
 endfunction
 
-function! clap#util#run_from_project_root(Run) abort
+function! clap#util#run_from_project_root(Run, ...) abort
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
   if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
-    let result = a:Run()
+    let result = call(a:Run, a:000)
   else
     let save_cwd = getcwd()
     try
       execute 'lcd' git_root
-      let result = a:Run()
+      let result = call(a:Run, a:000)
     finally
       execute 'lcd' save_cwd
     endtry

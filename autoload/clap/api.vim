@@ -270,8 +270,7 @@ function! s:init_provider() abort
     throw 'clap:'.msg
   endfunction
 
-  function! provider.sink(selected) abort
-    call g:clap.start.goto_win()
+  function! provider._apply_sink(selected) abort
     let Sink = self._().sink
     if type(Sink) == v:t_func
       call Sink(a:selected)
@@ -280,6 +279,11 @@ function! s:init_provider() abort
     else
       call clap#error("sink can only be a funcref or string.")
     endif
+  endfunction
+
+  function! provider.sink(selected) abort
+    call g:clap.start.goto_win()
+    call clap#util#run_from_project_root(self._apply_sink, a:selected)
   endfunction
 
   function! provider.sink_star(lines) abort
