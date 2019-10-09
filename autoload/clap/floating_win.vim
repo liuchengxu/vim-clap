@@ -20,6 +20,8 @@ let g:clap.display.bufnr = s:display_bufnr
 
 let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 
+let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
+
 function! s:prepare_opts(row, col, width, height, ...) abort
   let base_opts = {
         \ 'row': a:row,
@@ -126,6 +128,9 @@ function! g:clap#floating_win#input.open() abort
   let s:save_completeopt = &completeopt
   call nvim_set_option('completeopt', '')
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:false)
+  endif
 
   let g:clap.input.winid = s:input_winid
 endfunction
@@ -209,6 +214,9 @@ function! clap#floating_win#close() abort
   noautocmd call clap#util#nvim_win_close_safe(g:clap.display.winid)
 
   let &completeopt = s:save_completeopt
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:true)
+  endif
 endfunction
 
 let &cpo = s:save_cpo
