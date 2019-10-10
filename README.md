@@ -133,8 +133,8 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 ### Movement
 
 - [x] Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
-- [x] Use <kbd>Ctrl-a</kbd> to go to the start of the input.
-- [x] Use <kbd>Ctrl-e</kbd> to go to the end of the input.
+- [x] Use <kbd>Ctrl-a</kbd>/<kbd>Home</kbd> to go to the start of the input.
+- [x] Use <kbd>Ctrl-e</kbd>/<kbd>End</kbd> to go to the end of the input.
 - [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
 - [x] Use <kbd>Ctrl-h</kbd> to delete previous character.
 - [ ] Use <kbd>Ctrl-d</kbd> to delete next character.
