@@ -85,6 +85,72 @@ function! clap#util#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
+" This is faster than clap#util#get_git_root() which uses the system call.
+function! clap#util#find_git_root(bufnr) abort
+  let git_dir = clap#util#find_nearest_dir(a:bufnr, '.git')
+  if !empty(git_dir)
+    return fnamemodify(git_dir, ':h:h')
+  endif
+  return ''
+endfunction
+
+" Find the nearest directory by searching upwards
+" through the paths relative to the given buffer,
+" given a bufnr and a directory name.
+function! clap#util#find_nearest_dir(bufnr, dir) abort
+  let fname = fnameescape(fnamemodify(bufname(a:bufnr), ':p'))
+
+  let relative_path = finddir(a:dir, fname . ';')
+
+  if !empty(relative_path)
+    return fnamemodify(relative_path, ':p')
+  endif
+
+  return ''
+endfunction
+
+" Argument: Funcref to run as well as its args
+function! clap#util#run_from_project_root(Run, ...) abort
+  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+  if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
+    let result = call(a:Run, a:000)
+  else
+    let save_cwd = getcwd()
+    try
+      execute 'lcd' git_root
+      let result = call(a:Run, a:000)
+    finally
+      execute 'lcd' save_cwd
+    endtry
+  endif
+  return result
+endfunction
+
+" This is used for the sink function.
+"
+" what if the sink function changes cwd intentionally? Then we
+" should not restore to the current cwd after executing the sink function.
+function! clap#util#run_from_project_root_heuristic(Run, ...) abort
+  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+  if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
+    let result = call(a:Run, a:000)
+  else
+    let save_cwd = getcwd()
+    try
+      execute 'lcd' git_root
+      let result = call(a:Run, a:000)
+    finally
+      " Here we could use a naive heuristic approach to
+      " not restore the old cwd when the current working
+      " directory is not git root or &autochdir is on.
+      " This way is mainly borrowed from fzf.vim.
+      if getcwd() ==# git_root && !&autochdir
+        execute 'lcd' save_cwd
+      endif
+    endtry
+  endif
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']

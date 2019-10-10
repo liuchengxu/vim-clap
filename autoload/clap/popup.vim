@@ -14,6 +14,8 @@ let g:clap#popup#input = {}
 
 let s:indicator_width = 10
 
+let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
+
 "  ----------------------------------------
 " | spinner |     input        | indicator |
 " |----------------------------------------|
@@ -27,6 +29,15 @@ let s:display_opts = {
       \ 'row': &lines / 3 - 1,
       \ 'col': &columns * 2 / 3 / 4,
       \ }
+
+function! s:reconfigure_display_opts() abort
+  let s:display_opts = {
+        \ 'width': &columns * 2 / 3,
+        \ 'height': &lines  * 1 / 3,
+        \ 'row': &lines / 3 - 1,
+        \ 'col': &columns * 2 / 3 / 4,
+        \ }
+endfunction
 
 function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
@@ -160,8 +171,13 @@ function! s:create_input() abort
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
     call win_execute(s:input_winid, 'setlocal nonumber')
-    call win_execute(s:input_winid, 'setlocal completeopt=')
+    call win_execute(s:input_winid, 'let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])')
+    let s:save_completeopt = &completeopt
+    call win_execute(s:input_winid, 'set completeopt=')
     call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
+    if s:exists_deoplete
+      call deoplete#custom#buffer_option('auto_complete', v:false)
+    endif
     let g:clap#popup#input.winid = s:input_winid
   endif
 endfunction
@@ -299,18 +315,22 @@ function! s:move_manager.bs(_winid) abort
 endfunction
 
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
+let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
 let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("up")') }
+let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
+let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
 let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
 let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
 let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
 let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
+let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
-let s:move_manager["\<C-D>"] = s:move_manager.bs
+let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:move_manager.printable(key) abort
@@ -409,6 +429,13 @@ function! clap#popup#open() abort
     autocmd BufEnter,WinEnter,WinLeave * call clap#popup#close()
   augroup END
 
+  if !exists('#ClapResize')
+    augroup ClapResize
+      autocmd!
+      autocmd VimResized * call s:reconfigure_display_opts()
+    augroup END
+  endif
+
   silent doautocmd <nomodeline> User ClapOnEnter
 
   call g:clap.provider.apply_args()
@@ -427,6 +454,10 @@ function! clap#popup#close() abort
   endif
   if exists('s:display_winid')
     call popup_close(s:display_winid)
+  endif
+  let &completeopt = s:save_completeopt
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:true)
   endif
   call s:close_others()
   silent autocmd! ClapEnsureAllClosed

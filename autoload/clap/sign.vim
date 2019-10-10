@@ -64,6 +64,19 @@ function! clap#sign#reset_to_first_line() abort
   let s:last_signed_id = curlnum
 endfunction
 
+function! clap#sign#toggle_cursorline_multi() abort
+  let curlnum = g:clap.display.getcurlnum()
+  let sign_idx = index(s:signed, curlnum)
+  if sign_idx != -1
+    call s:unplace_sign_at(curlnum)
+    unlet s:signed[sign_idx]
+  else
+    call s:place_sign_at(curlnum)
+    call add(s:signed, curlnum)
+  endif
+  call clap#handler#internal_navigate('down')
+endfunction
+
 function! clap#sign#disable_cursorline() abort
   call sign_unplace(s:sign_cur_group, {'buffer': g:clap.display.bufnr})
 endfunction

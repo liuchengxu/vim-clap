@@ -278,8 +278,7 @@ function! s:init_provider() abort
     throw 'clap:'.msg
   endfunction
 
-  function! provider.sink(selected) abort
-    call g:clap.start.goto_win()
+  function! provider._apply_sink(selected) abort
     let Sink = self._().sink
     if type(Sink) == v:t_func
       call Sink(a:selected)
@@ -288,6 +287,11 @@ function! s:init_provider() abort
     else
       call clap#error("sink can only be a funcref or string.")
     endif
+  endfunction
+
+  function! provider.sink(selected) abort
+    call g:clap.start.goto_win()
+    call clap#util#run_from_project_root_heuristic(self._apply_sink, a:selected)
   endfunction
 
   function! provider.sink_star(lines) abort
@@ -394,29 +398,33 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider._apply_source() abort
+    let Source = self._().source
+    let source_ty = type(Source)
+    if source_ty == v:t_func
+      let lines = Source()
+    elseif source_ty == v:t_list
+      " Use copy here, otherwise it could be one-off List.
+      let lines = copy(Source)
+    elseif source_ty == v:t_string
+      let lines = system(Source)
+      if v:shell_error
+        call clap#error('Fail to run '.Source)
+        return ['Fail to run '.Source]
+      endif
+      return split(lines, "\n")
+    else
+      return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
+    endif
+    return lines
+  endfunction
+
   function! provider.get_source() abort
     let provider_info = self._()
     " Catch any exceptions and show them in the display window.
     try
       if has_key(provider_info, 'source')
-        let Source = provider_info.source
-        let source_ty = type(Source)
-        if source_ty == v:t_func
-          let lines = Source()
-        elseif source_ty == v:t_list
-          " Use copy here, otherwise it could be one-off List.
-          let lines = copy(Source)
-        elseif source_ty == v:t_string
-          let lines = system(Source)
-          if v:shell_error
-            call clap#error('Fail to run '.Source)
-            return ['Fail to run '.Source]
-          endif
-          return split(lines, "\n")
-        else
-          return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
-        endif
-        return lines
+        return clap#util#run_from_project_root(self._apply_source)
       else
         return []
       endif

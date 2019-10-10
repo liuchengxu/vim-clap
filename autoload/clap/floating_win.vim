@@ -20,6 +20,8 @@ let g:clap.display.bufnr = s:display_bufnr
 
 let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 
+let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
+
 function! s:prepare_opts(row, col, width, height, ...) abort
   let base_opts = {
         \ 'row': a:row,
@@ -38,6 +40,16 @@ let s:display_opts = {
       \ 'col': &columns * 2 / 3 / 4,
       \ 'relative': 'editor',
       \ }
+
+function! s:reconfigure_display_opts() abort
+  let s:display_opts = {
+        \ 'width': &columns * 2 / 3,
+        \ 'height': &lines  * 1 / 3,
+        \ 'row': &lines / 3 - 1,
+        \ 'col': &columns * 2 / 3 / 4,
+        \ 'relative': 'editor',
+        \ }
+endfunction
 
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
@@ -109,10 +121,16 @@ function! g:clap#floating_win#input.open() abort
 
   silent let s:input_winid = nvim_open_win(s:input_bufnr, v:true, opts)
 
+  let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
+
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
-  call setbufvar(s:input_bufnr, '&completeopt', '')
+  let s:save_completeopt = &completeopt
+  call nvim_set_option('completeopt', '')
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:false)
+  endif
 
   let g:clap.input.winid = s:input_winid
 endfunction
@@ -164,6 +182,15 @@ function! clap#floating_win#open() abort
     autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
   augroup END
 
+  " This augroup should be retained after closing vim-clap for the benefit
+  " of next run.
+  if !exists('#ClapResize')
+    augroup ClapResize
+      autocmd!
+      autocmd VimResized * call s:reconfigure_display_opts()
+    augroup END
+  endif
+
   call g:clap.input.goto_win()
 
   call g:clap.provider.on_enter()
@@ -185,6 +212,11 @@ function! clap#floating_win#close() abort
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim
   noautocmd call clap#util#nvim_win_close_safe(g:clap.display.winid)
+
+  let &completeopt = s:save_completeopt
+  if s:exists_deoplete
+    call deoplete#custom#buffer_option('auto_complete', v:true)
+  endif
 endfunction
 
 let &cpo = s:save_cpo

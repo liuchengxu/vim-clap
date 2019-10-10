@@ -27,12 +27,11 @@ setlocal
   \ nowrap
 
 function! s:preview() abort
-  echom "preview unimplemented"
+  echom "preview is still unplemented"
 endfunction
 
 function! s:action(action) abort
-  let g:__clap_action = a:action
-  call s:sink()
+  echom a:action." is still unplemented"
 endfunction
 
 autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
@@ -58,6 +57,9 @@ inoremap <silent> <buffer> <Esc> <Esc>:call clap#handler#exit()<CR>
 
 inoremap <silent> <buffer> <C-j> <C-R>=clap#handler#navigate_result('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#handler#navigate_result('up')<CR>
+
+inoremap <silent> <buffer> <Down> <C-R>=clap#handler#navigate_result('down')<CR>
+inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
 
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
