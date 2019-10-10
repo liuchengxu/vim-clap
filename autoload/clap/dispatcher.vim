@@ -167,7 +167,7 @@ function! s:on_exit_common() abort
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
   else
-    call clap#sign#toggle_cursorline()
+    call clap#sign#reset_to_first_line()
   endif
   call clap#spinner#set_idle()
 endfunction
