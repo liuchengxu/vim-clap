@@ -76,6 +76,11 @@ function! s:on_typed_sync_impl() abort
   endif
 endfunction
 
+function! s:apply_source_async() abort
+  let cmd = g:clap.provider.source_async_or_default()
+  call clap#dispatcher#jobstart(cmd)
+endfunction
+
 function! s:on_typed_async_impl() abort
   call g:clap.display.clear_highlight()
   let l:cur_input = g:clap.input.get()
@@ -86,8 +91,7 @@ function! s:on_typed_async_impl() abort
 
   call g:clap.display.clear()
 
-  let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#jobstart(cmd)
+  call clap#util#run_from_project_root(function('s:apply_source_async'))
 
   call g:clap.display.add_highlight(l:cur_input)
 endfunction

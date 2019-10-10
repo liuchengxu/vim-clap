@@ -121,6 +121,8 @@ Command                                | List                               | Re
 
 - `g:clap_no_matches_msg`: String, "NO MATCHES FOUND", message to show when there is no matches found.
 
+- `g:clap_disable_run_from_project_root`: Bool, v:false, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
+
 - `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
@@ -131,8 +133,8 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 ### Movement
 
 - [x] Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
-- [x] Use <kbd>Ctrl-a</kbd> to go to the start of the input.
-- [x] Use <kbd>Ctrl-e</kbd> to go to the end of the input.
+- [x] Use <kbd>Ctrl-a</kbd>/<kbd>Home</kbd> to go to the start of the input.
+- [x] Use <kbd>Ctrl-e</kbd>/<kbd>End</kbd> to go to the end of the input.
 - [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
 - [x] Use <kbd>Ctrl-h</kbd> to delete previous character.
 - [ ] Use <kbd>Ctrl-d</kbd> to delete next character.

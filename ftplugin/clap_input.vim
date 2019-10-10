@@ -27,12 +27,11 @@ setlocal
   \ nowrap
 
 function! s:preview() abort
-  echom "preview unimplemented"
+  echom "preview is still unplemented"
 endfunction
 
 function! s:action(action) abort
-  let g:__clap_action = a:action
-  call s:sink()
+  echom a:action." is still unplemented"
 endfunction
 
 autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
