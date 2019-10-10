@@ -8,6 +8,12 @@ let s:old_input = ''
 let s:support_multi_selection = v:false
 let s:use_multi_selection = v:false
 
+let s:default_action = {
+  \ 'ctrl-t': 'tab split',
+  \ 'ctrl-x': 'split',
+  \ 'ctrl-v': 'vsplit',
+  \ }
+
 let s:lazy_load_size = 50
 
 let s:motions = {
@@ -156,6 +162,36 @@ function! clap#handler#select_toggle() abort
   let s:use_multi_selection = v:true
 
   return ''
+endfunction
+
+function! clap#handler#try_open(action) abort
+  if s:use_multi_selection
+        \ || !has_key(s:default_action, a:action)
+        \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
+    return
+  endif
+
+  let Sink = g:clap.provider._().sink
+
+  if type(Sink) == v:t_string
+        \ && index(['e', 'edit', 'edit!'], Sink) != -1
+
+    call g:clap.start.goto_win()
+    let curline = g:clap.display.getcurline()
+    let open = s:default_action[a:action]
+    execute open curline
+
+    call clap#_exit()
+
+  elseif g:clap.provider.support_open_action()
+
+    let g:clap.open_action = s:default_action[a:action]
+    let curline = g:clap.display.getcurline()
+    call g:clap.provider.sink(curline)
+
+    call remove(g:clap, 'open_action')
+    call clap#_exit()
+  endif
 endfunction
 
 let &cpo = s:save_cpo

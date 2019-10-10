@@ -31,18 +31,8 @@ let s:provider_alias = {
 
 let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {}))
 
-let s:default_action = {
-  \ 'ctrl-t': 'tab split',
-  \ 'ctrl-x': 'split',
-  \ 'ctrl-v': 'vsplit',
-  \ }
-
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
-
-function! clap#action_for(action) abort
-  return get(s:default_action, a:action, '')
-endfunction
 
 function! clap#error(msg) abort
   echohl ErrorMsg
@@ -78,10 +68,7 @@ function! s:_sink(selected) abort
   echom "_ unimplemented"
 endfunction
 
-function! clap#exit() abort
-  " NOTE: Need to go back to the start window
-  call g:clap.start.goto_win()
-
+function! clap#_exit() abort
   call g:clap.provider.on_exit()
   call g:clap.provider.jobstop()
 
@@ -103,6 +90,14 @@ function! clap#exit() abort
   let g:clap.tmps = []
 
   silent doautocmd <nomodeline> User ClapOnExit
+endfunction
+
+" Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
+function! clap#exit() abort
+  " NOTE: Need to go back to the start window
+  call g:clap.start.goto_win()
+
+  call clap#_exit()
 endfunction
 
 function! clap#complete(A, L, P) abort

@@ -98,9 +98,8 @@ function! s:grep_sink(selected) abort
   " NOTE: Important!
   call g:clap.start.goto_win()
 
-  if exists('g:__clap_action')
-    execute clap#action_for(g:__clap_action) fpath
-    unlet g:__clap_action
+  if has_key(g:clap, 'open_action')
+    execute g:clap.open_action fpath
   else
     " Cannot use noautocmd here as it would lose syntax, and ...
     execute 'edit' fpath
@@ -171,6 +170,8 @@ let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 let s:grep.converter = function('s:draw_icon')
 
 let s:grep.on_exit = function('s:grep_exit')
+
+let s:grep.support_open_action = v:true
 
 let g:clap#provider#grep# = s:grep
 

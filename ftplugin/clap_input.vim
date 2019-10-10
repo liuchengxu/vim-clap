@@ -63,8 +63,8 @@ inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
 
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
-inoremap <silent> <buffer> <C-t> <Esc>:call <SID>action('ctrl-t')<CR>
-inoremap <silent> <buffer> <C-x> <Esc>:call <SID>action('ctrl-x')<CR>
-inoremap <silent> <buffer> <C-v> <Esc>:call <SID>action('ctrl-v')<CR>
+inoremap <silent> <buffer> <C-t> <Esc>:call clap#handler#try_open('ctrl-t')<CR>
+inoremap <silent> <buffer> <C-x> <Esc>:call clap#handler#try_open('ctrl-x')<CR>
+inoremap <silent> <buffer> <C-v> <Esc>:call clap#handler#try_open('ctrl-v')<CR>
 
 inoremap <silent> <buffer> <C-p> <Esc>:call <SID>preview()<CR>
