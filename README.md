@@ -125,9 +125,12 @@ Command                                | List                               | Re
 
 - `g:clap_current_selection_sign_definition`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
 
+- `g:clap_selected_sign_definition`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
+
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
+
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
 
 ### Movement
