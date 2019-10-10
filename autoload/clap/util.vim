@@ -151,6 +151,14 @@ function! clap#util#run_from_project_root_heuristic(Run, ...) abort
   endif
 endfunction
 
+" Define CTRL-T/X/V by default.
+function! clap#util#define_open_action_mappings() abort
+  for k in keys(g:clap_open_action)
+    let lhs = substitute(toupper(k), "CTRL", "C", "")
+    execute 'inoremap <silent> <buffer> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
+  endfor
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']

@@ -34,6 +34,14 @@ let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 
+let s:default_action = {
+  \ 'ctrl-t': 'tab split',
+  \ 'ctrl-x': 'split',
+  \ 'ctrl-v': 'vsplit',
+  \ }
+
+let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
+
 function! clap#error(msg) abort
   echohl ErrorMsg
   echom '[vim-clap] '.a:msg

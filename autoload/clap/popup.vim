@@ -321,9 +321,6 @@ let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
-let s:move_manager["\<C-T>"] = { _winid -> clap#handler#try_open('ctrl-t') }
-let s:move_manager["\<C-X>"] = { _winid -> clap#handler#try_open('ctrl-x') }
-let s:move_manager["\<C-V>"] = { _winid -> clap#handler#try_open('ctrl-v') }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
 let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
@@ -335,6 +332,15 @@ let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
+
+function! s:define_open_action_filter() abort
+  for k in keys(g:clap_open_action)
+    let lhs = substitute(toupper(k), "CTRL", "C", "")
+    execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#handler#try_open("'.k.'") }'
+  endfor
+endfunction
+
+call s:define_open_action_filter()
 
 function! s:move_manager.printable(key) abort
   let s:insert_at_the_begin = v:false

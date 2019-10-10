@@ -127,6 +127,8 @@ Command                                | List                               | Re
 
 - `g:clap_selected_sign_definition`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
 
+- `g:clap_open_action`: Dict, `{ 'ctrl-t': 'tab split', 'ctrl-x': 'split', 'ctrl-v': 'vsplit' }`, extra key bindings for opening the selected file in a different way. NOTE: do not define a key binding which is conflicted with the other default bindings of vim-clap, and only `ctrl-*` is supported for now.
+
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.

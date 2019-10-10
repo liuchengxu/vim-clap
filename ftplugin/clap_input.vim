@@ -30,10 +30,6 @@ function! s:preview() abort
   echom "preview is still unplemented"
 endfunction
 
-function! s:action(action) abort
-  echom a:action." is still unplemented"
-endfunction
-
 autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
 
 " From vim-rsi
@@ -63,8 +59,6 @@ inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
 
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
-inoremap <silent> <buffer> <C-t> <Esc>:call clap#handler#try_open('ctrl-t')<CR>
-inoremap <silent> <buffer> <C-x> <Esc>:call clap#handler#try_open('ctrl-x')<CR>
-inoremap <silent> <buffer> <C-v> <Esc>:call clap#handler#try_open('ctrl-v')<CR>
+call clap#util#define_open_action_mappings()
 
 inoremap <silent> <buffer> <C-p> <Esc>:call <SID>preview()<CR>
