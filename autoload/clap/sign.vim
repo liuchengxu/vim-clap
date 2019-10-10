@@ -11,11 +11,11 @@ let s:sign_cur_group = 'clapCurrentSelected'
 let s:last_signed_id = -1
 
 if !exists('s:sign_inited')
-  call sign_define(s:sign_group, {
+  call sign_define(s:sign_group, get(g:, 'clap_selected_sign_definition', {
         \ 'text': ' >',
         \ 'texthl': "WarningMsg",
         \ "linehl": "ClapSelected"
-        \ })
+        \ }))
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign_definition', {
         \ 'text': '>>',
         \ 'texthl': "WarningMsg",
@@ -50,6 +50,20 @@ function! clap#sign#toggle_cursorline() abort
   let s:last_signed_id = curlnum
 endfunction
 
+function! clap#sign#reset_to_first_line() abort
+  if s:last_signed_id == 1
+    return
+  endif
+  if s:last_signed_id != -1
+    call s:unplace_cur_sign_at(s:last_signed_id)
+  endif
+  call g:clap.display.set_cursor(1, 1)
+  let curlnum = 1
+  let g:__clap_display_curlnum = curlnum
+  call s:place_cur_sign_at(curlnum)
+  let s:last_signed_id = curlnum
+endfunction
+
 function! clap#sign#toggle_cursorline_multi() abort
   let curlnum = g:clap.display.getcurlnum()
   let sign_idx = index(s:signed, curlnum)
@@ -72,11 +86,11 @@ function! clap#sign#toggle() abort
 
   let sign_idx = index(s:signed, curlnum)
   if sign_idx == -1
-    call sign_place(curlnum, s:sign_group, 'clapSelected', g:clap.display.bufnr, {'lnum': curlnum})
+    call s:place_sign_at(curlnum)
     call add(s:signed, curlnum)
   else
     let sign_id = s:signed[sign_idx]
-    call sign_unplace(s:sign_group, {'buffer': g:clap.display.bufnr, 'id': sign_id})
+    call s:unplace_sign_at(sign_id)
     unlet s:signed[sign_idx]
   endif
 

@@ -61,6 +61,10 @@ function! s:init_display() abort
 
   if s:is_nvim
 
+    function! display.set_cursor(lnum, col) abort
+      call nvim_win_set_cursor(self.winid, [a:lnum, a:col])
+    endfunction
+
     function! display.set_lines(lines) abort
       call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
     endfunction
@@ -99,6 +103,10 @@ function! s:init_display() abort
     endfunction
 
   else
+
+    function! display.set_cursor(lnum, col) abort
+      call win_execute(self.winid, 'call cursor(a:lnum, a:col)')
+    endfunction
 
     function! display.set_lines(lines) abort
       " silent is required to avoid the annoying --No lines in buffer--.
