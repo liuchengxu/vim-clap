@@ -105,7 +105,7 @@ function! s:init_display() abort
   else
 
     function! display.set_cursor(lnum, col) abort
-      call win_execute(self.winid, 'call cursor(a:lnum, a:col) | redraw')
+      call win_execute(self.winid, 'call cursor(a:lnum, a:col)')
     endfunction
 
     function! display.set_lines(lines) abort
