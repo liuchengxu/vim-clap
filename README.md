@@ -219,17 +219,18 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 For the non-pure-async providers, you could run it in async or sync way. By default vim-clap will choose the best strategy, running async for the source consisted of 5000+ lines or otherwise run it in sync way. [See the discussion about the non-pure-async providers](https://github.com/liuchengxu/vim-clap/issues/17#issue-501470657).
 
-Field          | Type                | Required      | Has default implementation
-:----          | :----               | :----         | :----
-`sink`         | Funcref             | **mandatory** | No
-`sink*`        | Funcref             | optional      | No
-`source`       | String/List/Funcref | **mandatory** | No
-`source_async` | String              | optional      | **Yes**
-`filter`       | Funcref             | **mandatory** | **Yes**
-`on_typed`     | Funcref             | **mandatory** | **Yes**
-`on_move`      | Funcref             | optional      | No
-`on_enter`     | Funcref             | optional      | No
-`on_exit`      | Funcref             | optional      | No
+Field                 | Type                | Required      | Has default implementation
+:----                 | :----               | :----         | :----
+`sink`                | Funcref             | **mandatory** | No
+`sink*`               | Funcref             | optional      | No
+`source`              | String/List/Funcref | **mandatory** | No
+`source_async`        | String              | optional      | **Yes**
+`filter`              | Funcref             | **mandatory** | **Yes**
+`on_typed`            | Funcref             | **mandatory** | **Yes**
+`on_move`             | Funcref             | optional      | No
+`on_enter`            | Funcref             | optional      | No
+`on_exit`             | Funcref             | optional      | No
+`support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -258,14 +259,15 @@ You have to provide `sink` and `source` option. The `source` field is indispensa
 
 ### Create pure async provider
 
-Field       | Type    | Required      | Has default implementation
-:----       | :----   | :----         | :----
-`sink`      | funcref | **mandatory** | No
-`on_typed`  | funcref | **mandatory** | No
-`on_move`   | funcref | optional      | No
-`on_enter`  | funcref | optional      | No
-`converter` | funcref | optional      | No
-`jobstop`   | funcref | **mandatory** | Yes
+Field                 | Type    | Required      | Has default implementation
+:----                 | :----   | :----         | :----
+`sink`                | funcref | **mandatory** | No
+`on_typed`            | funcref | **mandatory** | No
+`on_move`             | funcref | optional      | No
+`on_enter`            | funcref | optional      | No
+`converter`           | funcref | optional      | No
+`jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#jobstart(cmd)`
+`support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 
 - `on_typed`: reference to function to spawn an async job.
 - `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
