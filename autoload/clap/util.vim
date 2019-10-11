@@ -111,8 +111,11 @@ endfunction
 
 " Argument: Funcref to run as well as its args
 function! clap#util#run_from_project_root(Run, ...) abort
+  if get(g:, 'clap_disable_run_from_project_root', v:false)
+    return call(a:Run, a:000)
+  endif
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-  if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
+  if empty(git_root)
     let result = call(a:Run, a:000)
   else
     let save_cwd = getcwd()
