@@ -127,6 +127,8 @@ Command                                | List                               | Re
 
 - `g:clap_selected_sign_definition`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
 
+- `g:clap_open_action`: Dict, `{ 'ctrl-t': 'tab split', 'ctrl-x': 'split', 'ctrl-v': 'vsplit' }`, extra key bindings for opening the selected file in a different way. NOTE: do not define a key binding which is conflicted with the other default bindings of vim-clap, and only `ctrl-*` is supported for now.
+
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
@@ -145,7 +147,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
-- [ ] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split. (See #34)
+- [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 
 ### Execute some code during the process
 
@@ -217,17 +219,18 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 For the non-pure-async providers, you could run it in async or sync way. By default vim-clap will choose the best strategy, running async for the source consisted of 5000+ lines or otherwise run it in sync way. [See the discussion about the non-pure-async providers](https://github.com/liuchengxu/vim-clap/issues/17#issue-501470657).
 
-Field          | Type                | Required      | Has default implementation
-:----          | :----               | :----         | :----
-`sink`         | Funcref             | **mandatory** | No
-`sink*`        | Funcref             | optional      | No
-`source`       | String/List/Funcref | **mandatory** | No
-`source_async` | String              | optional      | **Yes**
-`filter`       | Funcref             | **mandatory** | **Yes**
-`on_typed`     | Funcref             | **mandatory** | **Yes**
-`on_move`      | Funcref             | optional      | No
-`on_enter`     | Funcref             | optional      | No
-`on_exit`      | Funcref             | optional      | No
+Field                 | Type                | Required      | Has default implementation
+:----                 | :----               | :----         | :----
+`sink`                | Funcref             | **mandatory** | No
+`sink*`               | Funcref             | optional      | No
+`source`              | String/List/Funcref | **mandatory** | No
+`source_async`        | String              | optional      | **Yes**
+`filter`              | Funcref             | **mandatory** | **Yes**
+`on_typed`            | Funcref             | **mandatory** | **Yes**
+`on_move`             | Funcref             | optional      | No
+`on_enter`            | Funcref             | optional      | No
+`on_exit`             | Funcref             | optional      | No
+`support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -256,14 +259,15 @@ You have to provide `sink` and `source` option. The `source` field is indispensa
 
 ### Create pure async provider
 
-Field       | Type    | Required      | Has default implementation
-:----       | :----   | :----         | :----
-`sink`      | funcref | **mandatory** | No
-`on_typed`  | funcref | **mandatory** | No
-`on_move`   | funcref | optional      | No
-`on_enter`  | funcref | optional      | No
-`converter` | funcref | optional      | No
-`jobstop`   | funcref | **mandatory** | Yes
+Field                 | Type    | Required      | Has default implementation
+:----                 | :----   | :----         | :----
+`sink`                | funcref | **mandatory** | No
+`on_typed`            | funcref | **mandatory** | No
+`on_move`             | funcref | optional      | No
+`on_enter`            | funcref | optional      | No
+`converter`           | funcref | optional      | No
+`jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#jobstart(cmd)`
+`support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 
 - `on_typed`: reference to function to spawn an async job.
 - `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).

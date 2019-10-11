@@ -333,6 +333,15 @@ let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
+function! s:define_open_action_filter() abort
+  for k in keys(g:clap_open_action)
+    let lhs = substitute(toupper(k), "CTRL", "C", "")
+    execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#handler#try_open("'.k.'") }'
+  endfor
+endfunction
+
+call s:define_open_action_filter()
+
 function! s:move_manager.printable(key) abort
   let s:insert_at_the_begin = v:false
   if s:input == '' || s:cursor_idx == strlen(s:input)

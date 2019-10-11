@@ -341,6 +341,10 @@ function! s:init_provider() abort
     return has_key(self._(), 'sink*')
   endfunction
 
+  function! provider.support_open_action() abort
+    return get(self._(), 'support_open_action', v:false)
+  endfunction
+
   function! provider.apply_args() abort
     if !empty(g:clap.provider.args)
           \ && g:clap.provider.args[0] !~# '^+'
@@ -348,6 +352,8 @@ function! s:init_provider() abort
         call feedkeys(join(g:clap.provider.args, ' '))
       else
         call g:clap.input.set(join(g:clap.provider.args, ' '))
+        " Move the cursor to the end.
+        call feedkeys("\<C-E>", 'xt')
       endif
       call clap#indicator#set_matches('')
       call g:clap.provider.on_typed()
