@@ -6,6 +6,7 @@ set cpo&vim
 
 let s:is_nvim = has('nvim')
 let s:default_priority = 10
+let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
@@ -384,8 +385,7 @@ function! s:init_provider() abort
       let tmp = tempname()
       if writefile(lines, tmp) == 0
         let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        let cat_or_type = has('win32') ? 'type' : 'cat'
-        let cmd = printf('%s %s | %s', cat_or_type, tmp, ext_filter_cmd)
+        let cmd = printf('%s %s | %s', s:cat_or_type, tmp, ext_filter_cmd)
         call add(g:clap.tmps, tmp)
         return cmd
       else
