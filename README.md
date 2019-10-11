@@ -147,7 +147,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
-- [ ] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split. (See #34)
+- [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 
 ### Execute some code during the process
 
