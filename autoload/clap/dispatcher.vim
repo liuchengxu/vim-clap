@@ -24,7 +24,7 @@ if has('nvim')
 
       " Converter
       if s:has_converter
-        let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
+        let to_append = map(to_append, 's:Converter(v:val)')
       endif
 
       call g:clap.display.append_lines(to_append)
@@ -34,7 +34,7 @@ if has('nvim')
     else
       let s:loaded_size = line_count + len(raw_output)
       if s:has_converter
-        let raw_output = map(raw_output, 'g:clap.provider._().converter(v:val)')
+        let raw_output = map(raw_output, 's:Converter(v:val)')
       endif
       call g:clap.display.append_lines(raw_output)
     endif
@@ -90,7 +90,7 @@ else
     let to_append = a:preload
 
     if s:has_converter
-      let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
+      let to_append = map(to_append, 's:Converter(v:val)')
     endif
 
     call g:clap.display.append_lines(to_append)
@@ -185,7 +185,12 @@ function! clap#dispatcher#jobstart(cmd) abort
   let s:cache_size = 0
   let s:loaded_size = 0
   let s:preload_is_complete = v:false
-  let s:has_converter = has_key(g:clap.provider._(), 'converter')
+  if has_key(g:clap.provider._(), 'converter')
+    let s:has_converter = v:true
+    let s:Converter = g:clap.provider._().converter
+  else
+    let s:has_converter = v:false
+  endif
 
   let s:vim_output = []
   let g:clap.display.cache = []
