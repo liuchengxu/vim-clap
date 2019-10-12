@@ -23,20 +23,19 @@ let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 " |----------------------------------------|
 " |              preview                   |
 "  ----------------------------------------
-let s:display_opts = {
+function! s:prepare_display_opts() abort
+  return {
       \ 'width': &columns * 2 / 3,
       \ 'height': &lines  * 1 / 3,
       \ 'row': &lines / 3 - 1,
       \ 'col': &columns * 2 / 3 / 4,
       \ }
+endfunction
+
+let s:display_opts = s:prepare_display_opts()
 
 function! s:reconfigure_display_opts() abort
-  let s:display_opts = {
-        \ 'width': &columns * 2 / 3,
-        \ 'height': &lines  * 1 / 3,
-        \ 'row': &lines / 3 - 1,
-        \ 'col': &columns * 2 / 3 / 4,
-        \ }
+  let s:display_opts = s:prepare_display_opts()
 endfunction
 
 function! s:create_display() abort

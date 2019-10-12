@@ -38,6 +38,7 @@ if has('nvim')
       endif
       call g:clap.display.append_lines(raw_output)
     endif
+
   endfunction
 
   function! s:append_output(data) abort
