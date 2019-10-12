@@ -22,6 +22,8 @@ function! s:marks.sink(line)
   execute 'normal! `'.matchstr(a:line, '\S').'zz'
 endfunction
 
+let s:marks.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_marks') }
+
 let g:clap#provider#marks# = s:marks
 
 let &cpo = s:save_cpo

@@ -145,7 +145,7 @@ function! s:init_display() abort
       " An empty buffer consists of one empty line. If you append, this line is still there.
       " https://github.com/vim/vim/issues/5016
       " Thus this is unavoidable.
-      if empty(getbufline(self.bufnr, '$')[0])
+      if empty(get(getbufline(self.bufnr, '$'), 0, ''))
         silent call deletebufline(self.bufnr, '$')
       endif
     endfunction

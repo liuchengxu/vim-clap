@@ -78,7 +78,7 @@ endfunction
 
 function! s:apply_source_async() abort
   let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#jobstart(cmd)
+  call clap#dispatcher#job_start(cmd)
 endfunction
 
 function! s:on_typed_async_impl() abort
@@ -113,7 +113,8 @@ function! clap#impl#on_typed() abort
       call s:on_typed_async_impl()
     else
       " Choose the suitable way according to the source size.
-      if len(g:clap.provider.get_source()) > s:async_threshold
+      if type(g:clap.provider._().sink) == v:t_string
+            \ || len(g:clap.provider.get_source()) > s:async_threshold
         call s:on_typed_async_impl()
       else
         call s:on_typed_sync_impl()
