@@ -33,22 +33,20 @@ function! s:prepare_opts(row, col, width, height, ...) abort
   return extend(base_opts, get(a:000, 0, {}))
 endfunction
 
-let s:display_opts = {
-      \ 'width': &columns * 2 / 3,
-      \ 'height': &lines  * 1 / 3,
-      \ 'row': &lines / 3 - 1,
-      \ 'col': &columns * 2 / 3 / 4,
-      \ 'relative': 'editor',
-      \ }
-
-function! s:reconfigure_display_opts() abort
-  let s:display_opts = {
+function! s:prepare_display_opts() abort
+  return {
         \ 'width': &columns * 2 / 3,
         \ 'height': &lines  * 1 / 3,
         \ 'row': &lines / 3 - 1,
         \ 'col': &columns * 2 / 3 / 4,
         \ 'relative': 'editor',
         \ }
+endfunction
+
+let s:display_opts = s:prepare_display_opts()
+
+function! s:reconfigure_display_opts() abort
+  let s:display_opts = s:prepare_display_opts()
 endfunction
 
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'

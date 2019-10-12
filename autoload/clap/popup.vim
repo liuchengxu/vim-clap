@@ -23,20 +23,19 @@ let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 " |----------------------------------------|
 " |              preview                   |
 "  ----------------------------------------
-let s:display_opts = {
+function! s:prepare_display_opts() abort
+  return {
       \ 'width': &columns * 2 / 3,
       \ 'height': &lines  * 1 / 3,
       \ 'row': &lines / 3 - 1,
       \ 'col': &columns * 2 / 3 / 4,
       \ }
+endfunction
+
+let s:display_opts = s:prepare_display_opts()
 
 function! s:reconfigure_display_opts() abort
-  let s:display_opts = {
-        \ 'width': &columns * 2 / 3,
-        \ 'height': &lines  * 1 / 3,
-        \ 'row': &lines / 3 - 1,
-        \ 'col': &columns * 2 / 3 / 4,
-        \ }
+  let s:display_opts = s:prepare_display_opts()
 endfunction
 
 function! s:create_display() abort
@@ -205,17 +204,6 @@ function! s:callback(_id, _result) abort
   call clap#handler#exit()
 endfunction
 
-function! s:remove_last_item(str) abort
-  if len(a:str) < 2
-    return ''
-  endif
-  let s = ''
-  for idx in range(0, len(a:str)-2)
-    let s .= a:str[idx]
-  endfor
-  return s
-endfunction
-
 function! s:mock_input() abort
   if s:input == ''
         \ || type(s:cursor_idx) ==# v:t_string
@@ -295,23 +283,44 @@ function! s:move_manager.ctrl_e(_winid) abort
   call s:mock_input()
 endfunction
 
-" FIXME this is still problematic.
-function! s:move_manager.bs(_winid) abort
-  if empty(s:input) || s:cursor_idx == 0
-    return 1
-  endif
-  let to_truncate = s:input[:s:cursor_idx]
-  let truncated = s:remove_last_item(to_truncate)
-  let s:input = truncated . s:input[s:cursor_idx+1:]
-  let s:cursor_idx -= 1
-  if s:cursor_idx < 0
-    let s:cursor_idx = 0
-  endif
+function! s:apply_on_typed() abort
   if g:clap.provider.is_sync()
     let g:__clap_should_refilter = v:true
   endif
   call g:clap.provider.on_typed()
   call s:mock_input()
+endfunction
+
+function! s:move_manager.bs(_winid) abort
+  if empty(s:input) || s:cursor_idx == 0
+    return 1
+  endif
+  if s:cursor_idx == 1
+    let s:input = s:input[1:]
+  else
+    let truncated = s:input[:s:cursor_idx-2]
+    let remained = s:input[s:cursor_idx:]
+    let s:input = truncated.remained
+  endif
+  let s:cursor_idx -= 1
+  if s:cursor_idx < 0
+    let s:cursor_idx = 0
+  endif
+  call s:apply_on_typed()
+endfunction
+
+function! s:move_manager.ctrl_d(_winid) abort
+  if empty(s:input) || s:cursor_idx == strlen(s:input)
+    return
+  endif
+  if s:cursor_idx == 0
+    let s:input = s:input[1:]
+  else
+    let remained = s:input[:s:cursor_idx-1]
+    let truncated = s:input[s:cursor_idx+1:]
+    let s:input = remained.truncated
+  endif
+  call s:apply_on_typed()
 endfunction
 
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
@@ -331,6 +340,7 @@ let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
+let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:define_open_action_filter() abort
