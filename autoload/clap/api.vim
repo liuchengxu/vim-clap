@@ -58,7 +58,7 @@ function! s:init_display() abort
   let display.setbufvar = function('s:_setbufvar')
   let display.setbufvar_batch = function('s:_setbufvar_batch')
   let display.cache = []
-  let display.preload_capacity = 3 * &lines
+  let display.preload_capacity = 2 * &lines
 
   if s:is_nvim
 
