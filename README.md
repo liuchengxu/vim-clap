@@ -46,6 +46,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Support multi-selection, use vim's regexp as filter by default.
 - [x] Support the preview functionality when navigating the result list.
 - [x] Support builtin match and external fuzzy filter tools.
+- [ ] Support searching by multiple providers simultaneously.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
 - [ ] More UI layout.
