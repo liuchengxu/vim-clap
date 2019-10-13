@@ -31,7 +31,7 @@ function! s:matchaddpos(lnum) abort
   let w:clap_mark_hi_id = matchaddpos('Search', [[a:lnum]])
 endfunction
 
-function! s:marks.on_move() abort
+function! s:on_move_impl() abort
   let curline = g:clap.display.getcurline()
 
   if 'mark line  col file/text' == curline
@@ -54,10 +54,12 @@ function! s:marks.on_move() abort
   endif
 
   let l:match_hi = v:true
+
   " file_text is the origin line with leading white spaces trimmed.
   if !empty(origin_line) && clap#util#trim_leading(origin_line[0]) == file_text
 
     let lines = getbufline(g:clap.start.bufnr, start, line+5)
+    let origin_bufnr = g:clap.start.bufnr
 
   elseif filereadable(expand(file_text))
 
@@ -68,6 +70,7 @@ function! s:marks.on_move() abort
     endif
 
     let lines = getbufline(bufnr, start, line+5)
+    let origin_bufnr = bufnr
 
   else
     let lines = [file_text]
@@ -77,17 +80,37 @@ function! s:marks.on_move() abort
   call g:clap.preview.show(lines)
 
   if l:match_hi
-    if has('nvim')
-      noautocmd call win_gotoid(g:clap.preview.winid)
-      call s:matchaddpos(match_start)
-      noautocmd call win_gotoid(g:clap.input.winid)
-    else
-      " Too many plugins use redir, so we can't add highlight for vim for now.
-      " E930: Cannot use :redir inside execute()
-      " call win_execute(g:clap.preview.winid, "call s:matchaddpos(l:match_start)")
+    if exists('l:origin_bufnr')
+          \ && !empty(getbufvar(l:origin_bufnr, '&filetype'))
+      let ft = getbufvar(l:origin_bufnr, '&filetype')
+      call g:clap.preview.setbufvar('&ft', ft)
     endif
+
+    call s:execute_matchaddpos(l:match_start)
   endif
 endfunction
+
+if has('nvim')
+  function! s:execute_matchaddpos(lnum) abort
+    noautocmd call win_gotoid(g:clap.preview.winid)
+    call s:matchaddpos(a:lnum)
+    noautocmd call win_gotoid(g:clap.input.winid)
+  endfunction
+
+  function! s:marks.on_move() abort
+    call s:on_move_impl()
+  endfunction
+else
+  function! s:execute_matchaddpos(lnum) abort
+    call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
+  endfunction
+  function! s:marks.on_move() abort
+    call s:on_move_impl()
+    " Too many plugins use redir, so we can't add highlight for vim for now.
+    " E930: Cannot use :redir inside execute()
+    " call win_execute(g:clap.preview.winid, "call s:matchaddpos(l:match_start)")
+  endfunction
+endif
 
 let s:marks.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_marks') }
 

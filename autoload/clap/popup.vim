@@ -107,6 +107,7 @@ function! s:create_preview() abort
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
+    let g:clap#popup#preview.bufnr = winbufnr(s:preview_winid)
   endif
 endfunction
 
@@ -324,11 +325,11 @@ function! s:move_manager.ctrl_d(_winid) abort
   call s:apply_on_typed()
 endfunction
 
-let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("down")') }
+let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("down")') }
 let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
-let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'call clap#handler#navigate_result("up")') }
+let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("up")') }
 let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'call clap#handler#select_toggle()') }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#select_toggle()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a

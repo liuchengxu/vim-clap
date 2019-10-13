@@ -149,6 +149,7 @@ function! clap#floating_win#preview.show(lines) abort
     call setbufvar(s:preview_bufnr, '&signcolumn', 'no')
 
     let g:clap#floating_win#preview.winid = s:preview_winid
+    let g:clap#floating_win#preview.bufnr = s:preview_bufnr
   endif
   call clap#util#nvim_buf_set_lines(s:preview_bufnr, a:lines)
 endfunction

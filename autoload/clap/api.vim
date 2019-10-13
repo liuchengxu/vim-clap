@@ -477,6 +477,15 @@ function! s:init_provider() abort
   return provider
 endfunction
 
+function! s:inject_base_api(dict) abort
+  let dict = a:dict
+  let dict.goto_win = function('s:_goto_win')
+  let dict.get_lines = function('s:_get_lines')
+  let dict.getbufvar = function('s:_getbufvar')
+  let dict.setbufvar = function('s:_setbufvar')
+  let dict.setbufvar_batch = function('s:_setbufvar_batch')
+endfunction
+
 function! clap#api#bake() abort
   let g:clap = {}
   let g:clap.is_busy = 0
@@ -485,10 +494,7 @@ function! clap#api#bake() abort
   let g:clap.spinner = {}
 
   let g:clap.start = {}
-  let g:clap.start.goto_win = function('s:_goto_win')
-  let g:clap.start.get_lines = function('s:_get_lines')
-  let g:clap.start.getbufvar = function('s:_getbufvar')
-  let g:clap.start.setbufvar = function('s:_setbufvar')
+  call s:inject_base_api(g:clap.start)
 
   let g:clap.input = s:init_input()
   let g:clap.display = s:init_display()
@@ -507,6 +513,8 @@ function! clap#api#bake() abort
     let g:clap.open_win = function('clap#popup#open')
     let g:clap.close_win = function('clap#popup#close')
   endif
+
+  call s:inject_base_api(g:clap.preview)
 endfunction
 
 let &cpo = s:save_cpo
