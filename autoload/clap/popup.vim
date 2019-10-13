@@ -106,6 +106,7 @@ function! s:create_preview() abort
           \ })
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
+    let g:clap#popup#preview.winid = s:preview_winid
   endif
 endfunction
 

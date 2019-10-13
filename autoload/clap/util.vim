@@ -162,6 +162,10 @@ function! clap#util#define_open_action_mappings() abort
   endfor
 endfunction
 
+function! clap#util#trim_leading(str) abort
+  return substitute(a:str, '^\s*', '', '')
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']

@@ -147,6 +147,8 @@ function! clap#floating_win#preview.show(lines) abort
     call setbufvar(s:preview_bufnr, '&number', 0)
     call setbufvar(s:preview_bufnr, '&cursorline', 0)
     call setbufvar(s:preview_bufnr, '&signcolumn', 'no')
+
+    let g:clap#floating_win#preview.winid = s:preview_winid
   endif
   call clap#util#nvim_buf_set_lines(s:preview_bufnr, a:lines)
 endfunction
@@ -177,7 +179,7 @@ function! clap#floating_win#open() abort
 
   augroup ClapEnsureAllClosed
     autocmd!
-    autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
+    " autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
   augroup END
 
   " This augroup should be retained after closing vim-clap for the benefit
