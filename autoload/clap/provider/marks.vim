@@ -51,6 +51,11 @@ function! s:marks.on_move() abort
   endif
 
   let matched = matchlist(curline, '^.*\([a-zA-Z0-9[`''"\^\]\.]\)\s\+\(\d\+\)\s\+\(\d\+\)\s\+\(.*\)$')
+
+  if len(matched) < 5
+    return
+  endif
+
   let line = matched[2]
   let col = matched[3]
   let file_text = matched[4]

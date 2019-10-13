@@ -38,6 +38,11 @@ function! s:reconfigure_display_opts() abort
   let s:display_opts = s:prepare_display_opts()
 endfunction
 
+function! s:execute_in_display() abort
+  let w:clap_no_matches_id = matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern)
+  setlocal signcolumn=yes
+endfunction
+
 function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let col = &signcolumn ==# 'yes' ? 2 : 1
@@ -61,8 +66,7 @@ function! s:create_display() abort
 
     let g:clap#popup#display.width = &columns * 2 / 3
 
-    call win_execute(s:display_winid, 'let w:clap_no_matches_id = matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern)')
-    call win_execute(s:display_winid, 'setlocal signcolumn=yes')
+    call win_execute(s:display_winid, 'call s:execute_in_display()')
     call popup_hide(s:display_winid)
 
     let g:clap.display.winid = s:display_winid
@@ -167,6 +171,14 @@ function! s:adjust_spinner() abort
   endif
 endfunction
 
+function! s:execute_in_input() abort
+  let s:save_completeopt = &completeopt
+  set completeopt=
+  setlocal nonumber
+  let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])
+  let b:coc_suggest_disable = 1
+endfunction
+
 function! s:create_input() abort
   if !exists('s:input_winid') || empty(popup_getpos(s:input_winid))
     let pos = popup_getpos(s:display_winid)
@@ -180,11 +192,8 @@ function! s:create_input() abort
     let pos.zindex = 100
     let s:input_winid = popup_create([], pos)
     call popup_hide(s:input_winid)
-    call win_execute(s:input_winid, 'setlocal nonumber')
-    call win_execute(s:input_winid, 'let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])')
-    let s:save_completeopt = &completeopt
-    call win_execute(s:input_winid, 'set completeopt=')
-    call win_execute(s:input_winid, 'let b:coc_suggest_disable = 1')
+
+    call win_execute(s:input_winid, 'call s:execute_in_input()')
     if s:exists_deoplete
       call deoplete#custom#buffer_option('auto_complete', v:false)
     endif
