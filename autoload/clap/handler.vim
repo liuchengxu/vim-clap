@@ -74,6 +74,14 @@ function! s:navigate(direction) abort
   call clap#sign#toggle_cursorline()
 endfunction
 
+function! s:on_move_safe() abort
+  " try
+    call g:clap.provider.on_move()
+  " catch
+    " call g:clap.preview.show([v:exception])
+  " endtry
+endfunction
+
 if has('nvim')
   function! clap#handler#navigate_result(direction) abort
     call g:clap.display.goto_win()
@@ -82,7 +90,7 @@ if has('nvim')
 
     call g:clap.input.goto_win()
 
-    call g:clap.provider.on_move()
+    call s:on_move_safe()
 
     " Must return '' explicitly
     return ''
@@ -97,7 +105,7 @@ if has('nvim')
 else
   function! clap#handler#navigate_result(direction) abort
     call s:navigate(a:direction)
-    call g:clap.provider.on_move()
+    call s:on_move_safe()
   endfunction
 
   function! clap#handler#internal_navigate(direction) abort

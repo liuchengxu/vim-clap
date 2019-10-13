@@ -26,6 +26,21 @@ function! s:blink.clear() dict abort
   endif
 endfunction
 
+
+" Try to load the file into a buffer given the file path.
+" This could be used for the preview purpose.
+function! clap#util#try_load_file(file) abort
+  if filereadable(expand(a:file))
+    let bufnr = bufadd(a:file)
+    if !bufloaded(bufnr)
+      silent call bufload(bufnr)
+    endif
+    return bufnr
+  else
+    return v:null
+  endif
+endfunction
+
 " Blink current line under cursor, originally from junegunn/vim-slash.
 function! clap#util#blink(times, delay, ...) abort
   let s:blink.ticks = 2 * a:times
@@ -160,6 +175,10 @@ function! clap#util#define_open_action_mappings() abort
     let lhs = substitute(toupper(k), "CTRL", "C", "")
     execute 'inoremap <silent> <buffer> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
   endfor
+endfunction
+
+function! clap#util#trim_leading(str) abort
+  return substitute(a:str, '^\s*', '', '')
 endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48

@@ -172,8 +172,13 @@ hi default link ClapMatches Search
 
 " By default ClapQuery will use the bold fg of Normal and the same bg of ClapInput
 
-hi ClapSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-hi ClapCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
+hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
+hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
+hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
+
+hi default link ClapPreview          ClapDefaultPreview
+hi default link ClapSelected         ClapDefaultSelected
+hi default link ClapCurrentSelection ClapDefaultCurrentSelection
 ```
 
 If you want a different highlight for the matches found, try:
@@ -267,14 +272,14 @@ Field                 | Type    | Required      | Has default implementation
 `on_move`             | funcref | optional      | No
 `on_enter`            | funcref | optional      | No
 `converter`           | funcref | optional      | No
-`jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#jobstart(cmd)`
+`jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#job_start(cmd)`
 `support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 
 - `on_typed`: reference to function to spawn an async job.
 - `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
-- `jobstop`: Reference to function to stop the current job of an async provider. By default you could utilize `clap#dispatcher#jobstart(cmd)` to start a new job, and then the job stop part will be handled by vim-clap as well, otherwise you'll have to take care of the `jobstart` and `jobstop` on your own.
+- `jobstop`: Reference to function to stop the current job of an async provider. By default you could utilize `clap#dispatcher#job_start(cmd)` to start a new job, and then the job stop part will be handled by vim-clap as well, otherwise you'll have to take care of the `jobstart` and `jobstop` on your own.
 
-You must provide `sink`, `on_typed` option. It's a bit of complex to write an asynchornous provider, you'll need to prepare the command for spawning the job and overal workflow, although you could use `clap#dispatcher#jobstart(cmd)` to let vim-clap deal with the job control and display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
+You must provide `sink`, `on_typed` option. It's a bit of complex to write an asynchornous provider, you'll need to prepare the command for spawning the job and overal workflow, although you could use `clap#dispatcher#job_start(cmd)` to let vim-clap deal with the job control and display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
 
 ### Register provider
 

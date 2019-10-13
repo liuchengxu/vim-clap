@@ -123,9 +123,11 @@ function! s:init_hi_groups() abort
   call s:hi_display_invisible()
   autocmd ColorScheme * call s:hi_display_invisible()
 
+  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+
   if !hlexists('ClapPreview')
-    execute 'hi default link ClapPreview' s:preview_defaualt_hi_group
-    let s:preview_group = s:preview_defaualt_hi_group
+    hi default link ClapPreview ClapDefaultPreview
+    let s:preview_group = 'ClapDefaultPreview'
   else
     let s:preview_group = 'ClapPreview'
   endif

@@ -90,6 +90,7 @@ function! g:clap#floating_win#display.compact_if_undersize() abort
     let opts.height = s:display_opts.height
   endif
   call nvim_win_set_config(s:display_winid, opts)
+  call s:try_adjust_preview()
 endfunction
 
 function! g:clap#floating_win#spinner.open() abort
@@ -133,6 +134,15 @@ function! g:clap#floating_win#input.open() abort
   let g:clap.input.winid = s:input_winid
 endfunction
 
+function! s:try_adjust_preview() abort
+  if exists('s:preview_winid')
+    let preview_opts = nvim_win_get_config(s:preview_winid)
+    let opts = nvim_win_get_config(s:display_winid)
+    let preview_opts.row = opts.row + opts.height
+    call nvim_win_set_config(s:preview_winid, preview_opts)
+  endif
+endfunction
+
 function! clap#floating_win#preview.show(lines) abort
   if !exists('s:preview_winid')
     let opts = nvim_win_get_config(s:display_winid)
@@ -147,6 +157,9 @@ function! clap#floating_win#preview.show(lines) abort
     call setbufvar(s:preview_bufnr, '&number', 0)
     call setbufvar(s:preview_bufnr, '&cursorline', 0)
     call setbufvar(s:preview_bufnr, '&signcolumn', 'no')
+
+    let g:clap#floating_win#preview.winid = s:preview_winid
+    let g:clap#floating_win#preview.bufnr = s:preview_bufnr
   endif
   call clap#util#nvim_buf_set_lines(s:preview_bufnr, a:lines)
 endfunction
@@ -177,7 +190,7 @@ function! clap#floating_win#open() abort
 
   augroup ClapEnsureAllClosed
     autocmd!
-    autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
+    " autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
   augroup END
 
   " This augroup should be retained after closing vim-clap for the benefit

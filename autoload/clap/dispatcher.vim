@@ -4,6 +4,9 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:job_timer = -1
+let s:dispatcher_delay = 300
+
 if has('nvim')
 
   function! s:apply_append_or_cache(raw_output) abort
@@ -130,7 +133,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    call g:clap.abort(['channel: '.a:channel, 'message: '.a:message, 'cmd: '.s:executed_cmd])
+    " call g:clap.abort(['channel: '.a:channel, 'message: '.a:message, 'cmd: '.s:executed_cmd])
   endfunction
 
   function! s:close_cb(_channel) abort
@@ -181,11 +184,24 @@ function! s:has_no_matches() abort
   endif
 endfunction
 
-" Start a job given the command.
-function! clap#dispatcher#jobstart(cmd) abort
+function! s:apply_job_start(_timer) abort
+  call clap#util#run_from_project_root(function('s:job_start'), s:cmd)
+
+  let s:executed_cmd = strftime("%Y-%m-%d %H:%M:%S").' '.s:cmd
+endfunction
+
+function! s:prepare_job_start(cmd) abort
+  call s:jobstop()
+
   let s:cache_size = 0
   let s:loaded_size = 0
+  let g:clap.display.cache = []
   let s:preload_is_complete = v:false
+
+  let s:cmd = a:cmd
+
+  let s:vim_output = []
+
   if has_key(g:clap.provider._(), 'converter')
     let s:has_converter = v:true
     let s:Converter = g:clap.provider._().converter
@@ -193,14 +209,26 @@ function! clap#dispatcher#jobstart(cmd) abort
     let s:has_converter = v:false
   endif
 
-  let s:vim_output = []
-  let g:clap.display.cache = []
+endfunction
 
-  call s:jobstop()
+function! s:job_strart_with_delay() abort
+  if s:job_timer != -1
+    call timer_stop(s:job_timer)
+  endif
 
-  call clap#util#run_from_project_root(function('s:job_start'), a:cmd)
+  let s:job_timer = timer_start(s:dispatcher_delay, function('s:apply_job_start'))
+endfunction
 
-  let s:executed_cmd = strftime("%Y-%m-%d %H:%M:%S").' '.a:cmd
+" Start a job immediately given the command.
+function! clap#dispatcher#job_start(cmd) abort
+  call s:prepare_job_start(a:cmd)
+  call s:apply_job_start('')
+endfunction
+
+" Start a job with a delay given the command.
+function! clap#dispatcher#job_start_with_delay(cmd) abort
+  call s:prepare_job_start(a:cmd)
+  call s:job_strart_with_delay()
 endfunction
 
 function! clap#dispatcher#jobstop() abort
