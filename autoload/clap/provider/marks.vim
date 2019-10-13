@@ -89,6 +89,7 @@ function! s:marks.on_move() abort
   else
     let bufnr = clap#util#try_load_file(file_text)
     if bufnr isnot v:null
+      " FIXME lines is empty at times.
       let lines = getbufline(bufnr, start, line + 5)
       let origin_bufnr = bufnr
     else
