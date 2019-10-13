@@ -84,6 +84,17 @@ function! g:clap#popup#display.compact_if_undersize() abort
     let pos.maxheight = s:display_opts.height
   endif
   call popup_move(s:display_winid, pos)
+
+  call s:try_adjust_preview()
+endfunction
+
+function! s:try_adjust_preview() abort
+  if exists('s:preview_winid') && !empty(popup_getpos(s:preview_winid))
+    let pos = popup_getpos(s:display_winid)
+    let preview_pos = popup_getpos(s:preview_winid)
+    let preview_pos.line = pos.line + pos.height
+    call popup_move(s:preview_winid, preview_pos)
+  endif
 endfunction
 
 function! s:create_preview() abort
@@ -92,16 +103,14 @@ function! s:create_preview() abort
     let col = pos.col
     let line = pos.line + pos.height
     let minwidth = pos.width
-    " If the preview win has border, then minwidth - 2.
     let s:preview_winid = popup_create([], #{
           \ zindex: 100,
           \ col: col,
           \ line: line,
-          \ minwidth: minwidth - 2,
-          \ maxwidth: minwidth - 2,
+          \ minwidth: minwidth,
+          \ maxwidth: minwidth,
           \ wrap: v:false,
           \ scrollbar: 0,
-          \ border: [1, 1, 1, 1],
           \ highlight: 'ClapPreview',
           \ })
     call popup_hide(s:preview_winid)
@@ -325,6 +334,8 @@ function! s:move_manager.ctrl_d(_winid) abort
   call s:apply_on_typed()
 endfunction
 
+" noautocmd is neccessary in that too many plugins use redir, otherwise we'll
+" see E930: Cannot use :redir inside execute().
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("down")') }
 let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
 let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("up")') }
