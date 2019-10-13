@@ -37,9 +37,18 @@ if has('nvim')
     call s:matchaddpos(a:lnum)
     noautocmd call win_gotoid(g:clap.input.winid)
   endfunction
+
+  function! s:render_syntax(ft) abort
+    call g:clap.preview.setbufvar('&ft', a:ft)
+  endfunction
 else
   function! s:execute_matchaddpos(lnum) abort
     call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
+  endfunction
+
+  function! s:render_syntax(ft) abort
+    " vim using noautocmd in win_execute, hence we have to load the syntax file manually.
+    call win_execute(g:clap.preview.winid, 'runtime syntax/'.a:ft.'.vim')
   endfunction
 endif
 
@@ -73,32 +82,31 @@ function! s:marks.on_move() abort
   let should_add_hi = v:true
 
   " file_text is the origin line with leading white spaces trimmed.
-  if !empty(origin_line) && clap#util#trim_leading(origin_line[0]) == file_text
+  if !empty(origin_line)
+        \ && clap#util#trim_leading(origin_line[0]) == file_text
     let lines = getbufline(g:clap.start.bufnr, start, line + 5)
     let origin_bufnr = g:clap.start.bufnr
-
-  elseif filereadable(expand(file_text))
-    let bufnr = bufadd(file_text)
-
-    if !bufloaded(bufnr)
-      silent call bufload(bufnr)
-    endif
-
-    let lines = getbufline(bufnr, start, line + 5)
-    let origin_bufnr = bufnr
-
   else
-    let lines = [file_text]
-    let should_add_hi = v:false
+    let bufnr = clap#util#try_load_file(file_text)
+    if bufnr isnot v:null
+      let lines = getbufline(bufnr, start, line + 5)
+      let origin_bufnr = bufnr
+    else
+      let lines = [file_text]
+      let should_add_hi = v:false
+    endif
   endif
 
   call g:clap.preview.show(lines)
 
   if should_add_hi
     if exists('l:origin_bufnr')
-      let origin_ft = getbufvar(l:origin_bufnr, '&filetype')
-      if !empty(origin_ft)
-        call g:clap.preview.setbufvar('&ft', origin_ft)
+      let ft = getbufvar(l:origin_bufnr, '&filetype')
+      if empty(ft)
+        let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
+      endif
+      if !empty(ft)
+        call s:render_syntax(ft)
       endif
     endif
     call s:execute_matchaddpos(hi_lnum)
