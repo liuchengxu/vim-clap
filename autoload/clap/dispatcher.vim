@@ -68,14 +68,13 @@ if has('nvim')
       endif
     elseif a:event == 'stderr'
       if !empty(a:data) && a:data != ['']
-        call s:jobstop()
         let error_info = [
               \ 'Error occurs when dispatching the command',
               \ 'job_id: '.a:job_id,
               \ 'message: '.string(a:data),
               \ 'command: '.s:executed_cmd,
               \ ]
-        call g:clap.display.set_lines(error_info)
+        call s:abort_job(error_info)
       endif
     else
       call s:on_exit_common()
@@ -142,14 +141,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    call s:jobstop()
-    let error_info = [
-          \ 'Error occurs when dispatching the command',
-          \ 'channel: '.a:channel,
-          \ 'message: '.string(a:message),
-          \ 'command: '.s:executed_cmd,
-          \ ]
-    call g:clap.display.set_lines(error_info)
+    call s:abort_job(error_info)
   endfunction
 
   function! s:close_cb(_channel) abort
@@ -180,6 +172,11 @@ else
   endfunction
 
 endif
+
+function! s:abort_job(error_info) abort
+  call s:jobstop()
+  call g:clap.display.set_lines(a:error_info)
+endfunction
 
 function! s:on_exit_common() abort
   if s:has_no_matches()
