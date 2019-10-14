@@ -237,6 +237,7 @@ Field                 | Type                | Required      | Has default implem
 `on_enter`            | Funcref             | optional      | No
 `on_exit`             | Funcref             | optional      | No
 `support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
+`enable_rooter`       | Bool                | Optional      | No
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -261,6 +262,8 @@ Field                 | Type                | Required      | Has default implem
 
 - `on_exit`: can be used for restoring the state on start.
 
+- `enable_rooter`: try to run the `source` from the project root.
+
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchoronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
 ### Create pure async provider
@@ -274,6 +277,7 @@ Field                 | Type    | Required      | Has default implementation
 `converter`           | funcref | optional      | No
 `jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#job_start(cmd)`
 `support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
+`enable_rooter`       | Bool    | Optional      | No
 
 - `on_typed`: reference to function to spawn an async job.
 - `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
