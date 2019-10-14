@@ -50,8 +50,12 @@ function! clap#sign#toggle_cursorline() abort
   let s:last_signed_id = curlnum
 endfunction
 
+function! s:sign_of_first_line() abort
+  return sign_getplaced(g:clap.display.bufnr, {'group': s:sign_cur_group, 'lnum': 1})[0].signs
+endfunction
+
 function! clap#sign#reset_to_first_line() abort
-  if s:last_signed_id == 1
+  if s:last_signed_id == 1 && !empty(s:sign_of_first_line())
     return
   endif
   if s:last_signed_id != -1
