@@ -290,6 +290,10 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider.has_enable_rooter() abort
+    return get(self._(), 'enable_rooter', v:false)
+  endfunction
+
   function! provider.sink(selected) abort
     call g:clap.start.goto_win()
     call clap#util#run_from_project_root_heuristic(self._apply_sink, a:selected)

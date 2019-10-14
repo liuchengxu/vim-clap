@@ -31,6 +31,8 @@ endif
 let s:files.source = s:find_cmd
 let s:files.sink = 'e'
 
+let s:files.enable_rooter = v:true
+
 let g:clap#provider#files# = s:files
 
 let &cpo = s:save_cpo

@@ -127,6 +127,7 @@ endfunction
 " Argument: Funcref to run as well as its args
 function! clap#util#run_from_project_root(Run, ...) abort
   if get(g:, 'clap_disable_run_from_project_root', v:false)
+        \ || !g:clap.provider.has_enable_rooter()
     return call(a:Run, a:000)
   endif
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
@@ -150,7 +151,9 @@ endfunction
 " should not restore to the current cwd after executing the sink function.
 function! clap#util#run_from_project_root_heuristic(Run, ...) abort
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-  if empty(git_root) || get(g:, 'clap_disable_run_from_project_root', v:false)
+  if empty(git_root)
+        \ || get(g:, 'clap_disable_run_from_project_root', v:false)
+        \ || !g:clap.provider.has_enable_rooter()
     let result = call(a:Run, a:000)
   else
     let save_cwd = getcwd()

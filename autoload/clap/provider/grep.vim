@@ -172,6 +172,7 @@ let s:grep.converter = function('s:draw_icon')
 let s:grep.on_exit = function('s:grep_exit')
 
 let s:grep.support_open_action = v:true
+let s:grep.enable_rooter = v:true
 
 let g:clap#provider#grep# = s:grep
 
