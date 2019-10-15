@@ -57,67 +57,67 @@ to work everywhere out of the box, with fast response.
 3. Supported Providers & Tools                                    *clap-support*
 
 
-                                                    *:Clap* *bcommits*
+                                                    *:Clap-bcommits*
 :Clap bcommits           List git commits for the current buffer
                          Require `git`
 
 
-                                                    *:Clap* *blines*
+                                                    *:Clap-blines*
 :Clap blines             List Lines in the current buffer
 
 
-                                                    *:Clap* *buffers*
+                                                    *:Clap-buffers*
 :Clap buffers            List open buffers
 
 
-                                                    *:Clap* *colors*
+                                                    *:Clap-colors*
 :Clap colors             List Colorschemes
 
-                                                    *:Clap* *hist:*
-                                                    *:Clap* *command_history*
+                                                    *:Clap-hist:*
+                                                    *:Clap-command_history*
 :Clap hist:              List Command history
 :Clap command_history
 
 
-                                                    *:Clap* *commits*
+                                                    *:Clap-commits*
 :Clap commits            List Git commits
                          Require `git`
 
-                                                    *:Clap* *files*
+                                                    *:Clap-files*
 :Clap files              List Files
                          Require fd/git/rg/find
 
 
-                                                     *:Clap* *filetypes*
+                                                     *:Clap-filetypes*
 :Clap filetypes          List File types
 
 
-                                                     *:Clap* *gfiles*
-                                                     *:Clap* *git_files*
+                                                     *:Clap-gfiles*
+                                                     *:Clap-git_files*
 :Clap gfiles             List Files managed by git
 :Clap git_files          Require `git`
 
 
-                                                     *:Clap* *grep*
+                                                     *:Clap-grep*
 :Clap grep               Grep on the fly. Use `Clap grep <cword>` to
                          grep the word under cursor.
                          Require `rg`
 
 
-                                                     *:Clap* *jumps*
+                                                     *:Clap-jumps*
 :Clap jumps              List Jumps
 
 
-                                                     *:Clap* *marks*
+                                                     *:Clap-marks*
 :Clap marks              List Marks
 
 
-                                                     *:Clap* *tags*
+                                                     *:Clap-tags*
 :Clap tags               List Tags in the current buffer
                          Require `vista.vim`
 
 
-                                                     *:Clap* *windows*
+                                                     *:Clap-windows*
 :Clap windows            List Windows
 
 
