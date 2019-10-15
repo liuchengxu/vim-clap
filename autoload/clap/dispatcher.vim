@@ -67,7 +67,15 @@ if has('nvim')
         call s:append_output(a:data[:-2])
       endif
     elseif a:event == 'stderr'
-      " Ignore the errors?
+      if !empty(a:data) && a:data != ['']
+        let error_info = [
+              \ 'Error occurs when dispatching the command',
+              \ 'job_id: '.a:job_id,
+              \ 'message: '.string(a:data),
+              \ 'command: '.s:executed_cmd,
+              \ ]
+        call s:abort_job(error_info)
+      endif
     else
       call s:on_exit_common()
     endif
@@ -133,7 +141,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    " call g:clap.abort(['channel: '.a:channel, 'message: '.a:message, 'cmd: '.s:executed_cmd])
+    call s:abort_job(error_info)
   endfunction
 
   function! s:close_cb(_channel) abort
@@ -165,6 +173,11 @@ else
 
 endif
 
+function! s:abort_job(error_info) abort
+  call s:jobstop()
+  call g:clap.display.set_lines(a:error_info)
+endfunction
+
 function! s:on_exit_common() abort
   if s:has_no_matches()
     call g:clap.display.set_lines([g:clap_no_matches_msg])
@@ -187,7 +200,8 @@ endfunction
 function! s:apply_job_start(_timer) abort
   call clap#util#run_from_project_root(function('s:job_start'), s:cmd)
 
-  let s:executed_cmd = strftime("%Y-%m-%d %H:%M:%S").' '.s:cmd
+  let s:executed_time = strftime("%Y-%m-%d %H:%M:%S")
+  let s:executed_cmd = s:cmd
 endfunction
 
 function! s:prepare_job_start(cmd) abort

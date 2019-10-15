@@ -1,6 +1,6 @@
 # vim-clap
 
-![](https://github.com/liuchengxu/vim-clap/workflows/.github/workflows/ci.yml/badge.svg)
+<!-- ![](https://github.com/liuchengxu/vim-clap/workflows/.github/workflows/ci.yml/badge.svg) -->
 [![Build Status](https://travis-ci.com/liuchengxu/vim-clap.svg?branch=master)](https://travis-ci.com/liuchengxu/vim-clap)
 [![Gitter][G1]][G2]
 
@@ -22,7 +22,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 * [Usage](#usage)
   * [Commands](#commands)
   * [Global variables](#global-variables)
-  * [Movement](#movement)
+  * [Keybindings](#keybindings)
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
 * [How to add a new provider](#how-to-add-a-new-provider)
@@ -136,7 +136,9 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
 
-### Movement
+See `:help clap-options` for more information.
+
+### Keybindings
 
 - [x] Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down.
 - [x] Use <kbd>Ctrl-a</kbd>/<kbd>Home</kbd> to go to the start of the input.
@@ -149,6 +151,8 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
+
+See `:help clap-keybindings` for more information.
 
 ### Execute some code during the process
 
@@ -192,6 +196,8 @@ Or:
 ```vim
 hi ClapMatches cterm=bold ctermfg=170 gui=bold guifg=#bc6ec5
 ```
+
+See `:help clap-highlights` for more information.
 
 ## How to add a new provider
 

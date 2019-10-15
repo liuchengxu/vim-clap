@@ -112,9 +112,10 @@ function! clap#impl#on_typed() abort
     if get(g:clap.context, 'async') is v:true
       call s:on_typed_async_impl()
     else
+      let source_ty = type(g:clap.provider._().source)
       " Choose the suitable way according to the source size.
-      if type(g:clap.provider._().sink) == v:t_string
-            \ || len(g:clap.provider.get_source()) > s:async_threshold
+      if source_ty == v:t_string
+            \ || (source_ty == v:t_list && len(g:clap.provider.get_source()) > s:async_threshold)
         call s:on_typed_async_impl()
       else
         call s:on_typed_sync_impl()
