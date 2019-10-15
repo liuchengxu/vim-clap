@@ -157,8 +157,17 @@ g:clap_popup_input_delay                              *g:clap_popup_input_delay*
   Default: `200`
 
   This variable controls the milliseconds delay after which the `on_typed` of
-  provider will be run after your input is changed. This option is only
-  meaningful for Vim, NeoVim does not have this delay.
+  provider will be run after your input is changed.
+
+  This option is only meaningful for Vim, NeoVim does not have this delay.
+
+g:clap_on_move_delay                                      *g:clap_on_move_delay*
+
+  Type: |Number|
+  Default: `300`
+
+  This variable controls the milliseconds delay after which the `on_move` of
+  provider will be run when you navigate the result list.
 
 
 g:clap_disable_optional_async                    *g:clap_disable_optional_async*

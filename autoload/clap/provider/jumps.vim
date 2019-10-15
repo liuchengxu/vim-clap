@@ -33,6 +33,15 @@ function! s:jumps.sink(line) abort
   execute 'normal!' cmd
 endfunction
 
+function! s:jumps.on_move() abort
+  let curline = g:clap.display.getcurline()
+  let matched = matchlist(curline, '^\s\+\(\d\+\)\s\+\(\d\+\)\s\+\(\d\+\)\s\+\(.*\)$')
+  if len(matched) < 5
+    return
+  endif
+  call clap#provider#marks#preview_impl(matched[2], matched[3], matched[4])
+endfunction
+
 let g:clap#provider#jumps# = s:jumps
 
 let &cpo = s:save_cpo

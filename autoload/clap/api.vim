@@ -8,6 +8,9 @@ let s:is_nvim = has('nvim')
 let s:default_priority = 10
 let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
+let s:on_move_timer = -1
+let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
+
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
 endfunction
@@ -322,7 +325,10 @@ function! s:init_provider() abort
   " When you press Ctrl-J/K
   function! provider.on_move() abort
     if has_key(self._(), 'on_move')
-      call self._().on_move()
+      if s:on_move_timer != -1
+        call timer_stop(s:on_move_timer)
+      endif
+      let s:on_move_timer = timer_start(s:on_move_delay, { -> self._().on_move() })
     endif
   endfunction
 
