@@ -1,6 +1,6 @@
 # vim-clap
 
-![](https://github.com/liuchengxu/vim-clap/workflows/.github/workflows/ci.yml/badge.svg)
+<!-- ![](https://github.com/liuchengxu/vim-clap/workflows/.github/workflows/ci.yml/badge.svg) -->
 [![Build Status](https://travis-ci.com/liuchengxu/vim-clap.svg?branch=master)](https://travis-ci.com/liuchengxu/vim-clap)
 [![Gitter][G1]][G2]
 
