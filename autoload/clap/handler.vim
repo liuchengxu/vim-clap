@@ -32,29 +32,36 @@ function! clap#handler#on_typed() abort
   endif
 endfunction
 
+function! s:load_cache() abort
+  let cache = g:clap.display.cache
+  if len(cache) <= s:lazy_load_size
+    let to_append = cache
+    let g:clap.display.cache = []
+  else
+    let to_append = cache[:s:lazy_load_size-1]
+    let g:clap.display.cache = cache[s:lazy_load_size:]
+  endif
+  if has_key(g:clap.provider._(), 'converter')
+    let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
+  endif
+  " The buffer is not empty, qed.
+  call g:clap.display.append_lines_uncheck(to_append)
+endfunction
+
 function! s:navigate(direction) abort
   let curlnum = line('.')
   let lastlnum = line('$')
+
   if curlnum == lastlnum && a:direction ==# 'down'
     " Lazy append!
-    " Append 100 more line from the cache when you need.
-    if empty(g:clap.display.cache) || get(g:, '__clap_do_not_use_cache', v:false)
+    " Append a few more lines from the cache when reaching the end of the
+    " buffer.
+    if empty(g:clap.display.cache)
+          \ || get(g:, '__clap_do_not_use_cache', v:false)
       normal! 1gg
       let g:__clap_display_curlnum = 1
     else
-      let cache = g:clap.display.cache
-      if len(cache) <= s:lazy_load_size
-        let to_append = cache
-        let g:clap.display.cache = []
-      else
-        let to_append = cache[:s:lazy_load_size-1]
-        let g:clap.display.cache = cache[s:lazy_load_size:]
-      endif
-      if has_key(g:clap.provider._(), 'converter')
-        let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')
-      endif
-      " The buffer is not empty, qed.
-      call g:clap.display.append_lines_uncheck(to_append)
+      call s:load_cache()
       normal! j
       let g:__clap_display_curlnum += 1
     endif
@@ -62,7 +69,9 @@ function! s:navigate(direction) abort
   elseif curlnum == 1 && a:direction ==# 'up'
     normal! G
     let g:__clap_display_curlnum = lastlnum
+
   else
+
     if a:direction ==# 'down'
       normal! j
       let g:__clap_display_curlnum +=1
@@ -70,7 +79,9 @@ function! s:navigate(direction) abort
       normal! k
       let g:__clap_display_curlnum -=1
     endif
+
   endif
+
   call clap#sign#toggle_cursorline()
 endfunction
 
