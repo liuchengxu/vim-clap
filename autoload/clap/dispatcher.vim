@@ -117,7 +117,8 @@ else
 
   function! s:update_indicator() abort
     if s:preload_is_complete
-      let matches_count = s:loaded_size + len(g:clap.display.cache)
+      " let matches_count = s:loaded_size + len(g:clap.display.cache)
+      let matches_count = s:loaded_size + s:droped_size
     else
       let matches_count = g:clap.display.line_count()
     endif
@@ -135,7 +136,8 @@ else
 
   function! s:out_cb(channel, message) abort
     if s:preload_is_complete
-      call add(g:clap.display.cache, a:message)
+      " call add(g:clap.display.cache, a:message)
+      let s:droped_size += 1
     else
       call add(s:vim_output, a:message)
       if len(s:vim_output) >= g:clap.display.preload_capacity
@@ -145,6 +147,12 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
+    let error_info = [
+          \ 'Error occurs when dispatching the command',
+          \ 'channel: '.a:channel,
+          \ 'message: '.string(a:message),
+          \ 'command: '.s:executed_cmd,
+          \ ]
     call s:abort_job(error_info)
   endfunction
 
@@ -215,6 +223,7 @@ function! s:prepare_job_start(cmd) abort
   let s:loaded_size = 0
   let g:clap.display.cache = []
   let s:preload_is_complete = v:false
+  let s:droped_size = 0
 
   let s:cmd = a:cmd
 
