@@ -186,6 +186,13 @@ g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
 
   This message will be used when there is no matches found.
 
+g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
+
+  Type: |Bool|
+  Default: `v:true`
+
+  TODO
+
 
 g:clap_disable_run_from_project_root      *g:clap_disable_run_from_project_root*
 
