@@ -108,6 +108,10 @@ to work everywhere out of the box, with fast response.
 :Clap jumps              List Jumps
 
 
+                                                     *:Clap-lines*
+:Clap lines              List the lines of the loaded buffers.
+
+
                                                      *:Clap-marks*
 :Clap marks              List Marks
 
