@@ -35,7 +35,11 @@ if has('nvim')
       let s:preload_is_complete = v:true
       let s:loaded_size = line_count + len(to_append)
     else
-      let s:loaded_size = line_count + len(raw_output)
+      if s:loaded_size == 0
+        let s:loaded_size = len(raw_output)
+      else
+        let s:loaded_size = line_count + len(raw_output)
+      endif
       if s:has_converter
         let raw_output = map(raw_output, 's:Converter(v:val)')
       endif
