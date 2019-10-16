@@ -86,6 +86,11 @@ if has('nvim')
   endfunction
 
   function! s:on_event(job_id, data, event) abort
+    " We only process the job that was spawned last time.
+    if a:job_id != s:job_id
+      return
+    endif
+
     if a:event == 'stdout'
       if len(a:data) > 1
         " Second last is the real last one for neovim.
@@ -107,7 +112,7 @@ if has('nvim')
   endfunction
 
   function! s:job_start(cmd) abort
-    let s:jobid = jobstart(a:cmd, {
+    let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
@@ -115,9 +120,9 @@ if has('nvim')
   endfunction
 
   function! s:jobstop() abort
-    if exists('s:jobid')
-      silent! call jobstop(s:jobid)
-      unlet s:jobid
+    if exists('s:job_id')
+      silent! call jobstop(s:job_id)
+      unlet s:job_id
     endif
   endfunction
 
@@ -172,37 +177,53 @@ else
     call s:update_indicator()
   endfunction
 
+  function! s:parse_job_id(job_str) abort
+    return str2nr(matchstr(a:job_str, '\d\+'))
+  endfunction
+
+  function! s:job_id_of(channel) abort
+    return s:parse_job_id(ch_getjob(a:channel))
+  endfunction
+
   function! s:out_cb(channel, message) abort
-    if s:preload_is_complete
-      call s:handle_cache(a:message)
-    else
-      call add(s:vim_output, a:message)
-      if len(s:vim_output) >= g:clap.display.preload_capacity
-        call s:append_output(s:vim_output)
+    if s:job_id_of(a:channel) == s:job_id
+      if s:preload_is_complete
+        call s:handle_cache(a:message)
+      else
+        call add(s:vim_output, a:message)
+        if len(s:vim_output) >= g:clap.display.preload_capacity
+          call s:append_output(s:vim_output)
+        endif
       endif
     endif
   endfunction
 
   function! s:err_cb(channel, message) abort
-    let error_info = [
-          \ 'Error occurs when dispatching the command',
-          \ 'channel: '.a:channel,
-          \ 'message: '.string(a:message),
-          \ 'command: '.s:executed_cmd,
-          \ ]
-    call s:abort_job(error_info)
+    if s:job_id_of(a:channel) == s:job_id
+      let error_info = [
+            \ 'Error occurs when dispatching the command',
+            \ 'channel: '.a:channel,
+            \ 'message: '.string(a:message),
+            \ 'command: '.s:executed_cmd,
+            \ ]
+      call s:abort_job(error_info)
+    endif
   endfunction
 
-  function! s:close_cb(_channel) abort
-    call s:post_check()
+  function! s:close_cb(channel) abort
+    if s:job_id_of(a:channel) == s:job_id
+      call s:post_check()
+    endif
   endfunction
 
-  function! s:exit_cb(_job, _exit_code) abort
-    call s:post_check()
+  function! s:exit_cb(job, _exit_code) abort
+    if s:parse_job_id(a:job) == s:job_id
+      call s:post_check()
+    endif
   endfunction
 
   function! s:job_start(cmd) abort
-    let s:jobid = job_start(['bash', '-c', a:cmd], {
+    let job = job_start(['bash', '-c', a:cmd], {
           \ 'in_io': 'null',
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
@@ -210,13 +231,14 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ })
+    let s:job_id = s:parse_job_id(string(job))
   endfunction
 
   function! s:jobstop() abort
-    if exists('s:jobid')
+    if exists('s:job_id')
       " Kill it!
-      silent! call jobstop(s:jobid, 'kill')
-      unlet s:jobid
+      silent! call jobstop(s:job_id, 'kill')
+      unlet s:job_id
     endif
   endfunction
 
