@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: List the buffer lines.
+" Description: List the lines of all loaded buffer.
 
 let s:save_cpo = &cpo
 set cpo&vim
