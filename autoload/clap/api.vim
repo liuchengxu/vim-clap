@@ -299,7 +299,7 @@ function! s:init_provider() abort
 
   function! provider.sink(selected) abort
     call g:clap.start.goto_win()
-    call clap#util#run_from_project_root_heuristic(self._apply_sink, a:selected)
+    call clap#util#run_rooter_heuristic(self._apply_sink, a:selected)
   endfunction
 
   function! provider.sink_star(lines) abort
@@ -440,7 +440,7 @@ function! s:init_provider() abort
     " Catch any exceptions and show them in the display window.
     try
       if has_key(provider_info, 'source')
-        return clap#util#run_from_project_root(self._apply_source)
+        return clap#util#run_rooter(self._apply_source)
       else
         return []
       endif

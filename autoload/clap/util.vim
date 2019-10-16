@@ -125,7 +125,7 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
 endfunction
 
 " Argument: Funcref to run as well as its args
-function! clap#util#run_from_project_root(Run, ...) abort
+function! clap#util#run_rooter(Run, ...) abort
   if get(g:, 'clap_disable_run_from_project_root', v:false)
         \ || !g:clap.provider.has_enable_rooter()
     return call(a:Run, a:000)
@@ -149,7 +149,7 @@ endfunction
 "
 " what if the sink function changes cwd intentionally? Then we
 " should not restore to the current cwd after executing the sink function.
-function! clap#util#run_from_project_root_heuristic(Run, ...) abort
+function! clap#util#run_rooter_heuristic(Run, ...) abort
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
   if empty(git_root)
         \ || get(g:, 'clap_disable_run_from_project_root', v:false)
