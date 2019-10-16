@@ -7,7 +7,30 @@ set cpo&vim
 let s:job_timer = -1
 let s:dispatcher_delay = 300
 
+let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
+
 if has('nvim')
+
+  if s:drop_cache
+    " to_cache is a List.
+    function! s:handle_cache(to_cache) abort
+      let s:droped_size += len(a:to_cache)
+    endfunction
+
+    function! s:set_matches_count() abort
+      let matches_count = s:loaded_size + s:droped_size
+      call clap#indicator#set_matches('['.matches_count.']')
+    endfunction
+  else
+    function! s:handle_cache(to_cache) abort
+      call extend(g:clap.display.cache, a:to_cache)
+    endfunction
+
+    function! s:set_matches_count() abort
+      let matches_count = s:loaded_size + len(g:clap.display.cache)
+      call clap#indicator#set_matches('['.matches_count.']')
+    endfunction
+  endif
 
   function! s:apply_append_or_cache(raw_output) abort
     let raw_output = a:raw_output
@@ -23,7 +46,7 @@ if has('nvim')
       let to_cache = raw_output[start:]
 
       " Discard?
-      call extend(g:clap.display.cache, to_cache)
+      call s:handle_cache(to_cache)
 
       " Converter
       if s:has_converter
@@ -54,14 +77,12 @@ if has('nvim')
     endif
 
     if s:preload_is_complete
-      call extend(g:clap.display.cache, a:data)
+      call s:handle_cache(a:data)
     else
       call s:apply_append_or_cache(a:data)
     endif
 
-    let matches_count = s:loaded_size + len(g:clap.display.cache)
-
-    call clap#indicator#set_matches('['.matches_count.']')
+    call s:set_matches_count()
   endfunction
 
   function! s:on_event(job_id, data, event) abort
@@ -102,6 +123,24 @@ if has('nvim')
 
 else
 
+  if s:drop_cache
+    function! s:handle_cache(_line_to_cache) abort
+      let s:droped_size += 1
+    endfunction
+
+    function! s:matched_count_when_preload_is_complete() abort
+      return s:loaded_size + s:droped_size
+    endfunction
+  else
+    function! s:handle_cache(line_to_cache) abort
+      call add(g:clap.display.cache, a:line_to_cache)
+    endfunction
+
+    function! s:matched_count_when_preload_is_complete() abort
+      return s:loaded_size + len(g:clap.display.cache)
+    endfunction
+  endif
+
   function! s:append_output(preload) abort
     let to_append = a:preload
 
@@ -117,8 +156,7 @@ else
 
   function! s:update_indicator() abort
     if s:preload_is_complete
-      " let matches_count = s:loaded_size + len(g:clap.display.cache)
-      let matches_count = s:loaded_size + s:droped_size
+      let matches_count = s:matched_count_when_preload_is_complete()
     else
       let matches_count = g:clap.display.line_count()
     endif
@@ -136,8 +174,7 @@ else
 
   function! s:out_cb(channel, message) abort
     if s:preload_is_complete
-      " call add(g:clap.display.cache, a:message)
-      let s:droped_size += 1
+      call s:handle_cache(a:message)
     else
       call add(s:vim_output, a:message)
       if len(s:vim_output) >= g:clap.display.preload_capacity
