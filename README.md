@@ -91,6 +91,7 @@ Command                                | List                               | Re
 `Clap gfiles` or `Clap git_files`      | Files managed by git               | **[git][git]**
 `Clap grep`**<sup>+</sup>**            | Grep on the fly                    | **[rg][rg]**
 `Clap jumps`                           | Jumps                              | _none_
+`Clap lines`                           | Lines in the loaded buffers        | _none_
 `Clap marks`                           | Marks                              | _none_
 `Clap tags`                            | Tags in the current buffer         | **[vista.vim][vista.vim]**
 `Clap windows` **<sup>!</sup>**        | Windows                            | _none_
