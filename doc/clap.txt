@@ -173,10 +173,15 @@ g:clap_disable_optional_async                    *g:clap_disable_optional_async*
   For the non-pure-async providers, vim-clap provides an optional async way to
   filter/find the candidates and will enable it automatically in these cases:
 
+  - the default `source_async` implementation is doable
   - `g:clap.context.async` is v:true
   - the `source` of provider is |String|
   - the `source` of provider is |List| and the size of source exceeds the
     threshold
+
+  If the default async filter implementation of vim-clap is not viable and the
+  provider does not offer a `source_async` implementation explictily, this
+  variable has no effect, vim-clap will always uses the sync filter implementation.
 
 
 g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
@@ -329,6 +334,14 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
   Blink the cursorline 2 times with 100ms timeout when jumping the result.
 
   Set it to `[0, 0]` to disable this blink.
+
+
+g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
+
+  Type: |Number|
+  Default: `get(g:, 'spacevim_nerd_fonts', 0) || exists('g:loaded_webdevicons')`
+
+  Set this variable to `0` to disable drawing an icon for the returned result.
 
 
 -------------------------------------------------------------------------------

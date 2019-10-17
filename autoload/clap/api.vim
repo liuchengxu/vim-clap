@@ -456,10 +456,19 @@ function! s:init_provider() abort
   " Since now we have the default source_async implementation, everything
   " could be async theoretically.
   "
-  " But the default async impl may not work in Windows at the moment,
-  " So we have a flag for people to disable it.
+  " But the default async impl may not work in Windows at the moment, and
+  " peple may not have installed the required external filter(fzy, fzf,
+  " etc.),
+  " So we should detect if the default async is doable or otherwise better
+  " have a flag to disable it.
   function! provider.can_async() abort
-    return !get(g:, 'clap_disable_optional_async', v:false)
+    " The default async implementation is not doable and the provider does not
+    " provide a source_async implementation explicitly.
+    if !clap#filter#has_external_default() && !self._().has_key('source_async')
+      return v:false
+    else
+      return !get(g:, 'clap_disable_optional_async', v:false)
+    endif
   endfunction
 
   function! provider.init_display_win() abort
