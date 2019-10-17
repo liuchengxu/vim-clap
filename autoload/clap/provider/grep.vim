@@ -168,8 +168,8 @@ let s:grep.on_typed = function('s:grep_with_delay')
 let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 
 if get(g:, 'clap_provider_grep_enable_icon',
-      \ get(g:, 'spacevim_nerd_fonts', 0)
-      \ || exists('g:loaded_webdevicons'))
+      \ exists('g:loaded_webdevicons')
+      \ || get(g:, 'spacevim_nerd_fonts', 0))
   let s:grep.converter = function('s:draw_icon')
 endif
 
