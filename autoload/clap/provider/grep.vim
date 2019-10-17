@@ -32,7 +32,7 @@ function! s:cmd(query) abort
     call g:clap.abort('rg not found')
     return
   endif
-  let cmd = 'rg -H --no-heading --vimgrep --smart-case "'.a:query.'"'
+  let cmd = 'rg -H --no-heading --vimgrep --smart-case "'.a:query.'"'.(has('win32') ? ' .' : '')
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction
