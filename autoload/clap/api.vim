@@ -37,7 +37,16 @@ endif
 
 function! s:matchadd(patterns) abort
   let w:clap_match_ids = []
-  call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+  " Clap grep
+  " \{ -> E888
+  try
+    call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+  catch
+    " Sometimes we may run into some pattern errors in that the query is not a
+    " valid vim pattern. Just ignore them as the highlight is not critical, we
+    " care more about the searched results IMO.
+    return
+  endtry
   let idx = 1
   " As most 8 submatches
   for p in a:patterns[1:8]
@@ -45,7 +54,7 @@ function! s:matchadd(patterns) abort
       call add(w:clap_match_ids, matchadd("ClapMatches".idx, p, s:default_priority - 1))
       let idx += 1
     catch
-      call clap#error(v:exception)
+      return
     endtry
   endfor
 endfunction
