@@ -6,6 +6,7 @@ set cpo&vim
 
 let s:job_timer = -1
 let s:dispatcher_delay = 300
+let s:job_id = -1
 
 let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
 
@@ -87,7 +88,7 @@ if has('nvim')
 
   function! s:on_event(job_id, data, event) abort
     " We only process the job that was spawned last time.
-    if a:job_id != s:job_id
+    if s:job_id == -1 || a:job_id != s:job_id
       return
     endif
 
@@ -101,9 +102,10 @@ if has('nvim')
         let error_info = [
               \ 'Error occurs when dispatching the command',
               \ 'job_id: '.a:job_id,
-              \ 'message: '.string(a:data),
               \ 'command: '.s:executed_cmd,
+              \ 'message: '
               \ ]
+        let error_info += a:data
         call s:abort_job(error_info)
       endif
     else
@@ -120,9 +122,9 @@ if has('nvim')
   endfunction
 
   function! s:jobstop() abort
-    if exists('s:job_id')
+    if s:job_id > 0
       silent! call jobstop(s:job_id)
-      unlet s:job_id
+      let s:job_id = -1
     endif
   endfunction
 
@@ -186,7 +188,7 @@ else
   endfunction
 
   function! s:out_cb(channel, message) abort
-    if s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -199,7 +201,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
             \ 'channel: '.a:channel,
@@ -211,13 +213,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:parse_job_id(a:job) == s:job_id
+    if s:job_id > 0 && s:parse_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -235,10 +237,10 @@ else
   endfunction
 
   function! s:jobstop() abort
-    if exists('s:job_id')
+    if s:job_id > 0
       " Kill it!
       silent! call jobstop(s:job_id, 'kill')
-      unlet s:job_id
+      let s:job_id = -1
     endif
   endfunction
 
@@ -247,6 +249,7 @@ endif
 function! s:abort_job(error_info) abort
   call s:jobstop()
   call g:clap.display.set_lines(a:error_info)
+  call clap#spinner#set_idle()
 endfunction
 
 function! s:on_exit_common() abort

@@ -61,6 +61,10 @@ function! clap#filter#matchadd_pattern() abort
   return s:matchadd_pattern
 endfunction
 
+function! clap#filter#has_external_default() abort
+  return s:default_ext_filter isnot v:null
+endfunction
+
 function! clap#filter#get_external_cmd_or_default() abort
   if has_key(g:clap.context, 'externalfilter')
     let ext_filter = g:clap.context.externalfilter

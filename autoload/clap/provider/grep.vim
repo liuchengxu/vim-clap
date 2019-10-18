@@ -32,7 +32,7 @@ function! s:cmd(query) abort
     call g:clap.abort('rg not found')
     return
   endif
-  let cmd = 'rg -H --no-heading --vimgrep --smart-case "'.a:query.'"'
+  let cmd = 'rg -H --no-heading --vimgrep --smart-case "'.a:query.'"'.(has('win32') ? ' .' : '')
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction
@@ -167,7 +167,11 @@ let s:grep.on_typed = function('s:grep_with_delay')
 
 let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 
-let s:grep.converter = function('s:draw_icon')
+if get(g:, 'clap_provider_grep_enable_icon',
+      \ exists('g:loaded_webdevicons')
+      \ || get(g:, 'spacevim_nerd_fonts', 0))
+  let s:grep.converter = function('s:draw_icon')
+endif
 
 let s:grep.on_exit = function('s:grep_exit')
 

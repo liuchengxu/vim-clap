@@ -40,7 +40,16 @@ endif
 
 function! s:matchadd(patterns) abort
   let w:clap_match_ids = []
-  call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+  " Clap grep
+  " \{ -> E888
+  try
+    call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+  catch
+    " Sometimes we may run into some pattern errors in that the query is not a
+    " valid vim pattern. Just ignore them as the highlight is not critical, we
+    " care more about the searched results IMO.
+    return
+  endtry
   let idx = 1
   " As most 8 submatches
   for p in a:patterns[1:8]
@@ -48,7 +57,7 @@ function! s:matchadd(patterns) abort
       call add(w:clap_match_ids, matchadd("ClapMatches".idx, p, s:default_priority - 1))
       let idx += 1
     catch
-      call clap#error(v:exception)
+      return
     endtry
   endfor
 endfunction
@@ -462,10 +471,19 @@ function! s:init_provider() abort
   " Since now we have the default source_async implementation, everything
   " could be async theoretically.
   "
-  " But the default async impl may not work in Windows at the moment,
-  " So we have a flag for people to disable it.
+  " But the default async impl may not work in Windows at the moment, and
+  " peple may not have installed the required external filter(fzy, fzf,
+  " etc.),
+  " So we should detect if the default async is doable or otherwise better
+  " have a flag to disable it.
   function! provider.can_async() abort
-    return !get(g:, 'clap_disable_optional_async', v:false)
+    " The default async implementation is not doable and the provider does not
+    " provide a source_async implementation explicitly.
+    if !clap#filter#has_external_default() && !self._().has_key('source_async')
+      return v:false
+    else
+      return !get(g:, 'clap_disable_optional_async', v:false)
+    endif
   endfunction
 
   function! provider.init_display_win() abort
