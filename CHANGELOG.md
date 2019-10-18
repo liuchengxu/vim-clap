@@ -11,7 +11,7 @@ CHANGELOG
 
 ### Improved
 
-- Do not try using the default async filter implementation if none of the external filters are avaliable.(#61)
+- Do not try using the default async filter implementation if none of the external filters are avaliable.([#61](https://github.com/liuchengxu/vim-clap/issues/61))
 
 ### Changed
 
