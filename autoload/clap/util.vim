@@ -193,6 +193,17 @@ function! clap#util#trim_leading(str) abort
   return substitute(a:str, '^\s*', '', '')
 endfunction
 
+" Given the origin lnum and the size of range, return
+" [origin_lnum-range_size, origin_lnum+range_size] and the target lnum that
+" the origin line should be positioned.
+function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
+  if a:origin_lnum - a:range_size > 0
+    return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size + 1]
+  else
+    return [1, a:origin_lnum + a:range_size, a:origin_lnum]
+  endif
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == ['<cword>']

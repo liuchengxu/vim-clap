@@ -52,45 +52,25 @@ else
   endfunction
 endif
 
-function! s:marks.on_move() abort
-  let curline = g:clap.display.getcurline()
-
-  if 'mark line  col file/text' == curline
-    return
-  endif
-
-  let matched = matchlist(curline, '^.*\([a-zA-Z0-9[`''"\^\]\.]\)\s\+\(\d\+\)\s\+\(\d\+\)\s\+\(.*\)$')
-
-  if len(matched) < 5
-    return
-  endif
-
-  let line = matched[2]
-  let col = matched[3]
-  let file_text = matched[4]
+function! clap#provider#marks#preview_impl(line, col, file_text) abort
+  let [line, col, file_text] = [a:line, a:col, a:file_text]
 
   let origin_line = getbufline(g:clap.start.bufnr, line)
 
-  if line - 5 > 0
-    let start = line - 5
-    let hi_lnum = 5+1
-  else
-    let start = 1
-    let hi_lnum = line
-  endif
+  let [start, end, hi_lnum] = clap#util#get_preview_line_range(line, 5)
 
   let should_add_hi = v:true
 
   " file_text is the origin line with leading white spaces trimmed.
   if !empty(origin_line)
         \ && clap#util#trim_leading(origin_line[0]) == file_text
-    let lines = getbufline(g:clap.start.bufnr, start, line + 5)
+    let lines = getbufline(g:clap.start.bufnr, start, end)
     let origin_bufnr = g:clap.start.bufnr
   else
     let bufnr = clap#util#try_load_file(file_text)
     if bufnr isnot v:null
       " FIXME lines is empty at times.
-      let lines = getbufline(bufnr, start, line + 5)
+      let lines = getbufline(bufnr, start, end)
       let origin_bufnr = bufnr
     else
       let lines = [file_text]
@@ -112,6 +92,26 @@ function! s:marks.on_move() abort
     endif
     call s:execute_matchaddpos(hi_lnum)
   endif
+endfunction
+
+function! s:marks.on_move() abort
+  let curline = g:clap.display.getcurline()
+
+  if 'mark line  col file/text' == curline
+    return
+  endif
+
+  let matched = matchlist(curline, '^.*\([a-zA-Z0-9[`''"\^\]\.]\)\s\+\(\d\+\)\s\+\(\d\+\)\s\+\(.*\)$')
+
+  if len(matched) < 5
+    return
+  endif
+
+  let line = matched[2]
+  let col = matched[3]
+  let file_text = matched[4]
+
+  call clap#provider#marks#preview_impl(line, col, file_text)
 endfunction
 
 let s:marks.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_marks') }
