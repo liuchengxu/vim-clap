@@ -7,6 +7,7 @@ CHANGELOG
 
 - New provider `:Clap lines`.
 - Add the preview support for `:Clap marks`.
+- Add the option `g:clap_provider_grep_enable_icon` for disabling the icon drawing in `:Clap grep`.
 
 ### Improved
 
