@@ -5,6 +5,13 @@ CHANGELOG
 
 ### Added
 
+- New provider `:Clap lines`.
+- Add the preview support for `:Clap marks`.
+
+### Improved
+
+- Do not try using the default async filter implementation if none of the external filters are avaliable.(#61)
+
 ### Changed
 
 - Rename `g:clap_selected_sign_definition` to `g:clap_selected_sign`.
