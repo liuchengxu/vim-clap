@@ -205,7 +205,7 @@ g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
   automatically.
 
 
-g:clap_disable_run_from_project_root      *g:clap_disable_run_from_project_root*
+g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
 
   Type: |Bool|
   Default: `v:false`

@@ -26,7 +26,6 @@ function! s:blink.clear() dict abort
   endif
 endfunction
 
-
 " Try to load the file into a buffer given the file path.
 " This could be used for the preview purpose.
 function! clap#util#try_load_file(file) abort
@@ -103,9 +102,11 @@ endfunction
 " This is faster than clap#util#get_git_root() which uses the system call.
 function! clap#util#find_git_root(bufnr) abort
   let git_dir = clap#util#find_nearest_dir(a:bufnr, '.git')
+
   if !empty(git_dir)
     return fnamemodify(git_dir, ':h:h')
   endif
+
   return ''
 endfunction
 
@@ -125,12 +126,14 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
 endfunction
 
 " Argument: Funcref to run as well as its args
-function! clap#util#run_from_project_root(Run, ...) abort
-  if get(g:, 'clap_disable_run_from_project_root', v:false)
+function! clap#util#run_rooter(Run, ...) abort
+  if get(g:, 'clap_disable_run_rooter', v:false)
         \ || !g:clap.provider.has_enable_rooter()
     return call(a:Run, a:000)
   endif
+
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+
   if empty(git_root)
     let result = call(a:Run, a:000)
   else
@@ -142,6 +145,7 @@ function! clap#util#run_from_project_root(Run, ...) abort
       execute 'lcd' save_cwd
     endtry
   endif
+
   return result
 endfunction
 
@@ -149,13 +153,17 @@ endfunction
 "
 " what if the sink function changes cwd intentionally? Then we
 " should not restore to the current cwd after executing the sink function.
-function! clap#util#run_from_project_root_heuristic(Run, ...) abort
+function! clap#util#run_rooter_heuristic(Run, ...) abort
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+
   if empty(git_root)
-        \ || get(g:, 'clap_disable_run_from_project_root', v:false)
+        \ || get(g:, 'clap_disable_run_rooter', v:false)
         \ || !g:clap.provider.has_enable_rooter()
+
     let result = call(a:Run, a:000)
+
   else
+
     let save_cwd = getcwd()
     try
       execute 'lcd' git_root
@@ -169,6 +177,7 @@ function! clap#util#run_from_project_root_heuristic(Run, ...) abort
         execute 'lcd' save_cwd
       endif
     endtry
+
   endif
 endfunction
 

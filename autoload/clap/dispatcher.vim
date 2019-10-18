@@ -102,9 +102,10 @@ if has('nvim')
         let error_info = [
               \ 'Error occurs when dispatching the command',
               \ 'job_id: '.a:job_id,
-              \ 'message: '.string(a:data),
               \ 'command: '.s:executed_cmd,
+              \ 'message: '
               \ ]
+        let error_info += a:data
         call s:abort_job(error_info)
       endif
     else
@@ -271,7 +272,7 @@ function! s:has_no_matches() abort
 endfunction
 
 function! s:apply_job_start(_timer) abort
-  call clap#util#run_from_project_root(function('s:job_start'), s:cmd)
+  call clap#util#run_rooter(function('s:job_start'), s:cmd)
 
   let s:executed_time = strftime("%Y-%m-%d %H:%M:%S")
   let s:executed_cmd = s:cmd
