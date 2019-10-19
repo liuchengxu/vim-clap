@@ -92,6 +92,17 @@ function! g:clap#popup#display.compact_if_undersize() abort
   call s:try_adjust_preview()
 endfunction
 
+function! g:clap#popup#display.compact() abort
+  let pos = popup_getpos(s:display_winid)
+  let line_count = g:clap.display.line_count()
+  if pos.minheight != line_count
+    let pos.minheight = line_count
+    let pos.maxheight = line_count
+    call popup_move(s:display_winid, pos)
+    call s:try_adjust_preview()
+  endif
+endfunction
+
 function! s:try_adjust_preview() abort
   if exists('s:preview_winid') && !empty(popup_getpos(s:preview_winid))
     let pos = popup_getpos(s:display_winid)
