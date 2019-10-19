@@ -73,11 +73,7 @@ endfunction
 
 function! s:init_display() abort
   let display = {}
-  let display.goto_win = function('s:_goto_win')
-  let display.get_lines = function('s:_get_lines')
-  let display.getbufvar = function('s:_getbufvar')
-  let display.setbufvar = function('s:_setbufvar')
-  let display.setbufvar_batch = function('s:_setbufvar_batch')
+  call s:inject_base_api(display)
   let display.cache = []
   let display.preload_capacity = 2 * &lines
 
@@ -243,9 +239,7 @@ endfunction
 
 function! s:init_input() abort
   let input = {}
-  let input.getbufvar = function('s:_getbufvar')
-  let input.setbufvar = function('s:_setbufvar')
-  let input.setbufvar_batch = function('s:_setbufvar_batch')
+  call s:inject_base_api(input)
 
   if s:is_nvim
     let input.goto_win = function('s:_goto_win')

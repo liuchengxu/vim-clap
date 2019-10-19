@@ -204,12 +204,44 @@ function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
   endif
 endfunction
 
+function! clap#util#buflisted()
+  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") != "qf"')
+endfunction
+
+" Borrowed from fzf.vim
+function! s:sort_buffers(...)
+  let [b1, b2] = map(copy(a:000), 'get(g:__clap_buffers, v:val, v:val)')
+  " Using minus between a float and a number in a sort function causes an error
+  return b1 < b2 ? 1 : -1
+endfunction
+
+function! clap#util#buflisted_sorted()
+  return sort(clap#util#buflisted(), 's:sort_buffers')
+endfunction
+
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
   if a:args == '<cword>'
     return expand('<cword>')
   endif
   return a:args
+endfunction
+
+function! clap#util#getfsize(fname) abort
+  let l:size = getfsize(expand(a:fname))
+  if l:size == 0 || l:size == -1 || l:size == -2
+    return ''
+  endif
+  if l:size < 1024
+    let size = l:size.'B'
+  elseif l:size < 1024*1024
+    let size = printf('%.1f', l:size/1024.0) . 'K'
+  elseif l:size < 1024*1024*1024
+    let size = printf('%.1f', l:size/1024.0/1024.0) . 'M'
+  else
+    let size = printf('%.1f', l:size/1024.0/1024.0/1024.0) . 'G'
+  endif
+  return size
 endfunction
 
 let &cpo = s:save_cpo

@@ -90,6 +90,7 @@ Command                                | List                               | Re
 `Clap filetypes`                       | File types                         | _none_
 `Clap gfiles` or `Clap git_files`      | Files managed by git               | **[git][git]**
 `Clap grep`**<sup>+</sup>**            | Grep on the fly                    | **[rg][rg]**
+`Clap history`                         | Open buffers and `v:oldfiles`      | _none_
 `Clap jumps`                           | Jumps                              | _none_
 `Clap lines`                           | Lines in the loaded buffers        | _none_
 `Clap marks`                           | Marks                              | _none_
