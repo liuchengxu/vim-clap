@@ -517,8 +517,9 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    " if self.is_pure_async()
-    if self.can_async()
+    if self.is_pure_async()
+          \ || type(g:clap.provider._().source) == v:t_string
+          \ || type(g:clap.provider._().source) == v:t_func
       return
     endif
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
