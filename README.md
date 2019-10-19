@@ -105,7 +105,7 @@ Command                                | List                               | Re
 
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 
-- Use `Clap grep <cword>` to grep the word under cursor.
+- Use `:Clap grep ++query=<cword>` to grep the word under cursor.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 

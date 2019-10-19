@@ -99,8 +99,8 @@ to work everywhere out of the box, with fast response.
 
 
                                                      *:Clap-grep*
-:Clap grep               Grep on the fly. Use `Clap grep <cword>` to
-                         grep the word under cursor.
+:Clap grep               Grep on the fly. Use `Clap grep ++query=<cword>`
+                         to grep the word under cursor.
                          Require `rg`
 
 
