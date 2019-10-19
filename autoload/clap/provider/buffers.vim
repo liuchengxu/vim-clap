@@ -4,18 +4,47 @@
 let s:save_cpo = &cpo
 set cpo&vim
 
-" TODO more fancy buffers, e.g., append icon.
+function! s:padding(origin, target_width) abort
+  let width = strdisplaywidth(a:origin)
+  if width < a:target_width
+    return a:origin.repeat(' ', a:target_width - width)
+  else
+    return a:origin
+  endif
+endfunction
+
+function! s:format_buffer(b)
+  let name = bufname(a:b)
+  let name = empty(name) ? '[No Name]' : fnamemodify(name, ":p:~:.")
+  let flag = a:b == bufnr('')  ? '%' : (a:b == bufnr('#') ? '#' : ' ')
+  let modified = getbufvar(a:b, '&modified') ? ' [+]' : ''
+  let readonly = getbufvar(a:b, '&modifiable') ? '' : ' [RO]'
+
+  let bp = s:padding('['.a:b.']', 5)
+  let fsize = s:padding(clap#util#getfsize(name), 6)
+  let icon = s:padding(clap#icon#for(name), 3)
+  let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
+  let line = get(s:line_info, a:b, '')
+
+  return trim(printf("%s %s %s  %s %s %s %s", bp, fsize, icon, flag, name, extra, line))
+endfunction
+
 function! s:buffers() abort
   redir => l:buffers
     silent buffers
   redir END
-  let s:buffers_cache = split(l:buffers, "\n")
-  return s:buffers_cache
+  let s:line_info = {}
+  for line in split(l:buffers, "\n")
+    let bufnr = str2nr(trim(matchstr(line, '^\s*\d\+')))
+    let lnum = matchstr(line, 'line.*$')
+    let s:line_info[bufnr] = lnum
+  endfor
+  return map(clap#util#buflisted_sorted(), "s:format_buffer(str2nr(v:val))")
 endfunction
 
 function! s:buffers_sink(selected) abort
-  call win_gotoid(bufwinid(g:clap.start.bufnr))
-  let b = split(a:selected)[0]
+  call g:clap.start.goto_win()
+  let b = matchstr(a:selected, '^\[\zs\d\+\ze\]')
   execute 'buffer' b
 endfunction
 

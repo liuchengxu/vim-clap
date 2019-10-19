@@ -227,5 +227,22 @@ function! clap#util#expand(args) abort
   return a:args
 endfunction
 
+function! clap#util#getfsize(fname) abort
+  let l:size = getfsize(a:fname)
+  if l:size == 0 || l:size == -1 || l:size == -2
+    return ''
+  endif
+  if l:size < 1024
+    let size = l:size.'B'
+  elseif l:size < 1024*1024
+    let size = printf('%.1f', l:size/1024.0) . 'K'
+  elseif l:size < 1024*1024*1024
+    let size = printf('%.1f', l:size/1024.0/1024.0) . 'M'
+  else
+    let size = printf('%.1f', l:size/1024.0/1024.0/1024.0) . 'G'
+  endif
+  return size
+endfunction
+
 let &cpo = s:save_cpo
 unlet s:save_cpo

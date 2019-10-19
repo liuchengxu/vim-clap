@@ -162,6 +162,24 @@ function! clap#icon#get(pattern) abort
   endif
 endfunction
 
+function! s:get_or_default(k) abort
+  return get(g:clap#icon#extensions, a:k, g:clap#icon#default)
+endfunction
+
+function! clap#icon#for(bufname) abort
+  let ft = getbufvar(a:bufname, '&ft')
+  if empty(ft)
+    let ext = fnamemodify(expand(a:bufname), ':e')
+    if empty(ext)
+      return g:clap#icon#default
+    else
+      return s:get_or_default(ext)
+    endif
+  else
+    return s:get_or_default(ft)
+  return
+endfunction
+
 function! clap#icon#get_all() abort
   let extensions = values(g:clap#icon#extensions)
   let exact_matches = values(g:clap#icon#exact_matches)
