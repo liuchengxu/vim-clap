@@ -85,7 +85,19 @@ to work everywhere out of the box, with fast response.
 
                                                     *:Clap-files*
 :Clap files              List Files
-                         Require fd/git/rg/find
+                         Require `fd`/`rg`/`git`/`find`
+
+                         The order of default finder executable used
+                         for files is [ `fd`, `rg`, `git`, `find` ] .
+
+                         You can also use `++finder` to specify another finder
+                         executable for the files and pass the options
+                         after, e.g., `:Clap files ++finder=rg --files` means
+                         the actual command line used is `rg --files` .
+
+                         For the `fd` and `rg` finder, you can pass
+                         `--hidden` to search the hidden files as well, i.e,
+                         `:Clap files --hidden` .
 
 
                                                      *:Clap-filetypes*
