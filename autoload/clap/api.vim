@@ -516,12 +516,24 @@ function! s:init_provider() abort
 
   function! provider.init_display_win() abort
     if self.is_pure_async()
-          \ || type(g:clap.provider._().source) == v:t_string
-          \ || type(g:clap.provider._().source) == v:t_func
       return
     endif
+
+    let Source = g:clap.provider._().source
+    let source_ty = type(Source)
+
+    if source_ty == v:t_string
+      return
+    elseif source_ty == v:t_func
+      let cur_source = Source()
+      if type(cur_source) == v:t_string
+        return
+      endif
+    endif
+
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    let lines = self.get_source()
+    " cur_source must be a List.
+    let lines = cur_source
     let initial_size = len(lines)
     let g:clap.display.initial_size = initial_size
     if initial_size > 0

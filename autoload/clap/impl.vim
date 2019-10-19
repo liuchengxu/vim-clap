@@ -97,12 +97,32 @@ function! s:on_typed_async_impl() abort
   call g:clap.display.add_highlight(l:cur_input)
 endfunction
 
+" Choose the suitable way according to the source size.
 function! s:should_switch_to_async() abort
-  let source_ty = type(g:clap.provider._().source)
-  " Choose the suitable way according to the source size.
-  return source_ty == v:t_string
-        \ || source_ty == v:t_func
+  if g:clap.provider.is_pure_async()
+    return v:true
+  endif
+
+  let Source = g:clap.provider._().source
+  let source_ty = type(Source)
+
+  if source_ty == v:t_string
         \ || (source_ty == v:t_list && len(g:clap.provider.get_source()) > s:async_threshold)
+    return v:true
+  endif
+
+  if source_ty == v:t_func
+    let s:cur_source = Source()
+    if type(s:cur_source) == v:t_string
+      return v:true
+    elseif type(s:cur_source) == v:t_list && len(s:cur_source) > s:async_threshold
+      return v:true
+    else
+      return v:false
+    endif
+  endif
+
+  return v:false
 endfunction
 
 "                          filter
