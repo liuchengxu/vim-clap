@@ -24,9 +24,9 @@ function! s:format_buffer(b)
   let fsize = s:padding(clap#util#getfsize(name), 6)
   let icon = s:padding(clap#icon#for(name), 3)
   let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
-  let line = get(s:line_info, a:b, '')
+  let line = s:padding(get(s:line_info, a:b, ''), 10)
 
-  return trim(printf("%s %s %s %s %s %s %s", bp, fsize, icon, flag, name, extra, line))
+  return trim(printf("%s %s %s %s %s %s %s", bp, fsize, icon, line, name, flag, extra))
 endfunction
 
 function! s:buffers() abort
@@ -49,10 +49,7 @@ function! s:buffers_sink(selected) abort
 endfunction
 
 function! s:buffers_on_enter() abort
-  " Although it's not the vim filetype, we merely want a highlight.
-  " FIXME: Could define clap_buffers syntax to get the correct highlights, but I am
-  " too lazy to write one, plus I really dislike writing a syntax file.
-  call g:clap.display.setbufvar('&ft', 'vim')
+  call g:clap.display.setbufvar('&ft', 'clap_buffers')
 endfunction
 
 let s:buffers = {}
