@@ -228,6 +228,8 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 `Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async`.
 
+`++opt` and `+opt` will be stored in the Dict `g:clap.context`, the rest arguments will be stored in a List of String `g:clap.provider.args`.
+
 ### Create non-pure-async provider
 
 For the non-pure-async providers, you could run it in async or sync way. By default vim-clap will choose the best strategy, running async for the source consisted of 5000+ lines or otherwise run it in sync way. [See the discussion about the non-pure-async providers](https://github.com/liuchengxu/vim-clap/issues/17#issue-501470657).

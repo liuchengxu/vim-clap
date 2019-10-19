@@ -93,6 +93,16 @@ function! g:clap#floating_win#display.compact_if_undersize() abort
   call s:try_adjust_preview()
 endfunction
 
+function! g:clap#floating_win#display.compact() abort
+  let height = g:clap.display.line_count()
+  let opts = nvim_win_get_config(s:display_winid)
+  if opts.height != height
+    let opts.height = height
+    call nvim_win_set_config(s:display_winid, opts)
+    call s:try_adjust_preview()
+  endif
+endfunction
+
 function! g:clap#floating_win#spinner.open() abort
   let opts = nvim_win_get_config(s:display_winid)
   let opts.row -= 1
@@ -210,7 +220,7 @@ function! clap#floating_win#open() abort
 
   startinsert
 
-  call g:clap.provider.apply_args()
+  call g:clap.provider.apply_query()
 endfunction
 
 function! clap#floating_win#close() abort

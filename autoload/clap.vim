@@ -212,7 +212,7 @@ function! s:parse_opts(args) abort
   let idx = 0
   for arg in a:args
     if arg =~? '^++\w*=\w*'
-      let matched = matchlist(arg, '^++\(\w*\)=\(\w*\)')
+      let matched = matchlist(arg, '^++\(\w*\)=\(\S*\)')
       let [k, v] = [matched[1], matched[2]]
       let g:clap.context[k] = v
     elseif arg =~? '^+\w*'
@@ -223,7 +223,10 @@ function! s:parse_opts(args) abort
     endif
     let idx += 1
   endfor
-  let g:clap.provider.args = clap#util#expand(a:args[idx:])
+  if has_key(g:clap.context, 'query')
+    let g:clap.context.query = clap#util#expand(g:clap.context.query)
+  endif
+  let g:clap.provider.args = a:args[idx:]
 endfunction
 
 function! clap#(bang, ...) abort

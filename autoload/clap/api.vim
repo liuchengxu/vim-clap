@@ -326,7 +326,8 @@ function! s:init_provider() abort
     try
       call self._().on_typed()
     catch
-      call g:clap.display.set_lines(['provider.on_typed: '.v:exception])
+      call g:clap.display.set_lines(['provider.on_typed:', v:throwpoint, v:exception])
+      call g:clap#display_win.compact()
       call clap#spinner#set_idle()
     endtry
   endfunction
@@ -365,13 +366,14 @@ function! s:init_provider() abort
     return get(self._(), 'support_open_action', v:false)
   endfunction
 
-  function! provider.apply_args() abort
-    if !empty(g:clap.provider.args)
-          \ && g:clap.provider.args[0] !~# '^+'
+  function! provider.apply_query() abort
+    " if !empty(g:clap.provider.args)
+          " \ && g:clap.provider.args[0] !~# '^+'
+    if has_key(g:clap.context, 'query')
       if s:is_nvim
-        call feedkeys(join(g:clap.provider.args, ' '))
+        call feedkeys(g:clap.context.query)
       else
-        call g:clap.input.set(join(g:clap.provider.args, ' '))
+        call g:clap.input.set(g:clap.context.query)
         " Move the cursor to the end.
         call feedkeys("\<C-E>", 'xt')
       endif
@@ -384,6 +386,7 @@ function! s:init_provider() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
     else
+
       let Source = self._().source
       let source_ty = type(Source)
       if source_ty == v:t_string
@@ -395,12 +398,18 @@ function! s:init_provider() abort
 
       if source_ty == v:t_func
         let lines = Source()
+        if type(lines) == v:t_string
+          let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+          let cmd = lines.' | '.ext_filter_cmd
+          return cmd
+        endif
       elseif source_ty == v:t_list
         let lines = copy(Source)
       else
         call g:clap.abort("source_ty is neither func nor list, this should not happen")
         return
       endif
+
       let tmp = tempname()
       if writefile(lines, tmp) == 0
         let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
@@ -411,6 +420,7 @@ function! s:init_provider() abort
         call g:clap.abort("Fail to write source to a temp file")
         return
       endif
+
     endif
   endfunction
 
@@ -428,6 +438,18 @@ function! s:init_provider() abort
     let source_ty = type(Source)
     if source_ty == v:t_func
       let lines = Source()
+      if type(lines) == v:t_list
+        return lines
+      elseif type(lines) == v:t_string
+        let lines = system(lines)
+        if v:shell_error
+          call clap#error('Fail to run '.Source)
+          return ['Fail to run '.Source]
+        endif
+        return split(lines, "\n")
+      else
+        return ['source() must return a List or a String if it is a Funcref']
+      endif
     elseif source_ty == v:t_list
       " Use copy here, otherwise it could be one-off List.
       let lines = copy(Source)
@@ -487,7 +509,8 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    if self.is_pure_async()
+    " if self.is_pure_async()
+    if self.can_async()
       return
     endif
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.

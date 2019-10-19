@@ -206,8 +206,8 @@ endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
-  if a:args == ['<cword>']
-    return [expand('<cword>')]
+  if a:args == '<cword>'
+    return expand('<cword>')
   endif
   return a:args
 endfunction
