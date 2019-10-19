@@ -228,7 +228,7 @@ function! clap#util#expand(args) abort
 endfunction
 
 function! clap#util#getfsize(fname) abort
-  let l:size = getfsize(a:fname)
+  let l:size = getfsize(expand(a:fname))
   if l:size == 0 || l:size == -1 || l:size == -2
     return ''
   endif

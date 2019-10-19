@@ -36,7 +36,7 @@ function! s:buffers() abort
   let s:line_info = {}
   for line in split(l:buffers, "\n")
     let bufnr = str2nr(trim(matchstr(line, '^\s*\d\+')))
-    let lnum = matchstr(line, 'line.*$')
+    let lnum = matchstr(line, '\s\+\zsline.*$')
     let s:line_info[bufnr] = lnum
   endfor
   return map(clap#util#buflisted_sorted(), "s:format_buffer(str2nr(v:val))")
