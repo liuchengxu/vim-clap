@@ -43,7 +43,6 @@ function! s:files.source() abort
   endif
 endfunction
 
-" let s:files.source = s:find_cmd
 let s:files.sink = 'e'
 
 let s:files.enable_rooter = v:true
