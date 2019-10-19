@@ -104,6 +104,10 @@ to work everywhere out of the box, with fast response.
                          Require `rg`
 
 
+                                                      *:Clap-history*
+:Clap history           List the open buffers and |v:oldfiles|.
+
+
                                                      *:Clap-jumps*
 :Clap jumps              List Jumps
 
