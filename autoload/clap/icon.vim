@@ -162,22 +162,22 @@ function! clap#icon#get(pattern) abort
   endif
 endfunction
 
-function! s:get_or_default(k) abort
+function! s:icon_for(k) abort
   return get(g:clap#icon#extensions, a:k, g:clap#icon#default)
 endfunction
 
 function! clap#icon#for(bufname) abort
-  let ft = getbufvar(a:bufname, '&ft')
-  if empty(ft)
-    let ext = fnamemodify(expand(a:bufname), ':e')
-    if empty(ext)
+  let ext = fnamemodify(expand(a:bufname), ':e')
+  if empty(ext)
+    let ft = getbufvar(a:bufname, '&ft')
+    if empty(ft)
       return g:clap#icon#default
     else
-      return s:get_or_default(ext)
+      return s:icon_for(ft)
     endif
   else
-    return s:get_or_default(ft)
-  return
+    return s:icon_for(ext)
+  endif
 endfunction
 
 function! clap#icon#get_all() abort
