@@ -35,7 +35,7 @@ function! s:files.source() abort
   elseif g:clap.provider.args == ['--hidden']
     return 'fd --hidden --type f'
   else
-    return a:find_cmd
+    return s:find_cmd
   endif
 endfunction
 

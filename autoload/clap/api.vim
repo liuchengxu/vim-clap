@@ -27,6 +27,15 @@ function! s:_setbufvar_batch(dict) dict abort
   call map(a:dict, { key, val -> setbufvar(self.bufnr, key, val) })
 endfunction
 
+function! s:_system(cmd) abort
+  let lines = system(a:cmd)
+  if v:shell_error
+    call clap#error('Fail to run '.a:cmd)
+    return ['Fail to run '.a:cmd]
+  endif
+  return split(lines, "\n")
+endfunction
+
 if s:is_nvim
   function! s:_get_lines() dict abort
     return nvim_buf_get_lines(self.bufnr, 0, -1, 0)
@@ -382,6 +391,14 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  " Pipe the source into the external filter
+  function! s:wrap_async_cmd(source_cmd) abort
+    let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+    " FIXME Does it work well in Windows?
+    let cmd = a:source_cmd.' | '.ext_filter_cmd
+    return cmd
+  endfunction
+
   function! provider.source_async_or_default() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
@@ -390,18 +407,13 @@ function! s:init_provider() abort
       let Source = self._().source
       let source_ty = type(Source)
       if source_ty == v:t_string
-        let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        " FIXME Does it work well in Windows?
-        let cmd = Source.' | '.ext_filter_cmd
-        return cmd
+        return s:wrap_async_cmd(Source)
       endif
 
       if source_ty == v:t_func
-        let lines = Source()
-        if type(lines) == v:t_string
-          let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-          let cmd = lines.' | '.ext_filter_cmd
-          return cmd
+        let list_or_cmd = Source()
+        if type(list_or_cmd) == v:t_string
+          return s:wrap_async_cmd(list_or_cmd)
         endif
       elseif source_ty == v:t_list
         let lines = copy(Source)
@@ -436,33 +448,29 @@ function! s:init_provider() abort
   function! provider._apply_source() abort
     let Source = self._().source
     let source_ty = type(Source)
+
     if source_ty == v:t_func
-      let lines = Source()
-      if type(lines) == v:t_list
-        return lines
-      elseif type(lines) == v:t_string
-        let lines = system(lines)
-        if v:shell_error
-          call clap#error('Fail to run '.Source)
-          return ['Fail to run '.Source]
-        endif
-        return split(lines, "\n")
+      let list_or_cmd = Source()
+
+      if type(list_or_cmd) == v:t_list
+        return copy(list_or_cmd)
+      elseif type(list_or_cmd) == v:t_string
+        return s:_system(list_or_cmd)
       else
         return ['source() must return a List or a String if it is a Funcref']
       endif
+
     elseif source_ty == v:t_list
       " Use copy here, otherwise it could be one-off List.
       let lines = copy(Source)
+
     elseif source_ty == v:t_string
-      let lines = system(Source)
-      if v:shell_error
-        call clap#error('Fail to run '.Source)
-        return ['Fail to run '.Source]
-      endif
-      return split(lines, "\n")
+      return s:_system(Source)
+
     else
       return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
     endif
+
     return lines
   endfunction
 
