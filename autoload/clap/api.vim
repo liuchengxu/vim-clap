@@ -376,8 +376,6 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.apply_query() abort
-    " if !empty(g:clap.provider.args)
-          " \ && g:clap.provider.args[0] !~# '^+'
     if has_key(g:clap.context, 'query')
       if s:is_nvim
         call feedkeys(g:clap.context.query)
