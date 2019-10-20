@@ -477,7 +477,8 @@ function! s:init_provider() abort
       endif
     catch
       call clap#spinner#set_idle()
-      return ['provider.get_source: '.v:exception]
+      let tps = split(v:throwpoint, '\[\d\+\]\zs')
+      return ['provider.get_source:'] + tps + [v:exception]
     endtry
   endfunction
 

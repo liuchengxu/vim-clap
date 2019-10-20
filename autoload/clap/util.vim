@@ -129,6 +129,7 @@ endfunction
 function! clap#util#run_rooter(Run, ...) abort
   if get(g:, 'clap_disable_run_rooter', v:false)
         \ || !g:clap.provider.has_enable_rooter()
+        \ || getbufvar(g:clap.start.bufnr, '&bt') ==# 'terminal'
     return call(a:Run, a:000)
   endif
 
@@ -154,6 +155,10 @@ endfunction
 " what if the sink function changes cwd intentionally? Then we
 " should not restore to the current cwd after executing the sink function.
 function! clap#util#run_rooter_heuristic(Run, ...) abort
+  if getbufvar(g:clap.start.bufnr, '&bt') ==# 'terminal'
+    return call(a:Run, a:000)
+  endif
+
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
 
   if empty(git_root)
