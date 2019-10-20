@@ -92,10 +92,10 @@ function! clap#_init() abort
     elseif source_ty == v:t_list
       let g:clap.provider.type = g:__t_list
     elseif source_ty == v:t_func
-      let list_or_cmd = Source()
-      if type(list_or_cmd) == v:t_string
+      let string_or_list = Source()
+      if type(string_or_list) == v:t_string
         let g:clap.provider.type = g:__t_func_string
-      elseif type(list_or_cmd) == v:t_list
+      elseif type(string_or_list) == v:t_list
         let g:clap.provider.type = g:__t_func_list
       else
         call g:clap.abort("Must return a String or a List if source is a Funcref")
