@@ -147,9 +147,28 @@ function! s:init_hi_groups() abort
   call s:init_hi_submatches()
 endfunction
 
+if has('nvim')
+  function! s:reconfigure_display_opts() abort
+    call clap#floating_win#reconfigure_display_opts()
+  endfunction
+else
+  function! s:reconfigure_display_opts() abort
+    call clap#popup#reconfigure_display_opts()
+  endfunction
+endif
+
 function! clap#init#() abort
   call clap#api#bake()
   call s:init_hi_groups()
+
+  " This augroup should be retained after closing vim-clap for the benefit
+  " of next run.
+  if !exists('#ClapResize')
+    augroup ClapResize
+      autocmd!
+      autocmd VimResized * call s:reconfigure_display_opts()
+    augroup END
+  endif
 endfunction
 
 let &cpo = s:save_cpo

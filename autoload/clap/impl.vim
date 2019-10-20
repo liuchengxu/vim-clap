@@ -100,26 +100,21 @@ endfunction
 " Choose the suitable way according to the source size.
 function! s:should_switch_to_async() abort
   if g:clap.provider.is_pure_async()
+        \ || g:clap.provider.type == g:__t_string
+        \ || g:clap.provider.type == g:__t_func_string
     return v:true
   endif
 
   let Source = g:clap.provider._().source
-  let source_ty = type(Source)
 
-  if source_ty == v:t_string
-        \ || (source_ty == v:t_list && len(g:clap.provider.get_source()) > s:async_threshold)
-    return v:true
+  if g:clap.provider.type == g:__t_list
+    let s:cur_source = Source
+  elseif g:clap.provider.type == g:__t_func_list
+    let s:cur_source = Source()
   endif
 
-  if source_ty == v:t_func
-    let s:cur_source = Source()
-    if type(s:cur_source) == v:t_string
-      return v:true
-    elseif type(s:cur_source) == v:t_list && len(s:cur_source) > s:async_threshold
-      return v:true
-    else
-      return v:false
-    endif
+  if len(s:cur_source) > s:async_threshold
+    return v:true
   endif
 
   return v:false

@@ -34,7 +34,7 @@ endfunction
 
 let s:display_opts = s:prepare_display_opts()
 
-function! s:reconfigure_display_opts() abort
+function! clap#popup#reconfigure_display_opts() abort
   let s:display_opts = s:prepare_display_opts()
 endfunction
 
@@ -463,7 +463,7 @@ function! clap#popup#open() abort
 
   let g:clap_indicator_winid = s:indicator_winid
 
-  call g:clap.provider.init_display_win()
+  call clap#_init()
 
   " Currently the highlight can't be local in vim.
   " Remove this once vim support win local highlight.
@@ -473,20 +473,13 @@ function! clap#popup#open() abort
 
   hi! link SignColumn ClapDisplay
 
-  call g:clap.provider.on_enter()
-
   " TODO more roboust?
   augroup ClapEnsureAllClosed
     autocmd!
     autocmd BufEnter,WinEnter,WinLeave * call clap#popup#close()
   augroup END
 
-  if !exists('#ClapResize')
-    augroup ClapResize
-      autocmd!
-      autocmd VimResized * call s:reconfigure_display_opts()
-    augroup END
-  endif
+  call g:clap.provider.on_enter()
 
   silent doautocmd <nomodeline> User ClapOnEnter
 

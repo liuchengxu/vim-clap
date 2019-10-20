@@ -398,21 +398,15 @@ function! s:init_provider() abort
     else
 
       let Source = self._().source
-      let source_ty = type(Source)
-      if source_ty == v:t_string
-        return s:wrap_async_cmd(Source)
-      endif
 
-      if source_ty == v:t_func
-        let list_or_cmd = Source()
-        if type(list_or_cmd) == v:t_string
-          return s:wrap_async_cmd(list_or_cmd)
-        elseif type(list_or_cmd) == v:t_list
-          let lines = copy(list_or_cmd)
-        else
-          call g:clap.abort("Must return a String or a List if source is a Funcref")
-          return
-        endif
+      if self.type == g:__t_string
+        return s:wrap_async_cmd(Source)
+      elseif self.type == g:__t_func_string
+        return s:wrap_async_cmd(Source())
+      elseif self.type == g:__t_list
+        let lines = copy(Source)
+      elseif self.type == g:__t_func_list
+        let lines = copy(Source())
       endif
 
       let tmp = tempname()
@@ -440,28 +434,18 @@ function! s:init_provider() abort
 
   function! provider._apply_source() abort
     let Source = self._().source
-    let source_ty = type(Source)
 
-    if source_ty == v:t_func
-      let list_or_cmd = Source()
-
-      if type(list_or_cmd) == v:t_list
-        return copy(list_or_cmd)
-      elseif type(list_or_cmd) == v:t_string
-        return s:_system(list_or_cmd)
-      else
-        return ['source() must return a List or a String if it is a Funcref']
-      endif
-
-    elseif source_ty == v:t_list
+    if self.type == g:__t_string
+      return s:_system(Source)
+    elseif self.type == g:__t_list
       " Use copy here, otherwise it could be one-off List.
       let lines = copy(Source)
-
-    elseif source_ty == v:t_string
-      return s:_system(Source)
-
+    elseif self.type == g:__t_func_string
+      return s:_system(Source())
+    elseif self.type == g:__t_func_list
+      return copy(Source())
     else
-      return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
+      return ['source() must return a List or a String if it is a Funcref']
     endif
 
     return lines
@@ -512,24 +496,19 @@ function! s:init_provider() abort
 
   function! provider.init_display_win() abort
     if self.is_pure_async()
+          \ || self.type == g:__t_string
+          \ || self.type == g:__t_func_string
       return
-    endif
-
-    let Source = g:clap.provider._().source
-    let source_ty = type(Source)
-
-    if source_ty == v:t_string
-      return
-    elseif source_ty == v:t_func
-      let cur_source = Source()
-      if type(cur_source) == v:t_string
-        return
-      endif
     endif
 
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    " cur_source must be a List.
-    let lines = cur_source
+    let Source = g:clap.provider._().source
+    if self.type == g:__t_list
+      let lines = Source
+    elseif self.type == g:__t_func_list
+      let lines = Source()
+    endif
+
     let initial_size = len(lines)
     let g:clap.display.initial_size = initial_size
     if initial_size > 0
