@@ -329,7 +329,8 @@ function! s:init_provider() abort
     try
       call self._().on_typed()
     catch
-      call g:clap.display.set_lines(['provider.on_typed:', v:throwpoint, v:exception])
+      let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
+      call g:clap.display.set_lines(l:error_info)
       call g:clap#display_win.compact()
       call clap#spinner#set_idle()
     endtry
@@ -406,12 +407,12 @@ function! s:init_provider() abort
         let list_or_cmd = Source()
         if type(list_or_cmd) == v:t_string
           return s:wrap_async_cmd(list_or_cmd)
+        elseif type(list_or_cmd) == v:t_list
+          let lines = copy(list_or_cmd)
+        else
+          call g:clap.abort("Must return a String or a List if source is a Funcref")
+          return
         endif
-      elseif source_ty == v:t_list
-        let lines = copy(Source)
-      else
-        call g:clap.abort("source_ty is neither func nor list, this should not happen")
-        return
       endif
 
       let tmp = tempname()
