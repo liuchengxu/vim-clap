@@ -203,10 +203,13 @@ g:clap_disable_optional_async                    *g:clap_disable_optional_async*
   - the `source` of provider is |String|
   - the `source` of provider is |List| and the size of source exceeds the
     threshold
+  - the `source` of provider is a |Funcref| that returns a |String| or
+    returns a |List| that exceeds the threshold.
 
-  If the default async filter implementation of vim-clap is not viable and the
-  provider does not offer a `source_async` implementation explictily, this
-  variable has no effect, vim-clap will always uses the sync filter implementation.
+  If the provider does not provide the `source_async` implementation explictily
+  and vim-clap fails to inject the default async external filter implementation,
+  this variable has no effect, the sync filter implementation will always be
+  used.
 
 
 g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
@@ -215,6 +218,7 @@ g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
   Default: `"NO MATCHES FOUND"`
 
   This message will be used when there is no matches found.
+
 
 g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
 
@@ -227,7 +231,8 @@ g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
 
   Set this variable to `v:true` to save all the results, and then when you
   reach the end of the display window, the cached results will be loaded
-  automatically.
+  automatically. However, it may have some performance loss to cache all the
+  results especially when there are hundreds of thousands of results.
 
 
 g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
@@ -364,7 +369,7 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
 g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
   Type: |Number|
-  Default: `get(g:, 'spacevim_nerd_fonts', 0) || exists('g:loaded_webdevicons')`
+  Default: `exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0)`
 
   Set this variable to `0` to disable drawing an icon for the returned result.
 
