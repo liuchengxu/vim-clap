@@ -73,7 +73,8 @@ function! s:inject_default_impl_is_ok(provider_info) abort
 endfunction
 
 function! s:_sink(selected) abort
-  echom "_ unimplemented"
+  " a sink for "Clap _" (dispatch to other builtin clap providers).
+  call timer_start(0, {-> clap#(0, a:selected)})
 endfunction
 
 function! clap#_exit() abort
