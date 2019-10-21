@@ -113,6 +113,17 @@ function! s:init_hi_groups() abort
           \ )
   endif
 
+    let input_ctermbg = s:extract_or('ClapInput', 'bg', 'cterm', '60')
+    let input_guibg = s:extract_or('ClapInput', 'bg', 'gui', '#544a65')
+    let normal_ctermfg = s:extract_or('Normal', 'bg', 'cterm', '249')
+    let normal_guifg = s:extract_or('Normal', 'bg', 'gui', '#b2b2b2')
+    execute printf(
+          \ "hi ClapSymbol guifg=%s ctermfg=%s ctermbg=%s guibg=%s",
+          \ input_guibg,
+          \ input_ctermbg,
+          \ normal_ctermfg,
+          \ normal_guifg,
+          \ )
   if !hlexists('ClapDisplay')
     execute 'hi default link ClapDisplay' s:display_default_hi_group
     let s:display_group = s:display_default_hi_group
