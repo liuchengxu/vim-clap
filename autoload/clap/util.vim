@@ -32,7 +32,9 @@ function! clap#util#try_load_file(file) abort
   if filereadable(expand(a:file))
     let bufnr = bufadd(a:file)
     if !bufloaded(bufnr)
-      silent call bufload(bufnr)
+      " Use noautocmd here as we actually only want to get the buffer text,
+      " otherwise some services may be started unexpected, e.g., LSP service.
+      noautocmd silent call bufload(bufnr)
     endif
     return bufnr
   else
@@ -226,8 +228,8 @@ endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
-  if a:args == ['<cword>']
-    return [expand('<cword>')]
+  if a:args == '<cword>'
+    return expand('<cword>')
   endif
   return a:args
 endfunction

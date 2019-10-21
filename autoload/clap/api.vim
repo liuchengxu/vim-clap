@@ -27,6 +27,15 @@ function! s:_setbufvar_batch(dict) dict abort
   call map(a:dict, { key, val -> setbufvar(self.bufnr, key, val) })
 endfunction
 
+function! s:_system(cmd) abort
+  let lines = system(a:cmd)
+  if v:shell_error
+    call clap#error('Fail to run '.a:cmd)
+    return ['Fail to run '.a:cmd]
+  endif
+  return split(lines, "\n")
+endfunction
+
 if s:is_nvim
   function! s:_get_lines() dict abort
     return nvim_buf_get_lines(self.bufnr, 0, -1, 0)
@@ -320,7 +329,9 @@ function! s:init_provider() abort
     try
       call self._().on_typed()
     catch
-      call g:clap.display.set_lines(['provider.on_typed: '.v:exception])
+      let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
+      call g:clap.display.set_lines(l:error_info)
+      call g:clap#display_win.compact()
       call clap#spinner#set_idle()
     endtry
   endfunction
@@ -359,13 +370,12 @@ function! s:init_provider() abort
     return get(self._(), 'support_open_action', v:false)
   endfunction
 
-  function! provider.apply_args() abort
-    if !empty(g:clap.provider.args)
-          \ && g:clap.provider.args[0] !~# '^+'
+  function! provider.apply_query() abort
+    if has_key(g:clap.context, 'query')
       if s:is_nvim
-        call feedkeys(join(g:clap.provider.args, ' '))
+        call feedkeys(g:clap.context.query)
       else
-        call g:clap.input.set(join(g:clap.provider.args, ' '))
+        call g:clap.input.set(g:clap.context.query)
         " Move the cursor to the end.
         call feedkeys("\<C-E>", 'xt')
       endif
@@ -374,27 +384,31 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  " Pipe the source into the external filter
+  function! s:wrap_async_cmd(source_cmd) abort
+    let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+    " FIXME Does it work well in Windows?
+    let cmd = a:source_cmd.' | '.ext_filter_cmd
+    return cmd
+  endfunction
+
   function! provider.source_async_or_default() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
     else
+
       let Source = self._().source
-      let source_ty = type(Source)
-      if source_ty == v:t_string
-        let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        " FIXME Does it work well in Windows?
-        let cmd = Source.' | '.ext_filter_cmd
-        return cmd
+
+      if self.type == g:__t_string
+        return s:wrap_async_cmd(Source)
+      elseif self.type == g:__t_func_string
+        return s:wrap_async_cmd(Source())
+      elseif self.type == g:__t_list
+        let lines = copy(Source)
+      elseif self.type == g:__t_func_list
+        let lines = copy(Source())
       endif
 
-      if source_ty == v:t_func
-        let lines = Source()
-      elseif source_ty == v:t_list
-        let lines = copy(Source)
-      else
-        call g:clap.abort("source_ty is neither func nor list, this should not happen")
-        return
-      endif
       let tmp = tempname()
       if writefile(lines, tmp) == 0
         let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
@@ -405,6 +419,7 @@ function! s:init_provider() abort
         call g:clap.abort("Fail to write source to a temp file")
         return
       endif
+
     endif
   endfunction
 
@@ -419,22 +434,20 @@ function! s:init_provider() abort
 
   function! provider._apply_source() abort
     let Source = self._().source
-    let source_ty = type(Source)
-    if source_ty == v:t_func
-      let lines = Source()
-    elseif source_ty == v:t_list
+
+    if self.type == g:__t_string
+      return s:_system(Source)
+    elseif self.type == g:__t_list
       " Use copy here, otherwise it could be one-off List.
       let lines = copy(Source)
-    elseif source_ty == v:t_string
-      let lines = system(Source)
-      if v:shell_error
-        call clap#error('Fail to run '.Source)
-        return ['Fail to run '.Source]
-      endif
-      return split(lines, "\n")
+    elseif self.type == g:__t_func_string
+      return s:_system(Source())
+    elseif self.type == g:__t_func_list
+      return copy(Source())
     else
-      return ['provider.get_source: this should not happen, source can only be a list, string or funcref']
+      return ['source() must return a List or a String if it is a Funcref']
     endif
+
     return lines
   endfunction
 
@@ -483,10 +496,19 @@ function! s:init_provider() abort
 
   function! provider.init_display_win() abort
     if self.is_pure_async()
+          \ || self.type == g:__t_string
+          \ || self.type == g:__t_func_string
       return
     endif
+
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    let lines = self.get_source()
+    let Source = g:clap.provider._().source
+    if self.type == g:__t_list
+      let lines = Source
+    elseif self.type == g:__t_func_list
+      let lines = Source()
+    endif
+
     let initial_size = len(lines)
     let g:clap.display.initial_size = initial_size
     if initial_size > 0

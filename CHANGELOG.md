@@ -15,6 +15,8 @@ CHANGELOG
 - Rework the `buffers` provider.([#71](https://github.com/liuchengxu/vim-clap/issues/71))
 - Support opening the selected file via <kbd>ctrl-t</kbd>, <kbd>ctrl-x</kbd>, <kbd>ctrl-v</kbd> if the provider supports, and add `g:clap_open_action` for configuring the default keybindings.
 - Support opening files from the git base directory. See `:h g:clap_disable_run_rooter` if you don't like this behavior.
+- Support searching the hidden files via `:Clap files --hidden`.
+- Support using any other finder tools via `:Clap files ++finder=[YOUR FINDER] [FINDER ARGS]`.
 
 ### Improved
 
@@ -30,5 +32,7 @@ Various fixes.
 - Rename `g:clap_selected_sign_definition` to `g:clap_selected_sign`.
 - Rename `g:clap_current_selection_sign_definition` to `g:clap_current_selection_sign`.
 - Rename `g:clap_disable_run_from_project_root` to `g:clap_disable_run_rooter`.
+- `:Clap grep <cword>` is changed to `:Clap grep ++query=<cword>`.
+- Rework `g:clap.context` and `g:clap.provider.args`.
 
 ### Removed

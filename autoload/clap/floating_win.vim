@@ -45,7 +45,7 @@ endfunction
 
 let s:display_opts = s:prepare_display_opts()
 
-function! s:reconfigure_display_opts() abort
+function! clap#floating_win#reconfigure_display_opts() abort
   let s:display_opts = s:prepare_display_opts()
 endfunction
 
@@ -91,6 +91,16 @@ function! g:clap#floating_win#display.compact_if_undersize() abort
   endif
   call nvim_win_set_config(s:display_winid, opts)
   call s:try_adjust_preview()
+endfunction
+
+function! g:clap#floating_win#display.compact() abort
+  let height = g:clap.display.line_count()
+  let opts = nvim_win_get_config(s:display_winid)
+  if opts.height != height
+    let opts.height = height
+    call nvim_win_set_config(s:display_winid, opts)
+    call s:try_adjust_preview()
+  endif
 endfunction
 
 function! g:clap#floating_win#spinner.open() abort
@@ -184,23 +194,12 @@ function! clap#floating_win#open() abort
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
 
-  call clap#spinner#init()
-
-  call g:clap.provider.init_display_win()
+  call clap#_init()
 
   augroup ClapEnsureAllClosed
     autocmd!
     " autocmd BufEnter,WinEnter,WinLeave * call s:ensure_closed()
   augroup END
-
-  " This augroup should be retained after closing vim-clap for the benefit
-  " of next run.
-  if !exists('#ClapResize')
-    augroup ClapResize
-      autocmd!
-      autocmd VimResized * call s:reconfigure_display_opts()
-    augroup END
-  endif
 
   call g:clap.input.goto_win()
 
@@ -210,7 +209,7 @@ function! clap#floating_win#open() abort
 
   startinsert
 
-  call g:clap.provider.apply_args()
+  call g:clap.provider.apply_query()
 endfunction
 
 function! clap#floating_win#close() abort

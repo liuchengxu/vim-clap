@@ -6,29 +6,43 @@ set cpo&vim
 
 let s:files = {}
 
-let s:find_cmd = v:null
+let s:default_opts = {
+      \ 'fd': '--type f',
+      \ 'rg': '--files',
+      \ 'git': 'ls-tree -r --name-only HEAD',
+      \ 'find': '. -type f',
+      \ }
 
-let s:tools = [
-      \ ['fd', '--type f'],
-      \ ['rg', '--files'],
-      \ ['git', 'ls-tree -r --name-only HEAD'],
-      \ ['find', '. -type f'],
-      \ ]
+let s:default_finder = v:null
 
-let s:find_cmd = v:null
-
-for [exe, opt] in s:tools
+for exe in ['fd', 'rg', 'git', 'find']
   if executable(exe)
-    let s:find_cmd = join([exe, opt], ' ')
+    let s:default_finder = exe
     break
   endif
 endfor
 
-if s:find_cmd is v:null
-  let s:find_cmd = ['No usable tools found for the files provider']
+if s:default_finder is v:null
+  let s:default_source = ['No usable tools found for the files provider']
+else
+  let s:default_source = join([s:default_finder, s:default_opts[s:default_finder]], ' ')
 endif
 
-let s:files.source = s:find_cmd
+function! s:files.source() abort
+  if has_key(g:clap.context, 'finder')
+    let finder = g:clap.context.finder
+    return finder.' '.join(g:clap.provider.args, ' ')
+  elseif g:clap.provider.args == ['--hidden']
+    if s:default_finder ==# 'fd' || s:default_finder ==# 'rg'
+      return join([s:default_finder, s:default_opts[s:default_finder], '--hidden'], ' ')
+    else
+      return s:default_source
+    endif
+  else
+    return s:default_source
+  endif
+endfunction
+
 let s:files.sink = 'e'
 
 let s:files.enable_rooter = v:true

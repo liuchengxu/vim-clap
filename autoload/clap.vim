@@ -24,6 +24,12 @@ let s:builtin_providers = map(
 
 let g:clap#builtin_providers = s:builtin_providers
 
+let g:__t_func = 0
+let g:__t_string = 1
+let g:__t_list = 2
+let g:__t_func_string = 3
+let g:__t_func_list = 4
+
 let s:provider_alias = {
       \ 'hist:': 'command_history',
       \ 'gfiles': 'git_files',
@@ -74,6 +80,33 @@ endfunction
 
 function! s:_sink(selected) abort
   echom "_ unimplemented"
+endfunction
+
+function! clap#_init() abort
+  if has_key(g:clap.provider._(), 'source')
+    let Source = g:clap.provider._().source
+    let source_ty = type(Source)
+
+    if source_ty == v:t_string
+      let g:clap.provider.type = g:__t_string
+    elseif source_ty == v:t_list
+      let g:clap.provider.type = g:__t_list
+    elseif source_ty == v:t_func
+      let string_or_list = Source()
+      if type(string_or_list) == v:t_string
+        let g:clap.provider.type = g:__t_func_string
+      elseif type(string_or_list) == v:t_list
+        let g:clap.provider.type = g:__t_func_list
+      else
+        call g:clap.abort("Must return a String or a List if source is a Funcref")
+        return
+      endif
+    endif
+  endif
+
+  call clap#spinner#init()
+
+  call g:clap.provider.init_display_win()
 endfunction
 
 function! clap#_exit() abort
@@ -212,7 +245,7 @@ function! s:parse_opts(args) abort
   let idx = 0
   for arg in a:args
     if arg =~? '^++\w*=\w*'
-      let matched = matchlist(arg, '^++\(\w*\)=\(\w*\)')
+      let matched = matchlist(arg, '^++\(\w*\)=\(\S*\)')
       let [k, v] = [matched[1], matched[2]]
       let g:clap.context[k] = v
     elseif arg =~? '^+\w*'
@@ -223,7 +256,10 @@ function! s:parse_opts(args) abort
     endif
     let idx += 1
   endfor
-  let g:clap.provider.args = clap#util#expand(a:args[idx:])
+  if has_key(g:clap.context, 'query')
+    let g:clap.context.query = clap#util#expand(g:clap.context.query)
+  endif
+  let g:clap.provider.args = a:args[idx:]
 endfunction
 
 function! clap#(bang, ...) abort

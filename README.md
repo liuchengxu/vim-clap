@@ -106,7 +106,7 @@ Command                                | List                               | Re
 
 - The command with a superscript `+` means that it supports multi-selection via <kbd>Tab</kbd>.
 
-- Use `Clap grep <cword>` to grep the word under cursor.
+- Use `:Clap grep ++query=<cword>` to grep the word under cursor.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
@@ -228,6 +228,8 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
  - `+async`
 
 `Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async`.
+
+`++opt` and `+opt` will be stored in the Dict `g:clap.context`, the rest arguments will be stored in a List of String `g:clap.provider.args`.
 
 ### Create non-pure-async provider
 
