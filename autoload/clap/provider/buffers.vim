@@ -39,7 +39,8 @@ function! s:buffers() abort
     let lnum = matchstr(line, '\s\+\zsline.*$')
     let s:line_info[bufnr] = lnum
   endfor
-  return map(clap#util#buflisted_sorted(), "s:format_buffer(str2nr(v:val))")
+  let bufs = map(clap#util#buflisted_sorted(), "s:format_buffer(str2nr(v:val))")
+  return bufs[1:] + [bufs[0]]
 endfunction
 
 function! s:buffers_sink(selected) abort
