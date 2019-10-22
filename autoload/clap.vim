@@ -79,7 +79,8 @@ function! s:inject_default_impl_is_ok(provider_info) abort
 endfunction
 
 function! s:_sink(selected) abort
-  echom "_ unimplemented"
+  " a sink for "Clap _" (dispatch to other builtin clap providers).
+  call timer_start(0, {-> clap#_for(a:selected)})
 endfunction
 
 function! clap#_init() abort
@@ -131,6 +132,11 @@ function! clap#_exit() abort
   let g:clap.tmps = []
 
   silent doautocmd <nomodeline> User ClapOnExit
+endfunction
+
+function! clap#_for(provider_id_or_alias) abort
+  let g:clap.provider.args = []
+  call clap#for(a:provider_id_or_alias)
 endfunction
 
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
