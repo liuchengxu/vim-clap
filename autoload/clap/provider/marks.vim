@@ -92,9 +92,11 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
       if empty(ft)
         let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
       endif
-      if !empty(ft)
-        call s:render_syntax(ft)
-      endif
+    else
+      let ft = fnamemodify(file_text, ':e')
+    endif
+    if !empty(ft)
+      call s:render_syntax(ft)
     endif
     call s:execute_matchaddpos(hi_lnum)
   endif
