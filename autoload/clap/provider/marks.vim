@@ -67,15 +67,24 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
     let lines = getbufline(g:clap.start.bufnr, start, end)
     let origin_bufnr = g:clap.start.bufnr
   else
-    let bufnr = clap#util#try_load_file(file_text)
-    if bufnr isnot v:null
-      " FIXME lines is empty at times.
-      let lines = getbufline(bufnr, start, end)
-      let origin_bufnr = bufnr
+    if filereadable(expand(file_text))
+      let lines = readfile(expand(file_text), '')
+      " echom "lines:".string(lines)
+      let lines = lines[line-5:line+5]
     else
       let lines = [file_text]
       let should_add_hi = v:false
     endif
+
+    " let bufnr = clap#util#try_load_file(file_text)
+    " if bufnr isnot v:null
+      " " FIXME lines is empty at times.
+      " let lines = getbufline(bufnr, start, end)
+      " let origin_bufnr = bufnr
+    " else
+      " let lines = [file_text]
+      " let should_add_hi = v:false
+    " endif
   endif
 
   call g:clap.preview.show(lines)
