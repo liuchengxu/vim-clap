@@ -26,11 +26,10 @@ setlocal
   \ foldcolumn=0
   \ nowrap
 
-function! s:preview() abort
-  echom "preview is still unplemented"
-endfunction
-
-autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
+augroup ClapOnTyped
+  autocmd!
+  autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
+augroup END
 
 " From vim-rsi
 if !exists('g:loaded_rsi')
@@ -62,5 +61,3 @@ inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
 call clap#util#define_open_action_mappings()
-
-inoremap <silent> <buffer> <C-p> <Esc>:call <SID>preview()<CR>

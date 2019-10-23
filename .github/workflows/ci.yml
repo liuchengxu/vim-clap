@@ -1,36 +1,34 @@
 name: ci
-on:
-  pull_request:
-  push:
+
+on: [push, pull_request]
+
 jobs:
-  one:
-    runs-on: ubuntu-16.04
+  cpoptions_checker:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Dump pwd
-        run: echo "$pwd"
-      - name: Dump ls
-        run: echo "$(ls)"
-      - name: Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-      - name: Dump job context
-        env:
-          JOB_CONTEXT: ${{ toJson(job) }}
-        run: echo "$JOB_CONTEXT"
-      - name: Dump steps context
-        env:
-          STEPS_CONTEXT: ${{ toJson(steps) }}
-        run: echo "$STEPS_CONTEXT"
-      - name: Dump runner context
-        env:
-          RUNNER_CONTEXT: ${{ toJson(runner) }}
-        run: echo "$RUNNER_CONTEXT"
-      - name: Dump strategy context
-        env:
-          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
-        run: echo "$STRATEGY_CONTEXT"
-      - name: Dump matrix context
-        env:
-          MATRIX_CONTEXT: ${{ toJson(matrix) }}
-        run: echo "$MATRIX_CONTEXT"
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Check cpoptions
+      run: test/autoload_should_check_cpo.sh
+
+  vint:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Setup dependencies
+      run: pip install vim-vint
+    - name: Run Vimscript Linter
+      run: vint .

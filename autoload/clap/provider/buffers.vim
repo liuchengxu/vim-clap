@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the open buffers.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 function! s:padding(origin, target_width) abort
   let width = strdisplaywidth(a:origin)
@@ -13,9 +13,9 @@ function! s:padding(origin, target_width) abort
   endif
 endfunction
 
-function! s:format_buffer(b)
+function! s:format_buffer(b) abort
   let name = bufname(a:b)
-  let name = empty(name) ? '[No Name]' : fnamemodify(name, ":p:~:.")
+  let name = empty(name) ? '[No Name]' : fnamemodify(name, ':p:~:.')
   let flag = a:b == bufnr('')  ? '%' : (a:b == bufnr('#') ? '#' : ' ')
   let modified = getbufvar(a:b, '&modified') ? ' [+]' : ''
   let readonly = getbufvar(a:b, '&modifiable') ? '' : ' [RO]'
@@ -26,7 +26,7 @@ function! s:format_buffer(b)
   let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
   let line = s:padding(get(s:line_info, a:b, ''), 10)
 
-  return trim(printf("%s %s %s %s %s %s %s", bp, fsize, icon, line, name, flag, extra))
+  return trim(printf('%s %s %s %s %s %s %s', bp, fsize, icon, line, name, flag, extra))
 endfunction
 
 function! s:buffers() abort
@@ -39,7 +39,8 @@ function! s:buffers() abort
     let lnum = matchstr(line, '\s\+\zsline.*$')
     let s:line_info[bufnr] = lnum
   endfor
-  return map(clap#util#buflisted_sorted(), "s:format_buffer(str2nr(v:val))")
+  let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
+  return bufs[1:] + [bufs[0]]
 endfunction
 
 function! s:buffers_sink(selected) abort
@@ -59,5 +60,5 @@ let s:buffers.on_enter = function('s:buffers_on_enter')
 
 let g:clap#provider#buffers# = s:buffers
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

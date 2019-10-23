@@ -71,7 +71,7 @@ function! clap#filter#get_external_cmd_or_default() abort
   elseif has_key(g:clap.context, 'ef')
     let ext_filter = g:clap.context.ef
   elseif s:default_ext_filter is v:null
-    call g:clap.abort("No external filter available")
+    call g:clap.abort('No external filter available')
     return
   else
     let ext_filter = s:default_ext_filter

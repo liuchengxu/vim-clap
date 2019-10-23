@@ -1,8 +1,10 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Draw a spinner to feel more responsive.
 
-let s:save_cpo = &cpo
-set cpo&vim
+scriptencoding utf-8
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 
@@ -71,5 +73,5 @@ function! clap#spinner#set_idle() abort
   let s:spinner = s:frames[0]
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

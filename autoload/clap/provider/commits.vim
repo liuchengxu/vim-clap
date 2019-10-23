@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the commits.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:commits = {}
 
@@ -34,13 +34,13 @@ function! s:commits.source() abort
   return split(system(source), "\n")
 endfunction
 
-function! s:commits.sink(line)
-  call g:clap.abort("Not implemented yet")
+function! s:commits.sink(line) abort
+  call g:clap.abort('Not implemented yet')
 endfunction
 
 let s:commits.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_commits') }
 
 let g:clap#provider#commits# = s:commits
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

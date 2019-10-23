@@ -14,7 +14,7 @@ command! -bang -nargs=* -bar -complete=custom,clap#complete Clap call clap#(<ban
 
 let g:__clap_buffers = get(g:, '__clap_buffers', {})
 
-augroup clapBuffers
+augroup ClapBuffers
   autocmd!
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
   autocmd BufDelete * silent! call remove(g:__clap_buffers, expand('<abuf>'))
