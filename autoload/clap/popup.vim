@@ -139,7 +139,7 @@ function! s:create_indicator() abort
   if !exists('s:indicator_winid') || empty(popup_getpos(s:indicator_winid))
     let pos = popup_getpos(s:display_winid)
     let pos.line = pos.line - 1
-    let pos.col = pos.col + pos.width - s:indicator_width
+    let pos.col = pos.col + pos.width - s:indicator_width - s:symbol_width
     let pos.minwidth = s:indicator_width
     let pos.maxwidth = s:indicator_width
     let pos.highlight = 'ClapInput'
@@ -151,9 +151,55 @@ function! s:create_indicator() abort
   endif
 endfunction
 
+function! s:create_symbol_right() abort
+  if !exists('s:symbol_right_winid') || empty(popup_getpos(s:symbol_right_winid))
+    let pos = popup_getpos(s:display_winid)
+    let pos.line = pos.line - 1
+    let pos.col = pos.col + pos.width - s:symbol_width
+    let pos.minwidth = s:symbol_width
+    let pos.maxwidth = pos.minwidth
+    let pos.highlight = 'ClapSymbol'
+    let pos.wrap = v:false
+    let pos.zindex = 100
+    let s:symbol_right_winid = popup_create(s:symbol_right, pos)
+    call popup_hide(s:symbol_right_winid)
+    call win_execute(s:symbol_right_winid, 'setlocal nonumber')
+  endif
+endfunction
+
+let s:symbols = {
+      \ 'arrow' : ["\ue0b2", "\ue0b0"],
+      \ 'curve' : ["\ue0b6", "\ue0b4"],
+      \ 'nil' : ['', ''],
+      \ }
+
+let s:symbol_left = s:symbols.curve[0]
+let s:symbol_right = s:symbols.curve[1]
+
+" let s:symbol_left = s:symbols.arrow[0]
+" let s:symbol_right = s:symbols.arrow[1]
+
+let s:symbol_width = strdisplaywidth(s:symbol_right)
+
+function! s:create_symbol_left() abort
+  if !exists('s:symbol_left_winid') || empty(popup_getpos(s:symbol_left_winid))
+    let pos = popup_getpos(s:display_winid)
+    let pos.line = pos.line - 1
+    let pos.minwidth = s:symbol_width
+    let pos.maxwidth = pos.minwidth
+    let pos.highlight = 'ClapSymbol'
+    let pos.wrap = v:false
+    let pos.zindex = 100
+    let s:symbol_left_winid = popup_create(s:symbol_left, pos)
+    call popup_hide(s:symbol_left_winid)
+    call win_execute(s:symbol_left_winid, 'setlocal nonumber')
+  endif
+endfunction
+
 function! s:create_spinner() abort
   if !exists('s:spinner_winid') || empty(popup_getpos(s:spinner_winid))
     let pos = popup_getpos(s:display_winid)
+    let pos.col += s:symbol_width
     let pos.line = pos.line - 1
     let pos.minwidth = clap#spinner#width() + 2
     let pos.maxwidth = pos.minwidth
@@ -195,8 +241,8 @@ function! s:create_input() abort
     let pos = popup_getpos(s:display_winid)
     let pos.line = pos.line - 1
     let spinner_width = clap#spinner#width()
-    let pos.col += spinner_width
-    let pos.minwidth = s:display_opts.width - s:indicator_width - spinner_width
+    let pos.col += spinner_width + s:symbol_width
+    let pos.minwidth = s:display_opts.width - s:indicator_width - spinner_width - s:symbol_width
     let pos.maxwidth = pos.minwidth
     let pos.highlight = 'ClapInput'
     let pos.wrap = v:false
@@ -227,6 +273,8 @@ function! s:close_others() abort
   noautocmd call popup_close(s:indicator_winid)
   noautocmd call popup_close(s:input_winid)
   noautocmd call popup_close(s:spinner_winid)
+  noautocmd call popup_close(s:symbol_left_winid)
+  noautocmd call popup_close(s:symbol_right_winid)
 endfunction
 
 " This somehow doesn't get called if you don't map <C-C> to <C-[>.
@@ -431,10 +479,12 @@ endfunction
 function! s:open_popup() abort
   call s:create_display()
 
+  call s:create_symbol_left()
   call s:create_preview()
   call s:create_indicator()
   call s:create_input()
   call s:create_spinner()
+  call s:create_symbol_right()
 
   call s:mock_input()
 
@@ -446,6 +496,8 @@ function! s:show_all() abort
   call popup_show(s:indicator_winid)
   call popup_show(s:input_winid)
   call popup_show(s:spinner_winid)
+  call popup_show(s:symbol_left_winid)
+  call popup_show(s:symbol_right_winid)
   call popup_settext(s:spinner_winid, clap#spinner#get())
 endfunction
 
