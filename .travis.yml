@@ -1,4 +1,21 @@
 sudo: required
 dist: trusty
 
-script: test/autoload_should_check_cpo.sh
+branches:
+  only:
+    - master
+
+addons:
+  apt:
+    update: true
+    packages:
+      - python3
+      - python3-pip
+      - python3-setuptools
+
+before_install:
+  - pip3 install --user vim-vint
+
+script:
+  - vint .
+  - test/autoload_should_check_cpo.sh
