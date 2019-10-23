@@ -97,7 +97,7 @@ function! s:init_hi_groups() abort
     augroup ClapRefreshSpinner
       autocmd!
       autocmd ColorScheme * call s:hi_spinner()
-    augroup
+    augroup END
   endif
 
   call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)

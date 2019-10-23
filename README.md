@@ -1,7 +1,6 @@
 # vim-clap
 
 [![Vint](https://github.com/liuchengxu/vim-clap/workflows/Vint/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=Vint)
-[![Build Status](https://travis-ci.com/liuchengxu/vim-clap.svg?branch=master)](https://travis-ci.com/liuchengxu/vim-clap)
 [![Gitter][G1]][G2]
 
 [G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
