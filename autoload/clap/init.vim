@@ -121,7 +121,7 @@ function! s:init_hi_groups() abort
     let normal_ctermfg = s:extract_or('Normal', 'bg', 'cterm', '249')
     let normal_guifg = s:extract_or('Normal', 'bg', 'gui', '#b2b2b2')
     execute printf(
-          \ "hi ClapSymbol guifg=%s ctermfg=%s ctermbg=%s guibg=%s",
+          \ 'hi ClapSymbol guifg=%s ctermfg=%s ctermbg=%s guibg=%s',
           \ input_guibg,
           \ input_ctermbg,
           \ normal_ctermfg,
