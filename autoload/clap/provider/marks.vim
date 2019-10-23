@@ -72,7 +72,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
   else
     " TODO try cwd + file_text
     if filereadable(expand(file_text))
-      let lines = readfile(expand(file_text), '', end)[start:]
+      let lines = readfile(expand(file_text), '', end)[start :]
     else
       let lines = [file_text]
       let should_add_hi = v:false
