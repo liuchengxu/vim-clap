@@ -487,7 +487,7 @@ function! s:init_provider() abort
   function! provider.can_async() abort
     " The default async implementation is not doable and the provider does not
     " provide a source_async implementation explicitly.
-    if !clap#filter#has_external_default() && !self._().has_key('source_async')
+    if !clap#filter#has_external_default() && !has_key(self._(), 'source_async')
       return v:false
     else
       return !get(g:, 'clap_disable_optional_async', v:false)
