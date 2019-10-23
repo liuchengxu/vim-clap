@@ -14,3 +14,21 @@ jobs:
       uses: actions/checkout@master
     - name: Check cpoptions
       run: test/autoload_should_check_cpo.sh
+
+  vint:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Setup dependencies
+      run: pip install vim-vint
+    - name: Run Vimscript Linter
+      run: vint .
