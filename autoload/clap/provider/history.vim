@@ -6,7 +6,7 @@ set cpoptions&vim
 
 let s:history = {}
 
-function! s:all_files()
+function! s:all_files() abort
   return uniq(map(
     \ filter([expand('%')], 'len(v:val)')
     \   + filter(map(clap#util#buflisted_sorted(), 'bufname(v:val)'), 'len(v:val)')

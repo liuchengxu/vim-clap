@@ -48,20 +48,20 @@ function! s:create_display() abort
     let col = &signcolumn ==# 'yes' ? 2 : 1
     let col += &number ? &numberwidth : 0
 
-    let s:display_winid = popup_create([], #{
-          \ zindex: 1000,
-          \ wrap: v:false,
-          \ mapping: v:false,
-          \ cursorline: 0,
-          \ filter: function('s:popup_filter'),
-          \ callback: function('s:callback'),
-          \ scrollbar: 0,
-          \ line: s:display_opts.row,
-          \ col: s:display_opts.col,
-          \ minwidth: s:display_opts.width,
-          \ maxwidth: s:display_opts.width,
-          \ maxheight: s:display_opts.height,
-          \ minheight: s:display_opts.height,
+    let s:display_winid = popup_create([], {
+          \ 'zindex': 1000,
+          \ 'wrap': v:false,
+          \ 'mapping': v:false,
+          \ 'cursorline': 0,
+          \ 'filter': function('s:popup_filter'),
+          \ 'callback': function('s:callback'),
+          \ 'scrollbar': 0,
+          \ 'line': s:display_opts.row,
+          \ 'col': s:display_opts.col,
+          \ 'minwidth': s:display_opts.width,
+          \ 'maxwidth': s:display_opts.width,
+          \ 'maxheight': s:display_opts.height,
+          \ 'minheight': s:display_opts.height,
           \ })
 
     let g:clap#popup#display.width = &columns * 2 / 3

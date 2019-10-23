@@ -34,7 +34,7 @@ function! s:commits.source() abort
   return split(system(source), "\n")
 endfunction
 
-function! s:commits.sink(line)
+function! s:commits.sink(line) abort
   call g:clap.abort('Not implemented yet')
 endfunction
 

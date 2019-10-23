@@ -94,7 +94,10 @@ endfunction
 function! s:init_hi_groups() abort
   if !hlexists('ClapSpinner')
     call s:hi_spinner()
-    autocmd ColorScheme * call s:hi_spinner()
+    augroup ClapRefreshSpinner
+      autocmd!
+      autocmd ColorScheme * call s:hi_spinner()
+    augroup
   endif
 
   call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)
@@ -121,7 +124,6 @@ function! s:init_hi_groups() abort
   endif
 
   call s:hi_display_invisible()
-  autocmd ColorScheme * call s:hi_display_invisible()
 
   hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
 
@@ -132,7 +134,12 @@ function! s:init_hi_groups() abort
     let s:preview_group = 'ClapPreview'
   endif
   call s:hi_preview_invisible()
-  autocmd ColorScheme * call s:hi_preview_invisible()
+
+  augroup ClapRefreshInsivible
+    autocmd!
+    autocmd ColorScheme * call s:hi_display_invisible()
+    autocmd ColorScheme * call s:hi_preview_invisible()
+  augroup END
 
   " For the found matches highlight
   call s:ensure_hl_exists('ClapMatches', 'Search')
