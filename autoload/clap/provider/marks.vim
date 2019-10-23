@@ -67,12 +67,12 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
   if !empty(origin_line)
         \ && clap#util#trim_leading(origin_line[0]) == file_text
     let lines = getbufline(g:clap.start.bufnr, start, end)
+    let hi_lnum += 1
     let origin_bufnr = g:clap.start.bufnr
   else
     " TODO try cwd + file_text
     if filereadable(expand(file_text))
-      let lines = readfile(expand(file_text), '', end)
-      let lines = lines[start:]
+      let lines = readfile(expand(file_text), '', end)[start:]
     else
       let lines = [file_text]
       let should_add_hi = v:false
