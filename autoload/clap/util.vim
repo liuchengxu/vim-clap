@@ -203,11 +203,12 @@ endfunction
 " Given the origin lnum and the size of range, return
 " [origin_lnum-range_size, origin_lnum+range_size] and the target lnum that
 " the origin line should be positioned.
+" 0-based
 function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
   if a:origin_lnum - a:range_size > 0
-    return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size + 1]
+    return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size]
   else
-    return [1, a:origin_lnum + a:range_size, a:origin_lnum]
+    return [0, a:origin_lnum + a:range_size, a:origin_lnum]
   endif
 endfunction
 
