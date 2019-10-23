@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Job control of async provider.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:job_timer = -1
 let s:dispatcher_delay = 300
@@ -44,7 +44,7 @@ if has('nvim')
     if len(raw_output) + line_count >= g:clap.display.preload_capacity
       let start = g:clap.display.preload_capacity - line_count
       let to_append = raw_output[:start-1]
-      let to_cache = raw_output[start:]
+      let to_cache = raw_output[start :]
 
       " Discard?
       call s:handle_cache(to_cache)
@@ -92,12 +92,12 @@ if has('nvim')
       return
     endif
 
-    if a:event == 'stdout'
+    if a:event ==# 'stdout'
       if len(a:data) > 1
         " Second last is the real last one for neovim.
         call s:append_output(a:data[:-2])
       endif
-    elseif a:event == 'stderr'
+    elseif a:event ==# 'stderr'
       if !empty(a:data) && a:data != ['']
         let error_info = [
               \ 'Error occurs when dispatching the command',
@@ -274,7 +274,7 @@ endfunction
 function! s:apply_job_start(_timer) abort
   call clap#util#run_rooter(function('s:job_start'), s:cmd)
 
-  let s:executed_time = strftime("%Y-%m-%d %H:%M:%S")
+  let s:executed_time = strftime('%Y-%m-%d %H:%M:%S')
   let s:executed_cmd = s:cmd
 endfunction
 
@@ -324,5 +324,5 @@ function! clap#dispatcher#jobstop() abort
   call s:jobstop()
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

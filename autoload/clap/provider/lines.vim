@@ -1,8 +1,10 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the lines of all loaded buffer.
 
-let s:save_cpo = &cpo
-set cpo&vim
+scriptencoding utf-8
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:lines = {}
 
@@ -16,7 +18,7 @@ function! s:lines.sink(selected) abort
 endfunction
 
 function! s:buflisted() abort
-  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") != "qf"')
+  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
 endfunction
 
 function! s:bufnr_display(bufnr) abort
@@ -40,7 +42,7 @@ function! s:lines.source() abort
   let longest_name = 0
   let bufnames = {}
   for b in buflisted
-    let bp = pathshorten(fnamemodify(bufname(b), ":~:."))
+    let bp = pathshorten(fnamemodify(bufname(b), ':~:.'))
     let longest_name = max([longest_name, len(bp)])
     let bufnames[b] = bp
   endfor
@@ -48,7 +50,7 @@ function! s:lines.source() abort
   let len_bufnames = min([15, longest_name])
 
   for b in buflisted
-    let lines = getbufline(b, 1, "$")
+    let lines = getbufline(b, 1, '$')
     if empty(lines)
       let path = fnamemodify(bufname(b), ':p')
       let lines = filereadable(path) ? readfile(path) : []
@@ -58,10 +60,10 @@ function! s:lines.source() abort
     if len(bufname) > len_bufnames + 1
       let bufname = '…' . bufname[-len_bufnames+1:]
     endif
-    let bufname = printf("%".len_bufnames."s", bufname)
+    let bufname = printf('%'.len_bufnames.'s', bufname)
 
     let b_display = s:bufnr_display(b)
-    let linefmt = "%s  %s  %4d  %s"
+    let linefmt = '%s  %s  %4d  %s'
     call extend(b == buf ? cur : rest,
     \ filter(
     \   map(lines, '(empty(v:val)) ? "" : printf(linefmt, b_display, bufname, v:key + 1, v:val)'),
@@ -77,5 +79,5 @@ endfunction
 
 let g:clap#provider#lines# = s:lines
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Handle the movement.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:old_input = ''
 let s:support_multi_selection = v:false
@@ -39,7 +39,7 @@ function! s:load_cache() abort
     let g:clap.display.cache = []
   else
     let to_append = cache[:s:lazy_load_size-1]
-    let g:clap.display.cache = cache[s:lazy_load_size:]
+    let g:clap.display.cache = cache[s:lazy_load_size :]
   endif
   if has_key(g:clap.provider._(), 'converter')
     let to_append = map(to_append, 'g:clap.provider._().converter(v:val)')

@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Primiary code path for the plugin.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 if has('nvim')
   let s:has_features = has('nvim-0.4')
@@ -99,7 +99,7 @@ function! clap#_init() abort
       elseif type(string_or_list) == v:t_list
         let g:clap.provider.type = g:__t_func_list
       else
-        call g:clap.abort("Must return a String or a List if source is a Funcref")
+        call g:clap.abort('Must return a String or a List if source is a Funcref')
         return
       endif
     endif
@@ -203,7 +203,7 @@ function! s:try_register_is_ok(provider_id) abort
     try
       let registration_info = g:clap#provider#{provider_id}#
     catch /^Vim\%((\a\+)\)\=:E121/
-      call clap#error("Fail to load the provider: ".provider_id)
+      call clap#error('Fail to load the provider: '.provider_id)
       return v:false
     endtry
   endif
@@ -214,10 +214,6 @@ function! s:try_register_is_ok(provider_id) abort
 
   let g:clap.registrar[provider_id] = {}
   call extend(g:clap.registrar[provider_id], registration_info)
-
-  if has_key(registration_info, 'alias')
-    let s:alias_cache[registration_info.alias] = provider_id
-  endif
 
   return s:validate_provider(registration_info)
 endfunction
@@ -265,7 +261,7 @@ function! s:parse_opts(args) abort
   if has_key(g:clap.context, 'query')
     let g:clap.context.query = clap#util#expand(g:clap.context.query)
   endif
-  let g:clap.provider.args = a:args[idx:]
+  let g:clap.provider.args = a:args[idx :]
 endfunction
 
 function! clap#(bang, ...) abort
@@ -298,5 +294,5 @@ function! clap#(bang, ...) abort
   call clap#for(provider_id_or_alias)
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
