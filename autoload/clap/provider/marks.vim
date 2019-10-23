@@ -1,12 +1,12 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the marks.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:marks = {}
 
-function! s:format_mark(line)
+function! s:format_mark(line) abort
   return substitute(a:line, '\S', '\=submatch(0)', '')
 endfunction
 
@@ -97,7 +97,7 @@ endfunction
 function! s:marks.on_move() abort
   let curline = g:clap.display.getcurline()
 
-  if 'mark line  col file/text' == curline
+  if 'mark line  col file/text' ==# curline
     return
   endif
 
@@ -118,5 +118,5 @@ let s:marks.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_marks') }
 
 let g:clap#provider#marks# = s:marks
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

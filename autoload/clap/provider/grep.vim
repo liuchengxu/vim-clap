@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Grep on the fly with smart cache strategy in async way.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:grep_delay = get(g:, 'clap_provider_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
@@ -11,9 +11,9 @@ let s:old_query = ''
 let s:grep_timer = -1
 
 if has('nvim')
-  let s:default_prompt = "Type anything you want to find"
+  let s:default_prompt = 'Type anything you want to find'
 else
-  let s:default_prompt = "Search ??"
+  let s:default_prompt = 'Search ??'
 endif
 
 " Caveat: This function can have a peformance issue.
@@ -69,7 +69,7 @@ function! s:spawn(query) abort
 
   " Consistent with --smart-case of rg
   " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
-  let ignore_case = query =~ '\u' ? '\C' : '\c'
+  let ignore_case = query =~# '\u' ? '\C' : '\c'
   let pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
 
   call g:clap.display.add_highlight(pattern)
@@ -180,5 +180,5 @@ let s:grep.enable_rooter = v:true
 
 let g:clap#provider#grep# = s:grep
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

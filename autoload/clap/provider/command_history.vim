@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the command history.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 " Derived from fzf.vim
 function! s:command_history() abort
@@ -28,7 +28,7 @@ function! s:command_history_sink(selected) abort
   let type = ':'
   call histadd(type, item)
   let prefix = "\<plug>(clap-".type.')'
-  let g:__clap_command = "normal ".prefix.item."\<cr>"
+  let g:__clap_command = 'normal '.prefix.item.'\<cr>'
   call feedkeys("\<plug>(clap-vim-do)")
 endfunction
 
@@ -39,5 +39,5 @@ let s:command_history.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_comm
 
 let g:clap#provider#command_history# = s:command_history
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

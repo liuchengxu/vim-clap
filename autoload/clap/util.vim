@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Utilities.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:blink = {}
 
@@ -191,7 +191,7 @@ endfunction
 " Define CTRL-T/X/V by default.
 function! clap#util#define_open_action_mappings() abort
   for k in keys(g:clap_open_action)
-    let lhs = substitute(toupper(k), "CTRL", "C", "")
+    let lhs = substitute(toupper(k), 'CTRL', 'C', '')
     execute 'inoremap <silent> <buffer> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
   endfor
 endfunction
@@ -211,24 +211,24 @@ function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
   endif
 endfunction
 
-function! clap#util#buflisted()
-  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") != "qf"')
+function! clap#util#buflisted() abort
+  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
 endfunction
 
 " Borrowed from fzf.vim
-function! s:sort_buffers(...)
+function! s:sort_buffers(...) abort
   let [b1, b2] = map(copy(a:000), 'get(g:__clap_buffers, v:val, v:val)')
   " Using minus between a float and a number in a sort function causes an error
   return b1 < b2 ? 1 : -1
 endfunction
 
-function! clap#util#buflisted_sorted()
+function! clap#util#buflisted_sorted() abort
   return sort(clap#util#buflisted(), 's:sort_buffers')
 endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
 function! clap#util#expand(args) abort
-  if a:args == '<cword>'
+  if a:args ==# '<cword>'
     return expand('<cword>')
   endif
   return a:args
@@ -251,5 +251,5 @@ function! clap#util#getfsize(fname) abort
   return size
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

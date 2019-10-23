@@ -1,4 +1,0 @@
-sudo: required
-dist: trusty
-
-script: test/autoload_should_check_cpo.sh

@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Gather some info useful for debugging.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 function! s:get_global_variables() abort
   let variable_list = []
@@ -28,7 +28,7 @@ function! s:get_global_variables() abort
 endfunction
 
 function! s:get_third_party_providers() abort
-  let all_providers = split(globpath(&rtp, "autoload/clap/provider/*.vim"), "\n")
+  let all_providers = split(globpath(&rtp, 'autoload/clap/provider/*.vim'), "\n")
   let third_party_providers = filter(all_providers, 'index(g:clap#builtin_providers, v:val) != -1')
   return third_party_providers
 endfunction
@@ -58,5 +58,5 @@ function! clap#debugging#info_to_clipboard() abort
   echohl Normal   | echon ' copied to your clipboard' | echohl NONE
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
