@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Multi selection support.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:signed = []
@@ -13,13 +13,13 @@ let s:last_signed_id = -1
 if !exists('s:sign_inited')
   call sign_define(s:sign_group, get(g:, 'clap_selected_sign', {
         \ 'text': ' >',
-        \ 'texthl': "WarningMsg",
-        \ "linehl": "ClapSelected"
+        \ 'texthl': 'WarningMsg',
+        \ 'linehl': 'ClapSelected'
         \ }))
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign', {
         \ 'text': '>>',
-        \ 'texthl': "WarningMsg",
-        \ "linehl": "ClapCurrentSelection",
+        \ 'texthl': 'WarningMsg',
+        \ 'linehl': 'ClapCurrentSelection',
         \ }))
   let s:sign_inited = 1
 endif
@@ -126,5 +126,5 @@ function! clap#sign#reset() abort
   let s:last_signed_id = -1
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

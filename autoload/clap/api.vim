@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Make a compatible layer between neovim and vim.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:default_priority = 10
@@ -52,7 +52,7 @@ function! s:matchadd(patterns) abort
   " Clap grep
   " \{ -> E888
   try
-    call add(w:clap_match_ids, matchadd("ClapMatches", a:patterns[0], s:default_priority))
+    call add(w:clap_match_ids, matchadd('ClapMatches', a:patterns[0], s:default_priority))
   catch
     " Sometimes we may run into some pattern errors in that the query is not a
     " valid vim pattern. Just ignore them as the highlight is not critical, we
@@ -63,7 +63,7 @@ function! s:matchadd(patterns) abort
   " As most 8 submatches
   for p in a:patterns[1:8]
     try
-      call add(w:clap_match_ids, matchadd("ClapMatches".idx, p, s:default_priority - 1))
+      call add(w:clap_match_ids, matchadd('ClapMatches'.idx, p, s:default_priority - 1))
       let idx += 1
     catch
       return
@@ -190,7 +190,7 @@ function! s:init_display() abort
   function! display.set_lines_lazy(raw_lines) abort
     if len(a:raw_lines) >= g:clap.display.preload_capacity
       let to_set = a:raw_lines[:g:clap.display.preload_capacity-1]
-      let to_cache = a:raw_lines[g:clap.display.preload_capacity:]
+      let to_cache = a:raw_lines[g:clap.display.preload_capacity : ]
       call self.set_lines(to_set)
       let g:clap.display.cache = to_cache
     else
@@ -301,7 +301,7 @@ function! s:init_provider() abort
     elseif type(Sink) == v:t_string
       execute Sink a:selected
     else
-      call clap#error("sink can only be a funcref or string.")
+      call clap#error('sink can only be a funcref or string.')
     endif
   endfunction
 
@@ -416,7 +416,7 @@ function! s:init_provider() abort
         call add(g:clap.tmps, tmp)
         return cmd
       else
-        call g:clap.abort("Fail to write source to a temp file")
+        call g:clap.abort('Fail to write source to a temp file')
         return
       endif
 
@@ -427,7 +427,7 @@ function! s:init_provider() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
     else
-      call g:clap.abort("source_async is unavailable")
+      call g:clap.abort('source_async is unavailable')
       return
     endif
   endfunction
@@ -487,7 +487,7 @@ function! s:init_provider() abort
   function! provider.can_async() abort
     " The default async implementation is not doable and the provider does not
     " provide a source_async implementation explicitly.
-    if !clap#filter#has_external_default() && !self._().has_key('source_async')
+    if !clap#filter#has_external_default() && !has_key(self._(), 'source_async')
       return v:false
     else
       return !get(g:, 'clap_disable_optional_async', v:false)
@@ -562,5 +562,5 @@ function! clap#api#bake() abort
   call s:inject_base_api(g:clap.preview)
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

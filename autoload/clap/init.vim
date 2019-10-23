@@ -2,8 +2,8 @@
 " Description: Initialize the plugin, including making a compatible API layer
 " and flexiable highlight groups.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:input_default_hi_group = 'Visual'
 let s:display_default_hi_group = 'Pmenu'
@@ -26,7 +26,7 @@ function! s:hi_display_invisible() abort
   let guibg = s:extract_or(s:display_group, 'bg', 'gui', '#544a65')
   let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', 60)
   execute printf(
-        \ "hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s",
+        \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
         \ ctermbg,
         \ guibg
         \ )
@@ -36,7 +36,7 @@ function! s:hi_preview_invisible() abort
   let guibg = s:extract_or(s:preview_group, 'bg', 'gui', '#5e5079')
   let ctermbg = s:extract_or(s:preview_group, 'bg', 'cterm', '60')
   execute printf(
-        \ "hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s",
+        \ 'hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s',
         \ ctermbg,
         \ guibg
         \ )
@@ -49,7 +49,7 @@ function! s:hi_spinner() abort
   let fn_ctermfg = s:extract_or('Function', 'fg', 'cterm', '170')
   let fn_guifg = s:extract_or('Function', 'fg', 'gui', '#bc6ec5')
   execute printf(
-        \ "hi ClapSpinner guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold",
+        \ 'hi ClapSpinner guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
         \ fn_guifg,
         \ fn_ctermfg,
         \ vis_ctermbg,
@@ -75,7 +75,7 @@ function! s:init_hi_submatches() abort
   let idx = 1
   for g in clap_sub_matches
     execute printf(
-          \ "hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold", idx,
+          \ 'hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
           \ g[1],
           \ g[0],
           \ pmenu_ctermbg,
@@ -94,7 +94,10 @@ endfunction
 function! s:init_hi_groups() abort
   if !hlexists('ClapSpinner')
     call s:hi_spinner()
-    autocmd ColorScheme * call s:hi_spinner()
+    augroup ClapRefreshSpinner
+      autocmd!
+      autocmd ColorScheme * call s:hi_spinner()
+    augroup END
   endif
 
   call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)
@@ -105,7 +108,7 @@ function! s:init_hi_groups() abort
     let ident_ctermfg = s:extract_or('Normal', 'fg', 'cterm', '249')
     let ident_guifg = s:extract_or('Normal', 'fg', 'gui', '#b2b2b2')
     execute printf(
-          \ "hi ClapQuery guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold gui=bold",
+          \ 'hi ClapQuery guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold gui=bold',
           \ ident_guifg,
           \ ident_ctermfg,
           \ vis_ctermbg,
@@ -132,7 +135,6 @@ function! s:init_hi_groups() abort
   endif
 
   call s:hi_display_invisible()
-  autocmd ColorScheme * call s:hi_display_invisible()
 
   hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
 
@@ -143,7 +145,12 @@ function! s:init_hi_groups() abort
     let s:preview_group = 'ClapPreview'
   endif
   call s:hi_preview_invisible()
-  autocmd ColorScheme * call s:hi_preview_invisible()
+
+  augroup ClapRefreshInsivible
+    autocmd!
+    autocmd ColorScheme * call s:hi_display_invisible()
+    autocmd ColorScheme * call s:hi_preview_invisible()
+  augroup END
 
   " For the found matches highlight
   call s:ensure_hl_exists('ClapMatches', 'Search')
@@ -182,5 +189,5 @@ function! clap#init#() abort
   endif
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

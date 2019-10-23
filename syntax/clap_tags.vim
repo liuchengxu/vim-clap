@@ -1,7 +1,11 @@
-function! s:hi() abort
-  let groups = ['Character', 'Float', 'Identifier', 'Statement', 'Label', 'Boolean', 'Delimiter', 'Constant', 'String', 'Operator', 'PreCondit', 'Include', 'Conditional', 'PreProc', 'TypeDef',]
-  let len_groups = len(groups)
+scriptencoding utf-8
 
+if !exists('s:groups')
+  let s:groups = ['Character', 'Float', 'Identifier', 'Statement', 'Label', 'Boolean', 'Delimiter', 'Constant', 'String', 'Operator', 'PreCondit', 'Include', 'Conditional', 'PreProc', 'TypeDef',]
+  let s:len_groups = len(s:groups)
+endif
+
+function! s:hi() abort
   let icons = clap#icon#get_all()
 
   let idx = 0
@@ -12,9 +16,9 @@ function! s:hi() abort
     let cur_group = 'ClapVistaIcon'.idx
     call add(icon_groups, cur_group)
     execute 'syntax match' cur_group '/'.icon.'/' 'contained'
-    execute 'hi default link' cur_group groups[hi_idx]
+    execute 'hi default link' cur_group s:groups[hi_idx]
     let hi_idx += 1
-    let hi_idx = hi_idx % len_groups
+    let hi_idx = hi_idx % s:len_groups
     let idx += 1
   endfor
 

@@ -1,16 +1,16 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the colorschemes.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:colors = {}
 
 " Derived from fzf.vim
 function! s:colors.source() abort
-  let colors = split(globpath(&rtp, "colors/*.vim"), "\n")
+  let colors = split(globpath(&rtp, 'colors/*.vim'), "\n")
   if has('packages')
-    let colors += split(globpath(&packpath, "pack/*/opt/*/colors/*.vim"), "\n")
+    let colors += split(globpath(&packpath, 'pack/*/opt/*/colors/*.vim'), "\n")
   endif
   return map(colors, "substitute(fnamemodify(v:val, ':t'), '\\..\\{-}$', '', '')")
 endfunction
@@ -19,7 +19,7 @@ function! s:colors.on_enter() abort
   redir => s:old_color
   silent colorscheme
   redir END
-  let s:old_bg = &bg
+  let s:old_bg = &background
 endfunction
 
 " Preview the colorscheme on move
@@ -43,12 +43,12 @@ function! s:colors.on_exit() abort
   if get(s:, 'should_restore_color', v:true)
     call g:clap.start.goto_win()
     execute 'color' trim(s:old_color)
-    let &bg = s:old_bg
+    let &background = s:old_bg
     let s:should_restore_color = v:true
   endif
 endfunction
 
 let g:clap#provider#colors# = s:colors
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

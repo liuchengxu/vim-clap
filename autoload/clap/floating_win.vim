@@ -1,8 +1,10 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Neovim floating_win UI.
 
-let s:save_cpo = &cpo
-set cpo&vim
+scriptencoding utf-8
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let g:clap#floating_win#input = {}
 let g:clap#floating_win#display = {}
@@ -80,7 +82,7 @@ function! g:clap#floating_win#display.open() abort
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
-  call matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern, 10, 1001, {'window': s:display_winid})
+  call matchadd('ClapNoMatchesFound', g:__clap_no_matches_pattern, 10, 1001, {'window': s:display_winid})
   " call setwinvar(s:display_winid, '&winblend', 15)
 
   let g:clap.display.winid = s:display_winid
@@ -291,5 +293,5 @@ function! clap#floating_win#close() abort
   endif
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

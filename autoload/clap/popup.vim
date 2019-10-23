@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Vim popup UI and interaction.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:input = ''
 let s:input_timer = -1
@@ -39,7 +39,7 @@ function! clap#popup#reconfigure_display_opts() abort
 endfunction
 
 function! s:execute_in_display() abort
-  let w:clap_no_matches_id = matchadd("ClapNoMatchesFound", g:__clap_no_matches_pattern)
+  let w:clap_no_matches_id = matchadd('ClapNoMatchesFound', g:__clap_no_matches_pattern)
   setlocal signcolumn=yes
 endfunction
 
@@ -48,20 +48,20 @@ function! s:create_display() abort
     let col = &signcolumn ==# 'yes' ? 2 : 1
     let col += &number ? &numberwidth : 0
 
-    let s:display_winid = popup_create([], #{
-          \ zindex: 1000,
-          \ wrap: v:false,
-          \ mapping: v:false,
-          \ cursorline: 0,
-          \ filter: function('s:popup_filter'),
-          \ callback: function('s:callback'),
-          \ scrollbar: 0,
-          \ line: s:display_opts.row,
-          \ col: s:display_opts.col,
-          \ minwidth: s:display_opts.width,
-          \ maxwidth: s:display_opts.width,
-          \ maxheight: s:display_opts.height,
-          \ minheight: s:display_opts.height,
+    let s:display_winid = popup_create([], {
+          \ 'zindex': 1000,
+          \ 'wrap': v:false,
+          \ 'mapping': v:false,
+          \ 'cursorline': 0,
+          \ 'filter': function('s:popup_filter'),
+          \ 'callback': function('s:callback'),
+          \ 'scrollbar': 0,
+          \ 'line': s:display_opts.row,
+          \ 'col': s:display_opts.col,
+          \ 'minwidth': s:display_opts.width,
+          \ 'maxwidth': s:display_opts.width,
+          \ 'maxheight': s:display_opts.height,
+          \ 'minheight': s:display_opts.height,
           \ })
 
     let g:clap#popup#display.width = &columns * 2 / 3
@@ -118,15 +118,15 @@ function! s:create_preview() abort
     let col = pos.col
     let line = pos.line + pos.height
     let minwidth = pos.width
-    let s:preview_winid = popup_create([], #{
-          \ zindex: 100,
-          \ col: col,
-          \ line: line,
-          \ minwidth: minwidth,
-          \ maxwidth: minwidth,
-          \ wrap: v:false,
-          \ scrollbar: 0,
-          \ highlight: 'ClapPreview',
+    let s:preview_winid = popup_create([], {
+          \ 'zindex': 100,
+          \ 'col': col,
+          \ 'line': line,
+          \ 'minwidth': minwidth,
+          \ 'maxwidth': minwidth,
+          \ 'wrap': v:false,
+          \ 'scrollbar': 0,
+          \ 'highlight': 'ClapPreview',
           \ })
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
@@ -186,7 +186,7 @@ function! s:execute_in_input() abort
   let s:save_completeopt = &completeopt
   set completeopt=
   setlocal nonumber
-  let w:clap_query_hi_id = matchaddpos("ClapQuery", [1])
+  let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
   let b:coc_suggest_disable = 1
 endfunction
 
@@ -236,7 +236,7 @@ function! s:callback(_id, _result) abort
 endfunction
 
 function! s:mock_input() abort
-  if s:input == ''
+  if s:input ==# ''
         \ || type(s:cursor_idx) ==# v:t_string
         \ || s:cursor_idx == strlen(s:input)
     let input = s:input.'|'
@@ -246,7 +246,7 @@ function! s:mock_input() abort
   elseif s:cursor_idx == 0
     let input = '|'.s:input
   else
-    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx:]], '|')
+    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx :]], '|')
   endif
   call popup_settext(s:input_winid, input)
 endfunction
@@ -261,7 +261,7 @@ function! g:clap#popup#preview.show(lines) abort
   let col = display_pos.col
   let line = display_pos.line + display_pos.height
   let minwidth = display_pos.width
-  call popup_move(s:preview_winid, #{col: col, line: line})
+  call popup_move(s:preview_winid, {'col': col, 'line': line})
 
   call popup_show(s:preview_winid)
   call popup_settext(s:preview_winid, a:lines)
@@ -297,7 +297,7 @@ function! s:move_manager.ctrl_b(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_g(_winid) abort
-  echom "Unimplemented: could be used for showing some useful env info"
+  echom 'Unimplemented: could be used for showing some useful env info'
 endfunction
 
 function! s:move_manager.ctrl_f(_winid) abort
@@ -330,7 +330,7 @@ function! s:move_manager.bs(_winid) abort
     let s:input = s:input[1:]
   else
     let truncated = s:input[:s:cursor_idx-2]
-    let remained = s:input[s:cursor_idx:]
+    let remained = s:input[s:cursor_idx :]
     let s:input = truncated.remained
   endif
   let s:cursor_idx -= 1
@@ -378,7 +378,7 @@ let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)
-    let lhs = substitute(toupper(k), "CTRL", "C", "")
+    let lhs = substitute(toupper(k), 'CTRL', 'C', '')
     execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#handler#try_open("'.k.'") }'
   endfor
 endfunction
@@ -387,7 +387,7 @@ call s:define_open_action_filter()
 
 function! s:move_manager.printable(key) abort
   let s:insert_at_the_begin = v:false
-  if s:input == '' || s:cursor_idx == strlen(s:input)
+  if s:input ==# '' || s:cursor_idx == strlen(s:input)
     let s:input .= a:key
     let s:cursor_idx += 1
   else
@@ -395,7 +395,7 @@ function! s:move_manager.printable(key) abort
       let s:input = a:key . s:input
       let s:insert_at_the_begin = v:true
     else
-      let s:input = s:input[:s:cursor_idx-1].a:key.s:input[s:cursor_idx:]
+      let s:input = s:input[:s:cursor_idx-1].a:key.s:input[s:cursor_idx :]
       let s:cursor_idx += 1
     endif
   endif
@@ -508,5 +508,5 @@ function! clap#popup#close() abort
   silent autocmd! ClapEnsureAllClosed
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
