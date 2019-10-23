@@ -14,6 +14,7 @@ CHANGELOG
 - Add the option `g:clap_provider_grep_enable_icon` for disabling the icon drawing in `:Clap grep`.
 - Rework the `buffers` provider.([#71](https://github.com/liuchengxu/vim-clap/issues/71))
 - Support opening the selected file via <kbd>ctrl-t</kbd>, <kbd>ctrl-x</kbd>, <kbd>ctrl-v</kbd> if the provider supports, and add `g:clap_open_action` for configuring the default keybindings.
+- Support `:Clap` listing all the builtin providers, thanks to @wookayin implementing the sink of it.
 - Support opening files from the git base directory. See `:h g:clap_disable_run_rooter` if you don't like this behavior.
 - Support searching the hidden files via `:Clap files --hidden`.
 - Support using any other finder tools via `:Clap files ++finder=[YOUR FINDER] [FINDER ARGS]`.

@@ -6,6 +6,8 @@ set cpoptions&vim
 
 let s:marks = {}
 
+let s:preview_size = 5
+
 function! s:format_mark(line) abort
   return substitute(a:line, '\S', '\=submatch(0)', '')
 endfunction
@@ -57,7 +59,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
 
   let origin_line = getbufline(g:clap.start.bufnr, line)
 
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(line, 5)
+  let [start, end, hi_lnum] = clap#util#get_preview_line_range(line, s:preview_size)
 
   let should_add_hi = v:true
 
@@ -65,13 +67,12 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
   if !empty(origin_line)
         \ && clap#util#trim_leading(origin_line[0]) == file_text
     let lines = getbufline(g:clap.start.bufnr, start, end)
+    let hi_lnum += 1
     let origin_bufnr = g:clap.start.bufnr
   else
-    let bufnr = clap#util#try_load_file(file_text)
-    if bufnr isnot v:null
-      " FIXME lines is empty at times.
-      let lines = getbufline(bufnr, start, end)
-      let origin_bufnr = bufnr
+    " TODO try cwd + file_text
+    if filereadable(expand(file_text))
+      let lines = readfile(expand(file_text), '', end)[start :]
     else
       let lines = [file_text]
       let should_add_hi = v:false
@@ -86,9 +87,11 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
       if empty(ft)
         let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
       endif
-      if !empty(ft)
-        call s:render_syntax(ft)
-      endif
+    else
+      let ft = fnamemodify(file_text, ':e')
+    endif
+    if !empty(ft)
+      call s:render_syntax(ft)
     endif
     call s:execute_matchaddpos(hi_lnum)
   endif
