@@ -136,6 +136,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
 
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
+- `g:clap_provider_grep_opts`: An empty string by default, allows you to enable flags such as `--hidden`.
 
 See `:help clap-options` for more information.
 
