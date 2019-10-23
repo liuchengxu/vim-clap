@@ -1,3 +1,5 @@
+scriptencoding utf-8
+
 function! s:hi() abort
   let groups = ['Character', 'Float', 'Identifier', 'Statement', 'Label', 'Boolean', 'Delimiter', 'Constant', 'String', 'Operator', 'PreCondit', 'Include', 'Conditional', 'PreProc', 'TypeDef',]
   let len_groups = len(groups)
