@@ -1,16 +1,16 @@
 name: ci
-on:
-  pull_request:
-  push:
+
+on: [push, pull_request]
+
 jobs:
   cpoptions_checker:
-  strategy:
-    fail-fast: false
+    strategy:
+      fail-fast: false
 
-  runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  steps:
-  - name: Checkout
-    uses: actions/checkout@master
-  - name: Check cpoptions
-    run: test/autoload_should_check_cpo.sh
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Check cpoptions
+      run: test/autoload_should_check_cpo.sh
