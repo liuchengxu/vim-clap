@@ -13,7 +13,7 @@ function! s:padding(origin, target_width) abort
   endif
 endfunction
 
-function! s:format_buffer(b)
+function! s:format_buffer(b) abort
   let name = bufname(a:b)
   let name = empty(name) ? '[No Name]' : fnamemodify(name, ':p:~:.')
   let flag = a:b == bufnr('')  ? '%' : (a:b == bufnr('#') ? '#' : ' ')

@@ -211,18 +211,18 @@ function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
   endif
 endfunction
 
-function! clap#util#buflisted()
+function! clap#util#buflisted() abort
   return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
 endfunction
 
 " Borrowed from fzf.vim
-function! s:sort_buffers(...)
+function! s:sort_buffers(...) abort
   let [b1, b2] = map(copy(a:000), 'get(g:__clap_buffers, v:val, v:val)')
   " Using minus between a float and a number in a sort function causes an error
   return b1 < b2 ? 1 : -1
 endfunction
 
-function! clap#util#buflisted_sorted()
+function! clap#util#buflisted_sorted() abort
   return sort(clap#util#buflisted(), 's:sort_buffers')
 endfunction
 
