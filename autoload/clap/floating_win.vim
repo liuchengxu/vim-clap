@@ -112,20 +112,22 @@ function! g:clap#floating_win#display.compact() abort
   endif
 endfunction
 
-function! s:open_win_decorator_left() abort
-  let opts = nvim_win_get_config(s:display_winid)
-  let opts.row -= 1
-  let opts.width = s:symbol_width
-  let opts.height = 1
-  let opts.focusable = v:false
+function! s:open_win_border_left() abort
+  if s:symbol_width > 0
+    let opts = nvim_win_get_config(s:display_winid)
+    let opts.row -= 1
+    let opts.width = s:symbol_width
+    let opts.height = 1
+    let opts.focusable = v:false
 
-  silent let s:symbol_left_winid = nvim_open_win(s:symbol_left_bufnr, v:false, opts)
+    silent let s:symbol_left_winid = nvim_open_win(s:symbol_left_bufnr, v:false, opts)
 
-  call setwinvar(s:symbol_left_winid, '&winhl', 'Normal:ClapSymbol')
-  call setbufvar(s:symbol_left_bufnr, '&filetype', 'clap_spinner')
-  call setbufvar(s:symbol_left_bufnr, '&signcolumn', 'no')
+    call setwinvar(s:symbol_left_winid, '&winhl', 'Normal:ClapSymbol')
+    call setbufvar(s:symbol_left_bufnr, '&filetype', 'clap_spinner')
+    call setbufvar(s:symbol_left_bufnr, '&signcolumn', 'no')
 
-  call setbufline(s:symbol_left_bufnr, 1, s:symbol_left)
+    call setbufline(s:symbol_left_bufnr, 1, s:symbol_left)
+  endif
 endfunction
 
 function! g:clap#floating_win#spinner.open() abort
@@ -170,19 +172,21 @@ function! g:clap#floating_win#input.open() abort
   let g:clap.input.winid = s:input_winid
 endfunction
 
-function! s:open_win_decorator_right() abort
-  let opts = nvim_win_get_config(s:input_winid)
-  let opts.col += opts.width
-  let opts.width = s:symbol_width
-  let opts.focusable = v:false
+function! s:open_win_border_right() abort
+  if s:symbol_width > 0
+    let opts = nvim_win_get_config(s:input_winid)
+    let opts.col += opts.width
+    let opts.width = s:symbol_width
+    let opts.focusable = v:false
 
-  silent let s:symbol_right_winid = nvim_open_win(s:symbol_right_bufnr, v:false, opts)
+    silent let s:symbol_right_winid = nvim_open_win(s:symbol_right_bufnr, v:false, opts)
 
-  call setwinvar(s:symbol_right_winid, '&winhl', 'Normal:ClapSymbol')
-  call setbufvar(s:symbol_right_bufnr, '&filetype', 'clap_spinner')
-  call setbufvar(s:symbol_right_bufnr, '&signcolumn', 'no')
+    call setwinvar(s:symbol_right_winid, '&winhl', 'Normal:ClapSymbol')
+    call setbufvar(s:symbol_right_bufnr, '&filetype', 'clap_spinner')
+    call setbufvar(s:symbol_right_bufnr, '&signcolumn', 'no')
 
-  call setbufline(s:symbol_right_bufnr, 1, s:symbol_right)
+    call setbufline(s:symbol_right_bufnr, 1, s:symbol_right)
+  endif
 endfunction
 
 function! s:try_adjust_preview() abort
@@ -194,7 +198,7 @@ function! s:try_adjust_preview() abort
   endif
 endfunction
 
-function! s:adjust_display_for_symbol() abort
+function! s:adjust_display_for_border_symbol() abort
   let opts = nvim_win_get_config(s:display_winid)
   let opts.col += s:symbol_width
   let opts.width -= s:symbol_width * 2
@@ -239,11 +243,13 @@ function! clap#floating_win#open() abort
 
   " The order matters.
   call g:clap#floating_win#display.open()
-  call s:open_win_decorator_left()
+  call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  call s:open_win_decorator_right()
-  " call s:adjust_display_for_symbol()
+  call s:open_win_border_right()
+
+  " This seemingly does not look good.
+  " call s:adjust_display_for_border_symbol()
 
   call clap#_init()
 
@@ -266,8 +272,10 @@ endfunction
 function! clap#floating_win#close() abort
   silent! autocmd! ClapEnsureAllClosed
 
-  noautocmd call clap#util#nvim_win_close_safe(s:symbol_left_winid)
-  noautocmd call clap#util#nvim_win_close_safe(s:symbol_right_winid)
+  if s:symbol_width > 0
+    noautocmd call clap#util#nvim_win_close_safe(s:symbol_left_winid)
+    noautocmd call clap#util#nvim_win_close_safe(s:symbol_right_winid)
+  endif
 
   noautocmd call g:clap#floating_win#preview.close()
   noautocmd call clap#util#nvim_win_close_safe(g:clap.input.winid)

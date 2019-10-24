@@ -46,11 +46,12 @@ let s:default_symbols = {
       \ 'nil' : ['', ''],
       \ }
 
-let g:clap_search_box_border_symbols = get(g:, 'clap_search_box_border_symbols', s:default_symbols)
-let g:clap_search_box_border_style = get(g:, 'clap_search_box_border_style', 'curve')
+let g:clap_search_box_border_symbols = extend(s:default_symbols, get(g:, 'clap_search_box_border_symbols', {}))
+let g:clap_search_box_border_style = get(g:, 'clap_search_box_border_style',
+      \ exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil')
 let g:__clap_search_box_border_symbol = {
-      \ 'left': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style)[0],
-      \ 'right': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style)[1],
+      \ 'left': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style, '')[0],
+      \ 'right': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style, '')[1],
       \ }
 
 let s:default_action = {
