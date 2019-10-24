@@ -43,7 +43,7 @@ let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 let s:default_symbols = {
       \ 'arrow' : ["\ue0b2", "\ue0b0"],
       \ 'curve' : ["\ue0b6", "\ue0b4"],
-      \ 'nil' : ['', ''],
+      \ 'nil'   : ['', ''],
       \ }
 
 let g:clap_search_box_border_symbols = extend(s:default_symbols, get(g:, 'clap_search_box_border_symbols', {}))

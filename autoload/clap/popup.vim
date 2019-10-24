@@ -156,33 +156,37 @@ function! s:create_indicator() abort
 endfunction
 
 function! s:create_symbol_right() abort
-  if !exists('s:symbol_right_winid') || empty(popup_getpos(s:symbol_right_winid))
-    let pos = popup_getpos(s:display_winid)
-    let pos.line = pos.line - 1
-    let pos.col = pos.col + pos.width - s:symbol_width
-    let pos.minwidth = s:symbol_width
-    let pos.maxwidth = pos.minwidth
-    let pos.highlight = 'ClapSymbol'
-    let pos.wrap = v:false
-    let pos.zindex = 100
-    let s:symbol_right_winid = popup_create(s:symbol_right, pos)
-    call popup_hide(s:symbol_right_winid)
-    call win_execute(s:symbol_right_winid, 'setlocal nonumber')
+  if s:symbol_width > 0
+    if !exists('s:symbol_right_winid') || empty(popup_getpos(s:symbol_right_winid))
+      let pos = popup_getpos(s:display_winid)
+      let pos.line = pos.line - 1
+      let pos.col = pos.col + pos.width - s:symbol_width
+      let pos.minwidth = s:symbol_width
+      let pos.maxwidth = pos.minwidth
+      let pos.highlight = 'ClapSymbol'
+      let pos.wrap = v:false
+      let pos.zindex = 100
+      let s:symbol_right_winid = popup_create(s:symbol_right, pos)
+      call popup_hide(s:symbol_right_winid)
+      call win_execute(s:symbol_right_winid, 'setlocal nonumber')
+    endif
   endif
 endfunction
 
 function! s:create_symbol_left() abort
-  if !exists('s:symbol_left_winid') || empty(popup_getpos(s:symbol_left_winid))
-    let pos = popup_getpos(s:display_winid)
-    let pos.line = pos.line - 1
-    let pos.minwidth = s:symbol_width
-    let pos.maxwidth = pos.minwidth
-    let pos.highlight = 'ClapSymbol'
-    let pos.wrap = v:false
-    let pos.zindex = 100
-    let s:symbol_left_winid = popup_create(s:symbol_left, pos)
-    call popup_hide(s:symbol_left_winid)
-    call win_execute(s:symbol_left_winid, 'setlocal nonumber')
+  if s:symbol_width > 0
+    if !exists('s:symbol_left_winid') || empty(popup_getpos(s:symbol_left_winid))
+      let pos = popup_getpos(s:display_winid)
+      let pos.line = pos.line - 1
+      let pos.minwidth = s:symbol_width
+      let pos.maxwidth = pos.minwidth
+      let pos.highlight = 'ClapSymbol'
+      let pos.wrap = v:false
+      let pos.zindex = 100
+      let s:symbol_left_winid = popup_create(s:symbol_left, pos)
+      call popup_hide(s:symbol_left_winid)
+      call win_execute(s:symbol_left_winid, 'setlocal nonumber')
+    endif
   endif
 endfunction
 
@@ -248,7 +252,7 @@ function! s:create_input() abort
   endif
 endfunction
 
-" Now we don't choose the hide way for the benefit of reusing the popup buffer,
+" Depreacted: Now we don't choose the hide way for the benefit of reusing the popup buffer,
 " for it could be very problematic.
 function! s:hide_all() abort
   call popup_hide(s:display_winid)
@@ -263,8 +267,12 @@ function! s:close_others() abort
   noautocmd call popup_close(s:indicator_winid)
   noautocmd call popup_close(s:input_winid)
   noautocmd call popup_close(s:spinner_winid)
-  noautocmd call popup_close(s:symbol_left_winid)
-  noautocmd call popup_close(s:symbol_right_winid)
+  if exists('s:symbol_left_winid')
+    noautocmd call popup_close(s:symbol_left_winid)
+  endif
+  if exists('s:symbol_right_winid')
+    noautocmd call popup_close(s:symbol_right_winid)
+  endif
 endfunction
 
 " This somehow doesn't get called if you don't map <C-C> to <C-[>.
@@ -469,12 +477,14 @@ endfunction
 function! s:open_popup() abort
   call s:create_display()
 
-  call s:create_symbol_left()
+  if s:symbol_width > 0
+    call s:create_symbol_left()
+    call s:create_symbol_right()
+  endif
   call s:create_preview()
   call s:create_indicator()
   call s:create_input()
   call s:create_spinner()
-  call s:create_symbol_right()
 
   call s:mock_input()
 
@@ -486,8 +496,12 @@ function! s:show_all() abort
   call popup_show(s:indicator_winid)
   call popup_show(s:input_winid)
   call popup_show(s:spinner_winid)
-  call popup_show(s:symbol_left_winid)
-  call popup_show(s:symbol_right_winid)
+  if exists('s:symbol_left_winid')
+    call popup_show(s:symbol_left_winid)
+  endif
+  if exists('s:symbol_right_winid')
+    call popup_show(s:symbol_right_winid)
+  endif
   call popup_settext(s:spinner_winid, clap#spinner#get())
 endfunction
 
