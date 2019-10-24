@@ -373,6 +373,15 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
 
   Set it to `[0, 0]` to disable this blink.
 
+g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
+
+  Type: |String|
+  Default: `''`
+
+  Set this to control the extra arguments that get passed to the grep tool.
+  Setting `'--hidden -g "!.git/"'` for example would enable grepping hidden
+  files and folders while respecting your `.gitignore` and not showing the
+  `.git` directory itself.
 
 g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
