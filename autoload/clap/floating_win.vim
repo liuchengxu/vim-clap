@@ -27,18 +27,8 @@ let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
-let s:symbols = {
-      \ 'arrow' : ["\ue0b2", "\ue0b0"],
-      \ 'curve' : ["\ue0b6", "\ue0b4"],
-      \ 'nil' : ['', ''],
-      \ }
-
-let s:symbol_left = s:symbols.curve[0]
-let s:symbol_right = s:symbols.curve[1]
-
-" let s:symbol_left = s:symbols.arrow[0]
-" let s:symbol_right = s:symbols.arrow[1]
-
+let s:symbol_left = g:__clap_search_box_border_symbol.left
+let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
 function! s:prepare_opts(row, col, width, height, ...) abort

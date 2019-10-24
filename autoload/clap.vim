@@ -40,6 +40,19 @@ let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 
+let s:default_symbols = {
+      \ 'arrow' : ["\ue0b2", "\ue0b0"],
+      \ 'curve' : ["\ue0b6", "\ue0b4"],
+      \ 'nil' : ['', ''],
+      \ }
+
+let g:clap_search_box_border_symbols = get(g:, 'clap_search_box_border_symbols', s:default_symbols)
+let g:clap_search_box_border_style = get(g:, 'clap_search_box_border_style', 'curve')
+let g:__clap_search_box_border_symbol = {
+      \ 'left': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style)[0],
+      \ 'right': get(g:clap_search_box_border_symbols, g:clap_search_box_border_style)[1],
+      \ }
+
 let s:default_action = {
   \ 'ctrl-t': 'tab split',
   \ 'ctrl-x': 'split',

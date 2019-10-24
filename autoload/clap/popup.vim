@@ -16,6 +16,10 @@ let s:indicator_width = 10
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
+let s:symbol_left = g:__clap_search_box_border_symbol.left
+let s:symbol_right = g:__clap_search_box_border_symbol.right
+let s:symbol_width = strdisplaywidth(s:symbol_right)
+
 "  ----------------------------------------
 " | spinner |     input        | indicator |
 " |----------------------------------------|
@@ -166,20 +170,6 @@ function! s:create_symbol_right() abort
     call win_execute(s:symbol_right_winid, 'setlocal nonumber')
   endif
 endfunction
-
-let s:symbols = {
-      \ 'arrow' : ["\ue0b2", "\ue0b0"],
-      \ 'curve' : ["\ue0b6", "\ue0b4"],
-      \ 'nil' : ['', ''],
-      \ }
-
-let s:symbol_left = s:symbols.curve[0]
-let s:symbol_right = s:symbols.curve[1]
-
-" let s:symbol_left = s:symbols.arrow[0]
-" let s:symbol_right = s:symbols.arrow[1]
-
-let s:symbol_width = strdisplaywidth(s:symbol_right)
 
 function! s:create_symbol_left() abort
   if !exists('s:symbol_left_winid') || empty(popup_getpos(s:symbol_left_winid))
