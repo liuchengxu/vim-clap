@@ -303,7 +303,7 @@ g:clap_search_box_border_style                  *g:clap_search_box_border_style*
   This variable controls the style of border symbol used for the search box
   window.
 
-  Set it to `nil` to disable it.
+  Set this variable to `nil` to disable the search box border symbol.
 
 
 -------------------------------------------------------------------------------
