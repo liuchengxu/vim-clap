@@ -282,6 +282,29 @@ g:clap_open_action                                         *g:clap_open_action*
   default bindings of vim-clap, and only `ctrl-*` is supported for now.
 
 
+g:clap_search_box_border_symbols              *g:clap_search_box_border_symbols*
+
+  Type: |Dict|
+  Default: ` { 'arrow': ["\ue0b2", "\ue0b0"], 'curve': ["\ue0b6", "\ue0b4"], 'nil': ['', ''] }`
+
+  This variable defines the symbols that could be used for customizing the
+  search box border. See |g:clap_search_box_border_style| .
+
+  These two symbols must be symmetrically equal. Not every font and terminal
+  emulator can render these symbols perfectly. Use it at your own risk.
+
+
+g:clap_search_box_border_style                  *g:clap_search_box_border_style*
+
+  Type: |Dict|
+  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil')`
+
+  This variable controls the style of border symbol used for the search box
+  window.
+
+  Set it to `nil` to disable it.
+
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
