@@ -5,7 +5,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let s:is_nvim = has('nvim')
-let s:async_threshold = 5000
+let s:async_threshold = 10000
 
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
@@ -40,7 +40,7 @@ function! s:on_typed_sync_impl() abort
 
   let l:has_no_matches = v:false
 
-  let l:lines = call(g:clap.provider.filter(), [l:lines, l:cur_input])
+  let l:lines = call(g:clap.provider.filter(), [l:cur_input, l:lines])
 
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
@@ -72,7 +72,17 @@ function! s:on_typed_sync_impl() abort
   call clap#spinner#set_idle()
 
   if !l:has_no_matches
-    call g:clap.display.add_highlight()
+    if exists('g:__clap_fuzzy_matched_indices')
+      let lnum = 0
+      for indices in g:__clap_fuzzy_matched_indices
+        for idx in indices
+          call clap#util#add_highlight_at(lnum, idx)
+        endfor
+        let lnum += 1
+      endfor
+    else
+      call g:clap.display.add_highlight(l:cur_input)
+    endif
   endif
 endfunction
 
@@ -136,7 +146,7 @@ function! clap#impl#on_typed() abort
     if get(g:clap.context, 'async') is v:true
       call s:on_typed_async_impl()
     elseif s:should_switch_to_async()
-        call s:on_typed_async_impl()
+      call s:on_typed_async_impl()
     else
       call s:on_typed_sync_impl()
     endif

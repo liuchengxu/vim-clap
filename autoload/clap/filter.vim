@@ -8,6 +8,8 @@ let s:pattern_builder = {}
 
 let s:default_ext_filter = v:null
 
+let s:py_exe = has('python3') ? 'python3' : 'python'
+
 let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
@@ -58,7 +60,7 @@ function! s:pattern_builder.build() abort
 endfunction
 
 function! clap#filter#matchadd_pattern() abort
-  return s:matchadd_pattern
+  return get(s:, 'matchadd_pattern', '')
 endfunction
 
 function! clap#filter#has_external_default() abort
@@ -83,10 +85,20 @@ function! s:filter(line, pattern) abort
   return a:line =~ a:pattern
 endfunction
 
-function! clap#filter#(lines, input) abort
-  let s:pattern_builder.input = a:input
-  let l:filter_pattern = s:pattern_builder.build()
-  return filter(a:lines, 's:filter(v:val, l:filter_pattern)')
+execute s:py_exe "<< EOF"
+from clap.fzy import clap_fzy
+EOF
+
+function! clap#filter#(query, candidates) abort
+  try
+    let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
+    return filtered
+  catch
+    echom string(v:exception)
+    let s:pattern_builder.input = a:query
+    let l:filter_pattern = s:pattern_builder.build()
+    return filter(a:candidates, 's:filter(v:val, l:filter_pattern)')
+  endtry
 endfunction
 
 let &cpoptions = s:save_cpo
