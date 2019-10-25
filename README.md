@@ -77,25 +77,25 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
-Command                                | List                               | Requirement
-:----                                  | :----                              | :----
-`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer | **[git][git]**
-`Clap blines`                          | Lines in the current buffer        | _none_
-`Clap buffers`                         | Open buffers                       | _none_
-`Clap colors`                          | Colorschemes                       | _none_
-`Clap hist:` or `Clap command_history` | Command history                    | _none_
-`Clap commits` **<sup>!</sup>**        | Git commits                        | **[git][git]**
-`Clap files`                           | Files                              | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
-`Clap filetypes`                       | File types                         | _none_
-`Clap gfiles` or `Clap git_files`      | Files managed by git               | **[git][git]**
-`Clap grep`**<sup>+</sup>**            | Grep on the fly                    | **[rg][rg]**
-`Clap history`                         | Open buffers and `v:oldfiles`      | _none_
-`Clap jumps`                           | Jumps                              | _none_
-`Clap lines`                           | Lines in the loaded buffers        | _none_
-`Clap marks`                           | Marks                              | _none_
-`Clap tags`                            | Tags in the current buffer         | **[vista.vim][vista.vim]**
-`Clap yanks`                           | Yank stack of the current vim session    | _none_
-`Clap windows` **<sup>!</sup>**        | Windows                            | _none_
+Command                                | List                                  | Requirement
+:----                                  | :----                                 | :----
+`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer    | **[git][git]**
+`Clap blines`                          | Lines in the current buffer           | _none_
+`Clap buffers`                         | Open buffers                          | _none_
+`Clap colors`                          | Colorschemes                          | _none_
+`Clap hist:` or `Clap command_history` | Command history                       | _none_
+`Clap commits` **<sup>!</sup>**        | Git commits                           | **[git][git]**
+`Clap files`                           | Files                                 | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
+`Clap filetypes`                       | File types                            | _none_
+`Clap gfiles` or `Clap git_files`      | Files managed by git                  | **[git][git]**
+`Clap grep`**<sup>+</sup>**            | Grep on the fly                       | **[rg][rg]**
+`Clap history`                         | Open buffers and `v:oldfiles`         | _none_
+`Clap jumps`                           | Jumps                                 | _none_
+`Clap lines`                           | Lines in the loaded buffers           | _none_
+`Clap marks`                           | Marks                                 | _none_
+`Clap tags`                            | Tags in the current buffer            | **[vista.vim][vista.vim]**
+`Clap yanks`                           | Yank stack of the current vim session | _none_
+`Clap windows` **<sup>!</sup>**        | Windows                               | _none_
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
@@ -137,6 +137,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
 
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
+
 - `g:clap_provider_grep_opts`: An empty string by default, allows you to enable flags such as `'--hidden -g "!.git/"'`.
 
 See `:help clap-options` for more information.
