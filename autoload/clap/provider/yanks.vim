@@ -47,6 +47,16 @@ endfunction
 
 let s:yanks.sink = function('s:yanks_sink')
 
+function! s:yanks_enter() abort
+  if !get(g:, 'clap_enable_yanks_provider', 1)
+    call clap#error('Clap yanks provider is disabled, set g:clap_enable_yanks_provider to 1 to enable.')
+    call clap#handler#exit()
+    call feedkeys("\<Esc>", 'n')
+  endif
+endfunction
+
+let s:yanks.on_enter = function('s:yanks_enter')
+
 let g:clap#provider#yanks# = s:yanks
 
 let &cpo = s:save_cpo
