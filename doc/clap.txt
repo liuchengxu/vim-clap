@@ -23,7 +23,8 @@ CONTENTS                                                         *clap-contents*
     5.1 Highlights........................|clap-highlights|
   6. Provider Options.....................|clap-provider-options|
     6.1 Options for grep..................|clap-grep-options|
-    6.2 Other Provider Options............|clap-other-provider-options|
+    6.2 Options for yanks.................|clap-yanks-options|
+    6.3 Other Provider Options............|clap-other-provider-options|
   7. Commands.............................|clap-commands|
   8. Keybindings..........................|clap-keybindings|
   9. API..................................|clap-api|
@@ -390,9 +391,25 @@ g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
   Set this variable to `0` to disable drawing an icon for the returned result.
 
+-------------------------------------------------------------------------------
+6.2. Clap Yanks Options                                      *clap-yanks-options*
+
+g:clap_enable_yanks_provider                       *g:clap_enable_yanks_provider*
+
+  Type: |Number|
+  Default: `1`(enabled)
+
+  Set this variable to `0` to disable yanks provider.
+
+g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries*
+
+  Type: |Number|
+  Default: `20`
+
+  Set this variable to limit maximum yanks entries.
 
 -------------------------------------------------------------------------------
-6.2 Other Provider Options                          *clap-other-provider-options*
+6.3 Other Provider Options                          *clap-other-provider-options*
 
 
 ===============================================================================

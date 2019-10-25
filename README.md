@@ -94,6 +94,7 @@ Command                                | List                               | Re
 `Clap lines`                           | Lines in the loaded buffers        | _none_
 `Clap marks`                           | Marks                              | _none_
 `Clap tags`                            | Tags in the current buffer         | **[vista.vim][vista.vim]**
+`Clap yanks`                           | Yank stack of the current vim session    | _none_
 `Clap windows` **<sup>!</sup>**        | Windows                            | _none_
 
 [fd]: https://github.com/sharkdp/fd
