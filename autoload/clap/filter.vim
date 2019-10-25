@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Filter out the candidate lines given input.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:pattern_builder = {}
 
@@ -89,5 +89,5 @@ function! clap#filter#(lines, input) abort
   return filter(a:lines, 's:filter(v:val, l:filter_pattern)')
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -7,6 +7,7 @@ CHANGELOG
 
 - New provider `:Clap lines`.
 - New provider `:Clap history`.
+- New provider `:Clap yanks` thanks to @ratheesh.
 - New external filter `fzy` and `fzf`.
 - Every provider could run async if you have one of the external filters installed.
 - Add the substring filter mode.
@@ -17,7 +18,9 @@ CHANGELOG
 - Support `:Clap` listing all the builtin providers, thanks to @wookayin implementing the sink of it.
 - Support opening files from the git base directory. See `:h g:clap_disable_run_rooter` if you don't like this behavior.
 - Support searching the hidden files via `:Clap files --hidden`.
+- Add `g:clap_provider_grep_opts` for globally configuring the used command line options of rg, thanks to @Olical.
 - Support using any other finder tools via `:Clap files ++finder=[YOUR FINDER] [FINDER ARGS]`.
+- Add search box border symbols support.([#85](https://github.com/liuchengxu/vim-clap/pull/85))
 
 ### Improved
 

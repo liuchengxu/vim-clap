@@ -6,6 +6,8 @@ set cpoptions&vim
 
 let s:marks = {}
 
+let s:ext_to_ft = {'rs': 'rust', 'js': 'javascript'}
+
 let s:preview_size = 5
 
 function! s:format_mark(line) abort
@@ -88,7 +90,12 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
         let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
       endif
     else
-      let ft = fnamemodify(file_text, ':e')
+      let ext = fnamemodify(file_text, ':e')
+      if !empty(ft) && has_key(s:ext_to_ft, ext)
+        let ft = s:ext_to_ft[ext]
+      else
+        let ft = ''
+      endif
     endif
     if !empty(ft)
       call s:render_syntax(ft)
