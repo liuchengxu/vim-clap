@@ -19,3 +19,11 @@ augroup ClapBuffers
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
   autocmd BufDelete * silent! call remove(g:__clap_buffers, expand('<abuf>'))
 augroup END
+
+" yanks provider
+if get(g:, 'clap_enable_yanks_provider', 1)
+  augroup ClapYanks
+    autocmd!
+    autocmd VimEnter * call clap#provider#yanks#init()
+  augroup END
+endif
