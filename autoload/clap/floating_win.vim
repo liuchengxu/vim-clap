@@ -216,9 +216,11 @@ function! clap#floating_win#preview.show(lines) abort
     call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
     " call setwinvar(s:preview_winid, '&winblend', 15)
 
-    call setbufvar(s:preview_bufnr, '&number', 0)
-    call setbufvar(s:preview_bufnr, '&cursorline', 0)
-    call setbufvar(s:preview_bufnr, '&signcolumn', 'no')
+    call clap#api#setbufvar_batch(s:preview_bufnr, {
+          \ '&number': 0,
+          \ '&cursorline': 0,
+          \ '&signcolumn': 'no',
+          \ })
 
     let g:clap#floating_win#preview.winid = s:preview_winid
     let g:clap#floating_win#preview.bufnr = s:preview_bufnr
@@ -227,9 +229,9 @@ function! clap#floating_win#preview.show(lines) abort
 endfunction
 
 function! clap#floating_win#preview.close() abort
-  if exists('s:preview_winid')
+  if s:preview_winid > -1
     call clap#util#nvim_win_close_safe(s:preview_winid)
-    unlet s:preview_winid
+    let s:preview_winid = -1
   endif
 endfunction
 
@@ -269,21 +271,25 @@ function! clap#floating_win#open() abort
   call g:clap.provider.apply_query()
 endfunction
 
+function! s:win_close(winid) abort
+  noautocmd call clap#util#nvim_win_close_safe(a:winid)
+endfunction
+
 function! clap#floating_win#close() abort
   silent! autocmd! ClapEnsureAllClosed
 
   if s:symbol_width > 0
-    noautocmd call clap#util#nvim_win_close_safe(s:symbol_left_winid)
-    noautocmd call clap#util#nvim_win_close_safe(s:symbol_right_winid)
+    call s:win_close(s:symbol_left_winid)
+    call s:win_close(s:symbol_right_winid)
   endif
 
   noautocmd call g:clap#floating_win#preview.close()
-  noautocmd call clap#util#nvim_win_close_safe(g:clap.input.winid)
-  noautocmd call clap#util#nvim_win_close_safe(g:clap.spinner.winid)
+  call s:win_close(g:clap.input.winid)
+  call s:win_close(g:clap.spinner.winid)
 
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim
-  noautocmd call clap#util#nvim_win_close_safe(g:clap.display.winid)
+  call s:win_close(g:clap.display.winid)
 
   let &completeopt = s:save_completeopt
   if s:exists_deoplete

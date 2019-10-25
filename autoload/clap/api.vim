@@ -27,6 +27,10 @@ function! s:_setbufvar_batch(dict) dict abort
   call map(a:dict, { key, val -> setbufvar(self.bufnr, key, val) })
 endfunction
 
+function! clap#api#setbufvar_batch(bufnr, dict) abort
+  call map(a:dict, { key, val -> setbufvar(a:bufnr, key, val) })
+endfunction
+
 function! s:_system(cmd) abort
   let lines = system(a:cmd)
   if v:shell_error

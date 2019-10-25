@@ -200,7 +200,7 @@ function! s:create_spinner() abort
     let pos.highlight = 'ClapSpinner'
     let pos.wrap = v:false
     let pos.zindex = 100
-    let s:spinner_winid = popup_create([], pos)
+    let s:spinner_winid = popup_create(clap#spinner#get(), pos)
     call popup_hide(s:spinner_winid)
     call win_execute(s:spinner_winid, 'setlocal nonumber')
     let g:clap_spinner_winid = s:spinner_winid
@@ -502,7 +502,6 @@ function! s:show_all() abort
   if exists('s:symbol_right_winid')
     call popup_show(s:symbol_right_winid)
   endif
-  call popup_settext(s:spinner_winid, clap#spinner#get())
 endfunction
 
 function! clap#popup#get_input() abort
