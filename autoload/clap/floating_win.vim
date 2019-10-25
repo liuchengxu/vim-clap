@@ -229,9 +229,9 @@ function! clap#floating_win#preview.show(lines) abort
 endfunction
 
 function! clap#floating_win#preview.close() abort
-  if s:preview_winid > -1
+  if exists('s:preview_winid')
     call clap#util#nvim_win_close_safe(s:preview_winid)
-    let s:preview_winid = -1
+    unlet s:preview_winid
   endif
 endfunction
 
