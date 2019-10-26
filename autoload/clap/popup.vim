@@ -99,7 +99,7 @@ endfunction
 function! g:clap#popup#display.compact() abort
   let pos = popup_getpos(s:display_winid)
   let line_count = g:clap.display.line_count()
-  if pos.minheight != line_count
+  if pos.height != line_count
     let pos.minheight = line_count
     let pos.maxheight = line_count
     call popup_move(s:display_winid, pos)

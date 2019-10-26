@@ -33,6 +33,9 @@ function! s:init_fuzzy_matches_hl_group() abort
             \ 'NONE',
             \ 'NONE',
             \ )
+      if !has('nvim')
+        call prop_type_add('ClapFuzzyMatches'.idx, {'highlight': 'ClapFuzzyMatches'.idx})
+      endif
     endif
     let idx += 1
   endfor
@@ -116,8 +119,15 @@ function! s:on_typed_sync_impl() abort
 endfunction
 
 function! s:add_highlight_for_fuzzy_matched() abort
+  " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
+  " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
+  " belong to the cached lines.
+  " TODO: also add highlights for the cached lines?
+  let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
+
   let lnum = 0
-  for indices in g:__clap_fuzzy_matched_indices
+
+  for indices in hl_lines
     let group_idx = 1
     for idx in indices
       if group_idx < s:fuzzy_matches_hi_group_cnt + 1

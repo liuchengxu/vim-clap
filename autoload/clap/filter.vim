@@ -85,9 +85,31 @@ function! s:filter(line, pattern) abort
   return a:line =~ a:pattern
 endfunction
 
+function! s:setup_python() abort
+if has('nvim')
+
 execute s:py_exe "<< EOF"
 from clap.fzy import clap_fzy
 EOF
+
+else
+
+execute s:py_exe "<< EOF"
+import sys
+from os.path import normpath, join
+import vim
+plugin_root_dir = vim.eval('g:__clap_dir')
+python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
+sys.path.insert(0, python_root_dir)
+import clap
+
+from clap.fzy import clap_fzy
+EOF
+
+endif
+endfunction
+
+call s:setup_python()
 
 function! clap#filter#(query, candidates) abort
   try
