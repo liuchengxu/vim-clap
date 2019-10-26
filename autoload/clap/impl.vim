@@ -7,6 +7,44 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:async_threshold = 10000
 
+function! s:init_fuzzy_matches_hl_group() abort
+  let clap_fuzzy_matches = [
+        \ [46, '#00ff00'],
+        \ [47, '#00ff5f'],
+        \ [48, '#00ff87'],
+        \ [49, '#00ffaf'],
+        \ [50, '#00ffd7'],
+        \ [51, '#00ffff'],
+        \ [40, '#00d700'],
+        \ [41, '#00d75f'],
+        \ [42, '#00d787'],
+        \ [43, '#00d7af'],
+        \ [44, '#00d7d7'],
+        \ [45, '#00d7ff'],
+        \ ]
+
+  let idx = 1
+  for g in clap_fuzzy_matches
+    if !hlexists('ClapFuzzyMatches'.idx)
+      execute printf(
+            \ 'hi ClapFuzzyMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
+            \ g[1],
+            \ g[0],
+            \ 'NONE',
+            \ 'NONE',
+            \ )
+      if !has('nvim')
+        call prop_type_add('ClapFuzzyMatches'.idx, {'highlight': 'ClapFuzzyMatches'.idx})
+      endif
+    endif
+    let idx += 1
+  endfor
+
+  let s:fuzzy_matches_hi_group_cnt = len(clap_fuzzy_matches)
+endfunction
+
+call s:init_fuzzy_matches_hl_group()
+
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
 
@@ -73,17 +111,34 @@ function! s:on_typed_sync_impl() abort
 
   if !l:has_no_matches
     if exists('g:__clap_fuzzy_matched_indices')
-      let lnum = 0
-      for indices in g:__clap_fuzzy_matched_indices
-        for idx in indices
-          call clap#util#add_highlight_at(lnum, idx)
-        endfor
-        let lnum += 1
-      endfor
+      call s:add_highlight_for_fuzzy_matched()
     else
       call g:clap.display.add_highlight(l:cur_input)
     endif
   endif
+endfunction
+
+function! s:add_highlight_for_fuzzy_matched() abort
+  " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
+  " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
+  " belong to the cached lines.
+  " TODO: also add highlights for the cached lines?
+  let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
+
+  let lnum = 0
+
+  for indices in hl_lines
+    let group_idx = 1
+    for idx in indices
+      if group_idx < s:fuzzy_matches_hi_group_cnt + 1
+        call clap#util#add_highlight_at(lnum, idx, 'ClapFuzzyMatches'.group_idx)
+        let group_idx += 1
+      else
+        call clap#util#add_highlight_at(lnum, idx, 'ClapMatches')
+      endif
+    endfor
+    let lnum += 1
+  endfor
 endfunction
 
 function! s:apply_source_async() abort

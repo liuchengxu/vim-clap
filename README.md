@@ -63,6 +63,13 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
+If you want to use the built-in fuzzy match filter, the algorithm of which is fzy ported in python,  then the `python` support is required:
+
+```bash
+# neovim
+$ python3 -m pip install pynvim
+```
+
 ## Installation
 
 ```vim
@@ -329,6 +336,7 @@ If you'd liked to discuss the project more directly, check out [![][G1]][G2].
 
 - Vim-clap is initially enlightened by [snails](https://github.com/manateelazycat/snails).
 - Some providers' idea and code are borrowed from [fzf.vim](https://github.com/junegunn/fzf.vim).
+- The built-in fzy python implementation is based on [sweep.py](https://github.com/aslpavel/sweep.py).
 
 ## [License](LICENSE)
 

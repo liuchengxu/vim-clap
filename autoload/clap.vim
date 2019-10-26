@@ -22,6 +22,8 @@ let s:builtin_providers = map(
       \ 'fnamemodify(v:val, '':t:r'')'
       \ )
 
+let g:__clap_dir = s:cur_dir
+
 let g:clap#builtin_providers = s:builtin_providers
 
 let g:__t_func = 0
