@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the files managed by git.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:git_files = {}
 
@@ -17,5 +17,5 @@ let s:git_files.enable_rooter = v:true
 
 let g:clap#provider#git_files# = s:git_files
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

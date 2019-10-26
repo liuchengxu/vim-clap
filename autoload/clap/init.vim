@@ -5,6 +5,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:is_nvim = has('nvim')
+
 let s:input_default_hi_group = 'Visual'
 let s:display_default_hi_group = 'Pmenu'
 let s:preview_defaualt_hi_group = 'PmenuSel'
@@ -57,7 +59,7 @@ function! s:hi_spinner() abort
         \ )
 endfunction
 
-function! s:init_hi_submatches() abort
+function! s:init_submatches_hl_group() abort
   let clap_sub_matches = [
         \ [173 , '#e18254'] ,
         \ [196 , '#f2241f'] ,
@@ -69,20 +71,55 @@ function! s:init_hi_submatches() abort
         \ [29  , '#2d9574'] ,
         \ ]
 
-  let pmenu_ctermbg = s:extract_or(s:display_default_hi_group, 'bg', 'cterm', '60')
-  let pmenu_guibg = s:extract_or(s:display_default_hi_group, 'bg', 'gui', '#544a65')
-
   let idx = 1
   for g in clap_sub_matches
-    execute printf(
-          \ 'hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
-          \ g[1],
-          \ g[0],
-          \ pmenu_ctermbg,
-          \ pmenu_guibg,
-          \ )
+    if !hlexists('ClapMatches'.idx)
+      execute printf(
+            \ 'hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
+            \ g[1],
+            \ g[0],
+            \ 'NONE',
+            \ 'NONE',
+            \ )
+      let idx += 1
+    endif
+  endfor
+endfunction
+
+function! s:init_fuzzy_matches_hl_group() abort
+  let clap_fuzzy_matches = [
+        \ [46, '#00ff00'],
+        \ [47, '#00ff5f'],
+        \ [48, '#00ff87'],
+        \ [49, '#00ffaf'],
+        \ [50, '#00ffd7'],
+        \ [51, '#00ffff'],
+        \ [40, '#00d700'],
+        \ [41, '#00d75f'],
+        \ [42, '#00d787'],
+        \ [43, '#00d7af'],
+        \ [44, '#00d7d7'],
+        \ [45, '#00d7ff'],
+        \ ]
+
+  let idx = 1
+  for g in clap_fuzzy_matches
+    if !hlexists('ClapFuzzyMatches'.idx)
+      execute printf(
+            \ 'hi ClapFuzzyMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
+            \ g[1],
+            \ g[0],
+            \ 'NONE',
+            \ 'NONE',
+            \ )
+    endif
+    if !s:is_nvim
+      call prop_type_add('ClapFuzzyMatches'.idx, {'highlight': 'ClapFuzzyMatches'.idx})
+    endif
     let idx += 1
   endfor
+
+  let g:__clap_fuzzy_matches_hl_group_cnt = len(clap_fuzzy_matches)
 endfunction
 
 function! s:ensure_hl_exists(group, default) abort
@@ -162,7 +199,8 @@ function! s:init_hi_groups() abort
   call s:ensure_hl_exists('ClapSelected', 'ClapDefaultSelected')
   call s:ensure_hl_exists('ClapCurrentSelection', 'ClapDefaultCurrentSelection')
 
-  call s:init_hi_submatches()
+  call s:init_submatches_hl_group()
+  call s:init_fuzzy_matches_hl_group()
 endfunction
 
 if has('nvim')
