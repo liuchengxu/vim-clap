@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the jump list with the preview.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:jumps = {}
 
@@ -44,5 +44,5 @@ endfunction
 
 let g:clap#provider#jumps# = s:jumps
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the filetypes.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:filetypes = {}
 
@@ -11,5 +11,5 @@ let s:filetypes.sink = 'setf'
 
 let g:clap#provider#filetypes# = s:filetypes
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
