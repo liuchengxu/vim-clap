@@ -58,7 +58,7 @@ function! s:pattern_builder.build() abort
 endfunction
 
 function! clap#filter#matchadd_pattern() abort
-  return s:matchadd_pattern
+  return get(s:, 'matchadd_pattern', '')
 endfunction
 
 function! clap#filter#has_external_default() abort

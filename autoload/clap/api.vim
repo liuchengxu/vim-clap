@@ -225,6 +225,9 @@ function! s:init_display() abort
   " Default: input
   function! display.add_highlight(...) abort
     let pattern = a:0 > 0 ? a:1 : clap#filter#matchadd_pattern()
+    if empty(pattern)
+      return
+    endif
     if type(pattern) != v:t_list
       let pattern = [pattern]
     endif
@@ -333,7 +336,7 @@ function! s:init_provider() abort
     try
       call self._().on_typed()
     catch
-      let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
+      let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)
       call g:clap#display_win.compact()
       call clap#spinner#set_idle()

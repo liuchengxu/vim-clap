@@ -2,8 +2,8 @@
 " Description: List the recently yanked/deleted lines
 " Based on : https://github.com/sgur/ctrlp-extensions.vim
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:yank_history = []
 let s:yanks = {}
@@ -59,5 +59,5 @@ let s:yanks.on_enter = function('s:yanks_enter')
 
 let g:clap#provider#yanks# = s:yanks
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

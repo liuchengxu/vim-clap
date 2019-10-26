@@ -1,8 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Default implementation for various hooks.
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:async_threshold = 5000
@@ -136,7 +136,7 @@ function! clap#impl#on_typed() abort
     if get(g:clap.context, 'async') is v:true
       call s:on_typed_async_impl()
     elseif s:should_switch_to_async()
-        call s:on_typed_async_impl()
+      call s:on_typed_async_impl()
     else
       call s:on_typed_sync_impl()
     endif
@@ -145,5 +145,5 @@ function! clap#impl#on_typed() abort
   endif
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
