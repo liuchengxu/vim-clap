@@ -8,7 +8,7 @@
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
-![fzy-filter](https://user-images.githubusercontent.com/8850248/67619707-33f08f00-f831-11e9-84e6-e3645ba14b18.gif)
+![fzy-filter-c](https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif)
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Avoid touching the current window layout, less eye movement.
 - [x] Support multi-selection, use vim's regexp as filter by default.
 - [x] Support the preview functionality when navigating the result list.
-- [x] Support builtin match and external fuzzy filter tools.
+- [x] Support built-in fuzzy match and external fuzzy filter tools.
 - [ ] Support searching by multiple providers simultaneously.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
@@ -68,10 +68,10 @@ The `python` support is actually not neccessary. However, if you want to use the
 - Vim: `:pyx print("Hello")` should be `Hello`.
 - NeoVim:
 
-```bash
-# ensure you have installed pynvim
-$ python3 -m pip install pynvim
-```
+  ```bash
+  # ensure you have installed pynvim
+  $ python3 -m pip install pynvim
+  ```
 
 ## Installation
 
