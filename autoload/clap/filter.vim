@@ -8,7 +8,11 @@ let s:pattern_builder = {}
 
 let s:default_ext_filter = v:null
 
-let s:py_exe = has('python3') ? 'python3' : 'python'
+if has('python3') || has('python')
+  let s:py_exe = has('python3') ? 'python3' : 'python'
+else
+  let s:py_exe = v:null
+endif
 
 let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
@@ -85,14 +89,21 @@ function! s:filter(line, pattern) abort
   return a:line =~ a:pattern
 endfunction
 
-function! s:setup_python() abort
-if has('nvim')
+function! s:fallback_filter(query, candidates) abort
+  let s:pattern_builder.input = a:query
+  let l:filter_pattern = s:pattern_builder.build()
+  return filter(a:candidates, 's:filter(v:val, l:filter_pattern)')
+endfunction
+
+if s:py_exe isnot v:null
+
+  if has('nvim')
 
 execute s:py_exe "<< EOF"
 from clap.fzy import clap_fzy
 EOF
 
-else
+  else
 
 execute s:py_exe "<< EOF"
 import sys
@@ -106,22 +117,24 @@ import clap
 from clap.fzy import clap_fzy
 EOF
 
+  endif
+
+  function! clap#filter#(query, candidates) abort
+    try
+      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
+      return filtered
+    catch
+      return s:fallback_filter(a:query, a:candidates)
+    endtry
+  endfunction
+
+else
+
+  function! clap#filter#(query, candidates) abort
+    return s:fallback_filter(a:query, a:candidates)
+  endfunction
+
 endif
-endfunction
-
-call s:setup_python()
-
-function! clap#filter#(query, candidates) abort
-  try
-    let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
-    return filtered
-  catch
-    echom string(v:exception)
-    let s:pattern_builder.input = a:query
-    let l:filter_pattern = s:pattern_builder.build()
-    return filter(a:candidates, 's:filter(v:val, l:filter_pattern)')
-  endtry
-endfunction
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

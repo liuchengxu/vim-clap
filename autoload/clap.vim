@@ -142,6 +142,10 @@ function! clap#_exit() abort
     call remove(g:clap.provider, 'args')
   endif
 
+  if exists('g:__clap_fuzzy_matched_indices')
+    unlet g:__clap_fuzzy_matched_indices
+  endif
+
   call clap#sign#reset()
 
   call map(g:clap.tmps, 'delete(v:val)')
