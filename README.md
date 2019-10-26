@@ -239,7 +239,7 @@ For the non-pure-async providers, you could run it in async or sync way. By defa
 
 Field                 | Type                | Required      | Has default implementation
 :----                 | :----               | :----         | :----
-`sink`                | Funcref             | **mandatory** | No
+`sink`                | String/Funcref      | **mandatory** | No
 `sink*`               | Funcref             | optional      | No
 `source`              | String/List/Funcref | **mandatory** | No
 `source_async`        | String              | optional      | **Yes**
@@ -255,7 +255,7 @@ Field                 | Type                | Required      | Has default implem
   - String: vim command to handle the selected entry.
   - Funcref: reference to function to process the selected entry.
 
-- `sink*`: similar to `sink*`, but takes the list of multiple selected entries as input.
+- `sink*`: similar to `sink`, but takes the list of multiple selected entries as input.
 
 - `source`:
   - List: vim List as input to vim-clap.
