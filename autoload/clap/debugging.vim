@@ -28,7 +28,7 @@ function! s:get_global_variables() abort
 endfunction
 
 function! s:get_third_party_providers() abort
-  let all_providers = split(globpath(&rtp, 'autoload/clap/provider/*.vim'), "\n")
+  let all_providers = split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n")
   let third_party_providers = filter(all_providers, 'index(g:clap#builtin_providers, v:val) != -1')
   return third_party_providers
 endfunction
