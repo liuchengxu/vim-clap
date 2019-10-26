@@ -390,7 +390,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 -------------------------------------------------------------------------------
 6.1. Clap Grep Options                                      *clap-grep-options*
 
-g:clap_provider_grep_cmd                          *g:clap_provider_grep_cmd*
+g:clap_provider_grep_executable                   *g:clap_provider_grep_executable*
 
   Type: |String|
   Default: `'rg'`

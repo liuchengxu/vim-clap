@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:grep_delay = get(g:, 'clap_provider_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 let s:grep_opts = get(g:, 'clap_provider_grep_opts', '-H --no-heading --vimgrep --smart-case')
-let s:grep_executable = get(g:, 'clap_provider_grep_cmd', 'rg')
+let s:grep_executable = get(g:, 'clap_provider_grep_executable', 'rg')
 
 let s:old_query = ''
 let s:grep_timer = -1
