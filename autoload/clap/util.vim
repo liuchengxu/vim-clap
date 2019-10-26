@@ -252,8 +252,8 @@ function! clap#util#getfsize(fname) abort
   return size
 endfunction
 
-function! clap#util#add_highlight_at(lnum, col) abort
-  call nvim_buf_add_highlight(g:clap.display.bufnr, -1, 'Search', a:lnum, a:col, a:col+1)
+function! clap#util#add_highlight_at(lnum, col, hl_group) abort
+  call nvim_buf_add_highlight(g:clap.display.bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
 endfunction
 
 let &cpoptions = s:save_cpo

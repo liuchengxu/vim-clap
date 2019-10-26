@@ -42,7 +42,8 @@ BONUS_INDEX = digit_with(1, lower_with(1, upper_with(2, {})))
 
 
 def bonus(haystack):
-    """Additional bonus based on previous char in haystack
+    """
+    Additional bonus based on previous char in haystack
     """
     c_prev = "/"
     bonus = []
@@ -53,7 +54,8 @@ def bonus(haystack):
 
 
 def subsequence(niddle, haystack):
-    """Check if niddle is subsequence of haystack
+    """
+    Check if niddle is subsequence of haystack
     """
     niddle, haystack = niddle.lower(), haystack.lower()
     if not niddle:
@@ -67,7 +69,8 @@ def subsequence(niddle, haystack):
 
 
 def compute(niddle, haystack):
-    """Calculate score, and positions of haystack
+    """
+    Calculate score, and positions of haystack
     """
     n, m = len(niddle), len(haystack)
     bonus_score = bonus(haystack)
@@ -125,9 +128,9 @@ def positions(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (
-                    i > 0 and j > 0
-                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
+                match_required = (i > 0 and j > 0
+                                  and M[i][j] == D[i - 1][j - 1] +
+                                  SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break
@@ -176,9 +179,9 @@ def score(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (
-                    i > 0 and j > 0
-                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
+                match_required = (i > 0 and j > 0
+                                  and M[i][j] == D[i - 1][j - 1] +
+                                  SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break
