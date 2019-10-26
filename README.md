@@ -8,7 +8,7 @@
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
-![vim-clap-1024-98](https://user-images.githubusercontent.com/8850248/65813749-d6562c00-e20b-11e9-8161-c42801b1056c.gif)
+![fzy-filter](https://user-images.githubusercontent.com/8850248/67619707-33f08f00-f831-11e9-84e6-e3645ba14b18.gif)
 
 ## Table of Contents
 
