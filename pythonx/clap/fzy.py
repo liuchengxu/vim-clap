@@ -24,8 +24,6 @@ def fuzzy_match(query, candidates):
 
     return [indices, filtered]
 
-    #  return list(map(lambda x: [x['text'], x['indices']], ranked))
-
 
 def clap_fzy():
     return fuzzy_match(vim.eval("a:query"), vim.eval("a:candidates"))

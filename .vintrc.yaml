@@ -1,5 +1,4 @@
 cmdargs:
-  error-limit: 1
   severity: style_problem
   color: true
   env:
