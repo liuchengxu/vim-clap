@@ -1,5 +1,12 @@
 # vim-clap
 
+<p align="center">
+    <img width="400px" src="./logo.png">
+</p>
+
+<!-- ![](./logo.png) -->
+<!-- ![](./pinterest_profile_image.png) -->
+
 [![CI](https://github.com/liuchengxu/vim-clap/workflows/ci/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=ci)
 [![Gitter][G1]][G2]
 

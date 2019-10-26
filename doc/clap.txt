@@ -188,10 +188,10 @@ There are generally two kinds of providers in vim-clap.
   `sink`                |String| - vim command to handle the selected entry.
                       |Funcref| - reference to function to process the
                       selected entry.
-                         This field is mandatory.
+                      This field is mandatory.
 
   `sink*`               |Funcref| - similar to `sink*`, but takes the list of multiple selected entries as input.
-                         This field is optional.
+                      This field is optional.
 
   `source`               |List|: vim List as input to vim-clap.
                        |String|: external command to generate input to vim-clap (e.g. `find .`).
@@ -234,16 +234,13 @@ can be used for restoring the state on start.
 4.2 Pure async Providers                              *clap-pure-async-providers*
 
 
-  `sink`
-                         A |Funcref| reference to function to process the selected
+  `sink`                   A |Funcref| reference to function to process the selected
                          entry.
                          This field is mandatory and has no default
                          implementation.
 
-  `on_typed`
-reference to function to spawn an async job.
-
-  |Funcref|  This field is mandatory.
+  `on_typed`               |Funcref| reference to function to spawn an async job.
+                         This field is mandatory.
 
   `on_move`                |Funcref| his field is optional.
 
@@ -251,14 +248,15 @@ reference to function to spawn an async job.
 
   `on_exit`                |Funcref| This field is optional.
 
-  `converter`
-reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
+  `converter`              |Funcref| reference to function to convert the raw
+                         output of job to another form, e.g., prepend an
+                         icon to the grep result.
 
-  |Funcref| This field is optional.
+                         This field is optional.
 
   `jobstop`                |Funcref|This field is optional.
 
-  `enable_rooter`          |Bool|This field is optional.
+  `enable_rooter`          |Bool| This field is optional.
 
   `support_open_action`    |Bool| This field is optional.
 
