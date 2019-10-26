@@ -173,7 +173,9 @@ function! s:init_hi_groups() abort
 
   call s:hi_display_invisible()
 
-  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+  hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
+  hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
+  hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
 
   if !hlexists('ClapPreview')
     hi default link ClapPreview ClapDefaultPreview
@@ -192,10 +194,6 @@ function! s:init_hi_groups() abort
   " For the found matches highlight
   call s:ensure_hl_exists('ClapMatches', 'Search')
   call s:ensure_hl_exists('ClapNoMatchesFound', 'ErrorMsg')
-
-  hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-  hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
-
   call s:ensure_hl_exists('ClapSelected', 'ClapDefaultSelected')
   call s:ensure_hl_exists('ClapCurrentSelection', 'ClapDefaultCurrentSelection')
 
