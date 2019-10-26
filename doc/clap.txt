@@ -390,6 +390,16 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 -------------------------------------------------------------------------------
 6.1. Clap Grep Options                                      *clap-grep-options*
 
+g:clap_provider_grep_cmd                          *g:clap_provider_grep_cmd*
+
+  Type: |String|
+  Default: `'rg'`
+
+  The grep tool to be used. If you change it, you may need to adjust the
+  g:clap_provider_grep_opts as well. Please make sure grep_tool has an output
+  or a flag similar to the --vimgrep flag in ag/rg. Otherwise you may
+  encounter issues.
+
 g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
 
   Type: |Number|
@@ -411,7 +421,7 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
 g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
 
   Type: |String|
-  Default: `''`
+  Default: `'-H --no-heading --vimgrep --smart-case'`
 
   Set this to control the extra arguments that get passed to the grep tool.
   Setting `'--hidden -g "!.git/"'` for example would enable grepping hidden

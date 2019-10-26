@@ -6,7 +6,8 @@ set cpoptions&vim
 
 let s:grep_delay = get(g:, 'clap_provider_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
-let s:grep_opts = get(g:, 'clap_provider_grep_opts', '')
+let s:grep_opts = get(g:, 'clap_provider_grep_opts', '-H --no-heading --vimgrep --smart-case')
+let s:grep_executable = get(g:, 'clap_provider_grep_cmd', 'rg')
 
 let s:old_query = ''
 let s:grep_timer = -1
@@ -29,11 +30,11 @@ function! s:draw_icon(line) abort
 endfunction
 
 function! s:cmd(query) abort
-  if !executable('rg')
-    call g:clap.abort('rg not found')
+  if !executable(s:grep_executable)
+    call g:clap.abort(s:grep_executable . ' not found')
     return
   endif
-  let cmd = 'rg -H --no-heading --vimgrep --smart-case '.s:grep_opts.' "'.a:query.'"'.(has('win32') ? ' .' : '')
+  let cmd = s:grep_executable.' '.s:grep_opts.' "'.a:query.'"'.(has('win32') ? ' .' : '')
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction
