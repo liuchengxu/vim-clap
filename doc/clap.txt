@@ -17,8 +17,8 @@ CONTENTS                                                         *clap-contents*
   3. Supported Providers & Tools..........|clap-support|
   4. Provider.............................|clap-provider|
     4.1 Non-pure-async Providers..........|clap-non-pure-async-providers|
-    4.1 Pure async Providers..............|clap-pure-async-providers|
-    4.1 Registering Providers.............|clap-registering-providers|
+    4.2 Pure async Providers..............|clap-pure-async-providers|
+    4.3 Registering Providers.............|clap-registering-providers|
   5. Global Options.......................|clap-options|
     5.1 Highlights........................|clap-highlights|
   6. Provider Options.....................|clap-provider-options|
@@ -159,8 +159,180 @@ to work everywhere out of the box, with fast response.
 ===============================================================================
 4. Clap Provider                                                  *clap-provider*
 
-  TODO
 
+The provider of vim-clap is actually a |Dict| that specifies the action of your
+move in the input window. The idea is simple, every time you typed something,
+the `source` will be filtered or a job `source_async` will be spawned, and then
+the result retrived later will be shown in the dispaly window.
+
+There are generally two kinds of providers in vim-clap.
+
+1. Non-pure-async provider: suitable for these which are able to collect all
+   the items in a short time, e.g., open buffers, command history. It will run
+   in synchoronous if the source size is not large.
+
+   But it's also able to deal with the list that is potentially huge, let's say
+   100,000+ lines/items, in which case vim-clap will try to run the external filter
+   asynchronously. In a word, vim-clap can always be fast responsive.
+
+   What's more, it's extremely easy to introduce a new non-pure-async clap provider
+   as vim-clap provides the default implementation of `on_typed` and `source_async`.
+
+2. Pure async provider: suitable for the time-consuming jobs, e.g.,
+   grep a word in a directory.
+
+
+-------------------------------------------------------------------------------
+4.1. Non-pure-async Providers                     *clap-non-pure-async-providers*
+
+
+  `sink`                 |String|  - vim command to handle the selected entry.
+                       |Funcref| - reference to function to process the selected entry.
+
+                       This field is mandatory.
+
+
+  `sink*`                |Funcref| - similar to `sink*`, but takes the list of multiple
+                                 selected entries as input.
+
+                       This field is optional.
+
+
+  `source`               |List|    - vim List as input to vim-clap.
+                       |String|  - external command to generate input to vim-clap,
+                                 e.g. `find .` .
+                       |Funcref| - reference to function that returns a List to
+                                 generate input to vim-clap.
+
+                       This field is mandatory.
+
+
+  `source_async`         |String| - job command to filter the items of `source` based
+                                on the external tools. The default implementation
+                                is to feed the output of `source` into the external
+                                fuzzy filters and then display the filtered result,
+                                which could have some limitations, e.g., the
+                                matched indices is unable to be highlighted.
+
+                       This field is optional.
+
+
+  `filter`               |Funcref| - given what you have typed, use `filter(entry)` to
+                                 evaluate each entry in the display window, when
+                                 the result is zero remove the item from the current
+                                 result list. The default implementation is to
+                                 match the input using vim's regex.
+
+                       This field is mandatory.
+
+
+  `on_typed`             |Funcref| - reference to function to filter the `source`.
+
+                       This field is mandatory.
+
+
+  `on_move`              |Funcref| - when navigating the result list, can be used
+                                 for the preview purpose, see clap/provider/colors.vim.
+
+                       This field is optional.
+
+
+  `on_enter`             |Funcref| - when entering the clap window, can be used
+                                 for recording the current state.
+
+                       This field is optional.
+
+
+  `on_exit`              |Funcref| - can be used for restoring the state on start.
+
+                       This field is optional.
+
+
+  `enable_rooter`        |Bool|
+
+                       This field is optional.
+
+
+  `support_open_action`  |Bool|
+
+                       This field is optional.
+
+
+-------------------------------------------------------------------------------
+4.2 Pure async Providers                              *clap-pure-async-providers*
+
+
+  `sink`                   |Funcref| - reference to function to process the selected
+                                   entry.
+
+                         This field is mandatory and has no default
+                         implementation.
+
+
+  `on_typed`               |Funcref| - reference to function to spawn an async job.
+
+                         This field is mandatory.
+
+
+  `on_move`                |Funcref|
+
+                         This field is optional.
+
+
+  `on_enter`               |Funcref|
+
+                         This field is optional.
+
+
+  `on_exit`                |Funcref|
+
+                         This field is optional.
+
+
+  `converter`              |Funcref| - reference to function to convert the raw output
+                                   of job to another form, e.g., prepend an icon
+                                   to the grep result.
+
+                         This field is optional.
+
+
+  `jobstop`                |Funcref| - Stop the current job.
+
+                         This field is mandatory.
+
+
+  `enable_rooter`          |Bool|
+
+                         This field is optional.
+
+
+  `support_open_action`    |Bool|
+
+                         This field is optional.
+
+
+-------------------------------------------------------------------------------
+4.3 Registering Providers                            *clap-registering-providers*
+
+
+Vim-clap will load the providers automatically when neccessary if it's defined
+properly.
+
+- vimrc
+
+Define `g:clap_provider_{provider_id}` in your vimrc, e.g.,
+
+>
+  " `:Clap quick_open` to open some dotfiles quickly.
+  let g:clap_provider_quick_open = {
+      \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
+      \ 'sink': 'e',
+      \ }
+<
+
+- autoload
+
+`g:clap#provider#{provider_id}#`. See `:h autoload` and autoload/clap/provider.vim.
 
 
 ===============================================================================
@@ -390,6 +562,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 -------------------------------------------------------------------------------
 6.1. Clap Grep Options                                      *clap-grep-options*
 
+
 g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
 
   Type: |Number|
@@ -408,6 +581,7 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
 
   Set it to `[0, 0]` to disable this blink.
 
+
 g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
 
   Type: |String|
@@ -418,6 +592,7 @@ g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
   files and folders while respecting your `.gitignore` and not showing the
   `.git` directory itself.
 
+
 g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
   Type: |Number|
@@ -425,15 +600,20 @@ g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
   Set this variable to `0` to disable drawing an icon for the returned result.
 
+
 -------------------------------------------------------------------------------
 6.2. Clap Yanks Options                                      *clap-yanks-options*
+
 
 g:clap_enable_yanks_provider                       *g:clap_enable_yanks_provider*
 
   Type: |Number|
-  Default: `1`(enabled)
+  Default: `1`
+
+  The yanks provider is enabled by default.
 
   Set this variable to `0` to disable yanks provider.
+
 
 g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries*
 
@@ -441,6 +621,7 @@ g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries
   Default: `20`
 
   Set this variable to limit maximum yanks entries.
+
 
 -------------------------------------------------------------------------------
 6.3 Other Provider Options                          *clap-other-provider-options*
@@ -501,6 +682,11 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 
 g:clap                                                               *g:clap*
+
+
+g:clap.context                                               *g:clap.context*
+
+  `g:clap.context` stores all the provider options passed via `++opt` or `+opt`.
 
 
 g:clap.provider                                             *g:clap.provider*
