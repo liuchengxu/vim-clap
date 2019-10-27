@@ -460,16 +460,24 @@ function! s:move_manager.printable(key) abort
 endfunction
 
 function! s:popup_filter(winid, key) abort
-  if has_key(s:move_manager, a:key)
-    call s:move_manager[a:key](a:winid)
-    return 1
-  endif
+  try
+    if has_key(s:move_manager, a:key)
+      call s:move_manager[a:key](a:winid)
+      return 1
+    endif
 
-  let char_nr = char2nr(a:key)
-  " ASCII printable characters
-  if char_nr >= 32 && char_nr < 126
-    call s:move_manager.printable(a:key)
-  endif
+    let char_nr = char2nr(a:key)
+    " ASCII printable characters
+    if char_nr >= 32 && char_nr < 126
+      call s:move_manager.printable(a:key)
+    endif
+  catch
+    let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
+    call g:clap.display.set_lines(l:error_info)
+    call g:clap#display_win.compact()
+    call clap#spinner#set_idle()
+    return 1
+  endtry
 
   return 1
 endfunction

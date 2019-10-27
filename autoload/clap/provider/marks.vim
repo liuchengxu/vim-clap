@@ -91,7 +91,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
       endif
     else
       let ext = fnamemodify(file_text, ':e')
-      if !empty(ft) && has_key(s:ext_to_ft, ext)
+      if !empty(ext) && has_key(s:ext_to_ft, ext)
         let ft = s:ext_to_ft[ext]
       else
         let ft = ''
