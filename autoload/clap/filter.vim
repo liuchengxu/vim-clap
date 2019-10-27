@@ -97,14 +97,12 @@ endfunction
 
 if s:py_exe isnot v:null
 
-  if has('nvim')
-
+  function! s:setup_python() abort
+    if has('nvim')
 execute s:py_exe "<< EOF"
 from clap.fzy import clap_fzy
 EOF
-
-  else
-
+    else
 execute s:py_exe "<< EOF"
 import sys
 from os.path import normpath, join
@@ -116,9 +114,23 @@ import clap
 
 from clap.fzy import clap_fzy
 EOF
+    endif
+  endfunction
 
-  endif
+  try
+    call s:setup_python()
+    let s:can_use_python = v:true
+  catch
+    let s:can_use_python = v:false
+  endtry
 
+else
+
+  let s:can_use_python = v:false
+
+endif
+
+if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
       let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
@@ -127,13 +139,10 @@ EOF
       return s:fallback_filter(a:query, a:candidates)
     endtry
   endfunction
-
 else
-
   function! clap#filter#(query, candidates) abort
     return s:fallback_filter(a:query, a:candidates)
   endfunction
-
 endif
 
 let &cpoptions = s:save_cpo
