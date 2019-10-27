@@ -1,11 +1,6 @@
-# vim-clap
-
 <p align="center">
-    <img width="300px" src="./logo.png">
+    <img width="300px" src="https://user-images.githubusercontent.com/8850248/67629807-ee76a500-f8b6-11e9-8777-264a897dd9d4.png">
 </p>
-
-<!-- ![](./logo.png) -->
-<!-- ![](./pinterest_profile_image.png) -->
 
 [![CI](https://github.com/liuchengxu/vim-clap/workflows/ci/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=ci)
 [![Gitter][G1]][G2]
@@ -70,7 +65,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
-The `python` support is actually not neccessary. However, if you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
+  The `python` support is actually not neccessary. However, if you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
 
 - Vim: `:pyx print("Hello")` should be `Hello`.
 - NeoVim:

@@ -186,66 +186,66 @@ There are generally two kinds of providers in vim-clap.
 4.1. Non-pure-async Providers                     *clap-non-pure-async-providers*
 
 
-  `sink`                |String|  - vim command to handle the selected entry.
-                      |Funcref| - reference to function to process the selected entry.
+  `sink`                 |String|  - vim command to handle the selected entry.
+                       |Funcref| - reference to function to process the selected entry.
 
-                      This field is mandatory.
-
-
-  `sink*`               |Funcref| - similar to `sink*`, but takes the list of multiple
-                                selected entries as input.
-
-                      This field is optional.
+                       This field is mandatory.
 
 
-  `source`              |List|    - vim List as input to vim-clap.
-                      |String|  - external command to generate input to vim-clap,
-                                e.g. `find .` .
-                      |Funcref| - reference to function that returns a List to
-                                generate input to vim-clap.
+  `sink*`                |Funcref| - similar to `sink*`, but takes the list of multiple
+                                 selected entries as input.
 
-                      This field is mandatory.
+                       This field is optional.
 
 
-  `source_async`        |String| - job command to filter the items of `source` based
-                               on the external tools. The default implementation
-                               is to feed the output of `source` into the external
-                               fuzzy filters and then display the filtered result,
-                               which could have some limitations, e.g., the
-                               matched indices is unable to be highlighted.
+  `source`               |List|    - vim List as input to vim-clap.
+                       |String|  - external command to generate input to vim-clap,
+                                 e.g. `find .` .
+                       |Funcref| - reference to function that returns a List to
+                                 generate input to vim-clap.
 
-                      This field is optional.
-
-
-  `filter`              |Funcref| - given what you have typed, use `filter(entry)` to
-                                evaluate each entry in the display window, when
-                                the result is zero remove the item from the current
-                                result list. The default implementation is to
-                                match the input using vim's regex.
-
-                      This field is mandatory.
+                       This field is mandatory.
 
 
-  `on_typed`            |Funcref| - reference to function to filter the `source`.
+  `source_async`         |String| - job command to filter the items of `source` based
+                                on the external tools. The default implementation
+                                is to feed the output of `source` into the external
+                                fuzzy filters and then display the filtered result,
+                                which could have some limitations, e.g., the
+                                matched indices is unable to be highlighted.
 
-                      This field is mandatory.
-
-
-  `on_move`             |Funcref| - when navigating the result list, can be used
-                                for the preview purpose, see clap/provider/colors.vim.
-
-                      This field is optional.
-
-
-  `on_enter`            |Funcref| - when entering the clap window, can be used
-                               for recording the current state.
-
-                      This field is optional.
+                       This field is optional.
 
 
-  `on_exit`             |Funcref| - can be used for restoring the state on start.
+  `filter`               |Funcref| - given what you have typed, use `filter(entry)` to
+                                 evaluate each entry in the display window, when
+                                 the result is zero remove the item from the current
+                                 result list. The default implementation is to
+                                 match the input using vim's regex.
 
-                      This field is optional.
+                       This field is mandatory.
+
+
+  `on_typed`             |Funcref| - reference to function to filter the `source`.
+
+                       This field is mandatory.
+
+
+  `on_move`              |Funcref| - when navigating the result list, can be used
+                                 for the preview purpose, see clap/provider/colors.vim.
+
+                       This field is optional.
+
+
+  `on_enter`             |Funcref| - when entering the clap window, can be used
+                                 for recording the current state.
+
+                       This field is optional.
+
+
+  `on_exit`              |Funcref| - can be used for restoring the state on start.
+
+                       This field is optional.
 
 
   `enable_rooter`        |Bool|
