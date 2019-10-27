@@ -59,7 +59,7 @@ def subsequence(niddle, haystack):
     """
     niddle, haystack = niddle.lower(), haystack.lower()
     if not niddle:
-        True
+        return True
     offset = 0
     for char in niddle:
         offset = haystack.find(char, offset) + 1
@@ -128,9 +128,9 @@ def positions(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (i > 0 and j > 0
-                                  and M[i][j] == D[i - 1][j - 1] +
-                                  SCORE_MATCH_CONSECUTIVE)
+                match_required = (
+                    i > 0 and j > 0
+                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break
@@ -179,9 +179,9 @@ def score(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (i > 0 and j > 0
-                                  and M[i][j] == D[i - 1][j - 1] +
-                                  SCORE_MATCH_CONSECUTIVE)
+                match_required = (
+                    i > 0 and j > 0
+                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break

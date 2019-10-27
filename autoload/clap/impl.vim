@@ -100,16 +100,22 @@ function! s:add_highlight_for_fuzzy_matched() abort
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
 
+  if g:clap.provider.id ==# 'tags' && get(g:, 'vista#renderer#enable_icon', 0)
+    let offset = 2
+  else
+    let offset = 0
+  endif
+
   let lnum = 0
 
   for indices in hl_lines
     let group_idx = 1
     for idx in indices
       if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-        call clap#util#add_highlight_at(lnum, idx, 'ClapFuzzyMatches'.group_idx)
+        call clap#util#add_highlight_at(lnum, idx+offset, 'ClapFuzzyMatches'.group_idx)
         let group_idx += 1
       else
-        call clap#util#add_highlight_at(lnum, idx, 'ClapMatches')
+        call clap#util#add_highlight_at(lnum, idx+offset, 'ClapMatches')
       endif
     endfor
     let lnum += 1
