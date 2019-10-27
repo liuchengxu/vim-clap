@@ -1,7 +1,7 @@
 # vim-clap
 
 <p align="center">
-    <img width="400px" src="./logo.png">
+    <img width="300px" src="./logo.png">
 </p>
 
 <!-- ![](./logo.png) -->
