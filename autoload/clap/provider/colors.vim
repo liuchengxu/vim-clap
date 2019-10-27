@@ -8,7 +8,7 @@ let s:colors = {}
 
 " Derived from fzf.vim
 function! s:colors.source() abort
-  let colors = split(globpath(&rtp, 'colors/*.vim'), "\n")
+  let colors = split(globpath(&runtimepath, 'colors/*.vim'), "\n")
   if has('packages')
     let colors += split(globpath(&packpath, 'pack/*/opt/*/colors/*.vim'), "\n")
   endif

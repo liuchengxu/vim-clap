@@ -15,7 +15,7 @@
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
-![vim-clap-1024-98](https://user-images.githubusercontent.com/8850248/65813749-d6562c00-e20b-11e9-8161-c42801b1056c.gif)
+![fzy-filter-c](https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif)
 
 ## Table of Contents
 
@@ -51,7 +51,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Avoid touching the current window layout, less eye movement.
 - [x] Support multi-selection, use vim's regexp as filter by default.
 - [x] Support the preview functionality when navigating the result list.
-- [x] Support builtin match and external fuzzy filter tools.
+- [x] Support built-in fuzzy match and external fuzzy filter tools.
 - [ ] Support searching by multiple providers simultaneously.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
@@ -69,6 +69,16 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
+
+The `python` support is actually not neccessary. However, if you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
+
+- Vim: `:pyx print("Hello")` should be `Hello`.
+- NeoVim:
+
+  ```bash
+  # ensure you have installed pynvim
+  $ python3 -m pip install pynvim
+  ```
 
 ## Installation
 
@@ -336,6 +346,7 @@ If you'd liked to discuss the project more directly, check out [![][G1]][G2].
 
 - Vim-clap is initially enlightened by [snails](https://github.com/manateelazycat/snails).
 - Some providers' idea and code are borrowed from [fzf.vim](https://github.com/junegunn/fzf.vim).
+- The built-in fzy python implementation is based on [sweep.py](https://github.com/aslpavel/sweep.py).
 
 ## [License](LICENSE)
 

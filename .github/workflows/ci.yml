@@ -31,4 +31,4 @@ jobs:
     - name: Setup dependencies
       run: pip install vim-vint
     - name: Run Vimscript Linter
-      run: vint .
+      run: test/run_vint.sh

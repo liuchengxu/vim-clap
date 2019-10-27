@@ -207,5 +207,5 @@ function! clap#handler#try_open(action) abort
   endif
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -534,7 +534,18 @@ ClapMatches                                                          *ClapMatche
   The highlight for the first matched part.
 
 
-ClapNoMatchesFound                                       *ClapNClapNoMatchesFound*
+ClapMatches[1-8]                                                 *ClapMatches[1-8]*
+
+  `ClapMatches[1-8]` will be used for the matched substrings in the substring mode.
+
+
+ClapFuzzyMatches[1-12]                                     *ClapFuzzyMatches[1-12]*
+
+  `ClapFuzzyMatches[1-12]` will be used for highlighting the fuzzy matched
+  items.
+
+
+ClapNoMatchesFound                                        *ClapNClapNoMatchesFound*
 
   Default: `hi default link ClapNClapNoMatchesFound ErrorMsg`
 
