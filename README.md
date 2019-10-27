@@ -8,7 +8,7 @@
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
-![vim-clap-1024-98](https://user-images.githubusercontent.com/8850248/65813749-d6562c00-e20b-11e9-8161-c42801b1056c.gif)
+![fzy-filter-c](https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif)
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Avoid touching the current window layout, less eye movement.
 - [x] Support multi-selection, use vim's regexp as filter by default.
 - [x] Support the preview functionality when navigating the result list.
-- [x] Support builtin match and external fuzzy filter tools.
+- [x] Support built-in fuzzy match and external fuzzy filter tools.
 - [ ] Support searching by multiple providers simultaneously.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
@@ -63,6 +63,16 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
+The `python` support is actually not neccessary. However, if you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
+
+- Vim: `:pyx print("Hello")` should be `Hello`.
+- NeoVim:
+
+  ```bash
+  # ensure you have installed pynvim
+  $ python3 -m pip install pynvim
+  ```
+
 ## Installation
 
 ```vim
@@ -77,25 +87,25 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
-Command                                | List                               | Requirement
-:----                                  | :----                              | :----
-`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer | **[git][git]**
-`Clap blines`                          | Lines in the current buffer        | _none_
-`Clap buffers`                         | Open buffers                       | _none_
-`Clap colors`                          | Colorschemes                       | _none_
-`Clap hist:` or `Clap command_history` | Command history                    | _none_
-`Clap commits` **<sup>!</sup>**        | Git commits                        | **[git][git]**
-`Clap files`                           | Files                              | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
-`Clap filetypes`                       | File types                         | _none_
-`Clap gfiles` or `Clap git_files`      | Files managed by git               | **[git][git]**
-`Clap grep`**<sup>+</sup>**            | Grep on the fly                    | **[rg][rg]**
-`Clap history`                         | Open buffers and `v:oldfiles`      | _none_
-`Clap jumps`                           | Jumps                              | _none_
-`Clap lines`                           | Lines in the loaded buffers        | _none_
-`Clap marks`                           | Marks                              | _none_
-`Clap tags`                            | Tags in the current buffer         | **[vista.vim][vista.vim]**
-`Clap yanks`                           | Yank stack of the current vim session    | _none_
-`Clap windows` **<sup>!</sup>**        | Windows                            | _none_
+Command                                | List                                  | Requirement
+:----                                  | :----                                 | :----
+`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer    | **[git][git]**
+`Clap blines`                          | Lines in the current buffer           | _none_
+`Clap buffers`                         | Open buffers                          | _none_
+`Clap colors`                          | Colorschemes                          | _none_
+`Clap hist:` or `Clap command_history` | Command history                       | _none_
+`Clap commits` **<sup>!</sup>**        | Git commits                           | **[git][git]**
+`Clap files`                           | Files                                 | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
+`Clap filetypes`                       | File types                            | _none_
+`Clap gfiles` or `Clap git_files`      | Files managed by git                  | **[git][git]**
+`Clap grep`**<sup>+</sup>**            | Grep on the fly                       | **[rg][rg]**
+`Clap history`                         | Open buffers and `v:oldfiles`         | _none_
+`Clap jumps`                           | Jumps                                 | _none_
+`Clap lines`                           | Lines in the loaded buffers           | _none_
+`Clap marks`                           | Marks                                 | _none_
+`Clap tags`                            | Tags in the current buffer            | **[vista.vim][vista.vim]**
+`Clap yanks`                           | Yank stack of the current vim session | _none_
+`Clap windows` **<sup>!</sup>**        | Windows                               | _none_
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
@@ -137,6 +147,7 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
 
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
+
 - `g:clap_provider_grep_opts`: An empty string by default, allows you to enable flags such as `'--hidden -g "!.git/"'`.
 
 See `:help clap-options` for more information.
@@ -328,6 +339,7 @@ If you'd liked to discuss the project more directly, check out [![][G1]][G2].
 
 - Vim-clap is initially enlightened by [snails](https://github.com/manateelazycat/snails).
 - Some providers' idea and code are borrowed from [fzf.vim](https://github.com/junegunn/fzf.vim).
+- The built-in fzy python implementation is based on [sweep.py](https://github.com/aslpavel/sweep.py).
 
 ## [License](LICENSE)
 

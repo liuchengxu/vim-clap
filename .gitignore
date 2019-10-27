@@ -9,3 +9,4 @@ __pycache__
 !.travis.yml
 !.gitignore
 !.github
+!.vintrc.yaml
