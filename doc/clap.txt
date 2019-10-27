@@ -562,6 +562,15 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 -------------------------------------------------------------------------------
 6.1. Clap Grep Options                                      *clap-grep-options*
 
+g:clap_provider_grep_executable                   *g:clap_provider_grep_executable*
+
+  Type: |String|
+  Default: `'rg'`
+
+  The grep tool to be used. If you change it, you may need to adjust the
+  g:clap_provider_grep_opts as well. Please make sure grep_tool has an output
+  or a flag similar to the --vimgrep flag in ag/rg. Otherwise you may
+  encounter issues.
 
 g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
 
@@ -585,12 +594,15 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
 g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
 
   Type: |String|
-  Default: `''`
+  Default: `'-H --no-heading --vimgrep --smart-case'`
 
-  Set this to control the extra arguments that get passed to the grep tool.
-  Setting `'--hidden -g "!.git/"'` for example would enable grepping hidden
-  files and folders while respecting your `.gitignore` and not showing the
-  `.git` directory itself.
+  Set this to control the arguments that get passed to the grep tool.
+  Setting `'-H --no-heading --vimgrep --smart-case --hidden -g "!.git/"'`
+  for example would enable grepping hidden files and folders while respecting
+  your `.gitignore` and not showing the `.git` directory itself.
+  For the grep tools Ag & Rg make sure to pass the --vimgrep flag, otherwise
+  the output cannot be interpreted. For other tools you may want check if a
+  similar option exists.
 
 
 g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
@@ -599,6 +611,20 @@ g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
   Default: `exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0)`
 
   Set this variable to `0` to disable drawing an icon for the returned result.
+
+g:clap_provider_grep_cmd_format             *g:clap_provider_grep_cmd_format*
+
+  Type: |String|
+  Default: `'%s %s "%s"'.(has('win32') ? ' .' : '')`
+
+  The format used to create the command. 3 strings will be passed to the
+  format in that order:
+      1. g:clap_provider_grep_executable
+      2. g:clap_provider_grep_opts
+      3. the query => What the user has entered to search
+
+  In most cases this option does not have to be adjusted for tools like Ag &
+  Rg. For other tools this may not be the case.
 
 
 -------------------------------------------------------------------------------
