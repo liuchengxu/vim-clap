@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.1] 2019-10-27
+
 ### Added
 
 #### Provider
