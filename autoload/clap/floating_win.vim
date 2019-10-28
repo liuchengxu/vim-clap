@@ -86,6 +86,7 @@ function! g:clap#floating_win#display.open() abort
   call g:clap.display.setbufvar_batch({
         \ '&wrap': 0,
         \ '&number': 0,
+        \ '&relativenumber': 0,
         \ '&cursorline': 0,
         \ '&signcolumn': 'yes',
         \ })

@@ -44,7 +44,7 @@ endfunction
 
 function! s:execute_in_display() abort
   let w:clap_no_matches_id = matchadd('ClapNoMatchesFound', g:__clap_no_matches_pattern)
-  setlocal signcolumn=yes
+  setlocal signcolumn=yes norelativenumber
 endfunction
 
 function! s:create_display() abort
