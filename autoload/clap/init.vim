@@ -120,6 +120,7 @@ function! s:init_fuzzy_matches_hl_group() abort
   endfor
 
   let g:__clap_fuzzy_matches_hl_group_cnt = len(clap_fuzzy_matches)
+  let g:__clap_fuzzy_last_hl_group = 'ClapFuzzyMatches'.g:__clap_fuzzy_matches_hl_group_cnt
 endfunction
 
 function! s:ensure_hl_exists(group, default) abort

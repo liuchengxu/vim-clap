@@ -37,6 +37,19 @@ function! s:get_source() abort
   return l:lines
 endfunction
 
+" NOTE: some local variable without explicit l:, e.g., count,
+" may run into some erratic read-only error.
+function! s:refresh_matches_count(cnt_str) abort
+  let l:matches_cnt = a:cnt_str
+
+  if get(g:clap.display, 'initial_size', -1) > 0
+    let l:matches_cnt .= '/'.g:clap.display.initial_size
+  endif
+
+  call clap#indicator#set_matches('['.l:matches_cnt.']')
+  call clap#sign#reset_to_first_line()
+endfunction
+
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
 
@@ -57,28 +70,12 @@ function! s:on_typed_sync_impl() abort
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
     let l:has_no_matches = v:true
+    call s:refresh_matches_count('0')
+  else
+    call s:refresh_matches_count(string(len(l:lines)))
   endif
 
   call g:clap.display.set_lines_lazy(lines)
-
-  " NOTE: some local variable without explicit l:, e.g., count,
-  " may run into some erratic read-only error.
-  if l:has_no_matches
-    if get(g:clap.display, 'initial_size', -1) > 0
-      let l:count = '0/'.g:clap.display.initial_size
-    else
-      let l:count = '0'
-    endif
-    call clap#indicator#set_matches('['.l:count.']')
-    call clap#sign#disable_cursorline()
-  else
-    let l:matches_cnt = string(len(l:lines))
-    if get(g:clap.display, 'initial_size', -1) > 0
-      let l:matches_cnt .= '/'.g:clap.display.initial_size
-    endif
-    call clap#indicator#set_matches('['.l:matches_cnt.']')
-    call clap#sign#reset_to_first_line()
-  endif
 
   call g:clap#display_win.compact_if_undersize()
   call clap#spinner#set_idle()
@@ -115,7 +112,7 @@ function! s:add_highlight_for_fuzzy_matched() abort
         call clap#util#add_highlight_at(lnum, idx+offset, 'ClapFuzzyMatches'.group_idx)
         let group_idx += 1
       else
-        call clap#util#add_highlight_at(lnum, idx+offset, 'ClapMatches')
+        call clap#util#add_highlight_at(lnum, idx+offset, g:__clap_fuzzy_last_hl_group)
       endif
     endfor
     let lnum += 1
