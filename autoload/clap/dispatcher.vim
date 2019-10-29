@@ -118,6 +118,7 @@ if has('nvim')
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
+          \ 'cwd': s:job_cwd(),
           \ })
   endfunction
 
@@ -232,6 +233,7 @@ else
           \ 'exit_cb': function('s:exit_cb'),
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
+          \ 'cwd': s:job_cwd(),
           \ })
     let s:job_id = s:parse_job_id(string(job))
   endfunction
@@ -271,8 +273,17 @@ function! s:has_no_matches() abort
   endif
 endfunction
 
+function! s:job_cwd() abort
+  if get(g:, 'clap_disable_run_rooter', v:false)
+    return getcwd()
+  else
+    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+    return empty(git_root) ? getcwd() : git_root
+  endif
+endfunction
+
 function! s:apply_job_start(_timer) abort
-  call clap#util#run_rooter(function('s:job_start'), s:cmd)
+  call s:job_start(s:cmd)
 
   let s:executed_time = strftime('%Y-%m-%d %H:%M:%S')
   let s:executed_cmd = s:cmd

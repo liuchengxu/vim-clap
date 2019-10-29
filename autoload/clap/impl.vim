@@ -122,12 +122,6 @@ endfunction
 " =======================================
 " async implementation
 " =======================================
-function! s:apply_source_async() abort
-  let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#job_start(cmd)
-  call clap#spinner#set_busy()
-endfunction
-
 function! s:on_typed_async_impl() abort
   call g:clap.display.clear_highlight()
   let l:cur_input = g:clap.input.get()
@@ -138,7 +132,9 @@ function! s:on_typed_async_impl() abort
 
   call g:clap.display.clear()
 
-  call clap#util#run_rooter(function('s:apply_source_async'))
+  let cmd = g:clap.provider.source_async_or_default()
+  call clap#dispatcher#job_start(cmd)
+  call clap#spinner#set_busy()
 
   call g:clap.display.add_highlight(l:cur_input)
 endfunction
