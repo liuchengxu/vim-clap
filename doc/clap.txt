@@ -648,6 +648,13 @@ g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries
 
   Set this variable to limit maximum yanks entries.
 
+g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
+
+  Type: |Number|
+  Default: `1`
+
+  Set minimum length of yanked text to be stored in yanks stack. Setting this
+  variable to less than 2 has no effect.
 
 -------------------------------------------------------------------------------
 6.3 Other Provider Options                          *clap-other-provider-options*

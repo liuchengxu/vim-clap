@@ -6,11 +6,16 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:yank_history = []
-let s:yanks = {}
-let s:max_yanks = get(g:, 'clap_provider_yanks_max_entries', 20)
+let s:yanks        = {}
+let s:max_yanks    = get(g:, 'clap_provider_yanks_max_entries', 20)
+let s:min_len      = get(g:, 'clap_provider_yanks_min_len', 1)
 
 function! clap#provider#yanks#collect() abort
   let last_yanked = getreg('"')
+
+  if len(last_yanked) < s:min_len
+    return
+  endif
 
   if !empty(s:yank_history) && last_yanked == s:yank_history[0]
     return
