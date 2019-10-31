@@ -48,9 +48,11 @@ inoremap <silent> <buffer> <CR> <Esc>:call clap#handler#sink()<CR>
 
 nnoremap <silent> <buffer> <C-c> :call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <Esc> :call clap#handler#exit()<CR>
+nnoremap <silent> <buffer> <C-g> :call clap#handler#exit()<CR>
 
 inoremap <silent> <buffer> <C-c> <Esc>:call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <Esc> <Esc>:call clap#handler#exit()<CR>
+inoremap <silent> <buffer> <C-g> <Esc>:call clap#handler#exit()<CR>
 
 inoremap <silent> <buffer> <C-j> <C-R>=clap#handler#navigate_result('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#handler#navigate_result('up')<CR>

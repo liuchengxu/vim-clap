@@ -141,6 +141,10 @@ to work everywhere out of the box, with fast response.
                          Support preview
 
 
+                                                     *:Clap-registers*
+:Clap registers          List Registers
+
+
                                                      *:Clap-tags*
 :Clap tags               List Tags in the current buffer
                          Require `vista.vim`
@@ -691,7 +695,7 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-e`/`End` to go to the end of the input.
 
-- Use `Ctrl-c`, `Ctrl-[` or `Esc` to exit.
+- Use `Ctrl-c`, `Ctrl-g`, `Ctrl-[` or `Esc` to exit.
 
 - Use `Ctrl-h`/`BS` to delete previous character.
 
