@@ -124,7 +124,7 @@ else
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call clap#util#add_match_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
+          call clap#util#add_highlight_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
           let group_idx += 1
         else
           call clap#util#add_highlight_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group)

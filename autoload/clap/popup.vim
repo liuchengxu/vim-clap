@@ -342,10 +342,6 @@ function! s:move_manager.ctrl_b(_winid) abort
   call s:mock_input()
 endfunction
 
-function! s:move_manager.ctrl_g(_winid) abort
-  echom 'Unimplemented: could be used for showing some useful env info'
-endfunction
-
 function! s:move_manager.ctrl_f(_winid) abort
   let s:cursor_idx += 1
   let input_len = strlen(s:input)
@@ -420,7 +416,7 @@ let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
-let s:move_manager["\<C-G>"] = s:move_manager.ctrl_g
+let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)

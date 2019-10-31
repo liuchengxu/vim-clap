@@ -113,7 +113,8 @@ function! s:init_display() abort
 
     function! display.clear_highlight() abort
       call self.goto_win()
-      call self.matchdelete()
+      " Clear all matches added in the display window
+      call clearmatches()
       call g:clap.input.goto_win()
     endfunction
 
