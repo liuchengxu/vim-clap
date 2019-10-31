@@ -39,7 +39,7 @@ endfunction
 
 " NOTE: some local variable without explicit l:, e.g., count,
 " may run into some erratic read-only error.
-function! s:refresh_matches_count(cnt_str) abort
+function! clap#impl#refresh_matches_count(cnt_str) abort
   let l:matches_cnt = a:cnt_str
 
   if get(g:clap.display, 'initial_size', -1) > 0
@@ -70,9 +70,9 @@ function! s:on_typed_sync_impl() abort
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
     let l:has_no_matches = v:true
-    call s:refresh_matches_count('0')
+    call clap#impl#refresh_matches_count('0')
   else
-    call s:refresh_matches_count(string(len(l:lines)))
+    call clap#impl#refresh_matches_count(string(len(l:lines)))
   endif
 
   call g:clap.display.set_lines_lazy(lines)
@@ -122,12 +122,6 @@ endfunction
 " =======================================
 " async implementation
 " =======================================
-function! s:apply_source_async() abort
-  let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#job_start(cmd)
-  call clap#spinner#set_busy()
-endfunction
-
 function! s:on_typed_async_impl() abort
   call g:clap.display.clear_highlight()
   let l:cur_input = g:clap.input.get()
@@ -138,7 +132,9 @@ function! s:on_typed_async_impl() abort
 
   call g:clap.display.clear()
 
-  call clap#util#run_rooter(function('s:apply_source_async'))
+  let cmd = g:clap.provider.source_async_or_default()
+  call clap#dispatcher#job_start(cmd)
+  call clap#spinner#set_busy()
 
   call g:clap.display.add_highlight(l:cur_input)
 endfunction
