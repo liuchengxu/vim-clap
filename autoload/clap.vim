@@ -95,8 +95,9 @@ function! s:inject_default_impl_is_ok(provider_info) abort
 endfunction
 
 function! s:_sink(selected) abort
+  let provider = matchstr(a:selected, '^\(.*\)\ze:')
   " a sink for "Clap _" (dispatch to other builtin clap providers).
-  call timer_start(0, {-> clap#_for(a:selected)})
+  call timer_start(0, {-> clap#_for(provider)})
 endfunction
 
 function! clap#_init() abort
@@ -267,7 +268,7 @@ function! s:_source() abort
         let desc_line = readfile(provider_path, '', 2)[-1]
         let desc = matchstr(desc_line, '^.*Description: \zs\(.*\)\ze\.\?$')
         if empty(desc)
-          call add(s:global_source, provider_id)
+          call add(s:global_source, provider_id.':')
         else
           call add(s:global_source, provider_id.': '.desc)
         endif
