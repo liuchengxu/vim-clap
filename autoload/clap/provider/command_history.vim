@@ -12,10 +12,6 @@ function! s:command_history() abort
   return list
 endfunction
 
-nnoremap <plug>(clap-vim-do) :execute g:__clap_command<cr>
-nnoremap <plug>(clap-/) /
-nnoremap <plug>(clap-:) :
-
 function! s:command_history_source() abort
   let cmd_hist = s:command_history()
   let max  = histnr(':')
@@ -25,17 +21,15 @@ endfunction
 
 function! s:command_history_sink(selected) abort
   let item = matchstr(a:selected, '\d\+\s\+\zs\(.*\)')
-  let type = ':'
-  call histadd(type, item)
-  let prefix = "\<plug>(clap-".type.')'
-  let g:__clap_command = 'normal '.prefix.item.'\<cr>'
-  call feedkeys("\<plug>(clap-vim-do)")
+  call histadd(':', item)
+  let s:key = ':'.item."\<cr>"
 endfunction
 
 let s:command_history = {}
 let s:command_history.sink = function('s:command_history_sink')
 let s:command_history.source = function('s:command_history_source')
 let s:command_history.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_command_history') }
+let s:command_history.on_exit = { -> feedkeys(s:key) }
 
 let g:clap#provider#command_history# = s:command_history
 
