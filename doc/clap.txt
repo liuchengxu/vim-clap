@@ -338,6 +338,15 @@ Define `g:clap_provider_{provider_id}` in your vimrc, e.g.,
 
 `g:clap#provider#{provider_id}#`. See `:h autoload` and autoload/clap/provider.vim.
 
+                                                    *clap-provider-description*
+
+Each autoload provider should start with these two comment lines, the
+Description line will be extracted as the brief introduction when displaying
+all the avaliable providers via `:Clap` .
+>
+  " Author: liuchengxu <xuliuchengxlc@gmail.com>
+  " Description: List the windows.
+
 
 ===============================================================================
 5. Global Options                                                 *clap-options*

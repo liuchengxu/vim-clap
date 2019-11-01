@@ -95,8 +95,9 @@ function! s:inject_default_impl_is_ok(provider_info) abort
 endfunction
 
 function! s:_sink(selected) abort
+  let provider = matchstr(a:selected, '^\(.*\)\ze:')
   " a sink for "Clap _" (dispatch to other builtin clap providers).
-  call timer_start(0, {-> clap#_for(a:selected)})
+  call timer_start(0, {-> clap#_for(provider)})
 endfunction
 
 function! clap#_init() abort
@@ -258,9 +259,33 @@ function! clap#for(provider_id_or_alias) abort
   call g:clap.open_win()
 endfunction
 
+function! s:_source() abort
+  if !exists('s:global_source')
+    let s:global_source = []
+    for provider_id in s:builtin_providers
+      let provider_path = globpath(&runtimepath, 'autoload/clap/provider/'.provider_id.'.vim')
+      if file_readable(provider_path)
+        let desc_line = readfile(provider_path, '', 2)[-1]
+        let desc = matchstr(desc_line, '^.*Description: \zs\(.*\)\ze\.\?$')
+        if empty(desc)
+          call add(s:global_source, provider_id.':')
+        else
+          call add(s:global_source, provider_id.': '.desc)
+        endif
+      endif
+    endfor
+  endif
+  return s:global_source
+endfunction
+
 if !exists('g:clap')
   call clap#init#()
-  call clap#register('_', {'source': s:builtin_providers, 'sink': function('s:_sink')})
+  call clap#register('_', {
+        \ 'source': function('s:_source'),
+        \ 'sink': function('s:_sink'),
+        \ 'on_enter': { -> g:clap.display.setbufvar('&ft', 'clap_global') },
+        \ 'on_exit': { -> g:clap.display.setbufvar('&ft', '') },
+        \ })
 endif
 
 function! s:parse_opts(args) abort
