@@ -20,13 +20,20 @@ let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
 let s:ext_cmd.maple = 'maple %s'
 
-" TODO support skim, skim seems to have a score at the beginning.
-for ext in ['maple', 'fzy', 'fzf']
-  if executable(ext)
-    let s:default_ext_filter = ext
-    break
+if exists('g:clap_default_external_filter')
+  let s:default_ext_filter = g:clap_default_external_filter
+  if index(keys(s:ext_cmd), s:default_ext_filter) == -1
+    call g:clap.abort('Unsupported external filter: '.s:default_ext_filter)
   endif
-endfor
+else
+  " TODO support skim, skim seems to have a score at the beginning.
+  for ext in ['maple', 'fzy', 'fzf']
+    if executable(ext)
+      let s:default_ext_filter = ext
+      break
+    endif
+  endfor
+endif
 
 function! s:pattern_builder._force_case() abort
   " Smart case
