@@ -31,7 +31,7 @@ pub fn main() {
     for (k, v) in ranked.iter() {
         let matched = json!({
             "text": k,
-            "indices":v.1,
+            "indices": v.1,
         });
         println!("{}", matched.to_string());
     }
