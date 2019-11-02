@@ -16,7 +16,6 @@ pub fn main() {
 
     let query = &args[1];
 
-    // count the frequency of each letter in a sentence.
     let mut ranked = IndexMap::new();
 
     for line in io::stdin().lock().lines() {

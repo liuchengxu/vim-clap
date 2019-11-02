@@ -491,6 +491,18 @@ g:clap_search_box_border_style                  *g:clap_search_box_border_style*
   Set this variable to `nil` to disable the search box border symbol.
 
 
+g:clap_default_external_filter                  *g:clap_default_external_filter*
+
+  Type: |String| or |v:null|
+  Default: `'maple' | 'fzy' | 'fzf' | v:null`
+
+  The default provider's async implementation is based on these external
+  filter programs in the following order:
+
+  `maple` - actually using the algorithm of skim, with the highlight of matched indices.
+  `fzy` - no highlight of matched indices.
+  `fzf` - no highlight of matched indices.
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
