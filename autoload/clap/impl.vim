@@ -152,6 +152,10 @@ function! s:add_highlight_for_fuzzy_matched() abort
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
+  call s:apply_add_highlight(a:hl_lines, 0)
+endfunction
+
 " =======================================
 " async implementation
 " =======================================
@@ -169,7 +173,9 @@ function! s:on_typed_async_impl() abort
   call clap#dispatcher#job_start(cmd)
   call clap#spinner#set_busy()
 
-  call g:clap.display.add_highlight(l:cur_input)
+  if !exists('g:__clap_maple_fuzzy_matched')
+    call g:clap.display.add_highlight(l:cur_input)
+  endif
 endfunction
 
 " Choose the suitable way according to the source size.
