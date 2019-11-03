@@ -3,6 +3,18 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- New provider `:Clap registers`.
+
+### Changed
+
+- Put `call g:clap.provider.on_exit()` just before `silent doautocmd <nomodeline> User ClapOnExit` in `clap#_exit()`.
+
+### Fixed
+
+- sink of `:Clap command_history`.([#109](https://github.com/liuchengxu/vim-clap/issues/109))
+
 ## [0.1] 2019-10-27
 
 ### Added
