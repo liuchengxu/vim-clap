@@ -22,14 +22,14 @@ endfunction
 function! s:command_history_sink(selected) abort
   let item = matchstr(a:selected, '\d\+\s\+\zs\(.*\)')
   call histadd(':', item)
-  let s:key = ':'.item."\<cr>"
+  let s:cmd = item
 endfunction
 
 let s:command_history = {}
 let s:command_history.sink = function('s:command_history_sink')
 let s:command_history.source = function('s:command_history_source')
 let s:command_history.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_command_history') }
-let s:command_history.on_exit = { -> feedkeys(s:key) }
+let s:command_history.on_exit = { -> execute(s:cmd) }
 
 let g:clap#provider#command_history# = s:command_history
 

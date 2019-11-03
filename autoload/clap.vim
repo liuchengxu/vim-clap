@@ -127,7 +127,6 @@ function! clap#_init() abort
 endfunction
 
 function! clap#_exit() abort
-  call g:clap.provider.on_exit()
   call g:clap.provider.jobstop()
 
   call g:clap.close_win()
@@ -151,6 +150,7 @@ function! clap#_exit() abort
   call map(g:clap.tmps, 'delete(v:val)')
   let g:clap.tmps = []
 
+  call g:clap.provider.on_exit()
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
