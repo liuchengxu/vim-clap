@@ -114,7 +114,12 @@ function! s:init_display() abort
     function! display.clear_highlight() abort
       call self.goto_win()
       " Clear all matches added in the display window
-      call clearmatches()
+      "
+      " We should not use clearmatches() as it will clear the
+      " ClapNoMatchesFound highlight as well.
+      "
+      " call clearmatches()
+      call self.matchdelete()
       call g:clap.input.goto_win()
     endfunction
 

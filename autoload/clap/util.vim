@@ -253,7 +253,7 @@ function! clap#util#getfsize(fname) abort
 endfunction
 
 function! clap#util#add_match_at(lnum, col, hl_group) abort
-  call matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
+  return matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
 endfunction
 
 if has('nvim')
