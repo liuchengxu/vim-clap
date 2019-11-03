@@ -306,7 +306,7 @@ Field                 | Type                | Required      | Has default implem
 
 - `enable_rooter`: try to run the `source` from the project root.
 
-You have to provide `sink` and `source` option. The `source` field is indispensable for a synchoronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
+You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
 ### Create pure async provider
 
