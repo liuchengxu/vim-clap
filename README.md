@@ -10,7 +10,9 @@
 
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
-![fzy-filter-c](https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif)
+<p align="center">
+  <img width="600px" src="https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif">
+</p>
 
 ## Table of Contents
 
@@ -19,6 +21,9 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 * [Features](#features)
 * [Caveats](#caveats)
 * [Requirement](#requirement)
+  * [Optional](#optional)
+    * [`python`](#python)
+    * [`maple`](#maple)
 * [Installation](#installation)
 * [Usage](#usage)
   * [Commands](#commands)
@@ -65,7 +70,11 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
-  The `python` support is actually not neccessary. However, if you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
+### Optional
+
+#### `python`
+
+  If you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
 
 - Vim: `:pyx print("Hello")` should be `Hello`.
 - NeoVim:
@@ -74,6 +83,14 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   # ensure you have installed pynvim
   $ python3 -m pip install pynvim
   ```
+
+#### `maple`
+
+`maple` is essentially a tiny wrapper of [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
+
+```bash
+cargo install --path . --force
+```
 
 ## Installation
 

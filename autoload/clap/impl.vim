@@ -99,17 +99,20 @@ if s:is_nvim
     " higher, we could use the same impl with vim's s:apply_highlight().
 
     call g:clap.display.goto_win()
-    call clearmatches()
+    " We should not use clearmatches() here.
+    call g:clap.display.matchdelete()
+
+    let w:clap_match_ids = []
 
     let lnum = 0
     for indices in a:hl_lines
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call clap#util#add_match_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
+          call add(w:clap_match_ids, clap#util#add_match_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx))
           let group_idx += 1
         else
-          call clap#util#add_match_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group)
+          call add(w:clap_match_ids, clap#util#add_match_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group))
         endif
       endfor
       let lnum += 1
@@ -152,6 +155,10 @@ function! s:add_highlight_for_fuzzy_matched() abort
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
+  call s:apply_add_highlight(a:hl_lines, 0)
+endfunction
+
 " =======================================
 " async implementation
 " =======================================
@@ -169,7 +176,9 @@ function! s:on_typed_async_impl() abort
   call clap#dispatcher#job_start(cmd)
   call clap#spinner#set_busy()
 
-  call g:clap.display.add_highlight(l:cur_input)
+  if !exists('g:__clap_maple_fuzzy_matched')
+    call g:clap.display.add_highlight(l:cur_input)
+  endif
 endfunction
 
 " Choose the suitable way according to the source size.

@@ -270,6 +270,10 @@ function! s:on_exit_common() abort
     call clap#sign#reset_to_first_line()
   endif
   call clap#spinner#set_idle()
+  if exists('g:__clap_maple_fuzzy_matched')
+    let hl_lines = g:__clap_maple_fuzzy_matched[:g:clap.display.line_count()-1]
+    call clap#impl#add_highlight_for_fuzzy_indices(hl_lines)
+  endif
 endfunction
 
 function! s:has_no_matches() abort

@@ -146,6 +146,10 @@ function! clap#_exit() abort
     unlet g:__clap_fuzzy_matched_indices
   endif
 
+  if exists('g:__clap_maple_fuzzy_matched')
+    unlet g:__clap_maple_fuzzy_matched
+  endif
+
   call clap#sign#reset()
 
   call map(g:clap.tmps, 'delete(v:val)')

@@ -18,14 +18,22 @@ let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
+let s:ext_cmd.maple = 'maple %s'
 
-" TODO support skim, skim seems to have a score at the beginning.
-for ext in ['fzy', 'fzf']
-  if executable(ext)
-    let s:default_ext_filter = ext
-    break
+if exists('g:clap_default_external_filter')
+  let s:default_ext_filter = g:clap_default_external_filter
+  if index(keys(s:ext_cmd), s:default_ext_filter) == -1
+    call g:clap.abort('Unsupported external filter: '.s:default_ext_filter)
   endif
-endfor
+else
+  " TODO support skim, skim seems to have a score at the beginning.
+  for ext in ['maple', 'fzy', 'fzf']
+    if executable(ext)
+      let s:default_ext_filter = ext
+      break
+    endif
+  endfor
+endif
 
 function! s:pattern_builder._force_case() abort
   " Smart case
@@ -71,6 +79,12 @@ function! clap#filter#has_external_default() abort
   return s:default_ext_filter isnot v:null
 endfunction
 
+function! s:maple_converter(line) abort
+  let json_decoded = json_decode(a:line)
+  call add(g:__clap_maple_fuzzy_matched, json_decoded.indices)
+  return json_decoded.text
+endfunction
+
 function! clap#filter#get_external_cmd_or_default() abort
   if has_key(g:clap.context, 'externalfilter')
     let ext_filter = g:clap.context.externalfilter
@@ -81,6 +95,13 @@ function! clap#filter#get_external_cmd_or_default() abort
     return
   else
     let ext_filter = s:default_ext_filter
+  endif
+  if ext_filter ==# 'maple'
+    let g:__clap_maple_fuzzy_matched = []
+    let Provider = g:clap.provider._()
+    if !has_key(Provider, 'converter')
+      let Provider.converter = function('s:maple_converter')
+    endif
   endif
   return printf(s:ext_cmd[ext_filter], g:clap.input.get())
 endfunction
