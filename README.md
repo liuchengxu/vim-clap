@@ -86,7 +86,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 #### `maple`
 
-`maple` is a tiny wrapper of [fuzzy-matcher](https://github.com/lotabout/fuzzy-matcher), which is actually the algorithm used by [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
+`maple` is essentially a tiny wrapper of [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
 
 ```bash
 cargo install --path . --force
