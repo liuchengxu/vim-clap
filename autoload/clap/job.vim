@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: APIs for working with Asynchronous jobs.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 function! clap#job#cwd() abort
   if get(g:, 'clap_disable_run_rooter', v:false)
     return getcwd()
@@ -9,3 +12,6 @@ function! clap#job#cwd() abort
     return empty(git_root) ? getcwd() : git_root
   endif
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo

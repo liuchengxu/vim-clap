@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Spawn a job when initalizing the display window if possible.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 function! s:on_complete() abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(s:chunks)
@@ -64,3 +67,6 @@ function! clap#forerunner#start(cmd) abort
   let s:chunks = []
   call s:start_forerunner(a:cmd)
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
