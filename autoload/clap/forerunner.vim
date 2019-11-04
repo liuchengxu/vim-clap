@@ -9,34 +9,23 @@ function! s:on_complete() abort
   if chunks_size < 10000
     let g:__clap_forerunner_cached = s:chunks
     let g:clap.display.initial_size = chunks_size
-    call clap#impl#refresh_matches_count(string(g:clap.display.initial_size))
+    call clap#impl#refresh_matches_count(string(chunks_size))
   endif
 endfunction
 
 function! s:on_event(job_id, data, event) abort
   " We only process the job that was spawned last time.
-  if a:job_id != s:job_id
-    return
-  endif
-
-  if a:event ==# 'stdout'
-    if len(a:data) > 1
-      " Second last is the real last one for neovim.
-      call extend(s:chunks, a:data[:-2])
+  if a:job_id == s:job_id
+    if a:event ==# 'stdout'
+      if len(a:data) > 1
+        " Second last is the real last one for neovim.
+        call extend(s:chunks, a:data[:-2])
+      endif
+    elseif a:event ==# 'stderr'
+      " Ignore the error
+    else
+      call s:on_complete()
     endif
-  elseif a:event ==# 'stderr'
-    " Ignore the error
-  else
-    call s:on_complete()
-  endif
-endfunction
-
-function! s:job_cwd() abort
-  if get(g:, 'clap_disable_run_rooter', v:false)
-    return getcwd()
-  else
-    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-    return empty(git_root) ? getcwd() : git_root
   endif
 endfunction
 
@@ -55,7 +44,7 @@ if has('nvim')
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ 'stdout_buffered': v:true,
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 else
@@ -65,7 +54,7 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ 'mode': 'raw',
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
     let s:job_id = clap#util#parse_vim8_job_id(string(job))
   endfunction
