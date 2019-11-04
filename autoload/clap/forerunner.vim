@@ -4,6 +4,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:job_id = -1
+
 function! s:on_complete() abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(s:chunks)
@@ -66,6 +68,13 @@ endif
 function! clap#forerunner#start(cmd) abort
   let s:chunks = []
   call s:start_forerunner(a:cmd)
+endfunction
+
+function! clap#forerunner#stop() abort
+  if s:job_id > 0
+    call clap#job#stop(s:job_id)
+    let s:job_id = -1
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

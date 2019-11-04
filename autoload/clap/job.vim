@@ -4,6 +4,17 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+if has('nvim')
+  function! clap#job#stop(job_id) abort
+    silent! call jobstop(a:job_id)
+  endfunction
+else
+  function! clap#job#stop(job_id) abort
+    " Kill it!
+    silent! call jobstop(a:job_id, 'kill')
+  endfunction
+endif
+
 function! clap#job#cwd() abort
   if get(g:, 'clap_disable_run_rooter', v:false)
     return getcwd()

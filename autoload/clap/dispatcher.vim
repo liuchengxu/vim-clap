@@ -12,6 +12,13 @@ let s:is_win = has('win32')
 
 let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
 
+function! s:jobstop() abort
+  if s:job_id > 0
+    call clap#job#stop(s:job_id)
+    let s:job_id = -1
+  endif
+endfunction
+
 if has('nvim')
 
   if s:drop_cache
@@ -124,13 +131,6 @@ if has('nvim')
           \ })
   endfunction
 
-  function! s:jobstop() abort
-    if s:job_id > 0
-      silent! call jobstop(s:job_id)
-      let s:job_id = -1
-    endif
-  endfunction
-
 else
 
   if s:drop_cache
@@ -235,14 +235,6 @@ else
           \ 'cwd': clap#job#cwd(),
           \ })
     let s:job_id = clap#util#parse_vim8_job_id(string(job))
-  endfunction
-
-  function! s:jobstop() abort
-    if s:job_id > 0
-      " Kill it!
-      silent! call jobstop(s:job_id, 'kill')
-      let s:job_id = -1
-    endif
   endfunction
 
 endif
