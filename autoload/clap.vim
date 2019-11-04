@@ -150,6 +150,10 @@ function! clap#_exit() abort
     unlet g:__clap_maple_fuzzy_matched
   endif
 
+  if exists('g:__clap_forerunner_cached')
+    unlet g:__clap_forerunner_cached
+  endif
+
   call clap#sign#reset()
 
   call map(g:clap.tmps, 'delete(v:val)')

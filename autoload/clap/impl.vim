@@ -64,7 +64,7 @@ function! s:on_typed_sync_impl() abort
 
   let l:has_no_matches = v:false
 
-  let l:raw_lines = s:get_source()
+  let l:raw_lines = get(g:, '__clap_forerunner_cached', s:get_source())
   let l:lines = call(g:clap.provider.filter(), [l:cur_input, l:raw_lines])
 
   if empty(l:lines)
@@ -215,6 +215,10 @@ endfunction
 "             on_move
 "
 function! clap#impl#on_typed() abort
+  if exists('g:__clap_forerunner_cached')
+    call s:on_typed_sync_impl()
+    return
+  endif
   if g:clap.provider.can_async()
     " Run async explicitly
     if get(g:clap.context, 'async') is v:true

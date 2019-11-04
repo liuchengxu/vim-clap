@@ -120,7 +120,7 @@ if has('nvim')
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 
@@ -182,16 +182,8 @@ else
     call s:update_indicator()
   endfunction
 
-  function! s:parse_job_id(job_str) abort
-    return str2nr(matchstr(a:job_str, '\d\+'))
-  endfunction
-
-  function! s:job_id_of(channel) abort
-    return s:parse_job_id(ch_getjob(a:channel))
-  endfunction
-
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -204,7 +196,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
             \ 'channel: '.a:channel,
@@ -216,13 +208,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && s:parse_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#util#parse_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -240,9 +232,9 @@ else
           \ 'exit_cb': function('s:exit_cb'),
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
-    let s:job_id = s:parse_job_id(string(job))
+    let s:job_id = clap#util#parse_vim8_job_id(string(job))
   endfunction
 
   function! s:jobstop() abort
@@ -281,15 +273,6 @@ function! s:has_no_matches() abort
     return v:true
   else
     return v:false
-  endif
-endfunction
-
-function! s:job_cwd() abort
-  if get(g:, 'clap_disable_run_rooter', v:false)
-    return getcwd()
-  else
-    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-    return empty(git_root) ? getcwd() : git_root
   endif
 endfunction
 
