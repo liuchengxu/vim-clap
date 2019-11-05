@@ -16,7 +16,7 @@ else
 endif
 
 function! clap#job#cwd() abort
-  if get(g:, 'clap_disable_run_rooter', v:false)
+  if clap#should_use_raw_cwd()
     return getcwd()
   else
     let git_root = clap#util#find_git_root(g:clap.start.bufnr)

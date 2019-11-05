@@ -185,6 +185,12 @@ function! clap#complete(A, L, P) abort
   return join(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), "\n")
 endfunction
 
+function! clap#should_use_raw_cwd() abort
+  return get(g:, 'clap_disable_run_rooter', v:false)
+        \ || !g:clap.provider.has_enable_rooter()
+        \ || getbufvar(g:clap.start.bufnr, '&bt') ==# 'terminal'
+endfunction
+
 function! clap#register(provider_id, provider_info) abort
   let provider_info = a:provider_info
 
