@@ -127,6 +127,14 @@ function! clap#_init() abort
   call g:clap.provider.init_display_win()
 endfunction
 
+function! s:unlet_vars(vars) abort
+  for var in a:vars
+    if exists(var)
+      execute 'unlet' var
+    endif
+  endfor
+endfunction
+
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
@@ -143,17 +151,11 @@ function! clap#_exit() abort
     call remove(g:clap.provider, 'args')
   endif
 
-  if exists('g:__clap_fuzzy_matched_indices')
-    unlet g:__clap_fuzzy_matched_indices
-  endif
-
-  if exists('g:__clap_maple_fuzzy_matched')
-    unlet g:__clap_maple_fuzzy_matched
-  endif
-
-  if exists('g:__clap_forerunner_cached')
-    unlet g:__clap_forerunner_cached
-  endif
+  call s:unlet_vars([
+        \ 'g:__clap_fuzzy_matched_indices',
+        \ 'g:__clap_maple_fuzzy_matched',
+        \ 'g:__clap_forerunner_cached',
+        \ ])
 
   call clap#sign#reset()
 
