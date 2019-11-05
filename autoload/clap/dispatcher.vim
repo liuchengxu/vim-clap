@@ -12,6 +12,13 @@ let s:is_win = has('win32')
 
 let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
 
+function! s:jobstop() abort
+  if s:job_id > 0
+    call clap#job#stop(s:job_id)
+    let s:job_id = -1
+  endif
+endfunction
+
 if has('nvim')
 
   if s:drop_cache
@@ -22,7 +29,7 @@ if has('nvim')
 
     function! s:set_matches_count() abort
       let matches_count = s:loaded_size + s:droped_size
-      call clap#indicator#set_matches('['.matches_count.']')
+      call clap#impl#refresh_matches_count(string(matches_count))
     endfunction
   else
     function! s:handle_cache(to_cache) abort
@@ -31,7 +38,7 @@ if has('nvim')
 
     function! s:set_matches_count() abort
       let matches_count = s:loaded_size + len(g:clap.display.cache)
-      call clap#indicator#set_matches('['.matches_count.']')
+      call clap#impl#refresh_matches_count(string(matches_count))
     endfunction
   endif
 
@@ -120,15 +127,8 @@ if has('nvim')
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
-  endfunction
-
-  function! s:jobstop() abort
-    if s:job_id > 0
-      silent! call jobstop(s:job_id)
-      let s:job_id = -1
-    endif
   endfunction
 
 else
@@ -171,7 +171,7 @@ else
       let matches_count = g:clap.display.line_count()
     endif
 
-    call clap#indicator#set_matches('['.matches_count.']')
+    call clap#impl#refresh_matches_count(string(matches_count))
   endfunction
 
   function! s:post_check() abort
@@ -182,16 +182,8 @@ else
     call s:update_indicator()
   endfunction
 
-  function! s:parse_job_id(job_str) abort
-    return str2nr(matchstr(a:job_str, '\d\+'))
-  endfunction
-
-  function! s:job_id_of(channel) abort
-    return s:parse_job_id(ch_getjob(a:channel))
-  endfunction
-
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -204,7 +196,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
             \ 'channel: '.a:channel,
@@ -216,13 +208,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_id > 0 && s:job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && s:parse_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#util#parse_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -240,17 +232,9 @@ else
           \ 'exit_cb': function('s:exit_cb'),
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
-          \ 'cwd': s:job_cwd(),
+          \ 'cwd': clap#job#cwd(),
           \ })
-    let s:job_id = s:parse_job_id(string(job))
-  endfunction
-
-  function! s:jobstop() abort
-    if s:job_id > 0
-      " Kill it!
-      silent! call jobstop(s:job_id, 'kill')
-      let s:job_id = -1
-    endif
+    let s:job_id = clap#util#parse_vim8_job_id(string(job))
   endfunction
 
 endif
@@ -281,15 +265,6 @@ function! s:has_no_matches() abort
     return v:true
   else
     return v:false
-  endif
-endfunction
-
-function! s:job_cwd() abort
-  if get(g:, 'clap_disable_run_rooter', v:false)
-    return getcwd()
-  else
-    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-    return empty(git_root) ? getcwd() : git_root
   endif
 endfunction
 

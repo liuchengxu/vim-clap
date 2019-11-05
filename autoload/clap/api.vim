@@ -509,8 +509,14 @@ function! s:init_provider() abort
 
   function! provider.init_display_win() abort
     if self.is_pure_async()
-          \ || self.type == g:__t_string
-          \ || self.type == g:__t_func_string
+      return
+    elseif self.type == g:__t_string
+      call clap#forerunner#start(g:clap.provider._().source)
+      return
+    elseif self.type == g:__t_func_string
+      let Source = g:clap.provider._().source
+      let cmd = Source()
+      call clap#forerunner#start(cmd)
       return
     endif
 

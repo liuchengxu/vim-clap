@@ -18,7 +18,10 @@ let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
-let s:ext_cmd.maple = 'maple %s'
+" Use "%s" instead of bare %s in case of the query containing ';',
+" e.g., rg --files | maple hello;world, world can be misinterpreted as a
+" command.
+let s:ext_cmd.maple = 'maple "%s"'
 
 if exists('g:clap_default_external_filter')
   let s:default_ext_filter = g:clap_default_external_filter
