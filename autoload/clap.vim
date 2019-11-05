@@ -143,6 +143,7 @@ function! clap#_exit() abort
 
   let g:clap.is_busy = 0
   let g:clap.display.cache = []
+  let g:clap.display.initial_size = -1
 
   call g:clap.input.clear()
   call g:clap.display.clear()
@@ -154,7 +155,7 @@ function! clap#_exit() abort
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_maple_fuzzy_matched',
-        \ 'g:__clap_forerunner_cached',
+        \ 'g:__clap_forerunner_result',
         \ ])
 
   call clap#sign#reset()
