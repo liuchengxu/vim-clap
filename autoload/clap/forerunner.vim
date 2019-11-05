@@ -10,12 +10,18 @@ function! s:on_complete() abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(s:chunks)
   endif
+
   let chunks_size = len(s:chunks)
   let g:clap.display.initial_size = chunks_size
   call clap#impl#refresh_matches_count(string(chunks_size))
+
   " If the total results is not huge we could keep them in the memory
   " and use the built-in fzy impl later.
   if chunks_size < 10000
+    " g:__clap_forerunner_result is sort of a cache here.
+    " If we already have g:__clap_forerunner_result and you
+    " just created a new file outside the vim, this new file maybe not recongnized.
+    " TODO: add a flag to disable this cache.
     let g:__clap_forerunner_result = s:chunks
   endif
 endfunction
