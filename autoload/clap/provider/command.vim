@@ -18,7 +18,17 @@ function! s:command.source() abort
 endfunction
 
 let s:command.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_command') }
-let s:command.on_exit = { -> execute(s:cmd, '') }
+
+" Actually apply the sink on_exit due to some observed issues, could be some
+" conflictions with the hooks of other plugins.
+" FIXME: maybe we should rearrange the invocation time for sink?
+function! s:command.on_exit() abort
+  if exists('s:cmd')
+    call histadd(':', s:cmd)
+    execute s:cmd
+  endif
+endfunction
+
 let g:clap#provider#command# = s:command
 
 let &cpoptions = s:save_cpo
