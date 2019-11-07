@@ -24,7 +24,6 @@ let s:command.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_command') }
 " FIXME: maybe we should rearrange the invocation time for sink?
 function! s:command.on_exit() abort
   if exists('s:cmd')
-    call histadd(':', s:cmd)
     execute s:cmd
   endif
 endfunction

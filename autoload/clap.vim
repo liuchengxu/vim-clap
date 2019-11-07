@@ -175,7 +175,9 @@ endfunction
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
 function! clap#exit() abort
   " NOTE: Need to go back to the start window
-  call g:clap.start.goto_win()
+  if win_getid() != g:clap.start.winid
+    call g:clap.start.goto_win()
+  endif
 
   call clap#_exit()
 endfunction
