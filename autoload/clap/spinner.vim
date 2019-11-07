@@ -6,34 +6,43 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:is_nvim = has('nvim')
+let s:frames = get(g:, 'clap_spinner_frames', ['◐', '◑', '◒', '◓'])
+let s:prompt_format = get(g:, 'clap_prompt_format', '%spinner% %provider_id%> ')
 
-let s:frames = ['◐', '◑', '◒', '◓']
-" let s:frames = ["●∙∙", "∙●∙", "∙∙●"]
-" let s:frames = map(s:frames, '" ".v:val." > "')
 let s:frame_index = 0
 let s:spinner = s:frames[0]
 
-function! s:compose_spinner() abort
-  return s:spinner.' '.g:clap.provider.id.'> '
+" The spinner and current provider prompt are actually displayed in a same window.
+function! s:compose_prompt() abort
+  let l:prompt = s:prompt_format
+
+  let l:spinner = s:spinner
+  let l:provider_id = g:clap.provider.id
+
+  " Replace special markers with certain information.
+  " \=l:variable is used to avoid escaping issues.
+  let l:prompt = substitute(l:prompt, '\V%spinner%', '\=l:spinner', 'g')
+  let l:prompt = substitute(l:prompt, '\V%provider_id%', '\=l:provider_id', 'g')
+
+  return l:prompt
 endfunction
 
-if s:is_nvim
+if has('nvim')
   function! s:set_spinner() abort
-    call clap#util#nvim_buf_set_lines(g:clap.spinner.bufnr, [s:compose_spinner()])
+    call clap#util#nvim_buf_set_lines(g:clap.spinner.bufnr, [s:compose_prompt()])
   endfunction
 else
   function! s:set_spinner() abort
-    call popup_settext(g:clap_spinner_winid, s:compose_spinner())
+    call popup_settext(g:clap_spinner_winid, s:compose_prompt())
   endfunction
 endif
 
 function! clap#spinner#get() abort
-  return s:compose_spinner()
+  return s:compose_prompt()
 endfunction
 
 function! clap#spinner#width() abort
-  return strdisplaywidth(s:compose_spinner())
+  return strdisplaywidth(s:compose_prompt())
 endfunction
 
 function! s:on_frame(...) abort

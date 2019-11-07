@@ -21,7 +21,7 @@ function! s:registers.source() abort
   let s:lines = []
   call s:append_group('Special', ['"', '*', '+', '-'])
   call add(s:lines, '')
-  call s:append_group('Last-Search-Pattern', ['/'])
+  call s:append_group('Last-search-pattern', ['/'])
   call add(s:lines, '')
   call s:append_group('Read-only', ['.', ':'])
   call add(s:lines, '')

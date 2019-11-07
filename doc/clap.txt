@@ -124,7 +124,7 @@ to work everywhere out of the box, with fast response.
 
 
                                                       *:Clap-history*
-:Clap history           List the open buffers and |v:oldfiles|.
+:Clap history            List the open buffers and |v:oldfiles|.
 
 
                                                      *:Clap-jumps*
@@ -503,6 +503,31 @@ g:clap_default_external_filter                  *g:clap_default_external_filter*
   `fzy` - no highlight of matched indices.
   `fzf` - no highlight of matched indices.
 
+
+g:clap_prompt_format                             *g:clap_prompt_format*
+
+  Type: |String|
+  Default: `'%spinner% %provider_id%> '`
+
+  This variable defines a message format for the prompt. The following
+  sequences of characters will be replaced.
+
+    `%spinner%`       - replaced with the current spinner symbol, see
+                      |g:clap_spinner_frames|
+    `%provider_id%`   - replaced with the id of current provider
+
+
+g:clap_spinner_frames                            *g:clap_spinner_frames*
+
+  Type: |List|
+  Default: `['◐', '◑', '◒', '◓']`
+
+  The frames used for drawing the spinner.
+
+  Reference:
+  https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
+
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
@@ -597,6 +622,7 @@ g:clap_provider_grep_executable                   *g:clap_provider_grep_executab
   or a flag similar to the --vimgrep flag in ag/rg. Otherwise you may
   encounter issues.
 
+
 g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
 
   Type: |Number|
@@ -625,6 +651,7 @@ g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
   Setting `'-H --no-heading --vimgrep --smart-case --hidden -g "!.git/"'`
   for example would enable grepping hidden files and folders while respecting
   your `.gitignore` and not showing the `.git` directory itself.
+
   For the grep tools Ag & Rg make sure to pass the --vimgrep flag, otherwise
   the output cannot be interpreted. For other tools you may want check if a
   similar option exists.
@@ -637,6 +664,7 @@ g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
 
   Set this variable to `0` to disable drawing an icon for the returned result.
 
+
 g:clap_provider_grep_cmd_format             *g:clap_provider_grep_cmd_format*
 
   Type: |String|
@@ -644,9 +672,10 @@ g:clap_provider_grep_cmd_format             *g:clap_provider_grep_cmd_format*
 
   The format used to create the command. 3 strings will be passed to the
   format in that order:
-      1. g:clap_provider_grep_executable
-      2. g:clap_provider_grep_opts
-      3. the query => What the user has entered to search
+
+  1. |g:clap_provider_grep_executable|
+  2. |g:clap_provider_grep_opts|
+  3. |g:clap.input.get()|, the query string that the user has entered to search
 
   In most cases this option does not have to be adjusted for tools like Ag &
   Rg. For other tools this may not be the case.
@@ -673,6 +702,7 @@ g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries
 
   Set this variable to limit maximum yanks entries.
 
+
 g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
 
   Type: |Number|
@@ -680,6 +710,7 @@ g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
 
   Set minimum length of yanked text to be stored in yanks stack. Setting this
   variable to less than 2 has no effect.
+
 
 -------------------------------------------------------------------------------
 6.3 Other Provider Options                          *clap-other-provider-options*

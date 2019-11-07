@@ -6,6 +6,9 @@ CHANGELOG
 ### Added
 
 - New provider `:Clap registers`.
+- Add a brief description for each provider used in `:Clap`.
+- Add the option `g:clap_spinner_frames`.
+- Add the option `g:clap_prompt_format`.
 
 ### Changed
 
