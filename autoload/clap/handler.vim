@@ -116,6 +116,8 @@ if has('nvim')
 else
   function! clap#handler#navigate_result(direction) abort
     call s:navigate(a:direction)
+    " redraw is neccessary!
+    redraw
     call s:on_move_safe()
   endfunction
 
