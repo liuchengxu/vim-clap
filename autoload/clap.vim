@@ -316,7 +316,11 @@ function! s:parse_opts(args) abort
     if arg =~? '^++\w*=\w*'
       let matched = matchlist(arg, '^++\(\w*\)=\(\S*\)')
       let [k, v] = [matched[1], matched[2]]
-      let g:clap.context[k] = v
+      if has_key(g:clap.context, k)
+        let g:clap.context[k] .= ' '.v
+      else
+        let g:clap.context[k] = v
+      endif
     elseif arg =~? '^+\w*'
       let opt = arg[1:]
       let g:clap.context[opt] = v:true

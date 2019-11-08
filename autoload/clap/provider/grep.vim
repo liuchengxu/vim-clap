@@ -35,7 +35,12 @@ function! s:cmd(query) abort
     call g:clap.abort(s:grep_executable . ' not found')
     return
   endif
-  let cmd = printf(s:grep_cmd_format, s:grep_executable, s:grep_opts, a:query)
+  if has_key(g:clap.context, 'opt')
+    let grep_opts = s:grep_opts.' '.g:clap.context.opt
+  else
+    let grep_opts = s:grep_opts
+  endif
+  let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, a:query)
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction

@@ -122,6 +122,11 @@ to work everywhere out of the box, with fast response.
                          Use `Clap grep ++query=<cword>` to grep
                          the word under cursor.
 
+                         Use `Clap grep ++opt=[OPTION]` to pass extra options
+                         from the command line which will be put after
+                         `g:clap_provider_grep_opts`, e.g.,
+                         `Clap grep ++opt=--no-ignore ++opt=--hidden` .
+
 
                                                       *:Clap-history*
 :Clap history            List the open buffers and |v:oldfiles|.
@@ -652,7 +657,7 @@ g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
   for example would enable grepping hidden files and folders while respecting
   your `.gitignore` and not showing the `.git` directory itself.
 
-  For the grep tools Ag & Rg make sure to pass the --vimgrep flag, otherwise
+  For the grep tools Ag & Rg make sure to pass the `--vimgrep` flag, otherwise
   the output cannot be interpreted. For other tools you may want check if a
   similar option exists.
 
