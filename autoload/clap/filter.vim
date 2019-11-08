@@ -119,6 +119,8 @@ function! s:fallback_filter(query, candidates) abort
   return filter(a:candidates, 's:filter(v:val, l:filter_pattern)')
 endfunction
 
+let s:can_use_python = v:false
+
 if s:py_exe isnot v:null
 
   function! s:setup_python() abort
@@ -145,13 +147,7 @@ EOF
     call s:setup_python()
     let s:can_use_python = v:true
   catch
-    let s:can_use_python = v:false
   endtry
-
-else
-
-  let s:can_use_python = v:false
-
 endif
 
 if s:can_use_python
