@@ -127,17 +127,21 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
   return ''
 endfunction
 
+function! s:run_from_target_dir(target_dir, Run, run_args) abort
+  let save_cwd = getcwd()
+  try
+    execute 'lcd' a:target_dir
+    let l:result = call(a:Run, a:run_args)
+  finally
+    execute 'lcd' save_cwd
+  endtry
+  return exists('l:result') ? l:result : []
+endfunction
+
 " Argument: Funcref to run as well as its args
 function! clap#util#run_rooter(Run, ...) abort
   if exists('g:__clap_provider_cwd')
-    let save_cwd = getcwd()
-    try
-      execute 'lcd' g:__clap_provider_cwd
-      let l:result = call(a:Run, a:000)
-    finally
-      execute 'lcd' save_cwd
-    endtry
-    return exists('l:result') ? l:result : []
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
   endif
 
   if clap#should_use_raw_cwd()
@@ -149,16 +153,10 @@ function! clap#util#run_rooter(Run, ...) abort
   if empty(git_root)
     let result = call(a:Run, a:000)
   else
-    let save_cwd = getcwd()
-    try
-      execute 'lcd' git_root
-      let l:result = call(a:Run, a:000)
-    finally
-      execute 'lcd' save_cwd
-    endtry
+    let result = s:run_from_target_dir(git_root, a:Run, a:000)
   endif
 
-  return exists('l:result') ? l:result : []
+  return result
 endfunction
 
 " This is used for the sink function.
@@ -167,14 +165,7 @@ endfunction
 " should not restore to the current cwd after executing the sink function.
 function! clap#util#run_rooter_heuristic(Run, ...) abort
   if exists('g:__clap_provider_cwd')
-    let save_cwd = getcwd()
-    try
-      execute 'lcd' g:__clap_provider_cwd
-      let l:result = call(a:Run, a:000)
-    finally
-      execute 'lcd' save_cwd
-    endtry
-    return exists('l:result') ? l:result : []
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
   endif
 
   if clap#should_use_raw_cwd()
