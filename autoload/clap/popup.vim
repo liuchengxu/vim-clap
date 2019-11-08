@@ -517,6 +517,9 @@ function! clap#popup#open() abort
   let s:cursor_idx = 0
   let g:__clap_display_curlnum = 1
 
+  let s:save_t_ve = &t_ve
+  set t_ve=
+
   call s:open_popup()
   call s:adjust_spinner()
 
@@ -556,14 +559,20 @@ function! clap#popup#close() abort
       unlet s:old_signcolumn
     endtry
   endif
+
   if exists('s:display_winid')
     call popup_close(s:display_winid)
   endif
+
+  let &t_ve = s:save_t_ve
   let &completeopt = s:save_completeopt
+
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:true)
   endif
+
   call s:close_others()
+
   silent autocmd! ClapEnsureAllClosed
 endfunction
 
