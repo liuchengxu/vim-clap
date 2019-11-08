@@ -161,6 +161,7 @@ function! clap#_exit() abort
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_maple_fuzzy_matched',
         \ 'g:__clap_forerunner_result',
+        \ 'g:__clap_provider_cwd',
         \ ])
 
   call clap#sign#reset()

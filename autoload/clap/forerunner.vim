@@ -57,7 +57,6 @@ if has('nvim')
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ 'stdout_buffered': v:true,
-          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 else
@@ -67,7 +66,6 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ 'mode': 'raw',
-          \ 'cwd': clap#job#cwd(),
           \ })
     let s:job_id = clap#util#parse_vim8_job_id(string(job))
   endfunction
@@ -75,7 +73,7 @@ endif
 
 function! clap#forerunner#start(cmd) abort
   let s:chunks = []
-  call s:start_forerunner(a:cmd)
+  call clap#util#run_rooter(function('s:start_forerunner'), a:cmd)
 endfunction
 
 function! clap#forerunner#stop() abort

@@ -123,11 +123,12 @@ if has('nvim')
   endfunction
 
   function! s:job_start(cmd) abort
+    " We choose the lcd way instead of the cwd option of job for the
+    " consistence purpose.
     let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
-          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 
@@ -232,7 +233,6 @@ else
           \ 'exit_cb': function('s:exit_cb'),
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
-          \ 'cwd': clap#job#cwd(),
           \ })
     let s:job_id = clap#util#parse_vim8_job_id(string(job))
   endfunction
@@ -269,7 +269,7 @@ function! s:has_no_matches() abort
 endfunction
 
 function! s:apply_job_start(_timer) abort
-  call s:job_start(s:cmd)
+  call clap#util#run_rooter(function('s:job_start'), s:cmd)
 
   let s:executed_time = strftime('%Y-%m-%d %H:%M:%S')
   let s:executed_cmd = s:cmd

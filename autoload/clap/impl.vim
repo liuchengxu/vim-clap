@@ -173,7 +173,7 @@ function! s:on_typed_async_impl() abort
   call g:clap.display.clear()
 
   let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#job_start(cmd)
+  call clap#util#run_rooter(function('clap#dispatcher#job_start'), cmd)
   call clap#spinner#set_busy()
 
   if !exists('g:__clap_maple_fuzzy_matched')

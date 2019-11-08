@@ -129,6 +129,17 @@ endfunction
 
 " Argument: Funcref to run as well as its args
 function! clap#util#run_rooter(Run, ...) abort
+  if exists('g:__clap_provider_cwd')
+    let save_cwd = getcwd()
+    try
+      execute 'lcd' g:__clap_provider_cwd
+      let l:result = call(a:Run, a:000)
+    finally
+      execute 'lcd' save_cwd
+    endtry
+    return exists('l:result') ? l:result : []
+  endif
+
   if clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
@@ -141,13 +152,13 @@ function! clap#util#run_rooter(Run, ...) abort
     let save_cwd = getcwd()
     try
       execute 'lcd' git_root
-      let result = call(a:Run, a:000)
+      let l:result = call(a:Run, a:000)
     finally
       execute 'lcd' save_cwd
     endtry
   endif
 
-  return result
+  return exists('l:result') ? l:result : []
 endfunction
 
 " This is used for the sink function.
@@ -155,6 +166,17 @@ endfunction
 " what if the sink function changes cwd intentionally? Then we
 " should not restore to the current cwd after executing the sink function.
 function! clap#util#run_rooter_heuristic(Run, ...) abort
+  if exists('g:__clap_provider_cwd')
+    let save_cwd = getcwd()
+    try
+      execute 'lcd' g:__clap_provider_cwd
+      let l:result = call(a:Run, a:000)
+    finally
+      execute 'lcd' save_cwd
+    endtry
+    return exists('l:result') ? l:result : []
+  endif
+
   if clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
@@ -169,7 +191,7 @@ function! clap#util#run_rooter_heuristic(Run, ...) abort
     let save_cwd = getcwd()
     try
       execute 'lcd' git_root
-      let result = call(a:Run, a:000)
+      let l:result = call(a:Run, a:000)
     finally
       " Here we could use a naive heuristic approach to
       " not restore the old cwd when the current working
@@ -182,7 +204,7 @@ function! clap#util#run_rooter_heuristic(Run, ...) abort
 
   endif
 
-  return result
+  return exists('l:result') ? l:result : []
 endfunction
 
 " Define CTRL-T/X/V by default.
