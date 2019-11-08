@@ -132,24 +132,24 @@ function! clap#handler#sink() abort
     return
   endif
 
+  let selected = clap#sign#get()
+  if s:use_multi_selection && !empty(selected)
+    let Sink = g:clap.provider.sink_star
+    let sink_args = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+  else
+    let Sink = g:clap.provider.sink
+    let sink_args = g:clap.display.getcurline()
+  endif
+
+  call clap#handler#exit()
+
   try
-    if s:use_multi_selection
-      let selected = clap#sign#get()
-      if empty(selected)
-        let curline = g:clap.display.getcurline()
-        call g:clap.provider.sink(curline)
-      else
-        let lines = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
-        call g:clap.provider.sink_star(lines)
-      endif
-    else
-      let curline = g:clap.display.getcurline()
-      call g:clap.provider.sink(curline)
-    endif
+    call Sink(sink_args)
   catch
     call clap#error('clap#handler#sink: '.v:exception)
   finally
-    call clap#handler#exit()
+    call g:clap.provider.on_exit()
+    silent doautocmd <nomodeline> User ClapOnExit
   endtry
 endfunction
 

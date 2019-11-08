@@ -145,11 +145,16 @@ function! clap#_exit() abort
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1
 
+  " Remember to get what the sink needs before clearing the buffer.
   call g:clap.input.clear()
   call g:clap.display.clear()
 
   if has_key(g:clap.provider, 'args')
     call remove(g:clap.provider, 'args')
+  endif
+
+  if has_key(g:clap.provider, 'source_tempfile')
+    call remove(g:clap.provider, 'source_tempfile')
   endif
 
   call s:unlet_vars([
@@ -162,9 +167,6 @@ function! clap#_exit() abort
 
   call map(g:clap.tmps, 'delete(v:val)')
   let g:clap.tmps = []
-
-  call g:clap.provider.on_exit()
-  silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
 function! clap#_for(provider_id_or_alias) abort
@@ -174,12 +176,12 @@ endfunction
 
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
 function! clap#exit() abort
+  call clap#_exit()
+
   " NOTE: Need to go back to the start window
   if win_getid() != g:clap.start.winid
     call g:clap.start.goto_win()
   endif
-
-  call clap#_exit()
 endfunction
 
 function! clap#complete(A, L, P) abort

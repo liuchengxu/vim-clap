@@ -181,6 +181,8 @@ function! clap#util#run_rooter_heuristic(Run, ...) abort
     endtry
 
   endif
+
+  return result
 endfunction
 
 " Define CTRL-T/X/V by default.

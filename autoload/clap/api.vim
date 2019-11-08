@@ -323,7 +323,6 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.sink(selected) abort
-    call g:clap.start.goto_win()
     call clap#util#run_rooter_heuristic(self._apply_sink, a:selected)
   endfunction
 
@@ -422,17 +421,23 @@ function! s:init_provider() abort
         let lines = copy(Source())
       endif
 
-      let tmp = tempname()
-      if writefile(lines, tmp) == 0
-        let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-        let cmd = printf('%s %s | %s', s:cat_or_type, tmp, ext_filter_cmd)
-        call add(g:clap.tmps, tmp)
-        return cmd
+      if has_key(g:clap.provider, 'source_tempfile')
+        let tmp = g:clap.provider.source_tempfile
       else
-        call g:clap.abort('Fail to write source to a temp file')
-        return
+        let tmp = tempname()
+        if writefile(lines, tmp) == 0
+          call add(g:clap.tmps, tmp)
+          let g:clap.provider.source_tempfile = tmp
+        else
+          call g:clap.abort('Fail to write source to a temp file')
+          return
+        endif
       endif
 
+      let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+      let cmd = printf('%s %s | %s', s:cat_or_type, tmp, ext_filter_cmd)
+      let cmd = printf('rg %s %s', g:clap.input.get(), tmp)
+      return cmd
     endif
   endfunction
 
