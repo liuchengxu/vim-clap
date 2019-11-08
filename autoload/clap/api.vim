@@ -436,7 +436,8 @@ function! s:init_provider() abort
 
       let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
       let cmd = printf('%s %s | %s', s:cat_or_type, tmp, ext_filter_cmd)
-      let cmd = printf('rg %s %s', g:clap.input.get(), tmp)
+      " TODO: could be faster using rg directly?
+      " let cmd = printf('rg %s %s', g:clap.input.get(), tmp)
       return cmd
     endif
   endfunction
