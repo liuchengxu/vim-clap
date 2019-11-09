@@ -4,6 +4,7 @@
 __pycache__
 *.pyc
 /doc/tags
+/target
 
 !.editorconfig
 !.travis.yml
