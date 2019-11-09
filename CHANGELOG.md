@@ -6,9 +6,11 @@ CHANGELOG
 ### Added
 
 - New provider `:Clap registers`.
+- New provider `:Clap command`.
 - Add a brief description for each provider used in `:Clap`.
 - Add the option `g:clap_spinner_frames`.
 - Add the option `g:clap_prompt_format`.
+- Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
 
 ### Changed
 
@@ -17,6 +19,7 @@ CHANGELOG
 ### Fixed
 
 - sink of `:Clap command_history`.([#109](https://github.com/liuchengxu/vim-clap/issues/109))
+- Apply `redraw` when navigating and selecting via tab in vim's popup.
 
 ## [0.1] 2019-10-27
 
