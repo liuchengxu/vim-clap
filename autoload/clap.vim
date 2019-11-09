@@ -184,22 +184,22 @@ function! clap#exit() abort
   endif
 endfunction
 
-function! clap#complete(A, L, P) abort
-  if a:L =~# '^Clap \(files\|grep\)'
-    if a:A =~# '/\|\\$'
-      let parent_dir = fnamemodify(resolve(expand(a:A)), ':p')
+function! clap#complete(ArgLead, CmdLine, P) abort
+  if a:CmdLine =~# '^Clap \(files\|grep\)'
+    if a:ArgLead =~# '\(/\|\\\)$' || isdirectory(expand(a:ArgLead))
+      let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':p')
       if isdirectory(parent_dir)
         return filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val)')
       endif
     else
-      let parent_dir = fnamemodify(resolve(expand(a:A)), ':h')
+      let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':h')
       if isdirectory(parent_dir)
-        return filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val) && v:val =~# "^".expand(a:A)')
+        return filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val) && v:val =~# "^".expand(a:ArgLead)')
       endif
     endif
   endif
   let registered = exists('g:clap') ? keys(g:clap.registrar) : []
-  return filter(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), 'v:val =~# "^".a:A')
+  return filter(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
 function! clap#should_use_raw_cwd() abort
