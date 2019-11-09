@@ -150,10 +150,8 @@ function! clap#handler#sink() abort
   catch
     call clap#error('clap#handler#sink: '.v:exception)
   finally
-
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
-
   endtry
 endfunction
 

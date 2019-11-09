@@ -127,7 +127,7 @@ function! clap#_init() abort
   call g:clap.provider.init_display_win()
 endfunction
 
-function! clap#unlet_vars(vars) abort
+function! s:unlet_vars(vars) abort
   for var in a:vars
     if exists(var)
       execute 'unlet' var
@@ -157,7 +157,7 @@ function! clap#_exit() abort
     call remove(g:clap.provider, 'source_tempfile')
   endif
 
-  call clap#unlet_vars([
+  call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_maple_fuzzy_matched',
         \ 'g:__clap_forerunner_result',
