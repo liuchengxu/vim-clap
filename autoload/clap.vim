@@ -190,7 +190,14 @@ function! s:relativize(ArgLead, abs_dirs) abort
   if a:ArgLead =~# '^\~'
     return map(a:abs_dirs, 'fnamemodify(v:val, ":~")')
   elseif a:ArgLead =~# '^\.'
-    return map(a:abs_dirs, '".".s:path_sep.fnamemodify(v:val, ":.")')
+    if empty(a:abs_dirs)
+      return []
+    endif
+    if fnamemodify(a:abs_dirs[0], ':.') =~# '^\.'
+      return map(a:abs_dirs, 'fnamemodify(v:val, ":.")')
+    else
+      return map(a:abs_dirs, '".".s:path_sep.fnamemodify(v:val, ":.")')
+    endif
   else
     return a:abs_dirs
   endif

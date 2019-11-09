@@ -26,39 +26,42 @@ if empty(s:normal_bg)
 endif
 
 if !exists('s:hi_icon')
-  let icons = clap#icon#get_all()
-  let hi_groups = [
-        \ 'ModeMsg',
-        \ 'Type',
-        \ 'Number',
-        \ 'Float',
-        \ 'CursorLineNr',
-        \ 'Question',
-        \ 'Title',
-        \ 'Cursor',
-        \ 'VisualNC',
-        \ 'WildMenu',
-        \ 'Folded',
-        \ 'FoldColumn',
-        \ 'DiffAdd',
-        \ 'DiffChange',
-        \ 'DiffText',
-        \ 'SignColumn',
-        \ 'TabLine',
-        \ ]
-  let hi_idx = 0
-  let hi_groups_len = len(hi_groups)
-  let s:groups = []
-  for idx in range(len(icons))
-    let group = 'ClapIcon'.idx
-    call add(s:groups, group)
-    let icon = icons[idx]
-    execute 'syntax match' group '/'.icon.'/' 'contained'
-    " execute 'highlight default link' group hi_groups[hi_idx]
-    execute 'hi!' group s:get_attrs(hi_groups[hi_idx])
-    let hi_idx += 1
-    let hi_idx = hi_idx % hi_groups_len
-  endfor
+  function! s:hl_icons() abort
+    let icons = clap#icon#get_all()
+    let hi_groups = [
+          \ 'ModeMsg',
+          \ 'Type',
+          \ 'Number',
+          \ 'Float',
+          \ 'CursorLineNr',
+          \ 'Question',
+          \ 'Title',
+          \ 'Cursor',
+          \ 'VisualNC',
+          \ 'WildMenu',
+          \ 'Folded',
+          \ 'FoldColumn',
+          \ 'DiffAdd',
+          \ 'DiffChange',
+          \ 'DiffText',
+          \ 'SignColumn',
+          \ 'TabLine',
+          \ ]
+    let hi_idx = 0
+    let hi_groups_len = len(hi_groups)
+    let s:groups = []
+    for idx in range(len(icons))
+      let group = 'ClapIcon'.idx
+      call add(s:groups, group)
+      let icon = icons[idx]
+      execute 'syntax match' group '/'.icon.'/' 'contained'
+      " execute 'highlight default link' group hi_groups[hi_idx]
+      execute 'hi!' group s:get_attrs(hi_groups[hi_idx])
+      let hi_idx += 1
+      let hi_idx = hi_idx % hi_groups_len
+    endfor
+  endfunction
+  call s:hl_icons()
   let s:hi_icon = 1
 endif
 
