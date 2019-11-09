@@ -150,8 +150,17 @@ function! clap#handler#sink() abort
   catch
     call clap#error('clap#handler#sink: '.v:exception)
   finally
+
+    call clap#unlet_vars([
+          \ 'g:__clap_fuzzy_matched_indices',
+          \ 'g:__clap_maple_fuzzy_matched',
+          \ 'g:__clap_forerunner_result',
+          \ 'g:__clap_provider_cwd',
+          \ ])
+
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
+
   endtry
 endfunction
 
