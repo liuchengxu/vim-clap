@@ -280,14 +280,6 @@ else
     call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': g:clap.display.bufnr})
   endfunction
 
-  function! clap#util#parse_vim8_job_id(job_str) abort
-    return str2nr(matchstr(a:job_str, '\d\+'))
-  endfunction
-
-  function! clap#util#job_id_of(channel) abort
-    return clap#util#parse_vim8_job_id(ch_getjob(a:channel))
-  endfunction
-
 endif
 
 let &cpoptions = s:save_cpo

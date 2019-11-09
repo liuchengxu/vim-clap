@@ -43,7 +43,7 @@ function! s:on_event(job_id, data, event) abort
 endfunction
 
 function! s:close_cb(channel) abort
-  if clap#util#job_id_of(a:channel) == s:job_id
+  if clap#job#vim8_job_id_of(a:channel) == s:job_id
     " https://github.com/vim/vim/issues/5143
     let s:chunks = split(ch_readraw(a:channel), "\n")
     call s:on_complete()
@@ -67,7 +67,7 @@ else
           \ 'noblock': 1,
           \ 'mode': 'raw',
           \ })
-    let s:job_id = clap#util#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#parse_vim8_job_id(string(job))
   endfunction
 endif
 

@@ -181,7 +181,7 @@ else
   endfunction
 
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -194,7 +194,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
             \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
@@ -207,13 +207,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && clap#util#parse_vim8_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -232,7 +232,7 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ })
-    let s:job_id = clap#util#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#parse_vim8_job_id(string(job))
   endfunction
 
 endif
