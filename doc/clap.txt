@@ -104,6 +104,12 @@ to work everywhere out of the box, with fast response.
                          `--hidden` to search the hidden files as well, i.e,
                          `:Clap files --hidden` .
 
+                         The last argument can be a directory, i.e.,
+                         `Clap files [DIR]` to search files under a
+                         specific directory. By default clap will try to use
+                         the git base directory or `getcwd()` . For example,
+                         use `Clap files ..` to search files under the parent directory.
+
 
                                                      *:Clap-filetypes*
 :Clap filetypes          List File types.
@@ -126,6 +132,12 @@ to work everywhere out of the box, with fast response.
                          from the command line which will be put after
                          `g:clap_provider_grep_opts`, e.g.,
                          `Clap grep ++opt=--no-ignore ++opt=--hidden` .
+
+                         The last argument can be a directory, i.e.,
+                         `Clap grep [DIR]` to start the grep job under a
+                         specific directory. By default clap will try to use
+                         the git base directory or `getcwd()` . For example,
+                         use `Clap grep ..` to grep from the parent directory.
 
 
                                                       *:Clap-history*

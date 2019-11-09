@@ -97,28 +97,25 @@ if has('nvim')
 
   function! s:on_event(job_id, data, event) abort
     " We only process the job that was spawned last time.
-    if s:job_id == -1 || a:job_id != s:job_id
-      return
-    endif
-
-    if a:event ==# 'stdout'
-      if len(a:data) > 1
+    if s:job_id == a:job_id
+      if a:event ==# 'stdout'
         " Second last is the real last one for neovim.
         call s:append_output(a:data[:-2])
+      elseif a:event ==# 'stderr'
+        if !empty(a:data) && a:data != ['']
+          let error_info = [
+                \ 'Error occurs when dispatching the command',
+                \ 'job_id: '.a:job_id,
+                \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
+                \ 'command: '.s:executed_cmd,
+                \ 'message: '
+                \ ]
+          let error_info += a:data
+          call s:abort_job(error_info)
+        endif
+      else
+        call s:on_exit_common()
       endif
-    elseif a:event ==# 'stderr'
-      if !empty(a:data) && a:data != ['']
-        let error_info = [
-              \ 'Error occurs when dispatching the command',
-              \ 'job_id: '.a:job_id,
-              \ 'command: '.s:executed_cmd,
-              \ 'message: '
-              \ ]
-        let error_info += a:data
-        call s:abort_job(error_info)
-      endif
-    else
-      call s:on_exit_common()
     endif
   endfunction
 
@@ -200,6 +197,7 @@ else
     if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
+            \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
             \ 'channel: '.a:channel,
             \ 'message: '.string(a:message),
             \ 'command: '.s:executed_cmd,
