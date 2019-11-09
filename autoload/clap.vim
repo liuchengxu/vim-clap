@@ -276,6 +276,10 @@ function! clap#for(provider_id_or_alias) abort
     return
   endif
 
+  if exists('g:__clap_provider_cwd')
+    unlet g:__clap_provider_cwd
+  endif
+
   call clap#handler#init()
 
   call g:clap.open_win()

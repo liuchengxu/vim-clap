@@ -324,9 +324,6 @@ function! s:init_provider() abort
 
   function! provider.sink(selected) abort
     call clap#util#run_rooter_heuristic(self._apply_sink, a:selected)
-    if exists('g:__clap_provider_cwd')
-      unlet g:__clap_provider_cwd
-    endif
   endfunction
 
   function! provider.sink_star(lines) abort
