@@ -64,6 +64,8 @@ let s:default_action = {
 
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 
+let s:path_sep = has('win32') ? '\' : '/'
+
 function! clap#error(msg) abort
   echohl ErrorMsg
   echom '[vim-clap] '.a:msg
@@ -184,17 +186,29 @@ function! clap#exit() abort
   endif
 endfunction
 
+function! s:relativize(ArgLead, abs_dirs) abort
+  if a:ArgLead =~# '^\~'
+    return map(a:abs_dirs, 'fnamemodify(v:val, ":~")')
+  elseif a:ArgLead =~# '^\.'
+    return map(a:abs_dirs, '".".s:path_sep.fnamemodify(v:val, ":.")')
+  else
+    return a:abs_dirs
+  endif
+endfunction
+
 function! clap#complete(ArgLead, CmdLine, P) abort
   if a:CmdLine =~# '^Clap \(files\|grep\)'
     if a:ArgLead =~# '\(/\|\\\)$' || isdirectory(expand(a:ArgLead))
       let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':p')
       if isdirectory(parent_dir)
-        return filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val)')
+        let abs_dirs = filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val)')
+        return s:relativize(a:ArgLead, abs_dirs)
       endif
     else
       let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':h')
       if isdirectory(parent_dir)
-        return filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val) && v:val =~# "^".expand(a:ArgLead)')
+        let abs_dirs = filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val) && v:val =~# "^".expand(a:ArgLead)')
+        return s:relativize(a:ArgLead, abs_dirs)
       endif
     endif
   endif
