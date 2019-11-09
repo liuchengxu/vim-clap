@@ -157,6 +157,12 @@ function! clap#_exit() abort
     call remove(g:clap.provider, 'source_tempfile')
   endif
 
+  call clap#unlet_vars([
+        \ 'g:__clap_fuzzy_matched_indices',
+        \ 'g:__clap_maple_fuzzy_matched',
+        \ 'g:__clap_forerunner_result',
+        \ ])
+
   call clap#sign#reset()
 
   call map(g:clap.tmps, 'delete(v:val)')
