@@ -185,8 +185,20 @@ function! clap#exit() abort
 endfunction
 
 function! clap#complete(A, L, P) abort
+  if a:L =~# '^Clap files' || a:L =~# '^Clap grep'
+    let parent_dir = fnamemodify(resolve(expand(a:A)), ':h')
+    if isdirectory(parent_dir)
+      let dir = globpath(parent_dir, '*', 0, 1)
+      let lead = expand(a:A)
+      if a:A =~# '/\|\\$'
+        return filter(dir, 'isdirectory(v:val)')
+      else
+        return filter(dir, 'isdirectory(v:val) && v:val =~# "^".expand(a:A)')
+      endif
+    endif
+  endif
   let registered = exists('g:clap') ? keys(g:clap.registrar) : []
-  return join(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), "\n")
+  return uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered))
 endfunction
 
 function! clap#should_use_raw_cwd() abort
