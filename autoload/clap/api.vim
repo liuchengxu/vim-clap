@@ -63,16 +63,13 @@ function! s:matchadd(patterns) abort
     return
   endtry
 
-  let idx = 1
-  " As most 8 submatches
-  for p in a:patterns[1:8]
-    try
-      call add(w:clap_match_ids, matchadd('ClapMatches'.idx, p, s:default_priority - 1))
-      let idx += 1
-    catch
-      return
-    endtry
-  endfor
+  " As most 8 submatches, ClapMatches[1-8]
+  try
+    call map(a:patterns[1:8],
+          \ {key, val -> add(w:clap_match_ids, matchadd('ClapMatches'.(key+1), val, s:default_priority -1))})
+  catch
+    return
+  endtry
 endfunction
 
 function! s:init_display() abort
