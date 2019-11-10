@@ -112,6 +112,7 @@ Command                                | List                                  |
 `Clap blines`                          | Lines in the current buffer           | _none_
 `Clap buffers`                         | Open buffers                          | _none_
 `Clap colors`                          | Colorschemes                          | _none_
+`Clap command`                         | Command                               | _none_
 `Clap hist:` or `Clap command_history` | Command history                       | _none_
 `Clap commits` **<sup>!</sup>**        | Git commits                           | **[git][git]**
 `Clap files`                           | Files                                 | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find

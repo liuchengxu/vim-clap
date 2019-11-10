@@ -34,8 +34,7 @@ endfunction
 function! s:_system(cmd) abort
   let lines = system(a:cmd)
   if v:shell_error
-    call clap#error('Fail to run '.a:cmd)
-    return ['Fail to run '.a:cmd]
+    return ['Fail to call system('.a:cmd.')']
   endif
   return split(lines, "\n")
 endfunction
@@ -63,16 +62,14 @@ function! s:matchadd(patterns) abort
     " care more about the searched results IMO.
     return
   endtry
-  let idx = 1
-  " As most 8 submatches
-  for p in a:patterns[1:8]
-    try
-      call add(w:clap_match_ids, matchadd('ClapMatches'.idx, p, s:default_priority - 1))
-      let idx += 1
-    catch
-      return
-    endtry
-  endfor
+
+  " As most 8 submatches, ClapMatches[1-8]
+  try
+    call map(a:patterns[1:8],
+          \ {key, val -> add(w:clap_match_ids, matchadd('ClapMatches'.(key+1), val, s:default_priority -1))})
+  catch
+    return
+  endtry
 endfunction
 
 function! s:init_display() abort
@@ -299,12 +296,7 @@ function! s:init_provider() abort
 
   " Argument: String or List of String
   function! provider.abort(msg) abort
-    if type(a:msg) == v:t_list
-      let msg = string(a:msg)
-    else
-      let msg = a:msg
-    endif
-    throw 'clap:'.msg
+    throw 'clap:'.string(a:msg)
   endfunction
 
   function! provider._apply_sink(selected) abort

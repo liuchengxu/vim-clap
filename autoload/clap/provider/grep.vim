@@ -40,6 +40,14 @@ function! s:cmd(query) abort
   else
     let grep_opts = s:grep_opts
   endif
+
+  if !empty(g:clap.provider.args)
+    let dir = g:clap.provider.args[-1]
+    if isdirectory(expand(dir))
+      let g:__clap_provider_cwd = dir
+    endif
+  endif
+
   let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, a:query)
   let g:clap.provider.cmd = cmd
   return cmd
@@ -73,7 +81,7 @@ function! s:spawn(query) abort
   " This should happen before the new job.
   call g:clap.display.clear()
 
-  call clap#dispatcher#job_start(s:cmd(query))
+  call clap#util#run_rooter(function('clap#dispatcher#job_start'), s:cmd(query))
 
   " Consistent with --smart-case of rg
   " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.

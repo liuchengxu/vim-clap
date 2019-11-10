@@ -43,7 +43,7 @@ function! s:on_event(job_id, data, event) abort
 endfunction
 
 function! s:close_cb(channel) abort
-  if clap#util#job_id_of(a:channel) == s:job_id
+  if clap#job#vim8_job_id_of(a:channel) == s:job_id
     " https://github.com/vim/vim/issues/5143
     let s:chunks = split(ch_readraw(a:channel), "\n")
     call s:on_complete()
@@ -57,7 +57,6 @@ if has('nvim')
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ 'stdout_buffered': v:true,
-          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 else
@@ -67,15 +66,14 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ 'mode': 'raw',
-          \ 'cwd': clap#job#cwd(),
           \ })
-    let s:job_id = clap#util#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#parse_vim8_job_id(string(job))
   endfunction
 endif
 
 function! clap#forerunner#start(cmd) abort
   let s:chunks = []
-  call s:start_forerunner(a:cmd)
+  call clap#util#run_rooter(function('s:start_forerunner'), a:cmd)
 endfunction
 
 function! clap#forerunner#stop() abort

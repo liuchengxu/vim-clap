@@ -13,6 +13,15 @@ else
     " Kill it!
     silent! call jobstop(a:job_id, 'kill')
   endfunction
+
+  function! clap#job#vim8_job_id_of(channel) abort
+    return clap#job#parse_vim8_job_id(ch_getjob(a:channel))
+  endfunction
+
+  function! clap#job#parse_vim8_job_id(job_str) abort
+    return str2nr(matchstr(a:job_str, '\d\+'))
+  endfunction
+
 endif
 
 function! clap#job#cwd() abort

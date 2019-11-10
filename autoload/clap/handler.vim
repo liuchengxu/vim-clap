@@ -173,6 +173,7 @@ function! clap#handler#select_toggle() abort
   endif
 
   noautocmd call clap#sign#toggle_cursorline_multi()
+  redraw
 
   let s:use_multi_selection = v:true
 

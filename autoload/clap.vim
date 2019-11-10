@@ -64,6 +64,8 @@ let s:default_action = {
 
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 
+let s:path_sep = has('win32') ? '\' : '/'
+
 function! clap#error(msg) abort
   echohl ErrorMsg
   echom '[vim-clap] '.a:msg
@@ -184,9 +186,41 @@ function! clap#exit() abort
   endif
 endfunction
 
-function! clap#complete(A, L, P) abort
+function! s:relativize(ArgLead, abs_dirs) abort
+  if a:ArgLead =~# '^\~'
+    return map(a:abs_dirs, 'fnamemodify(v:val, ":~")')
+  elseif a:ArgLead =~# '^\.'
+    if empty(a:abs_dirs)
+      return []
+    endif
+    if fnamemodify(a:abs_dirs[0], ':.') =~# '^\.'
+      return map(a:abs_dirs, 'fnamemodify(v:val, ":.")')
+    else
+      return map(a:abs_dirs, '".".s:path_sep.fnamemodify(v:val, ":.")')
+    endif
+  else
+    return a:abs_dirs
+  endif
+endfunction
+
+function! clap#complete(ArgLead, CmdLine, P) abort
+  if a:CmdLine =~# '^Clap \(files\|grep\)'
+    if a:ArgLead =~# '\(/\|\\\)$' || isdirectory(expand(a:ArgLead))
+      let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':p')
+      if isdirectory(parent_dir)
+        let abs_dirs = filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val)')
+        return s:relativize(a:ArgLead, abs_dirs)
+      endif
+    else
+      let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':h')
+      if isdirectory(parent_dir)
+        let abs_dirs = filter(globpath(parent_dir, '*', 0, 1), 'isdirectory(v:val) && v:val =~# "^".expand(a:ArgLead)')
+        return s:relativize(a:ArgLead, abs_dirs)
+      endif
+    endif
+  endif
   let registered = exists('g:clap') ? keys(g:clap.registrar) : []
-  return join(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), "\n")
+  return filter(uniq(sort(s:builtin_providers + keys(s:provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
 function! clap#should_use_raw_cwd() abort
@@ -274,6 +308,10 @@ function! clap#for(provider_id_or_alias) abort
   " If the registrar is not aware of this provider, try registering it.
   if !has_key(g:clap.registrar, provider_id) && !s:try_register_is_ok(provider_id)
     return
+  endif
+
+  if exists('g:__clap_provider_cwd')
+    unlet g:__clap_provider_cwd
   endif
 
   call clap#handler#init()

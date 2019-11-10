@@ -127,9 +127,30 @@ function! clap#util#find_nearest_dir(bufnr, dir) abort
   return ''
 endfunction
 
+function! s:run_from_target_dir(target_dir, Run, run_args) abort
+  let save_cwd = getcwd()
+  try
+    execute 'lcd' a:target_dir
+    let l:result = call(a:Run, a:run_args)
+  catch
+    call clap#error(
+          \ printf('target_dir:%s, Run:%s, run_args:%s, exception:%s',
+          \ a:target_dir,
+          \ string(a:Run),
+          \ string(a:run_args),
+          \ v:exception,
+          \ ))
+  finally
+    execute 'lcd' save_cwd
+  endtry
+  return exists('l:result') ? l:result : []
+endfunction
+
 " Argument: Funcref to run as well as its args
 function! clap#util#run_rooter(Run, ...) abort
-  if clap#should_use_raw_cwd()
+  if exists('g:__clap_provider_cwd')
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
+  elseif clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
 
@@ -138,13 +159,7 @@ function! clap#util#run_rooter(Run, ...) abort
   if empty(git_root)
     let result = call(a:Run, a:000)
   else
-    let save_cwd = getcwd()
-    try
-      execute 'lcd' git_root
-      let result = call(a:Run, a:000)
-    finally
-      execute 'lcd' save_cwd
-    endtry
+    let result = s:run_from_target_dir(git_root, a:Run, a:000)
   endif
 
   return result
@@ -155,7 +170,9 @@ endfunction
 " what if the sink function changes cwd intentionally? Then we
 " should not restore to the current cwd after executing the sink function.
 function! clap#util#run_rooter_heuristic(Run, ...) abort
-  if clap#should_use_raw_cwd()
+  if exists('g:__clap_provider_cwd')
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
+  elseif clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
 
@@ -169,7 +186,7 @@ function! clap#util#run_rooter_heuristic(Run, ...) abort
     let save_cwd = getcwd()
     try
       execute 'lcd' git_root
-      let result = call(a:Run, a:000)
+      let l:result = call(a:Run, a:000)
     finally
       " Here we could use a naive heuristic approach to
       " not restore the old cwd when the current working
@@ -182,7 +199,7 @@ function! clap#util#run_rooter_heuristic(Run, ...) abort
 
   endif
 
-  return result
+  return exists('l:result') ? l:result : []
 endfunction
 
 " Define CTRL-T/X/V by default.
@@ -265,14 +282,6 @@ else
   function! clap#util#add_highlight_at(lnum, col, hl_group) abort
     " 1-based
     call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': g:clap.display.bufnr})
-  endfunction
-
-  function! clap#util#parse_vim8_job_id(job_str) abort
-    return str2nr(matchstr(a:job_str, '\d\+'))
-  endfunction
-
-  function! clap#util#job_id_of(channel) abort
-    return clap#util#parse_vim8_job_id(ch_getjob(a:channel))
   endfunction
 
 endif

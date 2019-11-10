@@ -84,7 +84,7 @@ function! s:on_typed_sync_impl() abort
     if exists('g:__clap_fuzzy_matched_indices')
       call s:add_highlight_for_fuzzy_matched()
     else
-      call g:clap.display.add_highlight(l:cur_input)
+      call g:clap.display.add_highlight()
     endif
   endif
 endfunction
@@ -122,6 +122,8 @@ if s:is_nvim
   endfunction
 else
   function! s:apply_add_highlight(hl_lines, offset) abort
+    " We do not have to clear the previous matches like neovim
+    " as the previous lines have been deleted, and the associated text_props have also been removed.
     let lnum = 0
     for indices in a:hl_lines
       let group_idx = 1
@@ -173,7 +175,7 @@ function! s:on_typed_async_impl() abort
   call g:clap.display.clear()
 
   let cmd = g:clap.provider.source_async_or_default()
-  call clap#dispatcher#job_start(cmd)
+  call clap#util#run_rooter(function('clap#dispatcher#job_start'), cmd)
   call clap#spinner#set_busy()
 
   if !exists('g:__clap_maple_fuzzy_matched')
@@ -219,15 +221,9 @@ function! clap#impl#on_typed() abort
     call s:on_typed_sync_impl()
     return
   endif
-  if g:clap.provider.can_async()
-    " Run async explicitly
-    if get(g:clap.context, 'async') is v:true
-      call s:on_typed_async_impl()
-    elseif s:should_switch_to_async()
-      call s:on_typed_async_impl()
-    else
-      call s:on_typed_sync_impl()
-    endif
+  if g:clap.provider.can_async() &&
+        \ (get(g:clap.context, 'async') is v:true || s:should_switch_to_async())
+    call s:on_typed_async_impl()
   else
     call s:on_typed_sync_impl()
   endif

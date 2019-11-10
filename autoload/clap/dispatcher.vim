@@ -97,37 +97,35 @@ if has('nvim')
 
   function! s:on_event(job_id, data, event) abort
     " We only process the job that was spawned last time.
-    if s:job_id == -1 || a:job_id != s:job_id
-      return
-    endif
-
-    if a:event ==# 'stdout'
-      if len(a:data) > 1
+    if s:job_id == a:job_id
+      if a:event ==# 'stdout'
         " Second last is the real last one for neovim.
         call s:append_output(a:data[:-2])
+      elseif a:event ==# 'stderr'
+        if !empty(a:data) && a:data != ['']
+          let error_info = [
+                \ 'Error occurs when dispatching the command',
+                \ 'job_id: '.a:job_id,
+                \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
+                \ 'command: '.s:executed_cmd,
+                \ 'message: '
+                \ ]
+          let error_info += a:data
+          call s:abort_job(error_info)
+        endif
+      else
+        call s:on_exit_common()
       endif
-    elseif a:event ==# 'stderr'
-      if !empty(a:data) && a:data != ['']
-        let error_info = [
-              \ 'Error occurs when dispatching the command',
-              \ 'job_id: '.a:job_id,
-              \ 'command: '.s:executed_cmd,
-              \ 'message: '
-              \ ]
-        let error_info += a:data
-        call s:abort_job(error_info)
-      endif
-    else
-      call s:on_exit_common()
     endif
   endfunction
 
   function! s:job_start(cmd) abort
+    " We choose the lcd way instead of the cwd option of job for the
+    " consistence purpose.
     let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
-          \ 'cwd': clap#job#cwd(),
           \ })
   endfunction
 
@@ -183,7 +181,7 @@ else
   endfunction
 
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -196,9 +194,10 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
+            \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
             \ 'channel: '.a:channel,
             \ 'message: '.string(a:message),
             \ 'command: '.s:executed_cmd,
@@ -208,13 +207,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_id > 0 && clap#util#job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && clap#util#parse_vim8_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -232,9 +231,8 @@ else
           \ 'exit_cb': function('s:exit_cb'),
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
-          \ 'cwd': clap#job#cwd(),
           \ })
-    let s:job_id = clap#util#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#parse_vim8_job_id(string(job))
   endfunction
 
 endif
@@ -269,7 +267,7 @@ function! s:has_no_matches() abort
 endfunction
 
 function! s:apply_job_start(_timer) abort
-  call s:job_start(s:cmd)
+  call clap#util#run_rooter(function('s:job_start'), s:cmd)
 
   let s:executed_time = strftime('%Y-%m-%d %H:%M:%S')
   let s:executed_cmd = s:cmd
