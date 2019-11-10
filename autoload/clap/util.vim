@@ -150,9 +150,7 @@ endfunction
 function! clap#util#run_rooter(Run, ...) abort
   if exists('g:__clap_provider_cwd')
     return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
-  endif
-
-  if clap#should_use_raw_cwd()
+  elseif clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
 
@@ -174,9 +172,7 @@ endfunction
 function! clap#util#run_rooter_heuristic(Run, ...) abort
   if exists('g:__clap_provider_cwd')
     return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
-  endif
-
-  if clap#should_use_raw_cwd()
+  elseif clap#should_use_raw_cwd()
     return call(a:Run, a:000)
   endif
 
