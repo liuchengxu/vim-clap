@@ -132,6 +132,14 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
   try
     execute 'lcd' a:target_dir
     let l:result = call(a:Run, a:run_args)
+  catch
+    call clap#error(
+          \ printf('target_dir:%s, Run:%s, run_args:%s, exception:%s',
+          \ a:target_dir,
+          \ string(a:Run),
+          \ string(a:run_args),
+          \ v:exception,
+          \ ))
   finally
     execute 'lcd' save_cwd
   endtry
