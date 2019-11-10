@@ -75,6 +75,11 @@ to work everywhere out of the box, with fast response.
 :Clap colors             List Colorschemes.
                          Support preview.
 
+
+                                                    *:Clap-command*
+:Clap command            List Command.
+
+
                                                     *:Clap-hist:*
                                                     *:Clap-command_history*
 :Clap hist:              List Command history.
