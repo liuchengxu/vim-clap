@@ -74,6 +74,7 @@ function! s:pattern_builder.build() abort
   endif
 endfunction
 
+" Return substring pattern or the smartcase input pattern.
 function! clap#filter#matchadd_pattern() abort
   return get(s:, 'matchadd_pattern', '')
 endfunction

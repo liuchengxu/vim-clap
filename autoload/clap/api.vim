@@ -34,8 +34,7 @@ endfunction
 function! s:_system(cmd) abort
   let lines = system(a:cmd)
   if v:shell_error
-    call clap#error('Fail to run '.a:cmd)
-    return ['Fail to run '.a:cmd]
+    return ['Fail to call system('.a:cmd.')']
   endif
   return split(lines, "\n")
 endfunction
@@ -63,6 +62,7 @@ function! s:matchadd(patterns) abort
     " care more about the searched results IMO.
     return
   endtry
+
   let idx = 1
   " As most 8 submatches
   for p in a:patterns[1:8]
@@ -299,12 +299,7 @@ function! s:init_provider() abort
 
   " Argument: String or List of String
   function! provider.abort(msg) abort
-    if type(a:msg) == v:t_list
-      let msg = string(a:msg)
-    else
-      let msg = a:msg
-    endif
-    throw 'clap:'.msg
+    throw 'clap:'.string(a:msg)
   endfunction
 
   function! provider._apply_sink(selected) abort

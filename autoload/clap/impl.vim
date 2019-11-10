@@ -84,7 +84,7 @@ function! s:on_typed_sync_impl() abort
     if exists('g:__clap_fuzzy_matched_indices')
       call s:add_highlight_for_fuzzy_matched()
     else
-      call g:clap.display.add_highlight(l:cur_input)
+      call g:clap.display.add_highlight()
     endif
   endif
 endfunction
