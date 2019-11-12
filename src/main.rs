@@ -4,7 +4,16 @@ use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use rff::match_and_score_with_positions;
 use serde_json::json;
+use structopt::clap::arg_enum;
 use structopt::StructOpt;
+
+arg_enum! {
+    #[derive(Debug)]
+    enum Algo {
+        Skim,
+        Fzy,
+    }
+}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "maple")]
@@ -14,22 +23,21 @@ struct Opt {
     query: String,
 
     /// Filter algorithm
-    #[structopt(short, long, default_value = "fzy")]
-    algo: String,
+    #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
+    algo: Option<Algo>,
 }
 
 pub fn main() {
     let opt = Opt::from_args();
 
     let query = &*opt.query;
-    let algo = &*opt.algo;
+    let algo = opt.algo.unwrap_or(Algo::Fzy);
 
-    let scorer = |line: &str| match algo.into() {
-        "skim" => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
-        "fzy" => {
+    let scorer = |line: &str| match algo {
+        Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
+        Algo::Fzy => {
             match_and_score_with_positions(query, line).map(|(_, score, indices)| (score, indices))
         }
-        _ => unreachable!(),
     };
 
     // Result<Option<T>> => T
