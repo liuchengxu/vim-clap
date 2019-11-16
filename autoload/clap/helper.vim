@@ -43,5 +43,51 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
   return filter(uniq(sort(g:clap#builtin_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
+function! clap#helper#echo_info(msg) abort
+  echohl Function
+  echom 'vim-clap: '.a:msg
+  echohl NONE
+endfunction
+
+function! clap#helper#echo_error(msg) abort
+  echohl ErrorMsg
+  echom 'vim-clap: '.a:msg
+  echohl NONE
+endfunction
+
+function! clap#helper#build_maple() abort
+  if executable('cargo')
+    let cmd = 'cargo build --release'
+    10new belowright bottom
+    setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
+
+    function! s:OnExit(status) closure
+      if a:status == 0
+        execute 'silent! bd! '.bufnr
+        call clap#helper#echo_info('build maple successfully')
+      endif
+    endfunction
+
+    if has('nvim')
+      call termopen(cmd, {
+            \ 'cwd': fnamemodify(g:clap#autoload_dir, ':h'),
+            \ 'on_exit': {job, status -> s:OnExit(status)},
+            \})
+    else
+      call term_start(cmd, {
+            \ 'curwin': 1,
+            \ 'cwd': fnamemodify(g:clap#autoload_dir, ':h'),
+            \ 'exit_cb': {job, status -> s:OnExit(status)},
+            \})
+    endif
+
+    let bufnr = bufnr('')
+
+    wincmd p
+  else
+    call clap#helper#echo_error('Can not build maple in that cargo is not found.')
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

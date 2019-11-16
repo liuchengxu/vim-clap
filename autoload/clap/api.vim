@@ -306,7 +306,7 @@ function! s:init_provider() abort
     elseif type(Sink) == v:t_string
       execute Sink a:selected
     else
-      call clap#error('sink can only be a funcref or string.')
+      call clap#helper#echo_error('sink can only be a funcref or string.')
     endif
   endfunction
 
@@ -506,7 +506,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    if self.is_pure_async()
+    if self.is_pure_async() || has_key(g:clap.context, 'externalfilter')
       return
     elseif self.type == g:__t_string
       call clap#forerunner#start(g:clap.provider._().source)

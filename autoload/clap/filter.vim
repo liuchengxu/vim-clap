@@ -22,7 +22,7 @@ let s:ext_cmd.sk = 'sk --filter="%s"'
 " Use "%s" instead of bare %s in case of the query containing ';',
 " e.g., rg --files | maple hello;world, world can be misinterpreted as a
 " command.
-let s:maple_bin = fnamemodify(g:__clap_dir, ':h').'/target/release/maple'
+let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
 if exists('g:clap_default_external_filter')
   let s:default_ext_filter = g:clap_default_external_filter
@@ -141,7 +141,7 @@ execute s:py_exe "<< EOF"
 import sys
 from os.path import normpath, join
 import vim
-plugin_root_dir = vim.eval('g:__clap_dir')
+plugin_root_dir = vim.eval('g:clap#autoload_dir')
 python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
 sys.path.insert(0, python_root_dir)
 import clap

@@ -22,7 +22,7 @@ let s:builtin_providers = map(
       \ 'fnamemodify(v:val, '':t:r'')'
       \ )
 
-let g:__clap_dir = s:cur_dir
+let g:clap#autoload_dir = s:cur_dir
 
 let g:clap#builtin_providers = s:builtin_providers
 
@@ -65,12 +65,6 @@ let s:default_action = {
 
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 
-function! clap#error(msg) abort
-  echohl ErrorMsg
-  echom '[vim-clap] '.a:msg
-  echohl NONE
-endfunction
-
 function! s:inject_default_impl_is_ok(provider_info) abort
   let provider_info = a:provider_info
 
@@ -84,7 +78,7 @@ function! s:inject_default_impl_is_ok(provider_info) abort
     endif
   else
     if !has_key(provider_info, 'on_typed')
-      call clap#error('Provider without source must specify on_moved, but only has: '.keys(provider_info))
+      call clap#helper#echo_error('Provider without source must specify on_moved, but only has: '.keys(provider_info))
       return v:false
     endif
     if !has_key(provider_info, 'jobstop')
@@ -195,7 +189,7 @@ function! clap#register(provider_id, provider_info) abort
   let provider_info = a:provider_info
 
   if has_key(g:clap.registrar, a:provider_id)
-    call clap#error('This provider id already exists: '.a:provider_id)
+    call clap#helper#echo_error('This provider id already exists: '.a:provider_id)
     return
   endif
 
@@ -209,7 +203,7 @@ endfunction
 function! s:validate_provider(registration_info) abort
   " Every provider should specify the sink option.
   if !has_key(a:registration_info, 'sink')
-    call clap#error('A valid provider must provide sink option')
+    call clap#helper#echo_error('A valid provider must provide sink option')
     return v:false
   endif
   if has_key(a:registration_info, 'source')
@@ -218,13 +212,13 @@ function! s:validate_provider(registration_info) abort
           \ || ty_source == v:t_string
           \ || ty_source == v:t_func
     else
-      call clap#error('source must be a list, string or funcref')
+      call clap#helper#echo_error('source must be a list, string or funcref')
       return v:false
     endif
   else
     " Pure async provider
     if !has_key(a:registration_info, 'on_typed')
-      call clap#error('An async provider must provide on_typed option')
+      call clap#helper#echo_error('An async provider must provide on_typed option')
       return v:false
     endif
   endif
@@ -242,7 +236,7 @@ function! s:try_register_is_ok(provider_id) abort
     try
       let registration_info = g:clap#provider#{provider_id}#
     catch /^Vim\%((\a\+)\)\=:E121/
-      call clap#error('Fail to load the provider: '.provider_id)
+      call clap#helper#echo_error('Fail to load the provider: '.provider_id)
       return v:false
     endtry
   endif

@@ -24,7 +24,7 @@ function! s:commits.source() abort
   let buffer_local = 0
   if buffer_local
     if !managed
-      call clap#error('The current buffer is not in the working tree')
+      call clap#helper#echo_error('The current buffer is not in the working tree')
       return []
     endif
     let source .= ' --follow '.current
