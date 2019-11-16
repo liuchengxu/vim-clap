@@ -133,7 +133,7 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
     execute 'lcd' a:target_dir
     let l:result = call(a:Run, a:run_args)
   catch
-    call clap#error(
+    call clap#helper#echo_error(
           \ printf('target_dir:%s, Run:%s, run_args:%s, exception:%s',
           \ a:target_dir,
           \ string(a:Run),
@@ -266,6 +266,7 @@ function! clap#util#getfsize(fname) abort
   return size
 endfunction
 
+" lnum and col are 0-based.
 function! clap#util#add_match_at(lnum, col, hl_group) abort
   return matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
 endfunction
