@@ -88,7 +88,13 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 `maple` is essentially a tiny wrapper of [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
 
+Use `:call clap#helper#build_maple()` or install maple manually:
+
 ```bash
+# Compile the release build
+cargo build --release
+
+# Or use cargo install
 cargo install --path . --force
 ```
 

@@ -4,7 +4,16 @@ use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use rff::match_and_score_with_positions;
 use serde_json::json;
+use structopt::clap::arg_enum;
 use structopt::StructOpt;
+
+arg_enum! {
+    #[derive(Debug)]
+    enum Algo {
+        Skim,
+        Fzy,
+    }
+}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "maple")]
@@ -14,44 +23,43 @@ struct Opt {
     query: String,
 
     /// Filter algorithm
-    #[structopt(short, long, default_value = "fzy")]
-    algo: String,
-}
-
-#[inline]
-pub fn scorer(algo: &str, query: &str, line: &str) -> Option<(f64, Vec<usize>)> {
-    match algo.into() {
-        "skim" => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
-        "fzy" => {
-            match_and_score_with_positions(query, line).map(|(_, score, indices)| (score, indices))
-        }
-        _ => unreachable!(),
-    }
+    #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
+    algo: Option<Algo>,
 }
 
 pub fn main() {
     let opt = Opt::from_args();
 
     let query = &*opt.query;
-    let algo = &*opt.algo;
+    let algo = opt.algo.unwrap_or(Algo::Fzy);
 
-    let mut ranked = vec![];
-
-    for line in io::stdin().lock().lines() {
-        if let Ok(line) = line {
-            if let Some((score, indices)) = scorer(algo, query, &line) {
-                ranked.push((line, score, indices));
-            }
+    let scorer = |line: &str| match algo {
+        Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
+        Algo::Fzy => {
+            match_and_score_with_positions(query, line).map(|(_, score, indices)| (score, indices))
         }
-    }
+    };
 
-    ranked.par_sort_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+    // Result<Option<T>> => T
+    let mut ranked = io::stdin()
+        .lock()
+        .lines()
+        .filter_map(|lines_iter| {
+            lines_iter
+                .ok()
+                .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
+        })
+        .collect::<Vec<_>>();
+
+    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
     for (text, _, indices) in ranked.iter() {
-        let matched = json!({
-          "text": text,
-          "indices": indices,
-        });
-        println!("{}", matched.to_string());
+        println!(
+            "{}",
+            json!({
+            "text": text,
+            "indices": indices,
+            })
+        );
     }
 }

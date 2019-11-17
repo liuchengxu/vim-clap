@@ -18,19 +18,26 @@ let s:ext_cmd = {}
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
+
 " Use "%s" instead of bare %s in case of the query containing ';',
 " e.g., rg --files | maple hello;world, world can be misinterpreted as a
 " command.
-let s:ext_cmd.maple = 'maple "%s"'
+let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
 if exists('g:clap_default_external_filter')
   let s:default_ext_filter = g:clap_default_external_filter
   if index(keys(s:ext_cmd), s:default_ext_filter) == -1
     call g:clap.abort('Unsupported external filter: '.s:default_ext_filter)
   endif
+elseif executable(s:maple_bin)
+  let s:default_ext_filter = 'maple'
+  let s:ext_cmd.maple = s:maple_bin.' "%s"'
+elseif executable('maple')
+  let s:default_ext_filter = 'maple'
+  let s:ext_cmd.maple = 'maple "%s"'
 else
   " TODO support skim, skim seems to have a score at the beginning.
-  for ext in ['maple', 'fzy', 'fzf']
+  for ext in ['fzy', 'fzf']
     if executable(ext)
       let s:default_ext_filter = ext
       break
@@ -134,7 +141,7 @@ execute s:py_exe "<< EOF"
 import sys
 from os.path import normpath, join
 import vim
-plugin_root_dir = vim.eval('g:__clap_dir')
+plugin_root_dir = vim.eval('g:clap#autoload_dir')
 python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
 sys.path.insert(0, python_root_dir)
 import clap

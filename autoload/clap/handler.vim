@@ -148,7 +148,7 @@ function! clap#handler#sink() abort
   try
     call Sink(sink_args)
   catch
-    call clap#error('clap#handler#sink: '.v:exception)
+    call clap#helper#echo_error('clap#handler#sink: '.v:exception)
   finally
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
@@ -168,7 +168,7 @@ endfunction
 function! clap#handler#select_toggle() abort
   if !s:support_multi_selection
         \ && !get(g:, 'clap_multi_selection_warning_silent', 0)
-    call clap#error('<Tab> is unusable, set g:clap_multi_selection_warning_silent = 1 to suppress this warning.')
+    call clap#helper#echo_error('<Tab> is unusable, set g:clap_multi_selection_warning_silent = 1 to suppress this warning.')
     return ''
   endif
 
