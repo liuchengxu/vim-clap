@@ -10,6 +10,8 @@ CHANGELOG
 - Add a brief description for each provider used in `:Clap`.
 - Add the option `g:clap_spinner_frames`.
 - Add the option `g:clap_prompt_format`.
+- Add the option `g:clap_enable_icon` for configuring the icon functionality globally.
+- Add the option `g:clap_popup_cursor_shape` for configuring the mocked cursor shape.
 - Add an utility function `clap#helper#build_maple()` for building maple easily in vim. Use `:call clap#helper#build_maple()` to install maple inside vim.
 - Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
 
