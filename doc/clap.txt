@@ -550,6 +550,19 @@ g:clap_spinner_frames                            *g:clap_spinner_frames*
   https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
 
 
+g:clap_enable_icon                               *g:clap_enable_icon*
+
+  Type: |Number|
+  Default: `exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0)`
+
+  When set to `1`, vim-clap will try to use the nerdfont icons during
+  the rendering process. Set to `0` If your terminal-emulator or font can not
+  render these icons properly.
+
+  This variable is indended for all the providers by default. It has no effect
+  if some clap provider already has its own icon flag, e.g., |g:clap_provider_grep_enable_icon| .
+
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 

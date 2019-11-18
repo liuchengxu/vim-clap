@@ -22,7 +22,7 @@ function! s:format_buffer(b) abort
 
   let bp = s:padding('['.a:b.']', 5)
   let fsize = s:padding(clap#util#getfsize(name), 6)
-  let icon = s:padding(clap#icon#for(name), 3)
+  let icon = g:clap_enable_icon ? s:padding(clap#icon#for(name), 3) : ''
   let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
   let line = s:padding(get(s:line_info, a:b, ''), 10)
 
