@@ -397,6 +397,15 @@ g:clap_popup_input_delay                              *g:clap_popup_input_delay*
 
   This option is only meaningful for Vim, NeoVim does not have this delay.
 
+
+g:clap_popup_cursor_shape                            *g:clap_popup_cursor_shape*
+
+  Type: |String|
+  Default: `'|'`
+
+  This variable controls the mocked cursor shape in the popup window of vim.
+
+
 g:clap_on_move_delay                                      *g:clap_on_move_delay*
 
   Type: |Number|
