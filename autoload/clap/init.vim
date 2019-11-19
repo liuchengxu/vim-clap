@@ -185,6 +185,8 @@ function! s:init_hi_groups() abort
 
   call s:hi_display_invisible()
 
+  hi default link ClapPopupCursor Type
+
   hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
   hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
   hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7

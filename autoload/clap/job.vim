@@ -22,6 +22,16 @@ else
     return str2nr(matchstr(a:job_str, '\d\+'))
   endfunction
 
+  if has('win32')
+    function! clap#job#wrap_cmd(cmd) abort
+      return &shell . ' ' . &shellcmdflag . ' ' . a:cmd
+    endfunction
+  else
+    function! clap#job#wrap_cmd(cmd) abort
+      return split(&shell) + split(&shellcmdflag) + [a:cmd]
+    endfunction
+  endif
+
 endif
 
 function! clap#job#cwd() abort

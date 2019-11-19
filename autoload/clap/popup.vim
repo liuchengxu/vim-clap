@@ -7,6 +7,8 @@ set cpoptions&vim
 let s:input = ''
 let s:input_timer = -1
 let s:input_delay = get(g:, 'clap_popup_input_delay', 200)
+let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
+let s:cursor_width = strdisplaywidth(s:cursor_shape)
 
 let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
@@ -281,20 +283,28 @@ function! s:callback(_id, _result) abort
   call clap#handler#exit()
 endfunction
 
+function! s:hl_cursor() abort
+  if exists('w:clap_cursor_id')
+    call matchdelete(w:clap_cursor_id)
+  endif
+  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, s:cursor_idx + 1, s:cursor_width]])
+endfunction
+
 function! s:mock_input() abort
   if s:input ==# ''
         \ || type(s:cursor_idx) ==# v:t_string
         \ || s:cursor_idx == strlen(s:input)
-    let input = s:input.'|'
+    let input = s:input.s:cursor_shape
   elseif get(s:, 'insert_at_the_begin', v:false)
-    let input = s:input[0].'|'.s:input[1:]
+    let input = s:input[0].s:cursor_shape.s:input[1:]
     let s:cursor_idx = 1
   elseif s:cursor_idx == 0
-    let input = '|'.s:input
+    let input = s:cursor_shape.s:input
   else
-    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx :]], '|')
+    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx :]], s:cursor_shape)
   endif
   call popup_settext(s:input_winid, input)
+  call win_execute(s:input_winid, 'noautocmd call s:hl_cursor()')
 endfunction
 
 function! clap#popup#set_input(input) abort
