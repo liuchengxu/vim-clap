@@ -12,7 +12,7 @@ let s:async_threshold = 10000
 " =======================================
 function! s:reset_on_empty_input() abort
   call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
-  let l:matches_cnt = g:clap.display.initial_size
+  let l:matches_cnt = g:clap.display.line_count() + len(g:clap.display.cache)
   call clap#indicator#set_matches('['.l:matches_cnt.']')
   call clap#sign#toggle_cursorline()
   call g:clap#display_win.compact_if_undersize()
