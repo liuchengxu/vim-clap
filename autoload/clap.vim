@@ -270,6 +270,7 @@ function! clap#for(provider_id_or_alias) abort
   call s:unlet_vars([
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_raw_source',
+        \ 'g:__clap_initial_source_size',
         \ ])
 
   call clap#handler#init()

@@ -12,8 +12,7 @@ let s:async_threshold = 10000
 " =======================================
 function! s:reset_on_empty_input() abort
   call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
-  let l:matches_cnt = g:clap.display.line_count() + len(g:clap.display.cache)
-  call clap#indicator#set_matches('['.l:matches_cnt.']')
+  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
   call clap#sign#toggle_cursorline()
   call g:clap#display_win.compact_if_undersize()
 endfunction
@@ -22,10 +21,14 @@ endfunction
 " g:clap.provider.get_source() is sync.
 function! s:get_cache_or_raw_source() abort
   if exists('g:__clap_forerunner_result')
+    if !exists('g:__clap_initial_source_size')
+      let g:__clap_initial_source_size = g:clap.display.initial_size
+    endif
     return g:__clap_forerunner_result
   endif
   if !exists('g:__clap_raw_source')
     let g:__clap_raw_source = g:clap.provider.get_source()
+    let g:__clap_initial_source_size = len(g:__clap_raw_source)
   endif
   return g:__clap_raw_source
 endfunction
