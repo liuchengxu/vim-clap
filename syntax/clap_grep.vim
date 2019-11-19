@@ -12,7 +12,8 @@ function! s:get_attrs(group) abort
   if empty(fg)
     let fg = s:normal_fg
   endif
-  return printf('%sbg=%s %sfg=%s', s:gui_or_cterm, s:normal_bg, s:gui_or_cterm, fg)
+  " guibg=NONE ctermbg=NONE is neccessary otherwise the bg could be unexpected.
+  return printf('%sbg=%s %sfg=%s guibg=NONE ctermbg=NONE', s:gui_or_cterm, s:normal_bg, s:gui_or_cterm, fg)
 endfunction
 
 let s:normal_fg = s:get_color('Normal', 'fg')
@@ -27,7 +28,6 @@ endif
 
 if !exists('s:hi_icon')
   function! s:hl_icons() abort
-    let icons = clap#icon#get_all()
     let hi_groups = [
           \ 'ModeMsg',
           \ 'Type',
@@ -37,25 +37,22 @@ if !exists('s:hi_icon')
           \ 'Question',
           \ 'Title',
           \ 'Cursor',
-          \ 'VisualNC',
           \ 'WildMenu',
           \ 'Folded',
           \ 'FoldColumn',
           \ 'DiffAdd',
           \ 'DiffChange',
           \ 'DiffText',
-          \ 'SignColumn',
           \ 'TabLine',
           \ ]
     let hi_idx = 0
     let hi_groups_len = len(hi_groups)
     let s:groups = []
+    let icons = clap#icon#get_all()
     for idx in range(len(icons))
       let group = 'ClapIcon'.idx
       call add(s:groups, group)
-      let icon = icons[idx]
-      execute 'syntax match' group '/'.icon.'/' 'contained'
-      " execute 'highlight default link' group hi_groups[hi_idx]
+      execute 'syntax match' group '/'.icons[idx].'/' 'contained'
       execute 'hi!' group s:get_attrs(hi_groups[hi_idx])
       let hi_idx += 1
       let hi_idx = hi_idx % hi_groups_len
@@ -65,9 +62,9 @@ if !exists('s:hi_icon')
   let s:hi_icon = 1
 endif
 
-syntax match ClapLinNr /^.*:\zs\d\+\ze:\d\+:/hs=s+1,he=e-1
-syntax match ClapColumn /:\d\+:\zs\d\+\ze:/ contains=ClapLinNr
-syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn
+syntax match ClapLinNr /^.*:\zs\d\+\ze:\d\+:/hs=s+1,he=e-1 contained
+syntax match ClapColumn /:\d\+:\zs\d\+\ze:/ contains=ClapLinNr contained
+syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn contained
 
 execute 'syntax match ClapFpath' '/^.*:\d\+:\d\+:/' 'contains=ClapLinNrColumn,'.join(s:groups, ',')
 
