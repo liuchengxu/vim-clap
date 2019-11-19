@@ -267,9 +267,10 @@ function! clap#for(provider_id_or_alias) abort
     return
   endif
 
-  if exists('g:__clap_provider_cwd')
-    unlet g:__clap_provider_cwd
-  endif
+  call s:unlet_vars([
+        \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_raw_source',
+        \ ])
 
   call clap#handler#init()
 
