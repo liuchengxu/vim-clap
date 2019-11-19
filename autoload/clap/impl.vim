@@ -64,7 +64,13 @@ function! s:on_typed_sync_impl() abort
 
   let l:has_no_matches = v:false
 
-  let l:raw_lines = get(g:, '__clap_forerunner_result', s:get_source())
+  " Do not use get(g:, '__clap_forerunner_result', s:get_source()) as vim
+  " evaluates the default value of get(...) any how.
+  if exists('g:__clap_forerunner_result')
+    let l:raw_lines = g:__clap_forerunner_result
+  else
+    let l:raw_lines = s:get_source()
+  endif
   let l:lines = call(g:clap.provider.filter(), [l:cur_input, l:raw_lines])
 
   if empty(l:lines)
