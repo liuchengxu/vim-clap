@@ -11,18 +11,32 @@ let s:async_threshold = 10000
 " sync implementation
 " =======================================
 function! s:reset_on_empty_input() abort
-  call g:clap.display.set_lines_lazy(g:clap.provider.get_source())
-  let l:matches_cnt = g:clap.display.line_count() + len(g:clap.display.cache)
-  call clap#indicator#set_matches('['.l:matches_cnt.']')
+  call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
+  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
   call clap#sign#toggle_cursorline()
   call g:clap#display_win.compact_if_undersize()
 endfunction
 
-" FIXME: some sources could be cached.
+" g:__clap_forerunner_result is fetched in async.
+" g:clap.provider.get_source() is sync.
+function! s:get_cache_or_raw_source() abort
+  if exists('g:__clap_forerunner_result')
+    if !exists('g:__clap_initial_source_size')
+      let g:__clap_initial_source_size = g:clap.display.initial_size
+    endif
+    return g:__clap_forerunner_result
+  endif
+  if !exists('g:__clap_raw_source')
+    let g:__clap_raw_source = g:clap.provider.get_source()
+    let g:__clap_initial_source_size = len(g:__clap_raw_source)
+  endif
+  return g:__clap_raw_source
+endfunction
+
 function! s:get_source() abort
   if get(g:, '__clap_should_refilter', v:false)
         \ || get(g:, '__clap_do_not_use_cache', v:false)
-    let l:lines = g:clap.provider.get_source()
+    let l:lines = s:get_cache_or_raw_source()
     let g:__clap_should_refilter = v:false
     let g:__clap_do_not_use_cache = v:false
   else
@@ -31,7 +45,7 @@ function! s:get_source() abort
 
     " If there is no matches for the current filtered result, restore to the original source.
     if l:lines == [g:clap_no_matches_msg]
-      let l:lines = g:clap.provider.get_source()
+      let l:lines = s:get_cache_or_raw_source()
     endif
   endif
   return l:lines
@@ -65,7 +79,7 @@ function! s:on_typed_sync_impl() abort
   let l:has_no_matches = v:false
 
   " Do not use get(g:, '__clap_forerunner_result', s:get_source()) as vim
-  " evaluates the default any how.
+  " evaluates the default value of get(...) any how.
   if exists('g:__clap_forerunner_result')
     let l:raw_lines = g:__clap_forerunner_result
   else
