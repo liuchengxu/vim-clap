@@ -18,6 +18,8 @@ function! s:reset_on_empty_input() abort
   call g:clap#display_win.compact_if_undersize()
 endfunction
 
+" g:__clap_forerunner_result is fetched in async.
+" g:clap.provider.get_source() is sync.
 function! s:get_cache_or_raw_source() abort
   if exists('g:__clap_forerunner_result')
     return g:__clap_forerunner_result
@@ -28,7 +30,6 @@ function! s:get_cache_or_raw_source() abort
   return g:__clap_raw_source
 endfunction
 
-" FIXME: some sources could be cached.
 function! s:get_source() abort
   if get(g:, '__clap_should_refilter', v:false)
         \ || get(g:, '__clap_do_not_use_cache', v:false)
