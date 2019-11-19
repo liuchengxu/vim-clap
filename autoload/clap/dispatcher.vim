@@ -8,8 +8,6 @@ let s:job_timer = -1
 let s:dispatcher_delay = 300
 let s:job_id = -1
 
-let s:is_win = has('win32')
-
 let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
 
 function! s:jobstop() abort
@@ -219,12 +217,7 @@ else
   endfunction
 
   function! s:job_start(cmd) abort
-    if s:is_win
-      let cmd = &shell . ' ' . &shellcmdflag . ' ' . a:cmd
-    else
-      let cmd = split(&shell) + split(&shellcmdflag) + [a:cmd]
-    endif
-    let job = job_start(cmd, {
+    let job = job_start(clap#job#wrap_cmd(a:cmd), {
           \ 'in_io': 'null',
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),

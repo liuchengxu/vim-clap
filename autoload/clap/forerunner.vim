@@ -61,7 +61,7 @@ if has('nvim')
   endfunction
 else
   function! s:start_forerunner(cmd) abort
-    let job = job_start(['bash', '-c', a:cmd], {
+    let job = job_start(clap#job#wrap_cmd(a:cmd), {
           \ 'in_io': 'null',
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,

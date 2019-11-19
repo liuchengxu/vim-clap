@@ -287,7 +287,7 @@ function! s:hl_cursor() abort
   if exists('w:clap_cursor_id')
     call matchdelete(w:clap_cursor_id)
   endif
-  let w:clap_cursor_id = matchaddpos('Cursor', [[1, s:cursor_idx + 1, s:cursor_width]])
+  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, s:cursor_idx + 1, s:cursor_width]])
 endfunction
 
 function! s:mock_input() abort
