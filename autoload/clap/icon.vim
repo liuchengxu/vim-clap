@@ -190,8 +190,9 @@ function! clap#icon#get_all() abort
     let s:icon_set = []
     call extend(s:icon_set, extensions + exact_matches + pattern_matches)
     call add(s:icon_set, g:clap#icon#default)
+    let s:icon_set = uniq(s:icon_set)
   endif
-  return uniq(s:icon_set)
+  return s:icon_set
 endfunction
 
 function! s:get_color(group, attr) abort
