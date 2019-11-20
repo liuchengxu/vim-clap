@@ -228,7 +228,6 @@ let s:linked_groups = [
       \ 'Type',
       \ 'Number',
       \ 'Float',
-      \ 'CursorLineNr',
       \ 'Question',
       \ 'Title',
       \ 'Cursor',
