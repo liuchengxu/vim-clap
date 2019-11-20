@@ -141,7 +141,11 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
           \ v:exception,
           \ ))
   finally
-    execute 'lcd' save_cwd
+  " If the sink function changes cwd intentionally? Then we
+  " should not restore to the current cwd after executing the sink function.
+    if getcwd(winnr()) ==# a:target_dir
+      execute 'lcd' save_cwd
+    endif
   endtry
   return exists('l:result') ? l:result : []
 endfunction
@@ -166,9 +170,6 @@ function! clap#util#run_rooter(Run, ...) abort
 endfunction
 
 " This is used for the sink function.
-"
-" what if the sink function changes cwd intentionally? Then we
-" should not restore to the current cwd after executing the sink function.
 function! clap#util#run_rooter_heuristic(Run, ...) abort
   if exists('g:__clap_provider_cwd')
     return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
