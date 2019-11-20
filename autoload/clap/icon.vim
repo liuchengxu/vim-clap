@@ -245,7 +245,7 @@ let s:linked_groups_len = len(s:linked_groups)
 
 call clap#icon#def_color_components()
 
-function! s:add_hl_groups() abort
+function! clap#icon#add_hl_groups() abort
   let lk_idx = 0
   let groups = []
   let icons = clap#icon#get_all()
@@ -258,10 +258,6 @@ function! s:add_hl_groups() abort
     let lk_idx = lk_idx % s:linked_groups_len
   endfor
   return groups
-endfunction
-
-function! clap#icon#add_hl_groups() abort
-  return s:add_hl_groups()
 endfunction
 
 let &cpoptions = s:save_cpo
