@@ -183,13 +183,84 @@ function! clap#icon#for(bufname) abort
 endfunction
 
 function! clap#icon#get_all() abort
-  let extensions = values(g:clap#icon#extensions)
-  let exact_matches = values(g:clap#icon#exact_matches)
-  let pattern_matches = values(g:clap#icon#pattern_matches)
-  let all = []
-  call extend(all, extensions + exact_matches + pattern_matches)
-  call add(all, g:clap#icon#default)
-  return uniq(all)
+  if !exists('s:icon_set')
+    let extensions = values(g:clap#icon#extensions)
+    let exact_matches = values(g:clap#icon#exact_matches)
+    let pattern_matches = values(g:clap#icon#pattern_matches)
+    let s:icon_set = []
+    call extend(s:icon_set, extensions + exact_matches + pattern_matches)
+    call add(s:icon_set, g:clap#icon#default)
+  endif
+  return uniq(s:icon_set)
+endfunction
+
+function! s:get_color(group, attr) abort
+  return synIDattr(synIDtrans(hlID(a:group)), a:attr)
+endfunction
+
+function! s:get_attrs(group) abort
+  let fg = s:get_color(a:group, 'fg')
+  if empty(fg)
+    let fg = s:normal_fg
+  endif
+  " guibg=NONE ctermbg=NONE is neccessary otherwise the bg could be unexpected.
+  return printf('%sbg=%s %sfg=%s guibg=NONE ctermbg=NONE', s:gui_or_cterm, s:normal_bg, s:gui_or_cterm, fg)
+endfunction
+
+function! clap#icon#def_color_components() abort
+  let s:use_gui = has('gui_running') || (has('termguicolors') && &termguicolors)
+  let s:gui_or_cterm = s:use_gui ? 'gui' : 'cterm'
+
+  let s:normal_fg = s:get_color('Normal', 'fg')
+  if empty(s:normal_fg)
+    let s:normal_fg = s:gui_or_cterm ==# 'gui' ? '#b2b2b2' : 249
+  endif
+
+  let s:normal_bg = s:get_color('Normal', 'bg')
+  if empty(s:normal_bg)
+    let s:normal_bg = s:gui_or_cterm ==# 'gui' ? '#292b2e' : 235
+  endif
+endfunction
+
+let s:linked_groups = [
+      \ 'ModeMsg',
+      \ 'Type',
+      \ 'Number',
+      \ 'Float',
+      \ 'CursorLineNr',
+      \ 'Question',
+      \ 'Title',
+      \ 'Cursor',
+      \ 'WildMenu',
+      \ 'Folded',
+      \ 'FoldColumn',
+      \ 'DiffAdd',
+      \ 'DiffChange',
+      \ 'DiffText',
+      \ 'TabLine',
+      \ ]
+
+let s:linked_groups_len = len(s:linked_groups)
+
+call clap#icon#def_color_components()
+
+function! s:add_hl_groups() abort
+  let lk_idx = 0
+  let groups = []
+  let icons = clap#icon#get_all()
+  for idx in range(len(icons))
+    let group = 'ClapIcon'.idx
+    call add(groups, group)
+    execute 'syntax match' group '/'.icons[idx].'/' 'contained'
+    execute 'hi!' group s:get_attrs(s:linked_groups[lk_idx])
+    let lk_idx += 1
+    let lk_idx = lk_idx % s:linked_groups_len
+  endfor
+  return groups
+endfunction
+
+function! clap#icon#add_hl_groups() abort
+  return s:add_hl_groups()
 endfunction
 
 let &cpoptions = s:save_cpo
