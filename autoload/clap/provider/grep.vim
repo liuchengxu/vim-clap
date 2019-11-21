@@ -81,7 +81,7 @@ function! s:spawn(query) abort
   " This should happen before the new job.
   call g:clap.display.clear()
 
-  call clap#util#run_rooter(function('clap#dispatcher#job_start'), s:cmd(query))
+  call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
 
   " Consistent with --smart-case of rg
   " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.

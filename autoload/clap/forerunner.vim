@@ -73,7 +73,7 @@ endif
 
 function! clap#forerunner#start(cmd) abort
   let s:chunks = []
-  call clap#util#run_rooter(function('s:start_forerunner'), a:cmd)
+  call clap#rooter#run(function('s:start_forerunner'), a:cmd)
 endfunction
 
 function! clap#forerunner#stop() abort

@@ -260,7 +260,7 @@ function! s:has_no_matches() abort
 endfunction
 
 function! s:apply_job_start(_timer) abort
-  call clap#util#run_rooter(function('s:job_start'), s:cmd)
+  call clap#rooter#run(function('s:job_start'), s:cmd)
 
   let s:executed_time = strftime('%Y-%m-%d %H:%M:%S')
   let s:executed_cmd = s:cmd
