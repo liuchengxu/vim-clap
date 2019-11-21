@@ -147,6 +147,7 @@ function! s:colorschme_adaptive() abort
   call s:hi_display_invisible()
   call s:hi_preview_invisible()
   call s:hl_clap_symbol()
+  call clap#icon#def_color_components()
 endfunction
 
 function! s:init_hi_groups() abort

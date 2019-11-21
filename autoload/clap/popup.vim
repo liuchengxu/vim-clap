@@ -472,7 +472,12 @@ function! s:popup_filter(winid, key) abort
       return 1
     endif
 
+    if a:key ==? "\<CursorHold>"
+      return 0
+    endif
+
     let char_nr = char2nr(a:key)
+
     " ASCII printable characters
     if char_nr >= 32 && char_nr < 126
       call s:move_manager.printable(a:key)
