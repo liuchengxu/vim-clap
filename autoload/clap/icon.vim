@@ -230,14 +230,21 @@ let s:linked_groups = [
       \ 'Float',
       \ 'Question',
       \ 'Title',
-      \ 'Cursor',
+      \ 'Identifier',
+      \ 'Repeat',
+      \ 'Keyword',
+      \ 'Constant',
+      \ 'String',
+      \ 'Character',
+      \ 'Statement',
       \ 'WildMenu',
       \ 'Folded',
       \ 'FoldColumn',
       \ 'DiffAdd',
       \ 'DiffChange',
       \ 'DiffText',
-      \ 'TabLine',
+      \ 'Function',
+      \ 'Define',
       \ ]
 
 let s:linked_groups_len = len(s:linked_groups)
