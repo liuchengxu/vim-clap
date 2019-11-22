@@ -17,16 +17,13 @@ endfunction
 
 function! s:extract_or(group, what, gui_or_cterm, default) abort
   let v = s:extract(a:group, a:what, a:gui_or_cterm)
-  if empty(v)
-    return a:default
-  endif
-  return v
+  return empty(v) ? a:default : v
 endfunction
 
 function! s:hi_display_invisible() abort
   " People can use their own display highlight group, so can't use s:display_default_hi_group here.
   let guibg = s:extract_or(s:display_group, 'bg', 'gui', '#544a65')
-  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', 60)
+  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', '60')
   execute printf(
         \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
         \ ctermbg,
@@ -59,6 +56,19 @@ function! s:hi_spinner() abort
         \ )
 endfunction
 
+function! s:or_hi(group_name, cermfg, guifg) abort
+  if !hlexists(a:group_name)
+    execute printf(
+          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
+          \ a:group_name,
+          \ a:cermfg,
+          \ a:guifg,
+          \ 'NONE',
+          \ 'NONE',
+          \ )
+  endif
+endfunction
+
 function! s:init_submatches_hl_group() abort
   let clap_sub_matches = [
         \ [173 , '#e18254'] ,
@@ -71,53 +81,39 @@ function! s:init_submatches_hl_group() abort
         \ [29  , '#2d9574'] ,
         \ ]
 
-  let idx = 1
-  for g in clap_sub_matches
-    if !hlexists('ClapMatches'.idx)
-      execute printf(
-            \ 'hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
-            \ g[1],
-            \ g[0],
-            \ 'NONE',
-            \ 'NONE',
-            \ )
-      let idx += 1
-    endif
-  endfor
+  " idx from 1
+  call map(clap_sub_matches, 's:or_hi("ClapMatches".(v:key+1), v:val[0], v:val[1])')
 endfunction
 
-function! s:init_fuzzy_matches_hl_group() abort
-  let clap_fuzzy_matches = [
-        \ [118 , '#87ff00'] ,
-        \ [82  , '#5fff00'] ,
-        \ [46  , '#00ff00'] ,
-        \ [47  , '#00ff5f'] ,
-        \ [48  , '#00ff87'] ,
-        \ [49  , '#00ffaf'] ,
-        \ [50  , '#00ffd7'] ,
-        \ [51  , '#00ffff'] ,
-        \ [87  , '#5fffff'] ,
-        \ [123 , '#87ffff'] ,
-        \ [159 , '#afffff'] ,
-        \ [195 , '#d7ffff'] ,
-        \ ]
+function! s:add_fuzzy_match_hl_group(idx, ctermfg, guifg) abort
+  call s:or_hi('ClapFuzzyMatches'.a:idx, a:ctermfg, a:guifg)
+  if !s:is_nvim
+    call prop_type_add('ClapFuzzyMatches'.a:idx, {'highlight': 'ClapFuzzyMatches'.a:idx})
+  endif
+endfunction
 
-  let idx = 1
-  for g in clap_fuzzy_matches
-    if !hlexists('ClapFuzzyMatches'.idx)
-      execute printf(
-            \ 'hi ClapFuzzyMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
-            \ g[1],
-            \ g[0],
-            \ 'NONE',
-            \ 'NONE',
-            \ )
-    endif
-    if !s:is_nvim
-      call prop_type_add('ClapFuzzyMatches'.idx, {'highlight': 'ClapFuzzyMatches'.idx})
-    endif
-    let idx += 1
-  endfor
+function! s:init_fuzzy_match_hl_groups() abort
+  if exists('g:clap_fuzzy_match_hl_groups')
+    let clap_fuzzy_matches = g:clap_fuzzy_match_hl_groups
+  else
+    let clap_fuzzy_matches = [
+          \ [118 , '#87ff00'] ,
+          \ [82  , '#5fff00'] ,
+          \ [46  , '#00ff00'] ,
+          \ [47  , '#00ff5f'] ,
+          \ [48  , '#00ff87'] ,
+          \ [49  , '#00ffaf'] ,
+          \ [50  , '#00ffd7'] ,
+          \ [51  , '#00ffff'] ,
+          \ [87  , '#5fffff'] ,
+          \ [123 , '#87ffff'] ,
+          \ [159 , '#afffff'] ,
+          \ [195 , '#d7ffff'] ,
+          \ ]
+  endif
+
+  " idx from 1
+  call map(clap_fuzzy_matches, 's:add_fuzzy_match_hl_group(v:key+1, v:val[0], v:val[1])')
 
   let g:__clap_fuzzy_matches_hl_group_cnt = len(clap_fuzzy_matches)
   let g:__clap_fuzzy_last_hl_group = 'ClapFuzzyMatches'.g:__clap_fuzzy_matches_hl_group_cnt
@@ -212,7 +208,7 @@ function! s:init_hi_groups() abort
   call s:ensure_hl_exists('ClapCurrentSelection', 'ClapDefaultCurrentSelection')
 
   call s:init_submatches_hl_group()
-  call s:init_fuzzy_matches_hl_group()
+  call s:init_fuzzy_match_hl_groups()
 endfunction
 
 if has('nvim')
