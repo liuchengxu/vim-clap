@@ -201,7 +201,7 @@ function! s:init_hi_groups() abort
   call s:init_fuzzy_match_hl_groups()
 endfunction
 
-if has('nvim')
+if s:is_nvim
   function! s:reconfigure_display_opts() abort
     call clap#floating_win#reconfigure_display_opts()
   endfunction
