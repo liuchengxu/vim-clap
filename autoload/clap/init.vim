@@ -86,9 +86,10 @@ function! s:init_submatches_hl_group() abort
 endfunction
 
 function! s:add_fuzzy_match_hl_group(idx, ctermfg, guifg) abort
-  call s:or_hi('ClapFuzzyMatches'.a:idx, a:ctermfg, a:guifg)
+  let group_name = 'ClapFuzzyMatches'.a:idx
+  call s:or_hi(group_name, a:ctermfg, a:guifg)
   if !s:is_nvim
-    call prop_type_add('ClapFuzzyMatches'.a:idx, {'highlight': 'ClapFuzzyMatches'.a:idx})
+    call prop_type_add(group_name, {'highlight': group_name})
   endif
 endfunction
 
