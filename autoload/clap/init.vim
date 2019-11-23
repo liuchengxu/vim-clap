@@ -17,16 +17,13 @@ endfunction
 
 function! s:extract_or(group, what, gui_or_cterm, default) abort
   let v = s:extract(a:group, a:what, a:gui_or_cterm)
-  if empty(v)
-    return a:default
-  endif
-  return v
+  return empty(v) ? a:default : v
 endfunction
 
 function! s:hi_display_invisible() abort
   " People can use their own display highlight group, so can't use s:display_default_hi_group here.
   let guibg = s:extract_or(s:display_group, 'bg', 'gui', '#544a65')
-  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', 60)
+  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', '60')
   execute printf(
         \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
         \ ctermbg,
@@ -59,6 +56,19 @@ function! s:hi_spinner() abort
         \ )
 endfunction
 
+function! s:or_hi(group_name, cermfg, guifg) abort
+  if !hlexists(a:group_name)
+    execute printf(
+          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
+          \ a:group_name,
+          \ a:cermfg,
+          \ a:guifg,
+          \ 'NONE',
+          \ 'NONE',
+          \ )
+  endif
+endfunction
+
 function! s:init_submatches_hl_group() abort
   let clap_sub_matches = [
         \ [173 , '#e18254'] ,
@@ -71,53 +81,40 @@ function! s:init_submatches_hl_group() abort
         \ [29  , '#2d9574'] ,
         \ ]
 
-  let idx = 1
-  for g in clap_sub_matches
-    if !hlexists('ClapMatches'.idx)
-      execute printf(
-            \ 'hi ClapMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
-            \ g[1],
-            \ g[0],
-            \ 'NONE',
-            \ 'NONE',
-            \ )
-      let idx += 1
-    endif
-  endfor
+  " idx from 1
+  call map(clap_sub_matches, 's:or_hi("ClapMatches".(v:key+1), v:val[0], v:val[1])')
 endfunction
 
-function! s:init_fuzzy_matches_hl_group() abort
-  let clap_fuzzy_matches = [
-        \ [118 , '#87ff00'] ,
-        \ [82  , '#5fff00'] ,
-        \ [46  , '#00ff00'] ,
-        \ [47  , '#00ff5f'] ,
-        \ [48  , '#00ff87'] ,
-        \ [49  , '#00ffaf'] ,
-        \ [50  , '#00ffd7'] ,
-        \ [51  , '#00ffff'] ,
-        \ [87  , '#5fffff'] ,
-        \ [123 , '#87ffff'] ,
-        \ [159 , '#afffff'] ,
-        \ [195 , '#d7ffff'] ,
-        \ ]
+function! s:add_fuzzy_match_hl_group(idx, ctermfg, guifg) abort
+  let group_name = 'ClapFuzzyMatches'.a:idx
+  call s:or_hi(group_name, a:ctermfg, a:guifg)
+  if !s:is_nvim
+    call prop_type_add(group_name, {'highlight': group_name})
+  endif
+endfunction
 
-  let idx = 1
-  for g in clap_fuzzy_matches
-    if !hlexists('ClapFuzzyMatches'.idx)
-      execute printf(
-            \ 'hi ClapFuzzyMatches%s guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold', idx,
-            \ g[1],
-            \ g[0],
-            \ 'NONE',
-            \ 'NONE',
-            \ )
-    endif
-    if !s:is_nvim
-      call prop_type_add('ClapFuzzyMatches'.idx, {'highlight': 'ClapFuzzyMatches'.idx})
-    endif
-    let idx += 1
-  endfor
+function! s:init_fuzzy_match_hl_groups() abort
+  if exists('g:clap_fuzzy_match_hl_groups')
+    let clap_fuzzy_matches = g:clap_fuzzy_match_hl_groups
+  else
+    let clap_fuzzy_matches = [
+          \ [118 , '#87ff00'] ,
+          \ [82  , '#5fff00'] ,
+          \ [46  , '#00ff00'] ,
+          \ [47  , '#00ff5f'] ,
+          \ [48  , '#00ff87'] ,
+          \ [49  , '#00ffaf'] ,
+          \ [50  , '#00ffd7'] ,
+          \ [51  , '#00ffff'] ,
+          \ [87  , '#5fffff'] ,
+          \ [123 , '#87ffff'] ,
+          \ [159 , '#afffff'] ,
+          \ [195 , '#d7ffff'] ,
+          \ ]
+  endif
+
+  " idx from 1
+  call map(clap_fuzzy_matches, 's:add_fuzzy_match_hl_group(v:key+1, v:val[0], v:val[1])')
 
   let g:__clap_fuzzy_matches_hl_group_cnt = len(clap_fuzzy_matches)
   let g:__clap_fuzzy_last_hl_group = 'ClapFuzzyMatches'.g:__clap_fuzzy_matches_hl_group_cnt
@@ -129,7 +126,7 @@ function! s:ensure_hl_exists(group, default) abort
   endif
 endfunction
 
-function! s:hl_clap_symbol() abort
+function! s:hi_clap_symbol() abort
   let input_ctermbg = s:extract_or('ClapInput', 'bg', 'cterm', '60')
   let input_guibg = s:extract_or('ClapInput', 'bg', 'gui', '#544a65')
   let normal_ctermfg = s:extract_or('Normal', 'bg', 'cterm', '249')
@@ -146,7 +143,7 @@ endfunction
 function! s:colorschme_adaptive() abort
   call s:hi_display_invisible()
   call s:hi_preview_invisible()
-  call s:hl_clap_symbol()
+  call s:hi_clap_symbol()
   call clap#icon#def_color_components()
 endfunction
 
@@ -159,7 +156,6 @@ function! s:init_hi_groups() abort
     augroup END
   endif
 
-  call s:ensure_hl_exists('ClapInput', s:input_default_hi_group)
   if !hlexists('ClapQuery')
     " A bit repeatation code here in case of ClapSpinner is defined explicitly.
     let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
@@ -175,29 +171,12 @@ function! s:init_hi_groups() abort
           \ )
   endif
 
-  call s:hl_clap_symbol()
+  call s:hi_clap_symbol()
 
-  if !hlexists('ClapDisplay')
-    execute 'hi default link ClapDisplay' s:display_default_hi_group
-    let s:display_group = s:display_default_hi_group
-  else
-    let s:display_group = 'ClapDisplay'
-  endif
-
+  let s:display_group = hlexists('ClapDisplay') ? 'ClapDisplay' : s:display_default_hi_group
   call s:hi_display_invisible()
 
-  hi default link ClapPopupCursor Type
-
-  hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
-  hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-  hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
-
-  if !hlexists('ClapPreview')
-    hi default link ClapPreview ClapDefaultPreview
-    let s:preview_group = 'ClapDefaultPreview'
-  else
-    let s:preview_group = 'ClapPreview'
-  endif
+  let s:preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
   call s:hi_preview_invisible()
 
   augroup ClapColorSchemeAdaptive
@@ -205,17 +184,25 @@ function! s:init_hi_groups() abort
     autocmd ColorScheme * call s:colorschme_adaptive()
   augroup END
 
-  " For the found matches highlight
-  call s:ensure_hl_exists('ClapMatches', 'Search')
-  call s:ensure_hl_exists('ClapNoMatchesFound', 'ErrorMsg')
-  call s:ensure_hl_exists('ClapSelected', 'ClapDefaultSelected')
-  call s:ensure_hl_exists('ClapCurrentSelection', 'ClapDefaultCurrentSelection')
+  hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
+  hi ClapDefaultSelected         ctermfg=80  guifg=#5fd7d7 cterm=bold,underline gui=bold,underline
+  hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
+
+  hi default link ClapMatches Search
+  hi default link ClapPreview ClapDefaultPreview
+  hi default link ClapSelected ClapDefaultSelected
+  hi default link ClapPopupCursor Type
+  hi default link ClapNoMatchesFound ErrorMsg
+  hi default link ClapCurrentSelection ClapDefaultCurrentSelection
+
+  execute 'hi default link ClapInput' s:input_default_hi_group
+  execute 'hi default link ClapDisplay' s:display_default_hi_group
 
   call s:init_submatches_hl_group()
-  call s:init_fuzzy_matches_hl_group()
+  call s:init_fuzzy_match_hl_groups()
 endfunction
 
-if has('nvim')
+if s:is_nvim
   function! s:reconfigure_display_opts() abort
     call clap#floating_win#reconfigure_display_opts()
   endfunction

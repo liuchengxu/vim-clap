@@ -472,8 +472,9 @@ function! s:popup_filter(winid, key) abort
       return 1
     endif
 
+    " Should catch every key.
     if a:key ==? "\<CursorHold>"
-      return 0
+      return 1
     endif
 
     let char_nr = char2nr(a:key)

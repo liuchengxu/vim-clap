@@ -121,6 +121,10 @@ function! clap#_init() abort
   call clap#spinner#init()
 
   call g:clap.provider.init_display_win()
+
+  " Ensure the filetype is empty on init.
+  " Each provider can set its own filetype for the highlight purpose.
+  call g:clap.display.setbufvar('&filetype', '')
 endfunction
 
 function! s:unlet_vars(vars) abort
@@ -303,7 +307,6 @@ if !exists('g:clap')
         \ 'source': function('s:_source'),
         \ 'sink': function('s:_sink'),
         \ 'on_enter': { -> g:clap.display.setbufvar('&ft', 'clap_global') },
-        \ 'on_exit': { -> g:clap.display.setbufvar('&ft', '') },
         \ })
 endif
 
