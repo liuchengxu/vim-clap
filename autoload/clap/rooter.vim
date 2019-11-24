@@ -6,6 +6,9 @@ set cpoptions&vim
 
 " Some providers may change the cwd via the passed option, e.g., Clap files
 " and Clap grep.
+"
+" Skip if g:__clap_provider_cwd already exists as it only has be done once in
+" each provider context.
 function! clap#rooter#try_set_cwd() abort
   if !exists('g:__clap_provider_cwd') && !empty(g:clap.provider.args)
     let dir = g:clap.provider.args[-1]
