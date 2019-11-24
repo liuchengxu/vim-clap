@@ -319,7 +319,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.sink_star(lines) abort
-    call self._()['sink*'](a:lines)
+    call clap#rooter#run_heuristic(self._()['sink*'], a:lines)
   endfunction
 
   function! provider.on_enter() abort
