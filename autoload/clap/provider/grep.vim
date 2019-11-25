@@ -81,6 +81,8 @@ function! s:spawn(query) abort
   " This should happen before the new job.
   call g:clap.display.clear()
 
+  call clap#rooter#try_set_cwd()
+
   call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
 
   " Consistent with --smart-case of rg

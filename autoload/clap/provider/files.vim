@@ -29,13 +29,7 @@ else
 endif
 
 function! s:files.source() abort
-  if !empty(g:clap.provider.args)
-    let dir = g:clap.provider.args[-1]
-    if isdirectory(expand(dir))
-      let g:__clap_provider_cwd = dir
-      let g:clap.provider.args = g:clap.provider.args[:-2]
-    endif
-  endif
+  call clap#rooter#try_set_cwd()
 
   if has_key(g:clap.context, 'finder')
     let finder = g:clap.context.finder
