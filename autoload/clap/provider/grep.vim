@@ -45,7 +45,7 @@ function! s:cmd(query) abort
   if ridx == -1
     let query = a:query
   else
-    let matched = matchlist(a:query[ridx+1:], '^\(!\?\*\)\.\(.*\)$')
+    let matched = matchlist(a:query[ridx+1:], '^\(.*\)\.\(.*\)$')
     if !empty(matched)
       let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
       let query = a:query[:ridx-1]
@@ -80,7 +80,6 @@ function! s:spawn(query) abort
 
   call s:clear_job_and_matches()
 
-  let s:old_pos = getcurpos()
   let s:old_query = query
 
   " Clear the previous search result and reset cache.
