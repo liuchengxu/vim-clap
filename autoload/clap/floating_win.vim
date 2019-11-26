@@ -207,10 +207,11 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! clap#floating_win#preview.show(lines) abort
+  let height = len(a:lines)
   if !exists('s:preview_winid')
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row += opts.height
-    let opts.height = opts.height / 2
+    let opts.height = height
 
     silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
 
@@ -225,6 +226,12 @@ function! clap#floating_win#preview.show(lines) abort
 
     let g:clap#floating_win#preview.winid = s:preview_winid
     let g:clap#floating_win#preview.bufnr = s:preview_bufnr
+  else
+    let opts = nvim_win_get_config(s:preview_winid)
+    if opts.height != height
+      let opts.height = height
+      call nvim_win_set_config(s:preview_winid, opts)
+    endif
   endif
   call clap#util#nvim_buf_set_lines(s:preview_bufnr, a:lines)
 endfunction

@@ -13,7 +13,7 @@ function! s:jumps.source() abort
   redir END
   call g:clap.input.goto_win()
   let s:jumplist = split(cout, '\n')
-  return s:jumplist
+  return [s:jumplist[0]] + reverse(s:jumplist[1:])
 endfunction
 
 function! s:jumps.sink(line) abort
