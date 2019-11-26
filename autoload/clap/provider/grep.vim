@@ -41,14 +41,20 @@ function! s:cmd(query) abort
     let grep_opts = s:grep_opts
   endif
 
-  if !empty(g:clap.provider.args)
-    let dir = g:clap.provider.args[-1]
-    if isdirectory(expand(dir))
-      let g:__clap_provider_cwd = dir
+  let ridx = strridx(a:query, ' ')
+  if ridx == -1
+    let query = a:query
+  else
+    let matched = matchlist(a:query[ridx+1:], '^\(!\?\*\)\.\(.*\)$')
+    if !empty(matched)
+      let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
+      let query = a:query[:ridx-1]
+    else
+      let query = a:query
     endif
   endif
 
-  let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, a:query)
+  let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction
