@@ -75,7 +75,7 @@ function! s:spawn(query) abort
 
   call s:clear_job_and_matches()
 
-  let s:old_pos = getcurpos()
+  let s:preview_cache = {}
   let s:old_query = query
 
   " Clear the previous search result and reset cache.
@@ -113,9 +113,6 @@ function! s:grep_on_move() abort
   let cur_line = g:clap.display.getcurline()
   let matched = s:matchlist(cur_line, pattern)
   let [fpath, lnum] = [matched[1], str2nr(matched[2])]
-  if !exists('s:preview_cache')
-    let s:preview_cache = {}
-  endif
   if !has_key(s:preview_cache, fpath)
     if filereadable(expand(fpath))
       let s:preview_cache[fpath] = {
@@ -128,8 +125,7 @@ function! s:grep_on_move() abort
     endif
   endif
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
-  echom string(matched)." start:end ".start.":".end
-  let preview_lines = s:preview_cache[fpath]['lines'][start:end]
+  let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call g:clap.preview.show(preview_lines)
   call g:clap.preview.load_syntax(s:preview_cache[fpath].filetype)
   call g:clap.preview.highlight(hi_lnum)
