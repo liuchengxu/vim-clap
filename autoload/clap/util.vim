@@ -198,8 +198,8 @@ endfunction
 
 if has('nvim')
 
-  " 0-based
   function! clap#util#add_highlight_at(lnum, col, hl_group) abort
+    " 0-based
     call nvim_buf_add_highlight(g:clap.display.bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
   endfunction
 

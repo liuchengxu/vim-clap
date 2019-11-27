@@ -342,6 +342,9 @@ function! s:init_provider() abort
 
   " When you press Ctrl-J/K
   function! provider.on_move() abort
+    if g:clap.display.getcurline() ==# g:clap_no_matches_msg
+      return
+    endif
     if has_key(self._(), 'on_move')
       if s:on_move_timer != -1
         call timer_stop(s:on_move_timer)
@@ -548,6 +551,13 @@ function! s:inject_base_api(dict) abort
   let dict.setbufvar_batch = function('s:_setbufvar_batch')
 endfunction
 
+function! s:matchaddpos(lnum) abort
+  if exists('w:clap_preview_hi_id')
+    call matchdelete(w:clap_preview_hi_id)
+  endif
+  let w:clap_preview_hi_id = matchaddpos('Search', [[a:lnum]])
+endfunction
+
 function! clap#api#bake() abort
   let g:clap = {}
   let g:clap.is_busy = 0
@@ -566,11 +576,32 @@ function! clap#api#bake() abort
 
   if s:is_nvim
     let g:clap.preview = g:clap#floating_win#preview
+
+    function! g:clap.preview.load_syntax(filetype) abort
+      call g:clap.preview.setbufvar('&ft', a:filetype)
+    endfunction
+
+    function! g:clap.preview.highlight(lnum) abort
+      noautocmd call win_gotoid(g:clap.preview.winid)
+      call s:matchaddpos(a:lnum)
+      noautocmd call win_gotoid(g:clap.input.winid)
+    endfunction
+
     let g:clap#display_win = g:clap#floating_win#display
     let g:clap.open_win = function('clap#floating_win#open')
     let g:clap.close_win = function('clap#floating_win#close')
   else
     let g:clap.preview = g:clap#popup#preview
+
+    function! g:clap.preview.load_syntax(filetype) abort
+      " vim using noautocmd in win_execute, hence we have to load the syntax file manually.
+      call win_execute(g:clap.preview.winid, 'runtime syntax/'.a:filetype.'.vim')
+    endfunction
+
+    function! g:clap.preview.highlight(lnum) abort
+      call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
+    endfunction
+
     let g:clap#display_win = g:clap#popup#display
     let g:clap.open_win = function('clap#popup#open')
     let g:clap.close_win = function('clap#popup#close')
