@@ -112,7 +112,11 @@ function! s:grep_on_move() abort
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
   let cur_line = g:clap.display.getcurline()
   let matched = s:matchlist(cur_line, pattern)
-  let [fpath, lnum] = [matched[1], str2nr(matched[2])]
+  try
+    let [fpath, lnum] = [matched[1], str2nr(matched[2])]
+  catch
+    return
+  endtry
   if !has_key(s:preview_cache, fpath)
     if filereadable(expand(fpath))
       let s:preview_cache[fpath] = {

@@ -253,8 +253,10 @@ endfunction
 
 function! s:has_no_matches() abort
   if g:clap.display.is_empty()
+    let g:__clap_has_no_matches = v:true
     return v:true
   else
+    let g:__clap_has_no_matches = v:false
     return v:false
   endif
 endfunction

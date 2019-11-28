@@ -342,7 +342,7 @@ function! s:init_provider() abort
 
   " When you press Ctrl-J/K
   function! provider.on_move() abort
-    if g:clap.display.getcurline() ==# g:clap_no_matches_msg
+    if g:__clap_has_no_matches
       return
     endif
     if has_key(self._(), 'on_move')
