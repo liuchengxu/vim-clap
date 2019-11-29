@@ -54,6 +54,11 @@ function! s:cmd(query) abort
     endif
   endif
 
+  " Consistent with --smart-case of rg
+  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
+  let ignore_case = query =~# '\u' ? '\C' : '\c'
+  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
+
   let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
   let g:clap.provider.cmd = cmd
   return cmd
@@ -90,12 +95,7 @@ function! s:spawn(query) abort
 
   call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
 
-  " Consistent with --smart-case of rg
-  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
-  let ignore_case = query =~# '\u' ? '\C' : '\c'
-  let pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
-
-  call g:clap.display.add_highlight(pattern)
+  call g:clap.display.add_highlight(s:hl_pattern)
 
   call clap#spinner#set_busy()
 endfunction
