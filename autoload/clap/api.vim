@@ -581,7 +581,7 @@ function! clap#api#bake() abort
       call g:clap.preview.setbufvar('&ft', a:filetype)
     endfunction
 
-    function! g:clap.preview.highlight(lnum) abort
+    function! g:clap.preview.add_highlight(lnum) abort
       noautocmd call win_gotoid(g:clap.preview.winid)
       call s:matchaddpos(a:lnum)
       noautocmd call win_gotoid(g:clap.input.winid)
@@ -598,7 +598,7 @@ function! clap#api#bake() abort
       call win_execute(g:clap.preview.winid, 'runtime syntax/'.a:filetype.'.vim')
     endfunction
 
-    function! g:clap.preview.highlight(lnum) abort
+    function! g:clap.preview.add_highlight(lnum) abort
       call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
     endfunction
 

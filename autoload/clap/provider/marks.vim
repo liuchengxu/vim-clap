@@ -65,7 +65,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
     if !empty(ft)
       call g:clap.preview.load_syntax(ft)
     endif
-    call g:clap.preview.highlight(hi_lnum)
+    call g:clap.preview.add_highlight(hi_lnum)
   endif
 endfunction
 

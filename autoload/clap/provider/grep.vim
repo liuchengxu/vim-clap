@@ -132,7 +132,7 @@ function! s:grep_on_move() abort
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call g:clap.preview.show(preview_lines)
   call g:clap.preview.load_syntax(s:preview_cache[fpath].filetype)
-  call g:clap.preview.highlight(hi_lnum)
+  call g:clap.preview.add_highlight(hi_lnum)
 endfunction
 
 function! s:grep_sink(selected) abort
