@@ -12,6 +12,7 @@ let s:grep_cmd_format = get(g:, 'clap_provider_grep_cmd_format', '%s %s "%s"'.(h
 
 let s:old_query = ''
 let s:grep_timer = -1
+let s:icon_appended = v:false
 
 if has('nvim')
   let s:default_prompt = 'Type anything you want to find'
@@ -74,7 +75,7 @@ function! s:spawn(query) abort
 
   call s:clear_job_and_matches()
 
-  let s:old_pos = getcurpos()
+  let s:preview_cache = {}
   let s:old_query = query
 
   " Clear the previous search result and reset cache.
@@ -99,22 +100,49 @@ function! s:grep_exit() abort
   call clap#dispatcher#jobstop()
 endfunction
 
+function! s:matchlist(line, pattern) abort
+  if s:icon_appended
+    return matchlist(a:line, '^.* '.a:pattern)
+  else
+    return matchlist(a:line, '^'.a:pattern)
+  endif
+endfunction
+
+function! s:grep_on_move() abort
+  let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
+  let cur_line = g:clap.display.getcurline()
+  let matched = s:matchlist(cur_line, pattern)
+  try
+    let [fpath, lnum] = [matched[1], str2nr(matched[2])]
+  catch
+    return
+  endtry
+  if !has_key(s:preview_cache, fpath)
+    if filereadable(expand(fpath))
+      let s:preview_cache[fpath] = {
+            \ 'lines': readfile(expand(fpath), ''),
+            \ 'filetype': clap#ext#into_filetype(fpath)
+            \ }
+    else
+      echom fpath.' is unreadable'
+      return
+    endif
+  endif
+  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+  let preview_lines = s:preview_cache[fpath]['lines'][start : end]
+  call g:clap.preview.show(preview_lines)
+  call g:clap.preview.load_syntax(s:preview_cache[fpath].filetype)
+  call g:clap.preview.add_highlight(hi_lnum)
+endfunction
+
 function! s:grep_sink(selected) abort
   call s:grep_exit()
   let line = a:selected
 
-  let pos_pattern = '\(.*\):\(\d\+\):\(\d\+\):'
-  if get(s:, 'icon_appended', v:false)
-    let matched = matchlist(line, '^.* '.pos_pattern)
-  else
-    let matched = matchlist(line, '^'.pos_pattern)
-  endif
-
+  let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
+  let matched = s:matchlist(line, pattern)
   let [fpath, linenr, column] = [matched[1], str2nr(matched[2]), str2nr(matched[3])]
   let s:icon_appended = v:false
-
-  " NOTE: Important!
-  call g:clap.start.goto_win()
 
   if has_key(g:clap, 'open_action')
     execute g:clap.open_action fpath
@@ -122,27 +150,23 @@ function! s:grep_sink(selected) abort
     " Cannot use noautocmd here as it would lose syntax, and ...
     execute 'edit' fpath
   endif
+
   noautocmd call cursor(linenr, column)
   normal! zz
   call call('clap#util#blink', s:grep_blink)
 endfunction
 
+function! s:into_qf_item(line, pattern) abort
+  let matched = s:matchlist(a:line, a:pattern)
+  let [fpath, linenr, column, text] = [matched[1], str2nr(matched[2]), str2nr(matched[3]), matched[4]]
+  return {'filename': fpath, 'lnum': linenr, 'col': column, 'text': text}
+endfunction
+
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
-  let qflist = []
-  for line in a:lines
-    let pos_pattern = '\(.*\):\(\d\+\):\(\d\+\):\(.*\)'
-    if get(s:, 'icon_appended', v:false)
-      let matched = matchlist(line, '^.* '.pos_pattern)
-    else
-      let matched = matchlist(line, '^'.pos_pattern)
-    endif
-    let [fpath, linenr, column, text] = [matched[1], str2nr(matched[2]), str2nr(matched[3]), matched[4]]
-    call add(qflist, {'filename': fpath, 'lnum': linenr, 'col': column, 'text': text})
-  endfor
+  let pattern = '\(.*\):\(\d\+\):\(\d\+\):\(.*\)'
+  call setqflist(map(a:lines, 's:into_qf_item(v:val, pattern)'))
   let s:icon_appended = v:false
-  call setqflist(qflist)
-  call g:clap.start.goto_win()
   copen
   cc
 endfunction
@@ -182,6 +206,8 @@ let s:grep.sink = function('s:grep_sink')
 let s:grep['sink*'] = function('s:grep_sink_star')
 
 let s:grep.on_typed = function('s:grep_with_delay')
+
+let s:grep.on_move = function('s:grep_on_move')
 
 let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
 

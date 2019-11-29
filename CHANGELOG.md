@@ -8,21 +8,30 @@ CHANGELOG
 - New provider `:Clap registers`.
 - New provider `:Clap command`.
 - Add a brief description for each provider used in `:Clap`.
+- Add syntax for `:Clap jumps`.
 - Add the option `g:clap_spinner_frames`.
 - Add the option `g:clap_prompt_format`.
 - Add the option `g:clap_enable_icon` for configuring the icon functionality globally.
 - Add the option `g:clap_popup_cursor_shape` for configuring the mocked cursor shape.
+- Add the options `g:clap_fuzzy_match_hl_groups` for configuring the color of fuzzy matched items easier.
 - Add an utility function `clap#helper#build_maple()` for building maple easily in vim. Use `:call clap#helper#build_maple()` to install maple inside vim.
+- Add the preview support for `:Clap grep`.
 - Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
 
 ### Changed
 
 - Put `call g:clap.provider.on_exit()` just before `silent doautocmd <nomodeline> User ClapOnExit` in `clap#_exit()`.
 
+### Improved
+
+- Reverse the original order of `jumps` to make the newer jump appear first.
+
 ### Fixed
 
 - sink of `:Clap command_history`.([#109](https://github.com/liuchengxu/vim-clap/issues/109))
 - Apply `redraw` when navigating and selecting via tab in vim's popup.
+- Fix `bg` of icon highlight([#132](https://github.com/liuchengxu/vim-clap/issues/132))
+- Use absolute directory for `g:__clap_provider_cwd` ([#137](https://github.com/liuchengxu/vim-clap/issues/137)).
 
 ## [0.1] 2019-10-27
 

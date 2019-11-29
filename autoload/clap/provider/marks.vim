@@ -6,8 +6,6 @@ set cpoptions&vim
 
 let s:marks = {}
 
-let s:ext_to_ft = {'rs': 'rust', 'js': 'javascript'}
-
 let s:preview_size = 5
 
 function! s:format_mark(line) abort
@@ -27,34 +25,6 @@ endfunction
 function! s:marks.sink(line) abort
   execute 'normal! `'.matchstr(a:line, '\S').'zz'
 endfunction
-
-function! s:matchaddpos(lnum) abort
-  if exists('w:clap_mark_hi_id')
-    call matchdelete(w:clap_mark_hi_id)
-  endif
-  let w:clap_mark_hi_id = matchaddpos('Search', [[a:lnum]])
-endfunction
-
-if has('nvim')
-  function! s:execute_matchaddpos(lnum) abort
-    noautocmd call win_gotoid(g:clap.preview.winid)
-    call s:matchaddpos(a:lnum)
-    noautocmd call win_gotoid(g:clap.input.winid)
-  endfunction
-
-  function! s:render_syntax(ft) abort
-    call g:clap.preview.setbufvar('&ft', a:ft)
-  endfunction
-else
-  function! s:execute_matchaddpos(lnum) abort
-    call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
-  endfunction
-
-  function! s:render_syntax(ft) abort
-    " vim using noautocmd in win_execute, hence we have to load the syntax file manually.
-    call win_execute(g:clap.preview.winid, 'runtime syntax/'.a:ft.'.vim')
-  endfunction
-endif
 
 function! clap#provider#marks#preview_impl(line, col, file_text) abort
   let [line, col, file_text] = [a:line, a:col, a:file_text]
@@ -90,17 +60,12 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
         let ft = fnamemodify(expand(bufname(origin_bufnr)), ':e')
       endif
     else
-      let ext = fnamemodify(file_text, ':e')
-      if !empty(ext) && has_key(s:ext_to_ft, ext)
-        let ft = s:ext_to_ft[ext]
-      else
-        let ft = ''
-      endif
+      let ft = clap#ext#into_filetype(file_text)
     endif
     if !empty(ft)
-      call s:render_syntax(ft)
+      call g:clap.preview.load_syntax(ft)
     endif
-    call s:execute_matchaddpos(hi_lnum)
+    call g:clap.preview.add_highlight(hi_lnum)
   endif
 endfunction
 
