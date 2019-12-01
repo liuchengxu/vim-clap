@@ -43,6 +43,14 @@ function! s:translate_query_and_opts(query) abort
   if ridx == -1
     let query = a:query
   else
+    " .vim => -g '*.vim'
+    if a:query[ridx+1:] =~# '^\.\a\+'
+      let ft = matchstr(a:query[ridx+1:], '^\.\zs\(.\+\)')
+      let grep_opts .= ' -g "*.'.ft.'"'
+      let query = a:query[:ridx-1]
+      return [grep_opts, query]
+    endif
+
     let matched = matchlist(a:query[ridx+1:], '^\(.*\)\.\(.*\)$')
     if !empty(matched)
       let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
