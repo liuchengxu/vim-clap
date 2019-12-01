@@ -143,7 +143,7 @@ function! clap#handler#sink() abort
     let sink_args = g:clap.display.getcurline()
   endif
 
-  call clap#handler#exit()
+  call clap#handler#internal_exit()
 
   try
     call Sink(sink_args)
@@ -155,7 +155,14 @@ function! clap#handler#sink() abort
   endtry
 endfunction
 
+" clap#handler#exit() = clap#handler#internal_exit() + external on_exit hook
 function! clap#handler#exit() abort
+  call clap#handler#internal_exit()
+  call g:clap.provider.on_exit()
+  silent doautocmd <nomodeline> User ClapOnExit
+endfunction
+
+function! clap#handler#internal_exit() abort
   let s:use_multi_selection = v:false
   let s:support_multi_selection = v:false
   call clap#exit()

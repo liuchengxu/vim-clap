@@ -6,8 +6,8 @@ set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:signed = []
-let s:sign_group = 'clapSelected'
-let s:sign_cur_group = 'clapCurrentSelected'
+let s:sign_group = 'PopUpClapSelected'
+let s:sign_cur_group = 'PopUpClapCurrentSelected'
 let s:last_signed_id = -1
 
 if !exists('s:sign_inited')
@@ -26,7 +26,7 @@ endif
 
 " lnum is the sign id
 function! s:place_sign_at(lnum) abort
-  call sign_place(a:lnum, s:sign_group, 'clapSelected', g:clap.display.bufnr, {'lnum': a:lnum})
+  call sign_place(a:lnum, s:sign_group, 'PopUpClapSelected', g:clap.display.bufnr, {'lnum': a:lnum})
 endfunction
 
 function! s:unplace_sign_at(sign_id) abort
@@ -34,7 +34,7 @@ function! s:unplace_sign_at(sign_id) abort
 endfunction
 
 function! s:place_cur_sign_at(lnum) abort
-  call sign_place(a:lnum, s:sign_cur_group, 'clapCurrentSelected', g:clap.display.bufnr, {'lnum': a:lnum})
+  call sign_place(a:lnum, s:sign_cur_group, 'PopUpClapCurrentSelected', g:clap.display.bufnr, {'lnum': a:lnum})
 endfunction
 
 function! s:unplace_cur_sign_at(sign_id) abort

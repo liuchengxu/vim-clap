@@ -76,7 +76,7 @@ function! s:on_typed_sync_impl() abort
 
   call clap#spinner#set_busy()
 
-  let l:has_no_matches = v:false
+  let g:__clap_has_no_matches = v:false
 
   " Do not use get(g:, '__clap_forerunner_result', s:get_source()) as vim
   " evaluates the default value of get(...) any how.
@@ -89,18 +89,21 @@ function! s:on_typed_sync_impl() abort
 
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
-    let l:has_no_matches = v:true
+    let g:__clap_has_no_matches = v:true
+    call g:clap.display.set_lines_lazy(lines)
+    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+    " But the signs are seemingly removed when setting the lines, so we should
+    " postpone the sign update.
     call clap#impl#refresh_matches_count('0')
   else
+    call g:clap.display.set_lines_lazy(lines)
     call clap#impl#refresh_matches_count(string(len(l:lines)))
   endif
-
-  call g:clap.display.set_lines_lazy(lines)
 
   call g:clap#display_win.compact_if_undersize()
   call clap#spinner#set_idle()
 
-  if !l:has_no_matches
+  if !g:__clap_has_no_matches
     if exists('g:__clap_fuzzy_matched_indices')
       call s:add_highlight_for_fuzzy_matched()
     else
