@@ -98,6 +98,7 @@ endfunction
 
 function! s:grep_exit() abort
   call clap#dispatcher#jobstop()
+  let s:old_query = ''
 endfunction
 
 function! s:matchlist(line, pattern) abort
