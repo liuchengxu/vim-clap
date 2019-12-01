@@ -126,7 +126,7 @@ endfunction
 function! s:fallback_filter(query, candidates) abort
   let s:pattern_builder.input = a:query
   let l:filter_pattern = s:pattern_builder.build()
-  return filter(a:candidates, 's:filter(v:val, l:filter_pattern)')
+  return filter(copy(a:candidates), 's:filter(v:val, l:filter_pattern)')
 endfunction
 
 let s:can_use_python = v:false
