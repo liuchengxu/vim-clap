@@ -31,11 +31,8 @@ function! s:draw_icon(line) abort
   return a:line
 endfunction
 
-function! s:cmd(query) abort
-  if !executable(s:grep_executable)
-    call g:clap.abort(s:grep_executable . ' not found')
-    return
-  endif
+" Translate `[query] *.rs` to `[query] -g '*.rs'` for rg.
+function! s:translate_query_and_opts(query) abort
   if has_key(g:clap.context, 'opt')
     let grep_opts = s:grep_opts.' '.g:clap.context.opt
   else
@@ -54,6 +51,17 @@ function! s:cmd(query) abort
       let query = a:query
     endif
   endif
+
+  return [grep_opts, query]
+endfunction
+
+function! s:cmd(query) abort
+  if !executable(s:grep_executable)
+    call g:clap.abort(s:grep_executable . ' not found')
+    return
+  endif
+
+  let [grep_opts, query] = s:translate_query_and_opts(a:query)
 
   " Consistent with --smart-case of rg
   " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
