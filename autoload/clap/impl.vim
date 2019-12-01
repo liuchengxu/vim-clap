@@ -90,12 +90,15 @@ function! s:on_typed_sync_impl() abort
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
     let g:__clap_has_no_matches = v:true
+    call g:clap.display.set_lines_lazy(lines)
+    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+    " But the signs are seemingly removed when setting the lines, so we should
+    " postpone the sign update.
     call clap#impl#refresh_matches_count('0')
   else
+    call g:clap.display.set_lines_lazy(lines)
     call clap#impl#refresh_matches_count(string(len(l:lines)))
   endif
-
-  call g:clap.display.set_lines_lazy(lines)
 
   call g:clap#display_win.compact_if_undersize()
   call clap#spinner#set_idle()
