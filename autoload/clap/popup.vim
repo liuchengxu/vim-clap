@@ -452,15 +452,15 @@ function! s:move_manager.printable(key) abort
     endif
   endif
 
-  " If the privder is async, react immediately, otherwise hold a delay.
+  " Always hold a delay before reacting actually.
+  "
   " FIXME
-  " If the slow renderring of vim job is resolved, this cuold be removed.
-  if g:clap.provider.is_sync()
-    " apply_input should happen earlier than mock_input
-    call s:apply_input('')
-  else
-    call s:apply_input_with_delay()
-  endif
+  " If the slow renderring of vim job is resolved, this delay could be removed.
+  "
+  " apply_input should happen earlier than mock_input
+  " call s:apply_input('')
+  "
+  call s:apply_input_with_delay()
 
   call s:mock_input()
 endfunction
