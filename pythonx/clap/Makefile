@@ -16,10 +16,10 @@ run-cargo:
 
 ifeq ($(OS),darwin)
 move-so: run-cargo
-	cp fuzzymatch-rs/target/release/libfuzzymatch_rs.dylib fuzzymatch_rs.so
+	cp -f fuzzymatch-rs/target/release/libfuzzymatch_rs.dylib fuzzymatch_rs.so
 else
 move-so: run-cargo
-	cp fuzzymatch-rs/target/release/libfuzzymatch_rs.so fuzzymatch_rs.so
+	cp -f fuzzymatch-rs/target/release/libfuzzymatch_rs.so fuzzymatch_rs.so
 endif
 
 post-check:

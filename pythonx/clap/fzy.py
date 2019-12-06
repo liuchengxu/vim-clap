@@ -7,6 +7,10 @@ from .fzy_impl import fzy_scorer
 from .fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
 
+def clap_fzy_rs():
+    return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+
+
 def fuzzy_match_py(query, candidates):
     scored = []
 
@@ -23,11 +27,7 @@ def fuzzy_match_py(query, candidates):
         filtered.append(r['text'])
         indices.append(r['indices'])
 
-    return [indices, filtered]
-
-
-def clap_fzy_rs():
-    return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+    return (indices, filtered)
 
 
 def clap_fzy_py():

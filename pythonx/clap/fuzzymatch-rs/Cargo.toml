@@ -2,6 +2,11 @@
 name = "fuzzymatch-rs"
 version = "0.1.0"
 edition = "2018"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+homepage = "https://github.com/liuchengxu/vim-clap"
+description = "Speeding up Python using dynamic module written in Rust"
+license = "MIT"
+publish = false
 
 [lib]
 name = "fuzzymatch_rs"
