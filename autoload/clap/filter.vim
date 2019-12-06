@@ -134,11 +134,7 @@ let s:can_use_python = v:false
 if s:py_exe isnot v:null
 
   function! s:setup_python() abort
-    if has('nvim')
-execute s:py_exe "<< EOF"
-from clap.fzy import clap_fzy
-EOF
-    else
+    if !has('nvim')
 execute s:py_exe "<< EOF"
 import sys
 from os.path import normpath, join
@@ -147,24 +143,44 @@ plugin_root_dir = vim.eval('g:clap#autoload_dir')
 python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
 sys.path.insert(0, python_root_dir)
 import clap
-
-from clap.fzy import clap_fzy
 EOF
     endif
+
+execute s:py_exe "<< EOF"
+from clap.fzy import clap_fzy_py, clap_fzy_rs
+EOF
   endfunction
 
   try
     call s:setup_python()
     let s:can_use_python = v:true
   catch
+      echom string(split(v:exception))
   endtry
 endif
 
+if has('win32')
+  let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap\fuzzymatch_rs.pyd')
+else
+  let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap/fuzzymatch_rs.so')
+endif
+
 if s:can_use_python
+  if s:has_rust_ext
+    function! s:ext_filter(query, candidates) abort
+      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy_rs()")
+      return filtered
+    endfunction
+  else
+    function! s:ext_filter(query, candidates) abort
+      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy_py()")
+      return filtered
+    endfunction
+  endif
+
   function! clap#filter#(query, candidates) abort
     try
-      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
-      return filtered
+      return s:ext_filter(a:query, a:candidates)
     catch
       return s:fallback_filter(a:query, a:candidates)
     endtry

@@ -4,9 +4,10 @@
 import vim
 
 from .fzy_impl import fzy_scorer
+from .fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
 
-def fuzzy_match(query, candidates):
+def fuzzy_match_py(query, candidates):
     scored = []
 
     for c in candidates:
@@ -25,5 +26,9 @@ def fuzzy_match(query, candidates):
     return [indices, filtered]
 
 
-def clap_fzy():
-    return fuzzy_match(vim.eval("a:query"), vim.eval("a:candidates"))
+def clap_fzy_rs():
+    return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+
+
+def clap_fzy_py():
+    return fuzzy_match_py(vim.eval("a:query"), vim.eval("a:candidates"))
