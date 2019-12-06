@@ -30,15 +30,37 @@ def fuzzy_match_py(query, candidates):
 
 
 query = 'sr'
-candidates = open('/Users/xlc/files.txt', 'r').read().split('\n')[:100]
+candidates = open('/Users/xlc/files.txt', 'r').read().split('\n')
 
 print(fuzzy_match_py(query, candidates))
 print(fuzzymatch_rs.fuzzy_match(query, candidates))
 
 
-def test_pure_python(benchmark):
-    print(benchmark(fuzzy_match_py, query, candidates))
+def test_pure_python_10000(benchmark):
+    print(benchmark(fuzzy_match_py, query, candidates[:10000]))
 
 
-def test_rust(benchmark):
-    print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates))
+def test_rust_10000(benchmark):
+    print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:10000]))
+
+
+def test_pure_python_100000(benchmark):
+    print(benchmark(fuzzy_match_py, query, candidates[:100000]))
+
+
+def test_rust_100000(benchmark):
+    print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:100000]))
+
+
+#  This would cost more than 30 seconds for Python.
+#  def test_pure_python_500000(benchmark):
+#  print(benchmark(fuzzy_match_py, query, candidates[:500000]))
+
+#  def test_rust_500000(benchmark):
+#  print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:500000]))
+
+#  def test_pure_python_800000(benchmark):
+#  print(benchmark(fuzzy_match_py, query, candidates[:800000]))
+
+#  def test_rust_800000(benchmark):
+#  print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:800000]))

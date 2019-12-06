@@ -3,12 +3,6 @@ use pyo3::wrap_pyfunction;
 use rff::match_and_score_with_positions;
 
 #[pyfunction]
-/// Formats the sum of two numbers as string
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
-}
-
-#[pyfunction]
 /// Filter the candidates given query using the fzy algorithm
 fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>>, Vec<String>)> {
     let scorer = |line: &str| {
@@ -35,7 +29,6 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
 /// This module is a python module implemented in Rust.
 #[pymodule]
 fn fuzzymatch_rs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(sum_as_string))?;
     m.add_wrapped(wrap_pyfunction!(fuzzy_match))?;
 
     Ok(())
