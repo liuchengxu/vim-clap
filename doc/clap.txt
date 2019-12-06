@@ -257,8 +257,11 @@ There are generally two kinds of providers in vim-clap.
                        This field is mandatory.
 
 
-  `on_move`              |Funcref| - when navigating the result list, can be used
-                                 for the preview purpose, see clap/provider/colors.vim.
+  `on_move`              |Funcref| - can be used for the preview purpose, when navigating
+                                 the result list, see clap/provider/colors.vim.
+
+                                 It won't be called if you merely input some characters
+                                 and do not scroll the list.
 
                        This field is optional.
 

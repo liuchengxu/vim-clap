@@ -16,6 +16,7 @@ CHANGELOG
 - Add the options `g:clap_fuzzy_match_hl_groups` for configuring the color of fuzzy matched items easier.
 - Add an utility function `clap#helper#build_maple()` for building maple easily in vim. Use `:call clap#helper#build_maple()` to install maple inside vim.
 - Add the preview support for `:Clap grep`.
+- Add the preview support for `:Clap blines`.
 - Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
 
 ### Changed
