@@ -8,6 +8,9 @@ help:
 	@echo "    test        Run the fuzzy match benchmark using pytest"
 	@echo "    build       Build the Rust extension and copy to the right place"
 
+tools:
+	pip3 install pytest pytest-benchmark
+
 test:
 	python3 -m pytest fzy_with_rust.py
 
