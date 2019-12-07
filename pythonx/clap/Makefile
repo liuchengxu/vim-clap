@@ -1,5 +1,7 @@
 OS := $(shell uname -s | tr A-Z a-z)
 
+LIB := fuzzymatch_rs
+
 help:
 	@echo "usage: make [OPTIONS]"
 	@echo "    help        Show this message"
@@ -16,10 +18,10 @@ run-cargo:
 
 ifeq ($(OS),darwin)
 move-so: run-cargo
-	cp -f fuzzymatch-rs/target/release/libfuzzymatch_rs.dylib fuzzymatch_rs.so
+	cp -f fuzzymatch-rs/target/release/lib$(LIB).dylib $(LIB).so
 else
 move-so: run-cargo
-	cp -f fuzzymatch-rs/target/release/libfuzzymatch_rs.so fuzzymatch_rs.so
+	cp -f fuzzymatch-rs/target/release/lib$(LIB).so $(LIB).so
 endif
 
 post-check:
