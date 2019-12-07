@@ -4,11 +4,6 @@
 import vim
 
 from .fzy_impl import fzy_scorer
-from .fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
-
-
-def clap_fzy_rs():
-    return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
 
 
 def fuzzy_match_py(query, candidates):
@@ -32,3 +27,12 @@ def fuzzy_match_py(query, candidates):
 
 def clap_fzy_py():
     return fuzzy_match_py(vim.eval("a:query"), vim.eval("a:candidates"))
+
+
+try:
+    from .fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
+
+    def clap_fzy_rs():
+        return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+except Exception:
+    pass
