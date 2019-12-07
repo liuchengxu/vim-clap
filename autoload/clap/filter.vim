@@ -149,7 +149,7 @@ EOF
 
   try
     call s:setup_python()
-    execute s:py_exe 'from clap.fzy import clap_fzy'
+    execute s:py_exe 'from clap.fzy import clap_fzy_py'
     let s:can_use_python = v:true
   catch
   endtry
@@ -173,7 +173,7 @@ endfunction
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
-      call pyxeval("clap_fzy()")
+      call pyxeval("clap_fzy_py()")
     catch
       let lines = s:fallback_filter(a:query, a:candidates)
       call s:post_process_viml(lines)
