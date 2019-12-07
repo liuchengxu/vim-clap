@@ -134,11 +134,7 @@ let s:can_use_python = v:false
 if s:py_exe isnot v:null
 
   function! s:setup_python() abort
-    if has('nvim')
-execute s:py_exe "<< EOF"
-from clap.fzy import clap_fzy
-EOF
-    else
+    if !has('nvim')
 execute s:py_exe "<< EOF"
 import sys
 from os.path import normpath, join
@@ -147,31 +143,56 @@ plugin_root_dir = vim.eval('g:clap#autoload_dir')
 python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
 sys.path.insert(0, python_root_dir)
 import clap
-
-from clap.fzy import clap_fzy
 EOF
     endif
   endfunction
 
   try
     call s:setup_python()
+    execute s:py_exe 'from clap.fzy import clap_fzy_py'
     let s:can_use_python = v:true
   catch
   endtry
 endif
 
+function! s:post_process_viml(lines) abort
+  if empty(a:lines)
+    let l:lines = [g:clap_no_matches_msg]
+    let g:__clap_has_no_matches = v:true
+    call g:clap.display.set_lines_lazy(l:lines)
+    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+    " But the signs are seemingly removed when setting the lines, so we should
+    " postpone the sign update.
+    call clap#impl#refresh_matches_count('0')
+  else
+    call g:clap.display.set_lines_lazy(a:lines)
+    call clap#impl#refresh_matches_count(string(len(a:lines)))
+  endif
+endfunction
+
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
-      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
-      return filtered
+      call pyxeval("clap_fzy_py()")
     catch
-      return s:fallback_filter(a:query, a:candidates)
+      let lines = s:fallback_filter(a:query, a:candidates)
+      call s:post_process_viml(lines)
     endtry
+  endfunction
+
+  " If Python is used, this will be handled on the python side with some
+  " optimization, e.g., lessen the data eariler instead of dropping them in
+  " the vimscript part.
+  function! clap#filter#post_process(_lines) abort
   endfunction
 else
   function! clap#filter#(query, candidates) abort
     return s:fallback_filter(a:query, a:candidates)
+  endfunction
+
+  " Set the lines smart and refresh the matches count
+  function! clap#filter#post_process(lines) abort
+    call s:post_process_viml(a:lines)
   endfunction
 endif
 
