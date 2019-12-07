@@ -145,14 +145,11 @@ sys.path.insert(0, python_root_dir)
 import clap
 EOF
     endif
-
-execute s:py_exe "<< EOF"
-from clap.fzy import clap_fzy
-EOF
   endfunction
 
   try
     call s:setup_python()
+    execute s:py_exe 'from clap.fzy import clap_fzy'
     let s:can_use_python = v:true
   catch
   endtry

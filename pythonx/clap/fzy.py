@@ -25,7 +25,7 @@ def fuzzy_match(query, candidates):
     return (indices, filtered)
 
 
-def filter_post_process(lines):
+def __filter_post_process(lines):
     if not lines:
         lines = [vim.eval('g:clap_no_matches_msg')]
         vim.command('let g:__clap_has_no_matches = v:true')
@@ -40,14 +40,15 @@ def filter_post_process(lines):
         vim.command('call clap#impl#refresh_matches_count(%s)' % matches_cnt)
 
 
-def note_fuzzy_matched(indices):
+def __after_fuzzy_matched(indices, filtered):
+    # Note the fuzzy matched indices
     line_count = int(vim.eval('g:clap.display.line_count()'))
     vim.command(
         "let g:__clap_fuzzy_matched_indices = %s" % indices[:line_count])
+    __filter_post_process(filtered)
 
 
 def clap_fzy():
     (indices, filtered) = fuzzy_match(
         vim.eval("a:query"), vim.eval("a:candidates"))
-    note_fuzzy_matched(indices)
-    filter_post_process(filtered)
+    __after_fuzzy_matched(indices, filtered)
