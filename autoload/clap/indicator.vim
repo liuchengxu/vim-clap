@@ -23,7 +23,13 @@ if has('nvim')
   endfunction
 else
   function! s:apply_indicator(indicator) abort
-    call popup_settext(g:clap_indicator_winid, a:indicator)
+    let indicator_len = strlen(a:indicator)
+    if indicator_len < 18
+      let indicator = repeat(' ', 18 - indicator_len).a:indicator
+    else
+      let indicator = a:indicator
+    endif
+    call popup_settext(g:clap_indicator_winid, indicator)
   endfunction
 endif
 

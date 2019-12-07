@@ -14,6 +14,7 @@ let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
 let g:clap#popup#input = {}
 
+" TODO use a flexiable width
 let s:indicator_width = 18
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
