@@ -3,6 +3,10 @@
 .*
 __pycache__
 *.pyc
+*.log
+# Ignore all the vim files on the top directory
+/*.vim
+[1-9]*.vim
 /doc/tags
 /target
 

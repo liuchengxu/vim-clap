@@ -1,46 +1,25 @@
 #!/usr/bin/env bash
 
-# wait for the forerunner job and then input something.
-vim -u profile.vimrc \
-  --cmd 'profile start vimprofile.log' \
-  --cmd 'profile func *' \
-  --cmd 'profile file *' \
-  --cmd 'set verbosefile=verbose.log' \
-  --cmd 'set verbose=9' \
-  -c ':silent Clap files ~/src/github.com' \
-  -c 'call timer_start(5000, { -> feedkeys("sr", "xt") } )' \
-  -c 'call timer_start(15000, { -> execute("qa!") } )'
+run_exe() {
+  local exe=$1
+  local profile_log=$2
+  local test_fn=$3
 
-nvim -u profile.vimrc \
-  --cmd 'profile start nvimprofile.log' \
-  --cmd 'profile func *' \
-  --cmd 'profile file *' \
-  --cmd 'set verbosefile=verbose.log' \
-  --cmd 'set verbose=9' \
-  -c ':silent Clap files ~/src/github.com' \
-  -c 'call timer_start(5000, { -> feedkeys("sr") } )' \
-  -c 'call timer_start(15000, { -> execute("qa!") } )'
+  $exe -u profile.vimrc \
+    --cmd "profile start $profile_log.log" \
+    --cmd 'profile func *' \
+    --cmd 'profile file *' \
+    --cmd 'set verbosefile=verbose.log' \
+    --cmd 'set verbose=9' \
+    -c "call $test_fn()"
+}
 
-vim -u profile.vimrc \
-  --cmd 'profile start vimprofile_m.log' \
-  --cmd 'profile func *' \
-  --cmd 'profile file *' \
-  --cmd 'set verbosefile=verbose.log' \
-  --cmd 'set verbose=9' \
-  -c ':silent Clap files ~/src/github.com' \
-  -c 'call timer_start(5000, { -> feedkeys("s", "xt") } )' \
-  -c 'call timer_start(2000, { -> feedkeys("r", "xt") } )' \
-  -c 'call timer_start(2000, { -> feedkeys("q", "xt") } )' \
-  -c 'call timer_start(15000, { -> execute("qa!") } )'
 
-nvim -u profile.vimrc \
-  --cmd 'profile start nvimprofile_m.log' \
-  --cmd 'profile func *' \
-  --cmd 'profile file *' \
-  --cmd 'set verbosefile=verbose.log' \
-  --cmd 'set verbose=9' \
-  -c ':silent Clap files ~/src/github.com' \
-  -c 'call timer_start(5000, { -> feedkeys("s") } )' \
-  -c 'call timer_start(2000, { -> feedkeys("r") } )' \
-  -c 'call timer_start(2000, { -> feedkeys("q") } )' \
-  -c 'call timer_start(15000, { -> execute("qa!") } )'
+# run_exe vim  vimprofile  RunInputOnce
+# run_exe nvim nvimprofile RunInputOnce
+
+# run_exe vim  vimprofile_multi  RunInputMulti
+# run_exe nvim nvimprofile_multi RunInputMulti
+
+run_exe vim  vimprofile_bench  RunBenchmarkDirectly
+run_exe nvim nvimprofile_bench RunBenchmarkDirectly

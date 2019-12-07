@@ -165,6 +165,10 @@ if s:can_use_python
   let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
   execute s:py_exe 'from clap.fzy import' s:py_fn
 
+  function! clap#filter#benchmark(query, candidates) abort
+    return s:ext_filter(a:query, a:candidates)
+  endfunction
+
   function! s:ext_filter(query, candidates) abort
     let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
     return filtered
