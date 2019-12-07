@@ -22,8 +22,32 @@ def fuzzy_match(query, candidates):
         filtered.append(r['text'])
         indices.append(r['indices'])
 
-    return [indices, filtered]
+    return (indices, filtered)
+
+
+def filter_post_process(lines):
+    if not lines:
+        lines = [vim.eval('g:clap_no_matches_msg')]
+        vim.command('let g:__clap_has_no_matches = v:true')
+        vim.command('call g:clap.display.set_lines_lazy(%s)' % lines)
+        vim.command('call clap#impl#refresh_matches_count("0")')
+    else:
+        preload_capacity = int(
+            vim.eval('get(g:clap.display, "preload_capacity", 2*&lines)'))
+        matches_cnt = str(len(lines))
+        lines = lines[:preload_capacity]
+        vim.command('call g:clap.display.set_lines_lazy(%s)' % lines)
+        vim.command('call clap#impl#refresh_matches_count(%s)' % matches_cnt)
+
+
+def note_fuzzy_matched(indices):
+    line_count = int(vim.eval('g:clap.display.line_count()'))
+    vim.command(
+        "let g:__clap_fuzzy_matched_indices = %s" % indices[:line_count])
 
 
 def clap_fzy():
-    return fuzzy_match(vim.eval("a:query"), vim.eval("a:candidates"))
+    (indices, filtered) = fuzzy_match(
+        vim.eval("a:query"), vim.eval("a:candidates"))
+    note_fuzzy_matched(indices)
+    filter_post_process(filtered)
