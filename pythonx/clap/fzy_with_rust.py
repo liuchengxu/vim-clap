@@ -30,7 +30,7 @@ def fuzzy_match_py(query, candidates):
 
 
 query = 'sr'
-candidates = open('/Users/xlc/files.txt', 'r').read().split('\n')
+candidates = open('../../test/testdata.txt', 'r').read().split('\n')
 
 print(fuzzy_match_py(query, candidates))
 print(fuzzymatch_rs.fuzzy_match(query, candidates))
