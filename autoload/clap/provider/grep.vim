@@ -39,6 +39,11 @@ function! s:translate_query_and_opts(query) abort
     let grep_opts = s:grep_opts
   endif
 
+  " Exact mode
+  if a:query[0] ==# "'"
+    return [grep_opts, a:query[1:]]
+  endif
+
   let ridx = strridx(a:query, ' ')
   if ridx == -1
     let query = a:query
@@ -59,6 +64,8 @@ function! s:translate_query_and_opts(query) abort
       let query = a:query
     endif
   endif
+
+  let query = join(split(query), '.*')
 
   return [grep_opts, query]
 endfunction
