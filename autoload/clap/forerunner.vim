@@ -17,7 +17,7 @@ function! s:on_complete() abort
 
   " If the total results is not huge we could keep them in the memory
   " and use the built-in fzy impl later.
-  if chunks_size < 10000
+  if chunks_size < 100000
     " g:__clap_forerunner_result is sort of a cache here.
     " If we already have g:__clap_forerunner_result and you
     " just created a new file outside the vim, this new file maybe not recongnized.
