@@ -12,7 +12,7 @@ tools:
 	pip3 install pytest pytest-benchmark
 
 test:
-	python3 -m pytest fzy_with_rust.py
+	python3 -m pytest test_fzy_with_rust.py
 
 run-cargo:
 	@echo "\033[1;34m==>\033[0m Trying to build rust extension"; \

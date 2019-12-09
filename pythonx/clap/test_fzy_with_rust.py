@@ -52,6 +52,14 @@ def test_rust_100000(benchmark):
     print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:100000]))
 
 
+def test_pure_python_200000(benchmark):
+    print(benchmark(fuzzy_match_py, query, candidates[:200000]))
+
+
+def test_rust_200000(benchmark):
+    print(benchmark(fuzzymatch_rs.fuzzy_match, query, candidates[:200000]))
+
+
 #  This would cost more than 30 seconds for Python.
 #  def test_pure_python_500000(benchmark):
 #  print(benchmark(fuzzy_match_py, query, candidates[:500000]))
