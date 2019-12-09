@@ -3,7 +3,7 @@
 
 import vim
 
-from .fzy_impl import fzy_scorer
+from clap.fzy_impl import fzy_scorer
 
 
 def fuzzy_match(query, candidates):
