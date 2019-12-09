@@ -18,6 +18,7 @@ CHANGELOG
 - Add the preview support for `:Clap grep`.
 - Add the preview support for `:Clap blines`.
 - Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
+- Add limited fzf like search syntax([#127](https://github.com/liuchengxu/vim-clap/issues/127)) for `:Clap grep`.([#150](https://github.com/liuchengxu/vim-clap/issues/150))
 
 ### Changed
 

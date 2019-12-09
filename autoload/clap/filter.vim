@@ -149,6 +149,7 @@ EOF
 
   try
     call s:setup_python()
+    execute s:py_exe 'from clap.fzy import clap_fzy'
     let s:can_use_python = v:true
   catch
       echom string(split(v:exception))

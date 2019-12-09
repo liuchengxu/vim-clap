@@ -31,25 +31,59 @@ function! s:draw_icon(line) abort
   return a:line
 endfunction
 
-function! s:cmd(query) abort
-  if !executable(s:grep_executable)
-    call g:clap.abort(s:grep_executable . ' not found')
-    return
-  endif
+" Translate `[query] *.rs` to `[query] -g '*.rs'` for rg.
+function! s:translate_query_and_opts(query) abort
   if has_key(g:clap.context, 'opt')
     let grep_opts = s:grep_opts.' '.g:clap.context.opt
   else
     let grep_opts = s:grep_opts
   endif
 
-  if !empty(g:clap.provider.args)
-    let dir = g:clap.provider.args[-1]
-    if isdirectory(expand(dir))
-      let g:__clap_provider_cwd = dir
+  " Exact mode
+  if a:query[0] ==# "'"
+    return [grep_opts, a:query[1:]]
+  endif
+
+  let ridx = strridx(a:query, ' ')
+  if ridx == -1
+    let query = a:query
+  else
+    " .vim => -g '*.vim'
+    if a:query[ridx+1:] =~# '^\.\a\+'
+      let ft = matchstr(a:query[ridx+1:], '^\.\zs\(.\+\)')
+      let grep_opts .= ' -g "*.'.ft.'"'
+      let query = a:query[:ridx-1]
+      return [grep_opts, query]
+    endif
+
+    let matched = matchlist(a:query[ridx+1:], '^\(.*\)\.\(.*\)$')
+    if !empty(matched)
+      let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
+      let query = a:query[:ridx-1]
+    else
+      let query = a:query
     endif
   endif
 
-  let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, a:query)
+  let query = join(split(query), '.*')
+
+  return [grep_opts, query]
+endfunction
+
+function! s:cmd(query) abort
+  if !executable(s:grep_executable)
+    call g:clap.abort(s:grep_executable . ' not found')
+    return
+  endif
+
+  let [grep_opts, query] = s:translate_query_and_opts(a:query)
+
+  " Consistent with --smart-case of rg
+  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
+  let ignore_case = query =~# '\u' ? '\C' : '\c'
+  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
+
+  let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
   let g:clap.provider.cmd = cmd
   return cmd
 endfunction
@@ -86,12 +120,7 @@ function! s:spawn(query) abort
 
   call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
 
-  " Consistent with --smart-case of rg
-  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
-  let ignore_case = query =~# '\u' ? '\C' : '\c'
-  let pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
-
-  call g:clap.display.add_highlight(pattern)
+  call g:clap.display.add_highlight(s:hl_pattern)
 
   call clap#spinner#set_busy()
 endfunction
