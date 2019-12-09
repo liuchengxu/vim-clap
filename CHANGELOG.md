@@ -17,6 +17,7 @@ CHANGELOG
 - Add an utility function `clap#helper#build_maple()` for building maple easily in vim. Use `:call clap#helper#build_maple()` to install maple inside vim.
 - Add the preview support for `:Clap grep`.
 - Support running from any specified directory by passing it via the last argument for `:Clap files` and `:Clap grep`.
+- Add limited fzf like search syntax for `:Clap grep`.([#150](https://github.com/liuchengxu/vim-clap/issues/150))
 
 ### Changed
 
