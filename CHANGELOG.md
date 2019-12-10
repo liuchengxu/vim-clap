@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.2] 2019-12-10
+
 ### Added
 
 - New provider `:Clap registers`.
