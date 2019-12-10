@@ -18,37 +18,51 @@ run_once() {
   run_exe vim  vimprofile  RunInputOnce
   run_exe nvim nvimprofile RunInputOnce
 
-  echo 'run_once' > run_once.log
-  echo '---------- vim' >> run_once.log
+  echo 'vim' > run_once.log
   grep 'ext_filter()' vimprofile.log >> run_once.log
-  echo '---------- nvim' >> run_once.log
+  echo 'nvim' >> run_once.log
   grep 'ext_filter()' nvimprofile.log >> run_once.log
 }
 
 run_multi() {
   run_exe vim  vimprofile_multi  RunInputMulti
   run_exe nvim nvimprofile_multi RunInputMulti
-  echo 'run_multi' > run_multi.log
-  echo '---------- vim' >> run_multi.log
+  echo 'vim' > run_multi.log
   grep 'ext_filter()' vimprofile_multi.log >> run_multi.log
-  echo '---------- nvim' >> run_multi.log
+  echo 'nvim' >> run_multi.log
   grep 'ext_filter()' nvimprofile_multi.log >> run_multi.log
 }
-
 
 run_bench() {
   run_exe vim  vimprofile_bench  RunBenchmarkDirectly
   run_exe nvim nvimprofile_bench RunBenchmarkDirectly
 
-  echo 'run_bench' > run_bench.log
-  echo '---------- vim' >> run_bench.log
+  echo 'vim' > run_bench.log
   grep 'ext_filter()' vimprofile_bench.log >> run_bench.log
-  echo '---------- nvim' >> run_bench.log
+  echo 'nvim' >> run_bench.log
   grep 'ext_filter()' nvimprofile_bench.log >> run_bench.log
 }
 
+help() {
+  cat << EOF
+usage: $0 [OPTIONS]
+
+    --help               Show this message
+    --once
+    --multi
+    --bench
+    --all
+EOF
+}
+
+if [ -z "$@"]; then
+  help
+  exit 1
+fi
+
 for opt in "$@"; do
   case $opt in
+    --help)  help      ;;
     --once)  run_once  ;;
     --multi) run_multi ;;
     --bench) run_bench ;;

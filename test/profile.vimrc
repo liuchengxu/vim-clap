@@ -31,7 +31,7 @@ function RunInputMulti() abort
 endfunction
 
 function RunBenchmarkDirectly() abort
-  let candidates = readfile(expand('~/files.txt'), '', 100000)
+  let candidates = readfile(expand('testdata.txt'), '', 100000)
   call clap#filter#benchmark('sr', candidates)
   call timer_start(5000, { -> execute("qa!") } )
 endfunction
