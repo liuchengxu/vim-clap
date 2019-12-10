@@ -6,6 +6,8 @@ set cpoptions&vim
 
 let s:job_id = -1
 
+let s:builtin_fuzzy_filter_threshold = get(g:, 'g:clap_builtin_fuzzy_filter_threshold', 100000)
+
 function! s:on_complete() abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(s:chunks)
@@ -17,12 +19,14 @@ function! s:on_complete() abort
 
   " If the total results is not huge we could keep them in the memory
   " and use the built-in fzy impl later.
-  if chunks_size < 100000
+  if chunks_size < s:builtin_fuzzy_filter_threshold
     " g:__clap_forerunner_result is sort of a cache here.
     " If we already have g:__clap_forerunner_result and you
     " just created a new file outside the vim, this new file maybe not recongnized.
     " TODO: add a flag to disable this cache.
     let g:__clap_forerunner_result = s:chunks
+  else
+    unlet s:chunks
   endif
 endfunction
 

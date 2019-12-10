@@ -3,8 +3,10 @@ set runtimepath^=~/.vim/plugged/vim-clap
 syntax on
 filetype plugin indent on
 
+let g:clap_builtin_fuzzy_filter_threshold = 200000
+
 function RunInputOnce() abort
-  silent Clap files ~/src/github.com
+  silent Clap files /usr
   if has('nvim')
     " wait for the forerunner job and then input something.
     call timer_start(5000, { -> feedkeys("sr", "xt") } )
@@ -15,7 +17,7 @@ function RunInputOnce() abort
 endfunction
 
 function RunInputMulti() abort
-  silent Clap files ~/src/github.com
+  silent Clap files /usr
   if has('nvim')
     call timer_start(5000, { -> feedkeys("s", "xt") } )
     call timer_start(2000, { -> feedkeys("r", "xt") } )
