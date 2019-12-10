@@ -11,11 +11,7 @@ function! s:git_diff_files.source() abort
     return ['git executable not found']
   endif
 
-  redir => l:output
-    silent execute '!git status -s -uno'
-  redir END
-  let l:output = filter(split(l:output, '\n')[1:], 'len(trim(v:val))')
-  return map(l:output, 'split(v:val)[-1]')
+  return map(systemlist('git status -s -uno'), 'split(v:val)[-1]')
 endfunction
 
 let s:git_diff_files.sink = 'e'
