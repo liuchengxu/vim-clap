@@ -14,33 +14,40 @@ run_exe() {
     -c "call $test_fn()"
 }
 
+note() {
+  local exe=$1
+  local from=$2
+
+  echo "====== $exe ======" >> stats.log
+  grep 'ext_filter()' $from.log | head -2 >> stats.log
+  echo '' >> stats.log
+}
+
 run_once() {
   run_exe vim  vimprofile  RunInputOnce
   run_exe nvim nvimprofile RunInputOnce
 
-  echo 'vim' > run_once.log
-  grep 'ext_filter()' vimprofile.log >> run_once.log
-  echo 'nvim' >> run_once.log
-  grep 'ext_filter()' nvimprofile.log >> run_once.log
+  echo '[once]' >> stats.log
+  note vim vimprofile
+  note nvim nvimprofile
 }
 
 run_multi() {
   run_exe vim  vimprofile_multi  RunInputMulti
   run_exe nvim nvimprofile_multi RunInputMulti
-  echo 'vim' > run_multi.log
-  grep 'ext_filter()' vimprofile_multi.log >> run_multi.log
-  echo 'nvim' >> run_multi.log
-  grep 'ext_filter()' nvimprofile_multi.log >> run_multi.log
+
+  echo '[multi]' >> stats.log
+  note vim vimprofile_multi
+  note nvim nvimprofile_multi
 }
 
 run_bench() {
   run_exe vim  vimprofile_bench  RunBenchmarkDirectly
   run_exe nvim nvimprofile_bench RunBenchmarkDirectly
 
-  echo 'vim' > run_bench.log
-  grep 'ext_filter()' vimprofile_bench.log >> run_bench.log
-  echo 'nvim' >> run_bench.log
-  grep 'ext_filter()' nvimprofile_bench.log >> run_bench.log
+  echo '[bench]' >> stats.log
+  note vim vimprofile_bench
+  note nvim nvimprofile_bench
 }
 
 help() {
@@ -55,10 +62,13 @@ usage: $0 [OPTIONS]
 EOF
 }
 
-if [ -z "$@"]; then
+if [ $# -eq 0 ]; then
   help
   exit 1
 fi
+
+echo 'stats of fuzzy filter performance:' > stats.log
+echo '' >> stats.log
 
 for opt in "$@"; do
   case $opt in
