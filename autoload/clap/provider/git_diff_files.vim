@@ -8,10 +8,17 @@ let s:git_diff_files = {}
 
 function! s:git_diff_files.source() abort
   if !executable('git')
-    return ['git executable not found']
+    call clap#helper#echo_error('git executable not found')
+    return []
   endif
 
-  return map(systemlist('git status -s -uno'), 'split(v:val)[-1]')
+  let changed = systemlist('git status -s -uno')
+  if v:shell_error
+    call clap#helper#echo_error('Error occurs on calling `git status -s -uno`, maybe you are not in a git repo.')
+    return []
+  else
+    return map(changed, 'split(v:val)[-1]')
+  endif
 endfunction
 
 let s:git_diff_files.sink = 'e'
