@@ -126,6 +126,10 @@ to work everywhere out of the box, with fast response.
 :Clap git_files          Require `git`
 
 
+                                                     *:Clap-git_diff_files*
+:Clap git_diff_files     List Files managed by git and having uncommitted changes.
+                         Require `git`
+
                                                      *:Clap-grep*
 :Clap grep               Grep on the fly.
                          Require `rg`
