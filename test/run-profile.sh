@@ -41,13 +41,35 @@ run_multi() {
   note nvim nvimprofile_multi
 }
 
-run_bench() {
-  run_exe vim  vimprofile_bench  RunBenchmarkDirectly
-  run_exe nvim nvimprofile_bench RunBenchmarkDirectly
+bench_100000() {
+  run_exe vim  vimprofile_bench_100000  RunBench100000
+  run_exe nvim nvimprofile_bench_100000 RunBench100000
 
-  echo '[bench]' >> stats.log
-  note vim vimprofile_bench
-  note nvim nvimprofile_bench
+  echo '[bench100000]' >> stats.log
+  note vim vimprofile_bench_100000
+  note nvim nvimprofile_bench_100000
+}
+
+bench_200000() {
+  run_exe vim  vimprofile_bench_200000  RunBench200000
+  run_exe nvim nvimprofile_bench_200000 RunBench200000
+
+  echo '[bench200000]' >> stats.log
+  note vim vimprofile_bench_200000
+  note nvim nvimprofile_bench_200000
+}
+
+bench_300000() {
+  run_exe vim  vimprofile_bench_300000  RunBench300000
+  run_exe nvim nvimprofile_bench_300000 RunBench300000
+
+  echo '[bench300000]' >> stats.log
+  note vim vimprofile_bench_300000
+  note nvim nvimprofile_bench_300000
+}
+
+run_bench() {
+  bench_100000
 }
 
 help() {
