@@ -28,5 +28,5 @@ endfunction
 function RunBenchmarkDirectly() abort
   let candidates = readfile(expand('testdata.txt'), '', 100000)
   call clap#filter#benchmark('sr', candidates)
-  call timer_start(5000, { -> execute("qa!") } )
+  call timer_start(10000, { -> execute("qa!") } )
 endfunction
