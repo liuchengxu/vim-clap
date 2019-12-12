@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import vim
-
 from clap.fzy_impl import fzy_scorer
 
 
@@ -30,7 +29,7 @@ def clap_fzy_py():
 
 
 try:
-    from .fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
+    from clap.fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
     def clap_fzy_rs():
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
