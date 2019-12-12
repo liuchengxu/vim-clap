@@ -602,6 +602,23 @@ g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
   This vriable controls the highlight groups of the fuzzy matches chars. Each
   item of |g:clap_fuzzy_match_hl_groups| is `[ctermfg, guifg]` .
 
+
+g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold*
+
+  Type: |Number|
+  Default: `10000`
+
+  Vim-clap will try to spawn a asynchronous job to get the total possible
+  results on entering the main window, instead of dispatching with the
+  user's input later, to get the total result number and use the built-in
+  fuzzy filter which uses the fzy algorithm.
+
+  The benefit of the built-in fzy filter is that no redraw that happens in the
+  async job, that means no flicker on your every input. Its drawback is that
+  the built-in filter is synchoronous that will block the UI if you have a
+  monster of candidates.
+
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 

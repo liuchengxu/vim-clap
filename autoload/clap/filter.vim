@@ -150,6 +150,16 @@ EOF
   try
     call s:setup_python()
     execute s:py_exe 'from clap.fzy import clap_fzy'
+
+    function! s:ext_filter(query, candidates) abort
+      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
+      return filtered
+    endfunction
+
+    function! clap#filter#benchmark(query, candidates) abort
+      return s:ext_filter(a:query, a:candidates)
+    endfunction
+
     let s:can_use_python = v:true
   catch
   endtry
@@ -158,8 +168,7 @@ endif
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
-      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
-      return filtered
+      return s:ext_filter(a:query, a:candidates)
     catch
       return s:fallback_filter(a:query, a:candidates)
     endtry
