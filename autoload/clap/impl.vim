@@ -240,7 +240,8 @@ endfunction
 "             on_move
 "
 function! clap#impl#on_typed() abort
-  if exists('g:__clap_forerunner_result')
+  if exists('g:__clap_forerunner_result') &&
+        \ !(has_key(g:clap.context, 'ef') || has_key(g:clap.context, 'externalfilter'))
     call s:on_typed_sync_impl()
     return
   endif
