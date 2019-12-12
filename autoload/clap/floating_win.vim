@@ -206,26 +206,30 @@ function! s:adjust_display_for_border_symbol() abort
   call nvim_win_set_config(s:display_winid, opts)
 endfunction
 
+function! s:create_preview_win(height) abort
+  let opts = nvim_win_get_config(s:display_winid)
+  let opts.row += opts.height
+  let opts.height = a:height
+
+  silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
+
+  call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
+  " call setwinvar(s:preview_winid, '&winblend', 15)
+
+  call clap#api#setbufvar_batch(s:preview_bufnr, {
+        \ '&number': 0,
+        \ '&cursorline': 0,
+        \ '&signcolumn': 'no',
+        \ })
+
+  let g:clap#floating_win#preview.winid = s:preview_winid
+  let g:clap#floating_win#preview.bufnr = s:preview_bufnr
+endfunction
+
 function! clap#floating_win#preview.show(lines) abort
   let height = len(a:lines)
   if !exists('s:preview_winid')
-    let opts = nvim_win_get_config(s:display_winid)
-    let opts.row += opts.height
-    let opts.height = height
-
-    silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
-
-    call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
-    " call setwinvar(s:preview_winid, '&winblend', 15)
-
-    call clap#api#setbufvar_batch(s:preview_bufnr, {
-          \ '&number': 0,
-          \ '&cursorline': 0,
-          \ '&signcolumn': 'no',
-          \ })
-
-    let g:clap#floating_win#preview.winid = s:preview_winid
-    let g:clap#floating_win#preview.bufnr = s:preview_bufnr
+    call s:create_preview_win(height)
   else
     let opts = nvim_win_get_config(s:preview_winid)
     if opts.height != height
@@ -241,6 +245,10 @@ function! clap#floating_win#preview.close() abort
     call clap#util#nvim_win_close_safe(s:preview_winid)
     unlet s:preview_winid
   endif
+endfunction
+
+function! clap#floating_win#preview.hide() abort
+  call g:clap#floating_win#preview.close()
 endfunction
 
 function! s:ensure_closed() abort
