@@ -55,38 +55,61 @@ function! clap#helper#echo_error(msg) abort
   echohl NONE
 endfunction
 
+function! s:run_term(cmd, cwd, success_info) abort
+  10new belowright bottom
+  setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
+
+  function! s:OnExit(status) closure
+    if a:status == 0
+      execute 'silent! bd! '.bufnr
+      call clap#helper#echo_info(a:success_info)
+    endif
+  endfunction
+
+  if has('nvim')
+    call termopen(a:cmd, {
+          \ 'cwd': a:cwd,
+          \ 'on_exit': {job, status -> s:OnExit(status)},
+          \})
+  else
+    call term_start(a:cmd, {
+          \ 'curwin': 1,
+          \ 'cwd': a:cwd,
+          \ 'exit_cb': {job, status -> s:OnExit(status)},
+          \})
+  endif
+
+  let bufnr = bufnr('')
+
+  wincmd p
+endfunction
+
+function! clap#helper#build_rust_ext() abort
+  if executable('cargo')
+    if has('win32')
+      let cmd = 'cargo build --release'
+      let cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
+    else
+      let cmd = 'make build'
+      let cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
+    endif
+    call s:run_term(cmd, cwd, 'build Rust extension successfully')
+  else
+    call clap#helper#echo_error('Can not build Rust extension in that cargo is not found.')
+  endif
+endfunction
+
 function! clap#helper#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
-    10new belowright bottom
-    setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
-
-    function! s:OnExit(status) closure
-      if a:status == 0
-        execute 'silent! bd! '.bufnr
-        call clap#helper#echo_info('build maple successfully')
-      endif
-    endfunction
-
-    if has('nvim')
-      call termopen(cmd, {
-            \ 'cwd': fnamemodify(g:clap#autoload_dir, ':h'),
-            \ 'on_exit': {job, status -> s:OnExit(status)},
-            \})
-    else
-      call term_start(cmd, {
-            \ 'curwin': 1,
-            \ 'cwd': fnamemodify(g:clap#autoload_dir, ':h'),
-            \ 'exit_cb': {job, status -> s:OnExit(status)},
-            \})
-    endif
-
-    let bufnr = bufnr('')
-
-    wincmd p
+    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+    call s:run_term(cmd, cwd, 'build maple successfully')
   else
     call clap#helper#echo_error('Can not build maple in that cargo is not found.')
   endif
+endfunction
+
+function! clap#helper#build_all() abort
 endfunction
 
 let &cpoptions = s:save_cpo
