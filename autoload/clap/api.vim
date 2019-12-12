@@ -31,6 +31,13 @@ function! clap#api#setbufvar_batch(bufnr, dict) abort
   call map(a:dict, { key, val -> setbufvar(a:bufnr, key, val) })
 endfunction
 
+" If the user has specified the externalfilter option in the context.
+" If so, we should not use the built-in fuzzy filter then.
+function! clap#api#has_externalfilter() abort
+  return has_key(g:clap.context, 'ef')
+        \ || has_key(g:clap.context, 'externalfilter')
+endfunction
+
 function! s:_system(cmd) abort
   let lines = system(a:cmd)
   if v:shell_error
@@ -509,7 +516,8 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    if self.is_pure_async() || has_key(g:clap.context, 'externalfilter')
+    if self.is_pure_async()
+          \ || clap#api#has_externalfilter()
       return
     elseif self.type == g:__t_string
       call clap#forerunner#start(g:clap.provider._().source)

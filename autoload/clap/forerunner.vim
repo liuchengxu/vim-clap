@@ -6,7 +6,7 @@ set cpoptions&vim
 
 let s:job_id = -1
 
-let s:builtin_fuzzy_filter_threshold = get(g:, 'clap_builtin_fuzzy_filter_threshold', 100000)
+let s:builtin_fuzzy_filter_threshold = get(g:, 'clap_builtin_fuzzy_filter_threshold', 10000)
 
 function! s:on_complete() abort
   if empty(g:clap.input.get())

@@ -245,7 +245,7 @@ endfunction
 "
 function! clap#impl#on_typed() abort
   if exists('g:__clap_forerunner_result') &&
-        \ !(has_key(g:clap.context, 'ef') || has_key(g:clap.context, 'externalfilter'))
+        \ !clap#api#has_externalfilter()
     call s:on_typed_sync_impl()
     return
   endif
