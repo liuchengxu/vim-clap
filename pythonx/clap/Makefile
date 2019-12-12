@@ -32,4 +32,4 @@ post-check:
 
 build: move-so post-check
 
-.PHONY: help test build
+.PHONY: help test build tools run-cargo move-so post-check
