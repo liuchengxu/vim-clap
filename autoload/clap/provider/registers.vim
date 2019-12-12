@@ -31,10 +31,14 @@ function! s:registers.source() abort
   return s:lines
 endfunction
 
+function! s:extract_reg(line) abort
+  return matchstr(a:line, '^\s*\zs\(.\)\ze: ')
+endfunction
+
 function! s:registers.on_move() abort
   let curline = g:clap.display.getcurline()
   if strlen(curline) > winwidth(g:clap.display.winid)
-    let reg = matchstr(curline, '^\s*\zs\(.\)\ze: ')
+    let reg = s:extract_reg(curline)
     if !empty(reg)
       let lines = split(eval('@'.reg), "\n")
       call g:clap.preview.show(lines)
@@ -45,7 +49,7 @@ function! s:registers.on_move() abort
 endfunction
 
 function! s:registers.sink(selected) abort
-  let reg = matchstr(a:selected, '^\s*\zs\(.\)\ze: ')
+  let reg = s:extract_reg(a:selected)
   execute 'normal!' '"'.reg.'p'
 endfunction
 
