@@ -243,6 +243,10 @@ function! clap#floating_win#preview.close() abort
   endif
 endfunction
 
+function! clap#floating_win#preview.hide() abort
+  call g:clap#floating_win#preview.close()
+endfunction
+
 function! s:ensure_closed() abort
   call clap#floating_win#close()
   silent! autocmd! ClapEnsureAllClosed
