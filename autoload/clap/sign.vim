@@ -1,14 +1,16 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Multi selection support.
+" Description: Current selected indication and multi selection support.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:signed = []
+let s:last_signed_id = -1
+" 8.1.2362 https://github.com/vim/vim/issues/5277
+" Use PopUp prefix for the signs should show up in a popup window.
 let s:sign_group = 'PopUpClapSelected'
 let s:sign_cur_group = 'PopUpClapCurrentSelected'
-let s:last_signed_id = -1
 
 if !exists('s:sign_inited')
   call sign_define(s:sign_group, get(g:, 'clap_selected_sign', {
