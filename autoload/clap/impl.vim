@@ -163,6 +163,10 @@ else
   endfunction
 endif
 
+function! s:can_have_offset(provider_id) abort
+  return a:provider_id ==# 'tags' || a:provider_id ==# 'buffers'
+endfunction
+
 function! s:add_highlight_for_fuzzy_matched() abort
   " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
   " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
@@ -171,7 +175,7 @@ function! s:add_highlight_for_fuzzy_matched() abort
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
 
-  if g:clap.provider.id ==# 'tags' && get(g:, 'vista#renderer#enable_icon', 0)
+  if s:can_have_offset(g:clap.provider.id) && get(g:, 'clap_enable_icon', 0)
     let offset = 2
   else
     let offset = 0
@@ -240,7 +244,8 @@ endfunction
 "             on_move
 "
 function! clap#impl#on_typed() abort
-  if exists('g:__clap_forerunner_result')
+  if exists('g:__clap_forerunner_result') &&
+        \ !(has_key(g:clap.context, 'ef') || has_key(g:clap.context, 'externalfilter'))
     call s:on_typed_sync_impl()
     return
   endif

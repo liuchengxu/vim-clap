@@ -324,6 +324,12 @@ function! g:clap#popup#preview.show(lines) abort
   call popup_settext(s:preview_winid, a:lines)
 endfunction
 
+function! g:clap#popup#preview.hide() abort
+  if exists('s:preview_winid')
+    call popup_hide(s:preview_winid)
+  endif
+endfunction
+
 function! s:apply_input(_timer) abort
   if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
