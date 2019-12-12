@@ -3,6 +3,9 @@ CHANGELOG
 
 ## [unreleased]
 
+-  New provider `:Clap git_diff_files` by @kit494way.
+-  Add the preview support for `:Clap registers`. If the content of some register is too much to fit on one line, then it will be shown in the preview window, otherwise do nothing.
+
 ## [0.2] 2019-12-10
 
 ### Added
