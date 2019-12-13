@@ -197,3 +197,22 @@ def fzy_scorer(niddle, haystack):
         return score(niddle, haystack)
     else:
         return SCORE_MIN, None
+
+
+def substr_scorer(niddle, haystack):
+    positions, offset = [], 0
+    niddle, haystack = niddle.lower(), haystack.lower()
+    for niddle in niddle.split(" "):
+        if not niddle:
+            continue
+        offset = haystack.find(niddle, offset)
+        if offset < 0:
+            return float("-inf"), None
+        niddle_len = len(niddle)
+        positions.extend(range(offset, offset + niddle_len))
+        offset += niddle_len
+    if not positions:
+        return 0, positions
+    match_len = positions[-1] + 1 - positions[0]
+    return -match_len + 2 / (positions[0] + 1) + 1 / (
+        positions[-1] + 1), positions
