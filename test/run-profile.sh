@@ -20,7 +20,8 @@ note() {
   local from=$2
 
   echo "====== $exe ======" >> stats.log
-  grep 'ext_filter()' $from.log | head -2 >> stats.log
+  grep 'ext_filter()' $from.log | head -2 | sed -e 's/^[ \t]*//' >> stats.log
+
   echo '' >> stats.log
 }
 

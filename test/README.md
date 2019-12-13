@@ -25,31 +25,31 @@ total items: 100257
 [once]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    1   5.956238             <SNR>37_ext_filter()
+1   5.951908             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    1   6.601909             <SNR>43_ext_filter()
+1   6.592639             <SNR>43_ext_filter()
 
 total items: 100257
 total items: 100257
 [multi]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    3  11.231520             <SNR>37_ext_filter()
+3  11.148641             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    3  12.687180             <SNR>43_ext_filter()
+3  12.655566             <SNR>43_ext_filter()
 
 [bench100000]
 ====== vim ======
 FUNCTION  <SNR>23_ext_filter()
-    1   5.337214             <SNR>23_ext_filter()
+1   5.400793             <SNR>23_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>27_ext_filter()
-    1   5.993792             <SNR>27_ext_filter()
+1   5.921336             <SNR>27_ext_filter()
 ```
 
 </td>
@@ -64,31 +64,31 @@ total items: 100257
 [once]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    1   0.352330             <SNR>37_ext_filter()
+1   0.352795             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    1   0.935349             <SNR>43_ext_filter()
+1   0.940487             <SNR>43_ext_filter()
 
 total items: 100257
 total items: 100257
 [multi]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    3   0.831023             <SNR>37_ext_filter()
+3   0.843340             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    3   2.268925             <SNR>43_ext_filter()
+3   2.221188             <SNR>43_ext_filter()
 
 [bench100000]
 ====== vim ======
 FUNCTION  <SNR>23_ext_filter()
-    1   0.298753             <SNR>23_ext_filter()
+1   0.306407             <SNR>23_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>27_ext_filter()
-    1   0.859812             <SNR>27_ext_filter()
+1   0.865437             <SNR>27_ext_filter()
 ```
 
 </td>
