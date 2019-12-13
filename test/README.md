@@ -19,37 +19,37 @@ $ ./run-profile.sh --all
 <td>
 
 ```
-stats of fuzzy filter performance:
+stats of pure Python fuzzy filter performance:
 
-total items: 100256
+total items: 100257
 [once]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    1   5.739779             <SNR>37_ext_filter()
+    1   5.956238             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    1   6.427331             <SNR>43_ext_filter()
+    1   6.601909             <SNR>43_ext_filter()
 
-total items: 100256
-total items: 100256
+total items: 100257
+total items: 100257
 [multi]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    3  10.802956             <SNR>37_ext_filter()
+    3  11.231520             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    3  12.251384             <SNR>43_ext_filter()
+    3  12.687180             <SNR>43_ext_filter()
 
 [bench100000]
 ====== vim ======
 FUNCTION  <SNR>23_ext_filter()
-    1   5.228887             <SNR>23_ext_filter()
+    1   5.337214             <SNR>23_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>27_ext_filter()
-    1   5.793226             <SNR>27_ext_filter()
+    1   5.993792             <SNR>27_ext_filter()
 ```
 
 </td>
@@ -57,38 +57,38 @@ FUNCTION  <SNR>27_ext_filter()
 <td>
 
 ```
-stats of fuzzy filter performance:
+stats of Rust fuzzy filter performance:
 
-total items: 100256
-total items: 100256
+total items: 100257
+total items: 100257
 [once]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    1   0.352634             <SNR>37_ext_filter()
+    1   0.352330             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    1   0.933202             <SNR>43_ext_filter()
+    1   0.935349             <SNR>43_ext_filter()
 
-total items: 100256
-total items: 100256
+total items: 100257
+total items: 100257
 [multi]
 ====== vim ======
 FUNCTION  <SNR>37_ext_filter()
-    3   0.860233             <SNR>37_ext_filter()
+    3   0.831023             <SNR>37_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>43_ext_filter()
-    3   2.216256             <SNR>43_ext_filter()
+    3   2.268925             <SNR>43_ext_filter()
 
 [bench100000]
 ====== vim ======
 FUNCTION  <SNR>23_ext_filter()
-    1   0.301782             <SNR>23_ext_filter()
+    1   0.298753             <SNR>23_ext_filter()
 
 ====== nvim ======
 FUNCTION  <SNR>27_ext_filter()
-    1   0.848937             <SNR>27_ext_filter()
+    1   0.859812             <SNR>27_ext_filter()
 ```
 
 </td>

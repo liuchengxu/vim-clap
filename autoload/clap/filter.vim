@@ -157,7 +157,12 @@ EOF
     endif
 
     let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').s:LIB)
-    let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
+    " For test only
+    if get(g:, 'clap_use_pure_python', 0)
+      let s:py_fn = 'clap_fzy_py'
+    else
+      let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
+    endif
     execute s:py_exe 'from clap.fzy import' s:py_fn
 
     function! clap#filter#benchmark(query, candidates) abort
