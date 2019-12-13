@@ -6,22 +6,11 @@ import vim
 from clap.fzy_impl import fzy_scorer, substr_scorer
 
 
-def apply_fzy(query, candidates):
+def apply_score(scorer, query, candidates):
     scored = []
 
     for c in candidates:
-        score, indices = fzy_scorer(query, c)
-        if score != float("-inf"):
-            scored.append({'score': score, 'indices': indices, 'text': c})
-
-    return scored
-
-
-def apply_substr(query, candidates):
-    scored = []
-
-    for c in candidates:
-        score, indices = substr_scorer(query, c)
+        score, indices = scorer(query, c)
         if score != float("-inf"):
             scored.append({'score': score, 'indices': indices, 'text': c})
 
@@ -30,10 +19,11 @@ def apply_substr(query, candidates):
 
 def fuzzy_match(query, candidates):
     if ' ' in query:
-        scored = apply_substr(query, candidates)
+        scorer = substr_scorer
     else:
-        scored = apply_fzy(query, candidates)
+        scorer = fzy_scorer
 
+    scored = apply_score(scorer, query, candidates)
     ranked = sorted(scored, key=lambda x: x['score'], reverse=True)
 
     indices = []
