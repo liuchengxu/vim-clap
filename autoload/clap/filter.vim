@@ -151,11 +151,12 @@ EOF
     call s:setup_python()
 
     if has('win32')
-      let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap\fuzzymatch_rs.pyd')
+      let s:LIB = '\pythonx\clap\fuzzymatch_rs.pyd'
     else
-      let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap/fuzzymatch_rs.so')
+      let s:LIB = '/pythonx/clap/fuzzymatch_rs.so'
     endif
 
+    let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').s:LIB)
     let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
     execute s:py_exe 'from clap.fzy import' s:py_fn
 
@@ -170,7 +171,7 @@ EOF
 
     let s:can_use_python = v:true
   catch
-      echom string(split(v:exception))
+    call clap#helper#echo_error(v:exception)
   endtry
 endif
 
