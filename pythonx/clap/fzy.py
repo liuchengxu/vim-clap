@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import vim
-
 from clap.fzy_impl import fzy_scorer
 
 
-def fuzzy_match(query, candidates):
+def fuzzy_match_py(query, candidates):
     scored = []
 
     for c in candidates:
@@ -22,8 +21,17 @@ def fuzzy_match(query, candidates):
         filtered.append(r['text'])
         indices.append(r['indices'])
 
-    return [indices, filtered]
+    return (indices, filtered)
 
 
-def clap_fzy():
-    return fuzzy_match(vim.eval("a:query"), vim.eval("a:candidates"))
+def clap_fzy_py():
+    return fuzzy_match_py(vim.eval("a:query"), vim.eval("a:candidates"))
+
+
+try:
+    from clap.fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
+
+    def clap_fzy_rs():
+        return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+except Exception:
+    pass

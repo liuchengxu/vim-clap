@@ -11,6 +11,7 @@ run_exe() {
     --cmd 'profile file *' \
     --cmd 'set verbosefile=verbose.log' \
     --cmd 'set verbose=9' \
+    --cmd "let g:clap_use_pure_python = $USE_PURE_PYTHON" \
     -c "call $test_fn()"
 }
 
@@ -19,7 +20,8 @@ note() {
   local from=$2
 
   echo "====== $exe ======" >> stats.log
-  grep 'ext_filter()' $from.log | head -2 >> stats.log
+  grep 'ext_filter()' $from.log | head -2 | sed -e 's/^[ \t]*//' >> stats.log
+
   echo '' >> stats.log
 }
 
@@ -72,10 +74,31 @@ run_bench() {
   bench_100000
 }
 
+run_all() {
+  run_once
+  run_multi
+  run_bench
+}
+
+test_python_and_rust() {
+  echo 'stats of pure Python fuzzy filter performance:' > stats.log
+  echo '' >> stats.log
+  USE_PURE_PYTHON=1
+  $1
+
+  echo '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>' >> stats.log
+  echo '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<' >> stats.log
+  echo '' >> stats.log
+
+  echo 'stats of Rust fuzzy filter performance:' >> stats.log
+  echo '' >> stats.log
+  USE_PURE_PYTHON=0
+  $1
+}
+
 help() {
   cat << EOF
 usage: $0 [OPTIONS]
-
     --help               Show this message
     --once
     --multi
@@ -89,19 +112,20 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-echo 'stats of fuzzy filter performance:' > stats.log
-echo '' >> stats.log
-
 for opt in "$@"; do
   case $opt in
     --help)  help      ;;
-    --once)  run_once  ;;
-    --multi) run_multi ;;
-    --bench) run_bench ;;
+    --once)
+      test_python_and_rust run_once
+      ;;
+    --multi)
+      test_python_and_rust run_multi
+      ;;
+    --bench)
+      test_python_and_rust run_bench
+      ;;
     --all)
-      run_once
-      run_multi
-      run_bench
+      test_python_and_rust run_all
       ;;
     *)
       echo "unknown option: $opt"
