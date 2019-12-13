@@ -125,7 +125,7 @@ function! clap#helper#build_maple() abort
   endif
 endfunction
 
-function! clap#helper#build_all() abort
+function! clap#helper#build_all(...) abort
   if executable('cargo')
     call s:build_maple()
     call s:build_rust_ext()
