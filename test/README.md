@@ -98,5 +98,5 @@ FUNCTION  <SNR>27_ext_filter()
 
 ### Conclusion
 
-- `pynvim` of Neovim is slower `python` of vim, especially when using the Python dynamic module.
+- `pynvim` of Neovim is slower than `python` of vim, especially when using the Python dynamic module written in Rust.
 - With Rust, vim is practically 16x faster, neovim is 7x faster.
