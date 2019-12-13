@@ -55,6 +55,12 @@ function! clap#helper#echo_error(msg) abort
   echohl NONE
 endfunction
 
+function! clap#helper#echo_warn(msg) abort
+  echohl WarningMsg
+  echom 'vim-clap: '.a:msg
+  echohl NONE
+endfunction
+
 function! s:run_term(cmd, cwd, success_info) abort
   10new belowright bottom
   setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
@@ -81,19 +87,31 @@ function! s:run_term(cmd, cwd, success_info) abort
 
   let bufnr = bufnr('')
 
-  wincmd p
+  noautocmd wincmd p
+endfunction
+
+function! s:build_rust_ext() abort
+  if has('win32')
+    let from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
+    let to = 'libfuzzymatch_rs.pyd'
+    let cmd = printf('cargo build --release && copy %s %s', from, to)
+    let cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
+  else
+    let cmd = 'make build'
+    let cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
+  endif
+  call s:run_term(cmd, cwd, 'build Rust extension successfully')
+endfunction
+
+function! s:build_maple() abort
+  let cmd = 'cargo build --release'
+  let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+  call s:run_term(cmd, cwd, 'build maple successfully')
 endfunction
 
 function! clap#helper#build_rust_ext() abort
   if executable('cargo')
-    if has('win32')
-      let cmd = 'cargo build --release'
-      let cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
-    else
-      let cmd = 'make build'
-      let cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
-    endif
-    call s:run_term(cmd, cwd, 'build Rust extension successfully')
+    call s:build_rust_ext()
   else
     call clap#helper#echo_error('Can not build Rust extension in that cargo is not found.')
   endif
@@ -101,15 +119,19 @@ endfunction
 
 function! clap#helper#build_maple() abort
   if executable('cargo')
-    let cmd = 'cargo build --release'
-    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-    call s:run_term(cmd, cwd, 'build maple successfully')
+    call s:build_maple()
   else
     call clap#helper#echo_error('Can not build maple in that cargo is not found.')
   endif
 endfunction
 
 function! clap#helper#build_all() abort
+  if executable('cargo')
+    call s:build_maple()
+    call s:build_rust_ext()
+  else
+    call clap#helper#echo_warn('cargo not found, skipped building maple and the Rust extension.')
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo
