@@ -606,7 +606,7 @@ g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
 g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold*
 
   Type: |Number|
-  Default: `10000`
+  Default: `10000`(no Rust extension), `100000`(with Rust extension)
 
   Vim-clap will try to spawn a asynchronous job to get the total possible
   results on entering the main window, instead of dispatching with the

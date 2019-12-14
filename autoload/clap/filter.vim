@@ -149,21 +149,40 @@ EOF
 
   try
     call s:setup_python()
-    execute s:py_exe 'from clap.fzy import clap_fzy'
 
-    function! s:ext_filter(query, candidates) abort
-      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval("clap_fzy()")
-      return filtered
-    endfunction
+    if has('win32')
+      let s:LIB = '\pythonx\clap\fuzzymatch_rs.pyd'
+    else
+      let s:LIB = '/pythonx/clap/fuzzymatch_rs.so'
+    endif
+
+    let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').s:LIB)
+    " For test only
+    if get(g:, 'clap_use_pure_python', 0)
+      let s:py_fn = 'clap_fzy_py'
+    else
+      let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
+    endif
+    execute s:py_exe 'from clap.fzy import' s:py_fn
 
     function! clap#filter#benchmark(query, candidates) abort
       return s:ext_filter(a:query, a:candidates)
     endfunction
 
+    function! s:ext_filter(query, candidates) abort
+      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
+      return filtered
+    endfunction
+
     let s:can_use_python = v:true
   catch
+    call clap#helper#echo_error(v:exception)
   endtry
 endif
+
+function! clap#filter#has_rust_ext() abort
+  return get(s:, 'has_rust_ext', v:false)
+endfunction
 
 if s:can_use_python
   function! clap#filter#(query, candidates) abort

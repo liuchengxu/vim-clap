@@ -24,6 +24,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Optional](#optional)
     * [`python`](#python)
     * [`maple`](#maple)
+    * [Rust extension](#rust-extension)
 * [Installation](#installation)
 * [Usage](#usage)
   * [Commands](#commands)
@@ -98,10 +99,17 @@ cargo build --release
 cargo install --path . --force
 ```
 
+#### Rust extension
+
+Use `:call clap#helper#build_rust_ext()` to install the Rust extension for 10x faster fuzzy filter than the Python one.
+
 ## Installation
 
 ```vim
 Plug 'liuchengxu/vim-clap'
+
+" Build the all optional dependency, cargo is needed.
+Plug 'liuchengxu/vim-clap', { 'do': function('clap#helper#build_all') }
 ```
 
 ## Usage
