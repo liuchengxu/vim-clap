@@ -16,8 +16,8 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
-    let mut indices = Vec::new();
-    let mut filtered = Vec::new();
+    let mut indices = Vec::with_capacity(ranked.len());
+    let mut filtered = Vec::with_capacity(ranked.len());
     for (text, _, ids) in ranked.into_iter() {
         indices.push(ids);
         filtered.push(text);
