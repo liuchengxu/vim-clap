@@ -109,7 +109,7 @@ Use `:call clap#helper#build_rust_ext()` to install the Rust extension for 10x f
 Plug 'liuchengxu/vim-clap'
 
 " Build the all optional dependency, cargo is needed.
-PLug 'liuchengxu/vim-clap', { 'do': function('clap#helper#build_all') }
+Plug 'liuchengxu/vim-clap', { 'do': function('clap#helper#build_all') }
 ```
 
 ## Usage

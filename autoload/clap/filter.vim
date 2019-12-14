@@ -180,6 +180,10 @@ EOF
   endtry
 endif
 
+function! clap#filter#has_rust_ext() abort
+  return get(s:, 'has_rust_ext', v:false)
+endfunction
+
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
