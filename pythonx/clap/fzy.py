@@ -3,7 +3,7 @@
 
 import vim
 
-from clap.fzy_impl import fzy_scorer, substr_scorer
+from clap.scorer import fzy_scorer, substr_scorer
 
 
 def apply_score(scorer, query, candidates):
