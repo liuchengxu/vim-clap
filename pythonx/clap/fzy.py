@@ -2,17 +2,28 @@
 # -*- coding: utf-8 -*-
 
 import vim
-from clap.fzy_impl import fzy_scorer
+
+from clap.scorer import fzy_scorer, substr_scorer
 
 
-def fuzzy_match_py(query, candidates):
+def apply_score(scorer, query, candidates):
     scored = []
 
     for c in candidates:
-        score, indices = fzy_scorer(query, c)
+        score, indices = scorer(query, c)
         if score != float("-inf"):
             scored.append({'score': score, 'indices': indices, 'text': c})
 
+    return scored
+
+
+def fuzzy_match_py(query, candidates):
+    if ' ' in query:
+        scorer = substr_scorer
+    else:
+        scorer = fzy_scorer
+
+    scored = apply_score(scorer, query, candidates)
     ranked = sorted(scored, key=lambda x: x['score'], reverse=True)
 
     indices = []
