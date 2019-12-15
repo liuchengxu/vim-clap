@@ -15,6 +15,7 @@ function! s:reset_on_empty_input() abort
   call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
   call clap#sign#toggle_cursorline()
   call g:clap#display_win.compact_if_undersize()
+  call g:clap.preview.hide()
 endfunction
 
 " g:__clap_forerunner_result is fetched in async.
@@ -95,6 +96,7 @@ function! s:on_typed_sync_impl() abort
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.
     call clap#impl#refresh_matches_count('0')
+    call g:clap.preview.hide()
   else
     call g:clap.display.set_lines_lazy(lines)
     call clap#impl#refresh_matches_count(string(len(l:lines)))
