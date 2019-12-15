@@ -17,7 +17,11 @@ function! s:tags.source(...) abort
 endfunction
 
 function! s:tags.on_move() abort
-  let [lnum, tag] = vista#finder#fzf#extract(g:clap.display.getcurline())
+  try
+    let [lnum, tag] = vista#finder#fzf#extract(g:clap.display.getcurline())
+  catch
+    return
+  endtry
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
   call g:clap.preview.show(lines)
