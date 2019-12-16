@@ -516,8 +516,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    if self.is_pure_async()
-          \ || clap#api#has_externalfilter()
+    if !has_key(g:clap.provider._(), 'source')
       return
     elseif self.type == g:__t_string
       call clap#forerunner#start(g:clap.provider._().source)
