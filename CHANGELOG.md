@@ -5,9 +5,11 @@ CHANGELOG
 
 ### Added
 
+- Add Python version subscorer fuzzy filter.([#159](https://github.com/liuchengxu/vim-clap/pull/159))
 - New provider `:Clap git_diff_files` by @kit494way.
 - Add the preview support for `:Clap registers`. If the content of some register is too much to fit on one line, then it will be shown in the preview window, otherwise do nothing.
-- Make the built-in fuzzy filter 10x faster using Rust.([147](https://github.com/liuchengxu/vim-clap/pull/147))
+- Add the preview support for `:Clap tags`.
+- Make the built-in fuzzy filter 10x faster using Rust.([#147](https://github.com/liuchengxu/vim-clap/pull/147))
 
 ## [0.2] 2019-12-10
 
