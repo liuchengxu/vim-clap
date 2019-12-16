@@ -17,7 +17,7 @@ test:
 run-cargo:
 	@echo "\033[1;34m==>\033[0m Trying to build rust extension"; \
 	cd fuzzymatch-rs; \
-	cargo build --release
+	cargo +nightly build --release
 
 ifeq ($(OS),darwin)
 move-so: run-cargo
