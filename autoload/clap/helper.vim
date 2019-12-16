@@ -90,28 +90,19 @@ function! s:run_term(cmd, cwd, success_info) abort
   noautocmd wincmd p
 endfunction
 
-function! s:build_rust_ext() abort
-  if has('win32')
-    let from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
-    let to = 'libfuzzymatch_rs.pyd'
-    let cmd = printf('cargo build --release && copy %s %s', from, to)
-    let cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
-  else
-    let cmd = 'make build'
-    let cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
-  endif
-  call s:run_term(cmd, cwd, 'build Rust extension successfully')
-endfunction
-
-function! s:build_maple() abort
-  let cmd = 'cargo build --release'
-  let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-  call s:run_term(cmd, cwd, 'build maple successfully')
-endfunction
+if has('win32')
+  let s:from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
+  let s:to = 'libfuzzymatch_rs.pyd'
+  let s:rust_ext_cmd = printf('cargo build --release && copy %s %s', s:from, s:to)
+  let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
+else
+  let s:rust_ext_cmd = 'make build'
+  let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
+endif
 
 function! clap#helper#build_rust_ext() abort
   if executable('cargo')
-    call s:build_rust_ext()
+    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Rust extension successfully')
   else
     call clap#helper#echo_error('Can not build Rust extension in that cargo is not found.')
   endif
@@ -119,7 +110,9 @@ endfunction
 
 function! clap#helper#build_maple() abort
   if executable('cargo')
-    call s:build_maple()
+    let cmd = 'cargo build --release'
+    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+    call s:run_term(cmd, cwd, 'build maple successfully')
   else
     call clap#helper#echo_error('Can not build maple in that cargo is not found.')
   endif
@@ -127,8 +120,13 @@ endfunction
 
 function! clap#helper#build_all(...) abort
   if executable('cargo')
-    call s:build_maple()
-    call s:build_rust_ext()
+    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+    if has('win32')
+      let cmd = printf('cargo build --release && cd %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
+    else
+      let cmd = 'make'
+    endif
+    call s:run_term(cmd, cwd, 'build maple and Rust extension successfully')
   else
     call clap#helper#echo_warn('cargo not found, skipped building maple and the Rust extension.')
   endif
