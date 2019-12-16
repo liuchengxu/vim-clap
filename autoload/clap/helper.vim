@@ -122,7 +122,7 @@ function! clap#helper#build_all(...) abort
   if executable('cargo')
     let cwd = fnamemodify(g:clap#autoload_dir, ':h')
     if has('win32')
-      let cmd = printf('cargo build --release && cd %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
+      let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
     else
       let cmd = 'make'
     endif
