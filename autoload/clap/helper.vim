@@ -93,7 +93,7 @@ endfunction
 if has('win32')
   let s:from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
   let s:to = 'libfuzzymatch_rs.pyd'
-  let s:rust_ext_cmd = printf('cargo build --release && copy %s %s', s:from, s:to)
+  let s:rust_ext_cmd = printf('cargo +nightly build --release && copy %s %s', s:from, s:to)
   let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
 else
   let s:rust_ext_cmd = 'make build'
