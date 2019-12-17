@@ -101,13 +101,54 @@ function! clap#util#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
+function! s:is_dir(pattern) abort
+  return a:pattern[-1:] ==# '/'
+endfunction
+
+" Credit: vim-rooter
+function! s:find_upward(pattern) abort
+  let start_dir = expand('#'.g:clap.start.bufnr.':p')
+  let fd_dir = isdirectory(start_dir) ? start_dir : fnamemodify(start_dir, ':h')
+  let fd_dir_escaped = escape(fd_dir, ' ')
+
+  if s:is_dir(a:pattern)
+    let match = finddir(a:pattern, fd_dir_escaped.';')
+  else
+    let [_suffixesadd, &suffixesadd] = [&suffixesadd, '']
+    let match = findfile(a:pattern, fd_dir_escaped.';')
+    let &suffixesadd = _suffixesadd
+  endif
+
+  if empty(match)
+    return ''
+  endif
+
+  if s:is_dir(a:pattern)
+    " If the directory we found (`match`) is part of the file's path
+    " it is the project root and we return it.
+    "
+    " Compare with trailing path separators to avoid false positives.
+    if stridx(fnamemodify(fd_dir, ':p'), fnamemodify(match, ':p')) == 0
+      return fnamemodify(match, ':p:h')
+    " Else the directory we found (`match`) is a subdirectory of the
+    " project root, so return match's parent.
+    else
+      return fnamemodify(match, ':p:h:h')
+    endif
+  else
+    return fnamemodify(match, ':p:h')
+  endif
+endfunction
+
 " This is faster than clap#util#get_git_root() which uses the system call.
 function! clap#util#find_git_root(bufnr) abort
-  let git_dir = clap#util#find_nearest_dir(a:bufnr, '.git')
-
-  if !empty(git_dir)
-    return fnamemodify(git_dir, ':h:h')
-  endif
+  " git submodule uses .git instead of .git/. Ref #164
+  for pattern in ['.git', '.git/']
+    let git_dir = s:find_upward(pattern)
+    if !empty(git_dir)
+      return git_dir
+    endif
+  endfor
 
   return ''
 endfunction
