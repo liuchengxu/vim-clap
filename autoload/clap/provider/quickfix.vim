@@ -13,10 +13,10 @@ function! s:quickfix.source() abort
   return map(qflist, 's:to_grepformat(v:val)')
 endfunction
 
-function! s:to_grepformat(quickfix) abort
-  let path = bufname(a:quickfix['bufnr'])
-  let line_col = a:quickfix['lnum'].' col '.a:quickfix['col']
-  return path.'|'.line_col.'|'.a:quickfix['text']
+function! s:to_grepformat(qf_entry) abort
+  let path = bufname(a:qf_entry['bufnr'])
+  let line_col = a:qf_entry['lnum'].' col '.a:qf_entry['col']
+  return path.'|'.line_col.'|'.a:qf_entry['text']
 endfunction
 
 function! s:quickfix.sink(selected) abort
