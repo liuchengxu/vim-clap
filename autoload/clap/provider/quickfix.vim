@@ -27,7 +27,6 @@ function! s:quickfix.sink(selected) abort
   noautocmd call cursor(lnum, column)
 endfunction
 
-let s:quickfix.enable_rooter = v:true
 
 let g:clap#provider#quickfix# = s:quickfix
 
