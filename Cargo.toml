@@ -12,7 +12,7 @@ include = ["/Cargo.toml", "src/*.rs"]
 
 [dependencies]
 serde_json = "1.0"
-fuzzy-matcher = "0.2.1"
+fuzzy-matcher = "0.3.1"
 rff = "0.3.0"
 structopt = "0.3"
 rayon = "1.1"
