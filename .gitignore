@@ -16,3 +16,4 @@ __pycache__
 !.gitignore
 !.github
 !.vintrc.yaml
+!.dependabot
