@@ -10,13 +10,17 @@ function! s:quickfix.source() abort
   " Ignore quickfix list entries with non-existing buffer number.
   let qflist = filter(getqflist(), 'v:val["bufnr"]')
 
-  return map(qflist, 's:to_grepformat(v:val)')
+  return map(qflist, 's:qf_fmt_entry(v:val)')
 endfunction
 
-function! s:to_grepformat(qf_entry) abort
+function! s:qf_fmt_entry(qf_entry) abort
   let path = bufname(a:qf_entry['bufnr'])
   let line_col = a:qf_entry['lnum'].' col '.a:qf_entry['col']
-  return path.'|'.line_col.'|'.a:qf_entry['text']
+  return path.'|'.line_col.'| '.trim(s:qf_fmt_text(a:qf_entry['text']))
+endfunction
+
+function! s:qf_fmt_text(text) abort
+  return substitute(a:text, '\n\( \|\t\)*', ' ', 'g')
 endfunction
 
 function! s:quickfix.sink(selected) abort
