@@ -216,3 +216,12 @@ def substr_scorer(niddle, haystack):
     match_len = positions[-1] + 1 - positions[0]
     return -match_len + 2 / (positions[0] + 1) + 1 / (
         positions[-1] + 1), positions
+
+
+if __name__ == '__main__':
+    niddle = "su ork"
+    haystack = "substr_scorer_should_work"
+    print(substr_scorer(niddle, haystack))
+    niddle = "su ou"
+    haystack = "substr_scorer_should_work"
+    print(substr_scorer(niddle, haystack))
