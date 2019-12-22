@@ -1,4 +1,6 @@
+use std::fs::File;
 use std::io::{self, BufRead};
+use std::path::PathBuf;
 
 use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
@@ -25,6 +27,17 @@ struct Opt {
     /// Filter algorithm
     #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
     algo: Option<Algo>,
+
+    /// Print a JSON with two fields: total and payload. The payload size is decided by number.
+    ///
+    /// total: total number
+    /// payload: lines
+    #[structopt(short = "n", long = "number")]
+    number: Option<u32>,
+
+    /// Read input from a file instead of stdin.
+    #[structopt(long = "input", parse(from_os_str))]
+    input: Option<PathBuf>,
 }
 
 pub fn main() {
@@ -41,25 +54,52 @@ pub fn main() {
     };
 
     // Result<Option<T>> => T
-    let mut ranked = io::stdin()
-        .lock()
-        .lines()
-        .filter_map(|lines_iter| {
-            lines_iter
-                .ok()
-                .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
-        })
-        .collect::<Vec<_>>();
+    let mut ranked = if let Some(input) = opt.input {
+        let file = File::open(input).expect("Can not open file");
+        io::BufReader::new(file)
+            .lines()
+            .filter_map(|lines_iter| {
+                lines_iter
+                    .ok()
+                    .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
+            })
+            .collect::<Vec<_>>()
+    } else {
+        io::stdin()
+            .lock()
+            .lines()
+            .filter_map(|lines_iter| {
+                lines_iter
+                    .ok()
+                    .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
+            })
+            .collect::<Vec<_>>()
+    };
 
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
-    for (text, _, indices) in ranked.iter() {
+    if let Some(number) = opt.number {
+        let total = ranked.len();
+        let payload = ranked.into_iter().take(number as usize).collect::<Vec<_>>();
+        let mut lines = Vec::with_capacity(number as usize);
+        let mut indices = Vec::with_capacity(number as usize);
+        for (text, _, idxs) in payload.iter() {
+            lines.push(text);
+            indices.push(idxs);
+        }
         println!(
             "{}",
-            json!({
-            "text": text,
-            "indices": indices,
-            })
+            json!({"total": total, "lines": lines, "indices": indices})
         );
+    } else {
+        for (text, _, indices) in ranked.iter() {
+            println!(
+                "{}",
+                json!({
+                "text": text,
+                "indices": indices,
+                })
+            );
+        }
     }
 }
