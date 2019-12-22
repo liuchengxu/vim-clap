@@ -277,6 +277,12 @@ function! clap#for(provider_id_or_alias) abort
         \ 'g:__clap_initial_source_size',
         \ ])
 
+  if exists('g:__clap_forerunner_tmp_file')
+    if filereadable(g:__clap_forerunner_tmp_file)
+      call delete(g:__clap_forerunner_tmp_file)
+    endif
+  endif
+
   call clap#handler#init()
 
   call g:clap.open_win()

@@ -401,8 +401,12 @@ function! s:init_provider() abort
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
     let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-    " FIXME Does it work well in Windows?
-    let cmd = a:source_cmd.' | '.ext_filter_cmd
+    if exists('g:__clap_forerunner_tmp_file')
+      let cmd = printf('%s %s | %s', s:cat_or_type, g:__clap_forerunner_tmp_file, ext_filter_cmd)
+    else
+      " FIXME Does it work well in Windows?
+      let cmd = a:source_cmd.' | '.ext_filter_cmd
+    endif
     return cmd
   endfunction
 
