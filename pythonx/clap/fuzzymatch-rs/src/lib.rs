@@ -81,15 +81,31 @@ fn fuzzymatch_rs(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[test]
-fn substr_scorer_should_work() {
-    let niddle = "su ork";
-    let haystack = "substr_scorer_should_work";
-    println!("{:?}", substr_scorer(niddle, haystack));
-    let niddle = "su ou";
-    let haystack = "substr_scorer_should_work";
-    println!("{:?}", substr_scorer(niddle, haystack));
+fn py_and_rs_subscore_should_work() {
+    use pyo3::{prelude::*, types::PyModule};
+    use std::fs;
 
-    let niddle = "su  ou";
-    let haystack = "substr_scorer_should_work";
-    println!("{:?}", fuzzy_match(niddle, vec![haystack.into()]));
+    let cur_dir = std::env::current_dir().unwrap();
+    let py_path = cur_dir.parent().unwrap().join("scorer.py");
+    let py_source_code = fs::read_to_string(py_path).unwrap();
+
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let activators =
+        PyModule::from_code(py, &py_source_code, "activators.py", "activators").unwrap();
+
+    let test_cases = vec![
+        ("su ou", "substr_scorer_should_work"),
+        ("su ork", "substr_scorer_should_work"),
+    ];
+
+    for (niddle, haystack) in test_cases.into_iter() {
+        let py_result: (f64, Vec<usize>) = activators
+            .call1("substr_scorer", (niddle, haystack))
+            .unwrap()
+            .extract()
+            .unwrap();
+        let rs_result = substr_scorer(niddle, haystack).unwrap();
+        assert_eq!(py_result, rs_result);
+    }
 }
