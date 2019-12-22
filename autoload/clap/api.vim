@@ -402,7 +402,12 @@ function! s:init_provider() abort
   function! s:wrap_async_cmd(source_cmd) abort
     let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
     if exists('g:__clap_forerunner_tmp_file')
-      let cmd = printf('%s %s | %s', s:cat_or_type, g:__clap_forerunner_tmp_file, ext_filter_cmd)
+      " Reading from a cached file should be faster than running the coommand again.
+      if clap#filter#using_maple()
+        let cmd = printf('%s --input %s', ext_filter_cmd, g:__clap_forerunner_tmp_file)
+      else
+        let cmd = printf('%s %s | %s', s:cat_or_type, g:__clap_forerunner_tmp_file, ext_filter_cmd)
+      endif
     else
       " FIXME Does it work well in Windows?
       let cmd = a:source_cmd.' | '.ext_filter_cmd

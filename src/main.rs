@@ -33,7 +33,7 @@ struct Opt {
     /// total: total number
     /// payload: lines
     #[structopt(short = "n", long = "number")]
-    number: Option<u32>,
+    number: Option<usize>,
 
     /// Read input from a file instead of stdin.
     #[structopt(long = "input", parse(from_os_str))]
@@ -80,9 +80,9 @@ pub fn main() {
 
     if let Some(number) = opt.number {
         let total = ranked.len();
-        let payload = ranked.into_iter().take(number as usize).collect::<Vec<_>>();
-        let mut lines = Vec::with_capacity(number as usize);
-        let mut indices = Vec::with_capacity(number as usize);
+        let payload = ranked.into_iter().take(number).collect::<Vec<_>>();
+        let mut lines = Vec::with_capacity(number);
+        let mut indices = Vec::with_capacity(number);
         for (text, _, idxs) in payload.iter() {
             lines.push(text);
             indices.push(idxs);

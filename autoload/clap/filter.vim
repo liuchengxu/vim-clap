@@ -45,6 +45,10 @@ else
   endfor
 endif
 
+function! clap#filter#using_maple() abort
+  return s:default_ext_filter == 'maple'
+endfunction
+
 function! s:pattern_builder._force_case() abort
   " Smart case
   if self.input =~? '\u'
