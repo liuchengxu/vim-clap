@@ -6,10 +6,17 @@ CHANGELOG
 ### Added
 
 - Add Python version subscorer fuzzy filter.([#159](https://github.com/liuchengxu/vim-clap/pull/159))
+- Add Rust version subscorer fuzzy filter.([#176](https://github.com/liuchengxu/vim-clap/pull/176))
+- New provider `:Clap quickfix` by @kit494way.
 - New provider `:Clap git_diff_files` by @kit494way.
 - Add the preview support for `:Clap registers`. If the content of some register is too much to fit on one line, then it will be shown in the preview window, otherwise do nothing.
 - Add the preview support for `:Clap tags`.
+- Add the helper function for building Rust extension easily. Now you can use `:call clap#helper#build_all()` to build the optional Rust dependency.
 - Make the built-in fuzzy filter 10x faster using Rust.([#147](https://github.com/liuchengxu/vim-clap/pull/147))
+
+### Fixed
+
+- Fix vim popup sign not showing.([#141](https://github.com/liuchengxu/vim-clap/pull/141))
 
 ## [0.2] 2019-12-10
 

@@ -32,3 +32,15 @@ jobs:
       run: pip install vim-vint
     - name: Run Vimscript Linter
       run: test/run_vint.sh
+
+  fuzzymatch_rs:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Run Cargo test
+      run: cd pythonx/clap/fuzzymatch-rs && cargo test --no-default-features

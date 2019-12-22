@@ -87,6 +87,8 @@ function! s:run_term(cmd, cwd, success_info) abort
 
   let bufnr = bufnr('')
 
+  normal! G
+
   noautocmd wincmd p
 endfunction
 
