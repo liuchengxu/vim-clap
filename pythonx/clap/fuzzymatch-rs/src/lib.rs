@@ -91,8 +91,7 @@ fn py_and_rs_subscore_should_work() {
 
     let gil = Python::acquire_gil();
     let py = gil.python();
-    let activators =
-        PyModule::from_code(py, &py_source_code, "activators.py", "activators").unwrap();
+    let py_scorer = PyModule::from_code(py, &py_source_code, "scorer.py", "scorer").unwrap();
 
     let test_cases = vec![
         ("su ou", "substr_scorer_should_work"),
@@ -100,7 +99,7 @@ fn py_and_rs_subscore_should_work() {
     ];
 
     for (niddle, haystack) in test_cases.into_iter() {
-        let py_result: (f64, Vec<usize>) = activators
+        let py_result: (f64, Vec<usize>) = py_scorer
             .call1("substr_scorer", (niddle, haystack))
             .unwrap()
             .extract()
