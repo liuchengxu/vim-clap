@@ -35,7 +35,6 @@ function! s:on_complete() abort
     let tmp = tempname()
     if writefile(s:chunks, tmp) == 0
       let g:__clap_forerunner_tmp_file = tmp
-      return tmp
     endif
     unlet s:chunks
   endif

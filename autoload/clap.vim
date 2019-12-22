@@ -256,6 +256,21 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
+function! s:clear_state() abort
+  call s:unlet_vars([
+        \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_raw_source',
+        \ 'g:__clap_initial_source_size',
+        \ ])
+
+  if exists('g:__clap_forerunner_tmp_file')
+    if filereadable(g:__clap_forerunner_tmp_file)
+      call delete(g:__clap_forerunner_tmp_file)
+    endif
+    unlet g:__clap_forerunner_tmp_file
+  endif
+endfunction
+
 function! clap#for(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
@@ -267,21 +282,12 @@ function! clap#for(provider_id_or_alias) abort
   let g:clap.display.cache = []
 
   " If the registrar is not aware of this provider, try registering it.
-  if !has_key(g:clap.registrar, provider_id) && !s:try_register_is_ok(provider_id)
+  if !has_key(g:clap.registrar, provider_id)
+        \ && !s:try_register_is_ok(provider_id)
     return
   endif
 
-  call s:unlet_vars([
-        \ 'g:__clap_provider_cwd',
-        \ 'g:__clap_raw_source',
-        \ 'g:__clap_initial_source_size',
-        \ ])
-
-  if exists('g:__clap_forerunner_tmp_file')
-    if filereadable(g:__clap_forerunner_tmp_file)
-      call delete(g:__clap_forerunner_tmp_file)
-    endif
-  endif
+  call s:clear_state()
 
   call clap#handler#init()
 
