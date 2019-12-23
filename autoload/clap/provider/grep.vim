@@ -161,7 +161,7 @@ function! s:grep_on_move() abort
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call g:clap.preview.show(preview_lines)
-  call g:clap.preview.load_syntax(s:preview_cache[fpath].filetype)
+  call g:clap.preview.set_syntax(s:preview_cache[fpath].filetype)
   call g:clap.preview.add_highlight(hi_lnum)
 endfunction
 
@@ -239,7 +239,7 @@ let s:grep.on_typed = function('s:grep_with_delay')
 
 let s:grep.on_move = function('s:grep_on_move')
 
-let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
+let s:grep.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_grep') }
 
 if get(g:, 'clap_provider_grep_enable_icon',
       \ exists('g:loaded_webdevicons')

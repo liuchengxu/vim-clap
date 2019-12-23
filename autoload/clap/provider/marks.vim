@@ -63,7 +63,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
       let ft = clap#ext#into_filetype(file_text)
     endif
     if !empty(ft)
-      call g:clap.preview.load_syntax(ft)
+      call g:clap.preview.set_syntax(ft)
     endif
     call g:clap.preview.add_highlight(hi_lnum)
   endif
@@ -89,7 +89,7 @@ function! s:marks.on_move() abort
   call clap#provider#marks#preview_impl(line, col, file_text)
 endfunction
 
-let s:marks.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_marks') }
+let s:marks.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_marks') }
 
 let g:clap#provider#marks# = s:marks
 

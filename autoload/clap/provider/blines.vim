@@ -26,13 +26,13 @@ function! s:blines.on_move() abort
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
   call g:clap.preview.show(lines)
-  call g:clap.preview.load_syntax(s:origin_ft)
+  call g:clap.preview.set_syntax(s:origin_syntax)
   call g:clap.preview.add_highlight(hi_lnum+1)
 endfunction
 
 function! s:blines.on_enter() abort
-  let s:origin_ft = getbufvar(g:clap.start.bufnr, '&ft')
-  call g:clap.display.setbufvar('&ft', 'clap_blines')
+  let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
+  call g:clap.display.setbufvar('&syntax', 'clap_blines')
 endfunction
 
 let g:clap#provider#blines# = s:blines

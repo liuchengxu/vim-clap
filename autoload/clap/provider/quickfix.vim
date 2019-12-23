@@ -32,13 +32,7 @@ function! s:quickfix.sink(selected) abort
 endfunction
 
 function! s:quickfix.on_enter() abort
-  if has('nvim')
-    call g:clap.display.goto_win()
-    runtime! syntax/qf.vim
-    call g:clap.input.goto_win()
-  else
-    call win_execute(g:clap.display.winid, 'runtime! syntax/qf.vim')
-  endif
+  call g:clap.display.setbufvar('&syntax', 'qf')
 endfunction
 
 let g:clap#provider#quickfix# = s:quickfix
