@@ -398,23 +398,48 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  " Reading from a cached file should be faster than running the command again.
+  " Currently only maple extension supports --input option, for the other
+  " external filter, use cat instead.
+  function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
+    if clap#filter#using_maple()
+      let cmd = printf('%s --input %s', a:ext_filter_cmd, a:input_file)
+    else
+      let cmd = printf('%s %s | %s', s:cat_or_type, a:input_file, a:ext_filter_cmd)
+    endif
+    return cmd
+  endfunction
+
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
     let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
     if exists('g:__clap_forerunner_tmp_file')
-      " Reading from a cached file should be faster than running the command again.
-      " Currently only maple extension supports --input option, for the other
-      " external filter, use cat instead.
-      if clap#filter#using_maple()
-        let cmd = printf('%s --input %s', ext_filter_cmd, g:__clap_forerunner_tmp_file)
-      else
-        let cmd = printf('%s %s | %s', s:cat_or_type, g:__clap_forerunner_tmp_file, ext_filter_cmd)
-      endif
+      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tmp_file)
     else
       " FIXME Does it work well in Windows?
+      " Run the source command and pipe into the external filter.
       let cmd = a:source_cmd.' | '.ext_filter_cmd
     endif
     return cmd
+  endfunction
+
+  " Return the cached source tmp file,
+  " otherwise write the source list into a temp file and then return it.
+  function! s:into_source_tmp_file(source_list) abort
+    if has_key(g:clap.provider, 'source_tempfile')
+      let tmp = g:clap.provider.source_tempfile
+      return tmp
+    else
+      let tmp = tempname()
+      if writefile(a:source_list, tmp) == 0
+        call add(g:clap.tmps, tmp)
+        let g:clap.provider.source_tempfile = tmp
+        return tmp
+      else
+        call g:clap.abort('Fail to write source to a temp file')
+        return ''
+      endif
+    endif
   endfunction
 
   function! provider.source_async_or_default() abort
@@ -434,21 +459,11 @@ function! s:init_provider() abort
         let lines = copy(Source())
       endif
 
-      if has_key(g:clap.provider, 'source_tempfile')
-        let tmp = g:clap.provider.source_tempfile
-      else
-        let tmp = tempname()
-        if writefile(lines, tmp) == 0
-          call add(g:clap.tmps, tmp)
-          let g:clap.provider.source_tempfile = tmp
-        else
-          call g:clap.abort('Fail to write source to a temp file')
-          return
-        endif
-      endif
-
       let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-      let cmd = printf('%s %s | %s', s:cat_or_type, tmp, ext_filter_cmd)
+
+      let tmp = s:into_source_tmp_file(lines)
+      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
+
       " TODO: could be faster using rg directly?
       " let cmd = printf('rg %s %s', g:clap.input.get(), tmp)
       return cmd

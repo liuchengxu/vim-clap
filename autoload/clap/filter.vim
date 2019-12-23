@@ -46,7 +46,7 @@ else
 endif
 
 function! clap#filter#using_maple() abort
-  return s:default_ext_filter == 'maple'
+  return s:ext_filter == 'maple'
 endfunction
 
 function! s:pattern_builder._force_case() abort
@@ -104,23 +104,23 @@ endfunction
 
 function! clap#filter#get_external_cmd_or_default() abort
   if has_key(g:clap.context, 'externalfilter')
-    let ext_filter = g:clap.context.externalfilter
+    let s:ext_filter = g:clap.context.externalfilter
   elseif has_key(g:clap.context, 'ef')
-    let ext_filter = g:clap.context.ef
+    let s:ext_filter = g:clap.context.ef
   elseif s:default_ext_filter is v:null
     call g:clap.abort('No external filter available')
     return
   else
-    let ext_filter = s:default_ext_filter
+    let s:ext_filter = s:default_ext_filter
   endif
-  if ext_filter ==# 'maple'
+  if s:ext_filter ==# 'maple'
     let g:__clap_maple_fuzzy_matched = []
     let Provider = g:clap.provider._()
     if !has_key(Provider, 'converter')
       let Provider.converter = function('s:maple_converter')
     endif
   endif
-  return printf(s:ext_cmd[ext_filter], g:clap.input.get())
+  return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
 endfunction
 
 function! s:filter(line, pattern) abort
