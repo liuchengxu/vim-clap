@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::PathBuf;
 
@@ -28,7 +27,7 @@ struct Opt {
     #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
     algo: Option<Algo>,
 
-    /// Read input from a file instead of stdin.
+    /// Read input from a file instead of stdin, only absolute file path is supported.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
 
@@ -57,14 +56,10 @@ pub fn main() {
 
     // Result<Option<T>> => T
     let mut ranked = if let Some(input) = opt.input {
-        let file = File::open(input).expect("Can not open file");
-        io::BufReader::new(file)
-            .lines()
-            .filter_map(|lines_iter| {
-                lines_iter
-                    .ok()
-                    .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
-            })
+        std::fs::read_to_string(input)
+            .expect("Input file does not exist")
+            .par_lines()
+            .filter_map(|line| scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
             .collect::<Vec<_>>()
     } else {
         io::stdin()
