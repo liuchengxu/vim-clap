@@ -28,16 +28,18 @@ struct Opt {
     #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
     algo: Option<Algo>,
 
-    /// Print a JSON with two fields: total and payload. The payload size is decided by number.
-    ///
-    /// total: total number
-    /// payload: lines
-    #[structopt(short = "n", long = "number")]
-    number: Option<usize>,
-
     /// Read input from a file instead of stdin.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
+
+    /// Print the top number of filtered items.
+    ///
+    /// The returned JSON has three fields:
+    ///   - total: total number of initial filtered result set.
+    ///   - lines: text lines used for displaying directly.
+    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
+    #[structopt(short = "n", long = "number")]
+    number: Option<usize>,
 }
 
 pub fn main() {
