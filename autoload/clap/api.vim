@@ -402,7 +402,9 @@ function! s:init_provider() abort
   function! s:wrap_async_cmd(source_cmd) abort
     let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
     if exists('g:__clap_forerunner_tmp_file')
-      " Reading from a cached file should be faster than running the coommand again.
+      " Reading from a cached file should be faster than running the command again.
+      " Currently only maple extension supports --input option, for the other
+      " external filter, use cat instead.
       if clap#filter#using_maple()
         let cmd = printf('%s --input %s', ext_filter_cmd, g:__clap_forerunner_tmp_file)
       else
