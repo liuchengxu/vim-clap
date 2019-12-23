@@ -32,6 +32,10 @@ function! s:on_complete() abort
     " TODO: add a flag to disable this cache.
     let g:__clap_forerunner_result = s:chunks
   else
+    let tmp = tempname()
+    if writefile(s:chunks, tmp) == 0
+      let g:__clap_forerunner_tmp_file = tmp
+    endif
     unlet s:chunks
   endif
 endfunction

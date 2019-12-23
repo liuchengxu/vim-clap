@@ -14,6 +14,10 @@ CHANGELOG
 - Add the helper function for building Rust extension easily. Now you can use `:call clap#helper#build_all()` to build the optional Rust dependency.
 - Make the built-in fuzzy filter 10x faster using Rust.([#147](https://github.com/liuchengxu/vim-clap/pull/147))
 
+### Improved
+
+- Cache the result of forerunner job into a temp file if it's larger than the threshold of built-in sync filter can handle.([#177](https://github.com/liuchengxu/vim-clap/pull/177))
+
 ### Fixed
 
 - Fix vim popup sign not showing.([#141](https://github.com/liuchengxu/vim-clap/pull/141))
