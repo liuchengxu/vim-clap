@@ -77,10 +77,10 @@ pub fn main() {
 
     if let Some(number) = opt.number {
         let total = ranked.len();
-        let payload = ranked.into_iter().take(number).collect::<Vec<_>>();
+        let payload = ranked.into_iter().take(number);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
-        for (text, _, idxs) in payload.iter() {
+        for (text, _, idxs) in payload {
             lines.push(text);
             indices.push(idxs);
         }
