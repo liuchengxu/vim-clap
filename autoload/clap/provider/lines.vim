@@ -74,7 +74,7 @@ function! s:lines.source() abort
 endfunction
 
 function! s:lines.on_enter() abort
-  call g:clap.display.setbufvar('&ft', 'clap_lines')
+  call g:clap.display.setbufvar('&syntax', 'clap_lines')
 endfunction
 
 let g:clap#provider#lines# = s:lines

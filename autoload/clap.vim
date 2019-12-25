@@ -318,7 +318,7 @@ if !exists('g:clap')
   call clap#register('_', {
         \ 'source': function('s:_source'),
         \ 'sink': function('s:_sink'),
-        \ 'on_enter': { -> g:clap.display.setbufvar('&ft', 'clap_global') },
+        \ 'on_enter': { -> g:clap.display.setbufvar('&syntax', 'clap_global') },
         \ })
 endif
 

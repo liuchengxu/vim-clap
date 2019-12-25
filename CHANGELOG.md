@@ -17,6 +17,7 @@ CHANGELOG
 ### Improved
 
 - Cache the result of forerunner job into a temp file if it's larger than the threshold of built-in sync filter can handle.([#177](https://github.com/liuchengxu/vim-clap/pull/177))
+- Set `syntax` instead of `filetype` for the highlight as setting `filetype` can start some unexpected filetype related services.
 
 ### Fixed
 

@@ -50,7 +50,7 @@ function! s:buffers_sink(selected) abort
 endfunction
 
 function! s:buffers_on_enter() abort
-  call g:clap.display.setbufvar('&ft', 'clap_buffers')
+  call g:clap.display.setbufvar('&syntax', 'clap_buffers')
 endfunction
 
 let s:buffers = {}
