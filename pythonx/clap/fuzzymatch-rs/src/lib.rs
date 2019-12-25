@@ -1,8 +1,8 @@
 #![feature(pattern)]
 
+use extracted_fzy::match_and_score_with_positions;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use rff::match_and_score_with_positions;
 
 use std::str::pattern::Pattern;
 
@@ -20,7 +20,7 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
     for sub_niddle in niddle.split_whitespace() {
         let sub_niddle = sub_niddle.to_lowercase();
 
-        match find_start_at(haystack, offset, sub_niddle) {
+        match find_start_at(haystack, offset, &sub_niddle) {
             Some(idx) => {
                 offset = idx + sub_niddle.len();
                 // For build without overflow checks this could be written as
@@ -59,9 +59,7 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
-        Box::new(|line: &str| {
-            match_and_score_with_positions(query, line).map(|(_, score, indices)| (score, indices))
-        })
+        Box::new(|line: &str| match_and_score_with_positions(query, line))
     };
 
     let mut ranked = candidates
