@@ -2,6 +2,9 @@
 " Description: Minimalize the payload of external filter using maple's
 " --number option, showing the top N items only.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 let s:job_id = -1
 
 function! s:on_complete() abort
@@ -72,3 +75,6 @@ function! clap#maple#job_start(cmd) abort
   call s:start()
   return
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
