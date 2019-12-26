@@ -71,6 +71,7 @@ endfunction
 
 function! clap#maple#job_start(cmd) abort
   call s:jobstop()
+  let s:chunks = []
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
   call s:start()
   return
