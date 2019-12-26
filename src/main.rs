@@ -1,9 +1,9 @@
 use std::io::{self, BufRead};
 use std::path::PathBuf;
 
+use extracted_fzy::match_and_score_with_positions;
 use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
-use rff::match_and_score_with_positions;
 use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
@@ -50,7 +50,7 @@ pub fn main() {
     let scorer = |line: &str| match algo {
         Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
         Algo::Fzy => {
-            match_and_score_with_positions(query, line).map(|(_, score, indices)| (score, indices))
+            match_and_score_with_positions(query, line)
         }
     };
 
@@ -77,10 +77,10 @@ pub fn main() {
 
     if let Some(number) = opt.number {
         let total = ranked.len();
-        let payload = ranked.into_iter().take(number).collect::<Vec<_>>();
+        let payload = ranked.into_iter().take(number);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
-        for (text, _, idxs) in payload.iter() {
+        for (text, _, idxs) in payload {
             lines.push(text);
             indices.push(idxs);
         }
