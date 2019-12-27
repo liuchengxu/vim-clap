@@ -2,17 +2,20 @@
 name = "maple"
 edition = "2018"
 version = "0.1.0"
-authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-homepage = "https://github.com/liuchengxu/vim-clap"
-description = "vim-clap external filter gadget"
 license = "MIT"
-categories = ["command-line-utilities"]
 publish = false
 include = ["/Cargo.toml", "src/*.rs"]
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+homepage = "https://github.com/liuchengxu/vim-clap"
+categories = ["command-line-utilities"]
+description = "vim-clap external filter gadget"
 
 [dependencies]
+rayon = "1.2"
+anyhow = "1.0"
+structopt = "0.3"
+bytecount = "0.6"
 serde_json = "1.0"
 fuzzy-matcher = "0.3.1"
+
 extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
-structopt = "0.3"
-rayon = "1.2"
