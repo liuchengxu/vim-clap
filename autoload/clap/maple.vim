@@ -33,7 +33,7 @@ if has('nvim')
     endif
   endfunction
 
-  function! s:start() abort
+  function! s:start_maple() abort
     let s:job_id = jobstart(s:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
@@ -51,7 +51,7 @@ else
     endif
   endfunction
 
-  function! s:start() abort
+  function! s:start_maple() abort
     let job = job_start(clap#job#wrap_cmd(s:cmd), {
           \ 'in_io': 'null',
           \ 'close_cb': function('s:close_cb'),
@@ -73,7 +73,7 @@ function! clap#maple#job_start(cmd) abort
   call s:jobstop()
   let s:chunks = []
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
-  call s:start()
+  call s:start_maple()
   return
 endfunction
 
