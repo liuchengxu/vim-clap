@@ -138,6 +138,7 @@ endfunction
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
+  call clap#maple#stop()
 
   call g:clap.close_win()
 

@@ -62,7 +62,7 @@ else
   endfunction
 endif
 
-function! s:jobstop() abort
+function! clap#maple#jobstop() abort
   if s:job_id > 0
     call clap#job#stop(s:job_id)
     let s:job_id = -1
@@ -70,7 +70,7 @@ function! s:jobstop() abort
 endfunction
 
 function! clap#maple#job_start(cmd) abort
-  call s:jobstop()
+  call clap#maple#jobstop()
   let s:chunks = []
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
   call s:start_maple()
