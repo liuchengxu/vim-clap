@@ -449,6 +449,10 @@ function! s:init_provider() abort
 
       let Source = self._().source
 
+      " FIXME: optimize for blines provider.
+      " if a buffer has 1 million lines, writing a tmp file costs too much,
+      " and it's unneccessary.
+
       if self.type == g:__t_string
         return s:wrap_async_cmd(Source)
       elseif self.type == g:__t_func_string
