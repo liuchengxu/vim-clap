@@ -15,7 +15,7 @@ function! s:hi() abort
   for icon in icons
     let cur_group = 'ClapVistaIcon'.idx
     call add(icon_groups, cur_group)
-    execute 'syntax match' cur_group '/'.icon.'/' 'contained'
+    execute 'syntax match' cur_group '/^\s*'.icon.'/' 'contained'
     execute 'hi default link' cur_group s:groups[hi_idx]
     let hi_idx += 1
     let hi_idx = hi_idx % s:len_groups
