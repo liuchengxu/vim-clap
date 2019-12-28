@@ -34,7 +34,7 @@ function! s:on_complete() abort
   else
     let tmp = tempname()
     if writefile(s:chunks, tmp) == 0
-      let g:__clap_forerunnet_tempfile = tmp
+      let g:__clap_forerunner_tempfile = tmp
     endif
     unlet s:chunks
   endif
@@ -52,7 +52,7 @@ function! s:on_complete_maple() abort
     call clap#impl#refresh_matches_count(string(decoded.total))
 
     if has_key(decoded, 'tempfile')
-      let g:__clap_forerunnet_tempfile = decoded.tempfile
+      let g:__clap_forerunner_tempfile = decoded.tempfile
     else
       let g:__clap_forerunner_result = decoded.lines
     endif
