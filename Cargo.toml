@@ -14,6 +14,7 @@ description = "vim-clap external filter gadget"
 rayon = "1.2"
 anyhow = "1.0"
 structopt = "0.3"
+bytecount = "0.6"
 serde_json = "1.0"
 fuzzy-matcher = "0.3.1"
 
