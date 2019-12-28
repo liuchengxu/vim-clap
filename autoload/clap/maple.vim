@@ -7,6 +7,27 @@ set cpoptions&vim
 
 let s:job_id = -1
 
+" Use "%s" instead of bare %s in case of the query containing ';',
+" e.g., rg --files | maple hello;world, world can be misinterpreted as a
+" command.
+let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
+
+if executable(s:maple_bin)
+  let s:cmd_maple = s:maple_bin.' "%s"'
+elseif executable('maple')
+  let s:cmd_maple = 'maple "%s"'
+else
+  let s:cmd_maple = v:null
+endif
+
+function! clap#maple#is_available() abort
+  return s:cmd_maple isnot v:null
+endfunction
+
+function! clap#maple#filter_cmd_fmt() abort
+  return s:cmd_maple
+endfunction
+
 function! s:on_complete() abort
   call clap#spinner#set_idle()
   let decoded = json_decode(s:chunks[0])
@@ -73,6 +94,14 @@ function! clap#maple#job_start(cmd) abort
   call clap#maple#stop()
   let s:chunks = []
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
+  call s:start_maple()
+  return
+endfunction
+
+function! clap#maple#exec(cmd) abort
+  call clap#maple#stop()
+  let s:chunks = []
+  let s:cmd = a:cmd.' --cmd "%s"'.g:clap.display.preload_capacity
   call s:start_maple()
   return
 endfunction

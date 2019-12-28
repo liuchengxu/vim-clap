@@ -100,20 +100,29 @@ impl Maple {
 
             // Write the output to a tempfile if the lines are too many.
             if line_count > self.output_threshold {
-                let output_fname = if let Some(ref output) = self.output {
+                let tempfile = if let Some(ref output) = self.output {
                     output.into()
                 } else {
                     let mut dir = std::env::temp_dir();
                     dir.push(format!(
-                        "{}",
+                        "{}_{}",
+                        args.join("_"),
                         SystemTime::now()
                             .duration_since(SystemTime::UNIX_EPOCH)?
                             .as_secs()
                     ));
                     dir
                 };
-                File::create(output_fname.clone())?.write_all(&cmd_output.stdout)?;
-                println!("{}", json!({ "total": line_count, "output": output_fname }));
+                File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
+                let end = std::cmp::min(cmd_output.stdout.len(), 500);
+                println!(
+                    "{}",
+                    json!({
+                      "total": line_count,
+                      "lines": String::from_utf8_lossy(&cmd_output.stdout[..end]).split("\n").collect::<Vec<_>>(),
+                      "tempfile": tempfile,
+                    })
+                );
             } else {
                 println!(
                     "{}",
