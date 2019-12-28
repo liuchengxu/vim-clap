@@ -94,8 +94,10 @@ endfunction
 function! s:close_cb(channel) abort
   if clap#job#vim8_job_id_of(a:channel) == s:job_id
     " https://github.com/vim/vim/issues/5143
-    let s:chunks = split(ch_readraw(a:channel), "\n")
-    call s:on_complete()
+    if ch_canread(a:channel)
+      let s:chunks = split(ch_readraw(a:channel), "\n")
+      call s:on_complete()
+    endif
   endif
 endfunction
 
@@ -126,14 +128,15 @@ else
   endfunction
 endif
 
-function! s:into_maple_cmd(cmd) abort
-  let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s --cmd "%s" --cmd-dir "%s"', s:empty_filter_cmd, a:cmd, cmd_dir)
-  return cmd
-endfunction
-
 if clap#maple#is_available()
   let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
+
+  function! s:into_maple_cmd(cmd) abort
+    let cmd_dir = clap#rooter#working_dir()
+    let cmd = printf('%s --cmd "%s" --cmd-dir "%s"', s:empty_filter_cmd, a:cmd, cmd_dir)
+    return cmd
+  endfunction
+
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
     call s:start_maple(s:into_maple_cmd(a:cmd))
