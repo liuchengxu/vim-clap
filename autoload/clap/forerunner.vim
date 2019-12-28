@@ -127,14 +127,8 @@ else
 endif
 
 function! s:into_maple_cmd(cmd) abort
-  if exists('g:__clap_provider_cwd')
-    let cmd_dir = g:__clap_provider_cwd
-  else
-    let cmd_dir = expand('#'.g:clap.start.bufnr.':p')
-  endif
-
+  let cmd_dir = clap#rooter#working_dir()
   let cmd = printf('%s --cmd "%s" --cmd-dir "%s"', s:empty_filter_cmd, a:cmd, cmd_dir)
-
   return cmd
 endfunction
 
