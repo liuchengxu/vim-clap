@@ -101,9 +101,10 @@ endfunction
 
 function! s:close_cb_maple(channel) abort
   if clap#job#vim8_job_id_of(a:channel) == s:job_id
-    " https://github.com/vim/vim/issues/5143
-    let s:chunks = split(ch_readraw(a:channel), "\n")
-    call s:on_complete_maple()
+    if ch_canread(a:channel)
+      let s:chunks = split(ch_readraw(a:channel), "\n")
+      call s:on_complete_maple()
+    endif
   endif
 endfunction
 
