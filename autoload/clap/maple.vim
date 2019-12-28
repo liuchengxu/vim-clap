@@ -7,25 +7,22 @@ set cpoptions&vim
 
 let s:job_id = -1
 
-" Use "%s" instead of bare %s in case of the query containing ';',
-" e.g., rg --files | maple hello;world, world can be misinterpreted as a
-" command.
 let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
 if executable(s:maple_bin)
-  let s:cmd_maple = s:maple_bin.' "%s"'
+  let s:maple_filter_cmd = s:maple_bin.' "%s"'
 elseif executable('maple')
-  let s:cmd_maple = 'maple "%s"'
+  let s:maple_filter_cmd = 'maple "%s"'
 else
-  let s:cmd_maple = v:null
+  let s:maple_filter_cmd = v:null
 endif
 
 function! clap#maple#is_available() abort
-  return s:cmd_maple isnot v:null
+  return s:maple_filter_cmd isnot v:null
 endfunction
 
 function! clap#maple#filter_cmd_fmt() abort
-  return s:cmd_maple
+  return s:maple_filter_cmd
 endfunction
 
 function! s:on_complete() abort
@@ -55,12 +52,7 @@ if has('nvim')
   endfunction
 
   function! s:start_maple() abort
-    let s:job_id = jobstart(s:cmd, {
-          \ 'on_exit': function('s:on_event'),
-          \ 'on_stdout': function('s:on_event'),
-          \ 'on_stderr': function('s:on_event'),
-          \ 'stdout_buffered': v:true,
-          \ })
+    let s:job_id = clap#job#start_buffered(s:cmd, function('s:on_event'))
   endfunction
 
 else
@@ -73,13 +65,7 @@ else
   endfunction
 
   function! s:start_maple() abort
-    let job = job_start(clap#job#wrap_cmd(s:cmd), {
-          \ 'in_io': 'null',
-          \ 'close_cb': function('s:close_cb'),
-          \ 'noblock': 1,
-          \ 'mode': 'raw',
-          \ })
-    let s:job_id = clap#job#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#start_buffered(s:cmd, function('s:close_cb'))
   endfunction
 endif
 

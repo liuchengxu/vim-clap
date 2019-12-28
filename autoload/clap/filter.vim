@@ -15,6 +15,10 @@ else
 endif
 
 let s:ext_cmd = {}
+
+" Use "%s" instead of bare %s in case of the query containing ';',
+" e.g., rg --files | maple hello;world, world can be misinterpreted as a
+" command.
 let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
 let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
