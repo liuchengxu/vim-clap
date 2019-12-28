@@ -90,8 +90,14 @@ impl Maple {
                 .collect::<Vec<String>>();
 
             let mut cmd = Command::new(args[0].clone());
-            if let Some(ref cmd_dir) = self.cmd_dir {
-                cmd.current_dir(cmd_dir);
+            if let Some(cmd_dir) = self.cmd_dir.clone() {
+                if cmd_dir.is_dir() {
+                    cmd.current_dir(cmd_dir);
+                } else {
+                    let mut cmd_dir = cmd_dir;
+                    cmd_dir.pop();
+                    cmd.current_dir(cmd_dir);
+                }
             }
             cmd.args(&args[1..]);
 

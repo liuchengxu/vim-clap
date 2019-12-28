@@ -264,11 +264,11 @@ function! s:clear_state() abort
         \ 'g:__clap_initial_source_size',
         \ ])
 
-  if exists('g:__clap_forerunner_tmp_file')
-    if filereadable(g:__clap_forerunner_tmp_file)
-      call delete(g:__clap_forerunner_tmp_file)
+  if exists('g:__clap_forerunner_tempfile')
+    if filereadable(g:__clap_forerunner_tempfile)
+      call delete(g:__clap_forerunner_tempfile)
     endif
-    unlet g:__clap_forerunner_tmp_file
+    unlet g:__clap_forerunner_tempfile
   endif
 endfunction
 

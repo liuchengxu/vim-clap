@@ -27,6 +27,22 @@ function! clap#rooter#try_set_cwd() abort
   endif
 endfunction
 
+function! clap#rooter#working_dir() abort
+  if exists('g:__clap_provider_cwd')
+    let dir = g:__clap_provider_cwd
+  elseif clap#should_use_raw_cwd()
+    let dir = getcwd()
+  else
+    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+    if empty(git_root)
+      let dir = expand('#'.g:clap.start.bufnr.':p:h')
+    else
+      let dir = git_root
+    endif
+  endif
+  return dir
+endfunction
+
 function! s:run_from_target_dir(target_dir, Run, run_args) abort
   let save_cwd = getcwd()
   try
