@@ -1,6 +1,7 @@
 use std::io::{self, BufRead};
 use std::path::PathBuf;
 
+use anyhow::Result;
 use extracted_fzy::match_and_score_with_positions;
 use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
@@ -18,7 +19,7 @@ arg_enum! {
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "maple")]
-struct Opt {
+struct Maple {
     /// Initial query string
     #[structopt(index = 1, short, long)]
     query: String,
@@ -41,23 +42,20 @@ struct Opt {
     number: Option<usize>,
 }
 
-pub fn main() {
-    let opt = Opt::from_args();
+pub fn main() -> Result<()> {
+    let opt = Maple::from_args();
 
     let query = &*opt.query;
     let algo = opt.algo.unwrap_or(Algo::Fzy);
 
     let scorer = |line: &str| match algo {
         Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
-        Algo::Fzy => {
-            match_and_score_with_positions(query, line)
-        }
+        Algo::Fzy => match_and_score_with_positions(query, line),
     };
 
     // Result<Option<T>> => T
     let mut ranked = if let Some(input) = opt.input {
-        std::fs::read_to_string(input)
-            .expect("Input file does not exist")
+        std::fs::read_to_string(input)?
             .par_lines()
             .filter_map(|line| scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
             .collect::<Vec<_>>()
@@ -99,4 +97,6 @@ pub fn main() {
             );
         }
     }
+
+    Ok(())
 }

@@ -8,6 +8,16 @@ if has('nvim')
   function! clap#job#stop(job_id) abort
     silent! call jobstop(a:job_id)
   endfunction
+
+  function! clap#job#start_buffered(cmd, OnEvent) abort
+    let job_id = jobstart(a:cmd, {
+          \ 'on_exit': a:OnEvent,
+          \ 'on_stdout': a:OnEvent,
+          \ 'on_stderr': a:OnEvent,
+          \ 'stdout_buffered': v:true,
+          \ })
+    return job_id
+  endfunction
 else
   function! clap#job#stop(job_id) abort
     " Kill it!
@@ -32,6 +42,15 @@ else
     endfunction
   endif
 
+  function! clap#job#start_buffered(cmd, CloseCallback) abort
+    let job = job_start(clap#job#wrap_cmd(a:cmd), {
+          \ 'in_io': 'null',
+          \ 'close_cb': a:CloseCallback,
+          \ 'noblock': 1,
+          \ 'mode': 'raw',
+          \ })
+    return clap#job#parse_vim8_job_id(string(job))
+  endfunction
 endif
 
 function! clap#job#cwd() abort

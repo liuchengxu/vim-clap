@@ -15,34 +15,34 @@ else
 endif
 
 let s:ext_cmd = {}
-let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
-let s:ext_cmd.fzf = 'fzf --filter="%s"'
-let s:ext_cmd.sk = 'sk --filter="%s"'
 
 " Use "%s" instead of bare %s in case of the query containing ';',
 " e.g., rg --files | maple hello;world, world can be misinterpreted as a
 " command.
-let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
+let s:ext_cmd.fzy = 'fzy --show-matches="%s"'
+let s:ext_cmd.fzf = 'fzf --filter="%s"'
+let s:ext_cmd.sk = 'sk --filter="%s"'
+
+function! s:other_fuzzy_ext_filter() abort
+  " TODO support skim, skim seems to have a score at the beginning.
+  for ext in ['fzy', 'fzf']
+    if executable(ext)
+      return ext
+    endif
+  endfor
+  return v:null
+endfunction
 
 if exists('g:clap_default_external_filter')
   let s:default_ext_filter = g:clap_default_external_filter
   if index(keys(s:ext_cmd), s:default_ext_filter) == -1
     call g:clap.abort('Unsupported external filter: '.s:default_ext_filter)
   endif
-elseif executable(s:maple_bin)
+elseif clap#maple#is_available()
   let s:default_ext_filter = 'maple'
-  let s:ext_cmd.maple = s:maple_bin.' "%s"'
-elseif executable('maple')
-  let s:default_ext_filter = 'maple'
-  let s:ext_cmd.maple = 'maple "%s"'
+  let s:ext_cmd.maple = clap#maple#filter_cmd_fmt()
 else
-  " TODO support skim, skim seems to have a score at the beginning.
-  for ext in ['fzy', 'fzf']
-    if executable(ext)
-      let s:default_ext_filter = ext
-      break
-    endif
-  endfor
+  let s:default_ext_filter = s:other_fuzzy_ext_filter()
 endif
 
 function! clap#filter#using_maple() abort

@@ -66,22 +66,11 @@ endfunction
 
 if has('nvim')
   function! s:start_forerunner(cmd) abort
-    let s:job_id = jobstart(a:cmd, {
-          \ 'on_exit': function('s:on_event'),
-          \ 'on_stdout': function('s:on_event'),
-          \ 'on_stderr': function('s:on_event'),
-          \ 'stdout_buffered': v:true,
-          \ })
+    let s:job_id = clap#job#start_buffered(a:cmd, function('s:on_event'))
   endfunction
 else
   function! s:start_forerunner(cmd) abort
-    let job = job_start(clap#job#wrap_cmd(a:cmd), {
-          \ 'in_io': 'null',
-          \ 'close_cb': function('s:close_cb'),
-          \ 'noblock': 1,
-          \ 'mode': 'raw',
-          \ })
-    let s:job_id = clap#job#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#start_buffered(a:cmd, function('s:close_cb'))
   endfunction
 endif
 
