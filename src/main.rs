@@ -83,6 +83,7 @@ impl std::error::Error for DummyError {
 impl Maple {
     pub fn try_exec_cmd(&self) -> Result<()> {
         if let Some(ref cmd) = self.cmd {
+            // TODO: translate piped command?
             let args = cmd
                 .split_whitespace()
                 .map(Into::into)
@@ -119,6 +120,7 @@ impl Maple {
                     "{}",
                     json!({
                       "total": line_count,
+                      // lines used for displaying directly.
                       "lines": String::from_utf8_lossy(&cmd_output.stdout[..end]).split("\n").collect::<Vec<_>>(),
                       "tempfile": tempfile,
                     })
