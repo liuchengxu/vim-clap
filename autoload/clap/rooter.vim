@@ -30,6 +30,8 @@ endfunction
 function! clap#rooter#working_dir() abort
   if exists('g:__clap_provider_cwd')
     let dir = g:__clap_provider_cwd
+  elseif clap#should_use_raw_cwd()
+    let dir = getcwd()
   else
     let git_root = clap#util#find_git_root(g:clap.start.bufnr)
     if empty(git_root)
