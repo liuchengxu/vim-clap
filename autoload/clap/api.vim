@@ -413,8 +413,8 @@ function! s:init_provider() abort
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
     let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
-    if exists('g:__clap_forerunner_tmp_file')
-      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tmp_file)
+    if exists('g:__clap_forerunnet_tempfile')
+      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunnet_tempfile)
     else
       " FIXME Does it work well in Windows?
       " Run the source command and pipe into the external filter.
