@@ -29,10 +29,18 @@ endfunction
 
 function! s:on_complete() abort
   call clap#spinner#set_idle()
+
   let decoded = json_decode(s:chunks[0])
+  if decoded.total == 0
+    call g:clap.display.set_lines([g:clap_no_matches_msg])
+    call clap#indicator#set_matches('[0]')
+    call clap#sign#disable_cursorline()
+    return
+  endif
   call clap#impl#refresh_matches_count(string(decoded.total))
   call g:clap.display.set_lines(decoded.lines)
   call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
+  call clap#sign#reset_to_first_line()
 endfunction
 
 if has('nvim')
