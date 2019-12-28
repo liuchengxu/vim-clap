@@ -7,7 +7,7 @@ set cpoptions&vim
 
 let s:job_id = -1
 let s:job_timer = -1
-let s:maple_delay = 100
+let s:maple_delay = get(g:, 'clap_maple_delay', 100)
 
 let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 

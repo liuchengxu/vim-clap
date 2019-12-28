@@ -39,7 +39,7 @@ function! s:on_complete() abort
     unlet s:chunks
   endif
 
-  let g:clap_forerunner_status_sign = ' '
+  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
   call clap#spinner#refresh()
 endfunction
 
@@ -61,7 +61,7 @@ function! s:on_complete_maple() abort
     endif
   endif
 
-  let g:clap_forerunner_status_sign = ' '
+  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
   call clap#spinner#refresh()
 endfunction
 
@@ -157,7 +157,7 @@ if clap#maple#is_available()
 else
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
-    let g:clap_forerunner_status_sign = '!'
+    let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_running
     call clap#forerunner#refresh()
     call clap#rooter#run(function('s:start_forerunner'), a:cmd)
   endfunction
