@@ -11,7 +11,7 @@ categories = ["command-line-utilities"]
 description = "vim-clap external filter gadget"
 
 [dependencies]
-rayon = "1.2"
+rayon = "1.3"
 anyhow = "1.0"
 structopt = "0.3"
 bytecount = "0.6"
