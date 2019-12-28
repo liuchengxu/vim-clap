@@ -133,7 +133,12 @@ if clap#maple#is_available()
 
   function! s:into_maple_cmd(cmd) abort
     let cmd_dir = clap#rooter#working_dir()
-    let cmd = printf('%s --cmd "%s" --cmd-dir "%s"', s:empty_filter_cmd, a:cmd, cmd_dir)
+    let cmd = printf('%s --cmd "%s" --cmd-dir "%s" --output-threshold %d',
+          \ s:empty_filter_cmd,
+          \ a:cmd,
+          \ cmd_dir,
+          \ s:builtin_fuzzy_filter_threshold,
+          \ )
     return cmd
   endfunction
 
