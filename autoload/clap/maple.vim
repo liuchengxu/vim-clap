@@ -84,13 +84,5 @@ function! clap#maple#job_start(cmd) abort
   return
 endfunction
 
-function! clap#maple#exec(cmd) abort
-  call clap#maple#stop()
-  let s:chunks = []
-  let s:cmd = a:cmd.' --cmd "%s"'.g:clap.display.preload_capacity
-  call s:start_maple()
-  return
-endfunction
-
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
