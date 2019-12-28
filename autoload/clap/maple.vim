@@ -6,6 +6,8 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:job_id = -1
+let s:job_timer = -1
+let s:maple_delay = 100
 
 let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
@@ -76,11 +78,20 @@ function! clap#maple#stop() abort
   endif
 endfunction
 
-function! clap#maple#job_start(cmd) abort
-  call clap#maple#stop()
+function! s:apply_start(_timer) abort
   let s:chunks = []
-  let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
   call s:start_maple()
+endfunction
+
+function! clap#maple#job_start(cmd) abort
+  if s:job_timer != -1
+    call timer_stop(s:job_timer)
+  endif
+
+  call clap#maple#stop()
+
+  let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
+  let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
 endfunction
 
