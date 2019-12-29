@@ -158,7 +158,7 @@ else
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
     let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_running
-    call clap#forerunner#refresh()
+    call clap#spinner#refresh()
     call clap#rooter#run(function('s:start_forerunner'), a:cmd)
   endfunction
 endif

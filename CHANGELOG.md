@@ -23,6 +23,7 @@ CHANGELOG
 ### Fixed
 
 - Fix vim popup sign not showing.([#141](https://github.com/liuchengxu/vim-clap/pull/141))
+- Fix performance issue of async job.([#140](https://github.com/liuchengxu/vim-clap/issues/140))
 
 ## [0.2] 2019-12-10
 

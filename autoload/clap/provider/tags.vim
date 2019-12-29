@@ -7,15 +7,14 @@ set cpoptions&vim
 let s:tags = {}
 
 function! s:tags.source(...) abort
-  if !exists('t:vista')
-    let [bufnr, winnr, fname, fpath] = [
-          \ g:clap.start.bufnr,
-          \ g:clap.start.winid,
-          \ bufname(g:clap.start.bufnr),
-          \ expand('#'.g:clap.start.bufnr.':p')
-          \ ]
-    call vista#source#Update(bufnr, winnr, fname, fpath)
-  endif
+  let [bufnr, winnr, fname, fpath] = [
+        \ g:clap.start.bufnr,
+        \ g:clap.start.winid,
+        \ bufname(g:clap.start.bufnr),
+        \ expand('#'.g:clap.start.bufnr.':p')
+        \ ]
+
+  call vista#source#Update(bufnr, winnr, fname, fpath)
 
   let [data, _, _] = call('vista#finder#GetSymbols', a:000)
 
