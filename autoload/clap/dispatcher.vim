@@ -61,7 +61,12 @@ if has('nvim')
         let to_append = map(to_append, 's:Converter(v:val)')
       endif
 
-      call g:clap.display.append_lines(to_append)
+      if s:did_set_lines
+        call g:clap.display.append_lines(to_append)
+      else
+        call g:clap.display.set_lines(to_append)
+        let s:did_set_lines = v:true
+      endif
 
       let s:preload_is_complete = v:true
       let s:loaded_size = line_count + len(to_append)
@@ -148,13 +153,23 @@ else
   endif
 
   function! s:append_output(preload) abort
+    if empty(a:preload)
+      return
+    endif
+
     let to_append = a:preload
 
     if s:has_converter
       let to_append = map(to_append, 's:Converter(v:val)')
     endif
 
-    call g:clap.display.append_lines(to_append)
+    if s:did_set_lines
+      call g:clap.display.append_lines(to_append)
+    else
+      call g:clap.display.set_lines(to_append)
+      let s:did_set_lines = v:true
+    endif
+
     let s:loaded_size = len(to_append)
     let s:preload_is_complete = v:true
     let s:did_preload = v:true
@@ -252,13 +267,8 @@ function! s:on_exit_common() abort
 endfunction
 
 function! s:has_no_matches() abort
-  if g:clap.display.is_empty()
-    let g:__clap_has_no_matches = v:true
-    return v:true
-  else
-    let g:__clap_has_no_matches = v:false
-    return v:false
-  endif
+  let g:__clap_has_no_matches = !s:did_set_lines
+  return g:__clap_has_no_matches
 endfunction
 
 function! s:apply_job_start(_timer) abort
@@ -276,6 +286,7 @@ function! s:prepare_job_start(cmd) abort
   let g:clap.display.cache = []
   let s:preload_is_complete = v:false
   let s:droped_size = 0
+  let s:did_set_lines = v:true
 
   let s:cmd = a:cmd
 
