@@ -23,8 +23,9 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 * [Requirement](#requirement)
   * [Optional](#optional)
     * [`python`](#python)
-    * [`maple`](#maple)
-    * [Rust extension](#rust-extension)
+    * [`Rust`](#rust)
+      * [`maple` binary](#maple-binary)
+      * [Python dynamic module](#python-dynamic-module)
 * [Installation](#installation)
 * [Usage](#usage)
   * [Commands](#commands)
@@ -85,30 +86,41 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   $ python3 -m pip install pynvim
   ```
 
-#### `maple`
+#### `Rust`
 
-`maple` is essentially a tiny wrapper of [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
+If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using one single command `:call clap#helper#build_all()`.
 
-Use `:call clap#helper#build_maple()` or install maple manually:
+##### `maple` binary
 
-```bash
-# Compile the release build
-cargo build --release
+`maple` mainly serves two functions:
 
-# Or use cargo install
-cargo install --path . --force
-```
+1. Expose the fuzzy matched indices so that the matched elements can be highlighted in vim-clap, being a tiny wrapper of external fuzzy filter [fzf](https://github.com/junegunn/fzf) and [fzy](https://github.com/jhawthorn/fzy). Once you installed `maple`, fzy/skim binary are unneeded as `maple` does not rely the binary directly but reuses their filter algorithm internally.
 
-#### Rust extension
+2. Reduce the overhead of async job of Vim/NeoVim dramastically.
 
-Use `:call clap#helper#build_rust_ext()` to install the Rust extension for 10x faster fuzzy filter than the Python one.
+To install `maple` you can use the helper function and run `:call clap#helper#build_maple()`, or install it manually:
+
+  ```bash
+  # Compile the release build
+  cargo build --release
+
+  # Or use cargo install globally
+  cargo install --path . --force
+  ```
+
+##### Python dynamic module
+
+Use `:call clap#helper#build_rust_ext()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
 
 ## Installation
+
+Using [vim-plug](https://github.com/junegunn/vim-plug):
 
 ```vim
 Plug 'liuchengxu/vim-clap'
 
-" Build the all optional dependency, cargo is needed.
+" The do hook is highly recommended.
+" It will try to build all the optional dependency if cargo exists on your system.
 Plug 'liuchengxu/vim-clap', { 'do': function('clap#helper#build_all') }
 ```
 

@@ -38,6 +38,9 @@ function! s:on_complete() abort
     endif
     unlet s:chunks
   endif
+
+  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
+  call clap#spinner#refresh()
 endfunction
 
 function! s:on_complete_maple() abort
@@ -57,6 +60,9 @@ function! s:on_complete_maple() abort
       let g:__clap_forerunner_result = decoded.lines
     endif
   endif
+
+  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
+  call clap#spinner#refresh()
 endfunction
 
 function! s:on_event(job_id, data, event) abort
@@ -144,11 +150,15 @@ if clap#maple#is_available()
 
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
+    let g:clap_forerunner_status_sign = '!'
+    call clap#spinner#refresh()
     call s:start_maple(s:into_maple_cmd(a:cmd))
   endfunction
 else
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
+    let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_running
+    call clap#forerunner#refresh()
     call clap#rooter#run(function('s:start_forerunner'), a:cmd)
   endfunction
 endif

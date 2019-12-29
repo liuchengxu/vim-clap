@@ -6,6 +6,8 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:job_id = -1
+let s:job_timer = -1
+let s:maple_delay = get(g:, 'clap_maple_delay', 100)
 
 let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
@@ -27,10 +29,18 @@ endfunction
 
 function! s:on_complete() abort
   call clap#spinner#set_idle()
+
   let decoded = json_decode(s:chunks[0])
+  if decoded.total == 0
+    call g:clap.display.set_lines([g:clap_no_matches_msg])
+    call clap#indicator#set_matches('[0]')
+    call clap#sign#disable_cursorline()
+    return
+  endif
   call clap#impl#refresh_matches_count(string(decoded.total))
   call g:clap.display.set_lines(decoded.lines)
   call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
+  call clap#sign#reset_to_first_line()
 endfunction
 
 if has('nvim')
@@ -76,11 +86,20 @@ function! clap#maple#stop() abort
   endif
 endfunction
 
-function! clap#maple#job_start(cmd) abort
-  call clap#maple#stop()
+function! s:apply_start(_timer) abort
   let s:chunks = []
-  let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
   call s:start_maple()
+endfunction
+
+function! clap#maple#job_start(cmd) abort
+  if s:job_timer != -1
+    call timer_stop(s:job_timer)
+  endif
+
+  call clap#maple#stop()
+
+  let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
+  let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
 endfunction
 

@@ -17,7 +17,7 @@ function! s:compose_prompt() abort
   let l:prompt = s:prompt_format
 
   let l:spinner = s:spinner
-  let l:provider_id = g:clap.provider.id
+  let l:provider_id = get(g:, 'clap_forerunner_status_sign', '').g:clap.provider.id
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
@@ -36,6 +36,10 @@ else
     call popup_settext(g:clap_spinner_winid, s:compose_prompt())
   endfunction
 endif
+
+function! clap#spinner#refresh() abort
+  call s:set_spinner()
+endfunction
 
 function! clap#spinner#get() abort
   return s:compose_prompt()
