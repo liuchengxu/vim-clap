@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### [0.3] 2019-12-30
+
+The major feature of 0.3 is the performance problem has been soloved, see [#140](https://github.com/liuchengxu/vim-clap/issues/140).
+
 ### Added
 
 - Add Python version subscorer fuzzy filter.([#159](https://github.com/liuchengxu/vim-clap/pull/159))
@@ -24,6 +28,7 @@ CHANGELOG
 
 - Fix vim popup sign not showing.([#141](https://github.com/liuchengxu/vim-clap/pull/141))
 - Fix performance issue of async job.([#140](https://github.com/liuchengxu/vim-clap/issues/140))
+- Fix rff can't work on Windows thanks to @ImmemorConsultrixContrarie.([#180](https://github.com/liuchengxu/vim-clap/pull/180))
 
 ## [0.2] 2019-12-10
 
