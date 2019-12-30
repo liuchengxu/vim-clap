@@ -110,7 +110,8 @@ impl Maple {
                     "{}",
                     json!({
                       "total": line_count,
-                      // TODO: do not have to into String for whole stdout, find the index of number of newline.
+                      // TODO: do not have to into String for whole stdout, find the nth index of newline.
+                        // &cmd_output.stdout[..nth_newline_index]
                       "lines": String::from_utf8_lossy(&cmd_output.stdout).split('\n').take(number).collect::<Vec<_>>()
                     })
                 );
@@ -134,12 +135,12 @@ impl Maple {
                         dir
                     };
                     File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-                    // FIXME find the index of end
-                    let end = std::cmp::min(cmd_output.stdout.len(), 500);
+                    // FIXME find the nth newline index of stdout.
+                    let _end = std::cmp::min(cmd_output.stdout.len(), 500);
                     (
                         // lines used for displaying directly.
-                        // FIXME This is wrong
-                        String::from_utf8_lossy(&cmd_output.stdout[..end]).into(),
+                        // &cmd_output.stdout[..nth_newline_index]
+                        String::from_utf8_lossy(&cmd_output.stdout).into(),
                         Some(tempfile),
                     )
                 } else {
