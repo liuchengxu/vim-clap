@@ -135,7 +135,7 @@ endfunction
 
 let s:can_use_python = v:false
 
-if s:py_exe isnot v:null
+if s:py_exe !=# v:null
 
   function! s:setup_python() abort
     if !has('nvim')
