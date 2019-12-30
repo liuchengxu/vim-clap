@@ -135,19 +135,11 @@ endfunction
 
 let s:can_use_python = v:false
 
-if s:py_exe isnot v:null
+if s:py_exe !=# v:null
 
   function! s:setup_python() abort
     if !has('nvim')
-execute s:py_exe "<< EOF"
-import sys
-from os.path import normpath, join
-import vim
-plugin_root_dir = vim.eval('g:clap#autoload_dir')
-python_root_dir = normpath(join(plugin_root_dir, '..', 'pythonx'))
-sys.path.insert(0, python_root_dir)
-import clap
-EOF
+      execute 'pyfile setup_python.py'
     endif
   endfunction
 
