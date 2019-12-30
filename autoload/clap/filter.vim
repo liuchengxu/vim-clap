@@ -10,6 +10,7 @@ let s:default_ext_filter = v:null
 
 if has('python3') || has('python')
   let s:py_exe = has('python3') ? 'python3' : 'python'
+  let s:pyfile = has('python3') ? 'py3file' : 'pyfile'
 else
   let s:py_exe = v:null
 endif
@@ -128,7 +129,7 @@ if s:py_exe !=# v:null
 
   function! s:setup_python() abort
     if !has('nvim')
-      execute 'pyfile setup_python.py'
+      execute s:pyfile 'setup_python.py'
     endif
   endfunction
 
