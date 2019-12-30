@@ -119,16 +119,7 @@ function! s:spawn(query) abort
   call clap#rooter#try_set_cwd()
 
   if clap#maple#is_available()
-    let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
-
-    let cmd_dir = clap#rooter#working_dir()
-    let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
-          \ s:empty_filter_cmd,
-          \ s:cmd(query),
-          \ cmd_dir,
-          \ )
-
-    call clap#maple#job_start(cmd)
+    call clap#maple#exec(s:cmd(query))
   else
     call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
   endif

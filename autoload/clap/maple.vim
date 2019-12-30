@@ -106,5 +106,19 @@ function! clap#maple#job_start(cmd) abort
   return
 endfunction
 
+let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
+
+" Call clap#rooter#try_set_cwd() if neccessary so that the cmd working dir is
+" right.
+function! clap#maple#exec(cmd) abort
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
+        \ s:empty_filter_cmd,
+        \ a:cmd,
+        \ cmd_dir,
+        \ )
+  call clap#maple#job_start(cmd)
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
