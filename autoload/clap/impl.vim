@@ -201,7 +201,8 @@ function! s:on_typed_async_impl() abort
     return
   endif
 
-  call g:clap.display.clear()
+  " Do not clear the outdated content as it would cause the annoying flicker.
+  " call g:clap.display.clear()
 
   let cmd = g:clap.provider.source_async_or_default()
 

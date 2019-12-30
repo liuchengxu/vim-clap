@@ -37,9 +37,12 @@ function! s:on_complete() abort
     call clap#sign#disable_cursorline()
     return
   endif
+
   call clap#impl#refresh_matches_count(string(decoded.total))
   call g:clap.display.set_lines(decoded.lines)
-  call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
+  if has_key(decoded, 'indices')
+    call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
+  endif
   call clap#sign#reset_to_first_line()
 endfunction
 
