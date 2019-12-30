@@ -65,7 +65,7 @@ function! s:run_term(cmd, cwd, success_info) abort
   10new belowright bottom
   setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
 
-  function! s:OnExit(status) closure
+  function! s:OnExit(status) closure abort
     if a:status == 0
       execute 'silent! bd! '.bufnr
       call clap#helper#echo_info(a:success_info)
