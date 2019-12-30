@@ -39,7 +39,11 @@ function! s:on_complete() abort
   endif
 
   call clap#impl#refresh_matches_count(string(decoded.total))
-  call g:clap.display.set_lines(decoded.lines)
+  if s:has_converter
+    call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
+  else
+    call g:clap.display.set_lines(decoded.lines)
+  endif
   if has_key(decoded, 'indices')
     call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
   endif
@@ -91,6 +95,14 @@ endfunction
 
 function! s:apply_start(_timer) abort
   let s:chunks = []
+
+  if has_key(g:clap.provider._(), 'converter')
+    let s:has_converter = v:true
+    let s:Converter = g:clap.provider._().converter
+  else
+    let s:has_converter = v:false
+  endif
+
   call s:start_maple()
 endfunction
 
