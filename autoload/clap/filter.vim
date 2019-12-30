@@ -94,14 +94,6 @@ function! clap#filter#has_external_default() abort
   return s:default_ext_filter isnot v:null
 endfunction
 
-function! s:maple_converter(line) abort
-  let json_decoded = json_decode(a:line)
-  if exists('g:__clap_maple_fuzzy_matched')
-    call add(g:__clap_maple_fuzzy_matched, json_decoded.indices)
-  endif
-  return json_decoded.text
-endfunction
-
 function! clap#filter#get_external_cmd_or_default() abort
   if has_key(g:clap.context, 'externalfilter')
     let s:ext_filter = g:clap.context.externalfilter
@@ -116,9 +108,6 @@ function! clap#filter#get_external_cmd_or_default() abort
   if s:ext_filter ==# 'maple'
     let g:__clap_maple_fuzzy_matched = []
     let Provider = g:clap.provider._()
-    if !has_key(Provider, 'converter')
-      let Provider.converter = function('s:maple_converter')
-    endif
   endif
   return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
 endfunction
