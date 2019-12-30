@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:registers = {}
 
 " Credit: https://github.com/junegunn/vim-peekaboo
-function! s:append_group(title, regs)
+function! s:append_group(title, regs) abort
   call add(s:lines, a:title.':')
   for r in a:regs
     let val = eval('@'.r)[:&columns]
