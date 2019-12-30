@@ -80,6 +80,16 @@ impl std::error::Error for DummyError {
     }
 }
 
+/// Remove the last element if it's empty string.
+#[inline]
+fn trim_trailing(lines: &mut Vec<&str>) {
+    if let Some(last_line) = lines.last() {
+        if last_line.is_empty() {
+            lines.remove(lines.len() - 1);
+        }
+    }
+}
+
 impl Maple {
     pub fn try_exec_cmd(&self) -> Result<()> {
         if let Some(ref cmd) = self.cmd {
@@ -106,13 +116,16 @@ impl Maple {
             let line_count = bytecount::count(&cmd_output.stdout, b'\n');
 
             if let Some(number) = self.number {
+                // TODO: do not have to into String for whole stdout, find the nth index of newline.
+                // &cmd_output.stdout[..nth_newline_index]
+                let stdout_str = String::from_utf8_lossy(&cmd_output.stdout);
+                let mut lines = stdout_str.split('\n').take(number).collect::<Vec<_>>();
+                trim_trailing(&mut lines);
                 println!(
                     "{}",
                     json!({
                       "total": line_count,
-                      // TODO: do not have to into String for whole stdout, find the nth index of newline.
-                        // &cmd_output.stdout[..nth_newline_index]
-                      "lines": String::from_utf8_lossy(&cmd_output.stdout).split('\n').take(number).collect::<Vec<_>>()
+                      "lines": lines
                     })
                 );
                 return Ok(());
@@ -149,11 +162,7 @@ impl Maple {
 
             // The last element could be a empty string.
             let mut lines = stdout_str.split('\n').collect::<Vec<_>>();
-            if let Some(last_line) = lines.last() {
-                if last_line.is_empty() {
-                    lines.remove(lines.len() - 1);
-                }
-            }
+            trim_trailing(&mut lines);
 
             if let Some(tempfile) = tempfile {
                 println!(
