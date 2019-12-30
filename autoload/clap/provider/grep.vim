@@ -114,6 +114,9 @@ function! s:spawn(query) abort
 
   " Clear the previous search result and reset cache.
   " This should happen before the new job.
+  "
+  " Do not clear the outdated content immedidately as it leads to the annoying
+  " flicker.
   " call g:clap.display.clear()
 
   call clap#rooter#try_set_cwd()
