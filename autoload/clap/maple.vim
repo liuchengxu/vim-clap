@@ -38,10 +38,6 @@ function! s:on_complete() abort
     return
   endif
 
-  if !empty(decoded.lines) && empty(decoded.lines[-1])
-    unlet decoded.lines[-1]
-  endif
-
   call clap#impl#refresh_matches_count(string(decoded.total))
   call g:clap.display.set_lines(decoded.lines)
   if has_key(decoded, 'indices')

@@ -47,11 +47,6 @@ function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
-    " TODO: check this in maple
-    if !empty(decoded.lines) && empty(decoded.lines[-1])
-      unlet decoded.lines[-1]
-    endif
-
     if empty(g:clap.input.get())
       call g:clap.display.set_lines_lazy(decoded.lines)
     endif

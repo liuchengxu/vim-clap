@@ -106,40 +106,49 @@ impl Maple {
             let line_count = bytecount::count(&cmd_output.stdout, b'\n');
 
             // Write the output to a tempfile if the lines are too many.
-            if line_count > self.output_threshold {
-                let tempfile = if let Some(ref output) = self.output {
-                    output.into()
+            let (stdout_str, tempfile): (String, Option<PathBuf>) =
+                if line_count > self.output_threshold {
+                    let tempfile = if let Some(ref output) = self.output {
+                        output.into()
+                    } else {
+                        let mut dir = std::env::temp_dir();
+                        dir.push(format!(
+                            "{}_{}",
+                            args.join("_"),
+                            SystemTime::now()
+                                .duration_since(SystemTime::UNIX_EPOCH)?
+                                .as_secs()
+                        ));
+                        dir
+                    };
+                    File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
+                    let end = std::cmp::min(cmd_output.stdout.len(), 500);
+                    (
+                        // lines used for displaying directly.
+                        String::from_utf8_lossy(&cmd_output.stdout[..end]).into(),
+                        Some(tempfile),
+                    )
                 } else {
-                    let mut dir = std::env::temp_dir();
-                    dir.push(format!(
-                        "{}_{}",
-                        args.join("_"),
-                        SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)?
-                            .as_secs()
-                    ));
-                    dir
+                    (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
                 };
-                File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-                let end = std::cmp::min(cmd_output.stdout.len(), 500);
+
+            // The last element could be a empty string.
+            let mut lines = stdout_str.split("\n").collect::<Vec<_>>();
+            if let Some(last_line) = lines.last() {
+                if last_line.is_empty() {
+                    lines.remove(lines.len() - 1);
+                }
+            }
+
+            if let Some(tempfile) = tempfile {
                 println!(
                     "{}",
-                    json!({
-                      "total": line_count,
-                      // lines used for displaying directly.
-                      "lines": String::from_utf8_lossy(&cmd_output.stdout[..end]).split("\n").collect::<Vec<_>>(),
-                      "tempfile": tempfile,
-                    })
+                    json!({"total": line_count, "lines": lines, "tempfile": tempfile})
                 );
             } else {
-                println!(
-                    "{}",
-                    json!({
-                      "total": line_count,
-                      "lines": String::from_utf8_lossy(&cmd_output.stdout).split("\n").collect::<Vec<_>>(),
-                    })
-                );
+                println!("{}", json!({"total": line_count, "lines": lines}));
             }
+
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No cmd specified"))
