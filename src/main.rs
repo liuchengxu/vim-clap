@@ -105,6 +105,18 @@ impl Maple {
 
             let line_count = bytecount::count(&cmd_output.stdout, b'\n');
 
+            if let Some(number) = self.number {
+                println!(
+                    "{}",
+                    json!({
+                      "total": line_count,
+                      // TODO: do not have to into String for whole stdout, find the index of number of newline.
+                      "lines": String::from_utf8_lossy(&cmd_output.stdout).split('\n').take(number).collect::<Vec<_>>()
+                    })
+                );
+                return Ok(());
+            }
+
             // Write the output to a tempfile if the lines are too many.
             let (stdout_str, tempfile): (String, Option<PathBuf>) =
                 if line_count > self.output_threshold {
@@ -122,9 +134,11 @@ impl Maple {
                         dir
                     };
                     File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
+                    // FIXME find the index of end
                     let end = std::cmp::min(cmd_output.stdout.len(), 500);
                     (
                         // lines used for displaying directly.
+                        // FIXME This is wrong
                         String::from_utf8_lossy(&cmd_output.stdout[..end]).into(),
                         Some(tempfile),
                     )
@@ -133,7 +147,7 @@ impl Maple {
                 };
 
             // The last element could be a empty string.
-            let mut lines = stdout_str.split("\n").collect::<Vec<_>>();
+            let mut lines = stdout_str.split('\n').collect::<Vec<_>>();
             if let Some(last_line) = lines.last() {
                 if last_line.is_empty() {
                     lines.remove(lines.len() - 1);
