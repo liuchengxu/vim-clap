@@ -884,6 +884,8 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-t` or `Ctrl-x`, `Ctrl-v` to open the selected entry in a new tab
   or a new split.
+  
+- Use `Ctrl-u` to clear inputs.
 
 
 ===============================================================================
