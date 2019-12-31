@@ -56,6 +56,18 @@ struct Maple {
     #[structopt(long = "cmd", name = "CMD")]
     cmd: Option<String>,
 
+    /// Specify the grep command to run, normally rg will be used.
+    ///
+    /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
+    ///                                                       |-----------------|
+    ///                                                   this can be seen as an option by mistake.
+    #[structopt(long = "grep-cmd", name = "GREP_CMD")]
+    grep_cmd: Option<String>,
+
+    /// Specify the query string for GREP_CMD.
+    #[structopt(long = "grep-query")]
+    grep_query: Option<String>,
+
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
@@ -80,7 +92,119 @@ impl std::error::Error for DummyError {
     }
 }
 
+/// Remove the last element if it's empty string.
+#[inline]
+fn trim_trailing(lines: &mut Vec<&str>) {
+    if let Some(last_line) = lines.last() {
+        if last_line.is_empty() {
+            lines.remove(lines.len() - 1);
+        }
+    }
+}
+
 impl Maple {
+    pub fn set_cmd_dir(&self, cmd: &mut Command) {
+        if let Some(cmd_dir) = self.cmd_dir.clone() {
+            if cmd_dir.is_dir() {
+                cmd.current_dir(cmd_dir);
+            } else {
+                let mut cmd_dir = cmd_dir;
+                cmd_dir.pop();
+                cmd.current_dir(cmd_dir);
+            }
+        }
+    }
+
+    fn execute(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
+        let cmd_output = cmd.output()?;
+
+        let line_count = bytecount::count(&cmd_output.stdout, b'\n');
+
+        if let Some(number) = self.number {
+            // TODO: do not have to into String for whole stdout, find the nth index of newline.
+            // &cmd_output.stdout[..nth_newline_index]
+            let stdout_str = String::from_utf8_lossy(&cmd_output.stdout);
+            let mut lines = stdout_str.split('\n').take(number).collect::<Vec<_>>();
+            trim_trailing(&mut lines);
+            println!(
+                "{}",
+                json!({
+                  "total": line_count,
+                  "lines": lines
+                })
+            );
+            return Ok(());
+        }
+
+        // Write the output to a tempfile if the lines are too many.
+        let (stdout_str, tempfile): (String, Option<PathBuf>) =
+            if line_count > self.output_threshold {
+                let tempfile = if let Some(ref output) = self.output {
+                    output.into()
+                } else {
+                    let mut dir = std::env::temp_dir();
+                    dir.push(format!(
+                        "{}_{}",
+                        args.join("_"),
+                        SystemTime::now()
+                            .duration_since(SystemTime::UNIX_EPOCH)?
+                            .as_secs()
+                    ));
+                    dir
+                };
+                File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
+                // FIXME find the nth newline index of stdout.
+                let _end = std::cmp::min(cmd_output.stdout.len(), 500);
+                (
+                    // lines used for displaying directly.
+                    // &cmd_output.stdout[..nth_newline_index]
+                    String::from_utf8_lossy(&cmd_output.stdout).into(),
+                    Some(tempfile),
+                )
+            } else {
+                (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
+            };
+
+        // The last element could be a empty string.
+        let mut lines = stdout_str.split('\n').collect::<Vec<_>>();
+        trim_trailing(&mut lines);
+
+        if let Some(tempfile) = tempfile {
+            println!(
+                "{}",
+                json!({"total": line_count, "lines": lines, "tempfile": tempfile})
+            );
+        } else {
+            println!("{}", json!({"total": line_count, "lines": lines}));
+        }
+
+        Ok(())
+    }
+
+    pub fn try_exec_grep(&self) -> Result<()> {
+        if let Some(ref grep_cmd) = self.grep_cmd {
+            let mut args = grep_cmd
+                .split_whitespace()
+                .map(Into::into)
+                .collect::<Vec<String>>();
+            let mut cmd = Command::new(args[0].clone());
+            self.set_cmd_dir(&mut cmd);
+            // TODO windows needs to append . for rg
+            if let Some(grep_query) = self.grep_query.clone() {
+                args.push(grep_query);
+            }
+            // currently vim-clap only supports rg.
+            // Ref https://github.com/liuchengxu/vim-clap/pull/60
+            if cfg!(windows) {
+                args.push(".".into());
+            }
+            cmd.args(&args[1..]);
+            self.execute(&mut cmd, &args)?;
+            return Ok(());
+        }
+        Err(anyhow::Error::new(DummyError).context("No grep cmd specified"))
+    }
+
     pub fn try_exec_cmd(&self) -> Result<()> {
         if let Some(ref cmd) = self.cmd {
             // TODO: translate piped command?
@@ -88,67 +212,10 @@ impl Maple {
                 .split_whitespace()
                 .map(Into::into)
                 .collect::<Vec<String>>();
-
             let mut cmd = Command::new(args[0].clone());
-            if let Some(cmd_dir) = self.cmd_dir.clone() {
-                if cmd_dir.is_dir() {
-                    cmd.current_dir(cmd_dir);
-                } else {
-                    let mut cmd_dir = cmd_dir;
-                    cmd_dir.pop();
-                    cmd.current_dir(cmd_dir);
-                }
-            }
+            self.set_cmd_dir(&mut cmd);
             cmd.args(&args[1..]);
-
-            let cmd_output = cmd.output()?;
-
-            let line_count = bytecount::count(&cmd_output.stdout, b'\n');
-
-            // Write the output to a tempfile if the lines are too many.
-            let (stdout_str, tempfile): (String, Option<PathBuf>) =
-                if line_count > self.output_threshold {
-                    let tempfile = if let Some(ref output) = self.output {
-                        output.into()
-                    } else {
-                        let mut dir = std::env::temp_dir();
-                        dir.push(format!(
-                            "{}_{}",
-                            args.join("_"),
-                            SystemTime::now()
-                                .duration_since(SystemTime::UNIX_EPOCH)?
-                                .as_secs()
-                        ));
-                        dir
-                    };
-                    File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-                    let end = std::cmp::min(cmd_output.stdout.len(), 500);
-                    (
-                        // lines used for displaying directly.
-                        String::from_utf8_lossy(&cmd_output.stdout[..end]).into(),
-                        Some(tempfile),
-                    )
-                } else {
-                    (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
-                };
-
-            // The last element could be a empty string.
-            let mut lines = stdout_str.split("\n").collect::<Vec<_>>();
-            if let Some(last_line) = lines.last() {
-                if last_line.is_empty() {
-                    lines.remove(lines.len() - 1);
-                }
-            }
-
-            if let Some(tempfile) = tempfile {
-                println!(
-                    "{}",
-                    json!({"total": line_count, "lines": lines, "tempfile": tempfile})
-                );
-            } else {
-                println!("{}", json!({"total": line_count, "lines": lines}));
-            }
-
+            self.execute(&mut cmd, &args)?;
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No cmd specified"))
@@ -158,7 +225,7 @@ impl Maple {
 pub fn main() -> Result<()> {
     let opt = Maple::from_args();
 
-    if opt.try_exec_cmd().is_ok() {
+    if opt.try_exec_cmd().is_ok() || opt.try_exec_grep().is_ok() {
         return Ok(());
     }
 

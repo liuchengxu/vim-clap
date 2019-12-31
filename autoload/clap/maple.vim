@@ -1,6 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Minimalize the payload of external filter using maple's
-" --number option, showing the top N items only.
+" Description: Dispatch the job via maple.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -30,16 +29,25 @@ endfunction
 function! s:on_complete() abort
   call clap#spinner#set_idle()
 
+  if empty(s:chunks)
+    return
+  endif
+
   let decoded = json_decode(s:chunks[0])
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
+    call g:clap.preview.hide()
     return
   endif
 
   call clap#impl#refresh_matches_count(string(decoded.total))
-  call g:clap.display.set_lines(decoded.lines)
+  if s:has_converter
+    call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
+  else
+    call g:clap.display.set_lines(decoded.lines)
+  endif
   if has_key(decoded, 'indices')
     call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
   endif
@@ -91,6 +99,14 @@ endfunction
 
 function! s:apply_start(_timer) abort
   let s:chunks = []
+
+  if has_key(g:clap.provider._(), 'converter')
+    let s:has_converter = v:true
+    let s:Converter = g:clap.provider._().converter
+  else
+    let s:has_converter = v:false
+  endif
+
   call s:start_maple()
 endfunction
 
@@ -104,6 +120,33 @@ function! clap#maple#job_start(cmd) abort
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
+endfunction
+
+let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
+
+" Run the command via maple to minimalize the payload of this job.
+"
+" Call clap#rooter#try_set_cwd() if neccessary so that the cmd working dir is
+" right.
+function! clap#maple#execute(cmd) abort
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
+        \ s:empty_filter_cmd,
+        \ a:cmd,
+        \ cmd_dir,
+        \ )
+  call clap#maple#job_start(cmd)
+endfunction
+
+function! clap#maple#grep(bare_cmd, query) abort
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
+        \ s:empty_filter_cmd,
+        \ a:bare_cmd,
+        \ a:query,
+        \ cmd_dir,
+        \ )
+  call clap#maple#job_start(cmd)
 endfunction
 
 let &cpoptions = s:save_cpo
