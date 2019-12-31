@@ -120,9 +120,11 @@ endfunction
 
 let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
 
+" Run the command via maple to minimalize the payload of this job.
+"
 " Call clap#rooter#try_set_cwd() if neccessary so that the cmd working dir is
 " right.
-function! clap#maple#exec(cmd) abort
+function! clap#maple#execute(cmd) abort
   let cmd_dir = clap#rooter#working_dir()
   let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
         \ s:empty_filter_cmd,

@@ -122,7 +122,7 @@ function! s:spawn(query) abort
   call clap#rooter#try_set_cwd()
 
   if clap#maple#is_available()
-    call clap#maple#exec(s:cmd(query))
+    call clap#maple#execute(s:cmd(query))
   else
     call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
   endif
