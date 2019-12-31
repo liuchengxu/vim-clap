@@ -1,6 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Minimalize the payload of external filter using maple's
-" --number option, showing the top N items only.
+" Description: Dispatch the job via maple.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
