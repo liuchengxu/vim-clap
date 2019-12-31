@@ -30,11 +30,16 @@ endfunction
 function! s:on_complete() abort
   call clap#spinner#set_idle()
 
+  if empty(s:chunks)
+    return
+  endif
+
   let decoded = json_decode(s:chunks[0])
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
+    call g:clap.preview.hide()
     return
   endif
 
