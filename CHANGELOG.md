@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+### Fixed
+
+- :tada: Fix the flicker of running asynchronously using `job`.([#185](https://github.com/liuchengxu/vim-clap/issues/185))
+
 ## [unreleased]
 
 ### [0.3] 2019-12-30
