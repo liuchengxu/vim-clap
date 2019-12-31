@@ -47,7 +47,7 @@ else
 endif
 
 function! clap#filter#using_maple() abort
-  return s:ext_filter == 'maple'
+  return s:ext_filter ==# 'maple'
 endfunction
 
 function! s:pattern_builder._force_case() abort
@@ -175,6 +175,7 @@ if s:can_use_python
     try
       return s:ext_filter(a:query, a:candidates)
     catch
+      call clap#helper#echo_error(v:exception)
       return s:fallback_filter(a:query, a:candidates)
     endtry
   endfunction
