@@ -29,11 +29,16 @@ endfunction
 function! s:on_complete() abort
   call clap#spinner#set_idle()
 
+  if empty(s:chunks)
+    return
+  endif
+
   let decoded = json_decode(s:chunks[0])
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
+    call g:clap.preview.hide()
     return
   endif
 
@@ -128,6 +133,17 @@ function! clap#maple#execute(cmd) abort
   let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
         \ s:empty_filter_cmd,
         \ a:cmd,
+        \ cmd_dir,
+        \ )
+  call clap#maple#job_start(cmd)
+endfunction
+
+function! clap#maple#grep(bare_cmd, query) abort
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
+        \ s:empty_filter_cmd,
+        \ a:bare_cmd,
+        \ a:query,
         \ cmd_dir,
         \ )
   call clap#maple#job_start(cmd)

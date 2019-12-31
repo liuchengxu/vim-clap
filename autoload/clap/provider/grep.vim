@@ -67,6 +67,11 @@ function! s:translate_query_and_opts(query) abort
 
   let query = join(split(query), '.*')
 
+  " Consistent with --smart-case of rg
+  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
+  let ignore_case = query =~# '\u' ? '\C' : '\c'
+  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
+
   return [grep_opts, query]
 endfunction
 
@@ -77,11 +82,6 @@ function! s:cmd(query) abort
   endif
 
   let [grep_opts, query] = s:translate_query_and_opts(a:query)
-
-  " Consistent with --smart-case of rg
-  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
-  let ignore_case = query =~# '\u' ? '\C' : '\c'
-  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
 
   let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
   let g:clap.provider.cmd = cmd
@@ -122,7 +122,9 @@ function! s:spawn(query) abort
   call clap#rooter#try_set_cwd()
 
   if clap#maple#is_available()
-    call clap#maple#execute(s:cmd(query))
+    let [grep_opts, query] = s:translate_query_and_opts(a:query)
+    " Add ' .' for windows in maple
+    call clap#maple#grep(s:grep_executable.' '.grep_opts, query)
   else
     call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
   endif
