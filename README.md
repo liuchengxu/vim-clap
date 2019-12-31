@@ -214,6 +214,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
+- [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 
 See `:help clap-keybindings` for more information.
 
