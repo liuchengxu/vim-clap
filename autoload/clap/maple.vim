@@ -139,5 +139,16 @@ function! clap#maple#execute(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
+function! clap#maple#grep(bare_cmd, query) abort
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
+        \ s:empty_filter_cmd,
+        \ a:bare_cmd,
+        \ a:query,
+        \ cmd_dir,
+        \ )
+  call clap#maple#job_start(cmd)
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
