@@ -2,7 +2,7 @@ mod icon;
 
 use std::fs::File;
 use std::io::{self, BufRead, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::SystemTime;
 
@@ -14,7 +14,7 @@ use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
-use icon::{DEFAULT_ICON, ICONMAP};
+use icon::prepend_icon;
 
 arg_enum! {
     #[derive(Debug)]
@@ -178,14 +178,7 @@ impl Maple {
             };
 
         let mut lines = if self.enable_icon {
-            stdout_str
-                .split('\n')
-                .map(|line| {
-                    let iconized: icon::IconizedLine = line.into();
-                    iconized
-                })
-                .map(Into::into)
-                .collect::<Vec<_>>()
+            stdout_str.split('\n').map(prepend_icon).collect::<Vec<_>>()
         } else {
             stdout_str.split('\n').map(Into::into).collect::<Vec<_>>()
         };
@@ -288,8 +281,7 @@ pub fn main() -> Result<()> {
         let mut indices = Vec::with_capacity(number);
         for (text, _, idxs) in payload {
             if opt.enable_icon {
-                let iconized: icon::IconizedLine = text.into();
-                lines.push(iconized.into());
+                lines.push(prepend_icon(&text));
             } else {
                 lines.push(text);
             }
