@@ -165,10 +165,6 @@ else
   endfunction
 endif
 
-function! s:can_have_offset(provider_id) abort
-  return a:provider_id ==# 'tags' || a:provider_id ==# 'buffers' || a:provider_id ==# 'files'
-endfunction
-
 function! s:fuzzy_idx_offset() abort
   if g:clap_enable_icon
     let provider_id = g:clap.provider.id
