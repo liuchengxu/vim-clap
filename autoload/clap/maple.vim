@@ -12,8 +12,10 @@ let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
 
 if executable(s:maple_bin)
   let s:maple_filter_cmd = s:maple_bin.' "%s"'
+  let s:empty_filter_cmd = printf(s:maple_filter_cmd, '')
 elseif executable('maple')
   let s:maple_filter_cmd = 'maple "%s"'
+  let s:empty_filter_cmd = 'maple ""'
 else
   let s:maple_filter_cmd = v:null
 endif
@@ -129,7 +131,6 @@ function! clap#maple#job_start(cmd) abort
   return
 endfunction
 
-let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
 
 " Run the command via maple to minimalize the payload of this job.
 "
