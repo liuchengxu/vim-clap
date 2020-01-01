@@ -177,8 +177,14 @@ function! s:add_highlight_for_fuzzy_matched() abort
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
 
-  if s:can_have_offset(g:clap.provider.id) && g:clap_enable_icon
-    let offset = 2
+  if g:clap_enable_icon
+    if s:can_have_offset(g:clap.provider.id)
+      let offset = 2
+    elseif g:clap.provider.id ==# 'files'
+      let offset = 4
+    else
+      let offset = 0
+    endif
   else
     let offset = 0
   endif

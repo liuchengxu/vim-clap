@@ -45,7 +45,13 @@ function! s:files.source() abort
   endif
 endfunction
 
-let s:files.sink = 'e'
+function! s:files.sink(selected) abort
+  if g:clap_enable_icon
+    execute 'edit' a:selected[4:]
+  else
+    execute 'edit' a:selected
+  endif
+endfunction
 
 let s:files.enable_rooter = v:true
 
