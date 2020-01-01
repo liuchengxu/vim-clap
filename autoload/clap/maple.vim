@@ -122,7 +122,11 @@ function! clap#maple#job_start(cmd) abort
   return
 endfunction
 
-let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
+if clap#maple#is_available()
+  let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
+else
+  let s:empty_filter_cmd = ''
+endif
 
 " Run the command via maple to minimalize the payload of this job.
 "
