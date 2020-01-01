@@ -165,13 +165,13 @@ else
   endfunction
 endif
 
-function! s:fuzzy_idx_offset() abort
+function! s:builtin_fuzzy_idx_offset() abort
   if g:clap_enable_icon
     let provider_id = g:clap.provider.id
-    if provider_id ==# 'tags' || provider_id ==# 'buffers'
+    if provider_id ==# 'tags'
+          \ || provider_id ==# 'buffers'
+          \ || provider_id ==# 'files'
       return 2
-    elseif g:clap.provider.id ==# 'files'
-      return 4
     else
       return 0
     endif
@@ -180,6 +180,7 @@ function! s:fuzzy_idx_offset() abort
   endif
 endfunction
 
+" Used by the built-in sync filter.
 function! s:add_highlight_for_fuzzy_matched() abort
   " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
   " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
@@ -187,13 +188,14 @@ function! s:add_highlight_for_fuzzy_matched() abort
   "
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
-  let offset = s:fuzzy_idx_offset()
+  let offset = s:builtin_fuzzy_idx_offset()
 
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+" Used by the async job.
 function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
-  let offset = s:fuzzy_idx_offset()
+  let offset = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? 4 : 0
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
