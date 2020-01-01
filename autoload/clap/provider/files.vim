@@ -54,6 +54,7 @@ function! s:files.sink(selected) abort
 endfunction
 
 let s:files.enable_rooter = v:true
+let s:files.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_files')}
 
 let g:clap#provider#files# = s:files
 
