@@ -90,6 +90,12 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using one single command `:call clap#helper#build_all()`.
 
+Notes: [Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it:
+
+```bash
+$ rustup toolchain install nightly
+```
+
 ##### `maple` binary
 
 `maple` mainly serves two functions:
