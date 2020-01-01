@@ -35,7 +35,7 @@ function! clap#rooter#working_dir() abort
   else
     let git_root = clap#util#find_git_root(g:clap.start.bufnr)
     if empty(git_root)
-      let dir = expand('#'.g:clap.start.bufnr.':p:h')
+      let dir = getcwd()
     else
       let dir = git_root
     endif
@@ -77,6 +77,7 @@ function! clap#rooter#run(Run, ...) abort
   let git_root = clap#util#find_git_root(g:clap.start.bufnr)
 
   if empty(git_root)
+    " This means to use getcwd()
     let result = call(a:Run, a:000)
   else
     let result = s:run_from_target_dir(git_root, a:Run, a:000)
