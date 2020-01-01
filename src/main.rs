@@ -1,6 +1,8 @@
+mod icon;
+
 use std::fs::File;
 use std::io::{self, BufRead, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
@@ -11,6 +13,8 @@ use rayon::prelude::*;
 use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
+
+use icon::{DEFAULT_ICON, ICONMAP};
 
 arg_enum! {
     #[derive(Debug)]
@@ -68,6 +72,10 @@ struct Maple {
     #[structopt(long = "grep-query")]
     grep_query: Option<String>,
 
+    /// Prepend an icon for item of files and grep provider.
+    #[structopt(long = "enable-icon")]
+    enable_icon: bool,
+
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
@@ -94,7 +102,7 @@ impl std::error::Error for DummyError {
 
 /// Remove the last element if it's empty string.
 #[inline]
-fn trim_trailing(lines: &mut Vec<&str>) {
+fn trim_trailing(lines: &mut Vec<String>) {
     if let Some(last_line) = lines.last() {
         if last_line.is_empty() {
             lines.remove(lines.len() - 1);
@@ -124,7 +132,11 @@ impl Maple {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
             // &cmd_output.stdout[..nth_newline_index]
             let stdout_str = String::from_utf8_lossy(&cmd_output.stdout);
-            let mut lines = stdout_str.split('\n').take(number).collect::<Vec<_>>();
+            let mut lines = stdout_str
+                .split('\n')
+                .take(number)
+                .map(Into::into)
+                .collect::<Vec<_>>();
             trim_trailing(&mut lines);
             println!(
                 "{}",
@@ -165,8 +177,20 @@ impl Maple {
                 (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
             };
 
+        let mut lines = if self.enable_icon {
+            stdout_str
+                .split('\n')
+                .map(|line| {
+                    let iconized: icon::IconizedLine = line.into();
+                    iconized
+                })
+                .map(Into::into)
+                .collect::<Vec<_>>()
+        } else {
+            stdout_str.split('\n').map(Into::into).collect::<Vec<_>>()
+        };
+
         // The last element could be a empty string.
-        let mut lines = stdout_str.split('\n').collect::<Vec<_>>();
         trim_trailing(&mut lines);
 
         if let Some(tempfile) = tempfile {
@@ -263,7 +287,12 @@ pub fn main() -> Result<()> {
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
         for (text, _, idxs) in payload {
-            lines.push(text);
+            if opt.enable_icon {
+                let iconized: icon::IconizedLine = text.into();
+                lines.push(iconized.into());
+            } else {
+                lines.push(text);
+            }
             indices.push(idxs);
         }
         println!(

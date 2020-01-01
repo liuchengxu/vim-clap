@@ -73,6 +73,7 @@ if has('nvim')
   endfunction
 
   function! s:start_maple() abort
+    echom "cmd:".s:cmd
     let s:job_id = clap#job#start_buffered(s:cmd, function('s:on_event'))
   endfunction
 
@@ -118,6 +119,12 @@ function! clap#maple#job_start(cmd) abort
   call clap#maple#stop()
 
   let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
+
+  if g:clap.provider.id ==# 'files'
+    let s:cmd .= ' --enable-icon'
+  endif
+
+
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
 endfunction
@@ -135,6 +142,7 @@ function! clap#maple#execute(cmd) abort
         \ a:cmd,
         \ cmd_dir,
         \ )
+
   call clap#maple#job_start(cmd)
 endfunction
 
