@@ -72,7 +72,7 @@ struct Maple {
     #[structopt(long = "grep-query")]
     grep_query: Option<String>,
 
-    /// Prepend an icon for item of files and grep provider.
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
     #[structopt(long = "enable-icon")]
     enable_icon: bool,
 
@@ -279,13 +279,16 @@ pub fn main() -> Result<()> {
         let payload = ranked.into_iter().take(number);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
-        for (text, _, idxs) in payload {
-            if opt.enable_icon {
+        if opt.enable_icon {
+            for (text, _, idxs) in payload {
                 lines.push(prepend_icon(&text));
-            } else {
-                lines.push(text);
+                indices.push(idxs);
             }
-            indices.push(idxs);
+        } else {
+            for (text, _, idxs) in payload {
+                lines.push(text);
+                indices.push(idxs);
+            }
         }
         println!(
             "{}",

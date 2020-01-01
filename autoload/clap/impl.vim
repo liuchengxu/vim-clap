@@ -169,6 +169,21 @@ function! s:can_have_offset(provider_id) abort
   return a:provider_id ==# 'tags' || a:provider_id ==# 'buffers' || a:provider_id ==# 'files'
 endfunction
 
+function! s:fuzzy_idx_offset() abort
+  if g:clap_enable_icon
+    let provider_id = g:clap.provider.id
+    if provider_id ==# 'tags' || provider_id ==# 'buffers'
+      return 2
+    elseif g:clap.provider.id ==# 'files'
+      return 4
+    else
+      return 0
+    endif
+  else
+    return 0
+  endif
+endfunction
+
 function! s:add_highlight_for_fuzzy_matched() abort
   " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
   " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
@@ -176,28 +191,13 @@ function! s:add_highlight_for_fuzzy_matched() abort
   "
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
-
-  if g:clap_enable_icon
-    if s:can_have_offset(g:clap.provider.id)
-      let offset = 2
-    elseif g:clap.provider.id ==# 'files'
-      let offset = 4
-    else
-      let offset = 0
-    endif
-  else
-    let offset = 0
-  endif
+  let offset = s:fuzzy_idx_offset()
 
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
 function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
-  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let offset = 4
-  else
-    let offset = 0
-  endif
+  let offset = s:fuzzy_idx_offset()
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
