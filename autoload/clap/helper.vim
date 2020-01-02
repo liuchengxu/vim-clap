@@ -144,7 +144,7 @@ endfunction
 function! clap#helper#build_all(...) abort
   if executable('cargo')
     " If Rust nightly is unavailable, build the maple only.
-    if s:has_rust_nightly(v:false)
+    if has('python3') && s:has_rust_nightly(v:false)
       let cwd = fnamemodify(g:clap#autoload_dir, ':h')
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
