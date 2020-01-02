@@ -127,28 +127,31 @@ let s:can_use_python = v:false
 
 if s:py_exe !=# v:null
 
-  function! s:setup_python() abort
-    if !has('nvim')
-      execute s:pyfile 'setup_python.py'
-    endif
-  endfunction
-
   try
-    call s:setup_python()
-
     if has('win32')
       let s:LIB = '\pythonx\clap\fuzzymatch_rs.pyd'
+      let s:SETUP_PY = '\setup_python.py'
     else
       let s:LIB = '/pythonx/clap/fuzzymatch_rs.so'
+      let s:SETUP_PY = '/setup_python.py'
     endif
 
-    let s:has_rust_ext = filereadable(fnamemodify(g:clap#autoload_dir, ':h').s:LIB)
+    let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
+
+    " Import pythonx/clap
+    if !has('nvim')
+      execute s:pyfile s:plugin_root_dir.s:SETUP_PY
+    endif
+
+    let s:has_rust_ext = filereadable(s:plugin_root_dir.s:LIB)
+
     " For test only
     if get(g:, 'clap_use_pure_python', 0)
       let s:py_fn = 'clap_fzy_py'
     else
       let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
     endif
+
     execute s:py_exe 'from clap.fzy import' s:py_fn
 
     function! clap#filter#benchmark(query, candidates) abort
