@@ -102,16 +102,27 @@ else
   let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
 endif
 
+function! s:has_rust_nightly(show_warning) abort
+  call system('cargo +nightly --help')
+  if v:shell_error
+    if a:show_warning
+      call clap#helper#echo_warn('Rust nightly is required, try running `rustup toolchain install nightly` in the command line and then rerun this function.')
+    else
+      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
+    endif
+    return v:false
+  endif
+  return v:true
+endfunction
+
 function! clap#helper#build_python_dynamic_module() abort
   if !has('python3')
-    call clap#helper#echo_warn('+python3 is required, skip building the Python dynamic module.')
+    call clap#helper#echo_info('+python3 is required, skip building the Python dynamic module.')
     return
   endif
 
   if executable('cargo')
-    call system('cargo +nightly --help')
-    if v:shell_error
-      call clap#helper#echo_warn('Rust nightly is required, try running `rustup toolchain install nightly` in the command line and then rerun this function.')
+    if !s:has_rust_nightly(v:true)
       return
     endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Rust extension successfully')
@@ -132,13 +143,18 @@ endfunction
 
 function! clap#helper#build_all(...) abort
   if executable('cargo')
-    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-    if has('win32')
-      let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
+    " If Rust nightly is unavailable, build the maple only.
+    if s:has_rust_nightly(v:false)
+      let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+      if has('win32')
+        let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
+      else
+        let cmd = 'make'
+      endif
+      call s:run_term(cmd, cwd, 'build maple and Rust extension successfully')
     else
-      let cmd = 'make'
+      call clap#helper#build_maple()
     endif
-    call s:run_term(cmd, cwd, 'build maple and Rust extension successfully')
   else
     call clap#helper#echo_warn('cargo not found, skipped building maple and the Rust extension.')
   endif
