@@ -103,6 +103,11 @@ else
 endif
 
 function! clap#helper#build_rust_ext() abort
+  if !has('python3')
+    call clap#helper#echo_error('+python3 is required, skip building the Python dynamic module.')
+    return
+  endif
+
   if executable('cargo')
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Rust extension successfully')
   else
