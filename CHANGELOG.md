@@ -7,7 +7,7 @@ CHANGELOG
 
 ## [unreleased]
 
-### [0.3] 2019-12-30
+## [0.3] 2019-12-30
 
 The major feature of 0.3 is the performance problem has been soloved, see [#140](https://github.com/liuchengxu/vim-clap/issues/140).
 
