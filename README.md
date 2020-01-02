@@ -112,15 +112,15 @@ To install `maple` you can use the helper function and run `:call clap#helper#bu
 
 ##### Python dynamic module
 
-[Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it:
+**If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed.**
+
+[Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it if you want to run the helper function successfully:
 
 ```bash
 $ rustup toolchain install nightly
 ```
 
-Then use `:call claphelper#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
-
-If you encounter any nightly related issue when running `:call clap#helper#build_all()` or `:call clap#helper#build_python_dynamic_module()`, that's fine, just skip it and run `:call clap#helper#build_maple()`, vim-clap can work very well with only `maple` binary installed.
+Then use `:call clap#helper#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
 
 ## Installation
 
