@@ -102,13 +102,18 @@ else
   let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
 endif
 
-function! clap#helper#build_rust_ext() abort
+function! clap#helper#build_python_dynamic_module() abort
   if !has('python3')
-    call clap#helper#echo_error('+python3 is required, skip building the Python dynamic module.')
+    call clap#helper#echo_warn('+python3 is required, skip building the Python dynamic module.')
     return
   endif
 
   if executable('cargo')
+    call system('cargo +nightly --help')
+    if v:shell_error
+      call clap#helper#echo_warn('Rust nightly is required, try running `rustup toolchain install nightly` in the command line and then rerun this function.')
+      return
+    endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Rust extension successfully')
   else
     call clap#helper#echo_error('Can not build Rust extension in that cargo is not found.')
