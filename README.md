@@ -88,7 +88,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 #### `Rust`
 
-If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap. If you ensure Rust nightly has been installed on your system, you can just try this single command `:call clap#helper#build_all()`, otherwise please see the following section to build accordingly.
+If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using this single command `:call clap#helper#build_all()`.
 
 ##### `maple` binary
 
@@ -112,7 +112,7 @@ To install `maple` you can use the helper function and run `:call clap#helper#bu
 
 ##### Python dynamic module
 
-**If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed.**
+If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed. This Python dynamic module is mainly for saving the async job when the data set is small.
 
 [Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it if you want to run the helper function successfully:
 
