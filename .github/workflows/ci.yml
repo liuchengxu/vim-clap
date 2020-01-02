@@ -30,7 +30,7 @@ jobs:
         github_token: ${{ secrets.github_token }}
         reporter: github-pr-review
 
-  fuzzymatch_rs:
+  rust_ext:
     strategy:
       fail-fast: false
 
