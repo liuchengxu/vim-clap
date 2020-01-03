@@ -125,9 +125,9 @@ function! clap#helper#build_python_dynamic_module() abort
     if !s:has_rust_nightly(v:true)
       return
     endif
-    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Rust extension successfully')
+    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Python dynamic module successfully')
   else
-    call clap#helper#echo_error('Can not build Rust extension in that cargo is not found.')
+    call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
   endif
 endfunction
 
@@ -135,15 +135,15 @@ function! clap#helper#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
     let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-    call s:run_term(cmd, cwd, 'build maple successfully')
+    call s:run_term(cmd, cwd, 'build maple binary successfully')
   else
-    call clap#helper#echo_error('Can not build maple in that cargo is not found.')
+    call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
   endif
 endfunction
 
 function! clap#helper#build_all(...) abort
   if executable('cargo')
-    " If Rust nightly is unavailable, build the maple only.
+    " If Rust nightly and +python3 is unavailable, build the maple only.
     if has('python3') && s:has_rust_nightly(v:false)
       let cwd = fnamemodify(g:clap#autoload_dir, ':h')
       if has('win32')
@@ -151,12 +151,12 @@ function! clap#helper#build_all(...) abort
       else
         let cmd = 'make'
       endif
-      call s:run_term(cmd, cwd, 'build maple and Rust extension successfully')
+      call s:run_term(cmd, cwd, 'build maple binary and Python dynamic module successfully')
     else
       call clap#helper#build_maple()
     endif
   else
-    call clap#helper#echo_warn('cargo not found, skipped building maple and the Rust extension.')
+    call clap#helper#echo_warn('cargo not found, skipped building maple binary and Python dynamic module.')
   endif
 endfunction
 
