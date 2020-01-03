@@ -17,3 +17,4 @@ __pycache__
 !.github
 !.vintrc.yaml
 !.dependabot
+!bin/.gitkeep
