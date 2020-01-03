@@ -1,13 +1,21 @@
 CHANGELOG
 =========
 
+## [unreleased]
+
+### Added
+
+- Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
+
+### Improved
+
+- Make the helper function for building the extra Rust tools more friendly and smarter. ([#202](https://github.com/liuchengxu/vim-clap/pull/202))
+
 ### Fixed
 
 - :tada: Fix the flicker of running asynchronously using `job`.([#185](https://github.com/liuchengxu/vim-clap/issues/185))
 
-## [unreleased]
-
-### [0.3] 2019-12-30
+## [0.3] 2019-12-30
 
 The major feature of 0.3 is the performance problem has been soloved, see [#140](https://github.com/liuchengxu/vim-clap/issues/140).
 
