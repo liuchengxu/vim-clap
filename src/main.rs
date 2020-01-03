@@ -132,6 +132,40 @@ impl Maple {
         }
     }
 
+    fn to_string_and_cache_if_threshold_exceeded(
+        &self,
+        total: usize,
+        cmd_stdout: &[u8],
+        args: &[String],
+    ) -> Result<(String, Option<PathBuf>)> {
+        if total > self.output_threshold {
+            let tempfile = if let Some(ref output) = self.output {
+                output.into()
+            } else {
+                let mut dir = std::env::temp_dir();
+                dir.push(format!(
+                    "{}_{}",
+                    args.join("_"),
+                    SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)?
+                        .as_secs()
+                ));
+                dir
+            };
+            File::create(tempfile.clone())?.write_all(cmd_stdout)?;
+            // FIXME find the nth newline index of stdout.
+            let _end = std::cmp::min(cmd_stdout.len(), 500);
+            Ok((
+                // lines used for displaying directly.
+                // &cmd_output.stdout[..nth_newline_index]
+                String::from_utf8_lossy(cmd_stdout).into(),
+                Some(tempfile),
+            ))
+        } else {
+            Ok((String::from_utf8_lossy(cmd_stdout).into(), None))
+        }
+    }
+
     fn execute(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
         cmd.args(&args[1..]);
 
@@ -154,32 +188,8 @@ impl Maple {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile): (String, Option<PathBuf>) = if total > self.output_threshold {
-            let tempfile = if let Some(ref output) = self.output {
-                output.into()
-            } else {
-                let mut dir = std::env::temp_dir();
-                dir.push(format!(
-                    "{}_{}",
-                    args.join("_"),
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)?
-                        .as_secs()
-                ));
-                dir
-            };
-            File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-            // FIXME find the nth newline index of stdout.
-            let _end = std::cmp::min(cmd_output.stdout.len(), 500);
-            (
-                // lines used for displaying directly.
-                // &cmd_output.stdout[..nth_newline_index]
-                String::from_utf8_lossy(&cmd_output.stdout).into(),
-                Some(tempfile),
-            )
-        } else {
-            (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
-        };
+        let (stdout_str, tempfile): (String, Option<PathBuf>) =
+            self.to_string_and_cache_if_threshold_exceeded(total, &cmd_output.stdout, args)?;
 
         let mut lines = if self.enable_icon {
             stdout_str.split('\n').map(prepend_icon).collect::<Vec<_>>()
