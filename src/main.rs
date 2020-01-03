@@ -237,74 +237,89 @@ impl Maple {
         }
         Err(anyhow::Error::new(DummyError).context("No cmd specified"))
     }
+
+    fn apply_fuzzy_filter_and_rank(&self) -> Result<Vec<(String, f64, Vec<usize>)>> {
+        let query = &*self.query;
+        let algo = self.algo.as_ref().unwrap_or(&Algo::Fzy);
+
+        let scorer = |line: &str| match algo {
+            Algo::Skim => {
+                fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices))
+            }
+            Algo::Fzy => match_and_score_with_positions(query, line),
+        };
+
+        // Result<Option<T>> => T
+        let mut ranked = if let Some(input) = &self.input {
+            std::fs::read_to_string(input)?
+                .par_lines()
+                .filter_map(|line| {
+                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                })
+                .collect::<Vec<_>>()
+        } else {
+            io::stdin()
+                .lock()
+                .lines()
+                .filter_map(|lines_iter| {
+                    lines_iter.ok().and_then(|line| {
+                        scorer(&line).map(|(score, indices)| (line, score, indices))
+                    })
+                })
+                .collect::<Vec<_>>()
+        };
+
+        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+        Ok(ranked)
+    }
+
+    pub fn do_filter(&self) -> Result<()> {
+        let ranked = self.apply_fuzzy_filter_and_rank()?;
+
+        if let Some(number) = self.number {
+            let total = ranked.len();
+            let payload = ranked.into_iter().take(number);
+            let mut lines = Vec::with_capacity(number);
+            let mut indices = Vec::with_capacity(number);
+            if self.enable_icon {
+                for (text, _, idxs) in payload {
+                    lines.push(prepend_icon(&text));
+                    indices.push(idxs);
+                }
+            } else {
+                for (text, _, idxs) in payload {
+                    lines.push(text);
+                    indices.push(idxs);
+                }
+            }
+            println!(
+                "{}",
+                json!({"total": total, "lines": lines, "indices": indices})
+            );
+        } else {
+            for (text, _, indices) in ranked.iter() {
+                println!(
+                    "{}",
+                    json!({
+                    "text": text,
+                    "indices": indices,
+                    })
+                );
+            }
+        }
+        Ok(())
+    }
 }
 
 pub fn main() -> Result<()> {
-    let opt = Maple::from_args();
+    let maple = Maple::from_args();
 
-    if opt.try_exec_cmd().is_ok() || opt.try_exec_grep().is_ok() {
+    if maple.try_exec_cmd().is_ok() || maple.try_exec_grep().is_ok() {
         return Ok(());
     }
 
-    let query = &*opt.query;
-    let algo = opt.algo.unwrap_or(Algo::Fzy);
-
-    let scorer = |line: &str| match algo {
-        Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
-        Algo::Fzy => match_and_score_with_positions(query, line),
-    };
-
-    // Result<Option<T>> => T
-    let mut ranked = if let Some(input) = opt.input {
-        std::fs::read_to_string(input)?
-            .par_lines()
-            .filter_map(|line| scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
-            .collect::<Vec<_>>()
-    } else {
-        io::stdin()
-            .lock()
-            .lines()
-            .filter_map(|lines_iter| {
-                lines_iter
-                    .ok()
-                    .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
-            })
-            .collect::<Vec<_>>()
-    };
-
-    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-    if let Some(number) = opt.number {
-        let total = ranked.len();
-        let payload = ranked.into_iter().take(number);
-        let mut lines = Vec::with_capacity(number);
-        let mut indices = Vec::with_capacity(number);
-        if opt.enable_icon {
-            for (text, _, idxs) in payload {
-                lines.push(prepend_icon(&text));
-                indices.push(idxs);
-            }
-        } else {
-            for (text, _, idxs) in payload {
-                lines.push(text);
-                indices.push(idxs);
-            }
-        }
-        println!(
-            "{}",
-            json!({"total": total, "lines": lines, "indices": indices})
-        );
-    } else {
-        for (text, _, indices) in ranked.iter() {
-            println!(
-                "{}",
-                json!({
-                "text": text,
-                "indices": indices,
-                })
-            );
-        }
-    }
+    maple.do_filter()?;
 
     Ok(())
 }
