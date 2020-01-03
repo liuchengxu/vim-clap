@@ -188,7 +188,7 @@ impl Maple {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile): (String, Option<PathBuf>) =
+        let (stdout_str, tempfile) =
             self.to_string_and_cache_if_threshold_exceeded(total, &cmd_output.stdout, args)?;
 
         let mut lines = if self.enable_icon {
