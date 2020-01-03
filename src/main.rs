@@ -110,6 +110,15 @@ fn trim_trailing(lines: &mut Vec<String>) {
     }
 }
 
+/// Combine json and println macro.
+macro_rules! println_json {
+  ( $( $field:expr ),+ ) => {
+    {
+      println!("{}", json!({ $(stringify!($field): $field,)* }))
+    }
+  }
+}
+
 impl Maple {
     pub fn set_cmd_dir(&self, cmd: &mut Command) {
         if let Some(cmd_dir) = self.cmd_dir.clone() {
@@ -123,10 +132,46 @@ impl Maple {
         }
     }
 
+    fn to_string_and_cache_if_threshold_exceeded(
+        &self,
+        total: usize,
+        cmd_stdout: &[u8],
+        args: &[String],
+    ) -> Result<(String, Option<PathBuf>)> {
+        if total > self.output_threshold {
+            let tempfile = if let Some(ref output) = self.output {
+                output.into()
+            } else {
+                let mut dir = std::env::temp_dir();
+                dir.push(format!(
+                    "{}_{}",
+                    args.join("_"),
+                    SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)?
+                        .as_secs()
+                ));
+                dir
+            };
+            File::create(tempfile.clone())?.write_all(cmd_stdout)?;
+            // FIXME find the nth newline index of stdout.
+            let _end = std::cmp::min(cmd_stdout.len(), 500);
+            Ok((
+                // lines used for displaying directly.
+                // &cmd_output.stdout[..nth_newline_index]
+                String::from_utf8_lossy(cmd_stdout).into(),
+                Some(tempfile),
+            ))
+        } else {
+            Ok((String::from_utf8_lossy(cmd_stdout).into(), None))
+        }
+    }
+
     fn execute(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
+        cmd.args(&args[1..]);
+
         let cmd_output = cmd.output()?;
 
-        let line_count = bytecount::count(&cmd_output.stdout, b'\n');
+        let total = bytecount::count(&cmd_output.stdout, b'\n');
 
         if let Some(number) = self.number {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
@@ -138,44 +183,13 @@ impl Maple {
                 .map(Into::into)
                 .collect::<Vec<_>>();
             trim_trailing(&mut lines);
-            println!(
-                "{}",
-                json!({
-                  "total": line_count,
-                  "lines": lines
-                })
-            );
+            println_json!(total, lines);
             return Ok(());
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile): (String, Option<PathBuf>) =
-            if line_count > self.output_threshold {
-                let tempfile = if let Some(ref output) = self.output {
-                    output.into()
-                } else {
-                    let mut dir = std::env::temp_dir();
-                    dir.push(format!(
-                        "{}_{}",
-                        args.join("_"),
-                        SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)?
-                            .as_secs()
-                    ));
-                    dir
-                };
-                File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-                // FIXME find the nth newline index of stdout.
-                let _end = std::cmp::min(cmd_output.stdout.len(), 500);
-                (
-                    // lines used for displaying directly.
-                    // &cmd_output.stdout[..nth_newline_index]
-                    String::from_utf8_lossy(&cmd_output.stdout).into(),
-                    Some(tempfile),
-                )
-            } else {
-                (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
-            };
+        let (stdout_str, tempfile) =
+            self.to_string_and_cache_if_threshold_exceeded(total, &cmd_output.stdout, args)?;
 
         let mut lines = if self.enable_icon {
             stdout_str.split('\n').map(prepend_icon).collect::<Vec<_>>()
@@ -187,36 +201,41 @@ impl Maple {
         trim_trailing(&mut lines);
 
         if let Some(tempfile) = tempfile {
-            println!(
-                "{}",
-                json!({"total": line_count, "lines": lines, "tempfile": tempfile})
-            );
+            println_json!(total, lines, tempfile);
         } else {
-            println!("{}", json!({"total": line_count, "lines": lines}));
+            println_json!(total, lines);
         }
 
         Ok(())
     }
 
+    fn prepare_cmd_and_args(&self, cmd_str: &String) -> (Command, Vec<String>) {
+        let args = cmd_str
+            .split_whitespace()
+            .map(Into::into)
+            .collect::<Vec<String>>();
+        let mut cmd = Command::new(args[0].clone());
+        self.set_cmd_dir(&mut cmd);
+        (cmd, args)
+    }
+
     pub fn try_exec_grep(&self) -> Result<()> {
         if let Some(ref grep_cmd) = self.grep_cmd {
-            let mut args = grep_cmd
-                .split_whitespace()
-                .map(Into::into)
-                .collect::<Vec<String>>();
-            let mut cmd = Command::new(args[0].clone());
-            self.set_cmd_dir(&mut cmd);
-            // TODO windows needs to append . for rg
+            let (mut cmd, mut args) = self.prepare_cmd_and_args(grep_cmd);
+
+            // We split out the grep opts and query in case of the possible escape issue of clap.
             if let Some(grep_query) = self.grep_query.clone() {
                 args.push(grep_query);
             }
+
             // currently vim-clap only supports rg.
             // Ref https://github.com/liuchengxu/vim-clap/pull/60
             if cfg!(windows) {
                 args.push(".".into());
             }
-            cmd.args(&args[1..]);
+
             self.execute(&mut cmd, &args)?;
+
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No grep cmd specified"))
@@ -225,86 +244,89 @@ impl Maple {
     pub fn try_exec_cmd(&self) -> Result<()> {
         if let Some(ref cmd) = self.cmd {
             // TODO: translate piped command?
-            let args = cmd
-                .split_whitespace()
-                .map(Into::into)
-                .collect::<Vec<String>>();
-            let mut cmd = Command::new(args[0].clone());
-            self.set_cmd_dir(&mut cmd);
-            cmd.args(&args[1..]);
+            let (mut cmd, args) = self.prepare_cmd_and_args(cmd);
+
             self.execute(&mut cmd, &args)?;
+
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No cmd specified"))
     }
+
+    fn apply_fuzzy_filter_and_rank(&self) -> Result<Vec<(String, f64, Vec<usize>)>> {
+        let query = &*self.query;
+        let algo = self.algo.as_ref().unwrap_or(&Algo::Fzy);
+
+        let scorer = |line: &str| match algo {
+            Algo::Skim => {
+                fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices))
+            }
+            Algo::Fzy => match_and_score_with_positions(query, line),
+        };
+
+        // Result<Option<T>> => T
+        let mut ranked = if let Some(input) = &self.input {
+            std::fs::read_to_string(input)?
+                .par_lines()
+                .filter_map(|line| {
+                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                })
+                .collect::<Vec<_>>()
+        } else {
+            io::stdin()
+                .lock()
+                .lines()
+                .filter_map(|lines_iter| {
+                    lines_iter.ok().and_then(|line| {
+                        scorer(&line).map(|(score, indices)| (line, score, indices))
+                    })
+                })
+                .collect::<Vec<_>>()
+        };
+
+        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+        Ok(ranked)
+    }
+
+    pub fn do_filter(&self) -> Result<()> {
+        let ranked = self.apply_fuzzy_filter_and_rank()?;
+
+        if let Some(number) = self.number {
+            let total = ranked.len();
+            let payload = ranked.into_iter().take(number);
+            let mut lines = Vec::with_capacity(number);
+            let mut indices = Vec::with_capacity(number);
+            if self.enable_icon {
+                for (text, _, idxs) in payload {
+                    lines.push(prepend_icon(&text));
+                    indices.push(idxs);
+                }
+            } else {
+                for (text, _, idxs) in payload {
+                    lines.push(text);
+                    indices.push(idxs);
+                }
+            }
+            println_json!(total, lines, indices);
+        } else {
+            for (text, _, indices) in ranked.iter() {
+                println_json!(text, indices);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub fn main() -> Result<()> {
-    let opt = Maple::from_args();
+    let maple = Maple::from_args();
 
-    if opt.try_exec_cmd().is_ok() || opt.try_exec_grep().is_ok() {
+    if maple.try_exec_cmd().is_ok() || maple.try_exec_grep().is_ok() {
         return Ok(());
     }
 
-    let query = &*opt.query;
-    let algo = opt.algo.unwrap_or(Algo::Fzy);
-
-    let scorer = |line: &str| match algo {
-        Algo::Skim => fuzzy_indices(line, query).map(|(score, indices)| (score as f64, indices)),
-        Algo::Fzy => match_and_score_with_positions(query, line),
-    };
-
-    // Result<Option<T>> => T
-    let mut ranked = if let Some(input) = opt.input {
-        std::fs::read_to_string(input)?
-            .par_lines()
-            .filter_map(|line| scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
-            .collect::<Vec<_>>()
-    } else {
-        io::stdin()
-            .lock()
-            .lines()
-            .filter_map(|lines_iter| {
-                lines_iter
-                    .ok()
-                    .and_then(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
-            })
-            .collect::<Vec<_>>()
-    };
-
-    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-    if let Some(number) = opt.number {
-        let total = ranked.len();
-        let payload = ranked.into_iter().take(number);
-        let mut lines = Vec::with_capacity(number);
-        let mut indices = Vec::with_capacity(number);
-        if opt.enable_icon {
-            for (text, _, idxs) in payload {
-                lines.push(prepend_icon(&text));
-                indices.push(idxs);
-            }
-        } else {
-            for (text, _, idxs) in payload {
-                lines.push(text);
-                indices.push(idxs);
-            }
-        }
-        println!(
-            "{}",
-            json!({"total": total, "lines": lines, "indices": indices})
-        );
-    } else {
-        for (text, _, indices) in ranked.iter() {
-            println!(
-                "{}",
-                json!({
-                "text": text,
-                "indices": indices,
-                })
-            );
-        }
-    }
+    maple.do_filter()?;
 
     Ok(())
 }
