@@ -110,6 +110,15 @@ fn trim_trailing(lines: &mut Vec<String>) {
     }
 }
 
+/// Combine json and println macro.
+macro_rules! println_json {
+  ( $( $field:expr ),+ ) => {
+    {
+      println!("{}", json!({ $(stringify!($field): $field,)* }))
+    }
+  }
+}
+
 impl Maple {
     pub fn set_cmd_dir(&self, cmd: &mut Command) {
         if let Some(cmd_dir) = self.cmd_dir.clone() {
@@ -124,9 +133,11 @@ impl Maple {
     }
 
     fn execute(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
+        cmd.args(&args[1..]);
+
         let cmd_output = cmd.output()?;
 
-        let line_count = bytecount::count(&cmd_output.stdout, b'\n');
+        let total = bytecount::count(&cmd_output.stdout, b'\n');
 
         if let Some(number) = self.number {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
@@ -138,44 +149,37 @@ impl Maple {
                 .map(Into::into)
                 .collect::<Vec<_>>();
             trim_trailing(&mut lines);
-            println!(
-                "{}",
-                json!({
-                  "total": line_count,
-                  "lines": lines
-                })
-            );
+            println_json!(total, lines);
             return Ok(());
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile): (String, Option<PathBuf>) =
-            if line_count > self.output_threshold {
-                let tempfile = if let Some(ref output) = self.output {
-                    output.into()
-                } else {
-                    let mut dir = std::env::temp_dir();
-                    dir.push(format!(
-                        "{}_{}",
-                        args.join("_"),
-                        SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)?
-                            .as_secs()
-                    ));
-                    dir
-                };
-                File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
-                // FIXME find the nth newline index of stdout.
-                let _end = std::cmp::min(cmd_output.stdout.len(), 500);
-                (
-                    // lines used for displaying directly.
-                    // &cmd_output.stdout[..nth_newline_index]
-                    String::from_utf8_lossy(&cmd_output.stdout).into(),
-                    Some(tempfile),
-                )
+        let (stdout_str, tempfile): (String, Option<PathBuf>) = if total > self.output_threshold {
+            let tempfile = if let Some(ref output) = self.output {
+                output.into()
             } else {
-                (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
+                let mut dir = std::env::temp_dir();
+                dir.push(format!(
+                    "{}_{}",
+                    args.join("_"),
+                    SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)?
+                        .as_secs()
+                ));
+                dir
             };
+            File::create(tempfile.clone())?.write_all(&cmd_output.stdout)?;
+            // FIXME find the nth newline index of stdout.
+            let _end = std::cmp::min(cmd_output.stdout.len(), 500);
+            (
+                // lines used for displaying directly.
+                // &cmd_output.stdout[..nth_newline_index]
+                String::from_utf8_lossy(&cmd_output.stdout).into(),
+                Some(tempfile),
+            )
+        } else {
+            (String::from_utf8_lossy(&cmd_output.stdout).into(), None)
+        };
 
         let mut lines = if self.enable_icon {
             stdout_str.split('\n').map(prepend_icon).collect::<Vec<_>>()
@@ -187,36 +191,41 @@ impl Maple {
         trim_trailing(&mut lines);
 
         if let Some(tempfile) = tempfile {
-            println!(
-                "{}",
-                json!({"total": line_count, "lines": lines, "tempfile": tempfile})
-            );
+            println_json!(total, lines, tempfile);
         } else {
-            println!("{}", json!({"total": line_count, "lines": lines}));
+            println_json!(total, lines);
         }
 
         Ok(())
     }
 
+    fn prepare_cmd_and_args(&self, cmd_str: &String) -> (Command, Vec<String>) {
+        let args = cmd_str
+            .split_whitespace()
+            .map(Into::into)
+            .collect::<Vec<String>>();
+        let mut cmd = Command::new(args[0].clone());
+        self.set_cmd_dir(&mut cmd);
+        (cmd, args)
+    }
+
     pub fn try_exec_grep(&self) -> Result<()> {
         if let Some(ref grep_cmd) = self.grep_cmd {
-            let mut args = grep_cmd
-                .split_whitespace()
-                .map(Into::into)
-                .collect::<Vec<String>>();
-            let mut cmd = Command::new(args[0].clone());
-            self.set_cmd_dir(&mut cmd);
-            // TODO windows needs to append . for rg
+            let (mut cmd, mut args) = self.prepare_cmd_and_args(grep_cmd);
+
+            // We split out the grep opts and query in case of the possible escape issue of clap.
             if let Some(grep_query) = self.grep_query.clone() {
                 args.push(grep_query);
             }
+
             // currently vim-clap only supports rg.
             // Ref https://github.com/liuchengxu/vim-clap/pull/60
             if cfg!(windows) {
                 args.push(".".into());
             }
-            cmd.args(&args[1..]);
+
             self.execute(&mut cmd, &args)?;
+
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No grep cmd specified"))
@@ -225,14 +234,10 @@ impl Maple {
     pub fn try_exec_cmd(&self) -> Result<()> {
         if let Some(ref cmd) = self.cmd {
             // TODO: translate piped command?
-            let args = cmd
-                .split_whitespace()
-                .map(Into::into)
-                .collect::<Vec<String>>();
-            let mut cmd = Command::new(args[0].clone());
-            self.set_cmd_dir(&mut cmd);
-            cmd.args(&args[1..]);
+            let (mut cmd, args) = self.prepare_cmd_and_args(cmd);
+
             self.execute(&mut cmd, &args)?;
+
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No cmd specified"))
@@ -293,21 +298,13 @@ impl Maple {
                     indices.push(idxs);
                 }
             }
-            println!(
-                "{}",
-                json!({"total": total, "lines": lines, "indices": indices})
-            );
+            println_json!(total, lines, indices);
         } else {
             for (text, _, indices) in ranked.iter() {
-                println!(
-                    "{}",
-                    json!({
-                    "text": text,
-                    "indices": indices,
-                    })
-                );
+                println_json!(text, indices);
             }
         }
+
         Ok(())
     }
 }
