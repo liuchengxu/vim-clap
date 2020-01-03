@@ -47,13 +47,20 @@ endfunction
 
 function! s:files.sink(selected) abort
   if g:clap_enable_icon
-    execute 'edit' a:selected[4:]
+    let fpath = a:selected[4:]
   else
-    execute 'edit' a:selected
+    let fpath = a:selected
+  endif
+
+  if has_key(g:clap, 'open_action')
+    execute g:clap.open_action fpath
+  else
+    execute 'edit' fpath
   endif
 endfunction
 
 let s:files.enable_rooter = v:true
+let s:files.support_open_action = v:true
 let s:files.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_files')}
 
 let g:clap#provider#files# = s:files
