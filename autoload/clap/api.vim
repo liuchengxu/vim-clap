@@ -466,7 +466,7 @@ function! s:init_provider() abort
       elseif self.type == g:__t_list
         let lines = copy(Source)
       elseif self.id ==# 'blines'
-        " Do not call Source() for blines when it's huge.
+        " Do not call Source() but use the raw content for blines when it's huge.
         let lines = []
       elseif self.type == g:__t_func_list
         let lines = copy(Source())
