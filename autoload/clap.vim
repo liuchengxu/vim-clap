@@ -40,6 +40,8 @@ let s:provider_alias = {
 let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {}))
 let g:clap#provider_alias = s:provider_alias
 
+let g:clap_stop_bottom_top = get(g:, 'clap_stop_bottom_top', 0)
+
 let g:clap_forerunner_status_sign_done = get(g:, 'clap_forerunner_status_sign_done', '*')
 let g:clap_forerunner_status_sign_running = get(g:, 'clap_forerunner_status_sign_running', '!')
 

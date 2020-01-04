@@ -58,8 +58,11 @@ function! s:navigate(direction) abort
     " buffer.
     if empty(g:clap.display.cache)
           \ || get(g:, '__clap_do_not_use_cache', v:false)
-      normal! 1gg
-      let g:__clap_display_curlnum = 1
+
+      if !g:clap_stop_bottom_top
+        normal! 1gg
+        let g:__clap_display_curlnum = 1
+      endif
     else
       call s:load_cache()
       normal! j
@@ -67,8 +70,11 @@ function! s:navigate(direction) abort
     endif
 
   elseif curlnum == 1 && a:direction ==# 'up'
-    normal! G
-    let g:__clap_display_curlnum = lastlnum
+
+    if !g:clap_stop_bottom_top
+      normal! G
+      let g:__clap_display_curlnum = lastlnum
+    endif
 
   else
 
