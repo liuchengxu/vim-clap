@@ -426,6 +426,12 @@ function! s:init_provider() abort
   " Return the cached source tmp file,
   " otherwise write the source list into a temp file and then return it.
   function! s:into_source_tmp_file(source_list) abort
+    if g:clap.provider.id ==# 'blines'
+      let tmp = expand('#'.g:clap.start.bufnr.':p')
+      let g:clap.provider.source_tempfile = tmp
+      return tmp
+    endif
+
     if has_key(g:clap.provider, 'source_tempfile')
       let tmp = g:clap.provider.source_tempfile
       return tmp
@@ -459,6 +465,9 @@ function! s:init_provider() abort
         return s:wrap_async_cmd(Source())
       elseif self.type == g:__t_list
         let lines = copy(Source)
+      elseif self.id ==# 'blines'
+        " Do not call Source() for blines when it's huge.
+        let lines = []
       elseif self.type == g:__t_func_list
         let lines = copy(Source())
       endif
@@ -545,7 +554,30 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! s:init_blines() abort
+    if s:is_nvim
+      let line_count = nvim_buf_line_count(g:clap.start.bufnr)
+    else
+      let line_count = line('$', g:clap.start.winid)
+    endif
+    let g:clap.display.initial_size = line_count
+
+    if line_count > 0
+      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(lines)
+      call g:clap#display_win.compact_if_undersize()
+      call clap#indicator#set_matches('['.line_count.']')
+      call clap#sign#toggle_cursorline()
+    endif
+  endfunction
+
   function! provider.init_display_win() abort
+
+    if g:clap.provider.id ==# 'blines'
+      call s:init_blines()
+      return
+    endif
+
     if self.is_pure_async()
       return
     elseif self.type == g:__t_string

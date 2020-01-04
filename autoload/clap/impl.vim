@@ -230,6 +230,12 @@ endfunction
 
 " Choose the suitable way according to the source size.
 function! s:should_switch_to_async() abort
+  " Optimze for blines provider.
+  if g:clap.provider.id ==# 'blines'
+        \ && g:clap.display.initial_size > 100000
+    return v:true
+  endif
+
   if g:clap.provider.is_pure_async()
         \ || g:clap.provider.type == g:__t_string
         \ || g:clap.provider.type == g:__t_func_string
