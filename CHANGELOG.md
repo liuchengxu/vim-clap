@@ -6,7 +6,7 @@ CHANGELOG
 ### Added
 
 - Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
-- Add an option `g:clap_stop_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
+- Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
 
 ### Improved
 

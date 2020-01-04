@@ -451,7 +451,7 @@ g:clap_forerunner_status_sign_running     *g:clap_forerunner_status_sign_running
   The async forerunner job is still running.
 
 
-g:clap_stop_bottom_top                                  *g:clap_stop_bottom_top*
+g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*
 
   Type: |Number|
   Default: `0`

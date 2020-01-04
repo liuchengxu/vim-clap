@@ -59,7 +59,7 @@ function! s:navigate(direction) abort
     if empty(g:clap.display.cache)
           \ || get(g:, '__clap_do_not_use_cache', v:false)
 
-      if !g:clap_stop_bottom_top
+      if !g:clap_disable_bottom_top
         normal! 1gg
         let g:__clap_display_curlnum = 1
       endif
@@ -71,7 +71,7 @@ function! s:navigate(direction) abort
 
   elseif curlnum == 1 && a:direction ==# 'up'
 
-    if !g:clap_stop_bottom_top
+    if !g:clap_disable_bottom_top
       normal! G
       let g:__clap_display_curlnum = lastlnum
     endif
