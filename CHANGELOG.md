@@ -6,6 +6,7 @@ CHANGELOG
 ### Added
 
 - Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
+- Add `<C-U>` mapping for clearning the input.
 
 ### Improved
 
