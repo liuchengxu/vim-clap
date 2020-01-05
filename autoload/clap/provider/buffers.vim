@@ -34,13 +34,16 @@ function! s:buffers() abort
     silent buffers
   redir END
   let s:line_info = {}
-  for line in split(l:buffers, "\n")
-    let bufnr = str2nr(trim(matchstr(line, '^\s*\d\+')))
-    let lnum = matchstr(line, '\s\+\zsline.*$')
-    let s:line_info[bufnr] = lnum
-  endfor
-  let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
-  return bufs[1:] + [bufs[0]]
+  if len(l:buffers) > 0
+    for line in split(l:buffers, "\n")
+      let bufnr = str2nr(trim(matchstr(line, '^\s*\d\+')))
+      let lnum = matchstr(line, '\s\+\zsline.*$')
+      let s:line_info[bufnr] = lnum
+    endfor
+    let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
+    return bufs[1:] + [bufs[0]]
+  endif
+  return []
 endfunction
 
 function! s:buffers_sink(selected) abort
