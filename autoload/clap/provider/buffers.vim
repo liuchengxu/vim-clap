@@ -46,6 +46,9 @@ endfunction
 function! s:buffers_sink(selected) abort
   call g:clap.start.goto_win()
   let b = matchstr(a:selected, '^\[\zs\d\+\ze\]')
+  if has_key(g:clap, 'open_action')
+    execute g:clap.open_action
+  endif
   execute 'buffer' b
 endfunction
 
@@ -57,6 +60,7 @@ let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
 let s:buffers.on_enter = function('s:buffers_on_enter')
+let s:buffers.support_open_action = v:true
 
 let g:clap#provider#buffers# = s:buffers
 
