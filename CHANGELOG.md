@@ -6,11 +6,14 @@ CHANGELOG
 ### Added
 
 - Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
+- Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
+- Add open action support for `:Clap buffers`.
 - Add `<C-U>` mapping for clearning the input.
 
 ### Improved
 
 - Make the helper function for building the extra Rust tools more friendly and smarter. ([#202](https://github.com/liuchengxu/vim-clap/pull/202))
+- Optimize for `Clap blines` provider in case of the buffer has 1 million lines.([#210](https://github.com/liuchengxu/vim-clap/pull/210))
 
 ### Fixed
 

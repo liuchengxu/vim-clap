@@ -445,10 +445,19 @@ g:clap_forerunner_status_sign_done          *g:clap_forerunner_status_sign_done*
 
 g:clap_forerunner_status_sign_running     *g:clap_forerunner_status_sign_running*
 
-  Type: `String`
+  Type: |String|
   Default: `'!'`
 
   The async forerunner job is still running.
+
+
+g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*
+
+  Type: |Number|
+  Default: `0`
+
+  Disable wrapping top-to-bottom when pressing ctrl-j/ctrl-k
+  at the bottom/top of the results.
 
 
 g:clap_disable_optional_async                    *g:clap_disable_optional_async*
@@ -884,7 +893,7 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-t` or `Ctrl-x`, `Ctrl-v` to open the selected entry in a new tab
   or a new split.
-  
+
 - Use `Ctrl-u` to clear inputs.
 
 
