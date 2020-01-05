@@ -40,7 +40,11 @@ function! s:buffers() abort
     let s:line_info[bufnr] = lnum
   endfor
   let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
-  return bufs[1:] + [bufs[0]]
+  if empty(bufs)
+    return []
+  else
+    return bufs[1:] + [bufs[0]]
+  endif
 endfunction
 
 function! s:buffers_sink(selected) abort
