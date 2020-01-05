@@ -428,6 +428,9 @@ function! s:init_provider() abort
   function! s:into_source_tmp_file(source_list) abort
     if g:clap.provider.id ==# 'blines'
       let tmp = expand('#'.g:clap.start.bufnr.':p')
+      " We do not delete the temp file manually, but rely on the auto deletion of system,
+      " so it's safe to use the origin buffer as temp file directly, otherwise
+      " we should ensure it won't get deleted by mistake later.
       let g:clap.provider.source_tempfile = tmp
       return tmp
     endif
