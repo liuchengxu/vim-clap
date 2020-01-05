@@ -18,7 +18,7 @@ function! s:command.source() abort
   return split(l:command, "\n")
 endfunction
 
-let s:command.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_command') }
+let s:command.syntax = 'clap_command'
 
 let g:clap#provider#command# = s:command
 

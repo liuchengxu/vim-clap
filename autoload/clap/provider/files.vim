@@ -61,7 +61,7 @@ endfunction
 
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
-let s:files.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_files')}
+let s:files.syntax = 'clap_files'
 
 let g:clap#provider#files# = s:files
 

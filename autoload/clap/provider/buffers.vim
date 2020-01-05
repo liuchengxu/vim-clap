@@ -56,14 +56,10 @@ function! s:buffers_sink(selected) abort
   execute 'buffer' b
 endfunction
 
-function! s:buffers_on_enter() abort
-  call g:clap.display.setbufvar('&syntax', 'clap_buffers')
-endfunction
-
 let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
-let s:buffers.on_enter = function('s:buffers_on_enter')
+let s:buffers.syntax = 'clap_buffers'
 let s:buffers.support_open_action = v:true
 
 let g:clap#provider#buffers# = s:buffers
