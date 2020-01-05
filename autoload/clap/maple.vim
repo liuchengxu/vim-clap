@@ -43,7 +43,7 @@ function! s:on_complete() abort
           \ 'executable: '.split(s:cmd)[0],
           \ 'args: '.join(split(s:cmd)[1:], ' '),
           \ 'error:',
-          \ ] + split(json_decode(decoded.error), '\n'))
+          \ ] + split(decoded.error, "\n"))
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
     return

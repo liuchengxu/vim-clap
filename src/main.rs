@@ -172,9 +172,8 @@ impl Maple {
         let cmd_output = cmd.output()?;
 
         if !&cmd_output.stderr.is_empty() {
-            let cmd = format!("{:?}", cmd);
-            let error = format!("{:?}", String::from_utf8_lossy(&cmd_output.stderr));
-            println_json!(cmd, error);
+            let error = format!("{}", String::from_utf8_lossy(&cmd_output.stderr));
+            println_json!(error);
             std::process::exit(1);
         }
 
