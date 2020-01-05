@@ -12,6 +12,7 @@ CHANGELOG
 ### Improved
 
 - Make the helper function for building the extra Rust tools more friendly and smarter. ([#202](https://github.com/liuchengxu/vim-clap/pull/202))
+- Optimize for `Clap blines` provider in case of the buffer has 1 million lines.([#210](https://github.com/liuchengxu/vim-clap/pull/210))
 
 ### Fixed
 

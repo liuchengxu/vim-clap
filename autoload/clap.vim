@@ -111,14 +111,20 @@ function! clap#_init() abort
     elseif source_ty == v:t_list
       let g:clap.provider.type = g:__t_list
     elseif source_ty == v:t_func
-      let string_or_list = Source()
-      if type(string_or_list) == v:t_string
-        let g:clap.provider.type = g:__t_func_string
-      elseif type(string_or_list) == v:t_list
+      " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
+      " `blines` provider, so we did a hard code for blines provider here.
+      if g:clap.provider.id ==# 'blines'
         let g:clap.provider.type = g:__t_func_list
       else
-        call g:clap.abort('Must return a String or a List if source is a Funcref')
-        return
+        let string_or_list = Source()
+        if type(string_or_list) == v:t_string
+          let g:clap.provider.type = g:__t_func_string
+        elseif type(string_or_list) == v:t_list
+          let g:clap.provider.type = g:__t_func_list
+        else
+          call g:clap.abort('Must return a String or a List if source is a Funcref')
+          return
+        endif
       endif
     endif
   endif
