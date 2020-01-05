@@ -146,11 +146,7 @@ if clap#maple#is_available()
           \ s:builtin_fuzzy_filter_threshold,
           \ )
 
-    if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-      let cmd .= ' --enable-icon'
-    endif
-
-    return cmd
+    return clap#maple#try_enable_icon(cmd)
   endfunction
 
   function! clap#forerunner#start(cmd) abort
