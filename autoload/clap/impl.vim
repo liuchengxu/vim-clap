@@ -171,6 +171,7 @@ function! s:builtin_fuzzy_idx_offset() abort
     if provider_id ==# 'tags'
           \ || provider_id ==# 'buffers'
           \ || provider_id ==# 'files'
+          \ || provider_id ==# 'git_files'
       return 2
     else
       return 0
@@ -193,9 +194,23 @@ function! s:add_highlight_for_fuzzy_matched() abort
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+function! s:maple_fuzzy_idx_offset() abort
+  if g:clap_enable_icon
+    let provider_id = g:clap.provider.id
+    if provider_id ==# 'files'
+          \ || provider_id ==# 'git_files'
+      return 4
+    else
+      return 0
+    endif
+  else
+    return 0
+  endif
+endfunction
+
 " Used by the async job.
 function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
-  let offset = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? 4 : 0
+  let offset = s:maple_fuzzy_idx_offset()
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
