@@ -293,6 +293,13 @@ There are generally two kinds of providers in vim-clap.
                        This field is optional.
 
 
+  `syntax`               |String|
+                       for setting the syntax highlight for the display buffer easier.
+                       `let s:provider.syntax = 'provider_syntax'` is equal to
+                       `let s:provider.syon_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}` .
+
+                       This field is optional.
+
 -------------------------------------------------------------------------------
 4.2 Pure async Providers                              *clap-pure-async-providers*
 

@@ -347,7 +347,7 @@ Field                 | Type                | Required      | Has default implem
 
 - `enable_rooter`: try to run the `source` from the project root.
 
-- `syntax`: for setting the syntax highlight for display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.syntax = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
+- `syntax`: for setting the syntax highlight for the display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.syon_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
 
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
