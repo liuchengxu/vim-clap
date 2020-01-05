@@ -574,6 +574,7 @@ function! clap#popup#open() abort
     autocmd BufEnter,WinEnter,WinLeave * call clap#popup#close()
   augroup END
 
+  call g:clap.provider.try_set_syntax()
   call g:clap.provider.on_enter()
 
   silent doautocmd <nomodeline> User ClapOnEnter

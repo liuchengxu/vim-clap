@@ -38,7 +38,7 @@ function! s:commits.sink(line) abort
   call g:clap.abort('Not implemented yet')
 endfunction
 
-let s:commits.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_commits') }
+let s:commits.syntax = 'clap_commits'
 
 let g:clap#provider#commits# = s:commits
 

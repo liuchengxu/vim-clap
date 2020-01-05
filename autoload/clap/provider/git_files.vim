@@ -14,6 +14,7 @@ endif
 
 let s:git_files.sink = function('clap#provider#files#sink_impl')
 let s:git_files.enable_rooter = v:true
+let s:git_files.syntax = 'clap_files'
 
 let g:clap#provider#git_files# = s:git_files
 
