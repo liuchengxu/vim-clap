@@ -9,6 +9,7 @@ CHANGELOG
 - Add `syntax` property for provider to make enable the syntax highlight easier.([#217](https://github.com/liuchengxu/vim-clap/pull/217))
 - Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
 - Add open action support for `:Clap buffers`.
+- Add open action support for `:Clap git_files`.
 
 ### Improved
 
