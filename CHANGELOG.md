@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.4] 2019-01-06
+
 ### Added
 
 - Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))

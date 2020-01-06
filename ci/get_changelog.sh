@@ -5,7 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 cd ..
 
 # v0.3
-cur_tag=$(git describe --abbrev=0)
+cur_tag=$(git describe --abbrev=0 --tags)
 prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1 --max-count=1)")
 
 # 0.3
