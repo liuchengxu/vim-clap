@@ -278,6 +278,7 @@ function! clap#floating_win#open() abort
 
   call g:clap.input.goto_win()
 
+  call g:clap.provider.try_set_syntax()
   call g:clap.provider.on_enter()
 
   silent doautocmd <nomodeline> User ClapOnEnter

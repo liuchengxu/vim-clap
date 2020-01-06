@@ -142,6 +142,16 @@ function! clap#maple#job_start(cmd) abort
   return
 endfunction
 
+let s:can_enable_icon = ['files', 'git_files']
+
+function! clap#maple#try_enable_icon(cmd) abort
+  if g:clap_enable_icon
+        \ && index(s:can_enable_icon, g:clap.provider.id) > -1
+    return a:cmd . ' --enable-icon'
+  else
+    return a:cmd
+  endif
+endfunction
 
 " Run the command via maple to minimalize the payload of this job.
 "

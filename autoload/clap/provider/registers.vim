@@ -53,7 +53,7 @@ function! s:registers.sink(selected) abort
   execute 'normal!' '"'.reg.'p'
 endfunction
 
-let s:registers.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_registers') }
+let s:registers.syntax = 'clap_registers'
 
 let g:clap#provider#registers# = s:registers
 

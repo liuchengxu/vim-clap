@@ -40,23 +40,27 @@ function! s:buffers() abort
     let s:line_info[bufnr] = lnum
   endfor
   let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
-  return bufs[1:] + [bufs[0]]
+  if empty(bufs)
+    return []
+  else
+    return bufs[1:] + [bufs[0]]
+  endif
 endfunction
 
 function! s:buffers_sink(selected) abort
   call g:clap.start.goto_win()
   let b = matchstr(a:selected, '^\[\zs\d\+\ze\]')
+  if has_key(g:clap, 'open_action')
+    execute g:clap.open_action
+  endif
   execute 'buffer' b
-endfunction
-
-function! s:buffers_on_enter() abort
-  call g:clap.display.setbufvar('&syntax', 'clap_buffers')
 endfunction
 
 let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
-let s:buffers.on_enter = function('s:buffers_on_enter')
+let s:buffers.syntax = 'clap_buffers'
+let s:buffers.support_open_action = v:true
 
 let g:clap#provider#buffers# = s:buffers
 
