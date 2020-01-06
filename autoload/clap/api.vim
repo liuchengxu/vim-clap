@@ -384,6 +384,12 @@ function! s:init_provider() abort
     return get(self._(), 'support_open_action', v:false)
   endfunction
 
+  function! provider.try_set_syntax() abort
+    if has_key(self._(), 'syntax')
+      call g:clap.display.setbufvar('&syntax', self._().syntax)
+    endif
+  endfunction
+
   function! provider.apply_query() abort
     if has_key(g:clap.context, 'query')
       if s:is_nvim

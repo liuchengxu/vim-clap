@@ -89,7 +89,7 @@ function! s:marks.on_move() abort
   call clap#provider#marks#preview_impl(line, col, file_text)
 endfunction
 
-let s:marks.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_marks') }
+let s:marks.syntax = 'clap_marks'
 
 let g:clap#provider#marks# = s:marks
 

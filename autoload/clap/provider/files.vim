@@ -45,8 +45,8 @@ function! s:files.source() abort
   endif
 endfunction
 
-function! s:files.sink(selected) abort
-  if g:clap_enable_icon
+function! clap#provider#files#sink_impl(selected) abort
+  if g:clap_enable_icon && clap#maple#is_available()
     let fpath = a:selected[4:]
   else
     let fpath = a:selected
@@ -59,9 +59,10 @@ function! s:files.sink(selected) abort
   endif
 endfunction
 
+let s:files.sink = function('clap#provider#files#sink_impl')
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
-let s:files.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_files')}
+let s:files.syntax = 'clap_files'
 
 let g:clap#provider#files# = s:files
 

@@ -166,10 +166,14 @@ impl Maple {
         }
     }
 
-    fn execute(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
-        cmd.args(&args[1..]);
-
+    fn execute_impl(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
         let cmd_output = cmd.output()?;
+
+        if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
+            let error = format!("{}", String::from_utf8_lossy(&cmd_output.stderr));
+            println_json!(error);
+            std::process::exit(1);
+        }
 
         let total = bytecount::count(&cmd_output.stdout, b'\n');
 
@@ -209,7 +213,7 @@ impl Maple {
         Ok(())
     }
 
-    fn prepare_cmd_and_args(&self, cmd_str: &String) -> (Command, Vec<String>) {
+    fn prepare_grep_and_args(&self, cmd_str: &str) -> (Command, Vec<String>) {
         let args = cmd_str
             .split_whitespace()
             .map(Into::into)
@@ -221,7 +225,7 @@ impl Maple {
 
     pub fn try_exec_grep(&self) -> Result<()> {
         if let Some(ref grep_cmd) = self.grep_cmd {
-            let (mut cmd, mut args) = self.prepare_cmd_and_args(grep_cmd);
+            let (mut cmd, mut args) = self.prepare_grep_and_args(grep_cmd);
 
             // We split out the grep opts and query in case of the possible escape issue of clap.
             if let Some(grep_query) = self.grep_query.clone() {
@@ -234,19 +238,41 @@ impl Maple {
                 args.push(".".into());
             }
 
-            self.execute(&mut cmd, &args)?;
+            cmd.args(&args[1..]);
+
+            self.execute_impl(&mut cmd, &args)?;
 
             return Ok(());
         }
         Err(anyhow::Error::new(DummyError).context("No grep cmd specified"))
     }
 
-    pub fn try_exec_cmd(&self) -> Result<()> {
-        if let Some(ref cmd) = self.cmd {
-            // TODO: translate piped command?
-            let (mut cmd, args) = self.prepare_cmd_and_args(cmd);
+    // This can work with the piped command, e.g., git ls-files | uniq.
+    fn prepare_cmd(&self, cmd_str: &str) -> Command {
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(&["/C", cmd_str]);
+            cmd
+        } else {
+            let mut cmd = Command::new("bash");
+            cmd.arg("-c").arg(cmd_str);
+            cmd
+        };
+        self.set_cmd_dir(&mut cmd);
+        cmd
+    }
 
-            self.execute(&mut cmd, &args)?;
+    pub fn try_exec_cmd(&self) -> Result<()> {
+        if let Some(ref cmd_str) = self.cmd {
+            let mut cmd = self.prepare_cmd(cmd_str);
+
+            self.execute_impl(
+                &mut cmd,
+                &cmd_str
+                    .split_whitespace()
+                    .map(Into::into)
+                    .collect::<Vec<_>>(),
+            )?;
 
             return Ok(());
         }
