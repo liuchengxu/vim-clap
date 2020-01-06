@@ -169,6 +169,12 @@ impl Maple {
     fn execute_impl(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
         let cmd_output = cmd.output()?;
 
+        if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
+            let error = format!("{}", String::from_utf8_lossy(&cmd_output.stderr));
+            println_json!(error);
+            std::process::exit(1);
+        }
+
         let total = bytecount::count(&cmd_output.stdout, b'\n');
 
         if let Some(number) = self.number {
