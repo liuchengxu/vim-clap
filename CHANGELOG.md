@@ -10,6 +10,7 @@ CHANGELOG
 - Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
 - Add open action support for `:Clap buffers`.
 - Add open action support for `:Clap git_files`.
+- Add `<C-U>` mapping for clearning the input.
 
 ### Improved
 

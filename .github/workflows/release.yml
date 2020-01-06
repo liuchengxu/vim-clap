@@ -14,8 +14,8 @@ on:
 name: Create Release
 
 jobs:
-  build:
 
+  release:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
@@ -40,3 +40,39 @@ jobs:
             ${{ steps.changelog.outputs.log }}
           draft: false
           prerelease: false
+
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: maple
+            asset_name: maple-linux-amd64
+
+          - os: windows-latest
+            artifact_name: maple.exe
+            asset_name: maple-windows-amd64
+
+          - os: macos-latest
+            artifact_name: maple
+            asset_name: maple-macos-amd64
+
+    steps:
+    - uses: hecrj/setup-rust-action@v1-release
+      with:
+        rust-version: stable
+
+    - uses: actions/checkout@v1
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
