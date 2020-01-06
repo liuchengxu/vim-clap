@@ -5,16 +5,18 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 cd ..
 
 # v0.3
-cur_tag=$(git describe --abbrev=0 --tags)
-prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1 --max-count=1)")
+cur_tag=$1
+
+# FIXME get prev_tag in GA
+# prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1 --max-count=1)")
 
 # 0.3
-cur_header="[${cur_tag:1:8}]"
-prev_header="[${prev_tag:1:8}]"
+# cur_header="[${cur_tag:1:8}]"
+# prev_header="[${prev_tag:1:8}]"
 
-begin=$(grep -Fn "$cur_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')
+# begin=$(grep -Fn "$cur_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')
 
-end=$(grep -Fn "$prev_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')
-end="$(("$end"-1))"
+# end=$(grep -Fn "$prev_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')
+# end="$(("$end"-1))"
 
-sed -n "$begin","$end"p CHANGELOG.md
+# sed -n "$begin","$end"p CHANGELOG.md

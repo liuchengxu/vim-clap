@@ -22,11 +22,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@master
 
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
       - name: Get changelog
         id: changelog
         shell: bash
         run: |
-          bash ci/get_changelog.sh
+          bash ci/get_changelog.sh ${{ steps.get_version.outputs.VERSION }}
 
       - name: Create Release
         id: create_release
@@ -63,7 +67,7 @@ jobs:
             asset_name: maple-macos-amd64
 
     steps:
-    - uses: hecrj/setup-rust-action@v1-release
+    - uses: hecrj/setup-rust-action@master
       with:
         rust-version: stable
 
