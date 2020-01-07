@@ -14,7 +14,7 @@ use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
-use icon::prepend_icon;
+use icon::{prepend_icon, DEFAULT_ICONIZED};
 
 arg_enum! {
     #[derive(Debug)]
@@ -104,7 +104,7 @@ impl std::error::Error for DummyError {
 #[inline]
 fn trim_trailing(lines: &mut Vec<String>) {
     if let Some(last_line) = lines.last() {
-        if last_line.is_empty() {
+        if last_line.is_empty() || last_line == DEFAULT_ICONIZED {
             lines.remove(lines.len() - 1);
         }
     }

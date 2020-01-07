@@ -14,14 +14,23 @@ else
   let s:builtin_fuzzy_filter_threshold = 10000
 endif
 
-function! s:on_complete() abort
+function! s:on_complete_common(lines, initial_size) abort
   if empty(g:clap.input.get())
-    call g:clap.display.set_lines_lazy(s:chunks)
+    call g:clap.display.set_lines_lazy(a:lines)
+    call g:clap#display_win.compact_if_undersize()
   endif
 
+  let g:clap.display.initial_size = a:initial_size
+  call clap#impl#refresh_matches_count(string(a:initial_size))
+
+  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
+  call clap#spinner#refresh()
+endfunction
+
+function! s:on_complete() abort
   let chunks_size = len(s:chunks)
-  let g:clap.display.initial_size = chunks_size
-  call clap#impl#refresh_matches_count(string(chunks_size))
+
+  call s:on_complete_common(s:chunks, chunks_size)
 
   " If the total results is not huge we could keep them in the memory
   " and use the built-in fzy impl later.
@@ -38,21 +47,13 @@ function! s:on_complete() abort
     endif
     unlet s:chunks
   endif
-
-  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
-  call clap#spinner#refresh()
 endfunction
 
 function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
-    if empty(g:clap.input.get())
-      call g:clap.display.set_lines_lazy(decoded.lines)
-    endif
-
-    let g:clap.display.initial_size = decoded.total
-    call clap#impl#refresh_matches_count(string(decoded.total))
+    call s:on_complete_common(decoded.lines, decoded.total)
 
     if has_key(decoded, 'tempfile')
       let g:__clap_forerunner_tempfile = decoded.tempfile
@@ -60,9 +61,6 @@ function! s:on_complete_maple() abort
       let g:__clap_forerunner_result = decoded.lines
     endif
   endif
-
-  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
-  call clap#spinner#refresh()
 endfunction
 
 function! s:on_event(job_id, data, event) abort
