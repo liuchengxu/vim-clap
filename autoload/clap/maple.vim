@@ -64,14 +64,17 @@ function! s:on_complete() abort
   endif
 
   call clap#impl#refresh_matches_count(string(decoded.total))
+
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
   else
     call g:clap.display.set_lines(decoded.lines)
   endif
+
   if has_key(decoded, 'indices')
     call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
   endif
+
   call clap#sign#reset_to_first_line()
   call g:clap#display_win.compact_if_undersize()
 endfunction
