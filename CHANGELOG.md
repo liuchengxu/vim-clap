@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Fixed
+
+- Do not apply the offset for matched items when using substring filter.
+
 ## [0.4] 2019-01-06
 
 ### Added
