@@ -31,10 +31,7 @@ function! s:quickfix.sink(selected) abort
   noautocmd call cursor(lnum, column)
 endfunction
 
-function! s:quickfix.on_enter() abort
-  call g:clap.display.setbufvar('&syntax', 'qf')
-endfunction
-
+let s:quickfix.syntax = 'qf'
 let g:clap#provider#quickfix# = s:quickfix
 
 let &cpoptions = s:save_cpo

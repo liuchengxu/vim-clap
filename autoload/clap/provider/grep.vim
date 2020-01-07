@@ -248,7 +248,7 @@ let s:grep.on_typed = function('s:grep_with_delay')
 
 let s:grep.on_move = function('s:grep_on_move')
 
-let s:grep.on_enter = { -> g:clap.display.setbufvar('&syntax', 'clap_grep') }
+let s:grep.syntax = 'clap_grep'
 
 if get(g:, 'clap_provider_grep_enable_icon',
       \ exists('g:loaded_webdevicons')

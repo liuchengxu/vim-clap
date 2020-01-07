@@ -10,6 +10,7 @@ __pycache__
 [1-9]*.vim
 /doc/tags
 /target
+/bin
 
 !.editorconfig
 !.travis.yml
@@ -17,3 +18,4 @@ __pycache__
 !.github
 !.vintrc.yaml
 !.dependabot
+!bin/.gitkeep

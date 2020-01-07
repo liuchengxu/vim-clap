@@ -171,6 +171,7 @@ function! s:builtin_fuzzy_idx_offset() abort
     if provider_id ==# 'tags'
           \ || provider_id ==# 'buffers'
           \ || provider_id ==# 'files'
+          \ || provider_id ==# 'git_files'
       return 2
     else
       return 0
@@ -193,9 +194,23 @@ function! s:add_highlight_for_fuzzy_matched() abort
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+function! s:maple_fuzzy_idx_offset() abort
+  if g:clap_enable_icon
+    let provider_id = g:clap.provider.id
+    if provider_id ==# 'files'
+          \ || provider_id ==# 'git_files'
+      return 4
+    else
+      return 0
+    endif
+  else
+    return 0
+  endif
+endfunction
+
 " Used by the async job.
 function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
-  let offset = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? 4 : 0
+  let offset = s:maple_fuzzy_idx_offset()
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
@@ -230,6 +245,12 @@ endfunction
 
 " Choose the suitable way according to the source size.
 function! s:should_switch_to_async() abort
+  " Optimze for blines provider.
+  if g:clap.provider.id ==# 'blines'
+        \ && g:clap.display.initial_size > 100000
+    return v:true
+  endif
+
   if g:clap.provider.is_pure_async()
         \ || g:clap.provider.type == g:__t_string
         \ || g:clap.provider.type == g:__t_func_string

@@ -4,6 +4,7 @@ use std::path::Path;
 use lazy_static::lazy_static;
 
 pub const DEFAULT_ICON: &'static str = "";
+pub const DEFAULT_ICONIZED: &'static str = " ";
 
 pub fn prepend_icon(line: &str) -> String {
     let icon = Path::new(line)

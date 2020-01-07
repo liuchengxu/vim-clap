@@ -1,13 +1,29 @@
 CHANGELOG
 =========
 
+## [unreleased]
+
+## [0.4] 2019-01-06
+
+### Added
+
+- Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
+- Add `syntax` property for provider to make enable the syntax highlight easier.([#217](https://github.com/liuchengxu/vim-clap/pull/217))
+- Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
+- Add open action support for `:Clap buffers`.
+- Add open action support for `:Clap git_files`.
+- Add `<C-U>` mapping for clearning the input.
+
+### Improved
+
+- Make the helper function for building the extra Rust tools more friendly and smarter. ([#202](https://github.com/liuchengxu/vim-clap/pull/202))
+- Optimize for `Clap blines` provider in case of the buffer has 1 million lines.([#210](https://github.com/liuchengxu/vim-clap/pull/210))
+
 ### Fixed
 
 - :tada: Fix the flicker of running asynchronously using `job`.([#185](https://github.com/liuchengxu/vim-clap/issues/185))
 
-## [unreleased]
-
-### [0.3] 2019-12-30
+## [0.3] 2019-12-30
 
 The major feature of 0.3 is the performance problem has been soloved, see [#140](https://github.com/liuchengxu/vim-clap/issues/140).
 

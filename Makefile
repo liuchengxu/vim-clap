@@ -1,9 +1,9 @@
-all: maple rust-ext
+all: maple python-dynamic-module
 
 maple:
 	cargo build --release
 
-rust-ext:
+python-dynamic-module:
 	cd pythonx/clap && make build
 
-.PHONY: all maple rust-ext
+.PHONY: all maple python-dynamic-module

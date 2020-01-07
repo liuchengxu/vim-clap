@@ -125,7 +125,7 @@ function! clap#helper#build_python_dynamic_module() abort
     if !s:has_rust_nightly(v:true)
       return
     endif
-    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'build Python dynamic module successfully')
+    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
   endif
@@ -135,7 +135,7 @@ function! clap#helper#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
     let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-    call s:run_term(cmd, cwd, 'build maple binary successfully')
+    call s:run_term(cmd, cwd, 'built maple binary successfully')
   else
     call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
   endif
@@ -151,12 +151,12 @@ function! clap#helper#build_all(...) abort
       else
         let cmd = 'make'
       endif
-      call s:run_term(cmd, cwd, 'build maple binary and Python dynamic module successfully')
+      call s:run_term(cmd, cwd, 'built maple binary and Python dynamic module successfully')
     else
       call clap#helper#build_maple()
     endif
   else
-    call clap#helper#echo_warn('cargo not found, skipped building maple binary and Python dynamic module.')
+    call clap#helper#echo_warn('cargo not found, skip building maple binary and Python dynamic module.')
   endif
 endfunction
 

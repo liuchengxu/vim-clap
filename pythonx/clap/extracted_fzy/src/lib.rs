@@ -59,11 +59,7 @@ fn matches(needle: &str, haystack: &str) -> Option<usize> {
     Some(needle_length)
 }
 
-fn score_with_positions(
-    needle: &str,
-    needle_length: usize,
-    haystack: &str,
-) -> (f64, Vec<usize>) {
+fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (f64, Vec<usize>) {
     // empty needle
     if needle_length == 0 {
         return (SCORE_MIN, vec![]);

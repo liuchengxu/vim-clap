@@ -1,0 +1,85 @@
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+# Release steps:
+#
+# 1. Bump version in CHANGELOG.md and plugin/clap.vim
+# 2. Check CHANGELOG.md by running ci/get_changelog.sh locally.
+# 3. Create a new tag: git tag v**
+# 4. Push the tag: git push origin v**
+#
+name: Create Release
+
+jobs:
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
+      - name: Get changelog
+        id: changelog
+        shell: bash
+        run: |
+          bash ci/get_changelog.sh ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ${{ steps.changelog.outputs.log }}
+          draft: false
+          prerelease: false
+
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # This should work with only the `include`s but it currently doesn't because of this bug:
+        # https://github.community/t5/How-to-use-Git-and-GitHub/GitHub-Actions-Matrix-options-dont-work-as-documented/td-p/29558
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: maple
+            asset_name: maple-linux-amd64
+
+          - os: windows-latest
+            artifact_name: maple.exe
+            asset_name: maple-windows-amd64
+
+          - os: macos-latest
+            artifact_name: maple
+            asset_name: maple-macos-amd64
+
+    steps:
+    - uses: hecrj/setup-rust-action@master
+      with:
+        rust-version: stable
+
+    - uses: actions/checkout@v1
+
+    - name: Build
+      run: cargo build --release --locked
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
