@@ -30,7 +30,7 @@ endfunction
 
 function! s:on_complete() abort
   " Some long-running jobs can be still running, but the window has been canceled by user.
-  if bufwinid(g:clap.display.bufnr) == 1
+  if bufwinid(g:clap.display.bufnr) == -1
     return
   endif
 
