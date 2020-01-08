@@ -29,6 +29,11 @@ function! clap#maple#filter_cmd_fmt() abort
 endfunction
 
 function! s:on_complete() abort
+  " Some long-running jobs can be still running, but the window has been canceled by user.
+  if bufwinid(g:clap.display.bufnr) == -1
+    return
+  endif
+
   call clap#spinner#set_idle()
 
   if empty(s:chunks)
@@ -53,20 +58,25 @@ function! s:on_complete() abort
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches('[0]')
     call clap#sign#disable_cursorline()
+    call g:clap#display_win.compact_if_undersize()
     call g:clap.preview.hide()
     return
   endif
 
   call clap#impl#refresh_matches_count(string(decoded.total))
+
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
   else
     call g:clap.display.set_lines(decoded.lines)
   endif
+
   if has_key(decoded, 'indices')
     call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
   endif
+
   call clap#sign#reset_to_first_line()
+  call g:clap#display_win.compact_if_undersize()
 endfunction
 
 if has('nvim')
@@ -122,6 +132,7 @@ function! s:apply_start(_timer) abort
     let s:has_converter = v:false
   endif
 
+  call g:clap.preview.hide()
   call s:start_maple()
 endfunction
 
