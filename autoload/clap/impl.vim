@@ -165,17 +165,19 @@ else
   endfunction
 endif
 
+" The icon can interfer the matched indices of fuzzy filter, but not the
+" substring filter.
+function! s:should_check_offset() abort
+  return g:clap_enable_icon && stridx(g:clap.input.get(), ' ') == -1
+endfunction
+
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files']
+let s:related_maple_providers = ['files', 'git_files']
+
 function! s:builtin_fuzzy_idx_offset() abort
-  if g:clap_enable_icon
-    let provider_id = g:clap.provider.id
-    if provider_id ==# 'tags'
-          \ || provider_id ==# 'buffers'
-          \ || provider_id ==# 'files'
-          \ || provider_id ==# 'git_files'
+  if s:should_check_offset()
+        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
       return 2
-    else
-      return 0
-    endif
   else
     return 0
   endif
@@ -195,14 +197,9 @@ function! s:add_highlight_for_fuzzy_matched() abort
 endfunction
 
 function! s:maple_fuzzy_idx_offset() abort
-  if g:clap_enable_icon
-    let provider_id = g:clap.provider.id
-    if provider_id ==# 'files'
-          \ || provider_id ==# 'git_files'
+  if s:should_check_offset()
+        \ && index(s:related_maple_providers, g:clap.provider.id) > -1
       return 4
-    else
-      return 0
-    endif
   else
     return 0
   endif
