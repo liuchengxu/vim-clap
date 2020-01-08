@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Improved
+
+- Make the display window compact when there are too few results for grep provider.
+
 ### Fixed
 
 - Do not apply the offset for matched items when using substring filter.
