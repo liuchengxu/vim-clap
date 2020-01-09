@@ -166,7 +166,7 @@ function! clap#helper#download_binary() abort
   call s:run_term(cmd, cwd, 'download the prebuilt maple binary successfully')
 endfunction
 
-function! clap#helper#install() abort
+function! clap#helper#install(...) abort
   if executable('cargo')
     call clap#helper#build_all()
   else
