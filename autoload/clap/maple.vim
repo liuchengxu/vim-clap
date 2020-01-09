@@ -8,11 +8,21 @@ let s:job_id = -1
 let s:job_timer = -1
 let s:maple_delay = get(g:, 'clap_maple_delay', 100)
 
-let s:maple_bin = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'
+let s:bin_suffix = has('win32') ? '.exe' : ''
 
-if executable(s:maple_bin)
-  let s:maple_filter_cmd = s:maple_bin.' "%s"'
+let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
+let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
+
+" Check the local built.
+if executable(s:maple_bin_localbuilt)
+  let s:maple_filter_cmd = s:maple_bin_localbuilt.' "%s"'
   let s:empty_filter_cmd = printf(s:maple_filter_cmd, '')
+
+" Check the prebuilt binary.
+elseif executable(s:maple_bin_prebuilt)
+  let s:maple_filter_cmd = s:maple_bin_prebuilt.' "%s"'
+  let s:empty_filter_cmd = printf(s:maple_filter_cmd, '')
+
 elseif executable('maple')
   let s:maple_filter_cmd = 'maple "%s"'
   let s:empty_filter_cmd = 'maple ""'

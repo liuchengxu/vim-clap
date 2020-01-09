@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Provide the prebuilt binary support since [Release v0.4](https://github.com/liuchengxu/vim-clap/releases/tag/v0.4).
+
 ### Improved
 
 - Make the display window compact when there are too few results for grep provider.
