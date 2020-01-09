@@ -35,7 +35,9 @@ main() {
       "Darwin x86_64")
         try_download "$APP"-x86_64-apple-darwin ;;
       *)
-        echo "No prebuilt maple binary available for ${arch}.";;
+        echo "No prebuilt maple binary available for ${arch}."
+        exit 1
+        ;;
   esac
 }
 
