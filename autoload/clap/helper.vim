@@ -160,5 +160,19 @@ function! clap#helper#build_all(...) abort
   endif
 endfunction
 
+function! clap#helper#download_binary() abort
+  let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+  let cmd = './install.sh'
+  call s:run_term(cmd, cwd, 'download the prebuilt maple binary successfully')
+endfunction
+
+function! clap#helper#install() abort
+  if executable('cargo')
+    call clap#helper#build_all()
+  else
+    call clap#helper#download_binary()
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
