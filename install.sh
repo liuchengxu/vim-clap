@@ -13,32 +13,30 @@ exists() {
 }
 
 try_download() {
-  local url=$1
+  local asset=$1
   local temp=${TMPDIR}/maple
   if exists "curl"; then
-    curl -fLo "$temp"  "$url"
+    curl -fLo "$temp" "$DOWNLOAD_URL/$asset"
   elif exists 'wget'; then
-    wget --output-document="$temp" "$url"
+    wget --output-document="$temp" "$DOWNLOAD_URL/$asset"
   else
     echo 'curl or wget is required'
     exit 1
   fi
-  ls $TMPDIR
-  # move $temp
+  chmod a+x "$temp"
+  mv "$temp" bin/$APP
 }
 
 main() {
   arch=$(uname -sm)
   case "${arch}" in
       "Linux x86_64")
-        download "$APP"-x86_64-unknown-linux-gnu ;;
+        try_download "$APP"-x86_64-unknown-linux-gnu ;;
       "Darwin x86_64")
-        download "$APP"-x86_64-apple-darwin ;;
+        try_download "$APP"-x86_64-apple-darwin ;;
       *)
-        echo "No prebuilt binary available for ${arch}.";
-        try_build ;;
+        echo "No prebuilt maple binary available for ${arch}.";;
   esac
 }
 
-# main
-try_download "$DOWNLOAD_URL/$APP"-x86_64-unknown-linux-gnu
+main
