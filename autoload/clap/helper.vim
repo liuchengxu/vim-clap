@@ -160,10 +160,13 @@ function! clap#helper#build_all(...) abort
   endif
 endfunction
 
-" TODO: windows support
 function! clap#helper#download_binary() abort
   let cwd = fnamemodify(g:clap#autoload_dir, ':h')
-  let cmd = './install.sh'
+  if has('win32')
+    let cmd = 'Powershell.exe -File '.cwd.'\install.ps1'
+  else
+    let cmd = './install.sh'
+  endif
   call s:run_term(cmd, cwd, 'download the prebuilt maple binary successfully')
 endfunction
 
