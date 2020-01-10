@@ -5,6 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:path_sep = has('win32') ? '\' : '/'
+let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
 
 function! s:relativize(ArgLead, abs_dirs) abort
   if a:ArgLead =~# '^\~'
@@ -96,10 +97,10 @@ if has('win32')
   let s:from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
   let s:to = 'libfuzzymatch_rs.pyd'
   let s:rust_ext_cmd = printf('cargo +nightly build --release && copy %s %s', s:from, s:to)
-  let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'\pythonx\clap'
+  let s:rust_ext_cwd = s:plugin_root_dir.'\pythonx\clap'
 else
   let s:rust_ext_cmd = 'make build'
-  let s:rust_ext_cwd = fnamemodify(g:clap#autoload_dir, ':h').'/pythonx/clap'
+  let s:rust_ext_cwd = s:plugin_root_dir.'/pythonx/clap'
 endif
 
 function! s:has_rust_nightly(show_warning) abort
@@ -134,7 +135,7 @@ endfunction
 function! clap#helper#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
-    let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+    let cwd = s:plugin_root_dir
     call s:run_term(cmd, cwd, 'built maple binary successfully')
   else
     call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
@@ -145,7 +146,7 @@ function! clap#helper#build_all(...) abort
   if executable('cargo')
     " If Rust nightly and +python3 is unavailable, build the maple only.
     if has('python3') && s:has_rust_nightly(v:false)
-      let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+      let cwd = s:plugin_root_dir
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
@@ -161,7 +162,7 @@ function! clap#helper#build_all(...) abort
 endfunction
 
 function! clap#helper#download_binary() abort
-  let cwd = fnamemodify(g:clap#autoload_dir, ':h')
+  let cwd = s:plugin_root_dir
   if has('win32')
     let cmd = 'Powershell.exe -File '.cwd.'\install.ps1'
   else
