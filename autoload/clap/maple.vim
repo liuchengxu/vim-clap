@@ -39,8 +39,11 @@ function! clap#maple#filter_cmd_fmt() abort
 endfunction
 
 function! s:on_complete() abort
+  " At initial vim8.2, bufwinid(popup_bufnr) seemingly does not work as expected. Ref #223.
+  " if bufwinid(g:clap.display.bufnr) == -1
+  "
   " Some long-running jobs can be still running, but the window has been canceled by user.
-  if bufwinid(g:clap.display.bufnr) == -1
+  if g:clap.display.winid == -1
     return
   endif
 

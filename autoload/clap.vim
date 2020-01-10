@@ -156,6 +156,8 @@ function! clap#_exit() abort
   let g:clap.is_busy = 0
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1
+  " Reset this for vim issue. Ref #223
+  let g:clap.display.winid = -1
 
   " Remember to get what the sink needs before clearing the buffer.
   call g:clap.input.clear()
