@@ -82,7 +82,7 @@ Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
 ```
 
-The `do` hook is highly recommended, which can help you get a performant vim-clap easily mostly. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.
+The `do` hook for installing the extra binary is highly recommended, which can mostly help you get a performant vim-clap easily. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.
 
 ## Usage
 

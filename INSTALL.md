@@ -2,6 +2,7 @@
 
 <!-- TOC GFM -->
 
+* [Introduction](#introduction)
 * [Build the dependency locally](#build-the-dependency-locally)
   * [`python`](#python)
   * [`Rust`](#rust)
@@ -11,6 +12,10 @@
   * [`maple`](#maple)
 
 <!-- /TOC -->
+
+## Introduction
+
+vim-clap can work without any other extra dependencies. However, there are some performance issues for some providers, see the details at [#140](https://github.com/liuchengxu/vim-clap/issues/140), for you can never expect a Vim plugin written in pure VimL to be fast everywhere even vim9 can make the VimL faster significantly.
 
 There are two optional dependencies for boosting the performance of vim-clap:
 
