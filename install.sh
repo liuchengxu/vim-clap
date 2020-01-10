@@ -12,19 +12,31 @@ exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
-try_download() {
-  local asset=$1
-  local temp=${TMPDIR}/maple
+download() {
+  local from=$1
+  local to=$2
   if exists "curl"; then
-    curl -fLo "$temp" "$DOWNLOAD_URL/$asset"
+    curl -fLo "$to" "$from"
+
   elif exists 'wget'; then
-    wget --output-document="$temp" "$DOWNLOAD_URL/$asset"
+    wget --output-document="$to" "$from"
   else
     echo 'curl or wget is required'
     exit 1
   fi
-  chmod a+x "$temp"
-  mv "$temp" bin/$APP
+}
+
+try_download() {
+  local asset=$1
+  if [ -z "${TMPDIR+x}" ]; then
+    rm -f bin/$APP
+    download "$DOWNLOAD_URL/$asset" bin/$APP
+  else
+    local temp=${TMPDIR}/maple
+    download "$DOWNLOAD_URL/$asset" "$temp"
+    mv "$temp" bin/$APP
+  fi
+  chmod a+x "bin/$APP"
 }
 
 main() {
