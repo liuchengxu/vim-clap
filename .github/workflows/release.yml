@@ -6,10 +6,11 @@ on:
 
 # Release steps:
 #
-# 1. Bump version in CHANGELOG.md and plugin/clap.vim
+# 1. Bump version in CHANGELOG.md and plugin/clap.vim.
 # 2. Check CHANGELOG.md by running ci/get_changelog.sh locally.
-# 3. Create a new tag: git tag v**
-# 4. Push the tag: git push origin v**
+# 3. Update the new tag in install.ps1 and install.sh.
+# 4. Create a new tag: git tag v**.
+# 5. Push the tag: git push origin v**.
 #
 name: Create Release
 

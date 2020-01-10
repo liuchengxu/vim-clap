@@ -9,10 +9,10 @@ if ([Environment]::Is64BitOperatingSystem) {
   $url += 'x86_64-pc-windows-msvc'
 } else {
   echo 'No prebuilt maple binary for 32-bit Windows system'
-  Exit
+  Exit 1
 }
 
-if (Test-Path -LiteralPath $path) {
+if (Test-Path -LiteralPath $output) {
   Remove-Item -Force -LiteralPath $output
 }
 
