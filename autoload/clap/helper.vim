@@ -135,8 +135,7 @@ endfunction
 function! clap#helper#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
-    let cwd = s:plugin_root_dir
-    call s:run_term(cmd, cwd, 'built maple binary successfully')
+    call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully')
   else
     call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
   endif
@@ -146,13 +145,12 @@ function! clap#helper#build_all(...) abort
   if executable('cargo')
     " If Rust nightly and +python3 is unavailable, build the maple only.
     if has('python3') && s:has_rust_nightly(v:false)
-      let cwd = s:plugin_root_dir
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
         let cmd = 'make'
       endif
-      call s:run_term(cmd, cwd, 'built maple binary and Python dynamic module successfully')
+      call s:run_term(cmd, s:plugin_root_dir, 'built maple binary and Python dynamic module successfully')
     else
       call clap#helper#build_maple()
     endif
@@ -162,13 +160,12 @@ function! clap#helper#build_all(...) abort
 endfunction
 
 function! clap#helper#download_binary() abort
-  let cwd = s:plugin_root_dir
   if has('win32')
-    let cmd = 'Powershell.exe -File '.cwd.'\install.ps1'
+    let cmd = 'Powershell.exe -File '.s:plugin_root_dir.'\install.ps1'
   else
     let cmd = './install.sh'
   endif
-  call s:run_term(cmd, cwd, 'download the prebuilt maple binary successfully')
+  call s:run_term(cmd, s:plugin_root_dir, 'download the prebuilt maple binary successfully')
 endfunction
 
 function! clap#helper#install(try_download) abort
