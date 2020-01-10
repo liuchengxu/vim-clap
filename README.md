@@ -75,10 +75,11 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 ```vim
 Plug 'liuchengxu/vim-clap'
 
-" It will try to:
-" 1. build all the optional dependency if cargo exists on your system.
-" 2. try downloading the prebuilt binary if cargo does not exist.
-Plug 'liuchengxu/vim-clap', { 'do': function('clap#helper#install') }
+" Build the extra binary if cargo exists on your system.
+Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
+
+" The bang version will try to download the prebuilt binary if cargo does not exist.
+Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
 ```
 
 The `do` hook is highly recommended, which can help you get a performant vim-clap easily mostly. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.

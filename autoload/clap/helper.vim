@@ -160,17 +160,20 @@ function! clap#helper#build_all(...) abort
   endif
 endfunction
 
+" TODO: windows support
 function! clap#helper#download_binary() abort
   let cwd = fnamemodify(g:clap#autoload_dir, ':h')
   let cmd = './install.sh'
   call s:run_term(cmd, cwd, 'download the prebuilt maple binary successfully')
 endfunction
 
-function! clap#helper#install(...) abort
+function! clap#helper#install(try_download) abort
   if executable('cargo')
     call clap#helper#build_all()
-  else
+  elseif a:try_download
     call clap#helper#download_binary()
+  else
+    call clap#helper#echo_warn('Skipped, cargo does not exist and no prebuilt binary downloaded.')
   endif
 endfunction
 
