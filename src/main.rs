@@ -14,7 +14,9 @@ use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
-use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
+use crate::icon::{prepend_grep_icon, prepend_icon};
+
+pub const DEFAULT_ICONIZED: &str = " ";
 
 arg_enum! {
     #[derive(Debug)]

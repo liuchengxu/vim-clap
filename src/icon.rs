@@ -4,8 +4,7 @@ use std::path::Path;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-pub const DEFAULT_ICON: &'static str = "";
-pub const DEFAULT_ICONIZED: &'static str = " ";
+pub const DEFAULT_ICON: &str = "";
 
 lazy_static! {
     pub static ref ICONMAP: HashMap<&'static str, &'static str> = {
@@ -116,7 +115,7 @@ fn icon_for(path: &str) -> &str {
     Path::new(path)
         .extension()
         .and_then(std::ffi::OsStr::to_str)
-        .map(|ext| ICONMAP.get(ext).unwrap_or(&DEFAULT_ICON))
+        .and_then(|ext| ICONMAP.get(ext))
         .unwrap_or(&DEFAULT_ICON)
 }
 
