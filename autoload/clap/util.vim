@@ -96,37 +96,6 @@ function! clap#util#nvim_win_close_safe(winid) abort
   endif
 endfunction
 
-function! clap#util#get_git_root() abort
-  let root = split(system('git rev-parse --show-toplevel'), '\n')[0]
-  return v:shell_error ? '' : root
-endfunction
-
-" This is faster than clap#util#get_git_root() which uses the system call.
-function! clap#util#find_git_root(bufnr) abort
-  let git_dir = clap#util#find_nearest_dir(a:bufnr, '.git')
-
-  if !empty(git_dir)
-    return fnamemodify(git_dir, ':h:h')
-  endif
-
-  return ''
-endfunction
-
-" Find the nearest directory by searching upwards
-" through the paths relative to the given buffer,
-" given a bufnr and a directory name.
-function! clap#util#find_nearest_dir(bufnr, dir) abort
-  let fname = fnameescape(fnamemodify(bufname(a:bufnr), ':p'))
-
-  let relative_path = finddir(a:dir, fname . ';')
-
-  if !empty(relative_path)
-    return fnamemodify(relative_path, ':p')
-  endif
-
-  return ''
-endfunction
-
 " Define CTRL-T/X/V by default.
 function! clap#util#define_open_action_mappings() abort
   for k in keys(g:clap_open_action)
