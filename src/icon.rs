@@ -2,18 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use lazy_static::lazy_static;
+use regex::Regex;
 
 pub const DEFAULT_ICON: &'static str = "";
 pub const DEFAULT_ICONIZED: &'static str = " ";
-
-pub fn prepend_icon(line: &str) -> String {
-    let icon = Path::new(line)
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .map(|ext| ICONMAP.get(ext).unwrap_or(&DEFAULT_ICON))
-        .unwrap_or(&DEFAULT_ICON);
-    format!("{} {}", icon, line)
-}
 
 lazy_static! {
     pub static ref ICONMAP: HashMap<&'static str, &'static str> = {
@@ -117,4 +109,34 @@ lazy_static! {
         m.insert("xcplayground", "");
         m
     };
+}
+
+#[inline]
+fn icon_for(path: &str) -> &str {
+    Path::new(path)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .map(|ext| ICONMAP.get(ext).unwrap_or(&DEFAULT_ICON))
+        .unwrap_or(&DEFAULT_ICON)
+}
+
+pub fn prepend_icon(path: &str) -> String {
+    format!("{} {}", icon_for(path), path)
+}
+
+pub fn prepend_grep_icon(line: &str) -> String {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^(.*):\d+:\d+:").unwrap();
+    }
+    let icon = RE
+        .captures(line)
+        .and_then(|cap| cap.get(1).map(|m| icon_for(m.as_str())))
+        .unwrap_or(DEFAULT_ICON);
+    format!("{} {}", icon, line)
+}
+
+#[test]
+fn test_grep_regex() {
+    let line = "CHANGELOG.md:33:19:- Make the helper function for building";
+    println!("{}", prepend_grep_icon(line));
 }

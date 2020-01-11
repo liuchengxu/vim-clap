@@ -14,7 +14,7 @@ use serde_json::json;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
 
-use icon::{prepend_icon, DEFAULT_ICONIZED};
+use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
 arg_enum! {
     #[derive(Debug)]
@@ -72,7 +72,11 @@ struct Maple {
     #[structopt(long = "grep-query")]
     grep_query: Option<String>,
 
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    /// Prepend an icon for item of grep provider, valid only when --number is used.
+    #[structopt(long = "grep-enable-icon")]
+    grep_enable_icon: bool,
+
+    /// Prepend an icon for item of files provider, valid only when --number is used.
     #[structopt(long = "enable-icon")]
     enable_icon: bool,
 
@@ -166,6 +170,18 @@ impl Maple {
         }
     }
 
+    fn try_prepend_icon<'a>(&self, top_n: impl std::iter::Iterator<Item = &'a str>) -> Vec<String> {
+        let mut lines = if self.grep_enable_icon {
+            top_n.map(prepend_grep_icon).collect::<Vec<_>>()
+        } else if self.enable_icon {
+            top_n.map(prepend_icon).collect::<Vec<_>>()
+        } else {
+            top_n.map(Into::into).collect::<Vec<_>>()
+        };
+        trim_trailing(&mut lines);
+        lines
+    }
+
     fn execute_impl(&self, cmd: &mut Command, args: &[String]) -> Result<()> {
         let cmd_output = cmd.output()?;
 
@@ -181,12 +197,7 @@ impl Maple {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
             // &cmd_output.stdout[..nth_newline_index]
             let stdout_str = String::from_utf8_lossy(&cmd_output.stdout);
-            let mut lines = stdout_str
-                .split('\n')
-                .take(number)
-                .map(Into::into)
-                .collect::<Vec<_>>();
-            trim_trailing(&mut lines);
+            let lines = self.try_prepend_icon(stdout_str.split('\n').take(number));
             println_json!(total, lines);
             return Ok(());
         }
@@ -195,14 +206,7 @@ impl Maple {
         let (stdout_str, tempfile) =
             self.to_string_and_cache_if_threshold_exceeded(total, &cmd_output.stdout, args)?;
 
-        let mut lines = if self.enable_icon {
-            stdout_str.split('\n').map(prepend_icon).collect::<Vec<_>>()
-        } else {
-            stdout_str.split('\n').map(Into::into).collect::<Vec<_>>()
-        };
-
-        // The last element could be a empty string.
-        trim_trailing(&mut lines);
+        let lines = self.try_prepend_icon(stdout_str.split('\n'));
 
         if let Some(tempfile) = tempfile {
             println_json!(total, lines, tempfile);

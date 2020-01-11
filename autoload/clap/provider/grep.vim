@@ -9,6 +9,8 @@ let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 let s:grep_opts = get(g:, 'clap_provider_grep_opts', '-H --no-heading --vimgrep --smart-case')
 let s:grep_executable = get(g:, 'clap_provider_grep_executable', 'rg')
 let s:grep_cmd_format = get(g:, 'clap_provider_grep_cmd_format', '%s %s "%s"'.(has('win32') ? ' .' : ''))
+let s:grep_enable_icon = get(g:, 'clap_provider_grep_enable_icon',
+        \ exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
 
 let s:old_query = ''
 let s:grep_timer = -1
@@ -124,7 +126,7 @@ function! s:spawn(query) abort
   if clap#maple#is_available()
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#grep(s:grep_executable.' '.grep_opts, query)
+    call clap#maple#grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon)
   else
     call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
   endif
@@ -250,9 +252,7 @@ let s:grep.on_move = function('s:grep_on_move')
 
 let s:grep.syntax = 'clap_grep'
 
-if get(g:, 'clap_provider_grep_enable_icon',
-      \ exists('g:loaded_webdevicons')
-      \ || get(g:, 'spacevim_nerd_fonts', 0))
+if !clap#maple#is_available() && s:grep_enable_icon
   let s:grep.converter = function('s:draw_icon')
 endif
 
