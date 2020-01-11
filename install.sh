@@ -17,7 +17,6 @@ download() {
   local to=$2
   if exists "curl"; then
     curl -fLo "$to" "$from"
-
   elif exists 'wget'; then
     wget --output-document="$to" "$from"
   else
