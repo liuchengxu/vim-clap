@@ -29,18 +29,12 @@ endfunction
 
 function! clap#rooter#working_dir() abort
   if exists('g:__clap_provider_cwd')
-    let dir = g:__clap_provider_cwd
+    return g:__clap_provider_cwd
   elseif clap#should_use_raw_cwd()
-    let dir = getcwd()
+    return getcwd()
   else
-    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-    if empty(git_root)
-      let dir = getcwd()
-    else
-      let dir = git_root
-    endif
+    return clap#path#find_git_root_or_default(g:clap.start.bufnr)
   endif
-  return dir
 endfunction
 
 function! s:run_from_target_dir(target_dir, Run, run_args) abort
@@ -74,7 +68,7 @@ function! clap#rooter#run(Run, ...) abort
     return call(a:Run, a:000)
   endif
 
-  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+  let git_root = clap#path#find_git_root(g:clap.start.bufnr)
 
   if empty(git_root)
     " This means to use getcwd()
@@ -94,7 +88,7 @@ function! clap#rooter#run_heuristic(Run, ...) abort
     return call(a:Run, a:000)
   endif
 
-  let git_root = clap#util#find_git_root(g:clap.start.bufnr)
+  let git_root = clap#path#find_git_root(g:clap.start.bufnr)
 
   if empty(git_root)
     let result = call(a:Run, a:000)
