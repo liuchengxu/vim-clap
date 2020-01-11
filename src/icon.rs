@@ -123,6 +123,7 @@ pub fn prepend_icon(path: &str) -> String {
     format!("{} {}", icon_for(path), path)
 }
 
+#[allow(dead_code)]
 pub fn prepend_grep_icon(line: &str) -> String {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(.*):\d+:\d+:").unwrap();
