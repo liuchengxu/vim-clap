@@ -24,11 +24,24 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@master
-    - name: Set up Python
-      uses: actions/setup-python@v1
+    - name: Run vint with reviewdog
+      uses: reviewdog/action-vint@v1.0.1
       with:
-        python-version: 3.7
-    - name: Setup dependencies
-      run: pip install vim-vint
-    - name: Run Vimscript Linter
-      run: test/run_vint.sh
+        github_token: ${{ secrets.github_token }}
+        reporter: github-pr-review
+
+  rust_ext:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Run Cargo test
+      run: cd pythonx/clap/fuzzymatch-rs && cargo test --no-default-features
+    - name: Install Rustfmt
+      run: rustup component add rustfmt
+    - name: Check formatting
+      run: cargo fmt --all -- --check

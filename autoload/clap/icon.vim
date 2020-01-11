@@ -251,19 +251,30 @@ let s:linked_groups_len = len(s:linked_groups)
 
 call clap#icon#def_color_components()
 
-function! clap#icon#add_hl_groups() abort
+function! s:generic_hi_icons(head_only) abort
+  let pat_prefix = a:head_only ? '/^\s*' : '/'
+
   let lk_idx = 0
   let groups = []
   let icons = clap#icon#get_all()
   for idx in range(len(icons))
     let group = 'ClapIcon'.idx
     call add(groups, group)
-    execute 'syntax match' group '/'.icons[idx].'/' 'contained'
+    execute 'syntax match' group pat_prefix.icons[idx].'/' 'contained'
     execute 'hi!' group s:get_attrs(s:linked_groups[lk_idx])
     let lk_idx += 1
     let lk_idx = lk_idx % s:linked_groups_len
   endfor
+
   return groups
+endfunction
+
+function! clap#icon#add_hl_groups() abort
+  return s:generic_hi_icons(v:false)
+endfunction
+
+function! clap#icon#add_head_hl_groups() abort
+  return s:generic_hi_icons(v:true)
 endfunction
 
 let &cpoptions = s:save_cpo

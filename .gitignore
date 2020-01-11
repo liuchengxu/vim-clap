@@ -10,9 +10,12 @@ __pycache__
 [1-9]*.vim
 /doc/tags
 /target
+/bin
 
 !.editorconfig
 !.travis.yml
 !.gitignore
 !.github
 !.vintrc.yaml
+!.dependabot
+!bin/.gitkeep

@@ -73,10 +73,7 @@ function! s:lines.source() abort
   return extend(cur, rest)
 endfunction
 
-function! s:lines.on_enter() abort
-  call g:clap.display.setbufvar('&ft', 'clap_lines')
-endfunction
-
+let s:lines.syntax = 'clap_lines'
 let g:clap#provider#lines# = s:lines
 
 let &cpoptions = s:save_cpo

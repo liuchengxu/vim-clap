@@ -12,9 +12,14 @@ publish = false
 name = "fuzzymatch_rs"
 crate-type = ["cdylib"]
 
-[dependencies.rff]
-version = "0.3.0"
-
 [dependencies.pyo3]
-version = "0.8.3"
-features = ["extension-module"]
+version = "0.8.4"
+
+[dependencies.extracted_fzy]
+path = "../extracted_fzy"
+
+# https://github.com/PyO3/pyo3/issues/340
+# For running PyO3 test using `cargo test --no-default-features`
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]

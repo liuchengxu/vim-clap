@@ -413,6 +413,15 @@ function! s:move_manager.ctrl_d(_winid) abort
   call s:apply_on_typed()
 endfunction
 
+function! s:move_manager.ctrl_u(_winid) abort
+  if empty(s:input)
+    return 1
+  endif
+  let s:input = ''
+  let s:cursor_idx = 0
+  call s:apply_on_typed()
+endfunction
+
 " noautocmd is neccessary in that too many plugins use redir, otherwise we'll
 " see E930: Cannot use :redir inside execute().
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("down")') }
@@ -434,6 +443,7 @@ let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
+let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)
@@ -564,6 +574,7 @@ function! clap#popup#open() abort
     autocmd BufEnter,WinEnter,WinLeave * call clap#popup#close()
   augroup END
 
+  call g:clap.provider.try_set_syntax()
   call g:clap.provider.on_enter()
 
   silent doautocmd <nomodeline> User ClapOnEnter

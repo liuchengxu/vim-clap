@@ -40,6 +40,11 @@ let s:provider_alias = {
 let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {}))
 let g:clap#provider_alias = s:provider_alias
 
+let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
+
+let g:clap_forerunner_status_sign_done = get(g:, 'clap_forerunner_status_sign_done', '*')
+let g:clap_forerunner_status_sign_running = get(g:, 'clap_forerunner_status_sign_running', '!')
+
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 
@@ -106,14 +111,20 @@ function! clap#_init() abort
     elseif source_ty == v:t_list
       let g:clap.provider.type = g:__t_list
     elseif source_ty == v:t_func
-      let string_or_list = Source()
-      if type(string_or_list) == v:t_string
-        let g:clap.provider.type = g:__t_func_string
-      elseif type(string_or_list) == v:t_list
+      " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
+      " `blines` provider, so we did a hard code for blines provider here.
+      if g:clap.provider.id ==# 'blines'
         let g:clap.provider.type = g:__t_func_list
       else
-        call g:clap.abort('Must return a String or a List if source is a Funcref')
-        return
+        let string_or_list = Source()
+        if type(string_or_list) == v:t_string
+          let g:clap.provider.type = g:__t_func_string
+        elseif type(string_or_list) == v:t_list
+          let g:clap.provider.type = g:__t_func_list
+        else
+          call g:clap.abort('Must return a String or a List if source is a Funcref')
+          return
+        endif
       endif
     endif
   endif
@@ -138,12 +149,15 @@ endfunction
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
+  call clap#maple#stop()
 
   call g:clap.close_win()
 
   let g:clap.is_busy = 0
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1
+  " Reset this for vim issue. Ref #223
+  let g:clap.display.winid = -1
 
   " Remember to get what the sink needs before clearing the buffer.
   call g:clap.input.clear()
@@ -256,6 +270,21 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
+function! s:clear_state() abort
+  call s:unlet_vars([
+        \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_raw_source',
+        \ 'g:__clap_initial_source_size',
+        \ ])
+
+  if exists('g:__clap_forerunner_tempfile')
+    if filereadable(g:__clap_forerunner_tempfile)
+      call delete(g:__clap_forerunner_tempfile)
+    endif
+    unlet g:__clap_forerunner_tempfile
+  endif
+endfunction
+
 function! clap#for(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
@@ -267,15 +296,12 @@ function! clap#for(provider_id_or_alias) abort
   let g:clap.display.cache = []
 
   " If the registrar is not aware of this provider, try registering it.
-  if !has_key(g:clap.registrar, provider_id) && !s:try_register_is_ok(provider_id)
+  if !has_key(g:clap.registrar, provider_id)
+        \ && !s:try_register_is_ok(provider_id)
     return
   endif
 
-  call s:unlet_vars([
-        \ 'g:__clap_provider_cwd',
-        \ 'g:__clap_raw_source',
-        \ 'g:__clap_initial_source_size',
-        \ ])
+  call s:clear_state()
 
   call clap#handler#init()
 
@@ -306,7 +332,7 @@ if !exists('g:clap')
   call clap#register('_', {
         \ 'source': function('s:_source'),
         \ 'sink': function('s:_sink'),
-        \ 'on_enter': { -> g:clap.display.setbufvar('&ft', 'clap_global') },
+        \ 'on_enter': { -> g:clap.display.setbufvar('&syntax', 'clap_global') },
         \ })
 endif
 
@@ -336,6 +362,14 @@ function! s:parse_opts(args) abort
 endfunction
 
 function! clap#(bang, ...) abort
+  if a:000 == ['install-binary']
+    call clap#helper#install(v:false)
+    return
+  elseif a:000 == ['install-binary!']
+    call clap#helper#install(v:true)
+    return
+  endif
+
   let g:clap.start.bufnr = bufnr('')
   let g:clap.start.winid = win_getid()
   let g:clap.start.old_pos = getpos('.')

@@ -67,6 +67,11 @@ function! s:translate_query_and_opts(query) abort
 
   let query = join(split(query), '.*')
 
+  " Consistent with --smart-case of rg
+  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
+  let ignore_case = query =~# '\u' ? '\C' : '\c'
+  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
+
   return [grep_opts, query]
 endfunction
 
@@ -77,11 +82,6 @@ function! s:cmd(query) abort
   endif
 
   let [grep_opts, query] = s:translate_query_and_opts(a:query)
-
-  " Consistent with --smart-case of rg
-  " Searches case insensitively if the pattern is all lowercase. Search case sensitively otherwise.
-  let ignore_case = query =~# '\u' ? '\C' : '\c'
-  let s:hl_pattern = ignore_case.'^.*\d\+:\d\+:.*\zs'.query
 
   let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
   let g:clap.provider.cmd = cmd
@@ -114,11 +114,20 @@ function! s:spawn(query) abort
 
   " Clear the previous search result and reset cache.
   " This should happen before the new job.
-  call g:clap.display.clear()
+  "
+  " Do not clear the outdated content immedidately as it leads to the annoying
+  " flicker.
+  " call g:clap.display.clear()
 
   call clap#rooter#try_set_cwd()
 
-  call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
+  if clap#maple#is_available()
+    let [grep_opts, query] = s:translate_query_and_opts(a:query)
+    " Add ' .' for windows in maple
+    call clap#maple#grep(s:grep_executable.' '.grep_opts, query)
+  else
+    call clap#rooter#run(function('clap#dispatcher#job_start'), s:cmd(query))
+  endif
 
   call g:clap.display.add_highlight(s:hl_pattern)
 
@@ -161,7 +170,7 @@ function! s:grep_on_move() abort
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call g:clap.preview.show(preview_lines)
-  call g:clap.preview.load_syntax(s:preview_cache[fpath].filetype)
+  call g:clap.preview.set_syntax(s:preview_cache[fpath].filetype)
   call g:clap.preview.add_highlight(hi_lnum)
 endfunction
 
@@ -239,7 +248,7 @@ let s:grep.on_typed = function('s:grep_with_delay')
 
 let s:grep.on_move = function('s:grep_on_move')
 
-let s:grep.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_grep') }
+let s:grep.syntax = 'clap_grep'
 
 if get(g:, 'clap_provider_grep_enable_icon',
       \ exists('g:loaded_webdevicons')

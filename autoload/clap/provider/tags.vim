@@ -7,15 +7,14 @@ set cpoptions&vim
 let s:tags = {}
 
 function! s:tags.source(...) abort
-  if !exists('t:vista')
-    let [bufnr, winnr, fname, fpath] = [
-          \ g:clap.start.bufnr,
-          \ g:clap.start.winid,
-          \ bufname(g:clap.start.bufnr),
-          \ expand('#'.g:clap.start.bufnr.':p')
-          \ ]
-    call vista#source#Update(bufnr, winnr, fname, fpath)
-  endif
+  let [bufnr, winnr, fname, fpath] = [
+        \ g:clap.start.bufnr,
+        \ g:clap.start.winid,
+        \ bufname(g:clap.start.bufnr),
+        \ expand('#'.g:clap.start.bufnr.':p')
+        \ ]
+
+  call vista#source#Update(bufnr, winnr, fname, fpath)
 
   let [data, _, _] = call('vista#finder#GetSymbols', a:000)
 
@@ -35,13 +34,13 @@ function! s:tags.on_move() abort
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
   call g:clap.preview.show(lines)
-  call g:clap.preview.load_syntax(s:origin_ft)
+  call g:clap.preview.set_syntax(s:origin_syntax)
   call g:clap.preview.add_highlight(hi_lnum+1)
 endfunction
 
 function! s:tags.on_enter() abort
-  let s:origin_ft = getbufvar(g:clap.start.bufnr, '&ft')
-  call g:clap.display.setbufvar('&ft', 'clap_tags')
+  let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
+  call g:clap.display.setbufvar('&syntax', 'clap_tags')
 endfunction
 
 let s:tags.sink = function('vista#finder#fzf#sink')

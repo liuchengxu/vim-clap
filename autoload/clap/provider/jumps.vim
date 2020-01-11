@@ -42,7 +42,7 @@ function! s:jumps.on_move() abort
   call clap#provider#marks#preview_impl(matched[2], matched[3], matched[4])
 endfunction
 
-let s:jumps.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_jumps') }
+let s:jumps.syntax = 'clap_jumps'
 let g:clap#provider#jumps# = s:jumps
 
 let &cpoptions = s:save_cpo

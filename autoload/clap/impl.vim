@@ -165,10 +165,25 @@ else
   endfunction
 endif
 
-function! s:can_have_offset(provider_id) abort
-  return a:provider_id ==# 'tags' || a:provider_id ==# 'buffers'
+" The icon can interfer the matched indices of fuzzy filter, but not the
+" substring filter.
+function! s:should_check_offset() abort
+  return g:clap_enable_icon && stridx(g:clap.input.get(), ' ') == -1
 endfunction
 
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files']
+let s:related_maple_providers = ['files', 'git_files']
+
+function! s:builtin_fuzzy_idx_offset() abort
+  if s:should_check_offset()
+        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+      return 2
+  else
+    return 0
+  endif
+endfunction
+
+" Used by the built-in sync filter.
 function! s:add_highlight_for_fuzzy_matched() abort
   " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
   " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
@@ -176,18 +191,24 @@ function! s:add_highlight_for_fuzzy_matched() abort
   "
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
-
-  if s:can_have_offset(g:clap.provider.id) && get(g:, 'clap_enable_icon', 0)
-    let offset = 2
-  else
-    let offset = 0
-  endif
+  let offset = s:builtin_fuzzy_idx_offset()
 
   call s:apply_add_highlight(hl_lines, offset)
 endfunction
 
+function! s:maple_fuzzy_idx_offset() abort
+  if s:should_check_offset()
+        \ && index(s:related_maple_providers, g:clap.provider.id) > -1
+      return 4
+  else
+    return 0
+  endif
+endfunction
+
+" Used by the async job.
 function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
-  call s:apply_add_highlight(a:hl_lines, 0)
+  let offset = s:maple_fuzzy_idx_offset()
+  call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
 " =======================================
@@ -201,10 +222,17 @@ function! s:on_typed_async_impl() abort
     return
   endif
 
-  call g:clap.display.clear()
+  " Do not clear the outdated content as it would cause the annoying flicker.
+  " call g:clap.display.clear()
 
   let cmd = g:clap.provider.source_async_or_default()
-  call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+
+  if clap#filter#using_maple()
+    call clap#rooter#run(function('clap#maple#job_start'), cmd)
+  else
+    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+  endif
+
   call clap#spinner#set_busy()
 
   if !exists('g:__clap_maple_fuzzy_matched')
@@ -214,6 +242,12 @@ endfunction
 
 " Choose the suitable way according to the source size.
 function! s:should_switch_to_async() abort
+  " Optimze for blines provider.
+  if g:clap.provider.id ==# 'blines'
+        \ && g:clap.display.initial_size > 100000
+    return v:true
+  endif
+
   if g:clap.provider.is_pure_async()
         \ || g:clap.provider.type == g:__t_string
         \ || g:clap.provider.type == g:__t_func_string

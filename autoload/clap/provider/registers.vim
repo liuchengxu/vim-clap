@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:registers = {}
 
 " Credit: https://github.com/junegunn/vim-peekaboo
-function! s:append_group(title, regs)
+function! s:append_group(title, regs) abort
   call add(s:lines, a:title.':')
   for r in a:regs
     let val = eval('@'.r)[:&columns]
@@ -53,7 +53,7 @@ function! s:registers.sink(selected) abort
   execute 'normal!' '"'.reg.'p'
 endfunction
 
-let s:registers.on_enter = { -> g:clap.display.setbufvar('&ft', 'clap_registers') }
+let s:registers.syntax = 'clap_registers'
 
 let g:clap#provider#registers# = s:registers
 

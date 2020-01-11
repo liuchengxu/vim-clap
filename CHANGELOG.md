@@ -5,11 +5,63 @@ CHANGELOG
 
 ### Added
 
+- Provide the prebuilt binary support since [Release v0.4](https://github.com/liuchengxu/vim-clap/releases/tag/v0.4).
+- Add script for downloading the prebuilt binary easily and support downloading via plugin manager directly.([#222](https://github.com/github.com/liuchengxu/vim-clap/pull/222))
+
+### Improved
+
+- Make the display window compact when there are too few results for grep provider.
+
+### Fixed
+
+- Do not apply the offset for matched items when using substring filter.
+
+## [0.4] 2019-01-06
+
+### Added
+
+- Add icon for files provider.([#195](https://github.com/liuchengxu/vim-clap/pull/195))
+- Add `syntax` property for provider to make enable the syntax highlight easier.([#217](https://github.com/liuchengxu/vim-clap/pull/217))
+- Add an option `g:clap_disable_bottom_top`( `0` by default) for disabling wrapping top-to-bottom when pressing ctrl-j/ctrl-k at the bottom/top of the results.
+- Add open action support for `:Clap buffers`.
+- Add open action support for `:Clap git_files`.
+- Add `<C-U>` mapping for clearning the input.
+
+### Improved
+
+- Make the helper function for building the extra Rust tools more friendly and smarter. ([#202](https://github.com/liuchengxu/vim-clap/pull/202))
+- Optimize for `Clap blines` provider in case of the buffer has 1 million lines.([#210](https://github.com/liuchengxu/vim-clap/pull/210))
+
+### Fixed
+
+- :tada: Fix the flicker of running asynchronously using `job`.([#185](https://github.com/liuchengxu/vim-clap/issues/185))
+
+## [0.3] 2019-12-30
+
+The major feature of 0.3 is the performance problem has been soloved, see [#140](https://github.com/liuchengxu/vim-clap/issues/140).
+
+### Added
+
 - Add Python version subscorer fuzzy filter.([#159](https://github.com/liuchengxu/vim-clap/pull/159))
+- Add Rust version subscorer fuzzy filter.([#176](https://github.com/liuchengxu/vim-clap/pull/176))
+- New provider `:Clap quickfix` by @kit494way.
 - New provider `:Clap git_diff_files` by @kit494way.
 - Add the preview support for `:Clap registers`. If the content of some register is too much to fit on one line, then it will be shown in the preview window, otherwise do nothing.
 - Add the preview support for `:Clap tags`.
+- Add the helper function for building Rust extension easily. Now you can use `:call clap#helper#build_all()` to build the optional Rust dependency.
 - Make the built-in fuzzy filter 10x faster using Rust.([#147](https://github.com/liuchengxu/vim-clap/pull/147))
+
+### Improved
+
+- Cache the result of forerunner job into a temp file if it's larger than the threshold of built-in sync filter can handle.([#177](https://github.com/liuchengxu/vim-clap/pull/177))
+- Decrease the overhead of async job significantly.([#181](https://github.com/liuchengxu/vim-clap/pull/181))
+- Set `syntax` instead of `filetype` for the highlight as setting `filetype` can start some unexpected filetype related services.
+
+### Fixed
+
+- Fix vim popup sign not showing.([#141](https://github.com/liuchengxu/vim-clap/pull/141))
+- Fix performance issue of async job.([#140](https://github.com/liuchengxu/vim-clap/issues/140))
+- Fix rff can't work on Windows thanks to @ImmemorConsultrixContrarie.([#180](https://github.com/liuchengxu/vim-clap/pull/180))
 
 ## [0.2] 2019-12-10
 

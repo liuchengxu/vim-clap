@@ -11,7 +11,7 @@
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
 <p align="center">
-  <img width="600px" src="https://user-images.githubusercontent.com/8850248/67620599-3b1c9a80-f83b-11e9-8d8c-72bfae9d9177.gif">
+  <img width="600px" src="https://user-images.githubusercontent.com/8850248/71636414-645a0c80-2c6a-11ea-9dc8-160a80708b7a.gif">
 </p>
 
 ## Table of Contents
@@ -21,11 +21,8 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 * [Features](#features)
 * [Caveats](#caveats)
 * [Requirement](#requirement)
-  * [Optional](#optional)
-    * [`python`](#python)
-    * [`maple`](#maple)
-    * [Rust extension](#rust-extension)
 * [Installation](#installation)
+  * [vim-plug](#vim-plug)
 * [Usage](#usage)
   * [Commands](#commands)
   * [Global variables](#global-variables)
@@ -71,46 +68,21 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - Vim: `:echo has('patch-8.1.2114')`.
 - NeoVim: `:echo has('nvim-0.4')`.
 
-### Optional
-
-#### `python`
-
-  If you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
-
-- Vim: `:pyx print("Hello")` should be `Hello`.
-- NeoVim:
-
-  ```bash
-  # ensure you have installed pynvim
-  $ python3 -m pip install pynvim
-  ```
-
-#### `maple`
-
-`maple` is essentially a tiny wrapper of [skim](https://github.com/lotabout/skim) and [fzy](https://github.com/jhawthorn/fzy), with the matched indices exposed to be highlighted in vim-clap's async providers.
-
-Use `:call clap#helper#build_maple()` or install maple manually:
-
-```bash
-# Compile the release build
-cargo build --release
-
-# Or use cargo install
-cargo install --path . --force
-```
-
-#### Rust extension
-
-Use `:call clap#helper#build_rust_ext()` to install the Rust extension for 10x faster fuzzy filter than the Python one.
-
 ## Installation
+
+### [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
 Plug 'liuchengxu/vim-clap'
 
-" Build the all optional dependency, cargo is needed.
-Plug 'liuchengxu/vim-clap', { 'do': function('clap#helper#build_all') }
+" Build the extra binary if cargo exists on your system.
+Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
+
+" The bang version will try to download the prebuilt binary if cargo does not exist.
+Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
 ```
+
+The `do` hook for installing the extra binary is highly recommended, which can mostly help you get a performant vim-clap easily. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.
 
 ## Usage
 
@@ -138,6 +110,7 @@ Command                                | List                                   
 `Clap jumps`                           | Jumps                                               | _none_
 `Clap lines`                           | Lines in the loaded buffers                         | _none_
 `Clap marks`                           | Marks                                               | _none_
+`Clap quickfix`                        | Entries of the quickfix list                        | _none_
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
@@ -201,6 +174,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
+- [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 
 See `:help clap-keybindings` for more information.
 
@@ -296,6 +270,7 @@ Field                 | Type                | Required      | Has default implem
 `on_exit`             | Funcref             | optional      | No
 `support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 `enable_rooter`       | Bool                | Optional      | No
+`syntax`              | String              | Optional      | No
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -322,6 +297,8 @@ Field                 | Type                | Required      | Has default implem
 
 - `enable_rooter`: try to run the `source` from the project root.
 
+- `syntax`: used to set the syntax highlight for the display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.on_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
+
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
 ### Create pure async provider
@@ -336,6 +313,7 @@ Field                 | Type    | Required      | Has default implementation
 `jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#job_start(cmd)`
 `support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 `enable_rooter`       | Bool    | Optional      | No
+`syntax`              | String  | Optional      | No
 
 - `on_typed`: reference to function to spawn an async job.
 - `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).

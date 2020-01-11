@@ -161,6 +161,8 @@ to work everywhere out of the box, with fast response.
                                                      *:Clap-lines*
 :Clap lines              List the lines of the loaded buffers.
 
+                                                     *:Clap-quickfix*
+:Clap quickfix           List the entries of the quickfix list.
 
                                                      *:Clap-marks*
 :Clap marks              List Marks
@@ -291,6 +293,13 @@ There are generally two kinds of providers in vim-clap.
                        This field is optional.
 
 
+  `syntax`               |String|
+                       for setting the syntax highlight for the display buffer easier.
+                       `let s:provider.syntax = 'provider_syntax'` is equal to
+                       `let s:provider.syon_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}` .
+
+                       This field is optional.
+
 -------------------------------------------------------------------------------
 4.2 Pure async Providers                              *clap-pure-async-providers*
 
@@ -405,6 +414,15 @@ g:clap_popup_input_delay                              *g:clap_popup_input_delay*
   This option is only meaningful for Vim, NeoVim does not have this delay.
 
 
+g:clap_maple_delay                                          *g:clap_maple_delay*
+
+  Type: |Number|
+  Default: `100`
+
+  This variable controls the milliseconds delay after which `maple` will be
+  run in case of you have 1 million items.
+
+
 g:clap_popup_cursor_shape                            *g:clap_popup_cursor_shape*
 
   Type: |String|
@@ -420,6 +438,33 @@ g:clap_on_move_delay                                      *g:clap_on_move_delay*
 
   This variable controls the milliseconds delay after which the `on_move` of
   provider will be run when you navigate the result list.
+
+
+g:clap_forerunner_status_sign_done          *g:clap_forerunner_status_sign_done*
+
+  Type: |String|
+  Default: `'*'`
+
+  The async forerunner job is done in this vim-clap session. Everything should
+  be fast and deterministic even you have 1 million items as long as you
+  install the `maple` Rust extension.
+
+
+g:clap_forerunner_status_sign_running     *g:clap_forerunner_status_sign_running*
+
+  Type: |String|
+  Default: `'!'`
+
+  The async forerunner job is still running.
+
+
+g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*
+
+  Type: |Number|
+  Default: `0`
+
+  Disable wrapping top-to-bottom when pressing ctrl-j/ctrl-k
+  at the bottom/top of the results.
 
 
 g:clap_disable_optional_async                    *g:clap_disable_optional_async*
@@ -855,6 +900,8 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-t` or `Ctrl-x`, `Ctrl-v` to open the selected entry in a new tab
   or a new split.
+
+- Use `Ctrl-u` to clear inputs.
 
 
 ===============================================================================
