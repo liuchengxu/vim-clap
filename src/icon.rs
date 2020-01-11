@@ -133,9 +133,3 @@ pub fn prepend_grep_icon(line: &str) -> String {
         .unwrap_or(DEFAULT_ICON);
     format!("{} {}", icon, line)
 }
-
-#[test]
-fn test_grep_regex() {
-    let line = "CHANGELOG.md:33:19:- Make the helper function for building";
-    println!("{}", prepend_grep_icon(line));
-}
