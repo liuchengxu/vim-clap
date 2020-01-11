@@ -362,6 +362,14 @@ function! s:parse_opts(args) abort
 endfunction
 
 function! clap#(bang, ...) abort
+  if a:000 == ['install-binary']
+    call clap#helper#install(v:false)
+    return
+  elseif a:000 == ['install-binary!']
+    call clap#helper#install(v:true)
+    return
+  endif
+
   let g:clap.start.bufnr = bufnr('')
   let g:clap.start.winid = win_getid()
   let g:clap.start.old_pos = getpos('.')
