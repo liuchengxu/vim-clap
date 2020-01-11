@@ -63,7 +63,7 @@ function! clap#path#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
-" This is faster than clap#util#get_git_root() which uses the system call.
+" This is faster than clap#path#get_git_root() which uses the system call.
 function! clap#path#find_git_root(bufnr) abort
   " git submodule uses .git instead of .git/. Ref #164
   for pattern in ['.git', '.git/']
@@ -76,7 +76,7 @@ function! clap#path#find_git_root(bufnr) abort
   return ''
 endfunction
 
-function! clap#path#find_git_root_or_default(bufnr) abort
+function! clap#path#git_root_or_default(bufnr) abort
   let git_root = clap#path#find_git_root(a:bufnr)
   return empty(git_root) ? getcwd() : git_root
 endfunction

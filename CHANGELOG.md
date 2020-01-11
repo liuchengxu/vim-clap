@@ -15,6 +15,7 @@ CHANGELOG
 ### Fixed
 
 - Do not apply the offset for matched items when using substring filter.
+- Git submodule detection.([#175](https://github.com/liuchengxu/vim-clap/pull/175))
 
 ## [0.4] 2019-01-06
 

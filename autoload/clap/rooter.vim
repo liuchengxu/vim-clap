@@ -33,7 +33,7 @@ function! clap#rooter#working_dir() abort
   elseif clap#should_use_raw_cwd()
     return getcwd()
   else
-    return clap#path#find_git_root_or_default(g:clap.start.bufnr)
+    return clap#path#git_root_or_default(g:clap.start.bufnr)
   endif
 endfunction
 
