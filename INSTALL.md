@@ -15,12 +15,14 @@
 
 ## Introduction
 
-vim-clap can work without any other extra dependencies. However, there are some performance issues for some providers, see the details at [#140](https://github.com/liuchengxu/vim-clap/issues/140), for you can never expect a Vim plugin written in pure VimL to be fast everywhere even vim9 can make the VimL faster significantly.
+vim-clap can work without any other extra dependencies. However, there are some unavoidable performance issues for some providers, see the details at [#140](https://github.com/liuchengxu/vim-clap/issues/140), for you can never expect a Vim plugin written in pure VimL to be fast everywhere even vim9 can make the VimL faster significantly.
 
 There are two optional dependencies for boosting the performance of vim-clap:
 
 1. `maple` binary.
 2. Python dynamic module.
+
+Now, only `maple` binary is mandatory for getting a fast and quite responsive vim-clap. If you do not have the `+python` support, that's no problem.
 
 ## Build the dependency locally
 
@@ -74,10 +76,12 @@ Then use `:call clap#helper#build_python_dynamic_module()` to install the Python
 
 ## Download the prebuilt binary
 
+You can call `:call clap#helper#download_binary()` in Vim/NeoVim, or do it manually as follows.
+
 ### `maple`
 
-1. download the binary from the latest release https://github.com/liuchengxu/vim-clap/releases/ according to your system.
-2. rename to:
-    - unix: `maple`
-    - windows: `maple.exe`
-3. move `maple`/`maple.exe` to `bin` directory.
+1. Download the binary from the latest release https://github.com/liuchengxu/vim-clap/releases/ according to your system.
+2. Rename the downloaded binary to:
+    - Unix: `maple`
+    - Windows: `maple.exe`
+3. Move `maple`/`maple.exe` to `bin` directory. Don't forget to assign execute permission to `maple` via `chmod a+x bin/maple` if you are using a Unix system.
