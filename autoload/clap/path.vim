@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Functions for working with the file path.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 function! s:is_dir(pattern) abort
   return a:pattern[-1:] ==# '/'
 endfunction
@@ -77,3 +80,6 @@ function! clap#path#find_git_root_or_default(bufnr) abort
   let git_root = clap#path#find_git_root(a:bufnr)
   return empty(git_root) ? getcwd() : git_root
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
