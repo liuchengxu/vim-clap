@@ -47,6 +47,11 @@ function! s:hi_spinner() abort
   let vis_guibg = s:extract_or(s:input_default_hi_group, 'bg', 'gui', '#544a65')
   let fn_ctermfg = s:extract_or('Function', 'fg', 'cterm', '170')
   let fn_guifg = s:extract_or('Function', 'fg', 'gui', '#bc6ec5')
+
+  let spinner = g:clap#themes#material_design_dark#palette.spinner
+  execute 'hi ClapSpinner' join(values(map(copy(spinner), 'v:key."=".v:val')), ' ')
+  return
+
   execute printf(
         \ 'hi ClapSpinner guifg=%s ctermfg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
         \ fn_guifg,
@@ -187,6 +192,17 @@ function! s:init_hi_groups() abort
   hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
   hi ClapDefaultSelected         ctermfg=80  guifg=#5fd7d7 cterm=bold,underline gui=bold,underline
   hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
+
+  let current_selection = g:clap#themes#material_design_dark#palette.current_selection
+  execute 'hi ClapDefaultCurrentSelection' join(values(map(current_selection, 'v:key."=".v:val')), ' ')
+
+  let display = g:clap#themes#material_design_dark#palette.display
+  execute 'hi ClapDisplay' join(values(map(copy(display), 'v:key."=".v:val')), ' ')
+
+  let query = g:clap#themes#material_design_dark#palette.query
+  execute 'hi ClapQuery' join(values(map(copy(query), 'v:key."=".v:val')), ' ')
+
+  execute 'hi ClapInput' join(values(map(display, 'v:key."=".v:val')), ' ')
 
   hi default link ClapMatches Search
   hi default link ClapPreview ClapDefaultPreview

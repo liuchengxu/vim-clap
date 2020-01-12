@@ -562,11 +562,11 @@ function! clap#popup#open() abort
 
   " Currently the highlight can't be local in vim.
   " Remove this once vim support win local highlight.
-  redir => s:old_signcolumn
-  silent hi SignColumn
-  redir END
+  " redir => s:old_signcolumn
+  " silent hi SignColumn
+  " redir END
 
-  hi! link SignColumn ClapDisplay
+  " hi! link SignColumn ClapDisplay
 
   " TODO more roboust?
   augroup ClapEnsureAllClosed
