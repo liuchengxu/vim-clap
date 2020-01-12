@@ -69,6 +69,11 @@ let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfB
 " |          preview            |
 "  -----------------------------
 function! g:clap#floating_win#display.open() abort
+  " Check if the buffer is still valid as when switching between the sessions, it could become invalid.
+  if !nvim_buf_is_valid(s:display_bufnr)
+    let s:display_bufnr = nvim_create_buf(v:false, v:true)
+    let g:clap.display.bufnr = s:display_bufnr
+  endif
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
@@ -121,6 +126,9 @@ function! s:open_win_border_left() abort
     let opts.height = 1
     let opts.focusable = v:false
 
+    if !nvim_buf_is_valid(s:symbol_left_bufnr)
+      let s:symbol_left_bufnr = nvim_create_buf(v:false, v:true)
+    endif
     silent let s:symbol_left_winid = nvim_open_win(s:symbol_left_bufnr, v:false, opts)
 
     call setwinvar(s:symbol_left_winid, '&winhl', 'Normal:ClapSymbol')
@@ -139,6 +147,10 @@ function! g:clap#floating_win#spinner.open() abort
   let opts.height = 1
   let opts.focusable = v:false
 
+  if !nvim_buf_is_valid(s:spinner_bufnr)
+    let s:spinner_bufnr = nvim_create_buf(v:false, v:true)
+    let g:clap.spinner.bufnr = s:spinner_bufnr
+  endif
   silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:false, opts)
 
   call setwinvar(s:spinner_winid, '&winhl', 'Normal:ClapSpinner')
@@ -157,6 +169,10 @@ function! g:clap#floating_win#input.open() abort
 
   let g:clap#floating_win#input.width = opts.width
 
+  if !nvim_buf_is_valid(s:input_bufnr)
+    let s:input_bufnr = nvim_create_buf(v:false, v:true)
+    let g:clap.input.bufnr = s:input_bufnr
+  endif
   silent let s:input_winid = nvim_open_win(s:input_bufnr, v:true, opts)
 
   let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
@@ -180,6 +196,9 @@ function! s:open_win_border_right() abort
     let opts.width = s:symbol_width
     let opts.focusable = v:false
 
+    if !nvim_buf_is_valid(s:symbol_right_bufnr)
+      let s:symbol_right_bufnr = nvim_create_buf(v:false, v:true)
+    endif
     silent let s:symbol_right_winid = nvim_open_win(s:symbol_right_bufnr, v:false, opts)
 
     call setwinvar(s:symbol_right_winid, '&winhl', 'Normal:ClapSymbol')
@@ -211,6 +230,9 @@ function! s:create_preview_win(height) abort
   let opts.row += opts.height
   let opts.height = a:height
 
+  if !nvim_buf_is_valid(s:preview_bufnr)
+    let s:preview_bufnr = nvim_create_buf(v:false, v:true)
+  endif
   silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
 
   call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
