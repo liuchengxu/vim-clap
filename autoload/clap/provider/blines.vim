@@ -10,6 +10,8 @@ function! s:blines.sink(selected) abort
   let lnum = matchstr(a:selected, '^\s*\(\d\+\) ')
   let lnum = str2nr(trim(lnum))
   call g:clap.start.goto_win()
+  " Push the current position to the jumplist
+  normal! m'
   silent call cursor(lnum, 1)
   normal! ^zvzz
 endfunction
