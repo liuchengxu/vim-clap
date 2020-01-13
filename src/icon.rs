@@ -3,8 +3,9 @@ use std::path::Path;
 
 use lazy_static::lazy_static;
 
-pub const DEFAULT_ICON: &'static str = "";
-pub const DEFAULT_ICONIZED: &'static str = " ";
+pub const DEFAULT_ICON: &str = "";
+#[allow(dead_code)]
+pub const DEFAULT_ICONIZED: &str = " ";
 
 #[inline]
 fn icon_for(line: &str) -> &str {
@@ -15,12 +16,12 @@ fn icon_for(line: &str) -> &str {
             let ext: &str = &ext.to_lowercase();
             EXACTMATCH_MAP.get(ext)
         })
-        .unwrap_or(
+        .unwrap_or_else(|| {
             path.extension()
                 .and_then(std::ffi::OsStr::to_str)
                 .and_then(|ext| EXTENSION_MAP.get(ext))
-                .unwrap_or(&DEFAULT_ICON),
-        )
+                .unwrap_or(&DEFAULT_ICON)
+        })
 }
 
 pub fn prepend_icon(line: &str) -> String {
