@@ -171,7 +171,7 @@ function! s:should_check_offset() abort
   return g:clap_enable_icon && stridx(g:clap.input.get(), ' ') == -1
 endfunction
 
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files']
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history']
 let s:related_maple_providers = ['files', 'git_files']
 
 function! s:builtin_fuzzy_idx_offset() abort
