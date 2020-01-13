@@ -73,33 +73,29 @@ function! s:navigate(direction) abort
 
       if !g:clap_disable_bottom_top
         normal! 1gg
-        let g:__clap_display_curlnum = 1
       endif
     else
       call s:load_cache()
       normal! j
-      let g:__clap_display_curlnum += 1
     endif
 
   elseif curlnum == 1 && a:direction ==# 'up'
 
     if !g:clap_disable_bottom_top
       normal! G
-      let g:__clap_display_curlnum = lastlnum
     endif
 
   else
 
     if a:direction ==# 'down'
       normal! j
-      let g:__clap_display_curlnum +=1
     else
       normal! k
-      let g:__clap_display_curlnum -=1
     endif
 
   endif
 
+  let g:__clap_display_curlnum = line('.')
   call clap#sign#toggle_cursorline()
 endfunction
 
