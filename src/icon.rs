@@ -38,6 +38,10 @@ lazy_static! {
         m.insert("gulpfile.coffee", "");
         m.insert("mix.lock", "");
         m.insert("dropbox", "");
+        m.insert("go.mod", "");
+        m.insert("go.sum", "");
+        m.insert("readme", "");
+        m.insert("gemfile", "");
         m.insert(".ds_store", "");
         m.insert(".gitignore", "");
         m.insert(".gitconfig", "");
@@ -93,6 +97,7 @@ lazy_static! {
         m.insert("yml", "");
         m.insert("yaml", "");
         m.insert("toml", "");
+        m.insert("cfg", "");
         m.insert("bat", "");
         m.insert("jpg", "");
         m.insert("jpeg", "");
@@ -152,6 +157,7 @@ lazy_static! {
         m.insert("exs", "");
         m.insert("eex", "");
         m.insert("vim", "");
+        m.insert("vimrc", "");
         m.insert("ai", "");
         m.insert("psd", "");
         m.insert("psb", "");
@@ -163,7 +169,11 @@ lazy_static! {
         m.insert("swift", "");
         m.insert("xcplayground", "");
         m.insert("lock", "");
+        m.insert("log", "");
+        m.insert("plist", "况");
         m.insert("bin", "");
+        m.insert("dylib", "");
+        m.insert("so", "");
         m.insert("timestamp", "﨟");
         m
     };
