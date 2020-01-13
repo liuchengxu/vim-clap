@@ -877,7 +877,9 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
                                                               *clap-keybindings*
 
 
-- Use `Ctrl-j`/`Down` or `Ctrl-k`/`Up` to navigate the result list up and down.
+- Use `Ctrl-j`/`Down` or `Ctrl-k`/`Up` to navigate the result list up and down linewise.
+
+- Use `PageDown`/`PageUp` to scroll the result list down and up.
 
 - Use `Ctrl-a`/`Home` to go to the start of the input.
 
