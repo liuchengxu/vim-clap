@@ -6,17 +6,69 @@ use lazy_static::lazy_static;
 pub const DEFAULT_ICON: &'static str = "";
 pub const DEFAULT_ICONIZED: &'static str = " ";
 
-pub fn prepend_icon(line: &str) -> String {
+pub fn try_extension(line: &str) -> String {
     let icon = Path::new(line)
         .extension()
         .and_then(std::ffi::OsStr::to_str)
-        .map(|ext| ICONMAP.get(ext).unwrap_or(&DEFAULT_ICON))
+        .map(|ext| EXTENSION_MAP.get(ext).unwrap_or(&DEFAULT_ICON))
         .unwrap_or(&DEFAULT_ICON);
     format!("{} {}", icon, line)
 }
 
+#[inline]
+fn icon_for(line: &str) -> &str {
+    let path = Path::new(line);
+    path.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .and_then(|ext| {
+            let ext: &str = &ext.to_lowercase();
+            EXACTMATCH_MAP.get(ext).map(|x| *x)
+        })
+        .unwrap_or_else(|| {
+            path.extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .and_then(|ext| EXTENSION_MAP.get(ext))
+                .unwrap_or(&DEFAULT_ICON)
+        })
+}
+
+pub fn prepend_icon(line: &str) -> String {
+    format!("{} {}", icon_for(line), line)
+}
+
 lazy_static! {
-    pub static ref ICONMAP: HashMap<&'static str, &'static str> = {
+    pub static ref EXACTMATCH_MAP: HashMap<&'static str, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert("gruntfile.coffee", "");
+        m.insert("gruntfile.js", "");
+        m.insert("gruntfile.ls", "");
+        m.insert("gulpfile.coffee", "");
+        m.insert("gulpfile.js", "");
+        m.insert("gulpfile.ls", "");
+        m.insert("mix.lock", "");
+        m.insert("dropbox", "");
+        m.insert(".ds_store", "");
+        m.insert(".gitconfig", "");
+        m.insert(".gitignore", "");
+        m.insert(".gitlab-ci.yml", "");
+        m.insert(".bashrc", "");
+        m.insert(".zshrc", "");
+        m.insert("makefile", "");
+        m.insert(".vimrc", "");
+        m.insert(".gvimrc", "");
+        m.insert("_vimrc", "");
+        m.insert("_gvimrc", "");
+        m.insert(".bashprofile", "");
+        m.insert("favicon.ico", "");
+        m.insert("license", "");
+        m.insert("node_modules", "");
+        m.insert("react.jsx", "");
+        m.insert("procfile", "");
+        m.insert("dockerfile", "");
+        m.insert("docker-compose.yml", "");
+        m
+    };
+    pub static ref EXTENSION_MAP: HashMap<&'static str, &'static str> = {
         let mut m = HashMap::new();
         m.insert("styl", "");
         m.insert("sass", "");
@@ -114,6 +166,7 @@ lazy_static! {
         m.insert("pp", "");
         m.insert("vue", "﵂");
         m.insert("swift", "");
+        m.insert("lock", "");
         m.insert("xcplayground", "");
         m
     };

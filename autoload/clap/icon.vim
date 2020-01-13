@@ -109,7 +109,7 @@ let g:clap#icon#extensions = {
       \ 'jl'       : '',
       \ 'pp'       : '',
       \ 'vue'      : '﵂',
-      \ 'lock'     : 'ﲁ',
+      \ 'lock'     : '',
       \ 'swift'    : '',
       \ 'xcplayground' : ''
       \}
