@@ -60,6 +60,9 @@ inoremap <silent> <buffer> <C-k> <C-R>=clap#handler#navigate_result('up')<CR>
 inoremap <silent> <buffer> <Down> <C-R>=clap#handler#navigate_result('down')<CR>
 inoremap <silent> <buffer> <Up> <C-R>=clap#handler#navigate_result('up')<CR>
 
+inoremap <silent> <buffer> <PageDown> <C-R>=clap#handler#scroll('down')<CR>
+inoremap <silent> <buffer> <PageUp> <C-R>=clap#handler#scroll('up')<CR>
+
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
 call clap#util#define_open_action_mappings()

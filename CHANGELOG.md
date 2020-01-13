@@ -9,6 +9,7 @@ CHANGELOG
 - Provide the prebuilt binary support since [Release v0.4](https://github.com/liuchengxu/vim-clap/releases/tag/v0.4).
 - Add script for downloading the prebuilt binary easily and support downloading via plugin manager directly.([#222](https://github.com/github.com/liuchengxu/vim-clap/pull/222))
 - Push the current position to the jumplist for `blines` provider so that you can jump back using `<C-O>`.([#227](https://github.com/github.com/liuchengxu/vim-clap/pull/2277).
+- Add `<PageDown>` and `<PageUp>` keybindings. ([#232](https://github.com/liuchengxu/vim-clap/pull/232))
 
 ### Improved
 
