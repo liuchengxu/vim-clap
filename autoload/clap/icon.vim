@@ -94,6 +94,7 @@ let g:clap#icon#extensions = {
       \ 'fsi'      : '',
       \ 'rs'       : '',
       \ 'rlib'     : '',
+      \ 'rmeta'    : '',
       \ 'd'        : '',
       \ 'erl'      : '',
       \ 'hrl'      : '',
@@ -109,9 +110,12 @@ let g:clap#icon#extensions = {
       \ 'jl'       : '',
       \ 'pp'       : '',
       \ 'vue'      : '﵂',
-      \ 'lock'     : '',
       \ 'swift'    : '',
-      \ 'xcplayground' : ''
+      \ 'xcplayground' : '',
+      \ 'lock'     : '',
+      \ 'bin'      : '',
+      \ 'timestamp': '﨟',
+      \ 'txt': '',
       \}
 
 let g:clap#icon#exact_matches = {
