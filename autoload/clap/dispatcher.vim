@@ -83,7 +83,8 @@ if has('nvim')
       if s:has_converter
         let raw_output = map(raw_output, 's:Converter(v:val)')
       endif
-      call g:clap.display.append_lines(raw_output)
+      " call g:clap.display.append_lines(raw_output)
+      call s:set_or_append_lines(raw_output)
     endif
 
   endfunction
