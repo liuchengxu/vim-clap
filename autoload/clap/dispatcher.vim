@@ -17,11 +17,18 @@ function! s:jobstop() abort
   endif
 endfunction
 
-function! s:set_or_append_lines(lines) abort
-  if s:did_set_lines
-    call g:clap.display.append_lines(a:lines)
+function! s:put_raw_lines(lines) abort
+  if s:has_converter
+    let lines = map(a:lines, 's:Converter(v:val)')
   else
-    call g:clap.display.set_lines(a:lines)
+    let lines = a:lines
+  endif
+
+  " Set or append lines
+  if s:did_set_lines
+    call g:clap.display.append_lines(lines)
+  else
+    call g:clap.display.set_lines(lines)
     let s:did_set_lines = v:true
   endif
 endfunction
@@ -31,11 +38,11 @@ if has('nvim')
   if s:drop_cache
     " to_cache is a List.
     function! s:handle_cache(to_cache) abort
-      let s:droped_size += len(a:to_cache)
+      let s:dropped_size += len(a:to_cache)
     endfunction
 
     function! s:set_matches_count() abort
-      let matches_count = s:loaded_size + s:droped_size
+      let matches_count = s:loaded_size + s:dropped_size
       call clap#impl#refresh_matches_count(string(matches_count))
     endfunction
   else
@@ -52,40 +59,27 @@ if has('nvim')
   function! s:apply_append_or_cache(raw_output) abort
     let raw_output = a:raw_output
 
-    " Here are dragons!
-    let line_count = g:clap.display.line_count()
-
     " Reach the preload capacity for the first time
     " Append the minimum raw_output, the rest goes to the cache.
-    if len(raw_output) + line_count >= g:clap.display.preload_capacity
-      let start = g:clap.display.preload_capacity - line_count
+    if len(raw_output) + s:loaded_size >= g:clap.display.preload_capacity
+      " Here are dragons!
+      let start = g:clap.display.preload_capacity - s:loaded_size
       let to_append = raw_output[:start-1]
       let to_cache = raw_output[start :]
 
       " Discard?
       call s:handle_cache(to_cache)
 
-      " Converter
-      if s:has_converter
-        let to_append = map(to_append, 's:Converter(v:val)')
-      endif
-
-      call s:set_or_append_lines(to_append)
-
       let s:preload_is_complete = v:true
-      let s:loaded_size = line_count + len(to_append)
+      let s:loaded_size += len(to_append)
+
+      let to_put = to_append
     else
-      if s:loaded_size == 0
-        let s:loaded_size = len(raw_output)
-      else
-        let s:loaded_size = line_count + len(raw_output)
-      endif
-      if s:has_converter
-        let raw_output = map(raw_output, 's:Converter(v:val)')
-      endif
-      call g:clap.display.append_lines(raw_output)
+      let s:loaded_size += len(raw_output)
+      let to_put = raw_output
     endif
 
+    call s:put_raw_lines(to_put)
   endfunction
 
   function! s:append_output(data) abort
@@ -140,11 +134,11 @@ else
 
   if s:drop_cache
     function! s:handle_cache(_line_to_cache) abort
-      let s:droped_size += 1
+      let s:dropped_size += 1
     endfunction
 
     function! s:matched_count_when_preload_is_complete() abort
-      return s:loaded_size + s:droped_size
+      return s:loaded_size + s:dropped_size
     endfunction
   else
     function! s:handle_cache(line_to_cache) abort
@@ -161,17 +155,10 @@ else
       return
     endif
 
-    let to_append = a:preload
+    call s:put_raw_lines(a:preload)
 
-    if s:has_converter
-      let to_append = map(to_append, 's:Converter(v:val)')
-    endif
-
-    call s:set_or_append_lines(to_append)
-
-    let s:loaded_size = len(to_append)
+    let s:loaded_size = len(a:preload)
     let s:preload_is_complete = v:true
-    let s:did_preload = v:true
   endfunction
 
   function! s:update_indicator() abort
@@ -282,22 +269,19 @@ function! s:prepare_job_start(cmd) abort
 
   let s:cache_size = 0
   let s:loaded_size = 0
+  let s:dropped_size = 0
   let g:clap.display.cache = []
   let s:preload_is_complete = v:false
-  let s:droped_size = 0
   let s:did_set_lines = v:false
 
   let s:cmd = a:cmd
 
   let s:vim_output = []
 
-  if has_key(g:clap.provider._(), 'converter')
-    let s:has_converter = v:true
+  let s:has_converter = has_key(g:clap.provider._(), 'converter')
+  if s:has_converter
     let s:Converter = g:clap.provider._().converter
-  else
-    let s:has_converter = v:false
   endif
-
 endfunction
 
 function! s:job_strart_with_delay() abort
