@@ -188,7 +188,8 @@ pub fn prepend_grep_icon(line: &str) -> String {
     }
     let icon = RE
         .captures(line)
-        .and_then(|cap| cap.get(1).map(|m| icon_for(m.as_str())))
+        .and_then(|cap| cap.get(1))
+        .map(|m| icon_for(m.as_str()))
         .unwrap_or(DEFAULT_ICON);
     format!("{} {}", icon, line)
 }
