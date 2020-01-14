@@ -17,22 +17,20 @@ function! s:jobstop() abort
   endif
 endfunction
 
-function! s:set_or_append_lines(lines) abort
-  if s:did_set_lines
-    call g:clap.display.append_lines(a:lines)
-  else
-    call g:clap.display.set_lines(a:lines)
-    let s:did_set_lines = v:true
-  endif
-endfunction
-
 function! s:put_raw_lines(lines) abort
   if s:has_converter
     let lines = map(a:lines, 's:Converter(v:val)')
   else
     let lines = a:lines
   endif
-  call s:set_or_append_lines(lines)
+
+  " Set or append lines
+  if s:did_set_lines
+    call g:clap.display.append_lines(lines)
+  else
+    call g:clap.display.set_lines(lines)
+    let s:did_set_lines = v:true
+  endif
 endfunction
 
 if has('nvim')
