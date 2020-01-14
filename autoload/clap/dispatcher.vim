@@ -52,12 +52,11 @@ if has('nvim')
   function! s:apply_append_or_cache(raw_output) abort
     let raw_output = a:raw_output
 
-    " Here are dragons!
-    let line_count = g:clap.display.line_count()
-
     " Reach the preload capacity for the first time
     " Append the minimum raw_output, the rest goes to the cache.
-    if len(raw_output) + line_count >= g:clap.display.preload_capacity
+    if len(raw_output) + s:loaded_size >= g:clap.display.preload_capacity
+      " Here are dragons!
+      let line_count = g:clap.display.line_count()
       let start = g:clap.display.preload_capacity - line_count
       let to_append = raw_output[:start-1]
       let to_cache = raw_output[start :]
@@ -65,27 +64,21 @@ if has('nvim')
       " Discard?
       call s:handle_cache(to_cache)
 
-      " Converter
-      if s:has_converter
-        let to_append = map(to_append, 's:Converter(v:val)')
-      endif
-
-      call s:set_or_append_lines(to_append)
-
       let s:preload_is_complete = v:true
-      let s:loaded_size = line_count + len(to_append)
+      let s:loaded_size += len(to_append)
+
+      let to_handle = to_append
     else
-      if s:loaded_size == 0
-        let s:loaded_size = len(raw_output)
-      else
-        let s:loaded_size = line_count + len(raw_output)
-      endif
-      if s:has_converter
-        let raw_output = map(raw_output, 's:Converter(v:val)')
-      endif
-      call g:clap.display.append_lines(raw_output)
+      let s:loaded_size += len(raw_output)
+      let to_handle = raw_output
     endif
 
+    " Converter
+    if s:has_converter
+      let to_handle = map(to_handle, 's:Converter(v:val)')
+    endif
+
+    call s:set_or_append_lines(to_handle)
   endfunction
 
   function! s:append_output(data) abort
