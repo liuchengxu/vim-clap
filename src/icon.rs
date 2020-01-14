@@ -3,20 +3,70 @@ use std::path::Path;
 
 use lazy_static::lazy_static;
 
-pub const DEFAULT_ICON: &'static str = "";
-pub const DEFAULT_ICONIZED: &'static str = " ";
+pub const DEFAULT_ICON: &str = "";
+#[allow(dead_code)]
+pub const DEFAULT_ICONIZED: &str = " ";
+
+#[inline]
+fn icon_for(line: &str) -> &str {
+    let path = Path::new(line);
+    path.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .and_then(|ext| {
+            let ext: &str = &ext.to_lowercase();
+            EXACTMATCH_MAP.get(ext)
+        })
+        .unwrap_or_else(|| {
+            path.extension()
+                .and_then(std::ffi::OsStr::to_str)
+                .and_then(|ext| EXTENSION_MAP.get(ext))
+                .unwrap_or(&DEFAULT_ICON)
+        })
+}
 
 pub fn prepend_icon(line: &str) -> String {
-    let icon = Path::new(line)
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .map(|ext| ICONMAP.get(ext).unwrap_or(&DEFAULT_ICON))
-        .unwrap_or(&DEFAULT_ICON);
-    format!("{} {}", icon, line)
+    format!("{} {}", icon_for(line), line)
 }
 
 lazy_static! {
-    pub static ref ICONMAP: HashMap<&'static str, &'static str> = {
+    pub static ref EXACTMATCH_MAP: HashMap<&'static str, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert("gruntfile.js", "");
+        m.insert("gruntfile.ls", "");
+        m.insert("gruntfile.coffee", "");
+        m.insert("gulpfile.js", "");
+        m.insert("gulpfile.ls", "");
+        m.insert("gulpfile.coffee", "");
+        m.insert("mix.lock", "");
+        m.insert("dropbox", "");
+        m.insert("go.mod", "");
+        m.insert("go.sum", "");
+        m.insert("readme", "");
+        m.insert("gemfile", "");
+        m.insert(".ds_store", "");
+        m.insert(".gitignore", "");
+        m.insert(".gitconfig", "");
+        m.insert(".editorconfig", "");
+        m.insert(".gitlab-ci.yml", "");
+        m.insert(".zshrc", "");
+        m.insert(".bashrc", "");
+        m.insert("makefile", "");
+        m.insert(".vimrc", "");
+        m.insert("_vimrc", "");
+        m.insert(".gvimrc", "");
+        m.insert("_gvimrc", "");
+        m.insert("favicon.ico", "");
+        m.insert(".bashprofile", "");
+        m.insert("license", "");
+        m.insert("react.jsx", "");
+        m.insert("node_modules", "");
+        m.insert("procfile", "");
+        m.insert("rust-toolchain", "");
+        m.insert("dockerfile", "");
+        m.insert("docker-compose.yml", "");
+        m
+    };
+    pub static ref EXTENSION_MAP: HashMap<&'static str, &'static str> = {
         let mut m = HashMap::new();
         m.insert("styl", "");
         m.insert("sass", "");
@@ -29,6 +79,7 @@ lazy_static! {
         m.insert("less", "");
         m.insert("md", "");
         m.insert("markdown", "");
+        m.insert("txt", "");
         m.insert("rmd", "");
         m.insert("json", "");
         m.insert("js", "");
@@ -47,6 +98,7 @@ lazy_static! {
         m.insert("yml", "");
         m.insert("yaml", "");
         m.insert("toml", "");
+        m.insert("cfg", "");
         m.insert("bat", "");
         m.insert("jpg", "");
         m.insert("jpeg", "");
@@ -98,6 +150,7 @@ lazy_static! {
         m.insert("fsi", "");
         m.insert("rs", "");
         m.insert("rlib", "");
+        m.insert("rmeta", "");
         m.insert("d", "");
         m.insert("erl", "");
         m.insert("hrl", "");
@@ -105,6 +158,7 @@ lazy_static! {
         m.insert("exs", "");
         m.insert("eex", "");
         m.insert("vim", "");
+        m.insert("vimrc", "");
         m.insert("ai", "");
         m.insert("psd", "");
         m.insert("psb", "");
@@ -115,6 +169,13 @@ lazy_static! {
         m.insert("vue", "﵂");
         m.insert("swift", "");
         m.insert("xcplayground", "");
+        m.insert("lock", "");
+        m.insert("log", "");
+        m.insert("plist", "况");
+        m.insert("bin", "");
+        m.insert("dylib", "");
+        m.insert("so", "");
+        m.insert("timestamp", "﨟");
         m
     };
 }
