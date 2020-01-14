@@ -56,8 +56,7 @@ if has('nvim')
     " Append the minimum raw_output, the rest goes to the cache.
     if len(raw_output) + s:loaded_size >= g:clap.display.preload_capacity
       " Here are dragons!
-      let line_count = g:clap.display.line_count()
-      let start = g:clap.display.preload_capacity - line_count
+      let start = g:clap.display.preload_capacity - s:loaded_size
       let to_append = raw_output[:start-1]
       let to_cache = raw_output[start :]
 
