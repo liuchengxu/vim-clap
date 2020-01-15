@@ -42,7 +42,7 @@ function! s:prepare_opts(row, col, width, height, ...) abort
   return extend(base_opts, get(a:000, 0, {}))
 endfunction
 
-let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
+let s:layout_keys = ['width', 'height', 'row', 'col', 'relative', 'win']
 
 function! s:validate_layout(layout) abort
   for key in keys(a:layout)
