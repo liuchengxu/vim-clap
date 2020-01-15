@@ -57,15 +57,15 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: maple
-            asset_name: maple-${{ steps.get_version.outputs.VERSION }}-x86_64-unknown-linux-gnu
+            asset_name: maple-x86_64-unknown-linux-gnu
 
           - os: windows-latest
             artifact_name: maple.exe
-            asset_name: maple-${{ steps.get_version.outputs.VERSION }}-x86_64-pc-windows-msvc
+            asset_name: maple-x86_64-pc-windows-msvc
 
           - os: macos-latest
             artifact_name: maple
-            asset_name: maple-${{ steps.get_version.outputs.VERSION }}-x86_64-apple-darwin
+            asset_name: maple-x86_64-apple-darwin
 
     steps:
     - uses: hecrj/setup-rust-action@master

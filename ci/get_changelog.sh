@@ -15,7 +15,7 @@ cur_header="[${cur_tag:1:8}]"
 
 # FIXME get prev_tag in GA
 # prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1 --max-count=1)")
-prev_tag="v0.3"
+prev_tag="v0.4"
 prev_header="[${prev_tag:1:8}]"
 
 begin=$(grep -Fn "$cur_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')

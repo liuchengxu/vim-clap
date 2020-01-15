@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.5] 2019-01-15
+
 ### Added
 
 - Add icon support for `history` provider.
