@@ -1,3 +1,9 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+" Description: Custom window layout.
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 let s:is_nvim = has('nvim')
 let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
 let s:default_layout = {
@@ -87,3 +93,6 @@ else
     call clap#popup#reconfigure_display_opts()
   endfunction
 endif
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
