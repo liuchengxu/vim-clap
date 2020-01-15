@@ -31,21 +31,6 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-function! s:prepare_opts(row, col, width, height, ...) abort
-  let base_opts = {
-        \ 'row': a:row,
-        \ 'col': a:col,
-        \ 'width': a:width,
-        \ 'height': a:height,
-        \ 'relative': 'editor',
-        \ }
-  return extend(base_opts, get(a:000, 0, {}))
-endfunction
-
-function! clap#floating_win#reconfigure_display_opts() abort
-  let s:display_opts = clap#layout#calc()
-endfunction
-
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
 

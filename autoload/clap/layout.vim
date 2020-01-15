@@ -46,3 +46,17 @@ function! clap#layout#calc() abort
           \ }
   endif
 endfunction
+
+function! clap#layout#on_resize() abort
+endfunction
+
+if s:is_nvim
+  function! clap#layout#on_resize() abort
+    " FIXME resize if vim-clap is visible
+    call clap#floating_win#reconfigure_display_opts()
+  endfunction
+else
+  function! clap#layout#on_resize() abort
+    call clap#popup#reconfigure_display_opts()
+  endfunction
+endif

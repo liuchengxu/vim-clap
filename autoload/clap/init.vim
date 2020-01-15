@@ -202,16 +202,6 @@ function! s:init_hi_groups() abort
   call s:init_fuzzy_match_hl_groups()
 endfunction
 
-if s:is_nvim
-  function! s:reconfigure_display_opts() abort
-    call clap#floating_win#reconfigure_display_opts()
-  endfunction
-else
-  function! s:reconfigure_display_opts() abort
-    call clap#popup#reconfigure_display_opts()
-  endfunction
-endif
-
 function! clap#init#() abort
   call clap#api#bake()
   call s:init_hi_groups()
@@ -221,7 +211,7 @@ function! clap#init#() abort
   if !exists('#ClapResize')
     augroup ClapResize
       autocmd!
-      autocmd VimResized * call s:reconfigure_display_opts()
+      autocmd VimResized * call clap#layout#on_resize()
     augroup END
   endif
 endfunction
