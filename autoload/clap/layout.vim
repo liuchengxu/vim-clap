@@ -57,25 +57,20 @@ else
   function! clap#layout#calc() abort
     if exists('g:clap_layout')
       if g:clap_layout.relative ==# 'win'
-        let col = win_screenpos(g:clap.start.winid)[1]
+        let [row, col] = win_screenpos(g:clap.start.winid)
         let width = winwidth(g:clap.start.winid)
         let height = winheight(g:clap.start.winid)
-        return {
-              \ 'width': s:calc(width, g:clap_layout.width),
-              \ 'height': s:calc(height, g:clap_layout.height),
-              \ 'row': s:calc(height, g:clap_layout.row),
-              \ 'col': s:calc(width, g:clap_layout.col) + col,
-              \ }
       else
+        let [row, col] = [0, 0]
         let width = &columns
         let height = &lines
-        return {
-              \ 'width': s:calc(width, g:clap_layout.width),
-              \ 'height': s:calc(height, g:clap_layout.height),
-              \ 'row': s:calc(height, g:clap_layout.row),
-              \ 'col': s:calc(width, g:clap_layout.col),
-              \ }
       endif
+      return {
+            \ 'width': s:calc(width, g:clap_layout.width),
+            \ 'height': s:calc(height, g:clap_layout.height),
+            \ 'row': s:calc(height, g:clap_layout.row) + row,
+            \ 'col': s:calc(width, g:clap_layout.col) + col,
+            \ }
     else
       return s:default_layout
     endif
