@@ -42,9 +42,9 @@ main() {
   arch=$(uname -sm)
   case "${arch}" in
       "Linux x86_64")
-        try_download "$APP"-"$version"-x86_64-unknown-linux-gnu ;;
+        try_download "$APP"-x86_64-unknown-linux-gnu ;;
       "Darwin x86_64")
-        try_download "$APP"-"$version"-x86_64-apple-darwin ;;
+        try_download "$APP"-x86_64-apple-darwin ;;
       *)
         echo "No prebuilt maple binary available for ${arch}."
         exit 1

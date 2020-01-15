@@ -2,7 +2,7 @@
 
 $version = 'v0.5'
 $APP = 'maple'
-$url = "https://github.com/liuchengxu/vim-clap/releases/download/$version/$APP-$version-"
+$url = "https://github.com/liuchengxu/vim-clap/releases/download/$version/$APP-"
 $output = "$PSScriptRoot\bin\$APP.exe"
 
 if ([Environment]::Is64BitOperatingSystem) {
