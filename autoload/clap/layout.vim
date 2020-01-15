@@ -88,16 +88,11 @@ function! clap#layout#calc() abort
   endif
 endfunction
 
-if s:is_nvim
-  function! clap#layout#on_resize() abort
-    " FIXME resize if vim-clap is visible
-    call clap#floating_win#reconfigure_display_opts()
-  endfunction
-else
-  function! clap#layout#on_resize() abort
-    call clap#popup#reconfigure_display_opts()
-  endfunction
-endif
+function! clap#layout#on_resize() abort
+  " FIXME resize window if vim-clap is visible
+  " The easiest way is to close and reopen vim-clap, so I'll leave this for
+  " now.
+endfunction
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
