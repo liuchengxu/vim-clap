@@ -21,7 +21,7 @@ A clear and concise description of what the bug is.
 
 **Clap debug**
 
-<!-- Paste the output of :Clap debug here, or try :Vista debug+. -->
+<!-- Paste the output of :Clap debug here, or try :Clap debug+. -->
 
 ```
 ```
