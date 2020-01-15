@@ -19,6 +19,13 @@ _Instructions: Replace the template text and remove irrelevant text (including t
 **Describe the bug**
 A clear and concise description of what the bug is.
 
+**Clap debug**
+
+<!-- Paste the output of :Clap debug here, or try :Vista debug+. -->
+
+```
+```
+
 **To Reproduce**
 Steps to reproduce the behavior:
 
