@@ -42,44 +42,8 @@ function! s:prepare_opts(row, col, width, height, ...) abort
   return extend(base_opts, get(a:000, 0, {}))
 endfunction
 
-let s:layout_keys = ['width', 'height', 'row', 'col', 'relative', 'win']
-
-function! s:validate_layout(layout) abort
-  for key in keys(a:layout)
-    if index(s:layout_keys, key) < 0
-      call g:clap.abort('Invalid entry in g:clap_layout:'.key)
-    endif
-  endfor
-endfunction
-
-function! s:prepare_display_opts() abort
-  if exists('g:clap_layout')
-    call s:validate_layout(g:clap_layout)
-    if g:clap_layout.relative ==# 'win'
-      let winwidth = winwidth(g:clap.start.winid)
-      let winheight = winheight(g:clap.start.winid)
-
-      let g:clap_layout.width = winwidth * 2 / 3
-      let g:clap_layout.height = winheight / 3
-      let g:clap_layout.row = winheight / 3
-      let g:clap_layout.col = winwidth / 6
-      let g:clap_layout.win = g:clap.start.winid
-    endif
-
-    return g:clap_layout
-  else
-    return {
-          \ 'width': &columns * 2 / 3,
-          \ 'height': &lines  * 1 / 3,
-          \ 'row': &lines / 3 - 1,
-          \ 'col': &columns * 2 / 3 / 4,
-          \ 'relative': 'editor',
-          \ }
-  endif
-endfunction
-
 function! clap#floating_win#reconfigure_display_opts() abort
-  let s:display_opts = s:prepare_display_opts()
+  let s:display_opts = clap#layout#calc()
 endfunction
 
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
@@ -99,7 +63,7 @@ function! g:clap#floating_win#display.open() abort
     let g:clap.display.bufnr = s:display_bufnr
   endif
 
-  let s:display_opts = s:prepare_display_opts()
+  let s:display_opts = clap#layout#calc()
 
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
