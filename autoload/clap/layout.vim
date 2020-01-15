@@ -84,7 +84,7 @@ function! clap#layout#calc() abort
   endif
 endfunction
 
-function! clap#layout#on_resize() abort
+function! clap#layout#on_resized() abort
   " FIXME resize window if vim-clap is visible
   " The easiest way is to close and reopen vim-clap, so I'll leave this for
   " now.
