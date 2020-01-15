@@ -39,7 +39,6 @@ endfunction
 if s:is_nvim
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
-    echom string(layout)
     if has_key(layout, 'relative') && layout.relative ==# 'win'
       let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
@@ -75,9 +74,6 @@ else
           \ }
   endfunction
 endif
-
-function! clap#layout#on_resize() abort
-endfunction
 
 function! clap#layout#calc() abort
   if exists('g:clap_layout')
