@@ -30,6 +30,10 @@ else
   let s:maple_filter_cmd = v:null
 endif
 
+function! clap#maple#info() abort
+  return s:maple_filter_cmd
+endfunction
+
 function! clap#maple#is_available() abort
   return s:maple_filter_cmd isnot v:null
 endfunction
