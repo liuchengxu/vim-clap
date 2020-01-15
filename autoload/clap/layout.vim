@@ -7,15 +7,15 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
 let s:default_layout = {
-          \ 'width': &columns * 2 / 3,
-          \ 'height': &lines  * 1 / 3,
-          \ 'row': &lines / 3,
-          \ 'col': &columns / 6,
+          \ 'width': '67%',
+          \ 'height': '33%',
+          \ 'row': '33%',
+          \ 'col': '17%',
           \ }
 
 if s:is_nvim
   call add(s:layout_keys, 'win')
-  call extend(s:default_layout, {'relative': 'editor'})
+  let s:default_layout.relative ='editor'
 endif
 
 function! s:validate(layout) abort
@@ -32,29 +32,33 @@ function! s:calc(origin, size) abort
   elseif a:size =~# '%$'
     return eval(a:size[:-2].'*'.a:origin.'/100')
   else
-    call g:clap.abort('Invalid value for g:clap_layout')
+    call g:clap.abort(printf('Invalid value %s for g:clap_layout, allowed: Number or "Number%"', a:size))
   endif
 endfunction
 
 if s:is_nvim
   function! s:user_layout() abort
-    if g:clap_layout.relative ==# 'win'
+    let layout = extend(copy(s:default_layout), g:clap_layout)
+    echom string(layout)
+    if has_key(layout, 'relative') && layout.relative ==# 'win'
       let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
     else
       let [width, height] = [&columns, &lines]
       let opts = {'relative': 'editor'}
     endif
+
     return extend(opts, {
-          \ 'width': s:calc(width, g:clap_layout.width),
-          \ 'height': s:calc(height, g:clap_layout.height),
-          \ 'row': s:calc(height, g:clap_layout.row),
-          \ 'col': s:calc(width, g:clap_layout.col),
+          \ 'width': s:calc(width, layout.width),
+          \ 'height': s:calc(height, layout.height),
+          \ 'row': s:calc(height, layout.row),
+          \ 'col': s:calc(width, layout.col),
           \ })
   endfunction
 else
   function! s:user_layout() abort
-    if g:clap_layout.relative ==# 'win'
+    let layout = extend(copy(s:default_layout), g:clap_layout)
+    if has_key(layout, 'relative') && layout.relative ==# 'win'
       let [row, col] = win_screenpos(g:clap.start.winid)
       let width = winwidth(g:clap.start.winid)
       let height = winheight(g:clap.start.winid)
@@ -64,10 +68,10 @@ else
       let height = &lines
     endif
     return {
-          \ 'width': s:calc(width, g:clap_layout.width),
-          \ 'height': s:calc(height, g:clap_layout.height),
-          \ 'row': s:calc(height, g:clap_layout.row) + row,
-          \ 'col': s:calc(width, g:clap_layout.col) + col,
+          \ 'width': s:calc(width, layout.width),
+          \ 'height': s:calc(height, layout.height),
+          \ 'row': s:calc(height, layout.row) + row,
+          \ 'col': s:calc(width, layout.col) + col,
           \ }
   endfunction
 endif
@@ -77,6 +81,7 @@ endfunction
 
 function! clap#layout#calc() abort
   if exists('g:clap_layout')
+    call s:validate(g:clap_layout)
     return s:user_layout()
   else
     return s:default_layout
