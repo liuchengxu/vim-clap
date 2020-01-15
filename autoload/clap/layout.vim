@@ -3,8 +3,8 @@ let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
 let s:default_layout = {
           \ 'width': &columns * 2 / 3,
           \ 'height': &lines  * 1 / 3,
-          \ 'row': &lines / 3 - 1,
-          \ 'col': &columns * 2 / 3 / 4,
+          \ 'row': &lines / 3,
+          \ 'col': &columns / 6,
           \ }
 
 if s:is_nvim

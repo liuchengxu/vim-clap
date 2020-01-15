@@ -403,6 +403,25 @@ g:clap_provider_alias                                    *g:clap_provider_alias*
   provider name.
 
 
+g:clap_layout                                                    *g:clap_layout*
+
+  Type: |Dict|
+  Default: `{'width': &columns*2/3, 'height': &lines/3, 'row': &lines/3, 'col': &columns/6}`
+
+  This variable controls the size and position of vim-clap window. The postion
+  is relative to the editor by default. The value can be a |Number| which
+  means the size is fixed or use `[number]%` for a relative size.
+
+  If you want to make the window relative to the current window:
+>
+  let g:clap_layout = {
+          \ 'width': '67%',
+          \ 'height': '33%',
+          \ 'row': '33%',
+          \ 'col': '17%',
+          \ 'relative': 'win',
+          \ }
+
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*
 
   Type: |Number|
