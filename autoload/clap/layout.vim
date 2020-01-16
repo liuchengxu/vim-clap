@@ -15,13 +15,13 @@ let s:default_layout = {
 
 if s:is_nvim
   call add(s:layout_keys, 'win')
-  let s:default_layout.relative ='editor'
+  let s:default_layout.relative = 'editor'
 endif
 
 function! s:validate(layout) abort
   for key in keys(a:layout)
     if index(s:layout_keys, key) < 0
-      call g:clap.abort('Invalid entry in g:clap_layout:'.key)
+      call g:clap.abort('Invalid entry: '.key.' for g:clap_layout')
     endif
   endfor
 endfunction
