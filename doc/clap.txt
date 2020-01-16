@@ -410,13 +410,20 @@ g:clap_layout                                                    *g:clap_layout*
 
   This variable controls the size and position of vim-clap window. The postion
   is relative to the editor by default. The value can be a |Number| which
-  means the size is fixed or use `[number]%` for a relative size.
+  means the window size is fixed or use `[number]%` for a relative size.
+
+  If you change the value of  `width`, normally you'll have to tweak `col` too,
+  otherwise the UI could be weired as vim-clap uses multiple floating_win/popups
+  at the same time.
 
   If you want to make the window relative to the current window:
 >
-  let g:clap_layout = {
-          \ 'relative': 'win',
-          \ }
+  let g:clap_layout = { 'relative': 'win' }
+<
+  Make the width wider:
+>
+  let g:clap_layout = { 'relative': 'win', 'width': '95%', 'col': '5%' }
+
 
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*
 
@@ -666,7 +673,7 @@ g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
 g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold*
 
   Type: |Number|
-  Default: `10000`(no Rust extension), `100000`(with Rust extension)
+  Default: `10000`(no Python dylib), `100000`(with Python dylib)
 
   Vim-clap will try to spawn a asynchronous job to get the total possible
   results on entering the main window, instead of dispatching with the
@@ -706,12 +713,12 @@ ClapPreview                                                         *ClapPreview
 
 ClapDefaultSelected                                          *ClapDefaultSelected*
 
-  `hi ClapDefaultSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7`
+  See `:hi ClapDefaultSelected` .
 
 
 ClapDefaultCurrentSelection                          *ClapDefaultCurrentSelection*
 
-  `hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7`
+  See `:hi ClapDefaultCurrentSelection` .
 
 
 ClapSelected                                                       *ClapSelected*
@@ -738,12 +745,6 @@ ClapMatches                                                          *ClapMatche
 ClapMatches[1-8]                                                 *ClapMatches[1-8]*
 
   `ClapMatches[1-8]` will be used for the matched substrings in the substring mode.
-
-
-ClapFuzzyMatches[1-12]                                     *ClapFuzzyMatches[1-12]*
-
-  `ClapFuzzyMatches[1-12]` will be used for highlighting the fuzzy matched
-  items.
 
 
 ClapNoMatchesFound                                        *ClapNClapNoMatchesFound*
