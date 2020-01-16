@@ -79,7 +79,7 @@ function! clap#debugging#info_to_clipboard() abort
 
   let @+ = l:output
   echohl Type     | echo '[vim-clap] '                | echohl NONE
-  echohl Function | echon 'Clap info'                 | echohl NONE
+  echohl Function | echon 'Clap debug info'           | echohl NONE
   echohl Normal   | echon ' copied to your clipboard' | echohl NONE
 endfunction
 
