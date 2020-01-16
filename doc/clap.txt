@@ -409,20 +409,21 @@ g:clap_layout                                                    *g:clap_layout*
   Default: `{'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%'}`
 
   This variable controls the size and position of vim-clap window. The postion
-  is relative to the editor by default. The value can be a |Number| which
+  is relative to the current window by default. The value can be a |Number| which
   means the window size is fixed or use `[number]%` for a relative size.
 
   If you change the value of  `width`, normally you'll have to tweak `col` too,
   otherwise the UI could be weired as vim-clap uses multiple floating_win/popups
   at the same time.
 
-  If you want to make the window relative to the current window:
+  If you want to make the window relative to the whole editor instead of
+  current window:
 >
-  let g:clap_layout = { 'relative': 'win' }
+  let g:clap_layout = { 'relative': 'editor' }
 <
   Make the width wider:
 >
-  let g:clap_layout = { 'relative': 'win', 'width': '95%', 'col': '5%' }
+  let g:clap_layout = { 'width': '95%', 'col': '5%' }
 
 
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*

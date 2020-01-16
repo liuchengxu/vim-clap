@@ -54,6 +54,18 @@ if s:is_nvim
           \ 'col': s:calc(width, layout.col),
           \ })
   endfunction
+
+  function! s:calc_default() abort
+    let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
+    return {
+          \ 'width': s:calc(width, s:default_layout.width),
+          \ 'height': s:calc(height, s:default_layout.height),
+          \ 'row': s:calc(height, s:default_layout.row),
+          \ 'col': s:calc(width, s:default_layout.col),
+          \ 'win': g:clap.start.winid,
+          \ 'relative': 'win',
+          \ }
+  endfunction
 else
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
@@ -73,6 +85,17 @@ else
           \ 'col': s:calc(width, layout.col) + col,
           \ }
   endfunction
+
+  function! s:calc_default() abort
+    let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
+    let [row, col] = win_screenpos(g:clap.start.winid)
+    return {
+          \ 'width': s:calc(width, s:default_layout.width),
+          \ 'height': s:calc(height, s:default_layout.height),
+          \ 'row': s:calc(height, s:default_layout.row) + row,
+          \ 'col': s:calc(width, s:default_layout.col) + col,
+          \ }
+  endfunction
 endif
 
 function! clap#layout#calc() abort
@@ -80,7 +103,7 @@ function! clap#layout#calc() abort
     call s:validate(g:clap_layout)
     return s:user_layout()
   else
-    return s:default_layout
+    return s:calc_default()
   endif
 endfunction
 
