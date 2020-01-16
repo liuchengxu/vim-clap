@@ -8,7 +8,7 @@ let s:providers = {}
 
 function! s:providers.sink(selected) abort
   let provider = matchstr(a:selected, '^\(.*\)\ze:')
-  " a sink for "Clap _" (dispatch to other builtin clap providers).
+  " a sink for "Clap providers" (dispatch to other builtin clap providers).
   call timer_start(0, {-> clap#_for(provider)})
 endfunction
 
@@ -31,7 +31,7 @@ function! s:providers.source() abort
   return s:global_source
 endfunction
 
-let s:providers.syntax = 'clap_global'
+let s:providers.syntax = 'clap_providers'
 let g:clap#provider#providers# = s:providers
 
 let &cpoptions = s:save_cpo

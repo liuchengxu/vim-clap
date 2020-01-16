@@ -128,7 +128,7 @@ function! clap#_init() abort
   call g:clap.provider.init_display_win()
 
   " Ensure the filetype is empty on init.
-  " Each provider can set its own filetype for the highlight purpose.
+  " Each provider can set its own syntax for the highlight purpose.
   call g:clap.display.setbufvar('&filetype', '')
 endfunction
 
