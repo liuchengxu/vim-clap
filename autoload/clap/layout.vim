@@ -39,12 +39,12 @@ endfunction
 if s:is_nvim
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
-    if has_key(layout, 'relative') && layout.relative ==# 'win'
-      let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
-      let opts = {'relative': 'win', 'win': g:clap.start.winid}
-    else
+    if has_key(layout, 'relative') && layout.relative ==# 'editor'
       let [width, height] = [&columns, &lines]
       let opts = {'relative': 'editor'}
+    else
+      let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
+      let opts = {'relative': 'win', 'win': g:clap.start.winid}
     endif
 
     return extend(opts, {
@@ -69,14 +69,14 @@ if s:is_nvim
 else
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
-    if has_key(layout, 'relative') && layout.relative ==# 'win'
-      let [row, col] = win_screenpos(g:clap.start.winid)
-      let width = winwidth(g:clap.start.winid)
-      let height = winheight(g:clap.start.winid)
-    else
+    if has_key(layout, 'relative') && layout.relative ==# 'editor'
       let [row, col] = [0, 0]
       let width = &columns
       let height = &lines
+    else
+      let [row, col] = win_screenpos(g:clap.start.winid)
+      let width = winwidth(g:clap.start.winid)
+      let height = winheight(g:clap.start.winid)
     endif
     return {
           \ 'width': s:calc(width, layout.width),
