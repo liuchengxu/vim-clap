@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Improved
+
+- Refine `:Clap debug` and require it in the bug report. ([#241](https://github.com/liuchengxu/vim-clap/pull/241))
+
 ## [0.5] 2019-01-15
 
 ### Added

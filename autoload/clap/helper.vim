@@ -41,6 +41,7 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
     endif
   endif
   let registered = exists('g:clap') ? keys(g:clap.registrar) : []
+  let registered += ['install-binary', 'install-binary!', 'debug', 'debug+']
   return filter(uniq(sort(g:clap#builtin_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
