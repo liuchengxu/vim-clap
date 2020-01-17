@@ -10,14 +10,19 @@ function! s:blines.sink(selected) abort
   let lnum = matchstr(a:selected, '^\s*\(\d\+\) ')
   let lnum = str2nr(trim(lnum))
   call g:clap.start.goto_win()
+  " Push the current position to the jumplist
+  normal! m'
   silent call cursor(lnum, 1)
   normal! ^zvzz
 endfunction
 
-function! s:blines.source() abort
-  let lines = g:clap.start.get_lines()
+function! clap#provider#blines#format(lines) abort
   let linefmt = '%4d %s'
-  return map(lines, 'printf(linefmt, v:key + 1, v:val)')
+  return map(a:lines, 'printf(linefmt, v:key + 1, v:val)')
+endfunction
+
+function! s:blines.source() abort
+  return clap#provider#blines#format(g:clap.start.get_lines())
 endfunction
 
 function! s:blines.on_move() abort

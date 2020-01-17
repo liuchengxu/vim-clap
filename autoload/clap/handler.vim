@@ -48,6 +48,18 @@ function! s:load_cache() abort
   call g:clap.display.append_lines_uncheck(to_append)
 endfunction
 
+function! s:scroll(direction) abort
+  let scroll_lines = getwinvar(g:clap.display.winid, '&scroll')
+  if a:direction ==# 'down'
+    execute 'normal!' scroll_lines.'j'
+  else
+    execute 'normal!' scroll_lines.'k'
+  endif
+
+  let g:__clap_display_curlnum = line('.')
+  call clap#sign#toggle_cursorline()
+endfunction
+
 function! s:navigate(direction) abort
   let curlnum = line('.')
   let lastlnum = line('$')
@@ -61,33 +73,29 @@ function! s:navigate(direction) abort
 
       if !g:clap_disable_bottom_top
         normal! 1gg
-        let g:__clap_display_curlnum = 1
       endif
     else
       call s:load_cache()
       normal! j
-      let g:__clap_display_curlnum += 1
     endif
 
   elseif curlnum == 1 && a:direction ==# 'up'
 
     if !g:clap_disable_bottom_top
       normal! G
-      let g:__clap_display_curlnum = lastlnum
     endif
 
   else
 
     if a:direction ==# 'down'
       normal! j
-      let g:__clap_display_curlnum +=1
     else
       normal! k
-      let g:__clap_display_curlnum -=1
     endif
 
   endif
 
+  let g:__clap_display_curlnum = line('.')
   call clap#sign#toggle_cursorline()
 endfunction
 
@@ -100,17 +108,24 @@ function! s:on_move_safe() abort
 endfunction
 
 if has('nvim')
-  function! clap#handler#navigate_result(direction) abort
+  function! s:wrap_insert_move(Move, args) abort
     call g:clap.display.goto_win()
 
-    call s:navigate(a:direction)
+    call call(a:Move, a:args)
 
     call g:clap.input.goto_win()
-
     call s:on_move_safe()
 
     " Must return '' explicitly
     return ''
+  endfunction
+
+  function! clap#handler#navigate_result(direction) abort
+    return s:wrap_insert_move(function('s:navigate'), [a:direction])
+  endfunction
+
+  function! clap#handler#scroll(direction) abort
+    return s:wrap_insert_move(function('s:scroll'), [a:direction])
   endfunction
 
   function! clap#handler#internal_navigate(direction) abort
@@ -131,6 +146,9 @@ else
     call win_execute(g:clap.display.winid, 'call s:navigate(a:direction)')
   endfunction
 
+  function! clap#handler#scroll(direction) abort
+    call win_execute(g:clap.display.winid, 'call s:scroll(a:direction)')
+  endfunction
 endif
 
 function! clap#handler#sink() abort

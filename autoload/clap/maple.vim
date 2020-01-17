@@ -30,6 +30,10 @@ else
   let s:maple_filter_cmd = v:null
 endif
 
+function! clap#maple#info() abort
+  return s:maple_filter_cmd
+endfunction
+
 function! clap#maple#is_available() abort
   return s:maple_filter_cmd isnot v:null
 endfunction
@@ -149,6 +153,16 @@ function! s:apply_start(_timer) abort
   call s:start_maple()
 endfunction
 
+function! s:add_global_flag_and_option(cmd) abort
+  let cmd = a:cmd.' --number '.g:clap.display.preload_capacity
+
+  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
+    let cmd .= ' --enable-icon'
+  endif
+
+  return cmd
+endfunction
+
 function! clap#maple#job_start(cmd) abort
   if s:job_timer != -1
     call timer_stop(s:job_timer)
@@ -156,11 +170,7 @@ function! clap#maple#job_start(cmd) abort
 
   call clap#maple#stop()
 
-  let s:cmd = a:cmd.' --number '.g:clap.display.preload_capacity
-
-  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let s:cmd .= ' --enable-icon'
-  endif
+  let s:cmd = s:add_global_flag_and_option(a:cmd)
 
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
@@ -192,7 +202,7 @@ function! clap#maple#execute(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#grep(bare_cmd, query) abort
+function! clap#maple#grep(bare_cmd, query, enable_icon) abort
   let cmd_dir = clap#rooter#working_dir()
   let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
         \ s:empty_filter_cmd,
@@ -200,6 +210,9 @@ function! clap#maple#grep(bare_cmd, query) abort
         \ a:query,
         \ cmd_dir,
         \ )
+  if a:enable_icon
+    let cmd .= ' --grep-enable-icon'
+  endif
   call clap#maple#job_start(cmd)
 endfunction
 

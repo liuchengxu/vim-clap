@@ -6,7 +6,7 @@ set cpoptions&vim
 
 let s:history = {}
 
-function! s:all_files() abort
+function! s:raw_history() abort
   return uniq(map(
     \ filter([expand('%')], 'len(v:val)')
     \   + filter(map(clap#util#buflisted_sorted(), 'bufname(v:val)'), 'len(v:val)')
@@ -14,8 +14,27 @@ function! s:all_files() abort
     \ 'fnamemodify(v:val, ":~:.")'))
 endfunction
 
-let s:history.sink = 'e'
+function! s:all_files() abort
+  if g:clap_enable_icon
+    return map(s:raw_history(), 'clap#icon#for(v:val). " " .v:val')
+  else
+    return s:raw_history()
+  endif
+endfunction
+
+function! s:history_sink(selected) abort
+  if g:clap_enable_icon
+    let fpath = a:selected[4:]
+  else
+    let fpath = a:selected
+  endif
+  execute 'edit' fpath
+endfunction
+
+let s:history.syntax = 'clap_files'
+let s:history.sink = function('s:history_sink')
 let s:history.source = function('s:all_files')
+let s:history.support_open_action = v:true
 
 let g:clap#provider#history# = s:history
 

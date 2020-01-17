@@ -13,7 +13,7 @@ name = "fuzzymatch_rs"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
-version = "0.8.4"
+version = "0.8.5"
 
 [dependencies.extracted_fzy]
 path = "../extracted_fzy"
