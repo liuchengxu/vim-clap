@@ -29,7 +29,7 @@ function! s:loclist.sink(selected) abort
 endfunction
 
 " Split a very long line into serveral shorter lines.
-function! s:truncate(long_line, width) abort
+function! s:equant(long_line, width) abort
   let idx = 0
   let lines = []
   while idx * a:width < strlen(a:long_line)
@@ -69,7 +69,7 @@ function! s:loclist.on_move() abort
   let items = split(locitem.text, "\n")
   for item in items
     if strlen(item) > winwidth
-      call extend(lines, s:truncate(item, winwidth))
+      call extend(lines, s:equant(item, winwidth))
     else
       call add(lines, item)
     endif
