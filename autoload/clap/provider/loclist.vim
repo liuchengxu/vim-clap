@@ -11,8 +11,16 @@ function! s:loclist.source() abort
   if empty(loclist)
     return ['Location list is empty for window '.g:clap.start.winid]
   else
-    return map(loclist, 'clap#provider#quickfix#into_qf_line(v:val)')
+    " User can narrow down the result list, thus we note the original loclist index ahead.
+    let s:locline2idx = {}
+    return map(loclist, 's:into_loc_line(v:key, v:val)')
   endif
+endfunction
+
+function! s:into_loc_line(idx, loc_entry) abort
+  let loc_line = clap#provider#quickfix#into_qf_line(a:loc_entry)
+  let s:locline2idx[loc_line] = a:idx
+  return loc_line
 endfunction
 
 function! s:loclist.sink(selected) abort
@@ -38,10 +46,11 @@ function! s:loclist.on_move() abort
   if empty(locations)
     return
   endif
+
   let curline = g:clap.display.getcurline()
   let winwidth = winwidth(g:clap.display.winid)
 
-  let locitem = locations[g:clap.display.getcurlnum() - 1]
+  let locitem = locations[str2nr(s:locline2idx[curline])]
 
   let lines = []
   call add(lines, '--> '.bufname(locitem.bufnr).':'.locitem.lnum.':'.locitem.col)
