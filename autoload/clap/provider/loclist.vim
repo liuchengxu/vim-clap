@@ -4,9 +4,9 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:location_list = {}
+let s:loclist = {}
 
-function! s:location_list.source() abort
+function! s:loclist.source() abort
   let loclist = getloclist(g:clap.start.winid)
   if empty(loclist)
     return ['Location list is empty for window '.g:clap.start.winid]
@@ -15,13 +15,13 @@ function! s:location_list.source() abort
   endif
 endfunction
 
-function! s:location_list.sink(selected) abort
+function! s:loclist.sink(selected) abort
   let [_, lnum, column] = clap#provider#quickfix#extract_position(a:selected)
   call cursor(lnum, column)
 endfunction
 
-let s:location_list.syntax = 'qf'
-let g:clap#provider#location_list# = s:location_list
+let s:loclist.syntax = 'qf'
+let g:clap#provider#loclist# = s:loclist
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

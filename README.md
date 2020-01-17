@@ -111,9 +111,11 @@ Command                                | List                                   
 `Clap lines`                           | Lines in the loaded buffers                         | _none_
 `Clap marks`                           | Marks                                               | _none_
 `Clap quickfix`                        | Entries of the quickfix list                        | _none_
+`Clap loclist`                         | Entries of the location list                        | _none_
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
+`Clap providers`                       | List the vim-clap providers                         | _none_
 `Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
 
 [fd]: https://github.com/sharkdp/fd
