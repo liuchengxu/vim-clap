@@ -20,6 +20,45 @@ function! s:loclist.sink(selected) abort
   call cursor(lnum, column)
 endfunction
 
+" Split a very long line into serveral shorter lines.
+function! s:truncate(long_line, width) abort
+  let idx = 0
+  let lines = []
+  while idx * a:width < strlen(a:long_line)
+    let start = idx * a:width
+    let end = (idx+1) * a:width
+    call add(lines, a:long_line[start : end - 1])
+    let idx += 1
+  endwhile
+  return lines
+endfunction
+
+function! s:loclist.on_move() abort
+  let locations = getloclist(g:clap.start.winid)
+  if empty(locations)
+    return
+  endif
+  let curline = g:clap.display.getcurline()
+  let winwidth = winwidth(g:clap.display.winid)
+  if strlen(curline) > winwidth
+    let locitem = locations[line('.') - 1]
+    let lines = []
+    call add(lines, bufname(locitem.bufnr).': '.locitem.lnum.' col '.locitem.col)
+    " The text may have multiple lines.
+    let items = split(locitem.text, "\n")
+    for item in items
+      if strlen(item) > winwidth
+        call extend(lines, s:truncate(item, winwidth))
+      else
+        call add(lines, item)
+      endif
+    endfor
+    call g:clap.preview.show(lines)
+  else
+    call g:clap.preview.hide()
+  endif
+endfunction
+
 let s:loclist.syntax = 'qf'
 let g:clap#provider#loclist# = s:loclist
 
