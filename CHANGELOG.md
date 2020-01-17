@@ -5,7 +5,7 @@ CHANGELOG
 
 ### Added
 
-- New provider `:Clap location_list` for listing the entries of current window's location list.([#244](https://github.com/liuchengxu/vim-clap/pull/244))
+- New provider `:Clap loclist` for listing the entries of current window's location list.([#244](https://github.com/liuchengxu/vim-clap/pull/244))
 - New provider `:Clap providers` for listing all the providers by splitting out the previous anonymous `_` provider.([#242](https://github.com/liuchengxu/vim-clap/pull/242))
 
 ### Improved
