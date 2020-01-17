@@ -40,23 +40,34 @@ function! s:loclist.on_move() abort
   endif
   let curline = g:clap.display.getcurline()
   let winwidth = winwidth(g:clap.display.winid)
-  if strlen(curline) > winwidth
-    let locitem = locations[line('.') - 1]
-    let lines = []
-    call add(lines, bufname(locitem.bufnr).': '.locitem.lnum.' col '.locitem.col)
-    " The text may have multiple lines.
-    let items = split(locitem.text, "\n")
-    for item in items
-      if strlen(item) > winwidth
-        call extend(lines, s:truncate(item, winwidth))
-      else
-        call add(lines, item)
+
+  let locitem = locations[g:clap.display.getcurlnum() - 1]
+
+  let lines = []
+  call add(lines, '--> '.bufname(locitem.bufnr).':'.locitem.lnum.':'.locitem.col)
+
+  if locitem.lnum !=# ''
+    let line = getbufline(locitem.bufnr, str2nr(locitem.lnum))
+    if !empty(line)
+      call add(lines, line[0])
+      if locitem.col !=# ''
+        call add(lines, repeat(' ', locitem.col - 1).'^')
       endif
-    endfor
-    call g:clap.preview.show(lines)
-  else
-    call g:clap.preview.hide()
+    endif
   endif
+
+  " The text may have multiple lines.
+  let items = split(locitem.text, "\n")
+  for item in items
+    if strlen(item) > winwidth
+      call extend(lines, s:truncate(item, winwidth))
+    else
+      call add(lines, item)
+    endif
+  endfor
+
+  call g:clap.preview.show(lines)
+  call g:clap.preview.setbufvar('&syntax', getbufvar(locitem.bufnr, '&syntax'))
 endfunction
 
 let s:loclist.syntax = 'qf'
