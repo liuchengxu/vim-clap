@@ -157,16 +157,6 @@ function! s:apply_start(_timer) abort
   call s:start_maple()
 endfunction
 
-function! s:add_global_flag_and_option(cmd) abort
-  let cmd = a:cmd.' --number '.g:clap.display.preload_capacity
-
-  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let cmd .= ' --enable-icon'
-  endif
-
-  return cmd
-endfunction
-
 function! clap#maple#job_start(cmd) abort
   if s:job_timer != -1
     call timer_stop(s:job_timer)
@@ -175,9 +165,6 @@ function! clap#maple#job_start(cmd) abort
   call clap#maple#stop()
 
   let s:cmd = a:cmd
-
-  " let s:cmd = s:add_global_flag_and_option(a:cmd)
-
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
 endfunction
@@ -195,15 +182,6 @@ endfunction
 
 function! clap#maple#inject_bin(cmd) abort
   return printf('%s %s', s:maple2_bin_localbuilt, a:cmd)
-endfunction
-
-function! clap#maple#try_enable_icon(cmd) abort
-  if g:clap_enable_icon
-        \ && index(s:can_enable_icon, g:clap.provider.id) > -1
-    return a:cmd . ' --enable-icon'
-  else
-    return a:cmd
-  endif
 endfunction
 
 " Run the command via maple to minimalize the payload of this job.
@@ -235,33 +213,22 @@ function! clap#maple#exec_subcommand(cmd) abort
         \ cmd_dir,
         \ )
 
-  echom "cmd: ".cmd
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#grep(bare_cmd, query, enable_icon) abort
+function! clap#maple#grep(cmd, query, enable_icon) abort
+  let global_opt = '--number '.g:clap.display.preload_capacity
+  if a:enable_icon
+    let global_opt .= ' --enable-icon'
+  endif
   let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
-        \ s:empty_filter_cmd,
-        \ a:bare_cmd,
+  let cmd = printf('%s %s grep "%s" "%s" --cmd-dir "%s"',
+        \ s:maple2_bin_localbuilt,
+        \ global_opt,
+        \ a:cmd,
         \ a:query,
         \ cmd_dir,
         \ )
-  if a:enable_icon
-    let cmd .= ' --grep-enable-icon'
-  endif
-  call clap#maple#job_start(cmd)
-endfunction
-
-function! clap#maple#grep_subcommand(cmd, query, enable_icon) abort
-  let cmd_dir = clap#rooter#working_dir()
-  if a:enable_icon
-    let cmd = printf('--enable-icon grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
-  else
-    let cmd = printf('grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
-  endif
-  let cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity.' '.cmd
-  echom "grep cmd: ".cmd
   call clap#maple#job_start(cmd)
 endfunction
 
