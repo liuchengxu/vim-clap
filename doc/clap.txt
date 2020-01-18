@@ -145,6 +145,10 @@ to work everywhere out of the box, with fast response.
                          use `Clap grep ..` to grep from the parent directory.
 
 
+                                                     *:Clap-help_tags*
+:Clap help_tags          List the help tags.
+
+
                                                       *:Clap-history*
 :Clap history            List the open buffers and |v:oldfiles|.
 
