@@ -13,10 +13,6 @@ let s:bin_suffix = has('win32') ? '.exe' : ''
 let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
 let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
 
-let s:maple2_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple2'.s:bin_suffix
-
-let g:clap#maple#bin2 = s:maple2_bin_localbuilt
-
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
   let s:maple_bin = s:maple_bin_localbuilt
@@ -29,8 +25,9 @@ else
   let s:maple_bin = v:null
 endif
 
-let s:maple_bin = s:maple2_bin_localbuilt
-let s:maple_filter_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity.' filter "%s"'
+if s:maple_bin isnot v:null
+  let s:maple_filter_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity.' filter "%s"'
+endif
 
 function! clap#maple#info() abort
   return s:maple_filter_cmd
@@ -179,11 +176,11 @@ function! clap#maple#get_enable_icon() abort
 endfunction
 
 function! clap#maple#inject_bin(cmd) abort
-  return printf('%s %s', s:maple2_bin_localbuilt, a:cmd)
+  return printf('%s %s', s:maple_bin, a:cmd)
 endfunction
 
 function! clap#maple#filter_subcommand(query) abort
-  let exec_cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity
+  let exec_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let exec_cmd .= ' --enable-icon'
@@ -195,7 +192,7 @@ function! clap#maple#filter_subcommand(query) abort
 endfunction
 
 function! clap#maple#exec_subcommand(cmd) abort
-  let exec_cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity
+  let exec_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let exec_cmd .= ' --enable-icon'
@@ -218,7 +215,7 @@ function! clap#maple#grep(cmd, query, enable_icon) abort
   endif
   let cmd_dir = clap#rooter#working_dir()
   let cmd = printf('%s %s grep "%s" "%s" --cmd-dir "%s"',
-        \ s:maple2_bin_localbuilt,
+        \ s:maple_bin,
         \ global_opt,
         \ a:cmd,
         \ a:query,
