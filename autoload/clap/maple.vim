@@ -13,6 +13,8 @@ let s:bin_suffix = has('win32') ? '.exe' : ''
 let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
 let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
 
+let s:maple2_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple2'.s:bin_suffix
+
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
   let s:maple_filter_cmd = s:maple_bin_localbuilt.' "%s"'
@@ -170,7 +172,9 @@ function! clap#maple#job_start(cmd) abort
 
   call clap#maple#stop()
 
-  let s:cmd = s:add_global_flag_and_option(a:cmd)
+  let s:cmd = a:cmd
+
+  " let s:cmd = s:add_global_flag_and_option(a:cmd)
 
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
   return
@@ -213,6 +217,18 @@ function! clap#maple#grep(bare_cmd, query, enable_icon) abort
   if a:enable_icon
     let cmd .= ' --grep-enable-icon'
   endif
+  call clap#maple#job_start(cmd)
+endfunction
+
+function! clap#maple#grep_subcommand(cmd, query, enable_icon) abort
+  let cmd_dir = clap#rooter#working_dir()
+  if a:enable_icon
+    let cmd = printf('--enable-icon grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
+  else
+    let cmd = printf('grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
+  endif
+  let cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity.' '.cmd
+  echom "cmd: ".cmd
   call clap#maple#job_start(cmd)
 endfunction
 
