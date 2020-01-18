@@ -41,7 +41,6 @@ if exists('g:clap_default_external_filter')
   endif
 elseif clap#maple#is_available()
   let s:default_ext_filter = 'maple'
-  let s:ext_cmd.maple = clap#maple#filter_cmd_fmt()
 else
   let s:default_ext_filter = s:other_fuzzy_ext_filter()
 endif
@@ -95,25 +94,28 @@ function! clap#filter#has_external_default() abort
   return s:default_ext_filter isnot v:null
 endfunction
 
+" Filter using the external tools given the current input.
 function! clap#filter#get_external_cmd_or_default() abort
   if has_key(g:clap.context, 'externalfilter')
     let s:ext_filter = g:clap.context.externalfilter
+    return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
+
   elseif has_key(g:clap.context, 'ef')
     let s:ext_filter = g:clap.context.ef
+    return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
+
   elseif s:default_ext_filter is v:null
-    call g:clap.abort('No external filter available')
+    call g:clap.abort('No available external filter')
     return
+
   else
     let s:ext_filter = s:default_ext_filter
+    if s:ext_filter ==# 'maple'
+      return clap#maple#filter_subcommand(g:clap.input.get())
+    else
+      return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
+    endif
   endif
-  if s:ext_filter ==# 'maple'
-    let g:__clap_maple_fuzzy_matched = []
-    let Provider = g:clap.provider._()
-  endif
-
-  return printf('%s %s filter "%s"', g:clap#maple#bin2,'--enable-icon --number '.g:clap.display.preload_capacity,g:clap.input.get())
-  echom "Filter:".printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
-  return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
 endfunction
 
 function! s:filter(line, pattern) abort

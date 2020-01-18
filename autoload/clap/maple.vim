@@ -19,27 +19,25 @@ let g:clap#maple#bin2 = s:maple2_bin_localbuilt
 
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
-  let s:maple_filter_cmd = s:maple_bin_localbuilt.' "%s"'
-  let s:empty_filter_cmd = printf(s:maple_filter_cmd, '')
-
+  let s:maple_bin = s:maple_bin_localbuilt
 " Check the prebuilt binary.
 elseif executable(s:maple_bin_prebuilt)
-  let s:maple_filter_cmd = s:maple_bin_prebuilt.' "%s"'
-  let s:empty_filter_cmd = printf(s:maple_filter_cmd, '')
-
+  let s:maple_bin = s:maple_bin_prebuilt
 elseif executable('maple')
-  let s:maple_filter_cmd = 'maple "%s"'
-  let s:empty_filter_cmd = 'maple ""'
+  let s:maple_bin = 'maple'
 else
-  let s:maple_filter_cmd = v:null
+  let s:maple_bin = v:null
 endif
+
+let s:maple_bin = s:maple2_bin_localbuilt
+let s:maple_filter_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity.' filter "%s"'
 
 function! clap#maple#info() abort
   return s:maple_filter_cmd
 endfunction
 
 function! clap#maple#is_available() abort
-  return s:maple_filter_cmd isnot v:null
+  return s:maple_bin isnot v:null
 endfunction
 
 function! clap#maple#filter_cmd_fmt() abort
@@ -184,19 +182,16 @@ function! clap#maple#inject_bin(cmd) abort
   return printf('%s %s', s:maple2_bin_localbuilt, a:cmd)
 endfunction
 
-" Run the command via maple to minimalize the payload of this job.
-"
-" Call clap#rooter#try_set_cwd() if neccessary so that the cmd working dir is
-" right.
-function! clap#maple#execute(cmd) abort
-  let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s --cmd "%s" --cmd-dir "%s"',
-        \ s:empty_filter_cmd,
-        \ a:cmd,
-        \ cmd_dir,
-        \ )
+function! clap#maple#filter_subcommand(query) abort
+  let exec_cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity
 
-  call clap#maple#job_start(cmd)
+  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
+    let exec_cmd .= ' --enable-icon'
+  endif
+
+  let cmd = printf('%s filter "%s"', exec_cmd, a:query)
+
+  return cmd
 endfunction
 
 function! clap#maple#exec_subcommand(cmd) abort
