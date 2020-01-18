@@ -144,6 +144,21 @@ if clap#maple#is_available()
           \ s:builtin_fuzzy_filter_threshold,
           \ )
 
+    let exec_cmd = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
+          \ a:cmd,
+          \ cmd_dir,
+          \ s:builtin_fuzzy_filter_threshold,
+          \ )
+    if g:clap_enable_icon
+      let exec_cmd = '--enable-icon '.exec_cmd
+    endif
+
+    let cmd = g:clap#maple#bin2.' '.exec_cmd
+
+    echom "maple_cmd: ".cmd
+
+    return cmd
+
     return clap#maple#try_enable_icon(cmd)
   endfunction
 

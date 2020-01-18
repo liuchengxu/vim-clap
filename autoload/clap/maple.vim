@@ -15,6 +15,8 @@ let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s
 
 let s:maple2_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple2'.s:bin_suffix
 
+let g:clap#maple#bin2 = s:maple2_bin_localbuilt
+
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
   let s:maple_filter_cmd = s:maple_bin_localbuilt.' "%s"'
@@ -206,6 +208,24 @@ function! clap#maple#execute(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
+function! clap#maple#exec_subcommand(cmd) abort
+  let exec_cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity
+
+  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
+    let exec_cmd .= ' --enable-icon'
+  endif
+
+  let cmd_dir = clap#rooter#working_dir()
+  let cmd = printf('%s "%s" --cmd-dir "%s"',
+        \ exec_cmd,
+        \ a:cmd,
+        \ cmd_dir,
+        \ )
+
+  echom "cmd: ".cmd
+  call clap#maple#job_start(cmd)
+endfunction
+
 function! clap#maple#grep(bare_cmd, query, enable_icon) abort
   let cmd_dir = clap#rooter#working_dir()
   let cmd = printf('%s --grep-cmd "%s" --grep-query "%s" --cmd-dir "%s"',
@@ -228,7 +248,7 @@ function! clap#maple#grep_subcommand(cmd, query, enable_icon) abort
     let cmd = printf('grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
   endif
   let cmd = s:maple2_bin_localbuilt.' --number '.g:clap.display.preload_capacity.' '.cmd
-  echom "cmd: ".cmd
+  echom "grep cmd: ".cmd
   call clap#maple#job_start(cmd)
 endfunction
 

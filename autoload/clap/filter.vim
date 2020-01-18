@@ -110,6 +110,9 @@ function! clap#filter#get_external_cmd_or_default() abort
     let g:__clap_maple_fuzzy_matched = []
     let Provider = g:clap.provider._()
   endif
+
+  return printf('%s %s filter "%s"', g:clap#maple#bin2,'--enable-icon --number '.g:clap.display.preload_capacity,g:clap.input.get())
+  echom "Filter:".printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
   return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
 endfunction
 
