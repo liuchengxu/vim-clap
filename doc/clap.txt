@@ -161,8 +161,17 @@ to work everywhere out of the box, with fast response.
                                                      *:Clap-lines*
 :Clap lines              List the lines of the loaded buffers.
 
-                                                     *:Clap-quickfix*
+
+                                                    *:Clap-quickfix*
 :Clap quickfix           List the entries of the quickfix list.
+
+
+                                                     *:Clap-loclist*
+:Clap loclist            List the entries of the location list.
+
+
+                                                     *:Clap-providers*
+:Clap providers          List the clap providers.
 
                                                      *:Clap-marks*
 :Clap marks              List Marks
