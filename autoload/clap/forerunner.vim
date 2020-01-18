@@ -137,29 +137,14 @@ if clap#maple#is_available()
 
   function! s:into_maple_cmd(cmd) abort
     let cmd_dir = clap#rooter#working_dir()
-    let cmd = printf('%s --cmd "%s" --cmd-dir "%s" --output-threshold %d',
-          \ s:empty_filter_cmd,
+    " No global --number option.
+    let exec_cmd = printf('%s exec "%s" --cmd-dir "%s" --output-threshold %d',
+          \ clap#maple#get_enable_icon(),
           \ a:cmd,
           \ cmd_dir,
           \ s:builtin_fuzzy_filter_threshold,
           \ )
-
-    let exec_cmd = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
-          \ a:cmd,
-          \ cmd_dir,
-          \ s:builtin_fuzzy_filter_threshold,
-          \ )
-    if g:clap_enable_icon
-      let exec_cmd = '--enable-icon '.exec_cmd
-    endif
-
-    let cmd = g:clap#maple#bin2.' '.exec_cmd
-
-    echom "maple_cmd: ".cmd
-
-    return cmd
-
-    return clap#maple#try_enable_icon(cmd)
+    return clap#maple#inject_bin(exec_cmd)
   endfunction
 
   function! clap#forerunner#start(cmd) abort

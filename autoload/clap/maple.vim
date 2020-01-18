@@ -184,6 +184,19 @@ endfunction
 
 let s:can_enable_icon = ['files', 'git_files']
 
+function! clap#maple#get_enable_icon() abort
+  if g:clap_enable_icon
+        \ && index(s:can_enable_icon, g:clap.provider.id) > -1
+    return '--enable-icon'
+  else
+    return ''
+  endif
+endfunction
+
+function! clap#maple#inject_bin(cmd) abort
+  return printf('%s %s', s:maple2_bin_localbuilt, a:cmd)
+endfunction
+
 function! clap#maple#try_enable_icon(cmd) abort
   if g:clap_enable_icon
         \ && index(s:can_enable_icon, g:clap.provider.id) > -1
