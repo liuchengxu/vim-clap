@@ -188,6 +188,22 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
+    fn tempfile(&self, args: &[String]) -> Result<PathBuf> {
+        if let Some(ref output) = self.output {
+            Ok(output.into())
+        } else {
+            let mut dir = std::env::temp_dir();
+            dir.push(format!(
+                "{}_{}",
+                args.join("_"),
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)?
+                    .as_secs()
+            ));
+            Ok(dir)
+        }
+    }
+
     fn to_string_and_cache_if_threshold_exceeded(
         &self,
         total: usize,
@@ -195,22 +211,10 @@ impl<'a> LightCommand<'a> {
         args: &[String],
     ) -> Result<(String, Option<PathBuf>)> {
         if total > self.output_threshold {
-            let tempfile = if let Some(ref output) = self.output {
-                output.into()
-            } else {
-                let mut dir = std::env::temp_dir();
-                dir.push(format!(
-                    "{}_{}",
-                    args.join("_"),
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)?
-                        .as_secs()
-                ));
-                dir
-            };
+            let tempfile = self.tempfile(args)?;
             File::create(tempfile.clone())?.write_all(cmd_stdout)?;
             // FIXME find the nth newline index of stdout.
-            let _end = std::cmp::min(cmd_stdout.len(), 500);
+            // let _end = std::cmp::min(cmd_stdout.len(), 500);
             Ok((
                 // lines used for displaying directly.
                 // &cmd_output.stdout[..nth_newline_index]
