@@ -46,7 +46,7 @@ else
 endif
 
 function! clap#filter#using_maple() abort
-  return s:ext_filter ==# 'maple'
+  return s:default_ext_filter ==# 'maple'
 endfunction
 
 function! s:pattern_builder._force_case() abort
@@ -94,27 +94,31 @@ function! clap#filter#has_external_default() abort
   return s:default_ext_filter isnot v:null
 endfunction
 
+" Get explicit externalfilter option.
+function! s:get_external_filter() abort
+  if has_key(g:clap.context, 'externalfilter')
+    return printf(s:ext_cmd[g:clap.context.externalfilter], g:clap.input.get())
+  elseif has_key(g:clap.context, 'ef')
+    return printf(s:ext_cmd[g:clap.context.ef], g:clap.input.get())
+  else
+    return v:null
+  endif
+endfunction
+
 " Filter using the external tools given the current input.
 function! clap#filter#get_external_cmd_or_default() abort
-  if has_key(g:clap.context, 'externalfilter')
-    let s:ext_filter = g:clap.context.externalfilter
-    return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
+  let external_filter = s:get_external_filter()
+  if external_filter isnot v:null
+    return external_filter
+  endif
 
-  elseif has_key(g:clap.context, 'ef')
-    let s:ext_filter = g:clap.context.ef
-    return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
-
-  elseif s:default_ext_filter is v:null
+  if s:default_ext_filter is v:null
     call g:clap.abort('No available external filter')
     return
-
+  elseif s:default_ext_filter ==# 'maple'
+    return clap#maple#filter_subcommand(g:clap.input.get())
   else
-    let s:ext_filter = s:default_ext_filter
-    if s:ext_filter ==# 'maple'
-      return clap#maple#filter_subcommand(g:clap.input.get())
-    else
-      return printf(s:ext_cmd[s:ext_filter], g:clap.input.get())
-    endif
+    return printf(s:ext_cmd[s:default_ext_filter], g:clap.input.get())
   endif
 endfunction
 
