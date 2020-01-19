@@ -138,15 +138,26 @@ impl<'a> LightCommand<'a> {
         grep_enable_icon: bool,
         output_threshold: usize,
     ) -> Self {
-        let total = 0;
         Self {
             cmd,
             number,
-            total,
+            total: 0usize,
             output,
             enable_icon,
             grep_enable_icon,
             output_threshold,
+        }
+    }
+
+    fn new_grep(cmd: &'a mut Command, number: Option<usize>, grep_enable_icon: bool) -> Self {
+        Self {
+            cmd,
+            number,
+            total: 0usize,
+            output: None,
+            enable_icon: false,
+            grep_enable_icon,
+            output_threshold: 0usize,
         }
     }
 
@@ -163,7 +174,8 @@ impl<'a> LightCommand<'a> {
         Ok(cmd_output)
     }
 
-    fn try_truncate(&self, stdout: &[u8]) -> Result<()> {
+    /// Normally we only care about the top N items and number of total results.
+    fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<()> {
         if let Some(number) = self.number {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
             // &cmd_output.stdout[..nth_newline_index]
@@ -204,7 +216,7 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    fn to_string_and_cache_if_threshold_exceeded(
+    fn try_cache(
         &self,
         total: usize,
         cmd_stdout: &[u8],
@@ -232,14 +244,13 @@ impl<'a> LightCommand<'a> {
 
         self.total = bytecount::count(cmd_stdout, b'\n');
 
-        if self.try_truncate(cmd_stdout).is_ok() {
+        if self.minimalize_job_overhead(cmd_stdout).is_ok() {
             return Ok(());
         }
 
         let total = self.total;
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) =
-            self.to_string_and_cache_if_threshold_exceeded(total, &cmd_output.stdout, args)?;
+        let (stdout_str, tempfile) = self.try_cache(total, &cmd_stdout, args)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
         if let Some(tempfile) = tempfile {
             println_json!(total, lines, tempfile);
@@ -357,8 +368,7 @@ impl Maple {
 
                 cmd.args(&args[1..]);
 
-                let mut light_cmd =
-                    LightCommand::new(&mut cmd, self.number, None, false, self.enable_icon, 0usize);
+                let mut light_cmd = LightCommand::new_grep(&mut cmd, self.number, self.enable_icon);
 
                 light_cmd.execute(&args)?;
             }
