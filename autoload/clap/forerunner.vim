@@ -133,8 +133,6 @@ else
 endif
 
 if clap#maple#is_available()
-  let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
-
   function! s:into_maple_cmd(cmd) abort
     let cmd_dir = clap#rooter#working_dir()
     " No global --number option.

@@ -25,20 +25,12 @@ else
   let s:maple_bin = v:null
 endif
 
-if s:maple_bin isnot v:null
-  let s:maple_filter_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity.' filter "%s"'
-endif
-
 function! clap#maple#info() abort
-  return s:maple_filter_cmd
+  return s:maple_bin
 endfunction
 
 function! clap#maple#is_available() abort
   return s:maple_bin isnot v:null
-endfunction
-
-function! clap#maple#filter_cmd_fmt() abort
-  return s:maple_filter_cmd
 endfunction
 
 function! s:on_complete() abort
@@ -180,27 +172,28 @@ function! clap#maple#inject_bin(cmd) abort
 endfunction
 
 function! clap#maple#filter_subcommand(query) abort
-  let exec_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity
+  let global_opt = '--number '.g:clap.display.preload_capacity
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let exec_cmd .= ' --enable-icon'
+    let global_opt .= ' --enable-icon'
   endif
 
-  let cmd = printf('%s filter "%s"', exec_cmd, a:query)
+  let cmd = printf('%s %s filter "%s"', s:maple_bin, global_opt, a:query)
 
   return cmd
 endfunction
 
 function! clap#maple#exec_subcommand(cmd) abort
-  let exec_cmd = s:maple_bin.' --number '.g:clap.display.preload_capacity
+  let global_opt = '--number '.g:clap.display.preload_capacity
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let exec_cmd .= ' --enable-icon'
+    let global_opt .= ' --enable-icon'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s "%s" --cmd-dir "%s"',
-        \ exec_cmd,
+  let cmd = printf('%s %s exec "%s" --cmd-dir "%s"',
+        \ s:maple_bin,
+        \ global_opt,
         \ a:cmd,
         \ cmd_dir,
         \ )
