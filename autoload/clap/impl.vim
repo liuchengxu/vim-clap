@@ -172,12 +172,10 @@ function! s:detect_should_switch_to_async() abort
     let s:cur_source = Source()
   endif
 
-  if !exists('g:__clap_raw_source')
-    let g:__clap_raw_source = s:cur_source
-    let g:__clap_initial_source_size = len(g:__clap_raw_source)
-  endif
+  let g:__clap_raw_source = s:cur_source
+  let g:__clap_initial_source_size = len(g:__clap_raw_source)
 
-  if clap#filter#beyond_capacity(len(s:cur_source))
+  if clap#filter#beyond_capacity(g:__clap_initial_source_size)
     return v:true
   endif
 
