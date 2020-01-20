@@ -47,7 +47,7 @@ function! clap#spinner#refresh() abort
 endfunction
 
 function! clap#spinner#get_rpc() abort
-  return s:spinner_rpc
+  return get(s:, 'spinner_rpc', 'EMPTY')
 endfunction
 
 function! clap#spinner#set_rpc(spinner) abort

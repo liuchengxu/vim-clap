@@ -1,5 +1,6 @@
 let s:filer = {}
 
+  let s:open_file_dict = {}
 function! clap#provider#filer#handle_stdout(line) abort
   let line = a:line
   if line ==# ''
@@ -79,7 +80,7 @@ function! clap#provider#filer#tab() abort
   if has_key(s:open_file_dict, dir)
     let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
     call g:clap.display.set_lines(filtered)
-    return
+    return ''
   endif
 
   call clap#rpc#send()
