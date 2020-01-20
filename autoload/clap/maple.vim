@@ -53,6 +53,10 @@ function! s:on_complete() abort
 
   call clap#spinner#set_idle()
 
+  if empty(g:clap.input.get())
+    return
+  endif
+
   if empty(s:chunks)
     return
   endif

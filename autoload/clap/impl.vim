@@ -5,7 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
-let s:async_threshold = 10000
+let s:async_threshold = 1
 
 " =======================================
 " sync implementation
@@ -211,6 +211,18 @@ function! clap#impl#add_highlight_for_fuzzy_indices(hl_lines) abort
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
+function! clap#impl#on_empty_input() abort
+  call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
+  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
+  call g:clap.display.goto_win()
+  call g:clap.display.matchdelete()
+  call g:clap.input.goto_win()
+  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
+  call clap#sign#toggle_cursorline()
+  call g:clap#display_win.compact_if_undersize()
+  call g:clap.preview.hide()
+endfunction
+
 " =======================================
 " async implementation
 " =======================================
@@ -219,6 +231,7 @@ function! s:on_typed_async_impl() abort
   let l:cur_input = g:clap.input.get()
 
   if empty(l:cur_input)
+    call clap#impl#on_empty_input()
     return
   endif
 
@@ -241,7 +254,7 @@ function! s:on_typed_async_impl() abort
 endfunction
 
 " Choose the suitable way according to the source size.
-function! s:should_switch_to_async() abort
+function! s:detect_should_switch_to_async() abort
   " Optimze for blines provider.
   if g:clap.provider.id ==# 'blines'
         \ && g:clap.display.initial_size > 100000
@@ -262,11 +275,26 @@ function! s:should_switch_to_async() abort
     let s:cur_source = Source()
   endif
 
+  if !exists('g:__clap_raw_source')
+    let g:__clap_raw_source = s:cur_source
+    let g:__clap_initial_source_size = len(g:__clap_raw_source)
+  endif
+
   if len(s:cur_source) > s:async_threshold
     return v:true
   endif
 
   return v:false
+endfunction
+
+function! s:should_switch_to_async() abort
+  if has_key(g:clap.provider, 'should_switch_to_async')
+    return g:clap.provider.should_switch_to_async
+  else
+    let should_switch_to_async = s:detect_should_switch_to_async()
+    let g:clap.provider.should_switch_to_async = should_switch_to_async
+    return should_switch_to_async
+  endif
 endfunction
 
 "                          filter

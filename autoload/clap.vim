@@ -140,6 +140,14 @@ function! s:unlet_vars(vars) abort
   endfor
 endfunction
 
+function! s:remove_provider_tmp_vars(vars) abort
+  for var in a:vars
+    if has_key(g:clap.provider, var)
+      call remove(g:clap.provider, var)
+    endif
+  endfor
+endfunction
+
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
@@ -157,13 +165,11 @@ function! clap#_exit() abort
   call g:clap.input.clear()
   call g:clap.display.clear()
 
-  if has_key(g:clap.provider, 'args')
-    call remove(g:clap.provider, 'args')
-  endif
-
-  if has_key(g:clap.provider, 'source_tempfile')
-    call remove(g:clap.provider, 'source_tempfile')
-  endif
+  call s:remove_provider_tmp_vars([
+        \ 'args',
+        \ 'source_tempfile',
+        \ 'should_switch_to_async',
+        \ ])
 
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
