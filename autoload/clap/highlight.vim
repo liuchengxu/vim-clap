@@ -4,8 +4,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history']
 let s:related_maple_providers = ['files', 'git_files']
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history']
 
 " The icon can interfer the matched indices of fuzzy filter, but not the
 " substring filter.
@@ -63,6 +63,7 @@ if has('nvim')
     call g:clap.input.goto_win()
   endfunction
 
+  " This is same with g:clap.display.clear_highlight()
   function! clap#highlight#clear() abort
     call g:clap.display.goto_win()
     call g:clap.display.matchdelete()
