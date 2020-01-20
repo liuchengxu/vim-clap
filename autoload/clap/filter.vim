@@ -171,7 +171,7 @@ if s:py_exe !=# v:null
 endif
 
 function! clap#filter#has_py_dynamic_module() abort
-  return get(s:, 'has_py_dynamic_module', v:false)
+  return s:has_py_dynamic_module
 endfunction
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
