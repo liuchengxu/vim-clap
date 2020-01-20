@@ -142,4 +142,4 @@ let g:clap_provider_quick_open = {
 
 #### How to add the preview support for my provider?
 
-Use `on_moved()`, ensure it always runs fast.
+Use `on_move()` and `g:clap.preview.show([lines])`, ensure it always runs fast.
