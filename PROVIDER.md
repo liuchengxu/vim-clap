@@ -2,6 +2,9 @@
 
 <!-- TOC GFM -->
 
+* [Introduction](#introduction)
+  * [1. Non-pure-async provider](#1-non-pure-async-provider)
+  * [2. Pure async provider](#2-pure-async-provider)
 * [Provider arguments](#provider-arguments)
 * [Create non-pure-async provider](#create-non-pure-async-provider)
 * [Create pure async provider](#create-pure-async-provider)
@@ -9,18 +12,26 @@
 
 <!-- /TOC -->
 
+### Introduction
+
 The provider of vim-clap is actually a Dict that specifies the action of your move in the input window. The idea is simple, once you have typed something, the `source` will be filtered or a job will be spawned, and then the result retrived later will be shown in the dispaly window.
 
 There are generally two kinds of providers in vim-clap.
 
-1. Non-pure-async provider: suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history.It will run sync if the source is not large. But it's also able to deal with the list that is huge, let's say 100,000+ lines/items, in which case vim-clap will choose to run the external filter in async. In a word, vim-clap can always be fast responsive. What's more, it's extremely easy to introduce a new non-pure-async clap provider as vim-clap provides the default implementation of `on_typed` and `source_async`.
+#### 1. Non-pure-async provider
 
-2. Pure async provider: suitable for the time-consuming jobs, e.g., grep a word in a directory.
+suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history.It will run sync if the source is not large. But it's also able to deal with the list that is huge, let's say 100,000+ lines/items, in which case vim-clap will choose to run the external filter in async. In a word, vim-clap can always be fast responsive. What's more, it's extremely easy to introduce a new non-pure-async clap provider as vim-clap provides the default implementation of `on_typed` and `source_async`.
+
+Caveat: if you have some synchronous operations in `source`, e.g., read multiple files, ensure it won't slow clap down, as in which case the default implementation of `source_async` won't help.
+
+#### 2. Pure async provider
+
+suitable for the time-consuming jobs, e.g., grep a word in a directory. Checkout out [grep provider](autoload/clap/provider/grep.vim).
 
 ### Provider arguments
 
-```
-Clap [provider_id_or_alias] [++opt] [+opt]
+```vim
+:Clap [provider_id_or_alias] [++opt] [+opt]
 ```
 
 All the opts are accessible via `g:clap.context[opt]`.
@@ -107,7 +118,7 @@ You must provide `sink`, `on_typed` option. It's a bit of complex to write an as
 
 ### Register provider
 
-Vim-clap will try to load the providers with convention.
+Vim-clap will try to load the providers with such convention:
 
 - vimrc
 
