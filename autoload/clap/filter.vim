@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Filter out the candidate lines given input.
+" Description: Filter out the candidate lines synchorously given the input.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -171,6 +171,22 @@ endif
 
 function! clap#filter#has_rust_ext() abort
   return get(s:, 'has_rust_ext', v:false)
+endfunction
+
+if exists('g:clap_builtin_fuzzy_filter_threshold')
+  let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
+elseif clap#filter#has_rust_ext()
+  let s:builtin_filter_capacity = 100000
+else
+  let s:builtin_filter_capacity = 10000
+endif
+
+function! clap#filter#beyond_capacity(size) abort
+  return a:size > s:builtin_filter_capacity
+endfunction
+
+function! clap#filter#capacity() abort
+  return s:builtin_filter_capacity
 endfunction
 
 if s:can_use_python

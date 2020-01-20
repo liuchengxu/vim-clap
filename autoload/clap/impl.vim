@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
-let s:async_threshold = 10000
 
 " =======================================
 " sync implementation
@@ -114,18 +113,6 @@ function! s:on_typed_sync_impl() abort
   endif
 endfunction
 
-function! clap#impl#on_empty_input() abort
-  call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
-  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
-  call g:clap.display.goto_win()
-  call g:clap.display.matchdelete()
-  call g:clap.input.goto_win()
-  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
-  call clap#sign#toggle_cursorline()
-  call g:clap#display_win.compact_if_undersize()
-  call g:clap.preview.hide()
-endfunction
-
 " =======================================
 " async implementation
 " =======================================
@@ -134,7 +121,14 @@ function! s:on_typed_async_impl() abort
   let l:cur_input = g:clap.input.get()
 
   if empty(l:cur_input)
-    call clap#impl#on_empty_input()
+    if exists('g:__clap_raw_source')
+      call g:clap.display.set_lines_lazy(g:__clap_raw_source)
+      call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
+      call clap#sign#toggle_cursorline()
+      call g:clap#display_win.compact_if_undersize()
+      call g:clap.preview.hide()
+    endif
+    call clap#highlight#clear()
     return
   endif
 
@@ -183,7 +177,7 @@ function! s:detect_should_switch_to_async() abort
     let g:__clap_initial_source_size = len(g:__clap_raw_source)
   endif
 
-  if len(s:cur_source) > s:async_threshold
+  if clap#filter#beyond_capacity(len(s:cur_source))
     return v:true
   endif
 

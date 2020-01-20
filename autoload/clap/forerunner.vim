@@ -6,14 +6,6 @@ set cpoptions&vim
 
 let s:job_id = -1
 
-if exists('g:clap_builtin_fuzzy_filter_threshold')
-  let s:builtin_fuzzy_filter_threshold = g:clap_builtin_fuzzy_filter_threshold
-elseif clap#filter#has_rust_ext()
-  let s:builtin_fuzzy_filter_threshold = 100000
-else
-  let s:builtin_fuzzy_filter_threshold = 10000
-endif
-
 function! s:on_complete_common(lines, initial_size) abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(a:lines)
@@ -34,7 +26,7 @@ function! s:on_complete() abort
 
   " If the total results is not huge we could keep them in the memory
   " and use the built-in fzy impl later.
-  if chunks_size < s:builtin_fuzzy_filter_threshold
+  if !clap#filter#beyond_capacity(chunks_size)
     " g:__clap_forerunner_result is sort of a cache here.
     " If we already have g:__clap_forerunner_result and you
     " just created a new file outside the vim, this new file maybe not recongnized.
@@ -141,7 +133,7 @@ if clap#maple#is_available()
           \ s:empty_filter_cmd,
           \ a:cmd,
           \ cmd_dir,
-          \ s:builtin_fuzzy_filter_threshold,
+          \ clap#filter#capacity(),
           \ )
 
     return clap#maple#try_enable_icon(cmd)

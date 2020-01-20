@@ -53,6 +53,7 @@ function! s:on_complete() abort
 
   call clap#spinner#set_idle()
 
+  " Skip the job processing if use already clears the input at the moment.
   if empty(g:clap.input.get())
     return
   endif

@@ -62,6 +62,13 @@ if has('nvim')
 
     call g:clap.input.goto_win()
   endfunction
+
+  function! clap#highlight#clear() abort
+    call g:clap.display.goto_win()
+    call g:clap.display.matchdelete()
+    call g:clap.input.goto_win()
+  endfunction
+
 else
   function! s:apply_add_highlight(hl_lines, offset) abort
     " We do not have to clear the previous matches like neovim
@@ -79,6 +86,9 @@ else
       endfor
       let lnum += 1
     endfor
+  endfunction
+
+  function! clap#highlight#clear() abort
   endfunction
 endif
 
