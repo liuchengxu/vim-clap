@@ -12,6 +12,10 @@ CHANGELOG
 
 - Refine `:Clap debug` and require it in the bug report. ([#241](https://github.com/liuchengxu/vim-clap/pull/241))
 
+### Fixed
+
+- Wrong async threshold in impl.vim.(https://github.com/liuchengxu/vim-clap/pull/248#issuecomment-576108100)
+
 ## [0.5] 2019-01-15
 
 ### Added
