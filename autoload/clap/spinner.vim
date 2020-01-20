@@ -52,6 +52,8 @@ endfunction
 
 function! clap#spinner#set_rpc(spinner) abort
   let s:spinner_rpc = a:spinner
+  call s:set_spinner()
+  call g:clap#floating_win#spinner.shrink()
 endfunction
 
 function! clap#spinner#get() abort

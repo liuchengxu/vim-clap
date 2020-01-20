@@ -161,6 +161,21 @@ function! g:clap#floating_win#spinner.open() abort
   let g:clap.spinner.winid = s:spinner_winid
 endfunction
 
+function! g:clap#floating_win#spinner.shrink() abort
+  let width = clap#spinner#width()
+  let opts = nvim_win_get_config(s:spinner_winid)
+  if opts.width != width
+    let opts.width = width
+    call nvim_win_set_config(s:spinner_winid, opts)
+
+    let opts = nvim_win_get_config(s:spinner_winid)
+    let opts.col += opts.width
+    let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+    let opts.focusable = v:true
+    call nvim_win_set_config(s:input_winid, opts)
+  endif
+endfunction
+
 function! g:clap#floating_win#input.open() abort
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width

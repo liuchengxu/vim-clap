@@ -118,6 +118,7 @@ if has('nvim')
           \ 'on_stderr': function('s:on_event'),
           \ })
     echom "job statred: ".s:job_id
+    call clap#rpc#send()
   endfunction
 
 else
@@ -181,6 +182,7 @@ function! clap#rpc#bs() abort
     else
       let par = trim(fnamemodify(spinner, ':h'))
     endif
+    echom "par: ".par
     call clap#spinner#set_rpc(par)
     call clap#rpc#send()
   else
@@ -198,16 +200,23 @@ endfunction
 
 function! clap#rpc#tab() abort
   let curline = g:clap.display.getcurline()
-  call clap#spinner#set_rpc(curline)
+  let curdir = clap#spinner#get_rpc()
+  if curdir[-1:] ==# '/'
+    let cur_entry = curdir.curline
+  else
+    let cur_entry = curdir.'/'.curline
+  endif
+  if filereadable(cur_entry)
+    return ''
+  endif
+  call clap#spinner#set_rpc(cur_entry)
   call g:clap.input.set('')
   call clap#rpc#send()
   return ''
 endfunction
 
 function! clap#rpc#run() abort
-  let cmd = printf('%s rpc',
-        \ s:maple_bin,
-        \ )
+  let cmd = printf('%s rpc', s:maple_bin)
   call clap#spinner#set_rpc(getcwd())
   call g:clap.display.setbufvar('&syntax', 'clap_open_files')
   let s:open_file_dict = {}

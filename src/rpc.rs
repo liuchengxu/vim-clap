@@ -77,9 +77,19 @@ fn read_entries(dir: &str) -> Result<Vec<String>> {
         .map(|res| {
             res.map(|e| {
                 if e.path().is_dir() {
-                    format!("{}/", e.path().into_os_string().into_string().unwrap())
+                    format!(
+                        "{}/",
+                        e.path()
+                            .file_name()
+                            .and_then(std::ffi::OsStr::to_str)
+                            .unwrap()
+                    )
                 } else {
-                    e.path().into_os_string().into_string().unwrap()
+                    e.path()
+                        .file_name()
+                        .and_then(std::ffi::OsStr::to_str)
+                        .map(Into::into)
+                        .unwrap()
                 }
             })
         })
@@ -95,7 +105,7 @@ fn read_entries(dir: &str) -> Result<Vec<String>> {
 
 #[test]
 fn test_dir() {
-    let entries = read_entries("/Users/xlc/.vim/plugged/vim-clap").unwrap();
+    let entries = read_entries("/home/xlc/.vim/plugged/vim-clap").unwrap();
 
     println!("entry: {:?}", entries);
     // The entries have now been sorted by their path.
