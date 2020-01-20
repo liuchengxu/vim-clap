@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Filter out the candidate lines given input.
+" Description: Filter out the candidate lines synchorously given the input.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -97,29 +97,16 @@ endfunction
 " Get explicit externalfilter option.
 function! s:get_external_filter() abort
   if has_key(g:clap.context, 'externalfilter')
-    return printf(s:ext_cmd[g:clap.context.externalfilter], g:clap.input.get())
+    let s:cur_ext_filter = g:clap.context.externalfilter
   elseif has_key(g:clap.context, 'ef')
-    return printf(s:ext_cmd[g:clap.context.ef], g:clap.input.get())
-  else
-    return v:null
-  endif
-endfunction
-
-" Filter using the external tools given the current input.
-function! clap#filter#get_external_cmd_or_default() abort
-  let external_filter = s:get_external_filter()
-  if external_filter isnot v:null
-    return external_filter
-  endif
-
-  if s:default_ext_filter is v:null
-    call g:clap.abort('No available external filter')
+    let s:cur_ext_filter = g:clap.context.ef
+  elseif s:default_ext_filter is v:null
+    call g:clap.abort('No external filter available')
     return
-  elseif s:default_ext_filter ==# 'maple'
-    return clap#maple#filter_subcommand(g:clap.input.get())
   else
-    return printf(s:ext_cmd[s:default_ext_filter], g:clap.input.get())
+    let s:cur_ext_filter = s:default_ext_filter
   endif
+  return printf(s:ext_cmd[s:cur_ext_filter], g:clap.input.get())
 endfunction
 
 function! s:filter(line, pattern) abort
@@ -133,6 +120,7 @@ function! s:fallback_filter(query, candidates) abort
 endfunction
 
 let s:can_use_python = v:false
+let s:has_py_dynamic_module = v:false
 
 if s:py_exe !=# v:null
 
@@ -152,13 +140,13 @@ if s:py_exe !=# v:null
       execute s:pyfile s:plugin_root_dir.s:SETUP_PY
     endif
 
-    let s:has_rust_ext = filereadable(s:plugin_root_dir.s:LIB)
+    let s:has_py_dynamic_module = filereadable(s:plugin_root_dir.s:LIB)
 
     " For test only
     if get(g:, 'clap_use_pure_python', 0)
       let s:py_fn = 'clap_fzy_py'
     else
-      let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
+      let s:py_fn = s:has_py_dynamic_module ? 'clap_fzy_rs' : 'clap_fzy_py'
     endif
 
     execute s:py_exe 'from clap.fzy import' s:py_fn
@@ -178,8 +166,24 @@ if s:py_exe !=# v:null
   endtry
 endif
 
-function! clap#filter#has_rust_ext() abort
-  return get(s:, 'has_rust_ext', v:false)
+function! clap#filter#has_py_dynamic_module() abort
+  return s:has_py_dynamic_module
+endfunction
+
+if exists('g:clap_builtin_fuzzy_filter_threshold')
+  let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
+elseif s:has_py_dynamic_module
+  let s:builtin_filter_capacity = 100000
+else
+  let s:builtin_filter_capacity = 10000
+endif
+
+function! clap#filter#beyond_capacity(size) abort
+  return a:size > s:builtin_filter_capacity
+endfunction
+
+function! clap#filter#capacity() abort
+  return s:builtin_filter_capacity
 endfunction
 
 if s:can_use_python

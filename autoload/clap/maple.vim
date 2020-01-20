@@ -44,6 +44,11 @@ function! s:on_complete() abort
 
   call clap#spinner#set_idle()
 
+  " Skip the job processing if use already clears the input at the moment.
+  if empty(g:clap.input.get())
+    return
+  endif
+
   if empty(s:chunks)
     return
   endif
@@ -80,7 +85,7 @@ function! s:on_complete() abort
   endif
 
   if has_key(decoded, 'indices')
-    call clap#impl#add_highlight_for_fuzzy_indices(decoded.indices)
+    call clap#highlight#add_fuzzy_async(decoded.indices)
   endif
 
   call clap#sign#reset_to_first_line()
