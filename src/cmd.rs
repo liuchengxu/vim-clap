@@ -66,4 +66,6 @@ pub enum Cmd {
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
     },
+    #[structopt(name = "rpc")]
+    RPC,
 }

@@ -581,6 +581,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
+    return
 
     if g:clap.provider.id ==# 'blines'
       call s:init_blines()

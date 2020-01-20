@@ -227,11 +227,13 @@ function! s:on_typed_async_impl() abort
 
   let cmd = g:clap.provider.source_async_or_default()
 
-  if clap#filter#using_maple()
-    call clap#rooter#run(function('clap#maple#job_start'), cmd)
-  else
-    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
-  endif
+  call clap#rpc#send()
+
+  " if clap#filter#using_maple()
+    " call clap#rooter#run(function('clap#maple#job_start'), cmd)
+  " else
+    " call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+  " endif
 
   call clap#spinner#set_busy()
 

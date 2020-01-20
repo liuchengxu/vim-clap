@@ -1,5 +1,6 @@
 mod cmd;
 mod icon;
+mod rpc;
 
 use std::fs::File;
 use std::io::{self, BufRead, Write};
@@ -371,6 +372,9 @@ impl Maple {
                 let mut light_cmd = LightCommand::new_grep(&mut cmd, self.number, self.enable_icon);
 
                 light_cmd.execute(&args)?;
+            }
+            Cmd::RPC => {
+                crate::rpc::run(std::io::BufReader::new(std::io::stdin()));
             }
         }
         Ok(())

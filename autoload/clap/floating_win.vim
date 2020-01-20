@@ -308,6 +308,8 @@ function! clap#floating_win#open() abort
   startinsert
 
   call g:clap.provider.apply_query()
+
+  call clap#rpc#run()
 endfunction
 
 function! s:win_close(winid) abort
