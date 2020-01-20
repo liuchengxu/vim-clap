@@ -124,6 +124,7 @@ function! s:fallback_filter(query, candidates) abort
 endfunction
 
 let s:can_use_python = v:false
+let s:has_py_dynamic_module = v:false
 
 if s:py_exe !=# v:null
 
@@ -143,13 +144,13 @@ if s:py_exe !=# v:null
       execute s:pyfile s:plugin_root_dir.s:SETUP_PY
     endif
 
-    let s:has_rust_ext = filereadable(s:plugin_root_dir.s:LIB)
+    let s:has_py_dynamic_module = filereadable(s:plugin_root_dir.s:LIB)
 
     " For test only
     if get(g:, 'clap_use_pure_python', 0)
       let s:py_fn = 'clap_fzy_py'
     else
-      let s:py_fn = s:has_rust_ext ? 'clap_fzy_rs' : 'clap_fzy_py'
+      let s:py_fn = s:has_py_dynamic_module ? 'clap_fzy_rs' : 'clap_fzy_py'
     endif
 
     execute s:py_exe 'from clap.fzy import' s:py_fn
@@ -169,13 +170,13 @@ if s:py_exe !=# v:null
   endtry
 endif
 
-function! clap#filter#has_rust_ext() abort
-  return get(s:, 'has_rust_ext', v:false)
+function! clap#filter#has_py_dynamic_module() abort
+  return get(s:, 'has_py_dynamic_module', v:false)
 endfunction
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
-elseif clap#filter#has_rust_ext()
+elseif s:has_py_dynamic_module
   let s:builtin_filter_capacity = 100000
 else
   let s:builtin_filter_capacity = 10000
