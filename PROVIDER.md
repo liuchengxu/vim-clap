@@ -9,6 +9,8 @@
 * [Create non-pure-async provider](#create-non-pure-async-provider)
 * [Create pure async provider](#create-pure-async-provider)
 * [Register provider](#register-provider)
+* [FAQ](#faq)
+  * [How to add the preview support for my provider?](#how-to-add-the-preview-support-for-my-provider)
 
 <!-- /TOC -->
 
@@ -136,3 +138,8 @@ let g:clap_provider_quick_open = {
 
 `g:clap#provider#{provider_id}#`. See `:h autoload` and [clap/provider](autoload/clap/provider).
 
+### FAQ
+
+#### How to add the preview support for my provider?
+
+Use `on_moved()`, ensure it always runs fast.
