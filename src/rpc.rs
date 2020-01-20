@@ -44,7 +44,7 @@ pub fn loop_call(rx: &crossbeam_channel::Receiver<String>) {
                     let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
                     // println!("dir: {}", dir);
                     match read_entries(&dir) {
-                        Ok(entries) => println!("{}", json!({ "data": entries })),
+                        Ok(entries) => println!("{}", json!({ "data": entries, "dir": dir })),
                         Err(err) => println!("{}", json!({ "error": format!("{}:{}", dir, err) })),
                     }
                 }

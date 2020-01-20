@@ -17,12 +17,17 @@ function! s:compose_prompt() abort
   let l:prompt = s:prompt_format
 
   let l:spinner = s:spinner
-  let l:provider_id = get(g:, 'clap_forerunner_status_sign', '').g:clap.provider.id
+  " let l:provider_id = get(g:, 'clap_forerunner_status_sign', '').g:clap.provider.id
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
-  let l:prompt = substitute(l:prompt, '\V%spinner%', '\=l:spinner', 'g')
-  let l:prompt = substitute(l:prompt, '\V%provider_id%', '\=l:provider_id', 'g')
+  " let l:prompt = substitute(l:prompt, '\V%spinner%', '\=l:spinner', 'g')
+  " let l:prompt = substitute(l:prompt, '\V%provider_id%', '\=l:provider_id', 'g')
+  let l:prompt = getcwd()
+
+  if exists('s:spinner_rpc')
+    return s:spinner_rpc
+  endif
 
   return l:prompt
 endfunction
@@ -39,6 +44,14 @@ endif
 
 function! clap#spinner#refresh() abort
   call s:set_spinner()
+endfunction
+
+function! clap#spinner#get_rpc() abort
+  return s:spinner_rpc
+endfunction
+
+function! clap#spinner#set_rpc(spinner) abort
+  let s:spinner_rpc = a:spinner
 endfunction
 
 function! clap#spinner#get() abort

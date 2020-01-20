@@ -82,14 +82,26 @@ if has('nvim')
     " We only process the job that was spawned last time.
     if a:job_id == s:job_id
       if a:event ==# 'stdout'
-        let json = json_decode(a:data)
-        if has_key(json, 'error')
-          call g:clap.display.set_lines([json.error])
-        elseif has_key(json, 'data')
-          call g:clap.display.set_lines(json.data)
-        else
-          echom "stdout: ".string(json)
-        endif
+
+        for line in a:data
+          if line ==# ''
+            continue
+          endif
+          try
+            let json = json_decode(line)
+          catch
+            echom string(line)
+            continue
+          endtry
+          if has_key(json, 'error')
+            call g:clap.display.set_lines([json.error])
+          elseif has_key(json, 'data')
+            let s:open_file_dict[json.dir] = json.data
+            call g:clap.display.set_lines(json.data)
+          else
+            echom "stdout: ".string(json)
+          endif
+        endfor
       elseif a:event ==# 'stderr'
         " Ignore the error
       else
@@ -149,15 +161,56 @@ function! clap#rpc#job_start(cmd) abort
 endfunction
 
 function! clap#rpc#send() abort
-  echom "job_id: ".s:job_id.", send: ".g:clap.input.get()
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': getcwd()}, 'id': 1})
+  let dir = clap#spinner#get_rpc()
+  if has_key(s:open_file_dict, dir)
+    let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
+    call g:clap.display.set_lines(filtered)
+    return
+  endif
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': dir}, 'id': 1})
+  echom "job_id: ".s:job_id.", send: ".string(msg)
   call chansend(s:job_id, msg."\n")
+endfunction
+
+function! clap#rpc#bs() abort
+  let input = g:clap.input.get()
+  if input ==# ''
+    let spinner = clap#spinner#get_rpc()
+    if spinner[-1:] ==# '/'
+      let par = trim(fnamemodify(spinner, ':h:h'))
+    else
+      let par = trim(fnamemodify(spinner, ':h'))
+    endif
+    call clap#spinner#set_rpc(par)
+    call clap#rpc#send()
+  else
+
+    let dir = clap#spinner#get_rpc()
+    call g:clap.input.set(input[:-2])
+    if has_key(s:open_file_dict, dir)
+      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
+      call g:clap.display.set_lines(filtered)
+      return ''
+    endif
+  endif
+  return ''
+endfunction
+
+function! clap#rpc#tab() abort
+  let curline = g:clap.display.getcurline()
+  call clap#spinner#set_rpc(curline)
+  call g:clap.input.set('')
+  call clap#rpc#send()
+  return ''
 endfunction
 
 function! clap#rpc#run() abort
   let cmd = printf('%s rpc',
         \ s:maple_bin,
         \ )
+  call clap#spinner#set_rpc(getcwd())
+  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
+  let s:open_file_dict = {}
   call clap#rpc#job_start(cmd)
 endfunction
 
