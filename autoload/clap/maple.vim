@@ -217,5 +217,9 @@ function! clap#maple#grep(cmd, query, enable_icon) abort
   call clap#maple#job_start(cmd)
 endfunction
 
+function! clap#maple#run(cmd) abort
+  return printf('%s %s', s:maple_bin, a:cmd)
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

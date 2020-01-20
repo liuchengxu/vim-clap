@@ -26,10 +26,12 @@ setlocal
   \ foldcolumn=0
   \ nowrap
 
-augroup ClapOnTyped
-  autocmd!
-  autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
-augroup END
+if g:clap.provider.id !=# 'filer'
+  augroup ClapOnTyped
+    autocmd!
+    autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
+  augroup END
+endif
 
 " From vim-rsi
 if !exists('g:loaded_rsi')
@@ -65,7 +67,7 @@ inoremap <silent> <buffer> <PageUp> <C-R>=clap#handler#scroll('up')<CR>
 
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
-inoremap <silent> <buffer> <Tab> <C-R>=clap#rpc#tab()<CR>
-inoremap <silent> <buffer> <BS> <C-R>=clap#rpc#bs()<CR>
+inoremap <silent> <buffer> <Tab> <C-R>=clap#provider#filer#tab()<CR>
+inoremap <silent> <buffer> <BS> <C-R>=clap#provider#filer#bs()<CR>
 
 call clap#util#define_open_action_mappings()

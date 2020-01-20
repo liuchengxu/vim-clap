@@ -366,6 +366,20 @@ function! clap#(bang, ...) abort
     call s:parse_opts(a:000[1:])
   endif
 
+  if provider_id_or_alias ==# 'filer'
+    let g:clap.provider.id = 'filer'
+    let g:clap.display.cache = []
+
+    call s:clear_state()
+
+    let g:clap.registrar['filer'] = {'id': 'filer'}
+    call clap#handler#init()
+
+    call g:clap.open_win()
+
+    call clap#provider#filer#run()
+    return
+  endif
   call clap#for(provider_id_or_alias)
 endfunction
 
