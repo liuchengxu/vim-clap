@@ -6,8 +6,6 @@ set cpoptions&vim
 
 let s:pattern_builder = {}
 
-let s:default_ext_filter = v:null
-
 if has('python3') || has('python')
   let s:py_exe = has('python3') ? 'python3' : 'python'
   let s:pyfile = has('python3') ? 'py3file' : 'pyfile'
