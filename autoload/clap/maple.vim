@@ -163,7 +163,7 @@ endfunction
 
 let s:can_enable_icon = ['files', 'git_files']
 
-function! clap#maple#get_enable_icon() abort
+function! clap#maple#get_enable_icon_opt() abort
   if g:clap_enable_icon
         \ && index(s:can_enable_icon, g:clap.provider.id) > -1
     return '--enable-icon'
@@ -190,18 +190,14 @@ endfunction
 
 function! clap#maple#exec_subcommand(cmd) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
-
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let global_opt .= ' --enable-icon'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s %s exec "%s" --cmd-dir "%s"',
-        \ s:maple_bin,
-        \ global_opt,
-        \ a:cmd,
-        \ cmd_dir,
-        \ )
+  let subcommand = printf('exec "%s" --cmd-dir "%s"', a:cmd, cmd_dir)
+
+  let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
 
   call clap#maple#job_start(cmd)
 endfunction
@@ -211,14 +207,12 @@ function! clap#maple#grep(cmd, query, enable_icon) abort
   if a:enable_icon
     let global_opt .= ' --enable-icon'
   endif
+
   let cmd_dir = clap#rooter#working_dir()
-  let cmd = printf('%s %s grep "%s" "%s" --cmd-dir "%s"',
-        \ s:maple_bin,
-        \ global_opt,
-        \ a:cmd,
-        \ a:query,
-        \ cmd_dir,
-        \ )
+  let subcommand = printf('grep "%s" "%s"--cmd-dir "%s"', a:cmd, a:query, cmd_dir)
+
+  let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
+
   call clap#maple#job_start(cmd)
 endfunction
 

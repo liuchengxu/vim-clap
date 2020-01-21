@@ -129,7 +129,7 @@ if clap#maple#is_available()
     let cmd_dir = clap#rooter#working_dir()
     " No global --number option.
     let exec_cmd = printf('%s exec "%s" --cmd-dir "%s" --output-threshold %d',
-          \ clap#maple#get_enable_icon(),
+          \ clap#maple#get_enable_icon_opt(),
           \ a:cmd,
           \ cmd_dir,
           \ clap#filter#capacity(),
