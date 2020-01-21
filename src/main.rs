@@ -161,6 +161,7 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    /// Collect the output of command, exit directly if any error happened.
     fn output(&mut self) -> Result<Output> {
         let cmd_output = self.cmd.output()?;
 
@@ -216,15 +217,11 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    fn try_cache(
-        &self,
-        total: usize,
-        cmd_stdout: &[u8],
-        args: &[String],
-    ) -> Result<(String, Option<PathBuf>)> {
-        if total > self.output_threshold {
+    /// Cache the stdout into a tempfile if the output threshold exceeds.
+    fn try_cache(&self, cmd_stdout: &[u8], args: &[String]) -> Result<(String, Option<PathBuf>)> {
+        if self.total > self.output_threshold {
             let tempfile = self.tempfile(args)?;
-            File::create(tempfile.clone())?.write_all(cmd_stdout)?;
+            File::create(&tempfile)?.write_all(cmd_stdout)?;
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
             Ok((
@@ -248,10 +245,10 @@ impl<'a> LightCommand<'a> {
             return Ok(());
         }
 
-        let total = self.total;
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) = self.try_cache(total, &cmd_stdout, args)?;
+        let (stdout_str, tempfile) = self.try_cache(&cmd_stdout, args)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
+        let total = self.total;
         if let Some(tempfile) = tempfile {
             println_json!(total, lines, tempfile);
         } else {
