@@ -125,23 +125,11 @@ else
 endif
 
 if clap#maple#is_available()
-  function! s:into_maple_cmd(cmd) abort
-    let cmd_dir = clap#rooter#working_dir()
-    " No global --number option.
-    let exec_cmd = printf('%s exec "%s" --cmd-dir "%s" --output-threshold %d',
-          \ clap#maple#get_enable_icon_opt(),
-          \ a:cmd,
-          \ cmd_dir,
-          \ clap#filter#capacity(),
-          \ )
-    return clap#maple#inject_bin(exec_cmd)
-  endfunction
-
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
     let g:clap_forerunner_status_sign = '!'
     call clap#spinner#refresh()
-    call s:start_maple(s:into_maple_cmd(a:cmd))
+    call s:start_maple(clap#maple#forerunner_exec_subcommand(a:cmd))
   endfunction
 else
   function! clap#forerunner#start(cmd) abort

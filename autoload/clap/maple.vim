@@ -177,6 +177,20 @@ function! clap#maple#inject_bin(cmd) abort
   return printf('%s %s', s:maple_bin, a:cmd)
 endfunction
 
+function! clap#maple#forerunner_exec_subcommand(cmd) abort
+  " No global --number option.
+  let global_opt = clap#maple#get_enable_icon_opt()
+
+  let cmd_dir = clap#rooter#working_dir()
+  let subcommand = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
+        \ a:cmd,
+        \ cmd_dir,
+        \ clap#filter#capacity(),
+        \ )
+
+  return printf('%s %s %s', s:maple_bin, global_opt, subcommand)
+endfunction
+
 function! clap#maple#filter_subcommand(query) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
 
