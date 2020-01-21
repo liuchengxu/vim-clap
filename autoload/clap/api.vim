@@ -408,7 +408,7 @@ function! s:init_provider() abort
   " Currently only maple extension supports --input option, for the other
   " external filter, use cat instead.
   function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
-    if clap#filter#using_maple()
+    if clap#filter#external#using_maple()
       let cmd = printf('%s --input %s', a:ext_filter_cmd, a:input_file)
     else
       let cmd = printf('%s %s | %s', s:cat_or_type, a:input_file, a:ext_filter_cmd)
@@ -418,7 +418,7 @@ function! s:init_provider() abort
 
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
-    let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+    let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
     if exists('g:__clap_forerunner_tempfile')
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tempfile)
     else
@@ -481,7 +481,7 @@ function! s:init_provider() abort
         let lines = copy(Source())
       endif
 
-      let ext_filter_cmd = clap#filter#get_external_cmd_or_default()
+      let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
 
       let tmp = s:into_source_tmp_file(lines)
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
@@ -556,7 +556,7 @@ function! s:init_provider() abort
   function! provider.can_async() abort
     " The default async implementation is not doable and the provider does not
     " provide a source_async implementation explicitly.
-    if !clap#filter#has_external_default() && !has_key(self._(), 'source_async')
+    if !clap#filter#external#has_default() && !has_key(self._(), 'source_async')
       return v:false
     else
       return !get(g:, 'clap_disable_optional_async', v:false)
