@@ -144,10 +144,6 @@ function! s:on_typed_async_impl() abort
   endif
 
   call clap#spinner#set_busy()
-
-  if !exists('g:__clap_maple_fuzzy_matched')
-    call g:clap.display.add_highlight(l:cur_input)
-  endif
 endfunction
 
 " Choose the suitable way according to the source size.

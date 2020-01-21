@@ -50,10 +50,6 @@ function! clap#filter#external#get_cmd_or_default() abort
   else
     let s:cur_ext_filter = s:default_ext_filter
   endif
-  if s:cur_ext_filter ==# 'maple'
-    let g:__clap_maple_fuzzy_matched = []
-    let Provider = g:clap.provider._()
-  endif
   return printf(s:ext_cmd[s:cur_ext_filter], g:clap.input.get())
 endfunction
 
