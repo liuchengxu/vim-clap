@@ -1,4 +1,5 @@
 mod cmd;
+mod error;
 mod icon;
 
 use std::fs::File;
@@ -14,47 +15,9 @@ use rayon::prelude::*;
 use serde_json::json;
 use structopt::StructOpt;
 
-use crate::cmd::{Algo, Cmd};
+use crate::cmd::{Algo, Cmd, Maple};
+use crate::error::DummyError;
 use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
-
-#[derive(StructOpt, Debug)]
-#[structopt(name = "maple")]
-struct Maple {
-    /// Print the top NUM of filtered items.
-    ///
-    /// The returned JSON has three fields:
-    ///   - total: total number of initial filtered result set.
-    ///   - lines: text lines used for displaying directly.
-    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(short = "n", long = "number", name = "NUM")]
-    number: Option<usize>,
-
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long = "enable-icon")]
-    enable_icon: bool,
-
-    #[structopt(subcommand)]
-    command: Cmd,
-}
-
-#[derive(Debug)]
-struct DummyError;
-
-impl std::fmt::Display for DummyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DummyError is here!")
-    }
-}
-
-impl std::error::Error for DummyError {
-    fn description(&self) -> &str {
-        "DummyError used for anyhow"
-    }
-
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-}
 
 /// Remove the last element if it's empty string.
 #[inline]

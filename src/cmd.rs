@@ -67,3 +67,23 @@ pub enum Cmd {
         cmd_dir: Option<PathBuf>,
     },
 }
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "maple")]
+pub struct Maple {
+    /// Print the top NUM of filtered items.
+    ///
+    /// The returned JSON has three fields:
+    ///   - total: total number of initial filtered result set.
+    ///   - lines: text lines used for displaying directly.
+    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
+    #[structopt(short = "n", long = "number", name = "NUM")]
+    pub number: Option<usize>,
+
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    #[structopt(long = "enable-icon")]
+    pub enable_icon: bool,
+
+    #[structopt(subcommand)]
+    pub command: Cmd,
+}
