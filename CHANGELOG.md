@@ -8,6 +8,10 @@ CHANGELOG
 - New provider `:Clap loclist` for listing the entries of current window's location list.([#244](https://github.com/liuchengxu/vim-clap/pull/244))
 - New provider `:Clap providers` for listing all the providers by splitting out the previous anonymous `_` provider.([#242](https://github.com/liuchengxu/vim-clap/pull/242))
 
+### Changed
+
+- Now `maple` use subcommand instead of option for the various function, this refactor also makes adding new features easier.([#255](https://github.com/liuchengxu/vim-clap/pull/255))
+
 ### Improved
 
 - Refine `:Clap debug` and require it in the bug report. ([#241](https://github.com/liuchengxu/vim-clap/pull/241))
