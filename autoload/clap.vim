@@ -173,7 +173,6 @@ function! clap#_exit() abort
 
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
-        \ 'g:__clap_maple_fuzzy_matched',
         \ 'g:__clap_forerunner_result',
         \ ])
 
