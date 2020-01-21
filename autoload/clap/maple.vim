@@ -6,6 +6,7 @@ set cpoptions&vim
 
 let s:job_id = -1
 let s:job_timer = -1
+
 let s:maple_delay = get(g:, 'clap_maple_delay', 100)
 
 let s:bin_suffix = has('win32') ? '.exe' : ''
@@ -188,7 +189,7 @@ function! clap#maple#filter_subcommand(query) abort
   return cmd
 endfunction
 
-function! clap#maple#exec_subcommand(cmd) abort
+function! clap#maple#run_exec(cmd) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let global_opt .= ' --enable-icon'
@@ -202,14 +203,14 @@ function! clap#maple#exec_subcommand(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#grep(cmd, query, enable_icon) abort
+function! clap#maple#run_grep(cmd, query, enable_icon) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if a:enable_icon
     let global_opt .= ' --enable-icon'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
-  let subcommand = printf('grep "%s" "%s"--cmd-dir "%s"', a:cmd, a:query, cmd_dir)
+  let subcommand = printf('grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
 
   let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
 

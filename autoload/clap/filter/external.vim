@@ -38,13 +38,12 @@ endif
 function! s:get_external_filter() abort
   if has_key(g:clap.context, 'externalfilter')
     let s:cur_ext_filter = g:clap.context.externalfilter
-    return s:cur_ext_filter
   elseif has_key(g:clap.context, 'ef')
     let s:cur_ext_filter = g:clap.context.ef
-    return s:cur_ext_filter
   else
-    return v:null
+    let s:cur_ext_filter = v:null
   endif
+  return s:cur_ext_filter
 endfunction
 
 function! s:cmd_of(ext_filter) abort
@@ -57,10 +56,6 @@ endfunction
 
 function! clap#filter#external#has_default() abort
   return s:default_ext_filter isnot v:null
-endfunction
-
-function! clap#filter#external#using_maple() abort
-  return s:default_ext_filter ==# 'maple'
 endfunction
 
 function! s:default_external_cmd() abort
@@ -82,6 +77,10 @@ function! clap#filter#external#get_cmd_or_default() abort
   endif
 
   return s:default_external_cmd()
+endfunction
+
+function! clap#filter#external#using_maple() abort
+  return s:cur_ext_filter ==# 'maple'
 endfunction
 
 let &cpoptions = s:save_cpo
