@@ -31,33 +31,6 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-function! s:prepare_opts(row, col, width, height, ...) abort
-  let base_opts = {
-        \ 'row': a:row,
-        \ 'col': a:col,
-        \ 'width': a:width,
-        \ 'height': a:height,
-        \ 'relative': 'editor',
-        \ }
-  return extend(base_opts, get(a:000, 0, {}))
-endfunction
-
-function! s:prepare_display_opts() abort
-  return {
-        \ 'width': &columns * 2 / 3,
-        \ 'height': &lines  * 1 / 3,
-        \ 'row': &lines / 3 - 1,
-        \ 'col': &columns * 2 / 3 / 4,
-        \ 'relative': 'editor',
-        \ }
-endfunction
-
-let s:display_opts = s:prepare_display_opts()
-
-function! clap#floating_win#reconfigure_display_opts() abort
-  let s:display_opts = s:prepare_display_opts()
-endfunction
-
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
 
@@ -74,6 +47,9 @@ function! g:clap#floating_win#display.open() abort
     let s:display_bufnr = nvim_create_buf(v:false, v:true)
     let g:clap.display.bufnr = s:display_bufnr
   endif
+
+  let s:display_opts = clap#layout#calc()
+
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
