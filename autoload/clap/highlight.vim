@@ -112,5 +112,18 @@ function! clap#highlight#add_fuzzy_async(hl_lines) abort
   call s:apply_add_highlight(a:hl_lines, offset)
 endfunction
 
+function! clap#highlight#fg_only(group_name, cermfg, guifg) abort
+  if !hlexists(a:group_name)
+    execute printf(
+          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s gui=bold cterm=bold',
+          \ a:group_name,
+          \ a:cermfg,
+          \ a:guifg,
+          \ 'NONE',
+          \ 'NONE',
+          \ )
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
