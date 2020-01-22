@@ -39,12 +39,6 @@ function! s:prepare_display_opts() abort
       \ }
 endfunction
 
-let s:display_opts = s:prepare_display_opts()
-
-function! clap#popup#reconfigure_display_opts() abort
-  let s:display_opts = s:prepare_display_opts()
-endfunction
-
 function! s:execute_in_display() abort
   let w:clap_no_matches_id = matchadd('ClapNoMatchesFound', g:__clap_no_matches_pattern)
   setlocal signcolumn=yes norelativenumber
@@ -54,6 +48,8 @@ function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let col = &signcolumn ==# 'yes' ? 2 : 1
     let col += &number ? &numberwidth : 0
+
+    let s:display_opts = clap#layout#calc()
 
     let s:display_winid = popup_create([], {
           \ 'zindex': 1000,
