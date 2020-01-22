@@ -1,24 +1,25 @@
 " Author: Mark Wu <markplace@gmail.com>
-" Description: List the help tags.
+" Description: List the help tags, ported from https://github.com/zeero/vim-ctrlp-help
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" Help tags support, ported from https://github.com/zeero/vim-ctrlp-help
-let s:help_tags_filecache = get(g:, 'clap_provider_help_tags_cache', fnamemodify($MYVIMRC, ':p:h') . '/clap_provider_help_tags_cache')
-let s:help_tags_memcache = []
+let s:help_tags_memory_cache = []
 
 function! s:help_tags_source() abort
-  if empty(s:help_tags_memcache)
-    if getftime(s:help_tags_filecache) > max(map(s:get_tags_files(), 'getftime(v:val)'))
-      let s:help_tags_memcache = readfile(s:help_tags_filecache)
+  let help_tags_cache_file = clap#cache#location_for('help_tags', 'help_tags.txt')
+  if empty(s:help_tags_memory_cache)
+    if getftime(help_tags_cache_file) > max(map(s:get_tags_files(), 'getftime(v:val)'))
+      if filereadable(help_tags_cache_file)
+        let s:help_tags_memory_cache = readfile(help_tags_cache_file)
+      endif
     else
-      let s:help_tags_memcache = s:get_tags_list()
-      silent! call writefile(s:help_tags_memcache, s:help_tags_filecache)
+      let s:help_tags_memory_cache = s:get_tags_list()
+      silent! call writefile(s:help_tags_memory_cache, help_tags_cache_file)
     endif
   endif
 
-  return s:help_tags_memcache
+  return s:help_tags_memory_cache
 endfunction
 
 function! s:get_tags_list() abort
