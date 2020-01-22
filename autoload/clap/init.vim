@@ -26,7 +26,7 @@ function! clap#init#() abort
   if !exists('#ClapResize')
     augroup ClapResize
       autocmd!
-      autocmd VimResized * call s:reconfigure_display_opts()
+      autocmd VimResized * call clap#layout#on_resized()
     augroup END
   endif
 endfunction

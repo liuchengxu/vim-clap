@@ -15,10 +15,6 @@ CONTENTS                                                         *clap-contents*
   1. Introduction.........................|clap-introduction|
   2. Features.............................|clap-features|
   3. Supported Providers & Tools..........|clap-support|
-  4. Provider.............................|clap-provider|
-    4.1 Non-pure-async Providers..........|clap-non-pure-async-providers|
-    4.2 Pure async Providers..............|clap-pure-async-providers|
-    4.3 Registering Providers.............|clap-registering-providers|
   5. Global Options.......................|clap-options|
     5.1 Highlights........................|clap-highlights|
   6. Provider Options.....................|clap-provider-options|
@@ -161,8 +157,17 @@ to work everywhere out of the box, with fast response.
                                                      *:Clap-lines*
 :Clap lines              List the lines of the loaded buffers.
 
-                                                     *:Clap-quickfix*
+
+                                                    *:Clap-quickfix*
 :Clap quickfix           List the entries of the quickfix list.
+
+
+                                                     *:Clap-loclist*
+:Clap loclist            List the entries of the location list.
+
+
+                                                     *:Clap-providers*
+:Clap providers          List the clap providers.
 
                                                      *:Clap-marks*
 :Clap marks              List Marks
@@ -187,205 +192,6 @@ to work everywhere out of the box, with fast response.
 [git]: https://github.com/git/git
 [vista.vim]: https://github.com/liuchengxu/vista.vim
 
-
-===============================================================================
-4. Clap Provider                                                  *clap-provider*
-
-
-The provider of vim-clap is actually a |Dict| that specifies the action of your
-move in the input window. The idea is simple, every time you typed something,
-the `source` will be filtered or a job `source_async` will be spawned, and then
-the result retrived later will be shown in the dispaly window.
-
-There are generally two kinds of providers in vim-clap.
-
-1. Non-pure-async provider: suitable for these which are able to collect all
-   the items in a short time, e.g., open buffers, command history. It will run
-   in synchoronous if the source size is not large.
-
-   But it's also able to deal with the list that is potentially huge, let's say
-   100,000+ lines/items, in which case vim-clap will try to run the external filter
-   asynchronously. In a word, vim-clap can always be fast responsive.
-
-   What's more, it's extremely easy to introduce a new non-pure-async clap provider
-   as vim-clap provides the default implementation of `on_typed` and `source_async`.
-
-2. Pure async provider: suitable for the time-consuming jobs, e.g.,
-   grep a word in a directory.
-
-
--------------------------------------------------------------------------------
-4.1. Non-pure-async Providers                     *clap-non-pure-async-providers*
-
-
-  `sink`                 |String|  - vim command to handle the selected entry.
-                       |Funcref| - reference to function to process the selected entry.
-
-                       This field is mandatory.
-
-
-  `sink*`                |Funcref| - similar to `sink*`, but takes the list of multiple
-                                 selected entries as input.
-
-                       This field is optional.
-
-
-  `source`               |List|    - vim List as input to vim-clap.
-                       |String|  - external command to generate input to vim-clap,
-                                 e.g. `find .` .
-                       |Funcref| - reference to function that returns a List to
-                                 generate input to vim-clap.
-
-                       This field is mandatory.
-
-
-  `source_async`         |String| - job command to filter the items of `source` based
-                                on the external tools. The default implementation
-                                is to feed the output of `source` into the external
-                                fuzzy filters and then display the filtered result,
-                                which could have some limitations, e.g., the
-                                matched indices is unable to be highlighted.
-
-                       This field is optional.
-
-
-  `filter`               |Funcref| - given what you have typed, use `filter(entry)` to
-                                 evaluate each entry in the display window, when
-                                 the result is zero remove the item from the current
-                                 result list. The default implementation is to
-                                 match the input using vim's regex.
-
-                       This field is mandatory.
-
-
-  `on_typed`             |Funcref| - reference to function to filter the `source`.
-
-                       This field is mandatory.
-
-
-  `on_move`              |Funcref| - can be used for the preview purpose, when navigating
-                                 the result list, see clap/provider/colors.vim.
-
-                                 It won't be called if you merely input some characters
-                                 and do not scroll the list.
-
-                       This field is optional.
-
-
-  `on_enter`             |Funcref| - when entering the clap window, can be used
-                                 for recording the current state.
-
-                       This field is optional.
-
-
-  `on_exit`              |Funcref| - can be used for restoring the state on start.
-
-                       This field is optional.
-
-
-  `enable_rooter`        |Bool|
-
-                       This field is optional.
-
-
-  `support_open_action`  |Bool|
-
-                       This field is optional.
-
-
-  `syntax`               |String|
-                       for setting the syntax highlight for the display buffer easier.
-                       `let s:provider.syntax = 'provider_syntax'` is equal to
-                       `let s:provider.syon_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}` .
-
-                       This field is optional.
-
--------------------------------------------------------------------------------
-4.2 Pure async Providers                              *clap-pure-async-providers*
-
-
-  `sink`                   |Funcref| - reference to function to process the selected
-                                   entry.
-
-                         This field is mandatory and has no default
-                         implementation.
-
-
-  `on_typed`               |Funcref| - reference to function to spawn an async job.
-
-                         This field is mandatory.
-
-
-  `on_move`                |Funcref|
-
-                         This field is optional.
-
-
-  `on_enter`               |Funcref|
-
-                         This field is optional.
-
-
-  `on_exit`                |Funcref|
-
-                         This field is optional.
-
-
-  `converter`              |Funcref| - reference to function to convert the raw output
-                                   of job to another form, e.g., prepend an icon
-                                   to the grep result.
-
-                         This field is optional.
-
-
-  `jobstop`                |Funcref| - Stop the current job.
-
-                         This field is mandatory.
-
-
-  `enable_rooter`          |Bool|
-
-                         This field is optional.
-
-
-  `support_open_action`    |Bool|
-
-                         This field is optional.
-
-
--------------------------------------------------------------------------------
-4.3 Registering Providers                            *clap-registering-providers*
-
-
-Vim-clap will load the providers automatically when neccessary if it's defined
-properly.
-
-- vimrc
-
-Define `g:clap_provider_{provider_id}` in your vimrc, e.g.,
-
->
-  " `:Clap quick_open` to open some dotfiles quickly.
-  let g:clap_provider_quick_open = {
-      \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
-      \ 'sink': 'e',
-      \ }
-<
-
-- autoload
-
-`g:clap#provider#{provider_id}#`. See `:h autoload` and autoload/clap/provider.vim.
-
-                                                    *clap-provider-description*
-
-Each autoload provider should start with these two comment lines, the
-Description line will be extracted as the brief introduction when displaying
-all the avaliable providers via `:Clap` .
->
-  " Author: liuchengxu <xuliuchengxlc@gmail.com>
-  " Description: List the windows.
-
-
 ===============================================================================
 5. Global Options                                                 *clap-options*
 
@@ -401,6 +207,29 @@ g:clap_provider_alias                                    *g:clap_provider_alias*
 
   The `key` of |g:clap_provider_alias| is the alias, the `value` is the origin
   provider name.
+
+
+g:clap_layout                                                    *g:clap_layout*
+
+  Type: |Dict|
+  Default: `{'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%'}`
+
+  This variable controls the size and position of vim-clap window. The postion
+  is relative to the current window by default. The value can be a |Number| which
+  means the window size is fixed or use `[number]%` for a relative size.
+
+  If you change the value of  `width`, normally you'll have to tweak `col` too,
+  otherwise the UI could be weired as vim-clap uses multiple floating_win/popups
+  at the same time.
+
+  If you want to make the window relative to the whole editor instead of
+  current window:
+>
+  let g:clap_layout = { 'relative': 'editor' }
+<
+  Make the width wider:
+>
+  let g:clap_layout = { 'width': '95%', 'col': '5%' }
 
 
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*
@@ -651,7 +480,7 @@ g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
 g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold*
 
   Type: |Number|
-  Default: `10000`(no Rust extension), `100000`(with Rust extension)
+  Default: `10000`(no Python dylib), `100000`(with Python dylib)
 
   Vim-clap will try to spawn a asynchronous job to get the total possible
   results on entering the main window, instead of dispatching with the
@@ -691,12 +520,12 @@ ClapPreview                                                         *ClapPreview
 
 ClapDefaultSelected                                          *ClapDefaultSelected*
 
-  `hi ClapDefaultSelected cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7`
+  See `:hi ClapDefaultSelected` .
 
 
 ClapDefaultCurrentSelection                          *ClapDefaultCurrentSelection*
 
-  `hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7`
+  See `:hi ClapDefaultCurrentSelection` .
 
 
 ClapSelected                                                       *ClapSelected*
@@ -723,12 +552,6 @@ ClapMatches                                                          *ClapMatche
 ClapMatches[1-8]                                                 *ClapMatches[1-8]*
 
   `ClapMatches[1-8]` will be used for the matched substrings in the substring mode.
-
-
-ClapFuzzyMatches[1-12]                                     *ClapFuzzyMatches[1-12]*
-
-  `ClapFuzzyMatches[1-12]` will be used for highlighting the fuzzy matched
-  items.
 
 
 ClapNoMatchesFound                                        *ClapNClapNoMatchesFound*
