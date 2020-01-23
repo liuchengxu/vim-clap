@@ -61,6 +61,7 @@ function! s:create_display() abort
           \ 'scrollbar': 0,
           \ 'line': s:display_opts.row,
           \ 'col': s:display_opts.col,
+          \ 'highlight': 'ClapDisplay',
           \ 'minwidth': s:display_opts.width,
           \ 'maxwidth': s:display_opts.width,
           \ 'maxheight': s:display_opts.height,
@@ -225,7 +226,7 @@ function! s:execute_in_input() abort
   let s:save_completeopt = &completeopt
   set completeopt=
   setlocal nonumber
-  let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
+  let w:clap_search_text_hi_id = matchaddpos('ClapSearchText', [1])
   let b:coc_suggest_disable = 1
 endfunction
 
@@ -558,14 +559,6 @@ function! clap#popup#open() abort
 
   call clap#_init()
 
-  " Currently the highlight can't be local in vim.
-  " Remove this once vim support win local highlight.
-  redir => s:old_signcolumn
-  silent hi SignColumn
-  redir END
-
-  hi! link SignColumn ClapDisplay
-
   " TODO more roboust?
   augroup ClapEnsureAllClosed
     autocmd!
@@ -581,17 +574,6 @@ function! clap#popup#open() abort
 endfunction
 
 function! clap#popup#close() abort
-  if exists('s:old_signcolumn')
-    let old_signcolumn = split(s:old_signcolumn)[2:]
-    try
-      silent execute 'hi! SignColumn' join(old_signcolumn, ' ')
-    catch
-      " Ignore E416
-    finally
-      unlet s:old_signcolumn
-    endtry
-  endif
-
   if exists('s:display_winid')
     call popup_close(s:display_winid)
   endif
