@@ -13,6 +13,7 @@ else
 endif
 
 let s:git_files.sink = function('clap#provider#files#sink_impl')
+let s:git_files['sink*'] = function('clap#provider#files#sink_star_impl')
 let s:git_files.syntax = 'clap_files'
 let s:git_files.enable_rooter = v:true
 let s:git_files.support_open_action = v:true
