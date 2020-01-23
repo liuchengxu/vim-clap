@@ -9,6 +9,7 @@ CHANGELOG
 - New provider `:Clap providers` for listing all the providers by splitting out the previous anonymous `_` provider.([#242](https://github.com/liuchengxu/vim-clap/pull/242))
 - Add `g:clap_layout` to control the size and position of clap window. Now the default behaviour has been changed to window relative. If you prefer the previous behaviour, use `let g:clap_layout = { 'relative': 'editor' }`.
 - Add multi-select support for `Clap files` and `Clap git_files`.([#258](https://github.com/liuchengxu/vim-clap/pull/258))
+- Add `g:clap_theme` for changing the clap theme easily, the theme `material_design_dark` is shipped by default.[#259](https://github.com/liuchengxu/vim-clap/pull/259)
 
 ### Improved
 
