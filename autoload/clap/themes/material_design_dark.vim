@@ -6,18 +6,18 @@ set cpoptions&vim
 
 let s:palette = {}
 
-let s:palette.display = { 'guibg': '#272d3D' }
+let s:palette.display = { 'ctermbg': '68', 'guibg': '#272d3D' }
 
-let s:bg0 = {'guibg': '#3e4461'}
-
+" Let ClapInput, ClapSpinner and ClapSearchText use the same backgound.
+let s:bg0 = { 'ctermbg': '111', 'guibg': '#3e4461' }
 let s:palette.input = s:bg0
-let s:palette.spinner = extend({ 'ctermfg': '184', 'guifg':'#ffe500', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)
-let s:palette.search_text = extend({ 'guifg': '#CADFF3', 'cterm': 'bold', 'gui': 'bold' }, s:bg0)
+let s:palette.spinner = extend({ 'ctermfg': '11', 'guifg':'#ffe500', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)
+let s:palette.search_text = extend({ 'ctermfg': '195', 'guifg': '#CADFF3', 'cterm': 'bold', 'gui': 'bold' }, s:bg0)
 
-let s:palette.preview = { 'ctermbg': '237', 'guibg': '#363c55' }
+let s:palette.preview = { 'ctermbg': '74', 'guibg': '#363c55' }
 
-let s:palette.selected = { 'cterm': 'bold,underline', 'gui': 'bold,underline', 'ctermfg': '80', 'guifg': '#5fd7d7' }
-let s:palette.current_selection = {'cterm': 'bold', 'gui': 'bold', 'guibg': '#31364D'}
+let s:palette.selected = { 'ctermfg': '81', 'guifg': '#5FD7d7', 'cterm': 'bold,underline', 'gui': 'bold,underline' }
+let s:palette.current_selection = { 'ctermbg': '98', 'guibg': '#31364D', 'cterm': 'bold', 'gui': 'bold' }
 
 let g:clap#themes#material_design_dark#palette = s:palette
 

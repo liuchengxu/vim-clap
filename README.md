@@ -189,7 +189,7 @@ augroup END
 
 ### Change highlights
 
-By default vim-clap will use the colors extracted from your colorscheme, which is not guaranteed to suitable for all the colorschemes. You can try the built-in `material_design_dark` theme:
+By default vim-clap will use the colors extracted from your colorscheme, which is not guaranteed to suitable for all the colorschemes. Then you can try the built-in `material_design_dark` theme then:
 
 ```vim
 let g:clap_theme = 'material_design_dark'
@@ -201,9 +201,9 @@ let g:clap_theme = 'material_design_dark'
 You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 
 ```vim
+" Change the CamelCase of related highlight group name to under_score_case.
 let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 ```
-
 
 If you want to write your own clap theme, take [autoload/clap/themes/material_design_dark.vim](autoload/clap/themes/material_design_dark.vim) as a reference.
 
