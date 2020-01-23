@@ -189,36 +189,23 @@ augroup END
 
 ### Change highlights
 
-The default highlights:
+By default vim-clap will use the colors extracted from your colorscheme, which is not guaranteed to suitable for all the colorschemes. Then you can try the built-in `material_design_dark` theme then:
 
 ```vim
-hi default link ClapInput   Visual
-hi default link ClapDisplay Pmenu
-hi default link ClapPreview PmenuSel
-hi default link ClapMatches Search
-
-" By default ClapQuery will use the bold fg of Normal and the same bg of ClapInput
-
-hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
-hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
-
-hi default link ClapPreview          ClapDefaultPreview
-hi default link ClapSelected         ClapDefaultSelected
-hi default link ClapCurrentSelection ClapDefaultCurrentSelection
+let g:clap_theme = 'material_design_dark'
 ```
 
-If you want a different highlight for the matches found, try:
+![clap-highlights](https://user-images.githubusercontent.com/8850248/72986238-bd106580-3e22-11ea-98ad-03faa9d6130c.png)
+
+
+You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 
 ```vim
-hi default link ClapMatches Function
+" Change the CamelCase of related highlight group name to under_score_case.
+let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 ```
 
-Or:
-
-```vim
-hi ClapMatches cterm=bold ctermfg=170 gui=bold guifg=#bc6ec5
-```
+If you want to write your own clap theme, take [autoload/clap/themes/material_design_dark.vim](autoload/clap/themes/material_design_dark.vim) as a reference.
 
 See `:help clap-highlights` for more information.
 

@@ -232,6 +232,25 @@ g:clap_layout                                                    *g:clap_layout*
   let g:clap_layout = { 'width': '95%', 'col': '5%' }
 
 
+g:clap_theme                                                      *g:clap_theme*
+
+  Type: |Dict| / |String|
+  Default: `Undefined`
+
+  This variable controls the look of clap. If it's undefined, clap will
+  extract the colors from your colorscheme, you could also say that is an
+  adapative theme.
+
+  If you ensure some clap theme exists, e.g., the built-in
+  `material_design_dark` theme, enable it via:
+>
+  let g:clap_theme = 'material_design_dark'
+<
+  If you set `g:clap_theme` to be a `Dict` to specify the palette:
+>
+  let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
+
+
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*
 
   Type: |Number|
