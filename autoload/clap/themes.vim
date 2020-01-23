@@ -54,12 +54,6 @@ function! s:hi_spinner() abort
         \ )
 endfunction
 
-function! s:ensure_hl_exists(group, default) abort
-  if !hlexists(a:group)
-    execute 'hi default link' a:group a:default
-  endif
-endfunction
-
 function! s:hi_clap_symbol() abort
   let input_ctermbg = s:extract_or('ClapInput', 'bg', 'cterm', '60')
   let input_guibg = s:extract_or('ClapInput', 'bg', 'gui', '#544a65')
@@ -81,18 +75,21 @@ function! s:colorschme_adaptive() abort
   call clap#icon#def_color_components()
 endfunction
 
-function! s:apply_theme() abort
-  let palette = g:clap#themes#material_design_dark#palette
-  let current_selection = palette.current_selection
-  execute 'hi ClapCurrentSelection' join(values(map(current_selection, 'v:key."=".v:val')), ' ')
+function! s:highlight_for(group_name, props) abort
+  execute 'hi' a:group_name join(values(map(copy(a:props), 'v:key."=".v:val')), ' ')
+endfunction
 
-  let display = palette.display
-  execute 'hi ClapDisplay' join(values(map(copy(display), 'v:key."=".v:val')), ' ')
+function! s:apply_themes(theme_name) abort
+  try
+    let palette = g:clap#themes#{a:theme_name}#palette
+    call s:highlight_for('ClapCurrentSelection', palette.current_selection)
+    call s:highlight_for('ClapDisplay', palette.display)
 
-  let query = palette.query
-  execute 'hi ClapQuery' join(values(map(copy(query), 'v:key."=".v:val')), ' ')
+    call s:highlight_for('ClapQuery', palette.query)
 
-  execute 'hi ClapInput' join(values(map(display, 'v:key."=".v:val')), ' ')
+    call s:highlight_for('ClapInput', palette.display)
+  catch
+  endtry
 endfunction
 
 function! clap#themes#init_hi_groups() abort
@@ -137,14 +134,15 @@ function! clap#themes#init_hi_groups() abort
   hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
 
   hi default link ClapMatches Search
+  hi default link ClapNoMatchesFound ErrorMsg
+
   hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
   hi default link ClapPopupCursor Type
-  hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
 
   execute 'hi default link ClapInput' s:input_default_hi_group
   execute 'hi default link ClapDisplay' s:display_default_hi_group
 
-  call s:apply_theme()
+  call s:apply_themes('material_design_dark')
 endfunction
