@@ -49,10 +49,14 @@ function! s:hi_clap_symbol() abort
         \ )
 endfunction
 
-function! s:highlight_for(group_name, prop) abort
-  if has_key(s:palette, a:prop)
-    execute 'hi' a:group_name join(values(map(copy(s:palette[a:prop]), 'v:key."=".v:val')), ' ')
+" Try the palatte, otherwise use the built-in material_design_dark theme.
+function! s:highlight_for(group_name, type) abort
+  if has_key(s:palette, a:type)
+    let props = s:palette[a:type]
+  else
+    let props = g:clap#themes#material_design_dark#palette[a:type]
   endif
+  execute 'hi' a:group_name join(values(map(copy(props), 'v:key."=".v:val')), ' ')
 endfunction
 
 function! s:paint_is_ok() abort
