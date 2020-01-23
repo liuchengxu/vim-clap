@@ -151,7 +151,7 @@ function! g:clap#floating_win#input.open() abort
   endif
   silent let s:input_winid = nvim_open_win(s:input_bufnr, v:true, opts)
 
-  let w:clap_query_hi_id = matchaddpos('ClapQuery', [1])
+  let w:clap_search_text_hi_id = matchaddpos('ClapSearchText', [1])
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
