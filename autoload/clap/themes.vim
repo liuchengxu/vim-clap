@@ -49,27 +49,26 @@ function! s:hi_clap_symbol() abort
         \ )
 endfunction
 
-function! s:highlight_for(group_name, palette, prop) abort
-  if has_key(a:palette, a:prop)
-    execute 'hi' a:group_name join(values(map(copy(a:palette[a:prop]), 'v:key."=".v:val')), ' ')
+function! s:highlight_for(group_name, prop) abort
+  if has_key(s:palette, a:prop)
+    execute 'hi' a:group_name join(values(map(copy(s:palette[a:prop]), 'v:key."=".v:val')), ' ')
   endif
 endfunction
 
-function! s:paint_is_ok(palette) abort
+function! s:paint_is_ok() abort
   try
-    let palette = a:palette
-    call s:highlight_for('ClapSpinner', a:palette, 'spinner')
+    call s:highlight_for('ClapSpinner', 'spinner')
     " Backward compatible
     if hlexists('ClapQuery')
       hi link ClapSearchText ClapQuery
     else
-      call s:highlight_for('ClapSearchText', a:palette, 'search_text')
+      call s:highlight_for('ClapSearchText', 'search_text')
     endif
-    call s:highlight_for('ClapInput', a:palette, 'input')
-    call s:highlight_for('ClapDisplay', a:palette, 'display')
-    call s:highlight_for('ClapSelected', a:palette, 'selected')
-    call s:highlight_for('ClapCurrentSelection', a:palette, 'current_selection')
-    call s:highlight_for('ClapPreview', a:palette, 'preview')
+    call s:highlight_for('ClapInput', 'input')
+    call s:highlight_for('ClapDisplay', 'display')
+    call s:highlight_for('ClapSelected', 'selected')
+    call s:highlight_for('ClapCurrentSelection', 'current_selection')
+    call s:highlight_for('ClapPreview', 'preview')
   catch
     return v:false
   endtry
@@ -124,7 +123,6 @@ function! s:make_display_EndOfBuffer_invisible() abort
 endfunction
 
 function! s:make_preview_EndOfBuffer_invisible() abort
-
   let preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
   let guibg = s:extract_or(preview_group, 'bg', 'gui', '#5e5079')
   let ctermbg = s:extract_or(preview_group, 'bg', 'cterm', '60')
@@ -136,7 +134,9 @@ function! s:make_preview_EndOfBuffer_invisible() abort
 endfunction
 
 function! s:init_theme() abort
-  if !exists('s:palette') || !s:paint_is_ok(s:palette)
+  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+
+  if !exists('s:palette') || !s:paint_is_ok()
     call s:apply_default_theme()
   endif
 
@@ -147,8 +147,6 @@ function! s:init_theme() abort
 endfunction
 
 function! clap#themes#init() abort
-  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
-
   hi default link ClapMatches Search
   hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapPopupCursor Type
