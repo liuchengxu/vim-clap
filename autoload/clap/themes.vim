@@ -13,27 +13,6 @@ function! s:extract_or(group, what, gui_or_cterm, default) abort
   return empty(v) ? a:default : v
 endfunction
 
-function! s:hi_display_invisible() abort
-  " People can use their own display highlight group, so can't use s:display_default_hi_group here.
-  let guibg = s:extract_or(s:display_group, 'bg', 'gui', '#544a65')
-  let ctermbg = s:extract_or(s:display_group, 'bg', 'cterm', '60')
-  execute printf(
-        \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
-        \ ctermbg,
-        \ guibg
-        \ )
-endfunction
-
-function! s:hi_preview_invisible() abort
-  let guibg = s:extract_or(s:preview_group, 'bg', 'gui', '#5e5079')
-  let ctermbg = s:extract_or(s:preview_group, 'bg', 'cterm', '60')
-  execute printf(
-        \ 'hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s',
-        \ ctermbg,
-        \ guibg
-        \ )
-endfunction
-
 " Try to sync the spinner bg with input window.
 function! s:hi_spinner() abort
   let vis_ctermbg = s:extract_or(s:input_default_hi_group, 'bg', 'cterm', '60')
@@ -79,6 +58,7 @@ function! s:try_apply_themes_is_ok(theme_name) abort
   try
     let palette = g:clap#themes#{a:theme_name}#palette
     call s:highlight_for('ClapSpinner', palette.spinner)
+    call s:highlight_for('ClapPreview', palette.preview)
     call s:highlight_for('ClapInput', palette.input)
     call s:highlight_for('ClapDisplay', palette.display)
     call s:highlight_for('ClapSelected', palette.selected)
@@ -119,7 +99,6 @@ function! s:apply_default_theme() abort
           \ )
   endif
 
-  hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
   hi ClapDefaultSelected         ctermfg=80  guifg=#5fd7d7 cterm=bold,underline gui=bold,underline
   hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
 
@@ -128,12 +107,6 @@ function! s:apply_default_theme() abort
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
 
   call s:hi_clap_symbol()
-
-  let s:display_group = hlexists('ClapDisplay') ? 'ClapDisplay' : s:display_default_hi_group
-  call s:hi_display_invisible()
-
-  let s:preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
-  call s:hi_preview_invisible()
 
   augroup ClapColorSchemeAdaptive
     autocmd!
@@ -144,6 +117,31 @@ function! s:apply_default_theme() abort
   execute 'hi default link ClapDisplay' s:display_default_hi_group
 endfunction
 
+function! s:make_display_EndOfBuffer_invisible() abort
+  let display_group = hlexists('ClapDisplay') ? 'ClapDisplay' : s:display_default_hi_group
+  " People can use their own display highlight group, so can't use s:display_default_hi_group here.
+  let guibg = s:extract_or(display_group, 'bg', 'gui', '#544a65')
+  let ctermbg = s:extract_or(display_group, 'bg', 'cterm', '60')
+  execute printf(
+        \ 'hi ClapDisplayInvisibleEndOfBuffer ctermfg=%s guifg=%s',
+        \ ctermbg,
+        \ guibg
+        \ )
+endfunction
+
+function! s:make_preview_EndOfBuffer_invisible() abort
+  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+
+  let preview_group = hlexists('ClapPreview') ? 'ClapPreview' : 'ClapDefaultPreview'
+  let guibg = s:extract_or(preview_group, 'bg', 'gui', '#5e5079')
+  let ctermbg = s:extract_or(preview_group, 'bg', 'cterm', '60')
+  execute printf(
+        \ 'hi ClapPreviewInvisibleEndOfBuffer ctermfg=%s guifg=%s',
+        \ ctermbg,
+        \ guibg
+        \ )
+endfunction
+
 function! clap#themes#init_hi_groups() abort
   hi default link ClapMatches Search
   hi default link ClapNoMatchesFound ErrorMsg
@@ -152,4 +150,7 @@ function! clap#themes#init_hi_groups() abort
   if !s:try_apply_themes_is_ok('material_design_dark')
     call s:apply_default_theme()
   endif
+
+  call s:make_display_EndOfBuffer_invisible()
+  call s:make_preview_EndOfBuffer_invisible()
 endfunction
