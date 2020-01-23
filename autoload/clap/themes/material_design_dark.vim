@@ -11,8 +11,8 @@ let s:palette.display = { 'guibg': '#272d3D' }
 let s:bg0 = {'guibg': '#3e4461'}
 
 let s:palette.input = s:bg0
-let s:palette.spinner = extend({ 'ctermfg': '184', 'guifg':'#ffe920', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)
-let s:palette.search_text = extend({ 'guifg': '#BCBFD7', 'cterm': 'bold', 'gui': 'bold' }, s:bg0)
+let s:palette.spinner = extend({ 'ctermfg': '184', 'guifg':'#ffe500', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)
+let s:palette.search_text = extend({ 'guifg': '#CADFF3', 'cterm': 'bold', 'gui': 'bold' }, s:bg0)
 
 let s:palette.preview = { 'ctermbg': '237', 'guibg': '#363c55' }
 
