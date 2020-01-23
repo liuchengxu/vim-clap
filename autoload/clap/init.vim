@@ -58,7 +58,7 @@ endfunction
 
 function! clap#init#() abort
   call clap#api#bake()
-  call clap#themes#init_hi_groups()
+  call clap#themes#init()
 
   call s:init_submatches_hl_group()
   call s:init_fuzzy_match_hl_groups()

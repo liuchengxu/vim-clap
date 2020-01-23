@@ -44,8 +44,8 @@ function! s:hi_clap_symbol() abort
 endfunction
 
 function! s:colorschme_adaptive() abort
-  call s:hi_display_invisible()
-  call s:hi_preview_invisible()
+  call s:make_display_EndOfBuffer_invisible()
+  call s:make_preview_EndOfBuffer_invisible()
   call s:hi_clap_symbol()
   call clap#icon#def_color_components()
 endfunction
@@ -54,21 +54,21 @@ function! s:highlight_for(group_name, props) abort
   execute 'hi' a:group_name join(values(map(copy(a:props), 'v:key."=".v:val')), ' ')
 endfunction
 
-function! s:try_apply_themes_is_ok(theme_name) abort
+function! s:try_load_themes_is_ok(theme_name) abort
   try
     let palette = g:clap#themes#{a:theme_name}#palette
     call s:highlight_for('ClapSpinner', palette.spinner)
-    call s:highlight_for('ClapPreview', palette.preview)
-    call s:highlight_for('ClapInput', palette.input)
-    call s:highlight_for('ClapDisplay', palette.display)
-    call s:highlight_for('ClapSelected', palette.selected)
-    call s:highlight_for('ClapCurrentSelection', palette.current_selection)
     " Backward compatible
     if hlexists('ClapQuery')
       hi link ClapSearchText ClapQuery
     else
       call s:highlight_for('ClapSearchText', palette.search_text)
     endif
+    call s:highlight_for('ClapInput', palette.input)
+    call s:highlight_for('ClapDisplay', palette.display)
+    call s:highlight_for('ClapSelected', palette.selected)
+    call s:highlight_for('ClapCurrentSelection', palette.current_selection)
+    call s:highlight_for('ClapPreview', palette.preview)
   catch
     return v:false
   endtry
@@ -76,13 +76,13 @@ function! s:try_apply_themes_is_ok(theme_name) abort
 endfunction
 
 function! s:apply_default_theme() abort
-  " if !hlexists('ClapSpinner')
-    " call s:hi_spinner()
-    " augroup ClapRefreshSpinner
-      " autocmd!
-      " autocmd ColorScheme * call s:hi_spinner()
-    " augroup END
-  " endif
+  if !hlexists('ClapSpinner')
+    call s:hi_spinner()
+    augroup ClapRefreshSpinner
+      autocmd!
+      autocmd ColorScheme * call s:hi_spinner()
+    augroup END
+  endif
 
   if !hlexists('ClapQuery')
     " A bit repeatation code here in case of ClapSpinner is defined explicitly.
@@ -102,7 +102,6 @@ function! s:apply_default_theme() abort
   hi ClapDefaultSelected         ctermfg=80  guifg=#5fd7d7 cterm=bold,underline gui=bold,underline
   hi ClapDefaultCurrentSelection ctermfg=224 guifg=#ffd7d7 cterm=bold gui=bold
 
-  hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
 
@@ -142,12 +141,12 @@ function! s:make_preview_EndOfBuffer_invisible() abort
         \ )
 endfunction
 
-function! clap#themes#init_hi_groups() abort
+function! clap#themes#init() abort
   hi default link ClapMatches Search
   hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapPopupCursor Type
 
-  if !s:try_apply_themes_is_ok('material_design_dark')
+  if !s:try_load_themes_is_ok('material_design_dark')
     call s:apply_default_theme()
   endif
 
