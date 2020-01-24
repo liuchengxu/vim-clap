@@ -421,12 +421,12 @@ endfunction
 
 " noautocmd is neccessary in that too many plugins use redir, otherwise we'll
 " see E930: Cannot use :redir inside execute().
-let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("down")') }
+let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("down")') }
 let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
-let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("up")') }
+let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("up")') }
 let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
-let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#scroll("up")') }
-let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#scroll("down")') }
+let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
+let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#select_toggle()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
