@@ -30,31 +30,57 @@ if exists('g:clap_default_external_filter')
   endif
 elseif clap#maple#is_available()
   let s:default_ext_filter = 'maple'
-  let s:ext_cmd.maple = clap#maple#filter_cmd_fmt()
 else
   let s:default_ext_filter = s:other_fuzzy_ext_filter()
 endif
 
-function! clap#filter#external#using_maple() abort
-  return s:cur_ext_filter ==# 'maple'
-endfunction
-
-function! clap#filter#external#get_cmd_or_default() abort
+" Get explicit externalfilter option.
+function! s:get_external_filter() abort
   if has_key(g:clap.context, 'externalfilter')
     let s:cur_ext_filter = g:clap.context.externalfilter
   elseif has_key(g:clap.context, 'ef')
     let s:cur_ext_filter = g:clap.context.ef
-  elseif s:default_ext_filter is v:null
-    call g:clap.abort('No external filter available')
-    return
   else
-    let s:cur_ext_filter = s:default_ext_filter
+    let s:cur_ext_filter = v:null
   endif
-  return printf(s:ext_cmd[s:cur_ext_filter], g:clap.input.get())
+  return s:cur_ext_filter
+endfunction
+
+function! s:cmd_of(ext_filter) abort
+  if a:ext_filter ==# 'maple'
+    return clap#maple#filter_subcommand(g:clap.input.get())
+  else
+    return printf(s:ext_cmd[a:ext_filter], g:clap.input.get())
+  endif
 endfunction
 
 function! clap#filter#external#has_default() abort
   return s:default_ext_filter isnot v:null
+endfunction
+
+function! s:default_external_cmd() abort
+  if s:default_ext_filter is v:null
+    call g:clap.abort('No external filter available')
+    return v:null
+  endif
+
+  let s:cur_ext_filter = s:default_ext_filter
+  return s:cmd_of(s:cur_ext_filter)
+endfunction
+
+" Filter using the external tools given the current input.
+function! clap#filter#external#get_cmd_or_default() abort
+  let external_filter = s:get_external_filter()
+
+  if external_filter isnot v:null
+    return s:cmd_of(external_filter)
+  endif
+
+  return s:default_external_cmd()
+endfunction
+
+function! clap#filter#external#using_maple() abort
+  return s:cur_ext_filter ==# 'maple'
 endfunction
 
 let &cpoptions = s:save_cpo

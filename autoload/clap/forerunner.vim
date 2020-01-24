@@ -125,25 +125,11 @@ else
 endif
 
 if clap#maple#is_available()
-  let s:empty_filter_cmd = printf(clap#maple#filter_cmd_fmt(), '')
-
-  function! s:into_maple_cmd(cmd) abort
-    let cmd_dir = clap#rooter#working_dir()
-    let cmd = printf('%s --cmd "%s" --cmd-dir "%s" --output-threshold %d',
-          \ s:empty_filter_cmd,
-          \ a:cmd,
-          \ cmd_dir,
-          \ clap#filter#capacity(),
-          \ )
-
-    return clap#maple#try_enable_icon(cmd)
-  endfunction
-
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
     let g:clap_forerunner_status_sign = '!'
     call clap#spinner#refresh()
-    call s:start_maple(s:into_maple_cmd(a:cmd))
+    call s:start_maple(clap#maple#forerunner_exec_subcommand(a:cmd))
   endfunction
 else
   function! clap#forerunner#start(cmd) abort
