@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.6] 2019-01-24
+
 ### Added
 
 - New provider `:Clap loclist` for listing the entries of current window's location list.([#244](https://github.com/liuchengxu/vim-clap/pull/244))
