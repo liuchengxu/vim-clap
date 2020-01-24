@@ -279,11 +279,11 @@ function! s:init_input() abort
     endfunction
 
     function! input.get() abort
-      return clap#popup#get_input()
+      return clap#popup#move_manager#get_input()
     endfunction
 
     function! input.set(line) abort
-      call clap#popup#set_input(a:line)
+      call clap#popup#move_manager#set_input(a:line)
     endfunction
 
     function! input.clear() abort

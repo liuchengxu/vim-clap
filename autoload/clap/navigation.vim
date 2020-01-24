@@ -102,9 +102,9 @@ if has('nvim')
     return s:wrap_insert_move(function('s:scroll'), [a:direction])
   endfunction
 
-  function! clap#navigation#internal(direction) abort
+  function! clap#navigation#line_down() abort
     call g:clap.display.goto_win()
-    call s:navigate(a:direction)
+    call s:navigate('down')
     call g:clap.input.goto_win()
   endfunction
 
@@ -120,8 +120,8 @@ else
     call win_execute(g:clap.display.winid, 'call s:scroll(a:direction)')
   endfunction
 
-  function! clap#navigation#internal(direction) abort
-    call win_execute(g:clap.display.winid, 'call s:navigate(a:direction)')
+  function! clap#navigation#line_down() abort
+    call win_execute(g:clap.display.winid, 'call s:navigate("down")')
   endfunction
 endif
 
