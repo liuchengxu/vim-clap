@@ -3,7 +3,7 @@ CHANGELOG
 
 ## [unreleased]
 
-## [0.6] 2019-01-24
+## [0.6] 2020-01-24
 
 ### Added
 
@@ -25,7 +25,7 @@ CHANGELOG
 
 - Wrong async threshold in impl.vim.(https://github.com/liuchengxu/vim-clap/pull/248#issuecomment-576108100)
 
-## [0.5] 2019-01-15
+## [0.5] 2020-01-15
 
 ### Added
 
@@ -46,7 +46,7 @@ CHANGELOG
 - Git submodule detection.([#175](https://github.com/liuchengxu/vim-clap/pull/175))
 - Regression of using neovim job without maple.([#234](https://github.com/liuchengxu/vim-clap/pull/234))
 
-## [0.4] 2019-01-06
+## [0.4] 2020-01-06
 
 ### Added
 
