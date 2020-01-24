@@ -219,7 +219,9 @@ let g:clap_provider_quick_open = {
       \ }
 ```
 
-For complete guide please see [PROVIDER.md](PROVIDER.md).
+Find more examples at [wiki/Examples](https://github.com/liuchengxu/vim-clap/wiki/Examples).
+
+For complete guide about writing a clap provider please see [PROVIDER.md](PROVIDER.md).
 
 ## Contribution
 
