@@ -1,7 +1,8 @@
 [package]
 name = "maple"
+build = "build.rs"
 edition = "2018"
-version = "0.1.0"
+version = "0.1.6"
 license = "MIT"
 publish = false
 include = ["/Cargo.toml", "src/*.rs"]
@@ -21,3 +22,6 @@ lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 
 extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
+
+[build-dependencies]
+built = "0.3"
