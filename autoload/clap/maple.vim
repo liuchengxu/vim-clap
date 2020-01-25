@@ -26,7 +26,7 @@ else
   let s:maple_bin = v:null
 endif
 
-function! clap#maple#info() abort
+function! clap#maple#binary() abort
   return s:maple_bin
 endfunction
 
