@@ -4,12 +4,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:input = ''
-let s:input_timer = -1
-let s:input_delay = get(g:, 'clap_popup_input_delay', 200)
-let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
-let s:cursor_width = strdisplaywidth(s:cursor_shape)
-
 let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
 let g:clap#popup#input = {}
@@ -56,7 +50,7 @@ function! s:create_display() abort
           \ 'wrap': v:false,
           \ 'mapping': v:false,
           \ 'cursorline': 0,
-          \ 'filter': function('s:popup_filter'),
+          \ 'filter': function('clap#popup#move_manager#filter'),
           \ 'callback': function('s:callback'),
           \ 'scrollbar': 0,
           \ 'line': s:display_opts.row,
@@ -281,35 +275,6 @@ function! s:callback(_id, _result) abort
   call clap#handler#exit()
 endfunction
 
-function! s:hl_cursor() abort
-  if exists('w:clap_cursor_id')
-    call matchdelete(w:clap_cursor_id)
-  endif
-  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, s:cursor_idx + 1, s:cursor_width]])
-endfunction
-
-function! s:mock_input() abort
-  if s:input ==# ''
-        \ || type(s:cursor_idx) ==# v:t_string
-        \ || s:cursor_idx == strlen(s:input)
-    let input = s:input.s:cursor_shape
-  elseif get(s:, 'insert_at_the_begin', v:false)
-    let input = s:input[0].s:cursor_shape.s:input[1:]
-    let s:cursor_idx = 1
-  elseif s:cursor_idx == 0
-    let input = s:cursor_shape.s:input
-  else
-    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx :]], s:cursor_shape)
-  endif
-  call popup_settext(s:input_winid, input)
-  call win_execute(s:input_winid, 'noautocmd call s:hl_cursor()')
-endfunction
-
-function! clap#popup#set_input(input) abort
-  let s:input = a:input
-  call s:mock_input()
-endfunction
-
 function! g:clap#popup#preview.show(lines) abort
   let display_pos = popup_getpos(s:display_winid)
   let col = display_pos.col
@@ -327,189 +292,6 @@ function! g:clap#popup#preview.hide() abort
   endif
 endfunction
 
-function! s:apply_input(_timer) abort
-  if g:clap.provider.is_pure_async()
-    call g:clap.provider.jobstop()
-  endif
-  call g:clap.provider.on_typed()
-endfunction
-
-function! s:apply_input_with_delay() abort
-  if s:input_timer != -1
-    call timer_stop(s:input_timer)
-  endif
-  let s:input_timer = timer_start(s:input_delay, function('s:apply_input'))
-endfunction
-
-let s:move_manager = {}
-
-function! s:move_manager.ctrl_a(_winid) abort
-  let s:cursor_idx = 0
-  call s:mock_input()
-endfunction
-
-function! s:move_manager.ctrl_b(_winid) abort
-  let s:cursor_idx -= 1
-  if s:cursor_idx < 0
-    let s:cursor_idx = 0
-  endif
-  call s:mock_input()
-endfunction
-
-function! s:move_manager.ctrl_f(_winid) abort
-  let s:cursor_idx += 1
-  let input_len = strlen(s:input)
-  if s:cursor_idx > input_len
-    let s:cursor_idx = input_len
-  endif
-  call s:mock_input()
-endfunction
-
-function! s:move_manager.ctrl_e(_winid) abort
-  let s:cursor_idx = strlen(s:input)
-  call s:mock_input()
-endfunction
-
-function! s:apply_on_typed() abort
-  if g:clap.provider.is_sync()
-    let g:__clap_should_refilter = v:true
-  endif
-  call g:clap.provider.on_typed()
-  call s:mock_input()
-endfunction
-
-function! s:move_manager.bs(_winid) abort
-  if empty(s:input) || s:cursor_idx == 0
-    return 1
-  endif
-  if s:cursor_idx == 1
-    let s:input = s:input[1:]
-  else
-    let truncated = s:input[:s:cursor_idx-2]
-    let remained = s:input[s:cursor_idx :]
-    let s:input = truncated.remained
-  endif
-  let s:cursor_idx -= 1
-  if s:cursor_idx < 0
-    let s:cursor_idx = 0
-  endif
-  call s:apply_on_typed()
-endfunction
-
-function! s:move_manager.ctrl_d(_winid) abort
-  if empty(s:input) || s:cursor_idx == strlen(s:input)
-    return
-  endif
-  if s:cursor_idx == 0
-    let s:input = s:input[1:]
-  else
-    let remained = s:input[:s:cursor_idx-1]
-    let truncated = s:input[s:cursor_idx+1:]
-    let s:input = remained.truncated
-  endif
-  call s:apply_on_typed()
-endfunction
-
-function! s:move_manager.ctrl_u(_winid) abort
-  if empty(s:input)
-    return 1
-  endif
-  let s:input = ''
-  let s:cursor_idx = 0
-  call s:apply_on_typed()
-endfunction
-
-" noautocmd is neccessary in that too many plugins use redir, otherwise we'll
-" see E930: Cannot use :redir inside execute().
-let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("down")') }
-let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
-let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#navigate_result("up")') }
-let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
-let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#scroll("up")') }
-let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#scroll("down")') }
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#select_toggle()') }
-let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
-let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
-let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
-let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
-let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
-let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
-let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
-let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
-let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
-let s:move_manager["\<End>"] = s:move_manager.ctrl_e
-let s:move_manager["\<BS>"] = s:move_manager.bs
-let s:move_manager["\<C-H>"] = s:move_manager.bs
-let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
-let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
-let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
-
-function! s:define_open_action_filter() abort
-  for k in keys(g:clap_open_action)
-    let lhs = substitute(toupper(k), 'CTRL', 'C', '')
-    execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#handler#try_open("'.k.'") }'
-  endfor
-endfunction
-
-call s:define_open_action_filter()
-
-function! s:move_manager.printable(key) abort
-  let s:insert_at_the_begin = v:false
-  if s:input ==# '' || s:cursor_idx == strlen(s:input)
-    let s:input .= a:key
-    let s:cursor_idx += 1
-  else
-    if s:cursor_idx == 0
-      let s:input = a:key . s:input
-      let s:insert_at_the_begin = v:true
-    else
-      let s:input = s:input[:s:cursor_idx-1].a:key.s:input[s:cursor_idx :]
-      let s:cursor_idx += 1
-    endif
-  endif
-
-  " Always hold a delay before reacting actually.
-  "
-  " FIXME
-  " If the slow renderring of vim job is resolved, this delay could be removed.
-  "
-  " apply_input should happen earlier than mock_input
-  " call s:apply_input('')
-  "
-  call s:apply_input_with_delay()
-
-  call s:mock_input()
-endfunction
-
-function! s:popup_filter(winid, key) abort
-  try
-    if has_key(s:move_manager, a:key)
-      call s:move_manager[a:key](a:winid)
-      return 1
-    endif
-
-    " Should catch every key.
-    if a:key ==? "\<CursorHold>"
-      return 1
-    endif
-
-    let char_nr = char2nr(a:key)
-
-    " ASCII printable characters
-    if char_nr >= 32 && char_nr < 126
-      call s:move_manager.printable(a:key)
-    endif
-  catch
-    let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
-    call g:clap.display.set_lines(l:error_info)
-    call g:clap#display_win.compact()
-    call clap#spinner#set_idle()
-    return 1
-  endtry
-
-  return 1
-endfunction
-
 function! s:open_popup() abort
   call s:create_display()
 
@@ -522,7 +304,7 @@ function! s:open_popup() abort
   call s:create_input()
   call s:create_spinner()
 
-  call s:mock_input()
+  call clap#popup#move_manager#mock_input()
 
   call s:show_all()
 endfunction
@@ -540,13 +322,8 @@ function! s:show_all() abort
   endif
 endfunction
 
-function! clap#popup#get_input() abort
-  return s:input
-endfunction
-
 function! clap#popup#open() abort
-  let s:input = ''
-  let s:cursor_idx = 0
+  call clap#popup#move_manager#init()
   let g:__clap_display_curlnum = 1
 
   let s:save_t_ve = &t_ve
