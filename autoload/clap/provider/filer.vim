@@ -17,6 +17,7 @@ function! clap#provider#filer#handle_stdout(line) abort
   elseif has_key(json, 'data')
     let s:open_file_dict[json.dir] = json.data
     call g:clap.display.set_lines(json.data)
+    call clap#sign#reset_to_first_line()
   else
     echom "stdout: ".string(json)
   endif

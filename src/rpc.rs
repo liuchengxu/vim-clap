@@ -43,10 +43,16 @@ pub fn loop_call(rx: &crossbeam_channel::Receiver<String>) {
                     // println!("------ cwd: {:?}", msg.params.get("cwd"));
                     let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
                     // println!("dir: {}", dir);
-                    match read_entries(&dir) {
-                        Ok(entries) => println!("{}", json!({ "data": entries, "dir": dir })),
-                        Err(err) => println!("{}", json!({ "error": format!("{}:{}", dir, err) })),
-                    }
+                    let json_msg = match read_entries(&dir) {
+                        Ok(entries) => json!({ "data": entries, "dir": dir }),
+                        Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
+                    };
+                    // Warning:
+                    //  Write multiple new line to ensure json_msg will not truncated by neovim.
+                    // Not sure this is enough robust.
+                    println!("\n\n{}", json_msg);
+                    // let s = serde_json::to_string(&json_msg).expect("Fail to string");
+                    // println!("Content-length: {}\n\n{}", s.len(), s);
                 }
                 _ => println!("{}", json!({ "error": "unknown method" })),
             }
