@@ -7,6 +7,12 @@ CHANGELOG
 
 - Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
 
+### Changed
+
+- Use    as the icon of markdown.
+- Change the default spinner frames to `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`.
+- Change the default promt format to ` '%spinner% %provider_id%: '`.
+
 ## [0.6] 2020-01-24
 
 ### Added

@@ -438,7 +438,7 @@ g:clap_default_external_filter                  *g:clap_default_external_filter*
 g:clap_prompt_format                             *g:clap_prompt_format*
 
   Type: |String|
-  Default: `'%spinner% %provider_id%> '`
+  Default: `' %spinner% %provider_id%: '`
 
   This variable defines a message format for the prompt. The following
   sequences of characters will be replaced.
@@ -451,7 +451,7 @@ g:clap_prompt_format                             *g:clap_prompt_format*
 g:clap_spinner_frames                            *g:clap_spinner_frames*
 
   Type: |List|
-  Default: `['◐', '◑', '◒', '◓']`
+  Default: `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`
 
   The frames used for drawing the spinner.
 

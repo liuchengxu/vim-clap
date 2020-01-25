@@ -6,8 +6,8 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:frames = get(g:, 'clap_spinner_frames', ['◐', '◑', '◒', '◓'])
-let s:prompt_format = get(g:, 'clap_prompt_format', '%spinner% %provider_id%> ')
+let s:frames = get(g:, 'clap_spinner_frames', ['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓'])
+let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%provider_id%: ')
 
 let s:frame_index = 0
 let s:spinner = s:frames[0]
