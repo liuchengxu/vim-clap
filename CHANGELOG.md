@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
+
 ## [0.6] 2020-01-24
 
 ### Added

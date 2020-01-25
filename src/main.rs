@@ -265,6 +265,9 @@ impl Maple {
 
     fn run(&self) -> Result<()> {
         match &self.command {
+            Cmd::Version => {
+                version();
+            }
             Cmd::Filter { query, input, algo } => {
                 let ranked = self.apply_fuzzy_filter_and_rank(query, input, algo)?;
 
@@ -335,6 +338,23 @@ impl Maple {
         }
         Ok(())
     }
+}
+
+pub mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+fn version() {
+    println!(
+        "{}",
+        format!(
+            "version {}{}, built for {} by {}.",
+            built_info::PKG_VERSION,
+            built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+            built_info::TARGET,
+            built_info::RUSTC_VERSION
+        )
+    );
 }
 
 pub fn main() -> Result<()> {

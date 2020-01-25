@@ -13,6 +13,10 @@ arg_enum! {
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {
+    /// Display the current version
+    #[structopt(name = "version")]
+    Version,
+
     /// Fuzzy filter the input
     #[structopt(name = "filter")]
     Filter {
