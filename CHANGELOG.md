@@ -5,14 +5,31 @@ CHANGELOG
 
 ### Added
 
+- Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
+
+## [0.6] 2020-01-24
+
+### Added
+
 - New provider `:Clap loclist` for listing the entries of current window's location list.([#244](https://github.com/liuchengxu/vim-clap/pull/244))
 - New provider `:Clap providers` for listing all the providers by splitting out the previous anonymous `_` provider.([#242](https://github.com/liuchengxu/vim-clap/pull/242))
+- Add `g:clap_layout` to control the size and position of clap window. Now the default behaviour has been changed to window relative. If you prefer the previous behaviour, use `let g:clap_layout = { 'relative': 'editor' }`.
+- Add multi-select support for `Clap files` and `Clap git_files`.([#258](https://github.com/liuchengxu/vim-clap/pull/258))
+- Add `g:clap_theme` for changing the clap theme easily, the theme `material_design_dark` is shipped by default.[#259](https://github.com/liuchengxu/vim-clap/pull/259)
+
+### Changed
+
+- Now `maple` use subcommand instead of option for the various function, this refactor also makes adding new features easier.([#255](https://github.com/liuchengxu/vim-clap/pull/255))
 
 ### Improved
 
 - Refine `:Clap debug` and require it in the bug report. ([#241](https://github.com/liuchengxu/vim-clap/pull/241))
 
-## [0.5] 2019-01-15
+### Fixed
+
+- Wrong async threshold in impl.vim.(https://github.com/liuchengxu/vim-clap/pull/248#issuecomment-576108100)
+
+## [0.5] 2020-01-15
 
 ### Added
 
@@ -33,7 +50,7 @@ CHANGELOG
 - Git submodule detection.([#175](https://github.com/liuchengxu/vim-clap/pull/175))
 - Regression of using neovim job without maple.([#234](https://github.com/liuchengxu/vim-clap/pull/234))
 
-## [0.4] 2019-01-06
+## [0.4] 2020-01-06
 
 ### Added
 

@@ -57,8 +57,8 @@ lazy_static! {
         m.insert("ejs", "");
         m.insert("css", "");
         m.insert("less", "");
-        m.insert("md", "");
-        m.insert("markdown", "");
+        m.insert("md", "");
+        m.insert("markdown", "");
         m.insert("txt", "");
         m.insert("rmd", "");
         m.insert("json", "");

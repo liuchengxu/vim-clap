@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use structopt::clap::arg_enum;
+use structopt::clap::{arg_enum, AppSettings};
 use structopt::StructOpt;
 
 arg_enum! {
@@ -13,6 +13,9 @@ arg_enum! {
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {
+    /// Display the current version
+    #[structopt(name = "version")]
+    Version,
     /// Fuzzy filter the input
     #[structopt(name = "filter")]
     Filter {
@@ -68,4 +71,28 @@ pub enum Cmd {
     },
     #[structopt(name = "rpc")]
     RPC,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(
+  name = "maple",
+  no_version,
+  global_settings = &[AppSettings::DisableVersion]
+)]
+pub struct Maple {
+    /// Print the top NUM of filtered items.
+    ///
+    /// The returned JSON has three fields:
+    ///   - total: total number of initial filtered result set.
+    ///   - lines: text lines used for displaying directly.
+    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
+    #[structopt(short = "n", long = "number", name = "NUM")]
+    pub number: Option<usize>,
+
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    #[structopt(long = "enable-icon")]
+    pub enable_icon: bool,
+
+    #[structopt(subcommand)]
+    pub command: Cmd,
 }

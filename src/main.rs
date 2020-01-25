@@ -1,4 +1,5 @@
 mod cmd;
+mod error;
 mod icon;
 mod rpc;
 
@@ -15,47 +16,9 @@ use rayon::prelude::*;
 use serde_json::json;
 use structopt::StructOpt;
 
-use crate::cmd::{Algo, Cmd};
+use crate::cmd::{Algo, Cmd, Maple};
+use crate::error::DummyError;
 use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
-
-#[derive(StructOpt, Debug)]
-#[structopt(name = "maple")]
-struct Maple {
-    /// Print the top NUM of filtered items.
-    ///
-    /// The returned JSON has three fields:
-    ///   - total: total number of initial filtered result set.
-    ///   - lines: text lines used for displaying directly.
-    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(short = "n", long = "number", name = "NUM")]
-    number: Option<usize>,
-
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long = "enable-icon")]
-    enable_icon: bool,
-
-    #[structopt(subcommand)]
-    command: Cmd,
-}
-
-#[derive(Debug)]
-struct DummyError;
-
-impl std::fmt::Display for DummyError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DummyError is here!")
-    }
-}
-
-impl std::error::Error for DummyError {
-    fn description(&self) -> &str {
-        "DummyError used for anyhow"
-    }
-
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-}
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -162,6 +125,7 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    /// Collect the output of command, exit directly if any error happened.
     fn output(&mut self) -> Result<Output> {
         let cmd_output = self.cmd.output()?;
 
@@ -217,15 +181,11 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    fn try_cache(
-        &self,
-        total: usize,
-        cmd_stdout: &[u8],
-        args: &[String],
-    ) -> Result<(String, Option<PathBuf>)> {
-        if total > self.output_threshold {
+    /// Cache the stdout into a tempfile if the output threshold exceeds.
+    fn try_cache(&self, cmd_stdout: &[u8], args: &[String]) -> Result<(String, Option<PathBuf>)> {
+        if self.total > self.output_threshold {
             let tempfile = self.tempfile(args)?;
-            File::create(tempfile.clone())?.write_all(cmd_stdout)?;
+            File::create(&tempfile)?.write_all(cmd_stdout)?;
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
             Ok((
@@ -249,10 +209,10 @@ impl<'a> LightCommand<'a> {
             return Ok(());
         }
 
-        let total = self.total;
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) = self.try_cache(total, &cmd_stdout, args)?;
+        let (stdout_str, tempfile) = self.try_cache(&cmd_stdout, args)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
+        let total = self.total;
         if let Some(tempfile) = tempfile {
             println_json!(total, lines, tempfile);
         } else {
@@ -306,6 +266,12 @@ impl Maple {
 
     fn run(&self) -> Result<()> {
         match &self.command {
+            Cmd::Version => {
+                version();
+            }
+            Cmd::RPC => {
+                crate::rpc::run(std::io::BufReader::new(std::io::stdin()));
+            }
             Cmd::Filter { query, input, algo } => {
                 let ranked = self.apply_fuzzy_filter_and_rank(query, input, algo)?;
 
@@ -373,12 +339,26 @@ impl Maple {
 
                 light_cmd.execute(&args)?;
             }
-            Cmd::RPC => {
-                crate::rpc::run(std::io::BufReader::new(std::io::stdin()));
-            }
         }
         Ok(())
     }
+}
+
+pub mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+fn version() {
+    println!(
+        "{}",
+        format!(
+            "version {}{}, built for {} by {}.",
+            built_info::PKG_VERSION,
+            built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+            built_info::TARGET,
+            built_info::RUSTC_VERSION
+        )
+    );
 }
 
 pub fn main() -> Result<()> {

@@ -80,7 +80,6 @@ function! clap#sign#toggle_cursorline_multi() abort
     call s:place_sign_at(curlnum)
     call add(s:signed, curlnum)
   endif
-  call clap#handler#internal_navigate('down')
 endfunction
 
 function! clap#sign#disable_cursorline() abort

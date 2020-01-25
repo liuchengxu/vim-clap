@@ -29,11 +29,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Keybindings](#keybindings)
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
-* [How to add a new provider](#how-to-add-a-new-provider)
-  * [Provider arguments](#provider-arguments)
-  * [Create non-pure-async provider](#create-non-pure-async-provider)
-  * [Create pure async provider](#create-pure-async-provider)
-  * [Register provider](#register-provider)
+* [How to define your own provider](#how-to-define-your-own-provider)
 * [Contribution](#contribution)
 * [Credit](#credit)
 * [License](#license)
@@ -50,10 +46,10 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Support multi-selection, use vim's regexp as filter by default.
 - [x] Support the preview functionality when navigating the result list.
 - [x] Support built-in fuzzy match and external fuzzy filter tools.
+- [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
 - [ ] Add the preview support for more providers.
 - [ ] Add the multi-selection support for more providers.
-- [ ] More UI layout.
 
 ## Caveats
 
@@ -193,144 +189,27 @@ augroup END
 
 ### Change highlights
 
-The default highlights:
+By default vim-clap will use the colors extracted from your colorscheme, which is not guaranteed to suitable for all the colorschemes. Then you can try the built-in `material_design_dark` theme then:
 
 ```vim
-hi default link ClapInput   Visual
-hi default link ClapDisplay Pmenu
-hi default link ClapPreview PmenuSel
-hi default link ClapMatches Search
-
-" By default ClapQuery will use the bold fg of Normal and the same bg of ClapInput
-
-hi ClapDefaultPreview          ctermbg=237 guibg=#3E4452
-hi ClapDefaultSelected         cterm=bold,underline gui=bold,underline ctermfg=80 guifg=#5fd7d7
-hi ClapDefaultCurrentSelection cterm=bold gui=bold ctermfg=224 guifg=#ffd7d7
-
-hi default link ClapPreview          ClapDefaultPreview
-hi default link ClapSelected         ClapDefaultSelected
-hi default link ClapCurrentSelection ClapDefaultCurrentSelection
+let g:clap_theme = 'material_design_dark'
 ```
 
-If you want a different highlight for the matches found, try:
+![clap-highlights](https://user-images.githubusercontent.com/8850248/72986238-bd106580-3e22-11ea-98ad-03faa9d6130c.png)
+
+
+You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 
 ```vim
-hi default link ClapMatches Function
+" Change the CamelCase of related highlight group name to under_score_case.
+let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 ```
 
-Or:
-
-```vim
-hi ClapMatches cterm=bold ctermfg=170 gui=bold guifg=#bc6ec5
-```
+If you want to write your own clap theme, take [autoload/clap/themes/material_design_dark.vim](autoload/clap/themes/material_design_dark.vim) as a reference.
 
 See `:help clap-highlights` for more information.
 
-## How to add a new provider
-
-The provider of vim-clap is actually a Dict that specifies the action of your move in the input window. The idea is simple, once you have typed something, the `source` will be filtered or a job will be spawned, and then the result retrived later will be shown in the dispaly window.
-
-There are generally two kinds of providers in vim-clap.
-
-1. Non-pure-async provider: suitable for these which are able to collect all the items in a short time, e.g., open buffers, command history.It will run sync if the source is not large. But it's also able to deal with the list that is huge, let's say 100,000+ lines/items, in which case vim-clap will choose to run the external filter in async. In a word, vim-clap can always be fast responsive. What's more, it's extremely easy to introduce a new non-pure-async clap provider as vim-clap provides the default implementation of `on_typed` and `source_async`.
-
-2. Pure async provider: suitable for the time-consuming jobs, e.g., grep a word in a directory.
-
-### Provider arguments
-
-```
-Clap [provider_id_or_alias] [++opt] [+opt]
-```
-
-All the opts are accessible via `g:clap.context[opt]`.
-
-The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
-
-  - `++externalfilter=fzf` or `++ef=fzf`.
-
-`[+opt]` is used for the bool arguments:
-
- - `+async`
-
-`Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async`.
-
-`++opt` and `+opt` will be stored in the Dict `g:clap.context`, the rest arguments will be stored in a List of String `g:clap.provider.args`.
-
-### Create non-pure-async provider
-
-For the non-pure-async providers, you could run it in async or sync way. By default vim-clap will choose the best strategy, running async for the source consisted of 5000+ lines or otherwise run it in sync way. [See the discussion about the non-pure-async providers](https://github.com/liuchengxu/vim-clap/issues/17#issue-501470657).
-
-Field                 | Type                | Required      | Has default implementation
-:----                 | :----               | :----         | :----
-`sink`                | String/Funcref      | **mandatory** | No
-`sink*`               | Funcref             | optional      | No
-`source`              | String/List/Funcref | **mandatory** | No
-`source_async`        | String              | optional      | **Yes**
-`filter`              | Funcref             | **mandatory** | **Yes**
-`on_typed`            | Funcref             | **mandatory** | **Yes**
-`on_move`             | Funcref             | optional      | No
-`on_enter`            | Funcref             | optional      | No
-`on_exit`             | Funcref             | optional      | No
-`support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
-`enable_rooter`       | Bool                | Optional      | No
-`syntax`              | String              | Optional      | No
-
-- `sink`:
-  - String: vim command to handle the selected entry.
-  - Funcref: reference to function to process the selected entry.
-
-- `sink*`: similar to `sink`, but takes the list of multiple selected entries as input.
-
-- `source`:
-  - List: vim List as input to vim-clap.
-  - String: external command to generate input to vim-clap (e.g. `find .`).
-  - Funcref: reference to function that returns a List to generate input to vim-clap.
-
-- `source_async`: String, job command to filter the items of `source` based on the external tools. The default implementation is to feed the output of `source` into the external fuzzy filters and then display the filtered result, which could have some limitations, e.g., the matched input is not highlighted.
-
-- `filter`: given what you have typed, use `filter(entry)` to evaluate each entry in the display window, when the result is zero remove the item from the current result list. The default implementation is to match the input using vim's regex.
-
-- `on_typed`: reference to function to filter the `source`.
-
-- `on_move`: when navigating the result list, can be used for the preview purpose, see [clap/provider/colors](autoload/clap/provider/colors.vim).
-
-- `on_enter`: when entering the clap window, can be used for recording the current state.
-
-- `on_exit`: can be used for restoring the state on start.
-
-- `enable_rooter`: try to run the `source` from the project root.
-
-- `syntax`: used to set the syntax highlight for the display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.on_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
-
-You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
-
-### Create pure async provider
-
-Field                 | Type    | Required      | Has default implementation
-:----                 | :----   | :----         | :----
-`sink`                | funcref | **mandatory** | No
-`on_typed`            | funcref | **mandatory** | No
-`on_move`             | funcref | optional      | No
-`on_enter`            | funcref | optional      | No
-`converter`           | funcref | optional      | No
-`jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#job_start(cmd)`
-`support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
-`enable_rooter`       | Bool    | Optional      | No
-`syntax`              | String  | Optional      | No
-
-- `on_typed`: reference to function to spawn an async job.
-- `converter`: reference to function to convert the raw output of job to another form, e.g., prepend an icon to the grep result, see [clap/provider/grep.vim](autoload/clap/provider/grep.vim).
-- `jobstop`: Reference to function to stop the current job of an async provider. By default you could utilize `clap#dispatcher#job_start(cmd)` to start a new job, and then the job stop part will be handled by vim-clap as well, otherwise you'll have to take care of the `jobstart` and `jobstop` on your own.
-
-You must provide `sink`, `on_typed` option. It's a bit of complex to write an asynchornous provider, you'll need to prepare the command for spawning the job and overal workflow, although you could use `clap#dispatcher#job_start(cmd)` to let vim-clap deal with the job control and display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
-
-### Register provider
-
-Vim-clap will try to load the providers with convention.
-
-- vimrc
-
-Define `g:clap_provider_{provider_id}` in your vimrc, e.g.,
+## How to define your own provider
 
 ```vim
 " `:Clap quick_open` to open some dotfiles quickly.
@@ -340,9 +219,9 @@ let g:clap_provider_quick_open = {
       \ }
 ```
 
-- autoload
+Find more examples at [wiki/Examples](https://github.com/liuchengxu/vim-clap/wiki/Examples).
 
-`g:clap#provider#{provider_id}#`. See `:h autoload` and [clap/provider](autoload/clap/provider).
+For complete guide about writing a clap provider please see [PROVIDER.md](PROVIDER.md).
 
 ## Contribution
 

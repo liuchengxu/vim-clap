@@ -45,12 +45,16 @@ function! s:files.source() abort
   endif
 endfunction
 
-function! clap#provider#files#sink_impl(selected) abort
+function! s:into_filename(line) abort
   if g:clap_enable_icon && clap#maple#is_available()
-    let fpath = a:selected[4:]
+    return a:line[4:]
   else
-    let fpath = a:selected
+    return a:line
   endif
+endfunction
+
+function! clap#provider#files#sink_impl(selected) abort
+  let fpath = s:into_filename(a:selected)
 
   if has_key(g:clap, 'open_action')
     execute g:clap.open_action fpath
@@ -59,7 +63,18 @@ function! clap#provider#files#sink_impl(selected) abort
   endif
 endfunction
 
+function! clap#provider#files#sink_star_impl(lines) abort
+  call setqflist(map(map(a:lines, 's:into_filename(v:val)'),
+        \ '{'.
+        \   '"filename": v:val,'.
+        \   '"text": strftime("Modified %b,%d %Y %H:%M:%S", getftime(v:val))." ".getfperm(v:val)'.
+        \ '}'))
+  copen
+  cc
+endfunction
+
 let s:files.sink = function('clap#provider#files#sink_impl')
+let s:files['sink*'] = function('clap#provider#files#sink_star_impl')
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
 let s:files.syntax = 'clap_files'

@@ -40,14 +40,25 @@ function! clap#debugging#info() abort
   echohl Type   | echo '            has cargo: ' | echohl NONE
   echohl Normal | echon executable('cargo')      | echohl NONE
 
+  let maple_binary = clap#maple#binary()
   echohl Type   | echo '            has maple: ' | echohl NONE
-  echohl Normal | echon clap#maple#info()        | echohl NONE
+  echohl Normal | echon maple_binary             | echohl NONE
+
+  if maple_binary isnot v:null
+    echohl Type | echo '           maple info: ' | echohl NONE
+    let maple_version = system(maple_binary.' version')
+    if v:shell_error
+      echohl Normal | echon 'fail to fetch version info' | echohl NONE
+    else
+      echohl Normal | echon maple_version | echohl NONE
+    endif
+  endif
 
   echohl Type   | echo '         has +python3: ' | echohl NONE
   echohl Normal | echon has('python3')           | echohl NONE
 
-  echohl Type   | echo '         has py dylib: '   | echohl NONE
-  echohl Normal | echon clap#filter#has_rust_ext() | echohl NONE
+  echohl Type   | echo 'has py dynamic module: '            | echohl NONE
+  echohl Normal | echon clap#filter#has_py_dynamic_module() | echohl NONE
 
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE
@@ -67,9 +78,13 @@ function! clap#debugging#info() abort
   endfor
 
   echohl Type   | echo '  Provider Variables:'  | echohl NONE
-  for variable in provider_var
-    echo '    let g:'.variable.' = '. string(g:[variable])
-  endfor
+  if empty(provider_var)
+    echo '                     []'
+  else
+    for variable in provider_var
+      echo '    let g:'.variable.' = '. string(g:[variable])
+    endfor
+  endif
 endfunction
 
 function! clap#debugging#info_to_clipboard() abort
