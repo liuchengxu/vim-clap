@@ -5,8 +5,8 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:old_input = ''
-let s:support_multi_selection = v:false
-let s:use_multi_selection = v:false
+let s:multi_select_enabled = v:false
+let s:support_multi_select = v:false
 
 function! clap#handler#on_typed() abort
   let l:cur_input = g:clap.input.get()
@@ -31,7 +31,7 @@ function! clap#handler#sink() abort
   endif
 
   let selected = clap#sign#get()
-  if s:use_multi_selection && !empty(selected)
+  if s:multi_select_enabled && !empty(selected)
     let Sink = g:clap.provider.sink_star
     let sink_args = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
   else
@@ -59,17 +59,17 @@ function! clap#handler#exit() abort
 endfunction
 
 function! clap#handler#internal_exit() abort
-  let s:use_multi_selection = v:false
-  let s:support_multi_selection = v:false
+  let s:multi_select_enabled = v:false
+  let s:support_multi_select = v:false
   call clap#exit()
 endfunction
 
 function! clap#handler#init() abort
-  let s:support_multi_selection = g:clap.provider.support_multi_selection()
+  let s:support_multi_select = g:clap.provider.support_multi_select()
 endfunction
 
 function! clap#handler#select_toggle() abort
-  if !s:support_multi_selection
+  if !s:support_multi_select
         \ && !get(g:, 'clap_multi_selection_warning_silent', 0)
     call clap#helper#echo_error('<Tab> is unusable, set g:clap_multi_selection_warning_silent = 1 to suppress this warning.')
     return ''
@@ -79,13 +79,13 @@ function! clap#handler#select_toggle() abort
   call clap#navigation#line_down()
   redraw
 
-  let s:use_multi_selection = v:true
+  let s:multi_select_enabled = v:true
 
   return ''
 endfunction
 
 function! clap#handler#try_open(action) abort
-  if s:use_multi_selection
+  if s:multi_select_enabled
         \ || !has_key(g:clap_open_action, a:action)
         \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
     return

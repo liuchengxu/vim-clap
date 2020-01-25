@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use structopt::clap::arg_enum;
+use structopt::clap::{arg_enum, AppSettings};
 use structopt::StructOpt;
 
 arg_enum! {
@@ -73,7 +73,11 @@ pub enum Cmd {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "maple")]
+#[structopt(
+  name = "maple",
+  no_version,
+  global_settings = &[AppSettings::DisableVersion]
+)]
 pub struct Maple {
     /// Print the top NUM of filtered items.
     ///

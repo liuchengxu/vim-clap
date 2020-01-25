@@ -376,7 +376,7 @@ function! s:init_provider() abort
     return get(self._(), 'filter', v:null)
   endfunction
 
-  function! provider.support_multi_selection() abort
+  function! provider.support_multi_select() abort
     return has_key(self._(), 'sink*')
   endfunction
 
