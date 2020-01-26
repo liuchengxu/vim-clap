@@ -1,6 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Primiary code path for the plugin.
 
+scriptencoding utf-8
+
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
