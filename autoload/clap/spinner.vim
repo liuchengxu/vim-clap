@@ -7,17 +7,20 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:frames = get(g:, 'clap_spinner_frames', ['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓'])
-let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%provider_id%: ')
+let s:frames_len = len(s:frames)
+let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%provider_id%:')
 
 let s:frame_index = 0
 let s:spinner = s:frames[0]
+
+let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
 
 " The spinner and current provider prompt are actually displayed in a same window.
 function! s:compose_prompt() abort
   let l:prompt = s:prompt_format
 
   let l:spinner = s:spinner
-  let l:provider_id = get(g:, '__clap_current_forerunner_status', '').g:clap.provider.id
+  let l:provider_id = g:__clap_current_forerunner_status.g:clap.provider.id
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
@@ -53,7 +56,7 @@ function! s:on_frame(...) abort
   let s:spinner = s:frames[s:frame_index]
   call s:set_spinner()
   let s:frame_index += 1
-  let s:frame_index = s:frame_index % len(s:frames)
+  let s:frame_index = s:frame_index % s:frames_len
   if !g:clap.is_busy
     call timer_stop(s:timer)
     unlet s:timer
