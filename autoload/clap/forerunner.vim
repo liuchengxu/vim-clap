@@ -15,7 +15,7 @@ function! s:on_complete_common(lines, initial_size) abort
   let g:clap.display.initial_size = a:initial_size
   call clap#impl#refresh_matches_count(string(a:initial_size))
 
-  let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_done
+  let g:clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   call clap#spinner#refresh()
 endfunction
 
@@ -127,14 +127,14 @@ endif
 if clap#maple#is_available()
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
-    let g:clap_forerunner_status_sign = '!'
+    let g:clap_current_forerunner_status = g:clap_forerunner_status_sign.running
     call clap#spinner#refresh()
     call s:start_maple(clap#maple#forerunner_exec_subcommand(a:cmd))
   endfunction
 else
   function! clap#forerunner#start(cmd) abort
     let s:chunks = []
-    let g:clap_forerunner_status_sign = g:clap_forerunner_status_sign_running
+    let g:clap_current_forerunner_status = g:clap_forerunner_status_sign.running
     call clap#spinner#refresh()
     call clap#rooter#run(function('s:start_forerunner'), a:cmd)
   endfunction

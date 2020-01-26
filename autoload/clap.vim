@@ -42,8 +42,16 @@ let g:clap#provider_alias = s:provider_alias
 
 let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
 
-let g:clap_forerunner_status_sign_done = get(g:, 'clap_forerunner_status_sign_done', '•')
-let g:clap_forerunner_status_sign_running = get(g:, 'clap_forerunner_status_sign_running', '!')
+let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!'})
+
+" Backward compatible
+if exists('g:clap_forerunner_status_sign_done')
+  let g:clap_forerunner_status_sign.done = g:clap_forerunner_status_sign_done
+endif
+
+if exists('g:clap_forerunner_status_sign_running')
+  let g:clap_forerunner_status_sign.running = g:clap_forerunner_status_sign_running
+endif
 
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
