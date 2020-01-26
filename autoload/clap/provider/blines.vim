@@ -26,8 +26,14 @@ function! s:blines.source() abort
 endfunction
 
 function! s:blines.on_move() abort
-  let curline = g:clap.display.getcurline()
-  let lnum = str2nr(split(curline)[0])
+  let items = split(g:clap.display.getcurline())
+  if empty(items)
+    return
+  endif
+  if items[0] !~# '^\s*\d\+$'
+    return
+  endif
+  let lnum = str2nr(items[0])
   let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
   call g:clap.preview.show(lines)
