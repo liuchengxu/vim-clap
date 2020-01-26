@@ -16,8 +16,8 @@ let s:spinner = s:frames[0]
 let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
 
 " The spinner and current provider prompt are actually displayed in a same window.
-function! s:compose_prompt() abort
-  let l:prompt = s:prompt_format
+function! s:fill_in_placeholders(prompt_format) abort
+  let l:prompt = a:prompt_format
 
   let l:spinner = s:spinner
   let l:provider_id = g:clap.provider.id
@@ -32,9 +32,15 @@ function! s:compose_prompt() abort
 endfunction
 
 if exists('g:ClapPrompt') && type(g:ClapPrompt) == v:t_func
-  let s:PromptFn = g:ClapPrompt
+  function! s:user_prompt() abort
+    return s:fill_in_placeholders(g:ClapPrompt())
+  endfunction
+  let s:PromptFn = function('s:user_prompt')
 else
-  let s:PromptFn = function('s:compose_prompt')
+  function! s:default_prompt() abort
+    return s:fill_in_placeholders(s:prompt_format)
+  endfunction
+  let s:PromptFn = function('s:default_prompt')
 endif
 
 if has('nvim')
