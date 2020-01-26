@@ -82,19 +82,13 @@ function! clap#provider#filer#bs() abort
 
     let s:current_dir = parent_dir
 
-    if s:try_filter_is_ok()
-      return ''
+    if !s:try_filter_is_ok()
+      call s:send_message()
     endif
-
-    let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
-    call clap#rpc#send_message(msg)
   else
 
     call g:clap.input.set(input[:-2])
-    if has_key(s:open_file_dict, s:current_dir)
-      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
-      call g:clap.display.set_lines(filtered)
-      call g:clap#display_win.shrink_if_undersize()
+    if s:try_filter_is_ok()
       return ''
     endif
   endif
@@ -143,6 +137,11 @@ function! s:try_filter_is_ok() abort
   return v:false
 endfunction
 
+function! s:send_message() abort
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  call clap#rpc#send_message(msg)
+endfunction
+
 function! clap#provider#filer#tab() abort
   call clap#highlight#clear()
 
@@ -161,12 +160,9 @@ function! clap#provider#filer#tab() abort
   call clap#spinner#set(pathshorten(s:current_dir))
   call g:clap.input.set('')
 
-  if s:try_filter_is_ok()
-    return ''
+  if !s:try_filter_is_ok()
+    call s:send_message()
   endif
-
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
-  call clap#rpc#send_message(msg)
 
   return ''
 endfunction
