@@ -18,7 +18,7 @@ function! s:handle_round_message(message) abort
     call g:clap.display.set_lines(decoded.data)
     call clap#sign#reset_to_first_line()
     call clap#impl#refresh_matches_count(string(decoded.total))
-    call g:clap#display_win.compact_if_undersize()
+    call g:clap#display_win.shrink_if_undersize()
 
   else
     echom 'stdout: '.string(decoded)
@@ -130,7 +130,7 @@ function! clap#provider#filer#tab() abort
     return ''
   endif
 
-  call g:clap#display_win.compact_if_undersize()
+  call g:clap#display_win.shrink_if_undersize()
   call clap#rpc#send()
   return ''
 endfunction
@@ -156,7 +156,7 @@ function! clap#provider#filer#on_typed() abort
       call clap#impl#refresh_matches_count(string(len(l:lines)))
     endif
 
-    call g:clap#display_win.compact_if_undersize()
+    call g:clap#display_win.shrink_if_undersize()
     call clap#spinner#set_idle()
 
     if exists('g:__clap_fuzzy_matched_indices')
