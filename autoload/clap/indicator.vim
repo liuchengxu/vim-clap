@@ -14,11 +14,17 @@ if has('nvim')
     return indicator
   endfunction
 
+  function! clap#indicator#repadding() abort
+    if exists('s:current_indicator')
+      call nvim_buf_set_virtual_text(g:clap.input.bufnr, s:ns_id, 0, [[s:padding(s:current_indicator), 'LinNr']], {})
+    endif
+  endfunction
+
   function! s:apply_indicator(indicator) abort
     if bufexists(g:clap.input.bufnr)
-      let indicator = s:padding(a:indicator)
+      let s:current_indicator = a:indicator
       call nvim_buf_clear_highlight(g:clap.input.bufnr, s:ns_id, 0, -1)
-      call nvim_buf_set_virtual_text(g:clap.input.bufnr, s:ns_id, 0, [[indicator, 'LinNr']], {})
+      call nvim_buf_set_virtual_text(g:clap.input.bufnr, s:ns_id, 0, [[s:padding(a:indicator), 'LinNr']], {})
     endif
   endfunction
 else
