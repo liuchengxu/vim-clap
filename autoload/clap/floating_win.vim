@@ -169,7 +169,11 @@ function! g:clap#floating_win#input.open() abort
   let w:clap_search_text_hi_id = matchaddpos('ClapSearchText', [1])
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
-  call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
+  if g:clap.provider.id ==# 'filer'
+    call setbufvar(s:input_bufnr, '&filetype', 'clap_filer_input')
+  else
+    call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
+  endif
   let s:save_completeopt = &completeopt
   call nvim_set_option('completeopt', '')
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)

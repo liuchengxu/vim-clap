@@ -67,7 +67,4 @@ inoremap <silent> <buffer> <PageUp> <C-R>=clap#navigation#scroll('up')<CR>
 
 inoremap <silent> <buffer> <Tab> <C-R>=clap#handler#select_toggle()<CR>
 
-inoremap <silent> <buffer> <Tab> <C-R>=clap#provider#filer#tab()<CR>
-inoremap <silent> <buffer> <BS> <C-R>=clap#provider#filer#bs()<CR>
-
 call clap#util#define_open_action_mappings()

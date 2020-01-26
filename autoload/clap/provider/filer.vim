@@ -18,6 +18,7 @@ function! s:handle_round_message(message) abort
     call g:clap.display.set_lines(decoded.data)
     call clap#sign#reset_to_first_line()
     call clap#impl#refresh_matches_count(string(decoded.total))
+    call g:clap#display_win.compact_if_undersize()
 
   else
     echom 'stdout: '.string(decoded)
@@ -67,6 +68,7 @@ function! clap#provider#filer#handle_stdout(lines) abort
 endfunction
 
 function! clap#provider#filer#bs() abort
+  call g:clap.display.matchdelete()
   let input = g:clap.input.get()
   if input ==# ''
     let spinner = clap#spinner#get_rpc()
@@ -107,6 +109,7 @@ function! clap#provider#filer#run() abort
 endfunction
 
 function! clap#provider#filer#tab() abort
+  call g:clap.display.matchdelete()
   let curline = g:clap.display.getcurline()
   let curdir = clap#spinner#get_rpc()
   if curdir[-1:] ==# '/'
@@ -127,8 +130,41 @@ function! clap#provider#filer#tab() abort
     return ''
   endif
 
+  call g:clap#display_win.compact_if_undersize()
   call clap#rpc#send()
   return ''
+endfunction
+
+function! clap#provider#filer#on_typed() abort
+  let curdir = clap#spinner#get_rpc()
+  let query = g:clap.input.get()
+  call g:clap.display.matchdelete()
+  if has_key(s:open_file_dict, curdir)
+    let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[curdir]])
+
+    if empty(l:lines)
+      let l:lines = [g:clap_no_matches_msg]
+      let g:__clap_has_no_matches = v:true
+      call g:clap.display.set_lines_lazy(lines)
+      " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+      " But the signs are seemingly removed when setting the lines, so we should
+      " postpone the sign update.
+      call clap#impl#refresh_matches_count('0')
+      call g:clap.preview.hide()
+    else
+      call g:clap.display.set_lines_lazy(lines)
+      call clap#impl#refresh_matches_count(string(len(l:lines)))
+    endif
+
+    call g:clap#display_win.compact_if_undersize()
+    call clap#spinner#set_idle()
+
+    if exists('g:__clap_fuzzy_matched_indices')
+      call clap#highlight#add_fuzzy_sync()
+    endif
+
+    return
+  endif
 endfunction
 
 let g:clap#provider#filer# = s:filer
