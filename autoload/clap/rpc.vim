@@ -74,7 +74,7 @@ function! clap#rpc#job_start(cmd) abort
 endfunction
 
 function! clap#rpc#send() abort
-  let dir = clap#spinner#get_rpc()
+  let dir = clap#spinner#get()
   let msg = json_encode({'method': 'open_file', 'params': {'cwd': dir}, 'id': 1})
   call chansend(s:job_id, msg."\n")
 endfunction

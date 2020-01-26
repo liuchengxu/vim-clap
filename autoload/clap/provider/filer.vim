@@ -68,32 +68,34 @@ function! clap#provider#filer#handle_stdout(lines) abort
 endfunction
 
 function! clap#provider#filer#bs() abort
-  call g:clap.display.matchdelete()
+  call clap#highlight#clear()
   let input = g:clap.input.get()
   if input ==# ''
-    let spinner = clap#spinner#get_rpc()
+    let spinner = clap#spinner#get()
     if spinner[-1:] ==# '/'
       let par = trim(fnamemodify(spinner, ':h:h'))
     else
       let par = trim(fnamemodify(spinner, ':h'))
     endif
-    call clap#spinner#set_rpc(par)
+    call clap#spinner#set(par)
 
-    let dir = clap#spinner#get_rpc()
+    let dir = clap#spinner#get()
     if has_key(s:open_file_dict, dir)
       let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
       call g:clap.display.set_lines(filtered)
+      call g:clap#display_win.shrink_if_undersize()
       return ''
     endif
 
     call clap#rpc#send()
   else
 
-    let dir = clap#spinner#get_rpc()
+    let dir = clap#spinner#get()
     call g:clap.input.set(input[:-2])
     if has_key(s:open_file_dict, dir)
       let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
       call g:clap.display.set_lines(filtered)
+      call g:clap#display_win.shrink_if_undersize()
       return ''
     endif
   endif
@@ -102,16 +104,16 @@ endfunction
 
 function! clap#provider#filer#run() abort
   let cmd = clap#maple#run('rpc')
-  call clap#spinner#set_rpc(getcwd())
+  call clap#spinner#set(getcwd())
   call g:clap.display.setbufvar('&syntax', 'clap_open_files')
   let s:open_file_dict = {}
   call clap#rpc#job_start(cmd)
 endfunction
 
 function! clap#provider#filer#tab() abort
-  call g:clap.display.matchdelete()
+  call clap#highlight#clear()
   let curline = g:clap.display.getcurline()
-  let curdir = clap#spinner#get_rpc()
+  let curdir = clap#spinner#get()
   if curdir[-1:] ==# '/'
     let cur_entry = curdir.curline
   else
@@ -120,10 +122,10 @@ function! clap#provider#filer#tab() abort
   if filereadable(cur_entry)
     return ''
   endif
-  call clap#spinner#set_rpc(cur_entry)
+  call clap#spinner#set(cur_entry)
   call g:clap.input.set('')
 
-  let dir = clap#spinner#get_rpc()
+  let dir = clap#spinner#get()
   if has_key(s:open_file_dict, dir)
     let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
     call g:clap.display.set_lines(filtered)
@@ -136,9 +138,9 @@ function! clap#provider#filer#tab() abort
 endfunction
 
 function! clap#provider#filer#on_typed() abort
-  let curdir = clap#spinner#get_rpc()
+  let curdir = clap#spinner#get()
   let query = g:clap.input.get()
-  call g:clap.display.matchdelete()
+  call clap#highlight#clear()
   if has_key(s:open_file_dict, curdir)
     let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[curdir]])
 

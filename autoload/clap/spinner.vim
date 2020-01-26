@@ -17,34 +17,41 @@ let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
 
 " The spinner and current provider prompt are actually displayed in a same window.
 function! s:compose_prompt() abort
-  let l:prompt = s:prompt_format
-
-  let l:spinner = s:spinner
-
-  let l:prompt = getcwd()
-
-  if exists('s:spinner_rpc')
-    return s:spinner_rpc
-  endif
+  let s:cur_prompt = s:prompt_format
 
   let l:provider_id = g:clap.provider.id
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
-  let l:prompt = substitute(l:prompt, '\V%spinner%', '\=l:spinner', 'g')
-  let l:prompt = substitute(l:prompt, '\V%forerunner_status%', '\=g:__clap_current_forerunner_status', 'g')
-  let l:prompt = substitute(l:prompt, '\V%provider_id%', '\=l:provider_id', 'g')
+  let s:cur_prompt = substitute(s:cur_prompt, '\V%spinner%', '\=s:spinner', 'g')
+  let s:cur_prompt = substitute(s:cur_prompt, '\V%forerunner_status%', '\=g:__clap_current_forerunner_status', 'g')
+  let s:cur_prompt = substitute(s:cur_prompt, '\V%provider_id%', '\=l:provider_id', 'g')
 
-  return l:prompt
+  return s:cur_prompt
 endfunction
 
 if has('nvim')
   function! s:set_spinner() abort
-    call clap#util#nvim_buf_set_lines(g:clap.spinner.bufnr, [s:compose_prompt()])
+    let text = s:compose_prompt()
+    let s:cur_prompt = text
+    call clap#util#nvim_buf_set_lines(g:clap.spinner.bufnr, [text])
+  endfunction
+
+  function! clap#spinner#set(text) abort
+    let s:cur_prompt = a:text
+    call setbufline(g:clap.spinner.bufnr, 1, a:text)
+    call g:clap#floating_win#spinner.shrink()
   endfunction
 else
   function! s:set_spinner() abort
-    call popup_settext(g:clap_spinner_winid, s:compose_prompt())
+    let text = s:compose_prompt()
+    let s:cur_prompt = text
+    call popup_settext(g:clap_spinner_winid, text)
+  endfunction
+
+  function! clap#spinner#set(text) abort
+    let s:cur_prompt = a:text
+    call popup_settext(g:clap_spinner_winid, a:text)
   endfunction
 endif
 
@@ -52,22 +59,15 @@ function! clap#spinner#refresh() abort
   call s:set_spinner()
 endfunction
 
-function! clap#spinner#get_rpc() abort
-  return get(s:, 'spinner_rpc', 'EMPTY')
-endfunction
-
-function! clap#spinner#set_rpc(spinner) abort
-  let s:spinner_rpc = a:spinner
-  call s:set_spinner()
-  call g:clap#floating_win#spinner.shrink()
-endfunction
-
 function! clap#spinner#get() abort
-  return s:compose_prompt()
+  return s:cur_prompt
 endfunction
 
 function! clap#spinner#width() abort
-  return strdisplaywidth(s:compose_prompt())
+  if !exists('s:cur_prompt')
+    let s:cur_prompt = s:compose_prompt()
+  endif
+  return strdisplaywidth(s:cur_prompt)
 endfunction
 
 function! s:on_frame(...) abort
