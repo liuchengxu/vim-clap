@@ -14,9 +14,7 @@ if has('nvim')
     " We only process the job that was spawned last time.
     if a:job_id == s:job_id
       if a:event ==# 'stdout'
-        for line in a:data
-          call clap#provider#filer#handle_stdout(line)
-        endfor
+        call clap#provider#filer#handle_stdout(a:data)
       elseif a:event ==# 'stderr'
         " Ignore the error
       else

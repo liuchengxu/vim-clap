@@ -24,9 +24,15 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
     let mut reader = reader;
     loop {
         let mut message = String::new();
-        if reader.read_line(&mut message).unwrap() > 0 {
-            // println!("----- readed {}", message);
-            sink.send(message);
+        match reader.read_line(&mut message) {
+            Ok(number) => {
+                if number > 0 {
+                    sink.send(message);
+                } else {
+                    // EOF
+                }
+            }
+            Err(_error) => println!("read_line error"),
         }
     }
 }
@@ -36,23 +42,17 @@ pub fn loop_call(rx: &crossbeam_channel::Receiver<String>) {
         thread::spawn(move || {
             let msg = msg.trim();
             let msg: Message = serde_json::from_str(&msg).unwrap();
-            // println!("method: {}----", msg.method);
             match &msg.method[..] {
                 "open_file" => {
-                    // println!("------ msg: {:?}", msg);
-                    // println!("------ cwd: {:?}", msg.params.get("cwd"));
                     let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
-                    // println!("dir: {}", dir);
                     let json_msg = match read_entries(&dir) {
-                        Ok(entries) => json!({ "data": entries, "dir": dir }),
+                        Ok(entries) => {
+                            json!({ "data": entries, "dir": dir, "total": entries.len() })
+                        }
                         Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
                     };
-                    // Warning:
-                    //  Write multiple new line to ensure json_msg will not truncated by neovim.
-                    // Not sure this is enough robust.
-                    println!("\n\n{}", json_msg);
-                    // let s = serde_json::to_string(&json_msg).expect("Fail to string");
-                    // println!("Content-length: {}\n\n{}", s.len(), s);
+                    let s = serde_json::to_string(&json_msg).expect("Fail to_string");
+                    println!("Content-length: {}\n\n{}", s.len(), s);
                 }
                 _ => println!("{}", json!({ "error": "unknown method" })),
             }
@@ -69,9 +69,6 @@ where
         .name("reader".into())
         .spawn(move || {
             loop_read(reader, &tx);
-            // if let Err(err) = loop_read(reader) {
-            // println!("Thread reader exited with error: {:?}", err);
-            // }
         })
         .unwrap();
     loop_call(&rx);

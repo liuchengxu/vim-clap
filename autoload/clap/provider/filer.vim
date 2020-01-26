@@ -1,26 +1,69 @@
 let s:filer = {}
 
-  let s:open_file_dict = {}
-function! clap#provider#filer#handle_stdout(line) abort
-  let line = a:line
-  if line ==# ''
-    return
-  endif
+let s:open_file_dict = {}
+
+function! s:handle_round_message(message) abort
   try
-    let json = json_decode(line)
+    let decoded = json_decode(a:message)
   catch
-    echom string(line)
+    echom 'JSON decode in: '.v:exception.', ----'.string(a:message)
     return
   endtry
-  if has_key(json, 'error')
-    call g:clap.display.set_lines([json.error])
-  elseif has_key(json, 'data')
-    let s:open_file_dict[json.dir] = json.data
-    call g:clap.display.set_lines(json.data)
+
+  if has_key(decoded, 'error')
+    call g:clap.display.set_lines([decoded.error])
+
+  elseif has_key(decoded, 'data')
+    let s:open_file_dict[decoded.dir] = decoded.data
+    call g:clap.display.set_lines(decoded.data)
     call clap#sign#reset_to_first_line()
+    call clap#impl#refresh_matches_count(string(decoded.total))
+
   else
-    echom "stdout: ".string(json)
+    echom 'stdout: '.string(decoded)
   endif
+endfunction
+
+let s:round_message = ''
+let s:content_length = 0
+function! clap#provider#filer#handle_stdout(lines) abort
+  while !empty(a:lines)
+    let line = remove(a:lines, 0)
+
+    if line ==# ''
+      continue
+    elseif s:content_length == 0
+      if line =~# '^Content-length:'
+        let s:content_length = str2nr(matchstr(line, '\d\+$'))
+      else
+        echom 'Warning: '.line
+      endif
+      continue
+    endif
+
+    if s:content_length < strlen(l:line)
+      let s:round_message .= strpart(line, 0, s:content_length)
+      call insert(a:lines, strpart(line, s:content_length))
+      let s:content_length = 0
+    else
+      let s:round_message .= line
+      let s:content_length -= strlen(l:line)
+    endif
+
+    " The message for this round is still incomplete, contintue to read more.
+    if s:content_length > 0
+      continue
+    endif
+
+    try
+      call s:handle_round_message(trim(s:round_message))
+    catch
+      echom 'ERROR in handle round message'
+    finally
+      let s:round_message = ''
+    endtry
+
+  endwhile
 endfunction
 
 function! clap#provider#filer#bs() abort
