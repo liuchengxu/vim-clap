@@ -13,7 +13,7 @@ function! s:reset_on_empty_input() abort
   call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
   call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
   call clap#sign#toggle_cursorline()
-  call g:clap#display_win.compact_if_undersize()
+  call g:clap#display_win.shrink_if_undersize()
   call g:clap.preview.hide()
 endfunction
 
@@ -101,7 +101,7 @@ function! s:on_typed_sync_impl() abort
     call clap#impl#refresh_matches_count(string(len(l:lines)))
   endif
 
-  call g:clap#display_win.compact_if_undersize()
+  call g:clap#display_win.shrink_if_undersize()
   call clap#spinner#set_idle()
 
   if !g:__clap_has_no_matches
@@ -125,7 +125,7 @@ function! s:on_typed_async_impl() abort
       call g:clap.display.set_lines_lazy(g:__clap_raw_source)
       call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
       call clap#sign#toggle_cursorline()
-      call g:clap#display_win.compact_if_undersize()
+      call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()
     endif
     call clap#highlight#clear()

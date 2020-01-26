@@ -51,6 +51,10 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
     endif
   endif
 
+  if empty(lines)
+    return
+  endif
+
   call g:clap.preview.show(lines)
 
   if should_add_hi

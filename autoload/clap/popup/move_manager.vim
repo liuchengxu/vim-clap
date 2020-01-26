@@ -214,7 +214,7 @@ function! clap#popup#move_manager#filter(winid, key) abort
   catch
     let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + [v:exception]
     call g:clap.display.set_lines(l:error_info)
-    call g:clap#display_win.compact()
+    call g:clap#display_win.shrink()
     call clap#spinner#set_idle()
     return 1
   endtry

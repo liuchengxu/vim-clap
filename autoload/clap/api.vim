@@ -342,7 +342,7 @@ function! s:init_provider() abort
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)
-      call g:clap#display_win.compact()
+      call g:clap#display_win.shrink()
       call clap#spinner#set_idle()
     endtry
   endfunction
@@ -574,7 +574,7 @@ function! s:init_provider() abort
     if line_count > 0
       let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
       call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
-      call g:clap#display_win.compact_if_undersize()
+      call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches('['.line_count.']')
       call clap#sign#toggle_cursorline()
     endif
@@ -612,7 +612,7 @@ function! s:init_provider() abort
     let g:clap.display.initial_size = initial_size
     if initial_size > 0
       call g:clap.display.set_lines_lazy(lines)
-      call g:clap#display_win.compact_if_undersize()
+      call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches('['.initial_size.']')
       call clap#sign#toggle_cursorline()
     endif

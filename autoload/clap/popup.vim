@@ -75,7 +75,7 @@ endfunction
 
 let g:clap#popup#display.open = function('s:create_display')
 
-function! g:clap#popup#display.compact_if_undersize() abort
+function! g:clap#popup#display.shrink_if_undersize() abort
   let pos = popup_getpos(s:display_winid)
   let line_count = g:clap.display.line_count()
   if line_count < s:display_opts.height
@@ -90,7 +90,7 @@ function! g:clap#popup#display.compact_if_undersize() abort
   call s:try_adjust_preview()
 endfunction
 
-function! g:clap#popup#display.compact() abort
+function! g:clap#popup#display.shrink() abort
   let pos = popup_getpos(s:display_winid)
   let line_count = g:clap.display.line_count()
   if pos.height != line_count

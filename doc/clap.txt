@@ -288,22 +288,14 @@ g:clap_on_move_delay                                      *g:clap_on_move_delay*
   provider will be run when you navigate the result list.
 
 
-g:clap_forerunner_status_sign_done          *g:clap_forerunner_status_sign_done*
+g:clap_forerunner_status_sign          *g:clap_forerunner_status_sign*
 
-  Type: |String|
-  Default: `'*'`
+  Type: |Dict|
+  Default: `{ 'running': '!', 'done': '•' }`
 
   The async forerunner job is done in this vim-clap session. Everything should
   be fast and deterministic even you have 1 million items as long as you
   install the `maple` Rust extension.
-
-
-g:clap_forerunner_status_sign_running     *g:clap_forerunner_status_sign_running*
-
-  Type: |String|
-  Default: `'!'`
-
-  The async forerunner job is still running.
 
 
 g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*
@@ -438,20 +430,22 @@ g:clap_default_external_filter                  *g:clap_default_external_filter*
 g:clap_prompt_format                             *g:clap_prompt_format*
 
   Type: |String|
-  Default: `'%spinner% %provider_id%> '`
+  Default: `' %spinner%%forerunner_status%%provider_id%:'`
 
   This variable defines a message format for the prompt. The following
   sequences of characters will be replaced.
 
-    `%spinner%`       - replaced with the current spinner symbol, see
-                      |g:clap_spinner_frames|
-    `%provider_id%`   - replaced with the id of current provider
+    `%spinner%`             - replaced with the current spinner symbol, see
+                             |g:clap_spinner_frames|
+    `%forerunner_status%`   - replaced with the current status of forerunner,
+                            see |g:clap_forerunner_status_sign|
+    `%provider_id%`         - replaced with the id of current provider
 
 
 g:clap_spinner_frames                            *g:clap_spinner_frames*
 
   Type: |List|
-  Default: `['◐', '◑', '◒', '◓']`
+  Default: `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`
 
   The frames used for drawing the spinner.
 

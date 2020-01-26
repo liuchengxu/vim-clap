@@ -6,6 +6,13 @@ CHANGELOG
 ### Added
 
 - Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
+- Add `g:clap_forerunner_status_sign` and deprecate `g:clap_forerunner_status_sign_done` and `g:clap_forerunner_status_sign_running`.
+
+### Changed
+
+- Use    as the icon of markdown.
+- Change the default spinner frames to `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`.
+- Change the default prompt format to `' %spinner%%forerunner_status%%provider_id%:'`.
 
 ## [0.6] 2020-01-24
 
