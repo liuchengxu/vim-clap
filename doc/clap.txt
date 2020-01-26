@@ -430,14 +430,16 @@ g:clap_default_external_filter                  *g:clap_default_external_filter*
 g:clap_prompt_format                             *g:clap_prompt_format*
 
   Type: |String|
-  Default: `' %spinner%%provider_id%:'`
+  Default: `' %spinner%%forerunner_status%%provider_id%:'`
 
   This variable defines a message format for the prompt. The following
   sequences of characters will be replaced.
 
-    `%spinner%`       - replaced with the current spinner symbol, see
-                      |g:clap_spinner_frames|
-    `%provider_id%`   - replaced with the id of current provider
+    `%spinner%`             - replaced with the current spinner symbol, see
+                             |g:clap_spinner_frames|
+    `%forerunner_status%`   - replaced with the current status of forerunner,
+                            see |g:clap_forerunner_status_sign|
+    `%provider_id%`         - replaced with the id of current provider
 
 
 g:clap_spinner_frames                            *g:clap_spinner_frames*
