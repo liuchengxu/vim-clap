@@ -7,6 +7,7 @@ CHANGELOG
 
 - Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
 - Add `g:clap_forerunner_status_sign` and deprecate `g:clap_forerunner_status_sign_done` and `g:clap_forerunner_status_sign_running`.
+- Add `g:ClapPrompt` which is Funcref to give more control of the prompt of clap, please see https://github.com/liuchengxu/vim-clap/issues/134#issuecomment-578503522 for the usage.([#265](https://github.com/liuchengxu/vim-clap/pull/265))
 
 ### Changed
 
