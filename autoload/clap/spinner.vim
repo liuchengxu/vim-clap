@@ -17,7 +17,7 @@ function! s:compose_prompt() abort
   let l:prompt = s:prompt_format
 
   let l:spinner = s:spinner
-  let l:provider_id = get(g:, 'clap_current_forerunner_status', '').g:clap.provider.id
+  let l:provider_id = get(g:, '__clap_current_forerunner_status', '').g:clap.provider.id
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
