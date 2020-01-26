@@ -31,13 +31,31 @@ function! s:compose_prompt() abort
   return l:prompt
 endfunction
 
+if exists('g:ClapPrompt') && type(g:ClapPrompt) == v:t_func
+  let s:PromptFn = g:ClapPrompt
+else
+  let s:PromptFn = function('s:compose_prompt')
+endif
+
 if has('nvim')
+  function! clap#spinner#set(text) abort
+    call setbufline(g:clap.spinner.bufnr, 1, a:text)
+    call g:clap#floating_win#spinner.shrink()
+  endfunction
+
   function! s:set_spinner() abort
-    call clap#util#nvim_buf_set_lines(g:clap.spinner.bufnr, [s:compose_prompt()])
+    let s:current_prompt = s:PromptFn()
+    call clap#spinner#set(s:current_prompt)
   endfunction
 else
+  function! clap#spinner#set(text) abort
+    call popup_settext(g:clap_spinner_winid, a:text)
+    call clap#popup#shrink_spinner()
+  endfunction
+
   function! s:set_spinner() abort
-    call popup_settext(g:clap_spinner_winid, s:compose_prompt())
+    let s:current_prompt = s:PromptFn()
+    call clap#spinner#set(s:current_prompt)
   endfunction
 endif
 
@@ -46,11 +64,14 @@ function! clap#spinner#refresh() abort
 endfunction
 
 function! clap#spinner#get() abort
-  return s:compose_prompt()
+  return s:current_prompt
 endfunction
 
 function! clap#spinner#width() abort
-  return strdisplaywidth(s:compose_prompt())
+  if !exists('s:current_prompt')
+    let s:current_prompt = s:PromptFn()
+  endif
+  return strdisplaywidth(s:current_prompt)
 endfunction
 
 function! s:on_frame(...) abort

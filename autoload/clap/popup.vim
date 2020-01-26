@@ -216,6 +216,10 @@ function! s:adjust_spinner() abort
   endif
 endfunction
 
+function! clap#popup#shrink_spinner() abort
+  call s:adjust_spinner()
+endfunction
+
 function! s:execute_in_input() abort
   let s:save_completeopt = &completeopt
   set completeopt=
