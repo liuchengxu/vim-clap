@@ -82,10 +82,7 @@ function! clap#provider#filer#bs() abort
 
     let s:current_dir = parent_dir
 
-    if has_key(s:open_file_dict, s:current_dir)
-      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
-      call g:clap.display.set_lines(filtered)
-      call g:clap#display_win.shrink_if_undersize()
+    if s:try_filter_is_ok()
       return ''
     endif
 
@@ -115,40 +112,7 @@ function! clap#provider#filer#run() abort
   call clap#rpc#send_message(msg)
 endfunction
 
-function! clap#provider#filer#tab() abort
-  call clap#highlight#clear()
-
-  let curline = g:clap.display.getcurline()
-
-  if s:current_dir[-1:] ==# '/'
-    let cur_entry = s:current_dir.curline
-  else
-    let cur_entry = s:current_dir.'/'.curline
-  endif
-  if filereadable(cur_entry)
-    return ''
-  endif
-  let s:current_dir = cur_entry
-
-  call clap#spinner#set(pathshorten(s:current_dir))
-  call g:clap.input.set('')
-
-  if has_key(s:open_file_dict, s:current_dir)
-    let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
-    call g:clap.display.set_lines(filtered)
-    call g:clap#display_win.shrink_if_undersize()
-    return ''
-  endif
-
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
-  call clap#rpc#send_message(msg)
-
-  return ''
-endfunction
-
-function! clap#provider#filer#on_typed() abort
-  call clap#highlight#clear()
-
+function! s:try_filter_is_ok() abort
   if has_key(s:open_file_dict, s:current_dir)
     let query = g:clap.input.get()
     let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[s:current_dir]])
@@ -174,8 +138,44 @@ function! clap#provider#filer#on_typed() abort
       call clap#highlight#add_fuzzy_sync()
     endif
 
-    return
+    return v:true
   endif
+  return v:false
+endfunction
+
+function! clap#provider#filer#tab() abort
+  call clap#highlight#clear()
+
+  let curline = g:clap.display.getcurline()
+
+  if s:current_dir[-1:] ==# '/'
+    let cur_entry = s:current_dir.curline
+  else
+    let cur_entry = s:current_dir.'/'.curline
+  endif
+  if filereadable(cur_entry)
+    return ''
+  endif
+  let s:current_dir = cur_entry
+
+  call clap#spinner#set(pathshorten(s:current_dir))
+  call g:clap.input.set('')
+
+  if s:try_filter_is_ok()
+    return ''
+  endif
+
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  call clap#rpc#send_message(msg)
+
+  return ''
+endfunction
+
+function! clap#provider#filer#on_typed() abort
+  call clap#highlight#clear()
+
+  call s:try_filter_is_ok()
+  return ''
 endfunction
 
 let g:clap#provider#filer# = s:filer
