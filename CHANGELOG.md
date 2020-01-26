@@ -12,7 +12,7 @@ CHANGELOG
 
 - Use    as the icon of markdown.
 - Change the default spinner frames to `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`.
-- Change the default promt format to `' %spinner%%forerunner_status%%provider_id%:'`.
+- Change the default prompt format to `' %spinner%%forerunner_status%%provider_id%:'`.
 
 ## [0.6] 2020-01-24
 
