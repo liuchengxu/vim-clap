@@ -29,8 +29,6 @@ if has('nvim')
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ })
-    echom "job statred: ".s:job_id
-    call clap#rpc#send()
   endfunction
 
 else
@@ -54,22 +52,13 @@ function! clap#rpc#stop() abort
   endif
 endfunction
 
-function! s:apply_start(_timer) abort
-  let s:chunks = []
-
-  call g:clap.preview.hide()
-  call s:start_maple()
-endfunction
-
 function! clap#rpc#job_start(cmd) abort
-  if s:job_timer != -1
-    call timer_stop(s:job_timer)
-  endif
-
   call clap#rpc#stop()
 
   let s:cmd = a:cmd
-  let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))
+  let s:chunks = []
+  call g:clap.preview.hide()
+  call s:start_maple()
   return
 endfunction
 
@@ -77,6 +66,10 @@ function! clap#rpc#send() abort
   let dir = clap#spinner#get()
   let msg = json_encode({'method': 'open_file', 'params': {'cwd': dir}, 'id': 1})
   call chansend(s:job_id, msg."\n")
+endfunction
+
+function! clap#rpc#send_message(msg) abort
+  call chansend(s:job_id, a:msg."\n")
 endfunction
 
 let &cpoptions = s:save_cpo

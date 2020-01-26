@@ -69,31 +69,33 @@ endfunction
 
 function! clap#provider#filer#bs() abort
   call clap#highlight#clear()
-  let input = g:clap.input.get()
-  if input ==# ''
-    let spinner = clap#spinner#get()
-    if spinner[-1:] ==# '/'
-      let par = trim(fnamemodify(spinner, ':h:h'))
-    else
-      let par = trim(fnamemodify(spinner, ':h'))
-    endif
-    call clap#spinner#set(par)
 
-    let dir = clap#spinner#get()
-    if has_key(s:open_file_dict, dir)
-      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
+  let input = g:clap.input.get()
+
+  if input ==# ''
+    if s:current_dir[-1:] ==# '/'
+      let parent_dir = trim(fnamemodify(s:current_dir, ':h:h'))
+    else
+      let parent_dir = trim(fnamemodify(s:current_dir, ':h'))
+    endif
+    call clap#spinner#set(pathshorten(parent_dir))
+
+    let s:current_dir = parent_dir
+
+    if has_key(s:open_file_dict, s:current_dir)
+      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
       call g:clap.display.set_lines(filtered)
       call g:clap#display_win.shrink_if_undersize()
       return ''
     endif
 
-    call clap#rpc#send()
+    let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+    call clap#rpc#send_message(msg)
   else
 
-    let dir = clap#spinner#get()
     call g:clap.input.set(input[:-2])
-    if has_key(s:open_file_dict, dir)
-      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
+    if has_key(s:open_file_dict, s:current_dir)
+      let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
       call g:clap.display.set_lines(filtered)
       call g:clap#display_win.shrink_if_undersize()
       return ''
@@ -103,46 +105,53 @@ function! clap#provider#filer#bs() abort
 endfunction
 
 function! clap#provider#filer#run() abort
-  let cmd = clap#maple#run('rpc')
-  call clap#spinner#set(getcwd())
-  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
   let s:open_file_dict = {}
+  let s:current_dir = getcwd()
+  call clap#spinner#set(pathshorten(s:current_dir))
+  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
+  let cmd = clap#maple#run('rpc')
   call clap#rpc#job_start(cmd)
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  call clap#rpc#send_message(msg)
 endfunction
 
 function! clap#provider#filer#tab() abort
   call clap#highlight#clear()
+
   let curline = g:clap.display.getcurline()
-  let curdir = clap#spinner#get()
-  if curdir[-1:] ==# '/'
-    let cur_entry = curdir.curline
+
+  if s:current_dir[-1:] ==# '/'
+    let cur_entry = s:current_dir.curline
   else
-    let cur_entry = curdir.'/'.curline
+    let cur_entry = s:current_dir.'/'.curline
   endif
   if filereadable(cur_entry)
     return ''
   endif
-  call clap#spinner#set(cur_entry)
+  let s:current_dir = cur_entry
+
+  call clap#spinner#set(pathshorten(s:current_dir))
   call g:clap.input.set('')
 
-  let dir = clap#spinner#get()
-  if has_key(s:open_file_dict, dir)
-    let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[dir])
+  if has_key(s:open_file_dict, s:current_dir)
+    let filtered = clap#filter#(g:clap.input.get(), s:open_file_dict[s:current_dir])
     call g:clap.display.set_lines(filtered)
+    call g:clap#display_win.shrink_if_undersize()
     return ''
   endif
 
-  call g:clap#display_win.shrink_if_undersize()
-  call clap#rpc#send()
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  call clap#rpc#send_message(msg)
+
   return ''
 endfunction
 
 function! clap#provider#filer#on_typed() abort
-  let curdir = clap#spinner#get()
-  let query = g:clap.input.get()
   call clap#highlight#clear()
-  if has_key(s:open_file_dict, curdir)
-    let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[curdir]])
+
+  if has_key(s:open_file_dict, s:current_dir)
+    let query = g:clap.input.get()
+    let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[s:current_dir]])
 
     if empty(l:lines)
       let l:lines = [g:clap_no_matches_msg]
