@@ -14,8 +14,8 @@ let s:ext_cmd.fzf = 'fzf --filter="%s"'
 let s:ext_cmd.sk = 'sk --filter="%s"'
 
 function! s:other_fuzzy_ext_filter() abort
-  " TODO support skim, skim seems to have a score at the beginning.
-  for ext in ['fzy', 'fzf']
+  " Need https://github.com/lotabout/skim/commit/7c6211fa7e657441cb9da70962258d4f115ad943
+  for ext in ['fzy', 'fzf', 'sk']
     if executable(ext)
       return ext
     endif
