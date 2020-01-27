@@ -8,6 +8,10 @@ CHANGELOG
 - Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
 - Add `g:clap_forerunner_status_sign` and deprecate `g:clap_forerunner_status_sign_done` and `g:clap_forerunner_status_sign_running`.
 
+### Internal
+
+- Split out the native VimScript filter implementation in favor of the potential vim9 improvement.([#267](https://github.com/liuchengxu/vim-clap/pull/267))
+
 ### Changed
 
 - Use    as the icon of markdown.
