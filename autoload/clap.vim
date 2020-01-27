@@ -105,31 +105,39 @@ function! s:inject_default_impl_is_ok(provider_info) abort
   return v:true
 endfunction
 
+function! s:detect_source_type() abort
+  let Source = g:clap.provider._().source
+  let source_ty = type(Source)
+
+  if source_ty == v:t_string
+    return g:__t_string
+  elseif source_ty == v:t_list
+    return g:__t_list
+  elseif source_ty == v:t_func
+    " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
+    " `blines` provider, so we did a hard code for blines provider here.
+    if g:clap.provider.id ==# 'blines'
+      return g:__t_func_list
+    else
+      let string_or_list = Source()
+      if type(string_or_list) == v:t_string
+        return g:__t_func_string
+      elseif type(string_or_list) == v:t_list
+        return g:__t_func_list
+      else
+        call g:clap.abort('Must return a String or a List if source is a Funcref')
+      endif
+    endif
+  endif
+  return v:null
+endfunction
+
 function! clap#_init() abort
   if has_key(g:clap.provider._(), 'source')
-    let Source = g:clap.provider._().source
-    let source_ty = type(Source)
-
-    if source_ty == v:t_string
-      let g:clap.provider.type = g:__t_string
-    elseif source_ty == v:t_list
-      let g:clap.provider.type = g:__t_list
-    elseif source_ty == v:t_func
-      " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
-      " `blines` provider, so we did a hard code for blines provider here.
-      if g:clap.provider.id ==# 'blines'
-        let g:clap.provider.type = g:__t_func_list
-      else
-        let string_or_list = Source()
-        if type(string_or_list) == v:t_string
-          let g:clap.provider.type = g:__t_func_string
-        elseif type(string_or_list) == v:t_list
-          let g:clap.provider.type = g:__t_func_list
-        else
-          call g:clap.abort('Must return a String or a List if source is a Funcref')
-          return
-        endif
-      endif
+    if has_key(g:clap.provider._(), 'source_type')
+      let g:clap.provider.source_type = g:clap.provider._().source_type
+    else
+      let g:clap.provider.source_type = s:detect_source_type()
     endif
   endif
 
