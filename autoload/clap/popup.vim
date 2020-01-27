@@ -203,6 +203,9 @@ endfunction
 
 function! s:adjust_spinner() abort
   let pos = popup_getpos(s:spinner_winid)
+  if empty(pos)
+    return
+  endif
   let spinner_width = clap#spinner#width()
   if pos.width != spinner_width
     let pos.minwidth = spinner_width
