@@ -468,16 +468,16 @@ function! s:init_provider() abort
       " if a buffer has 1 million lines, writing a tmp file costs too much,
       " and it's unneccessary.
 
-      if self.type == g:__t_string
+      if self.source_type == g:__t_string
         return s:wrap_async_cmd(Source)
-      elseif self.type == g:__t_func_string
+      elseif self.source_type == g:__t_func_string
         return s:wrap_async_cmd(Source())
-      elseif self.type == g:__t_list
+      elseif self.source_type == g:__t_list
         let lines = copy(Source)
       elseif self.id ==# 'blines'
         " Do not call Source() but use the raw content for blines when it's huge.
         let lines = []
-      elseif self.type == g:__t_func_list
+      elseif self.source_type == g:__t_func_list
         let lines = copy(Source())
       endif
 
@@ -504,14 +504,14 @@ function! s:init_provider() abort
   function! provider._apply_source() abort
     let Source = self._().source
 
-    if self.type == g:__t_string
+    if self.source_type == g:__t_string
       return s:_system(Source)
-    elseif self.type == g:__t_list
+    elseif self.source_type == g:__t_list
       " Use copy here, otherwise it could be one-off List.
       let lines = copy(Source)
-    elseif self.type == g:__t_func_string
+    elseif self.source_type == g:__t_func_string
       return s:_system(Source())
-    elseif self.type == g:__t_func_list
+    elseif self.source_type == g:__t_func_list
       return copy(Source())
     else
       return ['source() must return a List or a String if it is a Funcref']
@@ -589,10 +589,10 @@ function! s:init_provider() abort
 
     if self.is_pure_async()
       return
-    elseif self.type == g:__t_string
+    elseif self.source_type == g:__t_string
       call clap#forerunner#start(g:clap.provider._().source)
       return
-    elseif self.type == g:__t_func_string
+    elseif self.source_type == g:__t_func_string
       let Source = g:clap.provider._().source
       let cmd = Source()
       call clap#forerunner#start(cmd)
@@ -601,9 +601,9 @@ function! s:init_provider() abort
 
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
     let Source = g:clap.provider._().source
-    if self.type == g:__t_list
+    if self.source_type == g:__t_list
       let lines = Source
-    elseif self.type == g:__t_func_list
+    elseif self.source_type == g:__t_func_list
       let lines = Source()
     endif
 
