@@ -160,16 +160,16 @@ function! s:detect_should_switch_to_async() abort
   endif
 
   if g:clap.provider.is_pure_async()
-        \ || g:clap.provider.type == g:__t_string
-        \ || g:clap.provider.type == g:__t_func_string
+        \ || g:clap.provider.source_type == g:__t_string
+        \ || g:clap.provider.source_type == g:__t_func_string
     return v:true
   endif
 
   let Source = g:clap.provider._().source
 
-  if g:clap.provider.type == g:__t_list
+  if g:clap.provider.source_type == g:__t_list
     let s:cur_source = Source
-  elseif g:clap.provider.type == g:__t_func_list
+  elseif g:clap.provider.source_type == g:__t_func_list
     let s:cur_source = Source()
   endif
 

@@ -46,6 +46,9 @@ function! s:blines.on_enter() abort
   call g:clap.display.setbufvar('&syntax', 'clap_blines')
 endfunction
 
+" if Source() is 1,000,000+ lines, it could be very slow, e.g.,
+" `blines` provider, so we did a hard code for blines provider here.
+let s:blines.source_type = g:__t_func_list
 let g:clap#provider#blines# = s:blines
 
 let &cpoptions = s:save_cpo
