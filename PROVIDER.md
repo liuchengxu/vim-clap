@@ -59,6 +59,7 @@ Field                 | Type                | Required      | Has default implem
 `sink`                | String/Funcref      | **mandatory** | No
 `sink*`               | Funcref             | optional      | No
 `source`              | String/List/Funcref | **mandatory** | No
+`source_type`         | Number              | optional      | No
 `source_async`        | String              | optional      | **Yes**
 `filter`              | Funcref             | **mandatory** | **Yes**
 `on_typed`            | Funcref             | **mandatory** | **Yes**
@@ -79,6 +80,12 @@ Field                 | Type                | Required      | Has default implem
   - List: vim List as input to vim-clap.
   - String: external command to generate input to vim-clap (e.g. `find .`).
   - Funcref: reference to function that returns a List to generate input to vim-clap.
+
+- `source_type`: type of `source`, vim-clap can detect it itself, but could be slow in some edge cases, e.g., `blines` for a file having 1 million lines. Setting this property explicitly can save the time for checking the source type.
+  - `g:__t_string`
+  - `g:__t_list`
+  - `g:__t_func_string`
+  - `g:__t_func_list`
 
 - `source_async`: String, job command to filter the items of `source` based on the external tools. The default implementation is to feed the output of `source` into the external fuzzy filters and then display the filtered result, which could have some limitations, e.g., the matched input is not highlighted.
 
