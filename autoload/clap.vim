@@ -114,19 +114,13 @@ function! s:detect_source_type() abort
   elseif source_ty == v:t_list
     return g:__t_list
   elseif source_ty == v:t_func
-    " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
-    " `blines` provider, so we did a hard code for blines provider here.
-    if g:clap.provider.id ==# 'blines'
+    let string_or_list = Source()
+    if type(string_or_list) == v:t_string
+      return g:__t_func_string
+    elseif type(string_or_list) == v:t_list
       return g:__t_func_list
     else
-      let string_or_list = Source()
-      if type(string_or_list) == v:t_string
-        return g:__t_func_string
-      elseif type(string_or_list) == v:t_list
-        return g:__t_func_list
-      else
-        call g:clap.abort('Must return a String or a List if source is a Funcref')
-      endif
+      call g:clap.abort('Must return a String or a List if source is a Funcref')
     endif
   endif
   return v:null
