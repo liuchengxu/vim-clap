@@ -234,7 +234,7 @@ function! s:init_display() abort
   " Optional argument: pattern to match
   " Default: input
   function! display.add_highlight(...) abort
-    let pattern = a:0 > 0 ? a:1 : clap#filter#matchadd_pattern()
+    let pattern = a:0 > 0 ? a:1 : clap#filter#viml#matchadd_pattern()
     if empty(pattern)
       return
     endif
