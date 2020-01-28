@@ -67,30 +67,38 @@ function! clap#provider#filer#handle_stdout(lines) abort
   endwhile
 endfunction
 
+function! s:goto_parent() abort
+  if s:current_dir[-1:] ==# '/'
+    let parent_dir = trim(fnamemodify(s:current_dir, ':h:h'))
+  else
+    let parent_dir = trim(fnamemodify(s:current_dir, ':h'))
+  endif
+
+  let s:current_dir = parent_dir
+
+  call clap#spinner#set(pathshorten(s:current_dir))
+
+  call s:filter_or_send_message()
+endfunction
+
+function! s:filter_or_send_message() abort
+  if has_key(s:open_file_dict, s:current_dir)
+    call s:do_filter()
+  else
+    call s:send_message()
+  endif
+endfunction
+
 function! clap#provider#filer#bs() abort
   call clap#highlight#clear()
 
   let input = g:clap.input.get()
 
   if input ==# ''
-    if s:current_dir[-1:] ==# '/'
-      let parent_dir = trim(fnamemodify(s:current_dir, ':h:h'))
-    else
-      let parent_dir = trim(fnamemodify(s:current_dir, ':h'))
-    endif
-    call clap#spinner#set(pathshorten(parent_dir))
-
-    let s:current_dir = parent_dir
-
-    if !s:try_filter_is_ok()
-      call s:send_message()
-    endif
+    call s:goto_parent()
   else
-
     call g:clap.input.set(input[:-2])
-    if s:try_filter_is_ok()
-      return ''
-    endif
+    call s:filter_or_send_message()
   endif
   return ''
 endfunction
@@ -106,32 +114,32 @@ function! clap#provider#filer#run() abort
   call clap#rpc#send_message(msg)
 endfunction
 
+function! s:do_filter() abort
+  let query = g:clap.input.get()
+  let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[s:current_dir]])
+
+  if empty(l:lines)
+    let l:lines = [g:clap_no_matches_msg]
+    let g:__clap_has_no_matches = v:true
+    call g:clap.display.set_lines_lazy(lines)
+    call clap#impl#refresh_matches_count('0')
+    call g:clap.preview.hide()
+  else
+    call g:clap.display.set_lines_lazy(lines)
+    call clap#impl#refresh_matches_count(string(len(l:lines)))
+  endif
+
+  call g:clap#display_win.shrink_if_undersize()
+  call clap#spinner#set_idle()
+
+  if exists('g:__clap_fuzzy_matched_indices')
+    call clap#highlight#add_fuzzy_sync()
+  endif
+endfunction
+
 function! s:try_filter_is_ok() abort
   if has_key(s:open_file_dict, s:current_dir)
-    let query = g:clap.input.get()
-    let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[s:current_dir]])
-
-    if empty(l:lines)
-      let l:lines = [g:clap_no_matches_msg]
-      let g:__clap_has_no_matches = v:true
-      call g:clap.display.set_lines_lazy(lines)
-      " In clap#impl#refresh_matches_count() we reset the sign to the first line,
-      " But the signs are seemingly removed when setting the lines, so we should
-      " postpone the sign update.
-      call clap#impl#refresh_matches_count('0')
-      call g:clap.preview.hide()
-    else
-      call g:clap.display.set_lines_lazy(lines)
-      call clap#impl#refresh_matches_count(string(len(l:lines)))
-    endif
-
-    call g:clap#display_win.shrink_if_undersize()
-    call clap#spinner#set_idle()
-
-    if exists('g:__clap_fuzzy_matched_indices')
-      call clap#highlight#add_fuzzy_sync()
-    endif
-
+    call s:do_filter()
     return v:true
   endif
   return v:false
@@ -148,29 +156,29 @@ function! clap#provider#filer#tab() abort
   let curline = g:clap.display.getcurline()
 
   if s:current_dir[-1:] ==# '/'
-    let cur_entry = s:current_dir.curline
+    let current_entry = s:current_dir.curline
   else
-    let cur_entry = s:current_dir.'/'.curline
+    let current_entry = s:current_dir.'/'.curline
   endif
-  if filereadable(cur_entry)
+
+  if filereadable(current_entry)
+    " TODO: preview file
     return ''
   endif
-  let s:current_dir = cur_entry
+
+  let s:current_dir = current_entry
 
   call clap#spinner#set(pathshorten(s:current_dir))
   call g:clap.input.set('')
 
-  if !s:try_filter_is_ok()
-    call s:send_message()
-  endif
+  call s:filter_or_send_message()
 
   return ''
 endfunction
 
 function! clap#provider#filer#on_typed() abort
   call clap#highlight#clear()
-
-  call s:try_filter_is_ok()
+  call s:filter_or_send_message()
   return ''
 endfunction
 
