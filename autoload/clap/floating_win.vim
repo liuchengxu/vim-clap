@@ -138,18 +138,20 @@ function! g:clap#floating_win#spinner.open() abort
 endfunction
 
 function! g:clap#floating_win#spinner.shrink() abort
-  let width = clap#spinner#width()
-  let opts = nvim_win_get_config(s:spinner_winid)
-  if opts.width != width
-    let opts.width = width
-    call nvim_win_set_config(s:spinner_winid, opts)
-
+  if nvim_win_is_valid(s:spinner_winid)
+    let width = clap#spinner#width()
     let opts = nvim_win_get_config(s:spinner_winid)
-    let opts.col += opts.width
-    let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
-    let g:clap#floating_win#input.width = opts.width
-    call nvim_win_set_config(s:input_winid, opts)
-    call clap#indicator#repadding()
+    if opts.width != width
+      let opts.width = width
+      call nvim_win_set_config(s:spinner_winid, opts)
+
+      let opts = nvim_win_get_config(s:spinner_winid)
+      let opts.col += opts.width
+      let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+      let g:clap#floating_win#input.width = opts.width
+      call nvim_win_set_config(s:input_winid, opts)
+      call clap#indicator#repadding()
+    endif
   endif
 endfunction
 
