@@ -44,12 +44,14 @@ endif
 
 if has('nvim')
   function! clap#spinner#set(text) abort
-    call setbufline(g:clap.spinner.bufnr, 1, s:fill_in_placeholders(a:text))
+    let s:current_prompt = s:fill_in_placeholders(a:text)
+    call setbufline(g:clap.spinner.bufnr, 1, s:current_prompt)
     call g:clap#floating_win#spinner.shrink()
   endfunction
 
   function! clap#spinner#set_raw(text) abort
-    call setbufline(g:clap.spinner.bufnr, 1, a:text)
+    let s:current_prompt = a:text
+    call setbufline(g:clap.spinner.bufnr, 1, s:current_prompt)
     call g:clap#floating_win#spinner.shrink()
   endfunction
 
@@ -59,12 +61,14 @@ if has('nvim')
   endfunction
 else
   function! clap#spinner#set(text) abort
-    call popup_settext(g:clap_spinner_winid, s:fill_in_placeholders(a:text))
+    let s:current_prompt = s:fill_in_placeholders(a:text)
+    call popup_settext(g:clap_spinner_winid, s:current_prompt)
     call clap#popup#shrink_spinner()
   endfunction
 
   function! clap#spinner#set_raw(text) abort
-    call popup_settext(g:clap_spinner_winid, a:text)
+    let s:current_prompt = a:text
+    call popup_settext(g:clap_spinner_winid, s:current_prompt)
     call clap#popup#shrink_spinner()
   endfunction
 
