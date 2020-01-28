@@ -118,7 +118,7 @@ endfunction
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
-  call clap#impl#apply_filter(function('clap#filter#'), query, s:filer_cache[s:current_dir])
+  call clap#filter#on_typed(function('clap#filter#'), query, s:filer_cache[s:current_dir])
 endfunction
 
 function! s:send_message() abort
