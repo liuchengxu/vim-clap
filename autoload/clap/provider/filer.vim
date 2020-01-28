@@ -116,7 +116,7 @@ endfunction
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
-  let l:lines = call(function('clap#filter#'), [query, s:open_file_dict[s:current_dir]])
+  let l:lines = clap#filter#(query, s:open_file_dict[s:current_dir])
 
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
@@ -135,14 +135,6 @@ function! s:do_filter() abort
   if exists('g:__clap_fuzzy_matched_indices')
     call clap#highlight#add_fuzzy_sync()
   endif
-endfunction
-
-function! s:try_filter_is_ok() abort
-  if has_key(s:open_file_dict, s:current_dir)
-    call s:do_filter()
-    return v:true
-  endif
-  return v:false
 endfunction
 
 function! s:send_message() abort
