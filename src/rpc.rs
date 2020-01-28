@@ -30,7 +30,7 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
             Ok(number) => {
                 if number > 0 {
                     if let Err(e) = sink.send(message) {
-                        println!("read_line error, {}", e);
+                        println!("Failed to read message, error:{}", e);
                     }
                 } else {
                     // EOF
@@ -52,9 +52,9 @@ fn handle_filer(msg: Message) {
             );
             json!({ "result": result, "id": msg.id })
         }
-        Err(err) => json!({ "message": format!("{}:{}", dir, err) }),
+        Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
     };
-    let s = serde_json::to_string(&result).expect("Fail to_string");
+    let s = serde_json::to_string(&result).expect("I promise; qed");
     println!("Content-length: {}\n\n{}", s.len(), s);
 }
 

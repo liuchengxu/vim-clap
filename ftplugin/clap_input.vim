@@ -26,12 +26,10 @@ setlocal
   \ foldcolumn=0
   \ nowrap
 
-if g:clap.provider.id !=# 'filer'
-  augroup ClapOnTyped
-    autocmd!
-    autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
-  augroup END
-endif
+augroup ClapOnTyped
+  autocmd!
+  autocmd CursorMoved,CursorMovedI <buffer> call clap#handler#on_typed()
+augroup END
 
 " From vim-rsi
 if !exists('g:loaded_rsi')

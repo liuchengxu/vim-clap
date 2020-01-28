@@ -9,6 +9,10 @@ let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
 
 function! clap#handler#on_typed() abort
+  if g:clap.provider.source_type == g:__t_rpc
+    call g:clap.provider.on_typed()
+    return
+  endif
   let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return

@@ -1,7 +1,5 @@
 let s:filer = {}
 
-let s:filer_cache = {}
-
 function! s:handle_round_message(message) abort
   try
     let decoded = json_decode(a:message)
@@ -22,14 +20,14 @@ function! s:handle_round_message(message) abort
     call g:clap#display_win.shrink_if_undersize()
 
   else
-    echom 'stdout: '.string(decoded)
+    call clap#helper#echo_error('This should not happen, neither error nor result is found.')
   endif
 endfunction
 
-let s:round_message = ''
-let s:content_length = 0
-
 if has('nvim')
+  let s:round_message = ''
+  let s:content_length = 0
+
   function! clap#provider#filer#handle_stdout(lines) abort
     while !empty(a:lines)
       let line = remove(a:lines, 0)
@@ -40,7 +38,7 @@ if has('nvim')
         if line =~# '^Content-length:'
           let s:content_length = str2nr(matchstr(line, '\d\+$'))
         else
-          echom 'Warning: '.line
+          call clap#helper#echo_error('This should not happen, unknown message:'.line)
         endif
         continue
       endif
@@ -62,7 +60,7 @@ if has('nvim')
       try
         call s:handle_round_message(trim(s:round_message))
       catch
-        echom 'ERROR in handle round message'
+        call clap#helper#echo_error('Failed to handle message:'.v:exception)
       finally
         let s:round_message = ''
       endtry
@@ -205,9 +203,9 @@ function! clap#provider#filer#start_rpc_service() abort
   call clap#rpc#send_message(msg)
 endfunction
 
-let s:filer.init_display_win = function('clap#provider#filer#start_rpc_service')
-let s:filer.source_type = g:__t_jsonrpc
-let s:filer.on_typed = function('clap#provider#filer#on_typed')
 let s:filer.sink = function('clap#provider#filer#sink')
 let s:filer.syntax = 'clap_filer'
+let s:filer.on_typed = function('clap#provider#filer#on_typed')
+let s:filer.source_type = g:__t_rpc
+let s:filer.init_display_win = function('clap#provider#filer#start_rpc_service')
 let g:clap#provider#filer# = s:filer
