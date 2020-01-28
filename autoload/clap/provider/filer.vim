@@ -168,6 +168,18 @@ function! clap#provider#filer#tab() abort
   return ''
 endfunction
 
+function! clap#provider#filer#sink() abort
+  let curline = g:clap.display.getcurline()
+
+  if s:current_dir[-1:] ==# '/'
+    let current_entry = s:current_dir.curline
+  else
+    let current_entry = s:current_dir.'/'.curline
+  endif
+  call clap#handler#internal_exit()
+  execute 'edit' current_entry
+endfunction
+
 function! clap#provider#filer#on_typed() abort
   call clap#highlight#clear()
   call s:filter_or_send_message()
