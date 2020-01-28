@@ -68,7 +68,7 @@ else
 
   function! clap#spinner#set_raw(text) abort
     let s:current_prompt = a:text
-    call popup_settext(g:clap_spinner_winid, a:text)
+    call popup_settext(g:clap_spinner_winid, s:current_prompt)
     call clap#popup#shrink_spinner()
   endfunction
 

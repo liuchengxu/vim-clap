@@ -93,5 +93,35 @@ else
   endfunction
 endif
 
+function! clap#filter#on_typed(FilterFn, query, candidates) abort
+  let l:lines = a:FilterFn(a:query, a:candidates)
+
+  if empty(l:lines)
+    let l:lines = [g:clap_no_matches_msg]
+    let g:__clap_has_no_matches = v:true
+    call g:clap.display.set_lines_lazy(lines)
+    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+    " But the signs are seemingly removed when setting the lines, so we should
+    " postpone the sign update.
+    call clap#impl#refresh_matches_count('0')
+    call g:clap.preview.hide()
+  else
+    let g:__clap_has_no_matches = v:false
+    call g:clap.display.set_lines_lazy(lines)
+    call clap#impl#refresh_matches_count(string(len(l:lines)))
+  endif
+
+  call g:clap#display_win.shrink_if_undersize()
+  call clap#spinner#set_idle()
+
+  if !g:__clap_has_no_matches
+    if exists('g:__clap_fuzzy_matched_indices')
+      call clap#highlight#add_fuzzy_sync()
+    else
+      call g:clap.display.add_highlight()
+    endif
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
