@@ -43,11 +43,14 @@ function! s:apply_on_typed() abort
   if g:clap.provider.is_sync()
     let g:__clap_should_refilter = v:true
   endif
-  call g:clap.provider.on_typed()
+  call clap#provider#filer#on_typed()
+  " call g:clap.provider.on_typed()
   call s:mock_input()
 endfunction
 
 function! s:move_manager.bs(_winid) abort
+  call clap#provider#filer#bs()
+
   if empty(s:input) || s:cursor_idx == 0
     return 1
   endif
@@ -62,7 +65,8 @@ function! s:move_manager.bs(_winid) abort
   if s:cursor_idx < 0
     let s:cursor_idx = 0
   endif
-  call s:apply_on_typed()
+  call s:mock_input()
+  " call s:apply_on_typed()
 endfunction
 
 function! s:move_manager.ctrl_d(_winid) abort
@@ -97,6 +101,7 @@ let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
 let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
 let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
 let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#select_toggle()') }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#provider#filer#tab()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
@@ -154,7 +159,8 @@ function! s:apply_input(_timer) abort
   if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
   endif
-  call g:clap.provider.on_typed()
+  call clap#provider#filer#on_typed()
+  " call g:clap.provider.on_typed()
 endfunction
 
 function! s:apply_input_with_delay() abort

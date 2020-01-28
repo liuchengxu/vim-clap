@@ -27,45 +27,59 @@ endfunction
 
 let s:round_message = ''
 let s:content_length = 0
-function! clap#provider#filer#handle_stdout(lines) abort
-  while !empty(a:lines)
-    let line = remove(a:lines, 0)
 
-    if line ==# ''
-      continue
-    elseif s:content_length == 0
-      if line =~# '^Content-length:'
-        let s:content_length = str2nr(matchstr(line, '\d\+$'))
-      else
-        echom 'Warning: '.line
+if has('nvim')
+  function! clap#provider#filer#handle_stdout(lines) abort
+    while !empty(a:lines)
+      let line = remove(a:lines, 0)
+
+      if line ==# ''
+        continue
+      elseif s:content_length == 0
+        if line =~# '^Content-length:'
+          let s:content_length = str2nr(matchstr(line, '\d\+$'))
+        else
+          echom 'Warning: '.line
+        endif
+        continue
       endif
-      continue
-    endif
 
-    if s:content_length < strlen(l:line)
-      let s:round_message .= strpart(line, 0, s:content_length)
-      call insert(a:lines, strpart(line, s:content_length))
-      let s:content_length = 0
-    else
-      let s:round_message .= line
-      let s:content_length -= strlen(l:line)
-    endif
+      if s:content_length < strlen(l:line)
+        let s:round_message .= strpart(line, 0, s:content_length)
+        call insert(a:lines, strpart(line, s:content_length))
+        let s:content_length = 0
+      else
+        let s:round_message .= line
+        let s:content_length -= strlen(l:line)
+      endif
 
-    " The message for this round is still incomplete, contintue to read more.
-    if s:content_length > 0
-      continue
-    endif
+      " The message for this round is still incomplete, contintue to read more.
+      if s:content_length > 0
+        continue
+      endif
 
+      try
+        call s:handle_round_message(trim(s:round_message))
+      catch
+        echom 'ERROR in handle round message'
+      finally
+        let s:round_message = ''
+      endtry
+
+    endwhile
+  endfunction
+else
+  function! clap#provider#filer#handle_stdout(line) abort
+    if a:line =~# '^Content-length:' || a:line ==# ''
+      return
+    endif
     try
-      call s:handle_round_message(trim(s:round_message))
+      call s:handle_round_message(trim(a:line))
     catch
-      echom 'ERROR in handle round message'
-    finally
-      let s:round_message = ''
+      echom 'ERROR in handle round message: '.v:exception.", :".string(a:line)
     endtry
-
-  endwhile
-endfunction
+  endfunction
+endif
 
 function! s:goto_parent() abort
   if s:current_dir[-1:] ==# '/'
@@ -76,6 +90,7 @@ function! s:goto_parent() abort
 
   let s:current_dir = parent_dir
 
+  echom "goto_parent ".s:current_dir
   call clap#spinner#set(pathshorten(s:current_dir))
 
   call s:filter_or_send_message()
@@ -90,6 +105,7 @@ function! s:filter_or_send_message() abort
 endfunction
 
 function! clap#provider#filer#bs() abort
+  echom "bs..."
   call clap#highlight#clear()
 
   let input = g:clap.input.get()
@@ -101,17 +117,6 @@ function! clap#provider#filer#bs() abort
     call s:filter_or_send_message()
   endif
   return ''
-endfunction
-
-function! clap#provider#filer#run() abort
-  let s:open_file_dict = {}
-  let s:current_dir = getcwd()
-  call clap#spinner#set(pathshorten(s:current_dir))
-  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
-  let cmd = clap#maple#run('rpc')
-  call clap#rpc#job_start(cmd)
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
-  call clap#rpc#send_message(msg)
 endfunction
 
 function! s:do_filter() abort
@@ -184,6 +189,18 @@ function! clap#provider#filer#on_typed() abort
   call clap#highlight#clear()
   call s:filter_or_send_message()
   return ''
+endfunction
+
+function! clap#provider#filer#run() abort
+  let s:open_file_dict = {}
+  let s:current_dir = getcwd()
+  call clap#spinner#set(pathshorten(s:current_dir))
+  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
+  let cmd = clap#maple#run('rpc')
+  call clap#rpc#job_start(cmd)
+  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  echom "msg:".string(msg)
+  call clap#rpc#send_message(msg)
 endfunction
 
 let g:clap#provider#filer# = s:filer
