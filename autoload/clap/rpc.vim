@@ -76,12 +76,12 @@ function! clap#rpc#stop() abort
   endif
 endfunction
 
-function! clap#rpc#job_start(cmd) abort
+function! clap#rpc#start() abort
   call clap#rpc#stop()
 
-  let s:cmd = a:cmd
   let s:chunks = []
   call g:clap.preview.hide()
+  let s:cmd = clap#maple#run('rpc')
   call s:start_maple()
   return
 endfunction

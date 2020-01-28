@@ -42,7 +42,7 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 
 fn handle_filer(msg: Message) {
     let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
-    let json_msg = match read_entries(&dir) {
+    let json_msg = match read_dir_entries(&dir) {
         Ok(entries) => json!({ "data": entries, "dir": dir, "total": entries.len() }),
         Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
     };
@@ -74,7 +74,7 @@ where
         .spawn(move || {
             loop_read(reader, &tx);
         })
-        .expect("Failed to spawn read thread");
+        .expect("Failed to spawn rpc reader thread");
     loop_call(&rx);
 }
 
@@ -98,7 +98,7 @@ fn into_string(entry: std::fs::DirEntry) -> String {
     }
 }
 
-fn read_entries(dir: &str) -> Result<Vec<String>> {
+fn read_dir_entries(dir: &str) -> Result<Vec<String>> {
     let mut entries = fs::read_dir(dir)?
         .map(|res| res.map(into_string))
         .collect::<Result<Vec<_>, io::Error>>()?;
@@ -110,6 +110,6 @@ fn read_entries(dir: &str) -> Result<Vec<String>> {
 
 #[test]
 fn test_dir() {
-    let entries = read_entries("/home/xlc/.vim/plugged/vim-clap").unwrap();
+    let entries = read_dir_entries("/home/xlc/.vim/plugged/vim-clap").unwrap();
     println!("entry: {:?}", entries);
 }

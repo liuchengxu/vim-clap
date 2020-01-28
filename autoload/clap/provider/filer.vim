@@ -1,6 +1,6 @@
 let s:filer = {}
 
-let s:open_file_dict = {}
+let s:filer_cache = {}
 
 function! s:handle_round_message(message) abort
   try
@@ -14,7 +14,7 @@ function! s:handle_round_message(message) abort
     call g:clap.display.set_lines([decoded.error])
 
   elseif has_key(decoded, 'data')
-    let s:open_file_dict[decoded.dir] = decoded.data
+    let s:filer_cache[decoded.dir] = decoded.data
     call g:clap.display.set_lines(decoded.data)
     call clap#sign#reset_to_first_line()
     call clap#impl#refresh_matches_count(string(decoded.total))
@@ -96,7 +96,7 @@ function! s:goto_parent() abort
 endfunction
 
 function! s:filter_or_send_message() abort
-  if has_key(s:open_file_dict, s:current_dir)
+  if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
     call s:send_message()
@@ -119,7 +119,7 @@ endfunction
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
-  let l:lines = clap#filter#(query, s:open_file_dict[s:current_dir])
+  let l:lines = clap#filter#(query, s:filer_cache[s:current_dir])
 
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
@@ -190,12 +190,10 @@ function! clap#provider#filer#on_typed() abort
 endfunction
 
 function! clap#provider#filer#start_rpc_service() abort
-  let s:open_file_dict = {}
+  let s:filer_cache = {}
   let s:current_dir = getcwd()
   call clap#spinner#set(pathshorten(s:current_dir))
-  call g:clap.display.setbufvar('&syntax', 'clap_open_files')
-  let cmd = clap#maple#run('rpc')
-  call clap#rpc#job_start(cmd)
+  call clap#rpc#start()
   let msg = json_encode({'method': 'filer', 'params': {'cwd': s:current_dir}, 'id': 1})
   call clap#rpc#send_message(msg)
 endfunction
