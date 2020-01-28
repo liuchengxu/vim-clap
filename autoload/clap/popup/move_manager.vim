@@ -43,8 +43,7 @@ function! s:apply_on_typed() abort
   if g:clap.provider.is_sync()
     let g:__clap_should_refilter = v:true
   endif
-  call clap#provider#filer#on_typed()
-  " call g:clap.provider.on_typed()
+  call g:clap.provider.on_typed()
   call s:mock_input()
 endfunction
 
@@ -159,8 +158,7 @@ function! s:apply_input(_timer) abort
   if g:clap.provider.is_pure_async()
     call g:clap.provider.jobstop()
   endif
-  call clap#provider#filer#on_typed()
-  " call g:clap.provider.on_typed()
+  call g:clap.provider.on_typed()
 endfunction
 
 function! s:apply_input_with_delay() abort
