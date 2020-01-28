@@ -86,19 +86,15 @@ function! clap#rpc#job_start(cmd) abort
   return
 endfunction
 
-function! clap#rpc#send() abort
-  let dir = clap#spinner#get()
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': dir}, 'id': 1})
-  call chansend(s:job_id, msg."\n")
-endfunction
-
-function! clap#rpc#send_message(msg) abort
-  if has('nvim')
+if has('nvim')
+  function! clap#rpc#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
-  else
+  endfunction
+else
+  function! clap#rpc#send_message(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
-  endif
-endfunction
+  endfunction
+endif
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

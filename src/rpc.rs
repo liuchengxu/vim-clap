@@ -1,9 +1,10 @@
+use std::io::prelude::*;
+use std::{fs, io, thread};
+
 use anyhow::Result;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::io::prelude::*;
-use std::thread;
 
 /// Represents jsonrpc request which is a method call.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -27,7 +28,9 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
         match reader.read_line(&mut message) {
             Ok(number) => {
                 if number > 0 {
-                    sink.send(message);
+                    if let Err(e) = sink.send(message) {
+                        println!("read_line error, {}", e);
+                    }
                 } else {
                     // EOF
                 }
@@ -37,24 +40,25 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
+fn handle_filer(msg: Message) {
+    let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
+    let json_msg = match read_entries(&dir) {
+        Ok(entries) => json!({ "data": entries, "dir": dir, "total": entries.len() }),
+        Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
+    };
+    let s = serde_json::to_string(&json_msg).expect("Fail to_string");
+    println!("Content-length: {}\n\n{}", s.len(), s);
+}
+
 pub fn loop_call(rx: &crossbeam_channel::Receiver<String>) {
     for msg in rx.iter() {
         thread::spawn(move || {
-            let msg = msg.trim();
-            let msg: Message = serde_json::from_str(&msg).unwrap();
-            match &msg.method[..] {
-                "open_file" => {
-                    let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
-                    let json_msg = match read_entries(&dir) {
-                        Ok(entries) => {
-                            json!({ "data": entries, "dir": dir, "total": entries.len() })
-                        }
-                        Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
-                    };
-                    let s = serde_json::to_string(&json_msg).expect("Fail to_string");
-                    println!("Content-length: {}\n\n{}", s.len(), s);
+            // Ignore the invalid message.
+            if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
+                match &msg.method[..] {
+                    "filer" => handle_filer(msg),
+                    _ => println!("{}", json!({ "error": "unknown method" })),
                 }
-                _ => println!("{}", json!({ "error": "unknown method" })),
             }
         });
     }
@@ -70,36 +74,34 @@ where
         .spawn(move || {
             loop_read(reader, &tx);
         })
-        .unwrap();
+        .expect("Failed to spawn read thread");
     loop_call(&rx);
 }
 
-fn read_entries(dir: &str) -> Result<Vec<String>> {
-    use std::{fs, io};
-    let mut entries = fs::read_dir(dir)?
-        .map(|res| {
-            res.map(|e| {
-                if e.path().is_dir() {
-                    format!(
-                        "{}/",
-                        e.path()
-                            .file_name()
-                            .and_then(std::ffi::OsStr::to_str)
-                            .unwrap()
-                    )
-                } else {
-                    e.path()
-                        .file_name()
-                        .and_then(std::ffi::OsStr::to_str)
-                        .map(Into::into)
-                        .unwrap()
-                }
-            })
-        })
-        .collect::<Result<Vec<_>, io::Error>>()?;
+fn into_string(entry: std::fs::DirEntry) -> String {
+    if entry.path().is_dir() {
+        format!(
+            "{}/",
+            entry
+                .path()
+                .file_name()
+                .and_then(std::ffi::OsStr::to_str)
+                .unwrap()
+        )
+    } else {
+        entry
+            .path()
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .map(Into::into)
+            .unwrap()
+    }
+}
 
-    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-    // ordering is required the entries should be explicitly sorted.
+fn read_entries(dir: &str) -> Result<Vec<String>> {
+    let mut entries = fs::read_dir(dir)?
+        .map(|res| res.map(into_string))
+        .collect::<Result<Vec<_>, io::Error>>()?;
 
     entries.sort();
 
@@ -109,7 +111,5 @@ fn read_entries(dir: &str) -> Result<Vec<String>> {
 #[test]
 fn test_dir() {
     let entries = read_entries("/home/xlc/.vim/plugged/vim-clap").unwrap();
-
     println!("entry: {:?}", entries);
-    // The entries have now been sorted by their path.
 }

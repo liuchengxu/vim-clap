@@ -141,7 +141,7 @@ function! s:do_filter() abort
 endfunction
 
 function! s:send_message() abort
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  let msg = json_encode({'method': 'filer', 'params': {'cwd': s:current_dir}, 'id': 1})
   call clap#rpc#send_message(msg)
 endfunction
 
@@ -189,18 +189,18 @@ function! clap#provider#filer#on_typed() abort
   return ''
 endfunction
 
-function! clap#provider#filer#run() abort
+function! clap#provider#filer#start_rpc_service() abort
   let s:open_file_dict = {}
   let s:current_dir = getcwd()
   call clap#spinner#set(pathshorten(s:current_dir))
   call g:clap.display.setbufvar('&syntax', 'clap_open_files')
   let cmd = clap#maple#run('rpc')
   call clap#rpc#job_start(cmd)
-  let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
+  let msg = json_encode({'method': 'filer', 'params': {'cwd': s:current_dir}, 'id': 1})
   call clap#rpc#send_message(msg)
 endfunction
 
-let s:filer.init_display_win = function('clap#provider#filer#run')
+let s:filer.init_display_win = function('clap#provider#filer#start_rpc_service')
 let s:filer.source_type = g:__t_jsonrpc
 let s:filer.on_typed = function('clap#provider#filer#on_typed')
 let s:filer.sink = function('clap#provider#filer#sink')
