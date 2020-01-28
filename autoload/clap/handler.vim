@@ -80,6 +80,15 @@ function! clap#handler#tab_action() abort
   return clap#handler#select_toggle()
 endfunction
 
+function! clap#handler#bs_action() abort
+  if has_key(g:clap.provider._(), 'bs_action')
+    call g:clap.provider._().bs_action()
+  else
+    call nvim_feedkeys("\<BS>", 'n', v:true)
+  endif
+  return ''
+endfunction
+
 function! clap#handler#select_toggle() abort
   if !s:support_multi_select
         \ && !get(g:, 'clap_multi_selection_warning_silent', 0)

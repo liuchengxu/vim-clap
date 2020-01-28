@@ -47,9 +47,7 @@ function! s:apply_on_typed() abort
   call s:mock_input()
 endfunction
 
-function! s:move_manager.bs(_winid) abort
-  call clap#provider#filer#bs()
-
+function! s:backspace() abort
   if empty(s:input) || s:cursor_idx == 0
     return 1
   endif
@@ -65,7 +63,15 @@ function! s:move_manager.bs(_winid) abort
     let s:cursor_idx = 0
   endif
   call s:mock_input()
-  " call s:apply_on_typed()
+endfunction
+
+function! s:move_manager.bs(_winid) abort
+  call s:backspace()
+  if has_key(g:clap.provider._(), 'bs_action')
+    call g:clap.provider._().bs_action()
+  else
+    call s:apply_on_typed()
+  endif
 endfunction
 
 function! s:move_manager.ctrl_d(_winid) abort

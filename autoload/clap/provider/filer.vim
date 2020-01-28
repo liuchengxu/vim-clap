@@ -118,25 +118,7 @@ endfunction
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
-  let l:lines = clap#filter#(query, s:filer_cache[s:current_dir])
-
-  if empty(l:lines)
-    let l:lines = [g:clap_no_matches_msg]
-    let g:__clap_has_no_matches = v:true
-    call g:clap.display.set_lines_lazy(lines)
-    call clap#impl#refresh_matches_count('0')
-    call g:clap.preview.hide()
-  else
-    call g:clap.display.set_lines_lazy(lines)
-    call clap#impl#refresh_matches_count(string(len(l:lines)))
-  endif
-
-  call g:clap#display_win.shrink_if_undersize()
-  call clap#spinner#set_idle()
-
-  if exists('g:__clap_fuzzy_matched_indices')
-    call clap#highlight#add_fuzzy_sync()
-  endif
+  call clap#impl#apply_filter(function('clap#filter#'), query, s:filer_cache[s:current_dir])
 endfunction
 
 function! s:send_message() abort
@@ -212,5 +194,6 @@ let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = function('clap#provider#filer#on_typed')
 let s:filer.source_type = g:__t_rpc
 let s:filer.tab_action = function('clap#provider#filer#tab')
+let s:filer.bs_action = function('clap#provider#filer#bs')
 let s:filer.init = function('clap#provider#filer#start_rpc_service')
 let g:clap#provider#filer# = s:filer

@@ -85,7 +85,12 @@ function! s:on_typed_sync_impl() abort
   else
     let l:raw_lines = s:get_source()
   endif
-  let l:lines = call(g:clap.provider.filter(), [l:cur_input, l:raw_lines])
+
+  call clap#impl#apply_filter(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+endfunction
+
+function! clap#impl#apply_filter(FilterFn, query, candidates) abort
+  let l:lines = a:FilterFn(a:query, a:candidates)
 
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
@@ -97,6 +102,7 @@ function! s:on_typed_sync_impl() abort
     call clap#impl#refresh_matches_count('0')
     call g:clap.preview.hide()
   else
+    let g:__clap_has_no_matches = v:false
     call g:clap.display.set_lines_lazy(lines)
     call clap#impl#refresh_matches_count(string(len(l:lines)))
   endif
