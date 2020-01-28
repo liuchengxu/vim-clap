@@ -90,7 +90,6 @@ function! s:goto_parent() abort
 
   let s:current_dir = parent_dir
 
-  echom "goto_parent ".s:current_dir
   call clap#spinner#set(pathshorten(s:current_dir))
 
   call s:filter_or_send_message()
@@ -105,7 +104,6 @@ function! s:filter_or_send_message() abort
 endfunction
 
 function! clap#provider#filer#bs() abort
-  echom "bs..."
   call clap#highlight#clear()
 
   let input = g:clap.input.get()
@@ -199,8 +197,12 @@ function! clap#provider#filer#run() abort
   let cmd = clap#maple#run('rpc')
   call clap#rpc#job_start(cmd)
   let msg = json_encode({'method': 'open_file', 'params': {'cwd': s:current_dir}, 'id': 1})
-  echom "msg:".string(msg)
   call clap#rpc#send_message(msg)
 endfunction
 
+let s:filer.init_display_win = function('clap#provider#filer#run')
+let s:filer.source_type = g:__t_jsonrpc
+let s:filer.on_typed = function('clap#provider#filer#on_typed')
+let s:filer.sink = function('clap#provider#filer#sink')
+let s:filer.syntax = 'clap_filer'
 let g:clap#provider#filer# = s:filer
