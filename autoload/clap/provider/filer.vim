@@ -35,17 +35,28 @@ function! s:is_directory(path) abort
 endfunction
 
 function! s:set_prompt() abort
-  call clap#spinner#set(pathshorten(s:current_dir))
+  if strlen(s:current_dir) < s:winwidth * 3 / 4
+    call clap#spinner#set(s:current_dir)
+  else
+    call clap#spinner#set(pathshorten(s:current_dir))
+  endif
 endfunction
 
 function! s:goto_parent() abort
+  if s:current_dir ==# '/'
+    return
+  endif
   if s:is_directory(s:current_dir)
     let parent_dir = fnamemodify(s:current_dir, ':h:h')
   else
     let parent_dir = fnamemodify(s:current_dir, ':h')
   endif
 
-  let s:current_dir = parent_dir.'/'
+  if parent_dir ==# '/'
+    let s:current_dir = '/'
+  else
+    let s:current_dir = parent_dir.'/'
+  endif
   call s:set_prompt()
   call s:filter_or_send_message()
 endfunction
@@ -62,7 +73,6 @@ function! s:bs_action() abort
   call clap#highlight#clear()
 
   let input = g:clap.input.get()
-
   if input ==# ''
     call s:goto_parent()
   else
@@ -102,7 +112,7 @@ function! s:tab_action() abort
 
   let s:current_dir = current_entry
 
-  call clap#spinner#set(pathshorten(s:current_dir))
+  call s:set_prompt()
   call g:clap.input.set('')
 
   call s:filter_or_send_message()
@@ -139,7 +149,8 @@ endfunction
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:current_dir = getcwd().'/'
-  call clap#spinner#set(pathshorten(s:current_dir))
+  let s:winwidth = winwidth(g:clap.display.winid)
+  call s:set_prompt()
   call clap#rpc#start(function('s:handle_round_message'))
   call s:send_message()
 endfunction
