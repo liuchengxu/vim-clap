@@ -97,19 +97,7 @@ else
 
   function! s:err_cb(channel, message) abort
     if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
-      echom 'error callback'
-    endif
-  endfunction
-
-  function! s:close_cb(channel) abort
-    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
-      echom 'close callback'
-    endif
-  endfunction
-
-  function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
-      echom 'exit callback'
+      call clap#helper#echo_error(a:message)
     endif
   endfunction
 
@@ -117,8 +105,6 @@ else
     let s:job = job_start(clap#job#wrap_cmd(s:cmd), {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
-          \ 'exit_cb': function('s:exit_cb'),
-          \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ })
     let s:job_id = clap#job#parse_vim8_job_id(string(s:job))
@@ -138,9 +124,6 @@ endfunction
 
 function! clap#rpc#start(MessageHandler) abort
   call clap#rpc#stop()
-
-  let s:chunks = []
-  call g:clap.preview.hide()
   let s:cmd = clap#maple#run('rpc')
   let s:MessageHandler = a:MessageHandler
   call s:start_rpc()
