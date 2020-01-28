@@ -76,8 +76,6 @@ function! s:on_typed_sync_impl() abort
 
   call clap#spinner#set_busy()
 
-  let g:__clap_has_no_matches = v:false
-
   " Do not use get(g:, '__clap_forerunner_result', s:get_source()) as vim
   " evaluates the default value of get(...) any how.
   if exists('g:__clap_forerunner_result')
@@ -86,37 +84,7 @@ function! s:on_typed_sync_impl() abort
     let l:raw_lines = s:get_source()
   endif
 
-  call clap#impl#apply_filter(g:clap.provider.filter(), l:cur_input, l:raw_lines)
-endfunction
-
-function! clap#impl#apply_filter(FilterFn, query, candidates) abort
-  let l:lines = a:FilterFn(a:query, a:candidates)
-
-  if empty(l:lines)
-    let l:lines = [g:clap_no_matches_msg]
-    let g:__clap_has_no_matches = v:true
-    call g:clap.display.set_lines_lazy(lines)
-    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
-    " But the signs are seemingly removed when setting the lines, so we should
-    " postpone the sign update.
-    call clap#impl#refresh_matches_count('0')
-    call g:clap.preview.hide()
-  else
-    let g:__clap_has_no_matches = v:false
-    call g:clap.display.set_lines_lazy(lines)
-    call clap#impl#refresh_matches_count(string(len(l:lines)))
-  endif
-
-  call g:clap#display_win.shrink_if_undersize()
-  call clap#spinner#set_idle()
-
-  if !g:__clap_has_no_matches
-    if exists('g:__clap_fuzzy_matched_indices')
-      call clap#highlight#add_fuzzy_sync()
-    else
-      call g:clap.display.add_highlight()
-    endif
-  endif
+  call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
 endfunction
 
 " =======================================
