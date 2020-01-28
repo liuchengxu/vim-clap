@@ -30,62 +30,6 @@ function! s:handle_round_message(message) abort
   endif
 endfunction
 
-if has('nvim')
-  let s:round_message = ''
-  let s:content_length = 0
-
-  function! clap#provider#filer#handle_stdout(lines) abort
-    while !empty(a:lines)
-      let line = remove(a:lines, 0)
-
-      if line ==# ''
-        continue
-      elseif s:content_length == 0
-        if line =~# '^Content-length:'
-          let s:content_length = str2nr(matchstr(line, '\d\+$'))
-        else
-          call clap#helper#echo_error('This should not happen, unknown message:'.line)
-        endif
-        continue
-      endif
-
-      if s:content_length < strlen(l:line)
-        let s:round_message .= strpart(line, 0, s:content_length)
-        call insert(a:lines, strpart(line, s:content_length))
-        let s:content_length = 0
-      else
-        let s:round_message .= line
-        let s:content_length -= strlen(l:line)
-      endif
-
-      " The message for this round is still incomplete, contintue to read more.
-      if s:content_length > 0
-        continue
-      endif
-
-      try
-        call s:handle_round_message(trim(s:round_message))
-      catch
-        call clap#helper#echo_error('Failed to handle message:'.v:exception)
-      finally
-        let s:round_message = ''
-      endtry
-
-    endwhile
-  endfunction
-else
-  function! clap#provider#filer#handle_stdout(line) abort
-    if a:line =~# '^Content-length:' || a:line ==# ''
-      return
-    endif
-    try
-      call s:handle_round_message(a:line)
-    catch
-      call clap#helper#echo_error('Failed to handle message:'.a:line.', exception:'.v:exception)
-    endtry
-  endfunction
-endif
-
 function! s:goto_parent() abort
   if s:current_dir[-1:] ==# '/'
     let parent_dir = fnamemodify(s:current_dir, ':h:h')
@@ -186,7 +130,7 @@ function! clap#provider#filer#start_rpc_service() abort
   let s:filer_cache = {}
   let s:current_dir = getcwd()
   call clap#spinner#set(pathshorten(s:current_dir))
-  call clap#rpc#start()
+  call clap#rpc#start(function('s:handle_round_message'))
   let msg = json_encode({
         \ 'method': 'filer',
         \ 'params': {'cwd': s:current_dir},

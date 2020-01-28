@@ -25,7 +25,6 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
                         println!("Failed to send message, error: {}", e);
                     }
                 } else {
-                    // EOF
                     println!("EOF reached");
                 }
             }
@@ -35,23 +34,27 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn handle_filer(msg: Message) {
-    let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
-    let result = match read_dir_entries(&dir) {
-        Ok(entries) => {
-            let result = json!({
-            "data": entries,
-            "dir": dir,
-            "total": entries.len()}
-            );
-            json!({ "result": result, "id": msg.id })
+    let params = msg.params;
+    if let Some(cwd) = params.get("cwd") {
+        if let Some(dir) = cwd.as_str() {
+            let result = match read_dir_entries(&dir) {
+                Ok(entries) => {
+                    let result = json!({
+                    "data": entries,
+                    "dir": dir,
+                    "total": entries.len()}
+                    );
+                    json!({ "result": result, "id": msg.id })
+                }
+                Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
+            };
+            let s = serde_json::to_string(&result).expect("I promise; qed");
+            println!("Content-length: {}\n\n{}", s.len(), s);
         }
-        Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
-    };
-    let s = serde_json::to_string(&result).expect("I promise; qed");
-    println!("Content-length: {}\n\n{}", s.len(), s);
+    }
 }
 
-pub fn loop_call(rx: &crossbeam_channel::Receiver<String>) {
+pub fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
     for msg in rx.iter() {
         thread::spawn(move || {
             // Ignore the invalid message.
@@ -76,7 +79,7 @@ where
             loop_read(reader, &tx);
         })
         .expect("Failed to spawn rpc reader thread");
-    loop_call(&rx);
+    loop_handle_message(&rx);
 }
 
 fn into_string(entry: std::fs::DirEntry) -> String {
