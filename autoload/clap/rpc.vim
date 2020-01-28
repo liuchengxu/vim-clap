@@ -2,8 +2,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:job_id = -1
-let s:job_timer = -1
-let s:maple_delay = get(g:, 'clap_maple_delay', 100)
 
 function! s:on_complete() abort
 endfunction
@@ -41,19 +39,19 @@ else
 
   function! s:err_cb(channel, message) abort
     if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
-      echom "error callback"
+      echom 'error callback'
     endif
   endfunction
 
   function! s:close_cb(channel) abort
     if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
-      echom "close callback"
+      echom 'close callback'
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
     if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
-      echom "exit callback"
+      echom 'exit callback'
     endif
   endfunction
 

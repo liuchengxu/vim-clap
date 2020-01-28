@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::prelude::*;
 use std::{fs, io, thread};
 
@@ -42,11 +43,18 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 
 fn handle_filer(msg: Message) {
     let dir = msg.params.get("cwd").unwrap().as_str().unwrap();
-    let json_msg = match read_dir_entries(&dir) {
-        Ok(entries) => json!({ "data": entries, "dir": dir, "total": entries.len() }),
-        Err(err) => json!({ "error": format!("{}:{}", dir, err) }),
+    let result = match read_dir_entries(&dir) {
+        Ok(entries) => {
+            let result = json!({
+            "data": entries,
+            "dir": dir,
+            "total": entries.len()}
+            );
+            json!({ "result": result, "id": msg.id })
+        }
+        Err(err) => json!({ "message": format!("{}:{}", dir, err) }),
     };
-    let s = serde_json::to_string(&json_msg).expect("Fail to_string");
+    let s = serde_json::to_string(&result).expect("Fail to_string");
     println!("Content-length: {}\n\n{}", s.len(), s);
 }
 

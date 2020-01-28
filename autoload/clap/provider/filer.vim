@@ -6,18 +6,19 @@ function! s:handle_round_message(message) abort
   try
     let decoded = json_decode(a:message)
   catch
-    echom 'JSON decode in: '.v:exception.', ----'.string(a:message)
+    call clap#helper#echo_error('Failed to decode message:'.a:message.', exception:'.v:exception)
     return
   endtry
 
   if has_key(decoded, 'error')
     call g:clap.display.set_lines([decoded.error])
 
-  elseif has_key(decoded, 'data')
-    let s:filer_cache[decoded.dir] = decoded.data
-    call g:clap.display.set_lines(decoded.data)
+  elseif has_key(decoded, 'result')
+    let result = decoded.result
+    let s:filer_cache[result.dir] = result.data
+    call g:clap.display.set_lines(result.data)
     call clap#sign#reset_to_first_line()
-    call clap#impl#refresh_matches_count(string(decoded.total))
+    call clap#impl#refresh_matches_count(string(result.total))
     call g:clap#display_win.shrink_if_undersize()
 
   else
@@ -74,9 +75,9 @@ else
       return
     endif
     try
-      call s:handle_round_message(trim(a:line))
+      call s:handle_round_message(a:line)
     catch
-      echom 'ERROR in handle round message: '.v:exception.", :".string(a:line)
+      call clap#helper#echo_error('Failed to handle message:'.a:line.', exception:'.v:exception)
     endtry
   endfunction
 endif
@@ -141,20 +142,18 @@ function! s:do_filter() abort
 endfunction
 
 function! s:send_message() abort
-  let msg = json_encode({'method': 'filer', 'params': {'cwd': s:current_dir}, 'id': 1})
+  let msg = json_encode({
+        \ 'method': 'filer',
+        \ 'params': {'cwd': s:current_dir},
+        \ 'id': 1
+        \ })
   call clap#rpc#send_message(msg)
 endfunction
 
 function! clap#provider#filer#tab() abort
   call clap#highlight#clear()
 
-  let curline = g:clap.display.getcurline()
-
-  if s:current_dir[-1:] ==# '/'
-    let current_entry = s:current_dir.curline
-  else
-    let current_entry = s:current_dir.'/'.curline
-  endif
+  let current_entry = s:get_current_entry()
 
   if filereadable(current_entry)
     " TODO: preview file
@@ -171,15 +170,19 @@ function! clap#provider#filer#tab() abort
   return ''
 endfunction
 
-function! clap#provider#filer#sink() abort
+function! s:get_current_entry() abort
   let curline = g:clap.display.getcurline()
 
   if s:current_dir[-1:] ==# '/'
-    let current_entry = s:current_dir.curline
+    return s:current_dir.curline
   else
-    let current_entry = s:current_dir.'/'.curline
+    return s:current_dir.'/'.curline
   endif
+endfunction
+
+function! clap#provider#filer#sink() abort
   call clap#handler#internal_exit()
+  let current_entry = s:get_current_entry()
   execute 'edit' current_entry
 endfunction
 
@@ -194,7 +197,11 @@ function! clap#provider#filer#start_rpc_service() abort
   let s:current_dir = getcwd()
   call clap#spinner#set(pathshorten(s:current_dir))
   call clap#rpc#start()
-  let msg = json_encode({'method': 'filer', 'params': {'cwd': s:current_dir}, 'id': 1})
+  let msg = json_encode({
+        \ 'method': 'filer',
+        \ 'params': {'cwd': s:current_dir},
+        \ 'id': 1
+        \ })
   call clap#rpc#send_message(msg)
 endfunction
 
