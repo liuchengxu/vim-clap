@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::io::prelude::*;
 use std::{fs, io, thread};
 
 use anyhow::Result;
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam_channel::Sender;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -30,13 +29,14 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
             Ok(number) => {
                 if number > 0 {
                     if let Err(e) = sink.send(message) {
-                        println!("Failed to read message, error:{}", e);
+                        println!("Failed to send message, error: {}", e);
                     }
                 } else {
                     // EOF
+                    println!("EOF reached");
                 }
             }
-            Err(_error) => println!("read_line error"),
+            Err(error) => println!("Failed to read_line, error: {}", error),
         }
     }
 }

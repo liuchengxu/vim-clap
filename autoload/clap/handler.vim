@@ -9,7 +9,7 @@ let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
 
 function! clap#handler#on_typed() abort
-  if g:clap.provider.source_type == g:__t_rpc
+  if has_key(g:clap.provider, 'source_type') && g:clap.provider.source_type == g:__t_rpc
     call g:clap.provider.on_typed()
     return
   endif
@@ -70,6 +70,14 @@ endfunction
 
 function! clap#handler#init() abort
   let s:support_multi_select = g:clap.provider.support_multi_select()
+endfunction
+
+function! clap#handler#tab_action() abort
+  if has_key(g:clap.provider._(), 'tab_action')
+    call g:clap.provider._().tab_action()
+    return ''
+  endif
+  return clap#handler#select_toggle()
 endfunction
 
 function! clap#handler#select_toggle() abort

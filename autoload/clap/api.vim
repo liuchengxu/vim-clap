@@ -581,8 +581,8 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
-    if has_key(self._(), 'init_display_win')
-      call self._().init_display_win()
+    if has_key(self._(), 'init')
+      call self._().init()
       return
     endif
 

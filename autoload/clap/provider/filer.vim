@@ -82,9 +82,9 @@ endif
 
 function! s:goto_parent() abort
   if s:current_dir[-1:] ==# '/'
-    let parent_dir = trim(fnamemodify(s:current_dir, ':h:h'))
+    let parent_dir = fnamemodify(s:current_dir, ':h:h')
   else
-    let parent_dir = trim(fnamemodify(s:current_dir, ':h'))
+    let parent_dir = fnamemodify(s:current_dir, ':h')
   endif
 
   let s:current_dir = parent_dir
@@ -178,9 +178,13 @@ function! s:get_current_entry() abort
   endif
 endfunction
 
-function! clap#provider#filer#sink() abort
-  call clap#handler#internal_exit()
-  let current_entry = s:get_current_entry()
+function! clap#provider#filer#sink(selected) abort
+  let curline = a:selected
+  if s:current_dir[-1:] ==# '/'
+    let current_entry = s:current_dir.curline
+  else
+    let current_entry = s:current_dir.'/'.curline
+  endif
   execute 'edit' current_entry
 endfunction
 
@@ -207,5 +211,6 @@ let s:filer.sink = function('clap#provider#filer#sink')
 let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = function('clap#provider#filer#on_typed')
 let s:filer.source_type = g:__t_rpc
-let s:filer.init_display_win = function('clap#provider#filer#start_rpc_service')
+let s:filer.tab_action = function('clap#provider#filer#tab')
+let s:filer.init = function('clap#provider#filer#start_rpc_service')
 let g:clap#provider#filer# = s:filer
