@@ -24,15 +24,6 @@ let s:symbol_width = strdisplaywidth(s:symbol_right)
 " |----------------------------------------|
 " |              preview                   |
 "  ----------------------------------------
-function! s:prepare_display_opts() abort
-  return {
-      \ 'width': &columns * 2 / 3,
-      \ 'height': &lines  * 1 / 3,
-      \ 'row': &lines / 3 - 1,
-      \ 'col': &columns * 2 / 3 / 4,
-      \ }
-endfunction
-
 function! s:execute_in_display() abort
   let w:clap_no_matches_id = matchadd('ClapNoMatchesFound', g:__clap_no_matches_pattern)
   setlocal signcolumn=yes norelativenumber
@@ -40,29 +31,26 @@ endfunction
 
 function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
-    let col = &signcolumn ==# 'yes' ? 2 : 1
-    let col += &number ? &numberwidth : 0
-
     let s:display_opts = clap#layout#calc()
 
     let s:display_winid = popup_create([], {
-          \ 'zindex': 1000,
           \ 'wrap': v:false,
-          \ 'mapping': v:false,
-          \ 'cursorline': 0,
           \ 'filter': function('clap#popup#move_manager#filter'),
+          \ 'zindex': 1000,
+          \ 'mapping': v:false,
           \ 'callback': function('s:callback'),
           \ 'scrollbar': 0,
-          \ 'line': s:display_opts.row,
-          \ 'col': s:display_opts.col,
           \ 'highlight': 'ClapDisplay',
+          \ 'cursorline': 0,
+          \ 'col': s:display_opts.col,
+          \ 'line': s:display_opts.row,
           \ 'minwidth': s:display_opts.width,
           \ 'maxwidth': s:display_opts.width,
           \ 'maxheight': s:display_opts.height,
           \ 'minheight': s:display_opts.height,
           \ })
 
-    let g:clap#popup#display.width = &columns * 2 / 3
+    let g:clap#popup#display.width = s:display_opts.width
 
     call win_execute(s:display_winid, 'call s:execute_in_display()')
     call popup_hide(s:display_winid)
@@ -113,18 +101,16 @@ endfunction
 function! s:create_preview() abort
   if !exists('s:preview_winid') || empty(popup_getpos(s:preview_winid))
     let pos = popup_getpos(s:display_winid)
-    let col = pos.col
     let line = pos.line + pos.height
-    let minwidth = pos.width
     let s:preview_winid = popup_create([], {
-          \ 'zindex': 100,
-          \ 'col': col,
-          \ 'line': line,
-          \ 'minwidth': minwidth,
-          \ 'maxwidth': minwidth,
           \ 'wrap': v:false,
+          \ 'zindex': 100,
           \ 'scrollbar': 0,
           \ 'highlight': 'ClapPreview',
+          \ 'col': pos.col,
+          \ 'line': line,
+          \ 'minwidth': pos.width,
+          \ 'maxwidth': pos.width,
           \ })
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
@@ -203,6 +189,9 @@ endfunction
 
 function! s:adjust_spinner() abort
   let pos = popup_getpos(s:spinner_winid)
+  if empty(pos)
+    return
+  endif
   let spinner_width = clap#spinner#width()
   if pos.width != spinner_width
     let pos.minwidth = spinner_width
@@ -214,6 +203,10 @@ function! s:adjust_spinner() abort
     let input_pos.maxwidth = input_pos.minwidth
     call popup_move(s:input_winid, input_pos)
   endif
+endfunction
+
+function! clap#popup#shrink_spinner() abort
+  call s:adjust_spinner()
 endfunction
 
 function! s:execute_in_input() abort

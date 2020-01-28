@@ -442,6 +442,29 @@ g:clap_prompt_format                             *g:clap_prompt_format*
     `%provider_id%`         - replaced with the id of current provider
 
 
+g:ClapPrompt                                              *g:ClapPrompt*
+
+  Type: |Funcref|
+  Default: `Undefined`
+
+  This variable can let you generate the prompt dynamically, the placeholders
+  in |g:clap_prompt_format| is also supported. |g:clap_prompt_format| will
+  have no use if you set |g:ClapPrompt|.
+
+  For example, show the working directory in the prompt:
+>
+  function! ClapFormat() abort
+    if exists('g:__clap_provider_cwd')
+      let cwd = g:__clap_provider_cwd
+    else
+      let cwd = getcwd()
+    endif
+    return '%spinner% '.pathshorten(cwd).':'
+  endfunction
+
+  let g:ClapPrompt = function('ClapFormat')
+
+
 g:clap_spinner_frames                            *g:clap_spinner_frames*
 
   Type: |List|
