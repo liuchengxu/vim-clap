@@ -1,3 +1,6 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+" Description: Maple RPC service.
+
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
@@ -21,7 +24,7 @@ if has('nvim')
     endif
   endfunction
 
-  function! s:start_maple() abort
+  function! s:start_rpc() abort
     let s:job_id = jobstart(s:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
@@ -29,6 +32,9 @@ if has('nvim')
           \ })
   endfunction
 
+  function! clap#rpc#send_message(msg) abort
+    call chansend(s:job_id, a:msg."\n")
+  endfunction
 else
 
   function! s:out_cb(channel, message) abort
@@ -55,7 +61,7 @@ else
     endif
   endfunction
 
-  function! s:start_maple() abort
+  function! s:start_rpc() abort
     let s:job = job_start(clap#job#wrap_cmd(s:cmd), {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
@@ -64,6 +70,10 @@ else
           \ 'noblock': 1,
           \ })
     let s:job_id = clap#job#parse_vim8_job_id(string(s:job))
+  endfunction
+
+  function! clap#rpc#send_message(msg) abort
+    call ch_sendraw(s:job, a:msg."\n")
   endfunction
 endif
 
@@ -80,18 +90,12 @@ function! clap#rpc#start() abort
   let s:chunks = []
   call g:clap.preview.hide()
   let s:cmd = clap#maple#run('rpc')
-  call s:start_maple()
+  call s:start_rpc()
   return
 endfunction
 
 if has('nvim')
-  function! clap#rpc#send_message(msg) abort
-    call chansend(s:job_id, a:msg."\n")
-  endfunction
 else
-  function! clap#rpc#send_message(msg) abort
-    call ch_sendraw(s:job, a:msg."\n")
-  endfunction
 endif
 
 let &cpoptions = s:save_cpo

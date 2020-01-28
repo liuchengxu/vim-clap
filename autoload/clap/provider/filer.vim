@@ -1,3 +1,9 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+" Description: Ivy-like file explorer.
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 let s:filer = {}
 
 function! s:handle_round_message(message) abort
@@ -189,11 +195,14 @@ function! clap#provider#filer#start_rpc_service() abort
   call clap#rpc#send_message(msg)
 endfunction
 
+let s:filer.init = function('clap#provider#filer#start_rpc_service')
 let s:filer.sink = function('clap#provider#filer#sink')
 let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = function('clap#provider#filer#on_typed')
-let s:filer.source_type = g:__t_rpc
-let s:filer.tab_action = function('clap#provider#filer#tab')
 let s:filer.bs_action = function('clap#provider#filer#bs')
-let s:filer.init = function('clap#provider#filer#start_rpc_service')
+let s:filer.tab_action = function('clap#provider#filer#tab')
+let s:filer.source_type = g:__t_rpc
 let g:clap#provider#filer# = s:filer
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo

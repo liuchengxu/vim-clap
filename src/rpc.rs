@@ -6,18 +6,11 @@ use crossbeam_channel::Sender;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-/// Represents jsonrpc request which is a method call.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Message {
-    /// A String containing the name of the method to be invoked.
     pub method: String,
-    /// A Structured value that holds the parameter values to be used
-    /// during the invocation of the method. This member MAY be omitted.
     pub params: serde_json::Map<String, Value>,
-    /// An identifier established by the Client that MUST contain a String,
-    /// Number, or NULL value if included. If it is not included it is assumed
-    /// to be a notification.
     pub id: u64,
 }
 
