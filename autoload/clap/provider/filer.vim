@@ -22,6 +22,11 @@ function! s:handle_round_message(message) abort
     return
   endtry
 
+  " Only take care of the latest request.
+  if s:request_id - 1 != decoded.id
+    return
+  endif
+
   if has_key(decoded, 'error')
     call g:clap.display.set_lines([decoded.error])
 
@@ -107,9 +112,10 @@ function! s:send_message() abort
   let msg = json_encode({
         \ 'method': 'filer',
         \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ 'id': 1
+        \ 'id': s:request_id
         \ })
   call clap#rpc#send_message(msg)
+  let s:request_id += 1
 endfunction
 
 function! s:tab_action() abort
@@ -163,7 +169,12 @@ endfunction
 
 function! s:filer_on_typed() abort
   call clap#highlight#clear()
-  call s:filter_or_send_message()
+  " <Tab> and <Backspace> also trigger the CursorMoved event.
+  " s:filter_or_send_message() is already handled in tab and bs action,
+  " on_typed handler only needs to take care of the filtering.
+  if has_key(s:filer_cache, s:current_dir)
+    call s:do_filter()
+  endif
   return ''
 endfunction
 
@@ -173,6 +184,7 @@ endfunction
 
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
+  let s:request_id = 1
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
     let s:current_dir = expand(g:clap.provider.args[0]).'/'
   else
