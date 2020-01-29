@@ -7,6 +7,7 @@ use regex::Regex;
 pub const DEFAULT_ICON: &str = "";
 #[allow(dead_code)]
 pub const DEFAULT_ICONIZED: &str = " ";
+pub const FOLDER_ICON: &str = "";
 
 lazy_static! {
     pub static ref EXACTMATCH_MAP: HashMap<&'static str, &'static str> = {
@@ -161,8 +162,7 @@ lazy_static! {
 }
 
 #[inline]
-fn icon_for(line: &str) -> &str {
-    let path = Path::new(line);
+pub fn icon_for_path(path: &Path) -> &str {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
         .and_then(|ext| {
@@ -177,8 +177,37 @@ fn icon_for(line: &str) -> &str {
         })
 }
 
+fn icon_for(line: &str) -> &str {
+    let path = Path::new(line);
+    icon_for_path(&path)
+}
+
 pub fn prepend_icon(line: &str) -> String {
     format!("{} {}", icon_for(line), line)
+}
+
+#[inline]
+pub fn icon_for_filer(path: &Path) -> &str {
+    if path.is_dir() {
+        FOLDER_ICON
+    } else {
+        path.file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .and_then(|ext| {
+                let ext: &str = &ext.to_lowercase();
+                EXACTMATCH_MAP.get(ext)
+            })
+            .unwrap_or_else(|| {
+                path.extension()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .and_then(|ext| EXTENSION_MAP.get(ext))
+                    .unwrap_or(&DEFAULT_ICON)
+            })
+    }
+}
+
+pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
+    format!("{} {}", icon_for_filer(path), line)
 }
 
 #[allow(dead_code)]

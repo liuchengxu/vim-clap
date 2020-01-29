@@ -5,7 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:related_maple_providers = ['files', 'git_files']
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history']
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
 " The icon can interfer the matched indices of fuzzy filter, but not the
 " substring filter.

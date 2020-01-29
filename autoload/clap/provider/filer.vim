@@ -123,6 +123,10 @@ endfunction
 function! s:get_current_entry() abort
   let curline = g:clap.display.getcurline()
 
+  if g:clap_enable_icon
+    let curline = curline[4:]
+  endif
+
   if s:current_dir[-1:] ==# '/'
     return s:current_dir.curline
   else
@@ -131,7 +135,11 @@ function! s:get_current_entry() abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  let curline = a:selected
+  if g:clap_enable_icon
+    let curline = a:selected[4:]
+  else
+    let curline = a:selected
+  endif
   if s:current_dir[-1:] ==# '/'
     let current_entry = s:current_dir.curline
   else

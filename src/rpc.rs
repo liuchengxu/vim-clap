@@ -6,6 +6,8 @@ use crossbeam_channel::Sender;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::icon::prepend_filer_icon;
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Message {
@@ -37,7 +39,7 @@ fn handle_filer(msg: Message) {
     let params = msg.params;
     if let Some(cwd) = params.get("cwd") {
         if let Some(dir) = cwd.as_str() {
-            let result = match read_dir_entries(&dir) {
+            let result = match read_dir_entries(&dir, true) {
                 Ok(entries) => {
                     let result = json!({
                     "data": entries,
@@ -82,8 +84,8 @@ where
     loop_handle_message(&rx);
 }
 
-fn into_string(entry: std::fs::DirEntry) -> String {
-    if entry.path().is_dir() {
+fn into_string(entry: std::fs::DirEntry, enable_icon: bool) -> String {
+    let path = if entry.path().is_dir() {
         format!(
             "{}/",
             entry
@@ -99,12 +101,18 @@ fn into_string(entry: std::fs::DirEntry) -> String {
             .and_then(std::ffi::OsStr::to_str)
             .map(Into::into)
             .unwrap()
+    };
+
+    if enable_icon {
+        prepend_filer_icon(&entry.path(), &path)
+    } else {
+        path
     }
 }
 
-fn read_dir_entries(dir: &str) -> Result<Vec<String>> {
+fn read_dir_entries(dir: &str, enable_icon: bool) -> Result<Vec<String>> {
     let mut entries = fs::read_dir(dir)?
-        .map(|res| res.map(into_string))
+        .map(|res| res.map(|x| into_string(x, enable_icon)))
         .collect::<Result<Vec<_>, io::Error>>()?;
 
     entries.sort();
@@ -114,6 +122,6 @@ fn read_dir_entries(dir: &str) -> Result<Vec<String>> {
 
 #[test]
 fn test_dir() {
-    let entries = read_dir_entries("/home/xlc/.vim/plugged/vim-clap").unwrap();
+    let entries = read_dir_entries("/Users/xlc/.vim/plugged/vim-clap", true).unwrap();
     println!("entry: {:?}", entries);
 }
