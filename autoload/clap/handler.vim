@@ -27,10 +27,22 @@ function! clap#handler#on_typed() abort
   endif
 endfunction
 
+function! s:handle_no_matches() abort
+  if has_key(g:clap.provider._(), 'on_no_matches')
+    let input = g:clap.input.get()
+    call clap#handler#internal_exit()
+    call g:clap.provider._().on_no_matches(input)
+    call g:clap.provider.on_exit()
+    silent doautocmd <nomodeline> User ClapOnExit
+  else
+    call clap#handler#exit()
+  endif
+endfunction
+
 function! clap#handler#sink() abort
   " This could be more robust by checking the exact matches count, but this should also be enough.
   if g:clap.display.get_lines() == [g:clap_no_matches_msg]
-    call clap#handler#exit()
+    call s:handle_no_matches()
     return
   endif
 

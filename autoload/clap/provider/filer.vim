@@ -168,6 +168,10 @@ function! s:filer_on_typed() abort
   return ''
 endfunction
 
+function! s:filer_on_no_matches(input) abort
+  execute 'edit' a:input
+endfunction
+
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:current_dir = getcwd().'/'
@@ -184,6 +188,7 @@ let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.tab_action = function('s:tab_action')
 let s:filer.source_type = g:__t_rpc
+let s:filer.on_no_matches = function('s:filer_on_no_matches')
 let g:clap#provider#filer# = s:filer
 
 let &cpoptions = s:save_cpo
