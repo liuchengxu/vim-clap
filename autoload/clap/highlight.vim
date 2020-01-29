@@ -51,10 +51,10 @@ if has('nvim')
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call add(w:clap_match_ids, clap#util#add_match_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx))
+          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx))
           let group_idx += 1
         else
-          call add(w:clap_match_ids, clap#util#add_match_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group))
+          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group))
         endif
       endfor
       let lnum += 1
@@ -70,6 +70,11 @@ if has('nvim')
     call g:clap.input.goto_win()
   endfunction
 
+  function! clap#highlight#add_highlight_at(lnum, col, hl_group) abort
+    " 0-based
+    call nvim_buf_add_highlight(g:clap.display.bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
+  endfunction
+
 else
   function! s:apply_add_highlight(hl_lines, offset) abort
     " We do not have to clear the previous matches like neovim
@@ -79,10 +84,10 @@ else
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call clap#util#add_highlight_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
+          call clap#highlight#add_highlight_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
           let group_idx += 1
         else
-          call clap#util#add_highlight_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group)
+          call clap#highlight#add_highlight_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group)
         endif
       endfor
       let lnum += 1
@@ -91,6 +96,12 @@ else
 
   function! clap#highlight#clear() abort
   endfunction
+
+  function! clap#highlight#add_highlight_at(lnum, col, hl_group) abort
+    " 1-based
+    call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': g:clap.display.bufnr})
+  endfunction
+
 endif
 
 " Used by the built-in sync filter.
@@ -123,6 +134,11 @@ function! clap#highlight#fg_only(group_name, cermfg, guifg) abort
           \ 'NONE',
           \ )
   endif
+endfunction
+
+" lnum and col are 0-based.
+function! clap#highlight#matchadd_char_at(lnum, col, hl_group) abort
+  return matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
 endfunction
 
 let &cpoptions = s:save_cpo
