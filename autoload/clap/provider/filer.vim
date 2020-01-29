@@ -6,6 +6,12 @@ set cpoptions&vim
 
 let s:filer = {}
 
+if g:clap_enable_icon
+  let s:FOLDER_IS_EMPTY = ['  Directory is empty']
+else
+  let s:FOLDER_IS_EMPTY = ['Directory is empty']
+endif
+
 function! s:handle_round_message(message) abort
   try
     let decoded = json_decode(a:message)
@@ -19,8 +25,12 @@ function! s:handle_round_message(message) abort
 
   elseif has_key(decoded, 'result')
     let result = decoded.result
-    let s:filer_cache[result.dir] = result.data
-    call g:clap.display.set_lines(result.data)
+    if result.total == 0
+      call g:clap.display.set_lines(s:FOLDER_IS_EMPTY)
+    else
+      let s:filer_cache[result.dir] = result.entries
+      call g:clap.display.set_lines(result.entries)
+    endif
     call clap#sign#reset_to_first_line()
     call clap#impl#refresh_matches_count(string(result.total))
     call g:clap#display_win.shrink_if_undersize()
@@ -99,7 +109,7 @@ endfunction
 function! s:tab_action() abort
   call clap#highlight#clear()
 
-  if g:__clap_has_no_matches
+  if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
     return
   endif
 

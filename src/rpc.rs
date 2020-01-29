@@ -41,11 +41,12 @@ fn handle_filer(msg: Message) {
         if let Some(dir) = cwd.as_str() {
             let result = match read_dir_entries(&dir, true) {
                 Ok(entries) => {
+                    let total = entries.len();
                     let result = json!({
-                    "data": entries,
+                    "entries": entries,
                     "dir": dir,
-                    "total": entries.len()}
-                    );
+                    "total": total,
+                    });
                     json!({ "result": result, "id": msg.id })
                 }
                 Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
@@ -85,7 +86,7 @@ where
 }
 
 fn into_string(entry: std::fs::DirEntry, enable_icon: bool) -> String {
-    let path = if entry.path().is_dir() {
+    let path_str = if entry.path().is_dir() {
         format!(
             "{}/",
             entry
@@ -104,9 +105,9 @@ fn into_string(entry: std::fs::DirEntry, enable_icon: bool) -> String {
     };
 
     if enable_icon {
-        prepend_filer_icon(&entry.path(), &path)
+        prepend_filer_icon(&entry.path(), &path_str)
     } else {
-        path
+        path_str
     }
 }
 
