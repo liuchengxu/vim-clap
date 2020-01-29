@@ -102,9 +102,10 @@ function! s:do_filter() abort
 endfunction
 
 function! s:send_message() abort
+  " Note: must use v:true/v:false for json_encode
   let msg = json_encode({
         \ 'method': 'filer',
-        \ 'params': {'cwd': s:current_dir},
+        \ 'params': {'cwd': s:current_dir, 'enable_icon': g:clap_enable_icon ? v:true : v:false},
         \ 'id': 1
         \ })
   call clap#rpc#send_message(msg)

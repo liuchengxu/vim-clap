@@ -36,24 +36,26 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn handle_filer(msg: Message) {
-    let params = msg.params;
-    if let Some(cwd) = params.get("cwd") {
-        if let Some(dir) = cwd.as_str() {
-            let result = match read_dir_entries(&dir, true) {
-                Ok(entries) => {
-                    let total = entries.len();
-                    let result = json!({
-                    "entries": entries,
-                    "dir": dir,
-                    "total": total,
-                    });
-                    json!({ "result": result, "id": msg.id })
-                }
-                Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
-            };
-            let s = serde_json::to_string(&result).expect("I promise; qed");
-            println!("Content-length: {}\n\n{}", s.len(), s);
-        }
+    if let Some(dir) = msg.params.get("cwd").and_then(|x| x.as_str()) {
+        let enable_icon = msg
+            .params
+            .get("enable_icon")
+            .and_then(|x| x.as_bool())
+            .unwrap_or(false);
+        let result = match read_dir_entries(&dir, enable_icon) {
+            Ok(entries) => {
+                let total = entries.len();
+                let result = json!({
+                "entries": entries,
+                "dir": dir,
+                "total": total,
+                });
+                json!({ "result": result, "id": msg.id })
+            }
+            Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
+        };
+        let s = serde_json::to_string(&result).expect("I promise; qed");
+        println!("Content-length: {}\n\n{}", s.len(), s);
     }
 }
 

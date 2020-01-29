@@ -113,7 +113,7 @@ Command                                | List                                   
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
-`Clap filer`                           | Ivy-like filer explorer                             | **[maple][maple]**
+`Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
 `Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
 
