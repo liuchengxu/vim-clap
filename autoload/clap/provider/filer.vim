@@ -9,9 +9,9 @@ set cpoptions&vim
 let s:filer = {}
 
 if g:clap_enable_icon
-  let s:FOLDER_IS_EMPTY = '  Directory is empty'
+  let s:DIRECTORY_IS_EMPTY = '  Directory is empty'
 else
-  let s:FOLDER_IS_EMPTY = 'Directory is empty'
+  let s:DIRECTORY_IS_EMPTY = 'Directory is empty'
 endif
 
 function! clap#provider#filer#hi_empty_folder() abort
@@ -41,8 +41,8 @@ function! s:handle_round_message(message) abort
   elseif has_key(decoded, 'result')
     let result = decoded.result
     if result.total == 0
-      let s:filer_empty_cache[result.dir] = s:FOLDER_IS_EMPTY
-      call g:clap.display.set_lines([s:FOLDER_IS_EMPTY])
+      let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
+      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
     else
       let s:filer_cache[result.dir] = result.entries
       call g:clap.display.set_lines(result.entries)
@@ -138,8 +138,8 @@ function! s:tab_action() abort
   endif
 
   if has_key(s:filer_empty_cache, s:current_dir)
-    if g:clap.display.get_lines() != [s:FOLDER_IS_EMPTY]
-      call g:clap.display.set_lines([s:FOLDER_IS_EMPTY])
+    if g:clap.display.get_lines() != [s:DIRECTORY_IS_EMPTY]
+      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
     endif
     return
   endif
@@ -189,11 +189,11 @@ function! s:filer_sink(selected) abort
 endfunction
 
 function! s:filer_on_typed() abort
-  call clap#highlight#clear()
   " <Tab> and <Backspace> also trigger the CursorMoved event.
   " s:filter_or_send_message() is already handled in tab and bs action,
   " on_typed handler only needs to take care of the filtering.
   if has_key(s:filer_cache, s:current_dir)
+    call clap#highlight#clear()
     call s:do_filter()
   endif
   return ''
