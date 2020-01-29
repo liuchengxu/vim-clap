@@ -121,6 +121,8 @@ let g:clap#icon#extensions = {
       \ 'plist'        : '况',
       \ 'dylib'        : '',
       \ 'so'           : '',
+      \ 'gz'           : '',
+      \ 'zip'          : '',
       \}
 
 let g:clap#icon#exact_matches = {

@@ -50,7 +50,9 @@ function! s:set_prompt() abort
   if strlen(s:current_dir) < s:winwidth * 3 / 4
     call clap#spinner#set(s:current_dir)
   else
-    call clap#spinner#set(pathshorten(s:current_dir))
+    let parent = fnamemodify(s:current_dir, ':p:h')
+    let last = fnamemodify(s:current_dir, ':p:t')
+    call clap#spinner#set(pathshorten(parent).'/'.last)
   endif
 endfunction
 

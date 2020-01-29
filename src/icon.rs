@@ -157,6 +157,8 @@ lazy_static! {
         m.insert("dylib", "");
         m.insert("so", "");
         m.insert("timestamp", "﨟");
+        m.insert("gz", "");
+        m.insert("zip", "");
         m
     };
 }
