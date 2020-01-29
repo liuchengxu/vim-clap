@@ -25,7 +25,7 @@ function! s:relativize(ArgLead, abs_dirs) abort
 endfunction
 
 function! clap#helper#complete(ArgLead, CmdLine, P) abort
-  if a:CmdLine =~# '^Clap \(files\|grep\)'
+  if a:CmdLine =~# '^Clap \(files\|grep\|filer\)'
     if a:ArgLead =~# '\(/\|\\\)$' || isdirectory(expand(a:ArgLead))
       let parent_dir = fnamemodify(resolve(expand(a:ArgLead)), ':p')
       if isdirectory(parent_dir)

@@ -174,7 +174,11 @@ endfunction
 
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
-  let s:current_dir = getcwd().'/'
+  if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
+    let s:current_dir = expand(g:clap.provider.args[0]).'/'
+  else
+    let s:current_dir = getcwd().'/'
+  endif
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_prompt()
   call clap#rpc#start(function('s:handle_round_message'))
