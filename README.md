@@ -111,6 +111,7 @@ Command                                | List                                   
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
+`Clap filer`                           | Ivy-like filer explorer                             | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
 `Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
 
@@ -118,6 +119,7 @@ Command                                | List                                   
 [rg]: https://github.com/BurntSushi/ripgrep
 [git]: https://github.com/git/git
 [vista.vim]: https://github.com/liuchengxu/vista.vim
+[maple]: https://github.com/liuchengxu/vim-clap/blob/master/INSTALL.md#maple-binary
 
 - The command with a superscript `!` means that it is not yet implemented or not tested.
 
