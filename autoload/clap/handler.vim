@@ -107,6 +107,7 @@ function! clap#handler#try_open(action) abort
 
     let g:clap.open_action = g:clap_open_action[a:action]
     let curline = g:clap.display.getcurline()
+    call g:clap.start.goto_win()
     call g:clap.provider.sink(curline)
 
     call remove(g:clap, 'open_action')
