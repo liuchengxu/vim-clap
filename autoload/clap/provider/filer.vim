@@ -9,10 +9,15 @@ set cpoptions&vim
 let s:filer = {}
 
 if g:clap_enable_icon
-  let s:FOLDER_IS_EMPTY = ['  Directory is empty']
+  let s:FOLDER_IS_EMPTY = '  Directory is empty'
 else
-  let s:FOLDER_IS_EMPTY = ['Directory is empty']
+  let s:FOLDER_IS_EMPTY = 'Directory is empty'
 endif
+
+function! clap#provider#filer#hi_empty_folder() abort
+  syntax match ClapEmptyDirectory /^.*Directory is empty/
+  hi default link ClapEmptyDirectory WarningMsg
+endfunction
 
 function! s:handle_round_message(message) abort
   try
@@ -28,12 +33,15 @@ function! s:handle_round_message(message) abort
   endif
 
   if has_key(decoded, 'error')
-    call g:clap.display.set_lines([decoded.error])
+    let error = decoded.error
+    let s:filer_error_cache[error.dir] = error.message
+    call g:clap.display.set_lines([error.message])
 
   elseif has_key(decoded, 'result')
     let result = decoded.result
     if result.total == 0
-      call g:clap.display.set_lines(s:FOLDER_IS_EMPTY)
+      let s:filer_error_cache[result.dir] = s:FOLDER_IS_EMPTY
+      call g:clap.display.set_lines([s:FOLDER_IS_EMPTY])
     else
       let s:filer_cache[result.dir] = result.entries
       call g:clap.display.set_lines(result.entries)
@@ -123,6 +131,11 @@ function! s:tab_action() abort
     return
   endif
 
+  if has_key(s:filer_error_cache, s:current_dir)
+    call g:clap.display.set_lines([s:filer_error_cache[s:current_dir]])
+    return
+  endif
+
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
     " TODO: preview file
@@ -184,6 +197,7 @@ endfunction
 
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
+  let s:filer_error_cache = {}
   let s:request_id = 1
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
     let s:current_dir = expand(g:clap.provider.args[0]).'/'

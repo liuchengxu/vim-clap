@@ -58,7 +58,10 @@ fn handle_filer(msg: Message) {
                 });
                 json!({ "result": result, "id": msg.id })
             }
-            Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
+            Err(err) => {
+                let error = json!({"message": format!("{}", err), "dir": dir});
+                json!({ "error": error, "id": msg.id })
+            }
         };
         write_response(result);
     }
@@ -130,6 +133,6 @@ fn read_dir_entries(dir: &str, enable_icon: bool) -> Result<Vec<String>> {
 
 #[test]
 fn test_dir() {
-    let entries = read_dir_entries("/Users/xlc/.vim/plugged/vim-clap", true).unwrap();
+    let entries = read_dir_entries("/.DocumentRevisions-V100/", true).unwrap();
     println!("entry: {:?}", entries);
 }
