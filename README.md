@@ -153,6 +153,12 @@ Command                                | List                                   
 
 - `g:clap_open_action`: Dict, `{ 'ctrl-t': 'tab split', 'ctrl-x': 'split', 'ctrl-v': 'vsplit' }`, extra key bindings for opening the selected file in a different way. NOTE: do not define a key binding which is conflicted with the other default bindings of vim-clap, and only `ctrl-*` is supported for now.
 
+- `g:clap_layout`: Dict, default: `{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }`. Controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:
+
+  ```vim
+  let g:clap_layout = { 'relative': 'editor' }
+  ```
+
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
 - `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
