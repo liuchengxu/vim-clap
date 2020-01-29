@@ -270,7 +270,7 @@ impl Maple {
                 version();
             }
             Cmd::RPC => {
-                crate::rpc::run(std::io::BufReader::new(std::io::stdin()));
+                crate::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
                 let ranked = self.apply_fuzzy_filter_and_rank(query, input, algo)?;

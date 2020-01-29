@@ -35,6 +35,12 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
+fn write_response<T: Serialize>(msg: T) {
+    if let Ok(s) = serde_json::to_string(&msg) {
+        println!("Content-length: {}\n\n{}", s.len(), s);
+    }
+}
+
 fn handle_filer(msg: Message) {
     if let Some(dir) = msg.params.get("cwd").and_then(|x| x.as_str()) {
         let enable_icon = msg
@@ -54,8 +60,7 @@ fn handle_filer(msg: Message) {
             }
             Err(err) => json!({ "error": format!("{}:{}", dir, err), "id": msg.id }),
         };
-        let s = serde_json::to_string(&result).expect("I promise; qed");
-        println!("Content-length: {}\n\n{}", s.len(), s);
+        write_response(result);
     }
 }
 
@@ -66,14 +71,14 @@ pub fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
             if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
                 match &msg.method[..] {
                     "filer" => handle_filer(msg),
-                    _ => println!("{}", json!({ "error": "unknown method" })),
+                    _ => write_response(json!({ "error": "unknown method", "id": msg.id })),
                 }
             }
         });
     }
 }
 
-pub fn run<R>(reader: R)
+pub fn run_forever<R>(reader: R)
 where
     R: BufRead + Send + 'static,
 {

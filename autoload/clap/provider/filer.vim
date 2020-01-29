@@ -57,6 +57,7 @@ function! s:set_prompt() abort
 endfunction
 
 function! s:goto_parent() abort
+  " The root directory
   if s:current_dir ==# '/'
     return
   endif
@@ -105,7 +106,7 @@ function! s:send_message() abort
   " Note: must use v:true/v:false for json_encode
   let msg = json_encode({
         \ 'method': 'filer',
-        \ 'params': {'cwd': s:current_dir, 'enable_icon': g:clap_enable_icon ? v:true : v:false},
+        \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
         \ 'id': 1
         \ })
   call clap#rpc#send_message(msg)
@@ -119,14 +120,12 @@ function! s:tab_action() abort
   endif
 
   let current_entry = s:get_current_entry()
-
   if filereadable(current_entry)
     " TODO: preview file
     return ''
   endif
 
   let s:current_dir = current_entry
-
   call s:set_prompt()
   call g:clap.input.set('')
 
@@ -137,7 +136,6 @@ endfunction
 
 function! s:get_current_entry() abort
   let curline = g:clap.display.getcurline()
-
   if g:clap_enable_icon
     let curline = curline[4:]
   endif
@@ -181,6 +179,7 @@ function! s:start_rpc_service() abort
     let s:current_dir = getcwd().'/'
   endif
   let s:winwidth = winwidth(g:clap.display.winid)
+  let s:enable_icon = g:clap_enable_icon ? v:true : v:false
   call s:set_prompt()
   call clap#rpc#start(function('s:handle_round_message'))
   call s:send_message()
