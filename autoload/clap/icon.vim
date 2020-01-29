@@ -198,7 +198,7 @@ function! clap#icon#get_all() abort
     let extensions = values(g:clap#icon#extensions)
     let exact_matches = values(g:clap#icon#exact_matches)
     let pattern_matches = values(g:clap#icon#pattern_matches)
-    let s:icon_set = []
+    let s:icon_set = [' ']
     call extend(s:icon_set, extensions + exact_matches + pattern_matches)
     call add(s:icon_set, g:clap#icon#default)
     let s:icon_set = uniq(s:icon_set)
