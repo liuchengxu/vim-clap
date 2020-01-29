@@ -119,8 +119,6 @@ function! s:send_message() abort
 endfunction
 
 function! s:tab_action() abort
-  call clap#highlight#clear()
-
   if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
     return
   endif
@@ -130,6 +128,8 @@ function! s:tab_action() abort
     " TODO: preview file
     return ''
   endif
+
+  call clap#highlight#clear()
 
   let s:current_dir = current_entry
   call s:set_prompt()
