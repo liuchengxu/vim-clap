@@ -6,9 +6,6 @@ set cpoptions&vim
 
 let s:job_id = -1
 
-function! s:on_complete() abort
-endfunction
-
 if has('nvim')
 
   let s:round_message = ''
@@ -60,15 +57,13 @@ if has('nvim')
       if a:event ==# 'stdout'
         call s:handle_stdout(a:data)
       elseif a:event ==# 'stderr'
-        " Ignore the error
-      else
-        call s:on_complete()
+        call clap#helper#echo_error('on_event:'.string(a:data))
       endif
     endif
   endfunction
 
   function! s:start_rpc() abort
-    let s:job_id = jobstart(s:cmd, {
+    let s:job_id = jobstart(s:rpc_cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
@@ -102,7 +97,7 @@ else
   endfunction
 
   function! s:start_rpc() abort
-    let s:job = job_start(clap#job#wrap_cmd(s:cmd), {
+    let s:job = job_start(clap#job#wrap_cmd(s:rpc_cmd), {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
           \ 'noblock': 1,
@@ -124,8 +119,8 @@ endfunction
 
 function! clap#rpc#start(MessageHandler) abort
   call clap#rpc#stop()
-  let s:cmd = clap#maple#run('rpc')
   let s:MessageHandler = a:MessageHandler
+  let s:rpc_cmd = clap#maple#run('rpc')
   call s:start_rpc()
   return
 endfunction
