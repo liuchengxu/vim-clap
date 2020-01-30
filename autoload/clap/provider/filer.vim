@@ -27,7 +27,7 @@ function! s:handle_round_message(message) abort
     return
   endtry
 
-  " Only process the latest request.
+  " Only process the latest request, drop the outdated responses.
   if s:last_request_id != decoded.id
     return
   endif
@@ -56,10 +56,6 @@ function! s:handle_round_message(message) abort
   endif
 endfunction
 
-function! s:is_directory(path) abort
-  return a:path[-1:] ==# '/'
-endfunction
-
 function! s:set_prompt() abort
   if strlen(s:current_dir) < s:winwidth * 3 / 4
     call clap#spinner#set(s:current_dir)
@@ -75,7 +71,8 @@ function! s:goto_parent() abort
   if s:current_dir ==# '/'
     return
   endif
-  if s:is_directory(s:current_dir)
+
+  if s:current_dir[-1:] ==# '/'
     let parent_dir = fnamemodify(s:current_dir, ':h:h')
   else
     let parent_dir = fnamemodify(s:current_dir, ':h')
@@ -88,6 +85,17 @@ function! s:goto_parent() abort
   endif
   call s:set_prompt()
   call s:filter_or_send_message()
+endfunction
+
+function! s:send_message() abort
+  let s:last_request_id += 1
+  " Note: must use v:true/v:false for json_encode
+  let msg = json_encode({
+        \ 'method': 'filer',
+        \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
+        \ 'id': s:last_request_id
+        \ })
+  call clap#rpc#send_message(msg)
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -116,18 +124,38 @@ function! s:do_filter() abort
   call clap#filter#on_typed(function('clap#filter#'), query, s:filer_cache[s:current_dir])
 endfunction
 
-function! s:send_message() abort
-  let s:last_request_id += 1
-  " Note: must use v:true/v:false for json_encode
-  let msg = json_encode({
-        \ 'method': 'filer',
-        \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ 'id': s:last_request_id
-        \ })
-  call clap#rpc#send_message(msg)
+function! s:reset_to(new_dir) abort
+  let s:current_dir = a:new_dir
+  call s:set_prompt()
+  call clap#highlight#clear()
+  call g:clap.input.set('')
+  call s:filter_or_send_message()
+endfunction
+
+function! s:get_current_entry() abort
+  let curline = g:clap.display.getcurline()
+  if g:clap_enable_icon
+    let curline = curline[4:]
+  endif
+  return s:smart_concatenate(s:current_dir, curline)
+endfunction
+
+function! s:try_go_to_dir_is_ok() abort
+  let input = g:clap.input.get()
+  if input[-1:] ==# '/'
+    if isdirectory(expand(input))
+      call s:reset_to(expand(input))
+      return v:true
+    endif
+  endif
+  return v:false
 endfunction
 
 function! s:tab_action() abort
+  if s:try_go_to_dir_is_ok()
+    return
+  endif
+
   if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
     return
   endif
@@ -150,27 +178,16 @@ function! s:tab_action() abort
     return ''
   endif
 
-  call clap#highlight#clear()
-
-  let s:current_dir = current_entry
-  call s:set_prompt()
-  call g:clap.input.set('')
-
-  call s:filter_or_send_message()
+  call s:reset_to(current_entry)
 
   return ''
 endfunction
 
-function! s:get_current_entry() abort
-  let curline = g:clap.display.getcurline()
-  if g:clap_enable_icon
-    let curline = curline[4:]
-  endif
-
-  if s:current_dir[-1:] ==# '/'
-    return s:current_dir.curline
+function! s:smart_concatenate(cur_dir, curline) abort
+  if a:cur_dir[-1:] ==# '/'
+    return a:cur_dir.a:curline
   else
-    return s:current_dir.'/'.curline
+    return a:cur_dir.'/'.a:curline
   endif
 endfunction
 
@@ -180,12 +197,7 @@ function! s:filer_sink(selected) abort
   else
     let curline = a:selected
   endif
-  if s:current_dir[-1:] ==# '/'
-    let current_entry = s:current_dir.curline
-  else
-    let current_entry = s:current_dir.'/'.curline
-  endif
-  execute 'edit' current_entry
+  execute 'edit' s:smart_concatenate(s:current_dir, curline)
 endfunction
 
 function! s:filer_on_typed() abort
@@ -209,10 +221,11 @@ function! s:start_rpc_service() abort
   let s:filer_empty_cache = {}
   let s:last_request_id = 0
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
-    if g:clap.provider.args[0][-1:] ==# '/'
-      let s:current_dir = expand(g:clap.provider.args[0])
+    let target_dir = g:clap.provider.args[0]
+    if target_dir[-1:] ==# '/'
+      let s:current_dir = expand(target_dir)
     else
-      let s:current_dir = expand(g:clap.provider.args[0]).'/'
+      let s:current_dir = expand(target_dir).'/'
     endif
   else
     let s:current_dir = getcwd().'/'
