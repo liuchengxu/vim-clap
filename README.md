@@ -216,6 +216,8 @@ You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 ```
 
+`ClapDisplay` and `ClapPreview` are the most basic highlight groups for the display and preview window, which can be overrided if the provider has its own syntax highlight, then checkout the related [syntax](syntax) file for more granular highlights directly.
+
 If you want to write your own clap theme, take [autoload/clap/themes/material_design_dark.vim](autoload/clap/themes/material_design_dark.vim) as a reference.
 
 See `:help clap-highlights` for more information.

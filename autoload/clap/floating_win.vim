@@ -179,7 +179,7 @@ function! g:clap#floating_win#input.open() abort
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:false)
   endif
-
+  call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
   let g:clap.input.winid = s:input_winid
 endfunction
 
