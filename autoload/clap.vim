@@ -323,7 +323,7 @@ if !exists('g:clap')
   call clap#init#()
 endif
 
-function! s:parse_opts(args) abort
+function! s:parse_opts(args, visualmode) abort
   let idx = 0
   for arg in a:args
     if arg =~? '^++\w*=\w*'
@@ -344,11 +344,16 @@ function! s:parse_opts(args) abort
   endfor
   if has_key(g:clap.context, 'query')
     let g:clap.context.query = clap#util#expand(g:clap.context.query)
+  elseif a:visualmode
+    let visual_selected = clap#util#get_visual_selected()
+    if !empty(visual_selected)
+      let g:clap.context.query = visual_selected
+    endif
   endif
   let g:clap.provider.args = a:args[idx :]
 endfunction
 
-function! clap#(bang, ...) abort
+function! clap#(bang, visualmode, ...) range abort
   if a:000 == ['install-binary']
     call clap#helper#install(v:false)
     return
@@ -380,7 +385,7 @@ function! clap#(bang, ...) abort
       return
     endif
     let provider_id_or_alias = a:1
-    call s:parse_opts(a:000[1:])
+    call s:parse_opts(a:000[1:], a:visualmode)
   endif
 
   call clap#for(provider_id_or_alias)

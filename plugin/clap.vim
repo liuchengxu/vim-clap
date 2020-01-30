@@ -10,7 +10,8 @@ endif
 
 let g:loaded_clap = 1
 
-command! -bang -nargs=* -bar -complete=customlist,clap#helper#complete Clap call clap#(<bang>0, <f-args>)
+command! -bang -nargs=* -bar -complete=customlist,clap#helper#complete        Clap                      call clap#(<bang>0, 0, <f-args>)
+command! -bang -nargs=* -bar -complete=customlist,clap#helper#complete -range ClapVisual <line1>,<line2>call clap#(<bang>0, 1, <f-args>)
 
 let g:__clap_buffers = get(g:, '__clap_buffers', {})
 
