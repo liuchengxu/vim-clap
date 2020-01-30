@@ -129,6 +129,14 @@ Command                                | List                                   
 
 ### Global variables
 
+- `g:clap_layout`: Dict, `{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }` by default. This variable controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:
+
+  ```vim
+  let g:clap_layout = { 'relative': 'editor' }
+  ```
+
+- `g:clap_open_action`: Dict, `{ 'ctrl-t': 'tab split', 'ctrl-x': 'split', 'ctrl-v': 'vsplit' }`, extra key bindings for opening the selected file in a different way. NOTE: do not define a key binding which is conflicted with the other default bindings of vim-clap, and only `ctrl-*` is supported for now.
+
 - `g:clap_provider_alias`: Dict, if you don't want to invoke some clap provider by its id(name), as it's too long or somehow, you can add an alias for that provider.
 
   ```vim
@@ -137,23 +145,15 @@ Command                                | List                                   
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-- `g:clap_popup_input_delay`: Number, 200ms by default, delay for actually responsing to the input, vim only.
-
-- `g:clap_no_matches_msg`: String, "NO MATCHES FOUND", message to show when there is no matches found.
-
-- `g:clap_disable_run_rooter`: Bool, v:false, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
+- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
 
 - `g:clap_current_selection_sign`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
 
-- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
+- `g:clap_no_matches_msg`: String, `'NO MATCHES FOUND'`, message to show when there is no matches found.
 
-- `g:clap_open_action`: Dict, `{ 'ctrl-t': 'tab split', 'ctrl-x': 'split', 'ctrl-v': 'vsplit' }`, extra key bindings for opening the selected file in a different way. NOTE: do not define a key binding which is conflicted with the other default bindings of vim-clap, and only `ctrl-*` is supported for now.
+- `g:clap_popup_input_delay`: Number, `200ms` by default, delay for actually responsing to the input, vim only.
 
-- `g:clap_layout`: Dict, default: `{ 'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%' }`. Controls the size and position of vim-clap window. By default, the vim-clap window is placed relative to the currently active window. To make it relative to the whole editor modify this variable as shown below:
-
-  ```vim
-  let g:clap_layout = { 'relative': 'editor' }
-  ```
+- `g:clap_disable_run_rooter`: Bool, `v:false`, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
 
