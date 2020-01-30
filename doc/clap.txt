@@ -145,6 +145,10 @@ to work everywhere out of the box, with fast response.
                          use `Clap grep ..` to grep from the parent directory.
 
 
+                                                     *:Clap-help_tags*
+:Clap help_tags          List the help tags.
+
+
                                                       *:Clap-history*
 :Clap history            List the open buffers and |v:oldfiles|.
 
@@ -207,6 +211,25 @@ g:clap_provider_alias                                    *g:clap_provider_alias*
 
   The `key` of |g:clap_provider_alias| is the alias, the `value` is the origin
   provider name.
+
+
+g:clap_cache_directory                                  *g:clap_cache_directory*
+
+  Type: |String|
+  Default: `Undefined`
+
+  This variable controls the cache directory of clap. In default, clap will set
+  cache directory according to the following order:
+
+  1. If has('nvim'), the default cache directory is `stdpath('cache')/clap`
+  2. If has `$XDG_CACHE_HOME`, the default cache directory is `$XDG_CACHE_HOME/clap`
+  3. If not all above, the default cache directory is `$HOME/.cache/clap`
+
+  If you want to change it to your cache directory, just set this variable. For
+  example:
+>
+  let g:clap_cache_directory = $HOME . '/.vim/cache/clap'
+<
 
 
 g:clap_layout                                                    *g:clap_layout*
