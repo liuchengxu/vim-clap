@@ -10,6 +10,7 @@ CHANGELOG
 - Support skim as the external filter, ref https://github.com/lotabout/skim/issues/225 . ([#269](https://github.com/liuchengxu/vim-clap/pull/269))
 - Add a new property `source_type` for non-pure-async provider.([#270](https://github.com/liuchengxu/vim-clap/pull/270))
 - Add `g:ClapPrompt` which is Funcref to give more control of the prompt of clap, please see https://github.com/liuchengxu/vim-clap/issues/134#issuecomment-578503522 for the usage.([#265](https://github.com/liuchengxu/vim-clap/pull/265))
+- Add `init` property for each provider, which will be invoked when initializing the display window.([#280](https://github.com/liuchengxu/vim-clap/pull/280))
 
 ### Internal
 

@@ -46,6 +46,19 @@ function! s:blines.on_enter() abort
   call g:clap.display.setbufvar('&syntax', 'clap_blines')
 endfunction
 
+function! s:blines.init() abort
+  let line_count = g:clap.start.line_count()
+  let g:clap.display.initial_size = line_count
+
+  if line_count > 0
+    let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+    call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+    call g:clap#display_win.shrink_if_undersize()
+    call clap#indicator#set_matches('['.line_count.']')
+    call clap#sign#toggle_cursorline()
+  endif
+endfunction
+
 " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
 " `blines` provider, so we did a hard code for blines provider here.
 let s:blines.source_type = g:__t_func_list
