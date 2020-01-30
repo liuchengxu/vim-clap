@@ -21,6 +21,7 @@ CHANGELOG
 - Use    as the icon of markdown.
 - Change the default spinner frames to `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`.
 - Change the default prompt format to `' %spinner%%forerunner_status%%provider_id%:'`.
+- Disable `coc_pairs`.
 
 ## [0.6] 2020-01-24
 
