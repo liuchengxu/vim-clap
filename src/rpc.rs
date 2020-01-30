@@ -8,6 +8,8 @@ use serde_json::{json, Value};
 
 use crate::icon::prepend_filer_icon;
 
+const REQUEST_FILER: &str = "filer";
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Message {
@@ -50,11 +52,10 @@ fn handle_filer(msg: Message) {
             .unwrap_or(false);
         let result = match read_dir_entries(&dir, enable_icon) {
             Ok(entries) => {
-                let total = entries.len();
                 let result = json!({
                 "entries": entries,
                 "dir": dir,
-                "total": total,
+                "total": entries.len(),
                 });
                 json!({ "result": result, "id": msg.id })
             }
@@ -67,9 +68,7 @@ fn handle_filer(msg: Message) {
     }
 }
 
-const REQUEST_FILER: &str = "filer";
-
-pub fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
+fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
     for msg in rx.iter() {
         thread::spawn(move || {
             // Ignore the invalid message.
