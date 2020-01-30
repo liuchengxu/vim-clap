@@ -568,21 +568,18 @@ function! s:init_provider() abort
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
-      call clap#forerunner#start(g:clap.provider._().source)
+      call clap#forerunner#start(self._().source)
       return
     elseif self.source_type == g:__t_func_string
-      let Source = g:clap.provider._().source
-      let cmd = Source()
-      call clap#forerunner#start(cmd)
+      call clap#forerunner#start(self._().source())
       return
     endif
 
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    let Source = g:clap.provider._().source
     if self.source_type == g:__t_list
-      let lines = Source
+      let lines = self._().source
     elseif self.source_type == g:__t_func_list
-      let lines = Source()
+      let lines = self._().source()
     endif
 
     let initial_size = len(lines)

@@ -69,6 +69,7 @@ Field                 | Type                | Required      | Has default implem
 `support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 `enable_rooter`       | Bool                | Optional      | No
 `syntax`              | String              | Optional      | No
+`init`                | Funcref             | Optional      | **Yes**
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -102,6 +103,8 @@ Field                 | Type                | Required      | Has default implem
 - `enable_rooter`: try to run the `source` from the project root.
 
 - `syntax`: used to set the syntax highlight for the display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.on_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
+
+- `init`: used for initializing the display window.
 
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 
