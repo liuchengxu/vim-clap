@@ -67,13 +67,15 @@ fn handle_filer(msg: Message) {
     }
 }
 
+const REQUEST_FILER: &str = "filer";
+
 pub fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
     for msg in rx.iter() {
         thread::spawn(move || {
             // Ignore the invalid message.
             if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
                 match &msg.method[..] {
-                    "filer" => handle_filer(msg),
+                    REQUEST_FILER => handle_filer(msg),
                     _ => write_response(json!({ "error": "unknown method", "id": msg.id })),
                 }
             }
