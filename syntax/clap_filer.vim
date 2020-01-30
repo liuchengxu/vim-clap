@@ -6,4 +6,4 @@ execute 'syntax match ClapFile' '/.*[^\/]$/' 'contains='.join(clap#icon#add_head
 
 hi default link ClapFile TNormal
 
-call clap#provider#filer#hi_empty_folder()
+call clap#provider#filer#hi_empty_dir()

@@ -14,7 +14,7 @@ else
   let s:DIRECTORY_IS_EMPTY = 'Directory is empty'
 endif
 
-function! clap#provider#filer#hi_empty_folder() abort
+function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
@@ -27,8 +27,8 @@ function! s:handle_round_message(message) abort
     return
   endtry
 
-  " Only take care of the latest request.
-  if s:request_id - 1 != decoded.id
+  " Only process the latest request.
+  if s:last_request_id != decoded.id
     return
   endif
 
@@ -117,14 +117,14 @@ function! s:do_filter() abort
 endfunction
 
 function! s:send_message() abort
+  let s:last_request_id += 1
   " Note: must use v:true/v:false for json_encode
   let msg = json_encode({
         \ 'method': 'filer',
         \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ 'id': s:request_id
+        \ 'id': s:last_request_id
         \ })
   call clap#rpc#send_message(msg)
-  let s:request_id += 1
 endfunction
 
 function! s:tab_action() abort
@@ -207,7 +207,7 @@ function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:filer_error_cache = {}
   let s:filer_empty_cache = {}
-  let s:request_id = 1
+  let s:last_request_id = 0
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
     let s:current_dir = expand(g:clap.provider.args[0]).'/'
   else
