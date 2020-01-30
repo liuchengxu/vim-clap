@@ -209,7 +209,11 @@ function! s:start_rpc_service() abort
   let s:filer_empty_cache = {}
   let s:last_request_id = 0
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
-    let s:current_dir = expand(g:clap.provider.args[0]).'/'
+    if g:clap.provider.args[0][-1:] ==# '/'
+      let s:current_dir = expand(g:clap.provider.args[0])
+    else
+      let s:current_dir = expand(g:clap.provider.args[0]).'/'
+    endif
   else
     let s:current_dir = getcwd().'/'
   endif
