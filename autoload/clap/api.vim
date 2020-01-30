@@ -50,10 +50,20 @@ if s:is_nvim
   function! s:_get_lines() dict abort
     return nvim_buf_get_lines(self.bufnr, 0, -1, 0)
   endfunction
+
+  function! s:_line_count() dict abort
+    return nvim_buf_line_count(self.bufnr)
+  endfunction
+
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
     return len(lines) == 1 && empty(lines[0]) ? [] : lines
+  endfunction
+
+  function! s:_line_count() dict abort
+    " 8.1.1967
+    return line('$', self.winid)
   endfunction
 endif
 
@@ -97,10 +107,6 @@ function! s:init_display() abort
 
     function! display.clear() abort
       call clap#util#nvim_buf_clear(self.bufnr)
-    endfunction
-
-    function! display.line_count() abort
-      return nvim_buf_line_count(self.bufnr)
     endfunction
 
     function! display.append_lines(lines) abort
@@ -154,11 +160,6 @@ function! s:init_display() abort
 
     function! display.clear() abort
       silent call deletebufline(self.bufnr, 1, '$')
-    endfunction
-
-    function! display.line_count() abort
-      " 8.1.1967
-      return line('$', self.winid)
     endfunction
 
     " Due to the smart cache strategy, this should not be expensive.
@@ -563,30 +564,7 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  function! s:init_blines() abort
-    if s:is_nvim
-      let line_count = nvim_buf_line_count(g:clap.start.bufnr)
-    else
-      let line_count = line('$', g:clap.start.winid)
-    endif
-    let g:clap.display.initial_size = line_count
-
-    if line_count > 0
-      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
-      call g:clap#display_win.shrink_if_undersize()
-      call clap#indicator#set_matches('['.line_count.']')
-      call clap#sign#toggle_cursorline()
-    endif
-  endfunction
-
-  function! provider.init_display_win() abort
-
-    if g:clap.provider.id ==# 'blines'
-      call s:init_blines()
-      return
-    endif
-
+  function! provider.init_default_impl() abort
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
@@ -617,11 +595,20 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  function! provider.init_display_win() abort
+    if has_key(self._(), 'init')
+      call self._().init()
+    else
+      call self.init_default_impl()
+    endif
+  endfunction
+
   return provider
 endfunction
 
 function! s:inject_base_api(dict) abort
   let dict = a:dict
+  let dict.line_count = function('s:_line_count')
   let dict.goto_win = function('s:_goto_win')
   let dict.get_lines = function('s:_get_lines')
   let dict.getbufvar = function('s:_getbufvar')
