@@ -46,6 +46,7 @@ function! s:translate_query_and_opts(query) abort
     return [grep_opts, a:query[1:]]
   endif
 
+  let s:ripgrep_glob = v:null
   let ridx = strridx(a:query, ' ')
   if ridx == -1
     let query = a:query
@@ -53,14 +54,22 @@ function! s:translate_query_and_opts(query) abort
     " .vim => -g '*.vim'
     if a:query[ridx+1:] =~# '^\.\a\+'
       let ft = matchstr(a:query[ridx+1:], '^\.\zs\(.\+\)')
-      let grep_opts .= ' -g "*.'.ft.'"'
+      if clap#maple#is_available()
+        let s:ripgrep_glob = '*.'.ft
+      else
+        let grep_opts .= ' -g "*.'.ft.'"'
+      endif
       let query = a:query[:ridx-1]
       return [grep_opts, query]
     endif
 
     let matched = matchlist(a:query[ridx+1:], '^\(.*\)\.\(.*\)$')
     if !empty(matched)
-      let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
+      if clap#maple#is_available()
+        let s:ripgrep_glob = a:query[ridx+1:]
+      else
+        let grep_opts .= ' -g "'.a:query[ridx+1:].'"'
+      endif
       let query = a:query[:ridx-1]
     else
       let query = a:query
@@ -126,7 +135,7 @@ function! s:spawn(query) abort
   if clap#maple#is_available()
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#run_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon)
+    call clap#maple#run_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
     if s:grep_enable_icon
       let s:icon_appended = v:true
     endif

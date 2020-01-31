@@ -66,6 +66,10 @@ pub enum Cmd {
         #[structopt(index = 2, short, long)]
         grep_query: String,
 
+        /// Delegate to -g option of rg
+        #[structopt(short = "g", long = "glob")]
+        glob: Option<String>,
+
         /// Specify the working directory of CMD
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,

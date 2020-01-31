@@ -318,12 +318,18 @@ impl Maple {
             Cmd::Grep {
                 grep_cmd,
                 grep_query,
+                glob,
                 cmd_dir,
             } => {
                 let (mut cmd, mut args) = prepare_grep_and_args(grep_cmd, cmd_dir.clone());
 
                 // We split out the grep opts and query in case of the possible escape issue of clap.
                 args.push(grep_query.clone());
+
+                if let Some(g) = glob {
+                    args.push("-g".into());
+                    args.push(g.to_string());
+                }
 
                 // currently vim-clap only supports rg.
                 // Ref https://github.com/liuchengxu/vim-clap/pull/60
