@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.7] 2020-01-31
+
 ### Added
 
 - Add new provider `:Clap filer` for ivy-like file explorer, this also introduces a new type of clap provider: stdio-based RPC provider. ([#272](https://github.com/liuchengxu/vim-clap/pull/272))
