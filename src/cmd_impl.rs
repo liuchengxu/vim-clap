@@ -1,0 +1,61 @@
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::{Path, PathBuf};
+
+use anyhow::Result;
+
+// The output is wrapped in a Result to allow matching on errors
+// Returns an Iterator to the Reader of the lines of the file.
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
+pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
+    let mut lines = read_lines(meta_path)?;
+    // line 1:/doc/tags,/doc/tags-cn
+    // line 2:&runtimepath
+    if let Some(Ok(doc_tags)) = lines.next() {
+        if let Some(Ok(runtimepath)) = lines.next() {
+            for dt in doc_tags.split(',') {
+                let tags_files = runtimepath.split(',').map(|x| {
+                    format!(
+                        "{}{}",
+                        if x.ends_with('/') {
+                            let mut x: String = x.into();
+                            x.pop();
+                            x
+                        } else {
+                            x.into()
+                        },
+                        dt
+                    )
+                });
+                let mut seen = std::collections::HashMap::new();
+                let mut v: Vec<String> = Vec::new();
+                for tags_file in tags_files {
+                    if let Ok(lines) = read_lines(tags_file) {
+                        lines.for_each(|line| {
+                            if let Ok(helptag) = line {
+                                v = helptag.split('\t').map(Into::into).collect();
+                                // println!("{}", format!("{:<60}\t{}", v[0], v[1]));
+                                if !seen.contains_key(&v[0]) {
+                                    seen.insert(v[0].clone(), format!("{:<60}\t{}", v[0], v[1]));
+                                }
+                            }
+                        });
+                    }
+                }
+                // println!("see: {:?}", seen.values());
+                // println!("see: {:?}", seen.len());
+                for line in seen.values() {
+                    println!("{}", line);
+                }
+            }
+        }
+    }
+    Ok(())
+}
