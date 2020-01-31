@@ -63,8 +63,12 @@ else
 endif
 
 function! s:help_tags_sink(line) abort
-  let tag = get(split(a:line, "\t"), 0)
-  execute 'help' tag
+  let [tag, doc_fname] = split(a:line, "\t")
+  if doc_fname =~# '.txt$'
+    execute 'help' trim(tag).'@en'
+  else
+    execute 'help' tag
+  endif
 endfunction
 
 let s:help_tags = {}
