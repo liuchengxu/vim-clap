@@ -11,8 +11,10 @@
 Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
 
 <p align="center">
-  <img width="600px" src="https://user-images.githubusercontent.com/8850248/71636414-645a0c80-2c6a-11ea-9dc8-160a80708b7a.gif">
+  <img width="600px" src="https://user-images.githubusercontent.com/8850248/73323347-24467380-4282-11ea-8dac-5ef5a1ee63bb.gif">
 </p>
+
+[>>>> More screenshots](https://github.com/liuchengxu/vim-clap/issues/1)
 
 ## Table of Contents
 
@@ -112,6 +114,7 @@ Command                                | List                                   
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
+`Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
 `Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
 
@@ -119,6 +122,7 @@ Command                                | List                                   
 [rg]: https://github.com/BurntSushi/ripgrep
 [git]: https://github.com/git/git
 [vista.vim]: https://github.com/liuchengxu/vista.vim
+[maple]: https://github.com/liuchengxu/vim-clap/blob/master/INSTALL.md#maple-binary
 
 - The command with a superscript `!` means that it is not yet implemented or not tested.
 
@@ -179,6 +183,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
+    - Use <kbd>Tab</kbd> to expand the directory for `:Clap filer`.
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 

@@ -8,6 +8,8 @@
 * [Provider arguments](#provider-arguments)
 * [Create non-pure-async provider](#create-non-pure-async-provider)
 * [Create pure async provider](#create-pure-async-provider)
+  * [Non-RPC based](#non-rpc-based)
+  * [RPC-based](#rpc-based)
 * [Register provider](#register-provider)
 * [FAQ](#faq)
   * [How to add the preview support for my provider?](#how-to-add-the-preview-support-for-my-provider)
@@ -110,6 +112,10 @@ You have to provide `sink` and `source` option. The `source` field is indispensa
 
 ### Create pure async provider
 
+#### Non-RPC based
+
+Everytime your input is changed, a new job will be spawned.
+
 Field                 | Type    | Required      | Has default implementation
 :----                 | :----   | :----         | :----
 `sink`                | funcref | **mandatory** | No
@@ -127,6 +133,20 @@ Field                 | Type    | Required      | Has default implementation
 - `jobstop`: Reference to function to stop the current job of an async provider. By default you could utilize `clap#dispatcher#job_start(cmd)` to start a new job, and then the job stop part will be handled by vim-clap as well, otherwise you'll have to take care of the `jobstart` and `jobstop` on your own.
 
 You must provide `sink`, `on_typed` option. It's a bit of complex to write an asynchornous provider, you'll need to prepare the command for spawning the job and overal workflow, although you could use `clap#dispatcher#job_start(cmd)` to let vim-clap deal with the job control and display update. Take [clap/provider/grep.vim](autoload/clap/provider/grep.vim) for a reference.
+
+#### RPC-based
+
+The RPC service will be started on initializing the display window when this kind of provider is invoked. Everytime your input is changed, the filtering happens or the request will be send the stdio RPC server powered by the Rust binary `maple`. The `source_typ` has to be `g:__t_tpc`. Additional properties for the provider are:
+
+Field           | Type    | Required      | Has default implementation
+:----           | :----   | :----         | :----
+`on_no_matches` | funcref | optional      | No
+`tab_action`    | funcref | optional      | No
+`bs_action`     | funcref | optional      | No
+`init`          | funcref | **mandatory** | No
+
+
+This kind of provider requires you to be experienced in VimScript and Rust. Checkout the source code [autoload/clap/provider/filer.vim](autoload/clap/provider/filer.vim) and [src/rpc.rs](src/rpc.rs) directly.
 
 ### Register provider
 

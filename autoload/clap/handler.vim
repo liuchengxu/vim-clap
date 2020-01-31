@@ -9,6 +9,10 @@ let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
 
 function! clap#handler#on_typed() abort
+  if has_key(g:clap.provider, 'source_type') && g:clap.provider.source_type == g:__t_rpc
+    call g:clap.provider.on_typed()
+    return
+  endif
   let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return
@@ -23,10 +27,22 @@ function! clap#handler#on_typed() abort
   endif
 endfunction
 
+function! s:handle_no_matches() abort
+  if has_key(g:clap.provider._(), 'on_no_matches')
+    let input = g:clap.input.get()
+    call clap#handler#internal_exit()
+    call g:clap.provider._().on_no_matches(input)
+    call g:clap.provider.on_exit()
+    silent doautocmd <nomodeline> User ClapOnExit
+  else
+    call clap#handler#exit()
+  endif
+endfunction
+
 function! clap#handler#sink() abort
   " This could be more robust by checking the exact matches count, but this should also be enough.
   if g:clap.display.get_lines() == [g:clap_no_matches_msg]
-    call clap#handler#exit()
+    call s:handle_no_matches()
     return
   endif
 
@@ -66,6 +82,23 @@ endfunction
 
 function! clap#handler#init() abort
   let s:support_multi_select = g:clap.provider.support_multi_select()
+endfunction
+
+function! clap#handler#tab_action() abort
+  if has_key(g:clap.provider._(), 'tab_action')
+    call g:clap.provider._().tab_action()
+    return ''
+  endif
+  return clap#handler#select_toggle()
+endfunction
+
+function! clap#handler#bs_action() abort
+  if has_key(g:clap.provider._(), 'bs_action')
+    call g:clap.provider._().bs_action()
+  else
+    call nvim_feedkeys("\<BS>", 'n', v:true)
+  endif
+  return ''
 endfunction
 
 function! clap#handler#select_toggle() abort

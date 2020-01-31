@@ -47,7 +47,7 @@ function! s:apply_on_typed() abort
   call s:mock_input()
 endfunction
 
-function! s:move_manager.bs(_winid) abort
+function! s:backspace() abort
   if empty(s:input) || s:cursor_idx == 0
     return 1
   endif
@@ -62,7 +62,16 @@ function! s:move_manager.bs(_winid) abort
   if s:cursor_idx < 0
     let s:cursor_idx = 0
   endif
-  call s:apply_on_typed()
+endfunction
+
+function! s:move_manager.bs(_winid) abort
+  call s:backspace()
+  if has_key(g:clap.provider._(), 'bs_action')
+    call s:mock_input()
+    call g:clap.provider._().bs_action()
+  else
+    call s:apply_on_typed()
+  endif
 endfunction
 
 function! s:move_manager.ctrl_d(_winid) abort
@@ -96,7 +105,7 @@ let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call cla
 let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
 let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
 let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#select_toggle()') }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#tab_action()') }
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#sink() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a

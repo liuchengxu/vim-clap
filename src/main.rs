@@ -2,6 +2,7 @@ mod cmd;
 mod cmd_impl;
 mod error;
 mod icon;
+mod rpc;
 
 use std::fs::File;
 use std::io::{self, BufRead, Write};
@@ -269,6 +270,9 @@ impl Maple {
         match &self.command {
             Cmd::Version => {
                 version();
+            }
+            Cmd::RPC => {
+                crate::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
                 let ranked = self.apply_fuzzy_filter_and_rank(query, input, algo)?;

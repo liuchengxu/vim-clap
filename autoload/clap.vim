@@ -33,6 +33,7 @@ let g:__t_string = 1
 let g:__t_list = 2
 let g:__t_func_string = 3
 let g:__t_func_list = 4
+let g:__t_rpc = 5
 
 let s:provider_alias = {
       \ 'hist:': 'command_history',

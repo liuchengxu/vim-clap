@@ -5,6 +5,7 @@ CHANGELOG
 
 ### Added
 
+- Add new provider `:Clap filer` for ivy-like file explorer, this also introduces a new type of clap provider: stdio-based RPC provider. ([#272](https://github.com/liuchengxu/vim-clap/pull/272))
 - Add new provider `:Clap help_tags` by @markwu. ([#248](https://github.com/liuchengxu/vim-clap/pull/248))
 - Add `maple version` to get the detailed maple info and include it in `:Clap debug`.([#262](https://github.com/liuchengxu/vim-clap/pull/262))
 - Add `g:clap_forerunner_status_sign` and deprecate `g:clap_forerunner_status_sign_done` and `g:clap_forerunner_status_sign_running`.
