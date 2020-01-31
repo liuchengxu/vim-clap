@@ -119,8 +119,13 @@ else
 
   function! s:close_cb(channel) abort
     if clap#job#vim8_job_id_of(a:channel) == s:job_id
-      let s:chunks = split(ch_readraw(a:channel), "\n")
-      call s:on_complete()
+      try
+        let s:chunks = split(ch_readraw(a:channel), "\n")
+        call s:on_complete()
+      catch
+        call clap#helper#echo_error(v:exception)
+        call clap#spinner#set_idle()
+      endtry
     endif
   endfunction
 
@@ -217,14 +222,19 @@ function! clap#maple#run_exec(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#run_grep(cmd, query, enable_icon) abort
+function! clap#maple#run_grep(cmd, query, enable_icon, glob) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if a:enable_icon
     let global_opt .= ' --enable-icon'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
-  let subcommand = printf('grep "%s" "%s" --cmd-dir "%s"', a:cmd, a:query, cmd_dir)
+  let cmd = substitute(a:cmd, '"', "'", 'g')
+  let subcommand = printf('grep "%s" "%s" --cmd-dir "%s"', cmd, a:query, cmd_dir)
+
+  if a:glob isnot v:null
+    let subcommand .= printf(' --glob "%s"', a:glob)
+  endif
 
   let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
 

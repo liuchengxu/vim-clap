@@ -1,4 +1,5 @@
 mod cmd;
+mod cmd_impl;
 mod error;
 mod icon;
 mod rpc;
@@ -17,6 +18,7 @@ use serde_json::json;
 use structopt::StructOpt;
 
 use crate::cmd::{Algo, Cmd, Maple};
+use crate::cmd_impl::*;
 use crate::error::DummyError;
 use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
@@ -320,12 +322,18 @@ impl Maple {
             Cmd::Grep {
                 grep_cmd,
                 grep_query,
+                glob,
                 cmd_dir,
             } => {
                 let (mut cmd, mut args) = prepare_grep_and_args(grep_cmd, cmd_dir.clone());
 
                 // We split out the grep opts and query in case of the possible escape issue of clap.
                 args.push(grep_query.clone());
+
+                if let Some(g) = glob {
+                    args.push("-g".into());
+                    args.push(g.to_string());
+                }
 
                 // currently vim-clap only supports rg.
                 // Ref https://github.com/liuchengxu/vim-clap/pull/60
@@ -339,6 +347,7 @@ impl Maple {
 
                 light_cmd.execute(&args)?;
             }
+            Cmd::Helptags { meta_info } => print_helptags(meta_info)?,
         }
         Ok(())
     }
