@@ -218,18 +218,16 @@ g:clap_cache_directory                                  *g:clap_cache_directory*
   Type: |String|
   Default: `Undefined`
 
-  This variable controls the cache directory of clap. In default, clap will set
-  cache directory according to the following order:
+  This variable controls the cache directory of clap. By default, clap will set
+  the cache directory according to the following order:
 
-  1. If has('nvim'), the default cache directory is `stdpath('cache')/clap`
-  2. If has `$XDG_CACHE_HOME`, the default cache directory is `$XDG_CACHE_HOME/clap`
-  3. If not all above, the default cache directory is `$HOME/.cache/clap`
+  1. If has('nvim'), use `stdpath('cache')/clap`
+  2. If has `$XDG_CACHE_HOME`, use `$XDG_CACHE_HOME/clap`
+  3. Otherwise use `$HOME/.cache/clap`
 
-  If you want to change it to your cache directory, just set this variable. For
-  example:
+  Set another directory as the cache directory of clap:
 >
   let g:clap_cache_directory = $HOME . '/.vim/cache/clap'
-<
 
 
 g:clap_layout                                                    *g:clap_layout*

@@ -73,7 +73,7 @@ pub enum Cmd {
     #[structopt(name = "helptags")]
     Helptags {
         #[structopt(index = 1, short, long, parse(from_os_str))]
-        tags_info: PathBuf,
+        meta_info: PathBuf,
     },
 }
 

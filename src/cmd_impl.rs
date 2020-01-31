@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
@@ -34,14 +35,13 @@ pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
                         dt
                     )
                 });
-                let mut seen = std::collections::HashMap::new();
+                let mut seen = HashMap::new();
                 let mut v: Vec<String> = Vec::new();
                 for tags_file in tags_files {
                     if let Ok(lines) = read_lines(tags_file) {
                         lines.for_each(|line| {
                             if let Ok(helptag) = line {
                                 v = helptag.split('\t').map(Into::into).collect();
-                                // println!("{}", format!("{:<60}\t{}", v[0], v[1]));
                                 if !seen.contains_key(&v[0]) {
                                     seen.insert(v[0].clone(), format!("{:<60}\t{}", v[0], v[1]));
                                 }
@@ -49,9 +49,9 @@ pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
                         });
                     }
                 }
-                // println!("see: {:?}", seen.values());
-                // println!("see: {:?}", seen.len());
-                for line in seen.values() {
+                let mut tag_lines = seen.values().collect::<Vec<_>>();
+                tag_lines.sort();
+                for line in tag_lines {
                     println!("{}", line);
                 }
             }

@@ -337,7 +337,7 @@ impl Maple {
 
                 light_cmd.execute(&args)?;
             }
-            Cmd::Helptags { tags_info } => print_helptags(tags_info)?,
+            Cmd::Helptags { meta_info } => print_helptags(meta_info)?,
         }
         Ok(())
     }
