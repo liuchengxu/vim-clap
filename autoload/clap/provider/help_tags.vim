@@ -16,6 +16,15 @@ if clap#maple#is_available() && clap#filter#has_py_dynamic_module()
     return clap#maple#inject_bin('helptags '.tmp)
   endfunction
 
+  function! s:help_tags_sink(line) abort
+    let [tag, doc_fname] = split(a:line, "\t")
+    if doc_fname =~# '.txt$'
+      execute 'help' trim(tag).'@en'
+    else
+      execute 'help' tag
+    endif
+  endfunction
+
 else
 
   let s:help_tags_memory_cache = []
@@ -60,16 +69,12 @@ else
     endfor
     return tags_files
   endfunction
-endif
 
-function! s:help_tags_sink(line) abort
-  let [tag, doc_fname] = split(a:line, "\t")
-  if doc_fname =~# '.txt$'
-    execute 'help' trim(tag).'@en'
-  else
+  function! s:help_tags_sink(line) abort
+    let tag = get(split(a:line, "\t"), 0)
     execute 'help' tag
-  endif
-endfunction
+  endfunction
+endif
 
 let s:help_tags = {}
 let s:help_tags.sink = function('s:help_tags_sink')
