@@ -34,6 +34,7 @@ endf
 function! clap#cache#location_for(provider_id, fname) abort
   if empty(a:provider_id)
     call clap#helper#echo_error('provider_id can not be empty.')
+    return v:null
   endif
 
   let provider_cache_directory = clap#cache#directory() . s:path_separator . a:provider_id
