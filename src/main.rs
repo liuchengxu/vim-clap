@@ -1,4 +1,5 @@
 mod cmd;
+mod cmd_impl;
 mod error;
 mod icon;
 
@@ -16,6 +17,7 @@ use serde_json::json;
 use structopt::StructOpt;
 
 use crate::cmd::{Algo, Cmd, Maple};
+use crate::cmd_impl::*;
 use crate::error::DummyError;
 use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
@@ -341,6 +343,7 @@ impl Maple {
 
                 light_cmd.execute(&args)?;
             }
+            Cmd::Helptags { meta_info } => print_helptags(meta_info)?,
         }
         Ok(())
     }
