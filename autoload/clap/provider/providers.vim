@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:providers = {}
 
 function! s:providers.sink(selected) abort
-  let provider = matchstr(a:selected, '^\(.*\)\ze:')
+  let provider = a:selected[: stridx(a:selected, ':') - 1]
   " a sink for "Clap providers" (dispatch to other builtin clap providers).
   call timer_start(0, {-> clap#_for(provider)})
 endfunction
