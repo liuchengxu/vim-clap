@@ -8,7 +8,20 @@ let s:old_input = ''
 let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
 
+function! clap#handler#relaunch_is_ok() abort
+  if g:clap.input.get() ==# '@@'
+    call timer_start(10, { -> clap#for('providers') })
+    call g:clap.input.set('')
+    return v:true
+  endif
+  return v:false
+endfunction
+
 function! clap#handler#on_typed() abort
+  if clap#handler#relaunch_is_ok()
+    return
+  endif
+
   if has_key(g:clap.provider, 'source_type') && g:clap.provider.source_type == g:__t_rpc
     call g:clap.provider.on_typed()
     return

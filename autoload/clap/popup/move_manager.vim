@@ -167,6 +167,9 @@ function! s:apply_input(_timer) abort
 endfunction
 
 function! s:apply_input_with_delay() abort
+  if clap#handler#relaunch_is_ok()
+    return
+  endif
   if s:input_timer != -1
     call timer_stop(s:input_timer)
   endif
