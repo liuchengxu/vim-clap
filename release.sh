@@ -26,7 +26,7 @@ ask() {
 }
 
 echo "          Next tag: $next_tag"
-echo "next maple version: $next_maple_version"
+echo "Next maple version: $next_maple_version"
 ask "confirmed?"
 confirmed=$?
 
