@@ -14,7 +14,11 @@ function! s:tags.source(...) abort
         \ expand('#'.g:clap.start.bufnr.':p')
         \ ]
 
-  call vista#source#Update(bufnr, winnr, fname, fpath)
+  try
+    call vista#source#Update(bufnr, winnr, fname, fpath)
+  catch
+    return [v:exception, 'Ensure you have installed https://github.com/liuchengxu/vista.vim']
+  endtry
 
   let [data, _, _] = call('vista#finder#GetSymbols', a:000)
 

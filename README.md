@@ -64,7 +64,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 ## Requirement
 
 - Vim: `:echo has('patch-8.1.2114')`.
-- NeoVim: `:echo has('nvim-0.4')`.
+- NeoVim: `:echo has('nvim-0.4.2')`.
 
 ## Installation
 

@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Fixed
+
+- The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
+
 ## [0.7] 2020-01-31
 
 ### Added
