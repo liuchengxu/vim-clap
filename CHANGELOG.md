@@ -7,6 +7,11 @@ CHANGELOG
 
 - The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
 
+### Changed
+
+- Add `<nowait>` to neovim's open action mappinngs.
+- Change the default icon for `filer` to   .
+
 ## [0.7] 2020-01-31
 
 ### Added
