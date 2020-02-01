@@ -15,6 +15,17 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+#[inline]
+fn strip_trailing_slash(x: &str) -> String {
+    if x.ends_with('/') {
+        let mut x: String = x.into();
+        x.pop();
+        x
+    } else {
+        x.into()
+    }
+}
+
 pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
     let mut lines = read_lines(meta_path)?;
     // line 1:/doc/tags,/doc/tags-cn
@@ -22,19 +33,9 @@ pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
     if let Some(Ok(doc_tags)) = lines.next() {
         if let Some(Ok(runtimepath)) = lines.next() {
             for dt in doc_tags.split(',') {
-                let tags_files = runtimepath.split(',').map(|x| {
-                    format!(
-                        "{}{}",
-                        if x.ends_with('/') {
-                            let mut x: String = x.into();
-                            x.pop();
-                            x
-                        } else {
-                            x.into()
-                        },
-                        dt
-                    )
-                });
+                let tags_files = runtimepath
+                    .split(',')
+                    .map(|x| format!("{}{}", strip_trailing_slash(x), dt));
                 let mut seen = HashMap::new();
                 let mut v: Vec<String> = Vec::new();
                 for tags_file in tags_files {
