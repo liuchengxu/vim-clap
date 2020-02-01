@@ -43,12 +43,6 @@ lines = read_file(fname)
 lines[3] = '" Version:   {version}\n'.format(version=next_tag)
 write_back(lines, fname)
 
-#  Cargo.toml
-fname = 'Cargo.toml'
-lines = read_file(fname)
-lines[4] = 'version = "{version}"\n'.format(version=next_maple_version)
-write_back(lines, fname)
-
 #  CHANGELOG.md
 fname = 'CHANGELOG.md'
 lines = read_file(fname)
@@ -58,4 +52,10 @@ release_header = '## [{version}] {today}'.format(version=next_tag, today=today)
 lines.insert(4, "\n")
 lines.insert(5, release_header)
 lines.insert(6, "\n")
+write_back(lines, fname)
+
+#  Cargo.toml
+fname = 'Cargo.toml'
+lines = read_file(fname)
+lines[4] = 'version = "{version}"\n'.format(version=next_maple_version)
 write_back(lines, fname)
