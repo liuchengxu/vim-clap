@@ -25,7 +25,9 @@ ask() {
   done
 }
 
-ask "Next tag: $next_tag, next maple version: $next_maple_version, confirmed?"
+echo "          Next tag: $next_tag"
+echo "next maple version: $next_maple_version"
+ask "confirmed?"
 confirmed=$?
 
 if [ $confirmed -eq 0 ]; then
