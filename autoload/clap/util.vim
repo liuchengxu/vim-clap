@@ -100,7 +100,7 @@ endfunction
 function! clap#util#define_open_action_mappings() abort
   for k in keys(g:clap_open_action)
     let lhs = substitute(toupper(k), 'CTRL', 'C', '')
-    execute 'inoremap <silent> <buffer> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
+    execute 'inoremap <silent> <buffer> <nowait> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
   endfor
 endfunction
 
