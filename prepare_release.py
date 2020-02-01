@@ -20,38 +20,38 @@ def write_back(lines, f):
         writer.writelines(lines)
 
 
+def read_file(fname):
+    f = open(fname)
+    return f.readlines()
+
+
 #  install.sh
 fname = 'install.sh'
-f = open(fname)
-lines = f.readlines()
+lines = read_file(fname)
 lines[4] = "version=v{version}\n".format(version=next_tag)
 write_back(lines, fname)
 
 #  install.ps1
 fname = 'install.ps1'
-f = open(fname)
-lines = f.readlines()
+lines = read_file(fname)
 lines[2] = "$version = 'v{version}'\n".format(version=next_tag)
 write_back(lines, fname)
 
 #  plugin/clap.vim
 fname = 'plugin/clap.vim'
-f = open(fname)
-lines = f.readlines()
+lines = read_file(fname)
 lines[3] = '" Version:   {version}\n'.format(version=next_tag)
 write_back(lines, fname)
 
 #  Cargo.toml
 fname = 'Cargo.toml'
-f = open(fname)
-lines = f.readlines()
+lines = read_file(fname)
 lines[4] = 'version = "{version}"\n'.format(version=next_maple_version)
 write_back(lines, fname)
 
 #  CHANGELOG.md
 fname = 'CHANGELOG.md'
-f = open(fname)
-lines = f.readlines()
+lines = read_file(fname)
 now = datetime.datetime.now()
 today = now.strftime("%Y-%m-%d")
 release_header = '## [{version}] {today}'.format(version=next_tag, today=today)
