@@ -8,11 +8,7 @@ set cpoptions&vim
 
 let s:filer = {}
 
-if g:clap_enable_icon
-  let s:DIRECTORY_IS_EMPTY = '  Directory is empty'
-else
-  let s:DIRECTORY_IS_EMPTY = 'Directory is empty'
-endif
+let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
 
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/

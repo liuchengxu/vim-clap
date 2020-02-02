@@ -11,6 +11,7 @@ CHANGELOG
 
 - Add `<nowait>` to neovim's open action mappinngs.
 - Change the default icon for `filer` to   .
+- Set `&foldcoloumn` to 0 for neovim by default.
 
 ## [0.7] 2020-01-31
 
