@@ -385,6 +385,10 @@ function! s:init_provider() abort
     return get(self._(), 'support_open_action', v:false)
   endfunction
 
+  function! provider.is_rpc_type() abort
+    return has_key(self._(), 'source_type') && self._().source_type == g:__t_rpc
+  endfunction
+
   function! provider.try_set_syntax() abort
     if has_key(self._(), 'syntax')
       call g:clap.display.setbufvar('&syntax', self._().syntax)
