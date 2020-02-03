@@ -37,6 +37,7 @@ let g:__t_rpc = 5
 
 let s:provider_alias = {
       \ 'hist:': 'command_history',
+      \ 'hist/': 'search_history',
       \ 'gfiles': 'git_files',
       \ }
 

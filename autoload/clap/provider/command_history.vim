@@ -5,24 +5,12 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 " Derived from fzf.vim
-function! s:command_history() abort
-  let max  = histnr(':')
-  let fmt  = ' %'.len(string(max)).'d '
-  let list = filter(map(range(1, max), 'histget(":", - v:val)'), '!empty(v:val)')
-  return list
-endfunction
-
 function! s:command_history_source() abort
-  let cmd_hist = s:command_history()
-  let max  = histnr(':')
-  let cmd_hist_len = len(cmd_hist)
-  return map(cmd_hist, 'printf("%4d", cmd_hist_len - v:key)."  ".v:val')
+  return clap#common_history#source(':')
 endfunction
 
 function! s:command_history_sink(selected) abort
-  let item = matchstr(a:selected, '\d\+\s\+\zs\(.*\)')
-  call histadd(':', item)
-  call execute(item, '')
+  call clap#common_history#sink(':', a:selected)
 endfunction
 
 let s:command_history = {}

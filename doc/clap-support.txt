@@ -130,6 +130,12 @@ Supported Providers & Tools                                    *clap-support*
 :Clap registers          List Registers
 
 
+                                                    *:Clap-hist/*
+                                                    *:Clap-search_history*
+:Clap hist/              List Search history.
+:Clap search_history
+
+
                                                      *:Clap-tags*
 :Clap tags               List Tags in the current buffer
                          Require `vista.vim`
