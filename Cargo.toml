@@ -26,4 +26,4 @@ crossbeam-channel = "0.3"
 extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
 
 [build-dependencies]
-built = "0.3"
+built = "0.4"
