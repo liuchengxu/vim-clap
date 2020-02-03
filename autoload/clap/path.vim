@@ -92,7 +92,7 @@ function! clap#path#find_project_root(bufnr) abort
   return s:find_root_dir(a:bufnr, s:project_root_markers)
 endfunction
 
-function! clap#path#project_root_or_default(bufnr)
+function! clap#path#project_root_or_default(bufnr) abort
   let root = clap#path#find_project_root(a:bufnr)
   return empty(root) ? getcwd() : root
 endfunction
