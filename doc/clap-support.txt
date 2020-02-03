@@ -121,6 +121,17 @@ Supported Providers & Tools                                    *clap-support*
                                                      *:Clap-providers*
 :Clap providers          List the clap providers.
 
+
+                                                     *:Clap-maps*
+:Clap maps               List the maps.
+
+                         Use `Clap maps ++mode=[n|i|x|o]` to list key mappings
+                         for different mode.
+
+                         By default `Clap maps` without `++mode` argument will
+                         list key mappings for normal mode.
+
+
                                                      *:Clap-marks*
 :Clap marks              List Marks
                          Support preview
