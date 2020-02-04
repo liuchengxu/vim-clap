@@ -140,7 +140,7 @@ g:clap_theme                                                      *g:clap_theme*
 g:clap_popup_input_delay                              *g:clap_popup_input_delay*
 
   Type: |Number|
-  Default: `200`
+  Default: `100`
 
   This variable controls the milliseconds delay after which the `on_typed` of
   provider will be run after your input is changed.

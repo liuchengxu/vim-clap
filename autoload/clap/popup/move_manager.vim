@@ -6,7 +6,7 @@ set cpoptions&vim
 
 let s:input = ''
 let s:input_timer = -1
-let s:input_delay = get(g:, 'clap_popup_input_delay', 200)
+let s:input_delay = get(g:, 'clap_popup_input_delay', 100)
 let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
 let s:cursor_width = strdisplaywidth(s:cursor_shape)
 

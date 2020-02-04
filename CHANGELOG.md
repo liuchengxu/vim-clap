@@ -18,6 +18,7 @@ CHANGELOG
 - Add `<nowait>` to neovim's open action mappinngs.
 - Change the default icon for `filer` to   .
 - Set `&foldcoloumn` to 0 for neovim by default.
+- Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
 
 ## [0.7] 2020-01-31
 
