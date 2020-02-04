@@ -150,6 +150,9 @@ function! g:clap#floating_win#spinner.shrink() abort
       let opts = nvim_win_get_config(s:spinner_winid)
       let opts.col += opts.width
       let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+      if opts.width < 0
+        let opts.width = 1
+      endif
       let g:clap#floating_win#input.width = opts.width
       call nvim_win_set_config(s:input_winid, opts)
       call clap#indicator#repadding()
@@ -161,6 +164,11 @@ function! g:clap#floating_win#input.open() abort
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
   let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+  " E5555: API call: 'width' key must be a positive Integer
+  " Avoid E5555 here and it seems to be fine later.
+  if opts.width < 0
+    let opts.width = 1
+  endif
   let opts.focusable = v:true
 
   let g:clap#floating_win#input.width = opts.width
