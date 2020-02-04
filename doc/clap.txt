@@ -247,10 +247,19 @@ g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
   by changing `cwd` temporarily if the provider has `enable_rooter` field and
   its value is |v:true|.
 
-  The project root here means the git base directory. Create an issue if
-  you want to see more support about the project root.
+  Refer to |g:clap_project_root_markers| for configuring the project root
+  markers.
 
   This variable can be set to `v:true` to run from the origin `cwd`.
+
+
+g:clap_project_root_markers                       *g:clap_project_root_markers*
+
+  Type: |List|
+  Default: `['.root', '.git', '.git/']`
+
+  This variable controls how vim-clap identify the root directory of a
+  project.
 
 
 g:clap_current_selection_sign                   *g:clap_current_selection_sign*

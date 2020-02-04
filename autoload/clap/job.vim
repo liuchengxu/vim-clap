@@ -57,8 +57,7 @@ function! clap#job#cwd() abort
   if clap#should_use_raw_cwd()
     return getcwd()
   else
-    let git_root = clap#util#find_git_root(g:clap.start.bufnr)
-    return empty(git_root) ? getcwd() : git_root
+    return clap#path#project_root_or_default(g:clap.start.bufnr)
   endif
 endfunction
 
