@@ -352,10 +352,10 @@ endfunction
 
 function! clap#(bang, ...) abort
   if a:000 == ['install-binary']
-    call clap#helper#install(v:false)
+    call clap#installer#install(v:false)
     return
   elseif a:000 == ['install-binary!']
-    call clap#helper#install(v:true)
+    call clap#installer#install(v:true)
     return
   endif
 

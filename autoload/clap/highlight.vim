@@ -7,6 +7,8 @@ set cpoptions&vim
 let s:related_maple_providers = ['files', 'git_files']
 let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
+let s:default_priority = 10
+
 " The icon can interfer the matched indices of fuzzy filter, but not the
 " substring filter.
 function! s:should_check_offset() abort
@@ -139,6 +141,29 @@ endfunction
 " lnum and col are 0-based.
 function! clap#highlight#matchadd_char_at(lnum, col, hl_group) abort
   return matchaddpos(a:hl_group, [[a:lnum+1, a:col+1, 1]])
+endfunction
+
+" Add highlight for the substring matches.
+function! clap#highlight#matchadd_substr(patterns) abort
+  let w:clap_match_ids = []
+  " Clap grep
+  " \{ -> E888
+  try
+    call add(w:clap_match_ids, matchadd('ClapMatches', a:patterns[0], s:default_priority))
+  catch
+    " Sometimes we may run into some pattern errors in that the query is not a
+    " valid vim pattern. Just ignore them as the highlight is not critical, we
+    " care more about the searched results IMO.
+    return
+  endtry
+
+  " As most 8 submatches, ClapMatches[1-8]
+  try
+    call map(a:patterns[1:8],
+          \ {key, val -> add(w:clap_match_ids, matchadd('ClapMatches'.(key+1), val, s:default_priority -1))})
+  catch
+    return
+  endtry
 endfunction
 
 let &cpoptions = s:save_cpo
