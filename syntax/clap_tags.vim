@@ -23,11 +23,12 @@ function! s:hi() abort
   endfor
 
   let joined_icon_groups = join(icon_groups, ',')
-  execute 'syntax match ClapVistaNumber /\s*\zs\d*\ze:\w/' 'contains=ClapVistaIcon,'.joined_icon_groups
-  execute 'syntax match ClapVistaTag    /^[^\[]*\(\[\)\@=/' 'contains=ClapVistaNumber,ClapVistaIcon,'.joined_icon_groups
-  syntax match ClapVistaScope  /^[^]]*]/ contains=ClapVistaTag,ClapVistaBracket
-  syntax match ClapVistaBracket /\[\|\]/ contained
-  syntax match ClapVista /^[^│┌└]*/ contains=ClapVistaBracket,ClapVistaNumber,ClapVistaTag,ClapVistaScope
+
+  execute 'syntax match ClapVistaTag    /\s*.*\(:\d\)\@=/' 'contains=ClapVistaIcon,'.joined_icon_groups
+  execute 'syntax match ClapVistaNumber /^[^\[]*\(\s\s\[\)\@=/' 'contains=ClapVistaTag,ClapVistaIcon,'.joined_icon_groups
+  syntax match ClapVistaScope  /^[^]]*]/ contains=ClapVistaNumber,ClapVistaBracket
+  syntax match ClapVista /^[^│┌└]*/ contains=ClapVistaBracket,ClapVistaTag,ClapVistaNumber,ClapVistaScope
+  syntax match ClapVistaBracket /\s\s\[\|\]\s\s/ contained
 
   hi default link ClapVistaBracket  SpecialKey
   hi default link ClapVistaNumber   Number

@@ -21,9 +21,9 @@ bytecount = "0.6"
 serde_json = "1.0"
 lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 
 extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
 
 [build-dependencies]
-built = "0.3"
+built = { package = "built", version = "0.4", features = ["git2"]}

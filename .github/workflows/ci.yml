@@ -30,7 +30,19 @@ jobs:
         github_token: ${{ secrets.github_token }}
         reporter: github-pr-review
 
-  rust_ext:
+  maple_binary:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Build maple
+      run: cargo build --release
+
+  python_dynamic_module:
     strategy:
       fail-fast: false
 
