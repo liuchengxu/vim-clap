@@ -45,3 +45,5 @@ jobs:
       run: rustup component add rustfmt
     - name: Check formatting
       run: cargo fmt --all -- --check
+    - name: Check build
+      run: cargo build --release
