@@ -73,8 +73,13 @@ function! clap#provider#files#sink_star_impl(lines) abort
   cc
 endfunction
 
+function! clap#provider#files#on_move_impl() abort
+  call clap#preview#file(s:into_filename(g:clap.display.getcurline()))
+endfunction
+
 let s:files.sink = function('clap#provider#files#sink_impl')
 let s:files['sink*'] = function('clap#provider#files#sink_star_impl')
+let s:files.on_move = function('clap#provider#files#on_move_impl')
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
 let s:files.syntax = 'clap_files'
