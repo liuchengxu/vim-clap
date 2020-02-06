@@ -27,6 +27,24 @@ function! clap#preview#file(fname) abort
   endif
 endfunction
 
+" Given the origin lnum and the size of range, return
+" [origin_lnum-range_size, origin_lnum+range_size] and the target lnum that
+" the origin line should be positioned.
+" 0-based
+function! clap#preview#get_line_range(origin_lnum, range_size) abort
+  if a:origin_lnum - a:range_size > 0
+    return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size]
+  else
+    return [0, a:origin_lnum + a:range_size, a:origin_lnum]
+  endif
+endfunction
+
+function! clap#preview#show_with_line_highlight(lines, syntax, hi_lnum) abort
+  call g:clap.preview.show(a:lines)
+  call g:clap.preview.set_syntax(a:syntax)
+  call g:clap.preview.add_highlight(a:hi_lnum)
+endfunction
+
 function! s:highlight_header() abort
   if !exists('w:preview_header_id')
     let w:preview_header_id = matchaddpos('Title', [1])
