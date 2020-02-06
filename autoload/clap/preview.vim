@@ -19,7 +19,7 @@ function! clap#preview#file(fname) abort
   let fpath = expand(a:fname)
   if filereadable(fpath)
     call s:peek_file(a:fname, fpath)
-  else
+  elseif exists('g:__clap_provider_cwd')
     let fpath_with_cwd = g:__clap_provider_cwd.s:path_seperator.fpath
     if filereadable(fpath_with_cwd)
       call s:peek_file(a:fname, fpath_with_cwd)
