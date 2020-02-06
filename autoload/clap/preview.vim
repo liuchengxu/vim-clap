@@ -15,9 +15,8 @@ function! s:peek_file(fname, fpath) abort
 endfunction
 
 function! s:show_file_props(entry) abort
-  let modified = strftime('%b %d/%m/%Y %H:%M:%S', getftime(a:entry))
-  let perm = getfperm(a:entry)
-  call g:clap.preview.show([a:entry, modified, perm])
+  let props = strftime('%B %d/%m/%Y %H:%M:%S', getftime(a:entry)).'    '.getfperm(a:entry)
+  call g:clap.preview.show([a:entry, props])
   call clap#preview#highlight_header()
 endfunction
 
