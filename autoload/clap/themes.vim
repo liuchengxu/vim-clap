@@ -49,7 +49,7 @@ function! s:hi_clap_symbol() abort
         \ )
 endfunction
 
-" Try the palatte, otherwise use the built-in material_design_dark theme.
+" Try the palette, otherwise use the built-in material_design_dark theme.
 function! s:highlight_for(group_name, type) abort
   if has_key(s:palette, a:type)
     let props = s:palette[a:type]
@@ -72,6 +72,8 @@ function! s:paint_is_ok() abort
     call s:highlight_for('ClapDisplay', 'display')
     call s:highlight_for('ClapSelected', 'selected')
     call s:highlight_for('ClapCurrentSelection', 'current_selection')
+    call s:highlight_for('ClapSelectedSign', 'selected_sign')
+    call s:highlight_for('ClapCurrentSelectionSign', 'current_selection_sign')
     call s:highlight_for('ClapPreview', 'preview')
   catch
     return v:false
