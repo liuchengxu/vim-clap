@@ -31,8 +31,8 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
-let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
+let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
+let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
 "  -----------------------------
 " | spinner | input             |
@@ -242,6 +242,7 @@ function! s:create_preview_win(height) abort
 
   call clap#api#setbufvar_batch(s:preview_bufnr, {
         \ '&number': 0,
+        \ '&relativenumber': 0,
         \ '&cursorline': 0,
         \ '&signcolumn': 'no',
         \ '&foldcolumn': 0,

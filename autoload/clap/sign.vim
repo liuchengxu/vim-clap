@@ -15,12 +15,12 @@ let s:sign_cur_group = 'PopUpClapCurrentSelected'
 if !exists('s:sign_inited')
   call sign_define(s:sign_group, get(g:, 'clap_selected_sign', {
         \ 'text': ' >',
-        \ 'texthl': 'WarningMsg',
+        \ 'texthl': 'ClapSelectedSign',
         \ 'linehl': 'ClapSelected'
         \ }))
   call sign_define(s:sign_cur_group, get(g:, 'clap_current_selection_sign', {
         \ 'text': '>>',
-        \ 'texthl': 'WarningMsg',
+        \ 'texthl': 'ClapCurrentSelectionSign',
         \ 'linehl': 'ClapCurrentSelection',
         \ }))
   let s:sign_inited = 1

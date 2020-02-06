@@ -76,7 +76,7 @@ Then use `:call clap#helper#build_python_dynamic_module()` to install the Python
 
 ## Download the prebuilt binary
 
-You can call `:call clap#helper#download_binary()` in Vim/NeoVim, or do it manually as follows.
+You can call `:call clap#installer#download_binary()` in Vim/NeoVim, or do it manually as follows.
 
 ### `maple`
 
