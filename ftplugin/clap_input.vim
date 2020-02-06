@@ -54,6 +54,8 @@ inoremap <silent> <buffer> <C-c> <Esc>:call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <Esc> <Esc>:call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-g> <Esc>:call clap#handler#exit()<CR>
 
+inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR>
+
 inoremap <silent> <buffer> <C-j> <C-R>=clap#navigation#linewise('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#navigation#linewise('up')<CR>
 
