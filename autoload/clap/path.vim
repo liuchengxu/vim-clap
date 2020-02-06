@@ -4,14 +4,15 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:project_root_markers = get(g:, 'clap_project_root_markers', ['.root', '.git', '.git/'])
+
 function! s:is_dir(pattern) abort
   return a:pattern[-1:] ==# '/'
 endfunction
 
 " Credit: vim-rooter
-function! s:find_upwards(pattern) abort
-  let start_dir = expand('#'.g:clap.start.bufnr.':p')
-  let fd_dir = isdirectory(start_dir) ? start_dir : fnamemodify(start_dir, ':h')
+function! s:find_upwards(start_dir, pattern) abort
+  let fd_dir = isdirectory(a:start_dir) ? a:start_dir : fnamemodify(a:start_dir, ':h')
   let fd_dir_escaped = escape(fd_dir, ' ')
 
   if s:is_dir(a:pattern)
@@ -63,22 +64,37 @@ function! clap#path#get_git_root() abort
   return v:shell_error ? '' : root
 endfunction
 
-" This is faster than clap#path#get_git_root() which uses the system call.
-function! clap#path#find_git_root(bufnr) abort
-  " git submodule uses .git instead of .git/. Ref #164
-  for pattern in ['.git', '.git/']
-    let git_dir = s:find_upwards(pattern)
-    if !empty(git_dir)
-      return git_dir
+function! s:find_root_dir(bufnr, root_markers) abort
+  let start_dir = expand('#'.a:bufnr.':p')
+
+  for pattern in a:root_markers
+    let dir = s:find_upwards(start_dir, pattern)
+    if !empty(dir)
+      return dir
     endif
   endfor
 
   return ''
 endfunction
 
+" This is faster than clap#path#get_git_root() which uses the system call.
+function! clap#path#find_git_root(bufnr) abort
+  " git submodule uses .git instead of .git/. Ref #164
+  return s:find_root_dir(a:bufnr, ['.git', '.git/'])
+endfunction
+
 function! clap#path#git_root_or_default(bufnr) abort
   let git_root = clap#path#find_git_root(a:bufnr)
   return empty(git_root) ? getcwd() : git_root
+endfunction
+
+function! clap#path#find_project_root(bufnr) abort
+  return s:find_root_dir(a:bufnr, s:project_root_markers)
+endfunction
+
+function! clap#path#project_root_or_default(bufnr) abort
+  let root = clap#path#find_project_root(a:bufnr)
+  return empty(root) ? getcwd() : root
 endfunction
 
 let &cpoptions = s:save_cpo

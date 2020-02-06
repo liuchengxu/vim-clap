@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:commits = {}
 
 function! s:commits.source() abort
-  let s:git_root = clap#util#get_git_root()
+  let s:git_root = clap#path#get_git_root()
   if empty(s:git_root)
     call g:clap.abort('Not in git repository')
     return

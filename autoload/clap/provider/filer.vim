@@ -8,11 +8,7 @@ set cpoptions&vim
 
 let s:filer = {}
 
-if g:clap_enable_icon
-  let s:DIRECTORY_IS_EMPTY = '  Directory is empty'
-else
-  let s:DIRECTORY_IS_EMPTY = 'Directory is empty'
-endif
+let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
 
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/
@@ -62,7 +58,12 @@ function! s:set_prompt() abort
   else
     let parent = fnamemodify(s:current_dir, ':p:h')
     let last = fnamemodify(s:current_dir, ':p:t')
-    call clap#spinner#set(pathshorten(parent).'/'.last)
+    let short_dir = pathshorten(parent).'/'.last
+    if strlen(short_dir) < s:winwidth * 3 / 4
+      call clap#spinner#set(short_dir)
+    else
+      call clap#spinner#set(pathshorten(s:current_dir))
+    endif
   endif
 endfunction
 

@@ -8,6 +8,7 @@ pub const DEFAULT_ICON: &str = "";
 #[allow(dead_code)]
 pub const DEFAULT_ICONIZED: &str = " ";
 pub const FOLDER_ICON: &str = "";
+pub const DEFAULT_FILER_ICON: &str = "";
 
 lazy_static! {
     pub static ref EXACTMATCH_MAP: HashMap<&'static str, &'static str> = {
@@ -203,7 +204,7 @@ pub fn icon_for_filer(path: &Path) -> &str {
                 path.extension()
                     .and_then(std::ffi::OsStr::to_str)
                     .and_then(|ext| EXTENSION_MAP.get(ext))
-                    .unwrap_or(&DEFAULT_ICON)
+                    .unwrap_or(&DEFAULT_FILER_ICON)
             })
     }
 }

@@ -52,7 +52,6 @@ function! g:clap#floating_win#display.open() abort
   endif
 
   let s:display_opts = clap#layout#calc()
-
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
@@ -62,17 +61,17 @@ function! g:clap#floating_win#display.open() abort
   let g:clap.display.winid = s:display_winid
 
   " call setwinvar(s:display_winid, '&listchars', 'extends:•')
-  "
   " \ '&listchars': 'extends:•'
-  "
   " listchars would cause some troubles in some files using tab.
   " Is there a better solution?
+
   call g:clap.display.setbufvar_batch({
         \ '&wrap': 0,
         \ '&number': 0,
         \ '&relativenumber': 0,
         \ '&cursorline': 0,
         \ '&signcolumn': 'yes',
+        \ '&foldcolumn': 0,
         \ })
 endfunction
 
@@ -97,6 +96,12 @@ function! g:clap#floating_win#display.shrink() abort
   endif
 endfunction
 
+function! s:set_minimal_buf_style(bufnr, filetype) abort
+  call setbufvar(a:bufnr, '&filetype', a:filetype)
+  call setbufvar(a:bufnr, '&signcolumn', 'no')
+  call setbufvar(a:bufnr, '&foldcolumn', 0)
+endfunction
+
 function! s:open_win_border_left() abort
   if s:symbol_width > 0
     let opts = nvim_win_get_config(s:display_winid)
@@ -111,9 +116,7 @@ function! s:open_win_border_left() abort
     silent let s:symbol_left_winid = nvim_open_win(s:symbol_left_bufnr, v:false, opts)
 
     call setwinvar(s:symbol_left_winid, '&winhl', 'Normal:ClapSymbol')
-    call setbufvar(s:symbol_left_bufnr, '&filetype', 'clap_spinner')
-    call setbufvar(s:symbol_left_bufnr, '&signcolumn', 'no')
-
+    call s:set_minimal_buf_style(s:symbol_left_bufnr, 'clap_spinner')
     call setbufline(s:symbol_left_bufnr, 1, s:symbol_left)
   endif
 endfunction
@@ -136,8 +139,7 @@ function! g:clap#floating_win#spinner.open() abort
   silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:false, opts)
 
   call setwinvar(s:spinner_winid, '&winhl', 'Normal:ClapSpinner')
-  call setbufvar(s:spinner_bufnr, '&filetype', 'clap_spinner')
-  call setbufvar(s:spinner_bufnr, '&signcolumn', 'no')
+  call s:set_minimal_buf_style(s:spinner_bufnr, 'clap_spinner')
 
   let g:clap.spinner = get(g:clap, 'spinner', {})
   let g:clap.spinner.winid = s:spinner_winid
@@ -154,6 +156,9 @@ function! g:clap#floating_win#spinner.shrink() abort
       let opts = nvim_win_get_config(s:spinner_winid)
       let opts.col += opts.width
       let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+      if opts.width < 0
+        let opts.width = 1
+      endif
       let g:clap#floating_win#input.width = opts.width
       call nvim_win_set_config(s:input_winid, opts)
       call clap#indicator#repadding()
@@ -168,6 +173,11 @@ function! g:clap#floating_win#input.open() abort
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
   let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+  " E5555: API call: 'width' key must be a positive Integer
+  " Avoid E5555 here and it seems to be fine later.
+  if opts.width < 0
+    let opts.width = 1
+  endif
   let opts.focusable = v:true
 
   let g:clap#floating_win#input.width = opts.width
@@ -181,13 +191,13 @@ function! g:clap#floating_win#input.open() abort
   let w:clap_search_text_hi_id = matchaddpos('ClapSearchText', [1])
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
-  call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
+  call s:set_minimal_buf_style(s:input_bufnr, 'clap_input')
   let s:save_completeopt = &completeopt
   call nvim_set_option('completeopt', '')
-  call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:false)
   endif
+  call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
   call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
   let g:clap.input.winid = s:input_winid
 endfunction
@@ -205,9 +215,7 @@ function! s:open_win_border_right() abort
     silent let s:symbol_right_winid = nvim_open_win(s:symbol_right_bufnr, v:false, opts)
 
     call setwinvar(s:symbol_right_winid, '&winhl', 'Normal:ClapSymbol')
-    call setbufvar(s:symbol_right_bufnr, '&filetype', 'clap_spinner')
-    call setbufvar(s:symbol_right_bufnr, '&signcolumn', 'no')
-
+    call s:set_minimal_buf_style(s:symbol_right_bufnr, 'clap_spinner')
     call setbufline(s:symbol_right_bufnr, 1, s:symbol_right)
   endif
 endfunction
@@ -245,6 +253,7 @@ function! s:create_preview_win(height) abort
         \ '&number': 0,
         \ '&cursorline': 0,
         \ '&signcolumn': 'no',
+        \ '&foldcolumn': 0,
         \ })
 
   let g:clap#floating_win#preview.winid = s:preview_winid

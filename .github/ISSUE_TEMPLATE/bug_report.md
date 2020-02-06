@@ -15,6 +15,8 @@ _Instructions: Replace the template text and remove irrelevant text (including t
  - (Neo)Vim version: ???
  - vim-clap version: ???
  - Have you reproduced with a minimal vimrc: ???
+ - Have you updated to the latest plugin version: ???
+ - Have you upgraded to/compiled the latest Rust binary: ??? <!-- Try runninng `:Clap install-binary!` in vim -->
 
 **Describe the bug**
 A clear and concise description of what the bug is.

@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
-let s:default_priority = 10
 let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
 let s:on_move_timer = -1
@@ -67,28 +66,6 @@ else
   endfunction
 endif
 
-function! s:matchadd(patterns) abort
-  let w:clap_match_ids = []
-  " Clap grep
-  " \{ -> E888
-  try
-    call add(w:clap_match_ids, matchadd('ClapMatches', a:patterns[0], s:default_priority))
-  catch
-    " Sometimes we may run into some pattern errors in that the query is not a
-    " valid vim pattern. Just ignore them as the highlight is not critical, we
-    " care more about the searched results IMO.
-    return
-  endtry
-
-  " As most 8 submatches, ClapMatches[1-8]
-  try
-    call map(a:patterns[1:8],
-          \ {key, val -> add(w:clap_match_ids, matchadd('ClapMatches'.(key+1), val, s:default_priority -1))})
-  catch
-    return
-  endtry
-endfunction
-
 function! s:init_display() abort
   let display = {}
   call s:inject_base_api(display)
@@ -136,7 +113,7 @@ function! s:init_display() abort
     " Argument: list, multiple pattern to be highlighed
     function! display._apply_matchadd(patterns) abort
       call g:clap.display.goto_win()
-      call s:matchadd(a:patterns)
+      call clap#highlight#matchadd_substr(a:patterns)
       call g:clap.input.goto_win()
     endfunction
 
@@ -197,7 +174,7 @@ function! s:init_display() abort
     endfunction
 
     function! display._apply_matchadd(patterns) abort
-      call win_execute(self.winid, 'call s:matchadd(a:patterns)')
+      call win_execute(self.winid, 'call clap#highlight#matchadd_substr(a:patterns)')
     endfunction
 
   endif
@@ -385,6 +362,10 @@ function! s:init_provider() abort
     return get(self._(), 'support_open_action', v:false)
   endfunction
 
+  function! provider.is_rpc_type() abort
+    return has_key(self._(), 'source_type') && self._().source_type == g:__t_rpc
+  endfunction
+
   function! provider.try_set_syntax() abort
     if has_key(self._(), 'syntax')
       call g:clap.display.setbufvar('&syntax', self._().syntax)
@@ -509,7 +490,7 @@ function! s:init_provider() abort
       return s:_system(Source)
     elseif self.source_type == g:__t_list
       " Use copy here, otherwise it could be one-off List.
-      let lines = copy(Source)
+      return copy(Source)
     elseif self.source_type == g:__t_func_string
       return s:_system(Source())
     elseif self.source_type == g:__t_func_list
@@ -517,8 +498,6 @@ function! s:init_provider() abort
     else
       return ['source() must return a List or a String if it is a Funcref']
     endif
-
-    return lines
   endfunction
 
   function! provider.get_source() abort

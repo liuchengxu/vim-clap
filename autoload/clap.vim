@@ -37,6 +37,7 @@ let g:__t_rpc = 5
 
 let s:provider_alias = {
       \ 'hist:': 'command_history',
+      \ 'hist/': 'search_history',
       \ 'gfiles': 'git_files',
       \ }
 
@@ -351,10 +352,10 @@ endfunction
 
 function! clap#(bang, ...) abort
   if a:000 == ['install-binary']
-    call clap#helper#install(v:false)
+    call clap#installer#install(v:false)
     return
   elseif a:000 == ['install-binary!']
-    call clap#helper#install(v:true)
+    call clap#installer#install(v:true)
     return
   endif
 

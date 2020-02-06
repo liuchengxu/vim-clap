@@ -3,9 +3,23 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add new provider `:Clap search_history` by @markwu. ([#289](https://github.com/liuchengxu/vim-clap/pull/289))
+- Add new provider `:Clap maps` by @markwu. ([#293](https://github.com/liuchengxu/vim-clap/pull/293))
+- Add `g:clap_project_root_markers` for specifing how vim-clap intentify a project root. Previously only the git-based project is supported, i.e., `g:clap_project_root_markers = ['.git', '.git/']`. The default value of `g:clap_project_root_markers` is `['.root', '.git', '.git/']` you can add `.root` file under the directory you want to the project root.([#290](https://github.com/liuchengxu/vim-clap/pull/290))
+
 ### Fixed
 
 - The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
+
+### Changed
+
+- Add `<nowait>` to neovim's open action mappinngs.
+- Change the default icon for `filer` to   .
+- Set `&foldcoloumn` to 0 for neovim by default.
+- Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
+- Update `clap_tags` syntax due to https://github.com/liuchengxu/vista.vim/pull/231.
 
 ## [0.7] 2020-01-31
 

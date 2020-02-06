@@ -33,7 +33,7 @@ function! clap#rooter#working_dir() abort
   elseif clap#should_use_raw_cwd()
     return getcwd()
   else
-    return clap#path#git_root_or_default(g:clap.start.bufnr)
+    return clap#path#project_root_or_default(g:clap.start.bufnr)
   endif
 endfunction
 
@@ -68,13 +68,13 @@ function! clap#rooter#run(Run, ...) abort
     return call(a:Run, a:000)
   endif
 
-  let git_root = clap#path#find_git_root(g:clap.start.bufnr)
+  let project_root = clap#path#find_project_root(g:clap.start.bufnr)
 
-  if empty(git_root)
+  if empty(project_root)
     " This means to use getcwd()
     let result = call(a:Run, a:000)
   else
-    let result = s:run_from_target_dir(git_root, a:Run, a:000)
+    let result = s:run_from_target_dir(project_root, a:Run, a:000)
   endif
 
   return result
@@ -88,23 +88,23 @@ function! clap#rooter#run_heuristic(Run, ...) abort
     return call(a:Run, a:000)
   endif
 
-  let git_root = clap#path#find_git_root(g:clap.start.bufnr)
+  let project_root = clap#path#find_project_root(g:clap.start.bufnr)
 
-  if empty(git_root)
+  if empty(project_root)
     let result = call(a:Run, a:000)
 
   else
 
     let save_cwd = getcwd()
     try
-      execute 'lcd' git_root
+      execute 'lcd' project_root
       let l:result = call(a:Run, a:000)
     finally
       " Here we could use a naive heuristic approach to
       " not restore the old cwd when the current working
       " directory is not git root or &autochdir is on.
       " This way is mainly borrowed from fzf.vim.
-      if getcwd() ==# git_root && !&autochdir
+      if getcwd() ==# project_root && !&autochdir
         execute 'lcd' save_cwd
       endif
     endtry

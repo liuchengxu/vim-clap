@@ -98,6 +98,7 @@ Command                                | List                                   
 `Clap colors`                          | Colorschemes                                        | _none_
 `Clap command`                         | Command                                             | _none_
 `Clap hist:` or `Clap command_history` | Command history                                     | _none_
+`Clap hist/` or `Clap search_history`  | Search history                                      | _none_
 `Clap commits` **<sup>!</sup>**        | Git commits                                         | **[git][git]**
 `Clap files`                           | Files                                               | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
 `Clap filetypes`                       | File types                                          | _none_
@@ -109,6 +110,7 @@ Command                                | List                                   
 `Clap jumps`                           | Jumps                                               | _none_
 `Clap lines`                           | Lines in the loaded buffers                         | _none_
 `Clap marks`                           | Marks                                               | _none_
+`Clap maps`                            | Maps                                                | _none_
 `Clap quickfix`                        | Entries of the quickfix list                        | _none_
 `Clap loclist`                         | Entries of the location list                        | _none_
 `Clap registers`                       | Registers                                           | _none_
