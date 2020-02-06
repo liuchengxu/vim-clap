@@ -19,6 +19,9 @@ let s:palette.preview = { 'ctermbg': '238', 'guibg': '#363c55' }
 let s:palette.selected = { 'ctermfg': '81', 'guifg': '#5FD7d7', 'cterm': 'bold,underline', 'gui': 'bold,underline' }
 let s:palette.current_selection = { 'ctermbg': '236', 'guibg': '#31364D', 'cterm': 'bold', 'gui': 'bold' }
 
+let s:palette.selected_sign = { 'ctermfg': '196', 'guifg': '#f2241f' }
+let s:palette.current_selection_sign = s:palette.selected_sign
+
 let g:clap#themes#material_design_dark#palette = s:palette
 
 let &cpoptions = s:save_cpo

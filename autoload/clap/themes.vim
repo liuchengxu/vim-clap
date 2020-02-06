@@ -53,8 +53,11 @@ endfunction
 function! s:highlight_for(group_name, type) abort
   if has_key(s:palette, a:type)
     let props = s:palette[a:type]
-  else
+  " The exception seems to be silented here.
+  elseif has_key(g:clap#themes#material_design_dark#palette, a:type)
     let props = g:clap#themes#material_design_dark#palette[a:type]
+  else
+    return
   endif
   execute 'hi' a:group_name join(values(map(copy(props), 'v:key."=".v:val')), ' ')
 endfunction
