@@ -8,7 +8,7 @@ let s:is_nvim = has('nvim')
 
 let s:input_default_hi_group = 'Visual'
 let s:display_default_hi_group = 'Pmenu'
-let s:preview_defaualt_hi_group = 'PmenuSel'
+let s:preview_default_hi_group = 'PmenuSel'
 
 function! s:extract(group, what, gui_or_cterm) abort
   return synIDattr(synIDtrans(hlID(a:group)), a:what, a:gui_or_cterm)
@@ -109,6 +109,8 @@ function! s:apply_default_theme() abort
   hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
+  hi default link ClapSelectedSign WarningMsg
+  hi default link ClapCurrentSelectionSign WarningMsg
 
   execute 'hi default link ClapInput' s:input_default_hi_group
   execute 'hi default link ClapDisplay' s:display_default_hi_group
