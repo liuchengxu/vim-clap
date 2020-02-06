@@ -14,17 +14,27 @@ function! s:peek_file(fname, fpath) abort
   call clap#preview#highlight_header()
 endfunction
 
+function! s:show_file_props(entry) abort
+  let modified = strftime('%b %d/%m/%Y %H:%M:%S', getftime(a:entry))
+  let perm = getfperm(a:entry)
+  call g:clap.preview.show([a:entry, modified, perm])
+  call clap#preview#highlight_header()
+endfunction
+
 " Preview entry for files,history provider
 function! clap#preview#file(fname) abort
   let fpath = expand(a:fname)
   if filereadable(fpath)
     call s:peek_file(a:fname, fpath)
+    return
   elseif exists('g:__clap_provider_cwd')
     let fpath_with_cwd = g:__clap_provider_cwd.s:path_seperator.fpath
     if filereadable(fpath_with_cwd)
       call s:peek_file(a:fname, fpath_with_cwd)
+      return
     endif
   endif
+  call s:show_file_props(a:fname)
 endfunction
 
 " Given the origin lnum and the size of range, return
