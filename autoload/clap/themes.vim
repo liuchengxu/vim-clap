@@ -8,7 +8,7 @@ let s:is_nvim = has('nvim')
 
 let s:input_default_hi_group = 'Visual'
 let s:display_default_hi_group = 'Pmenu'
-let s:preview_defaualt_hi_group = 'PmenuSel'
+let s:preview_default_hi_group = 'PmenuSel'
 
 function! s:extract(group, what, gui_or_cterm) abort
   return synIDattr(synIDtrans(hlID(a:group)), a:what, a:gui_or_cterm)
@@ -49,7 +49,7 @@ function! s:hi_clap_symbol() abort
         \ )
 endfunction
 
-" Try the palatte, otherwise use the built-in material_design_dark theme.
+" Try the palette, otherwise use the built-in material_design_dark theme.
 function! s:highlight_for(group_name, type) abort
   if has_key(s:palette, a:type)
     let props = s:palette[a:type]
@@ -72,6 +72,8 @@ function! s:paint_is_ok() abort
     call s:highlight_for('ClapDisplay', 'display')
     call s:highlight_for('ClapSelected', 'selected')
     call s:highlight_for('ClapCurrentSelection', 'current_selection')
+    call s:highlight_for('ClapSelectedSign', 'selected_sign')
+    call s:highlight_for('ClapCurrentSelectionSign', 'current_selection_sign')
     call s:highlight_for('ClapPreview', 'preview')
   catch
     return v:false
@@ -109,6 +111,8 @@ function! s:apply_default_theme() abort
   hi default link ClapPreview ClapDefaultPreview
   hi default link ClapSelected ClapDefaultSelected
   hi default link ClapCurrentSelection ClapDefaultCurrentSelection
+  hi default link ClapSelectedSign WarningMsg
+  hi default link ClapCurrentSelectionSign WarningMsg
 
   execute 'hi default link ClapInput' s:input_default_hi_group
   execute 'hi default link ClapDisplay' s:display_default_hi_group

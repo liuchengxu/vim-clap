@@ -152,9 +152,9 @@ Command                                | List                                   
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
+- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected"}`.
 
-- `g:clap_current_selection_sign`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
+- `g:clap_current_selection_sign`: Dict, `{ 'text': '>>', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection"}`.
 
 - `g:clap_no_matches_msg`: String, `'NO MATCHES FOUND'`, message to show when there is no matches found.
 
