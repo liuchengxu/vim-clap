@@ -1,24 +1,18 @@
 mod cmd;
-mod cmd_impl;
 mod error;
 mod icon;
-mod rpc;
 
 use std::fs::File;
-use std::io::{self, BufRead, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::SystemTime;
 
 use anyhow::Result;
-use extracted_fzy::match_and_score_with_positions;
-use fuzzy_matcher::skim::fuzzy_indices;
-use rayon::prelude::*;
 use serde_json::json;
 use structopt::StructOpt;
 
-use crate::cmd::{Algo, Cmd, Maple};
-use crate::cmd_impl::*;
+use crate::cmd::{Cmd, Maple};
 use crate::error::DummyError;
 use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
@@ -226,56 +220,16 @@ impl<'a> LightCommand<'a> {
 }
 
 impl Maple {
-    fn apply_fuzzy_filter_and_rank(
-        &self,
-        query: &str,
-        input: &Option<PathBuf>,
-        algo: &Option<Algo>,
-    ) -> Result<Vec<(String, f64, Vec<usize>)>> {
-        let algo = algo.as_ref().unwrap_or(&Algo::Fzy);
-
-        let scorer = |line: &str| match algo {
-            Algo::Skim => {
-                fuzzy_indices(line, &query).map(|(score, indices)| (score as f64, indices))
-            }
-            Algo::Fzy => match_and_score_with_positions(&query, line),
-        };
-
-        // Result<Option<T>> => T
-        let mut ranked = if let Some(input) = input {
-            std::fs::read_to_string(input)?
-                .par_lines()
-                .filter_map(|line| {
-                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
-                })
-                .collect::<Vec<_>>()
-        } else {
-            io::stdin()
-                .lock()
-                .lines()
-                .filter_map(|lines_iter| {
-                    lines_iter.ok().and_then(|line| {
-                        scorer(&line).map(|(score, indices)| (line, score, indices))
-                    })
-                })
-                .collect::<Vec<_>>()
-        };
-
-        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-        Ok(ranked)
-    }
-
     fn run(&self) -> Result<()> {
         match &self.command {
             Cmd::Version => {
                 version();
             }
             Cmd::RPC => {
-                crate::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
+                crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
-                let ranked = self.apply_fuzzy_filter_and_rank(query, input, algo)?;
+                let ranked = crate::cmd::filter::apply_fuzzy_filter_and_rank(query, input, algo)?;
 
                 if let Some(number) = self.number {
                     let total = ranked.len();
@@ -347,7 +301,7 @@ impl Maple {
 
                 light_cmd.execute(&args)?;
             }
-            Cmd::Helptags { meta_info } => print_helptags(meta_info)?,
+            Cmd::Helptags { meta_info } => crate::cmd::helptags::run(meta_info)?,
         }
         Ok(())
     }

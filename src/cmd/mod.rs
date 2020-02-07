@@ -1,3 +1,7 @@
+pub mod filter;
+pub mod helptags;
+pub mod rpc;
+
 use std::path::PathBuf;
 
 use structopt::clap::{arg_enum, AppSettings};
