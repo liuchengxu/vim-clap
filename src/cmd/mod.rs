@@ -1,11 +1,13 @@
-pub mod filter;
-pub mod helptags;
-pub mod rpc;
-
 use std::path::PathBuf;
 
 use structopt::clap::{arg_enum, AppSettings};
 use structopt::StructOpt;
+
+pub mod exec;
+pub mod filter;
+pub mod grep;
+pub mod helptags;
+pub mod rpc;
 
 arg_enum! {
     #[derive(Debug)]

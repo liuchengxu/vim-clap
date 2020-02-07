@@ -7,6 +7,7 @@ use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 
 use crate::cmd::Algo;
+use crate::icon::prepend_icon;
 
 pub fn apply_fuzzy_filter_and_rank(
     query: &str,
@@ -41,4 +42,39 @@ pub fn apply_fuzzy_filter_and_rank(
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
     Ok(ranked)
+}
+
+pub fn run(
+    query: &str,
+    input: &Option<PathBuf>,
+    algo: &Option<Algo>,
+    number: Option<usize>,
+    enable_icon: bool,
+) -> Result<()> {
+    let ranked = apply_fuzzy_filter_and_rank(query, input, algo)?;
+
+    if let Some(number) = number {
+        let total = ranked.len();
+        let payload = ranked.into_iter().take(number);
+        let mut lines = Vec::with_capacity(number);
+        let mut indices = Vec::with_capacity(number);
+        if enable_icon {
+            for (text, _, idxs) in payload {
+                lines.push(prepend_icon(&text));
+                indices.push(idxs);
+            }
+        } else {
+            for (text, _, idxs) in payload {
+                lines.push(text);
+                indices.push(idxs);
+            }
+        }
+        println_json!(total, lines, indices);
+    } else {
+        for (text, _, indices) in ranked.iter() {
+            println_json!(text, indices);
+        }
+    }
+
+    Ok(())
 }
