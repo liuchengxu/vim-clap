@@ -35,11 +35,9 @@ function! s:tags.on_move() abort
   catch
     return
   endtry
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
-  call g:clap.preview.show(lines)
-  call g:clap.preview.set_syntax(s:origin_syntax)
-  call g:clap.preview.add_highlight(hi_lnum+1)
+  call clap#preview#show_with_line_highlight(lines, s:origin_syntax, hi_lnum+1)
 endfunction
 
 function! s:tags.on_enter() abort

@@ -31,7 +31,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
 
   let origin_line = getbufline(g:clap.start.bufnr, line)
 
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(line, s:preview_size)
+  let [start, end, hi_lnum] = clap#preview#get_line_range(line, s:preview_size)
 
   let should_add_hi = v:true
 

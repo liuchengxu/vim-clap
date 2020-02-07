@@ -181,11 +181,9 @@ function! s:grep_on_move() abort
       return
     endif
   endif
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
-  call g:clap.preview.show(preview_lines)
-  call g:clap.preview.set_syntax(s:preview_cache[fpath].filetype)
-  call g:clap.preview.add_highlight(hi_lnum)
+  call clap#preview#show_with_line_highlight(preview_lines, s:preview_cache[fpath].filetype, hi_lnum)
 endfunction
 
 function! s:grep_sink(selected) abort
