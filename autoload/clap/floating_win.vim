@@ -285,6 +285,9 @@ endfunction
 function! clap#floating_win#open() abort
   let g:__clap_display_curlnum = 1
 
+  let s:save_winheight = &winheight
+  let &winheight = 1
+
   " The order matters.
   call g:clap#floating_win#display.open()
   call s:open_win_border_left()
@@ -319,6 +322,7 @@ function! s:win_close(winid) abort
 endfunction
 
 function! clap#floating_win#close() abort
+  let &winheight = s:save_winheight
   silent! autocmd! ClapEnsureAllClosed
 
   if s:symbol_width > 0
