@@ -17,9 +17,26 @@ mod error;
 mod icon;
 mod light_command;
 
+pub mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+fn version() {
+    println!(
+        "{}",
+        format!(
+            "version {}{}, built for {} by {}.",
+            built_info::PKG_VERSION,
+            built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+            built_info::TARGET,
+            built_info::RUSTC_VERSION
+        )
+    );
+}
+
 impl Maple {
-    fn run(&self) -> Result<()> {
-        match &self.command {
+    fn run(self) -> Result<()> {
+        match self.command {
             Cmd::Version => {
                 version();
             }
@@ -38,8 +55,8 @@ impl Maple {
                 crate::cmd::exec::run(
                     cmd,
                     output,
-                    *output_threshold,
-                    cmd_dir.clone(),
+                    output_threshold,
+                    cmd_dir,
                     self.number,
                     self.enable_icon,
                 )?;
@@ -53,8 +70,8 @@ impl Maple {
                 crate::cmd::grep::run(
                     grep_cmd,
                     grep_query,
-                    glob.clone(),
-                    cmd_dir.clone(),
+                    glob,
+                    cmd_dir,
                     self.number,
                     self.enable_icon,
                 )?;
@@ -63,23 +80,6 @@ impl Maple {
         }
         Ok(())
     }
-}
-
-pub mod built_info {
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
-}
-
-fn version() {
-    println!(
-        "{}",
-        format!(
-            "version {}{}, built for {} by {}.",
-            built_info::PKG_VERSION,
-            built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
-            built_info::TARGET,
-            built_info::RUSTC_VERSION
-        )
-    );
 }
 
 pub fn main() -> Result<()> {

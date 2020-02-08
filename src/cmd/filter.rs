@@ -11,10 +11,10 @@ use crate::icon::prepend_icon;
 
 pub fn apply_fuzzy_filter_and_rank(
     query: &str,
-    input: &Option<PathBuf>,
-    algo: &Option<Algo>,
+    input: Option<PathBuf>,
+    algo: Option<Algo>,
 ) -> Result<Vec<(String, f64, Vec<usize>)>> {
-    let algo = algo.as_ref().unwrap_or(&Algo::Fzy);
+    let algo = algo.unwrap_or(Algo::Fzy);
 
     let scorer = |line: &str| match algo {
         Algo::Skim => fuzzy_indices(line, &query).map(|(score, indices)| (score as f64, indices)),
@@ -45,13 +45,13 @@ pub fn apply_fuzzy_filter_and_rank(
 }
 
 pub fn run(
-    query: &str,
-    input: &Option<PathBuf>,
-    algo: &Option<Algo>,
+    query: String,
+    input: Option<PathBuf>,
+    algo: Option<Algo>,
     number: Option<usize>,
     enable_icon: bool,
 ) -> Result<()> {
-    let ranked = apply_fuzzy_filter_and_rank(query, input, algo)?;
+    let ranked = apply_fuzzy_filter_and_rank(&query, input, algo)?;
 
     if let Some(number) = number {
         let total = ranked.len();

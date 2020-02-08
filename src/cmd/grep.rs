@@ -19,14 +19,14 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
 }
 
 pub fn run(
-    grep_cmd: &str,
-    grep_query: &str,
+    grep_cmd: String,
+    grep_query: String,
     glob: Option<String>,
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
     enable_icon: bool,
 ) -> Result<()> {
-    let (mut cmd, mut args) = prepare_grep_and_args(grep_cmd, cmd_dir);
+    let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, cmd_dir);
 
     // We split out the grep opts and query in case of the possible escape issue of clap.
     args.push(grep_query.to_string());

@@ -23,14 +23,14 @@ fn prepare_exec_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> Command {
 }
 
 pub fn run(
-    cmd: &str,
-    output: &Option<String>,
+    cmd: String,
+    output: Option<String>,
     output_threshold: usize,
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
     enable_icon: bool,
 ) -> Result<()> {
-    let mut exec_cmd = prepare_exec_cmd(cmd, cmd_dir);
+    let mut exec_cmd = prepare_exec_cmd(&cmd, cmd_dir);
 
     let mut light_cmd = LightCommand::new(
         &mut exec_cmd,
