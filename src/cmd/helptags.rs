@@ -26,7 +26,7 @@ fn strip_trailing_slash(x: &str) -> String {
     }
 }
 
-pub fn print_helptags(meta_path: &PathBuf) -> Result<()> {
+pub fn run(meta_path: PathBuf) -> Result<()> {
     let mut lines = read_lines(meta_path)?;
     // line 1:/doc/tags,/doc/tags-cn
     // line 2:&runtimepath
