@@ -27,7 +27,6 @@ let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 
 let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
 let g:__clap_indicator_bufnr = s:indicator_bufnr
-let g:__clap_indicator_winwidth = 18
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
@@ -200,7 +199,7 @@ function! s:open_indicator_win() abort
   let opts = nvim_win_get_config(s:input_winid)
   let opts.col += opts.width
   let opts.width = g:__clap_indicator_winwidth
-  let opts.focusable = v:true
+  let opts.focusable = v:false
 
   if !nvim_buf_is_valid(s:indicator_bufnr)
     let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
