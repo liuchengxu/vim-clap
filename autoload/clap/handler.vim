@@ -23,7 +23,7 @@ function! clap#handler#on_typed() abort
   let s:old_input = l:cur_input
   call g:clap.provider.on_typed()
   if g:clap.provider.is_pure_async()
-    call clap#indicator#set_matches('')
+    call clap#indicator#set_none()
   endif
 endfunction
 
