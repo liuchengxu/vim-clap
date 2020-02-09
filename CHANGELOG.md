@@ -23,6 +23,7 @@ CHANGELOG
 - Set `&foldcoloumn` to 0 for neovim by default.
 - Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
 - Update `clap_tags` syntax due to https://github.com/liuchengxu/vista.vim/pull/231.
+- Use a standalone floating win instead of virtual text for the matches count.([#315](https://github.com/liuchengxu/vim-clap/pull/315))
 
 ## [0.7] 2020-01-31
 
