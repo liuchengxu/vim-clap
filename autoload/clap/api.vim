@@ -381,7 +381,7 @@ function! s:init_provider() abort
         " Move the cursor to the end.
         call feedkeys("\<C-E>", 'xt')
       endif
-      call clap#indicator#set_matches('')
+      call clap#indicator#set_none()
       call g:clap.provider.on_typed()
     endif
   endfunction
