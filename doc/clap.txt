@@ -359,6 +359,9 @@ g:ClapPrompt                                              *g:ClapPrompt*
   endfunction
 
   let g:ClapPrompt = function('ClapFormat')
+<
+  This is a user level prompt format. There is also a provider level prompt
+  format which has higher priority than the user level one.
 
 
 g:clap_spinner_frames                            *g:clap_spinner_frames*
