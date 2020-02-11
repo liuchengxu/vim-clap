@@ -185,13 +185,16 @@ function! g:clap#floating_win#input.open() abort
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call s:set_minimal_buf_style(s:input_bufnr, 'clap_input')
+  " Disable the auto-completion plugin
   let s:save_completeopt = &completeopt
   call nvim_set_option('completeopt', '')
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:false)
   endif
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
+  " Disable the auto-pairs plugin
   call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
+  call setbufvar(s:input_bufnr, 'autopairs_loaded', 1)
   let g:clap.input.winid = s:input_winid
 endfunction
 
@@ -218,7 +221,7 @@ endfunction
 
 function! s:open_win_border_right() abort
   if s:symbol_width > 0
-    let opts = nvim_win_get_config(s:input_winid)
+    let opts = nvim_win_get_config(s:indicator_winid)
     let opts.col += opts.width
     let opts.width = s:symbol_width
     let opts.focusable = v:false
