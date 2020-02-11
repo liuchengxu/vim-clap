@@ -148,8 +148,11 @@ Supported Providers & Tools                                    *clap-support*
 
 
                                                      *:Clap-tags*
-:Clap tags               List Tags in the current buffer
+:Clap tags {executive}   List Tags in the current buffer
                          Require `vista.vim`
+
+                         Use `:Clap tags coc` to specify coc as the vista executive.
+                         See all the vista executives via `:echo g:vista#executives` .
 
 
                                                      *:Clap-windows*
