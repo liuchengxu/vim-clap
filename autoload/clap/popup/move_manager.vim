@@ -8,7 +8,7 @@ let s:input = ''
 let s:input_timer = -1
 let s:input_delay = get(g:, 'clap_popup_input_delay', 100)
 let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
-let s:cursor_width = strdisplaywidth(s:cursor_shape)
+let s:cursor_length = strlen(s:cursor_shape)
 
 let s:move_manager = {}
 
@@ -163,7 +163,7 @@ function! s:hl_cursor() abort
   if exists('w:clap_cursor_id')
     call matchdelete(w:clap_cursor_id)
   endif
-  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, byteidx(s:input, s:cursor_idx) + 1, s:cursor_width]])
+  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, byteidx(s:input, s:cursor_idx) + 1, s:cursor_length]])
 endfunction
 
 function! s:mock_input() abort
