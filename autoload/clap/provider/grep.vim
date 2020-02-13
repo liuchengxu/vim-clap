@@ -16,6 +16,8 @@ let s:old_query = ''
 let s:grep_timer = -1
 let s:icon_appended = v:false
 
+let s:path_seperator = has('win32') ? '\' : '/'
+
 if has('nvim')
   let s:default_prompt = 'Type anything you want to find'
 else
@@ -151,6 +153,9 @@ endfunction
 function! s:grep_exit() abort
   call clap#dispatcher#jobstop()
   let s:old_query = ''
+  if exists('s:parent_dir')
+    unlet s:parent_dir
+  endif
 endfunction
 
 function! s:matchlist(line, pattern) abort
@@ -161,25 +166,44 @@ function! s:matchlist(line, pattern) abort
   endif
 endfunction
 
+function! s:into_abs_path(fpath) abort
+  if exists('s:parent_dir')
+    return s:parent_dir.a:fpath
+  else
+    if exists('g:__clap_provider_cwd') && filereadable(g:__clap_provider_cwd.s:path_seperator.a:fpath)
+      let s:parent_dir = g:__clap_provider_cwd.s:path_seperator
+      return s:parent_dir.a:fpath
+    elseif filereadable(getcwd().s:path_seperator.a:fpath)
+      let s:parent_dir = getcwd().s:path_seperator
+      return s:parent_dir.a:fpath
+    elseif filereadable(clap#path#project_root_or_default(g:clap.start.bufnr).s:path_seperator.a:fpath)
+      let s:parent_dir = clap#path#project_root_or_default(g:clap.start.bufnr).s:path_seperator
+      return s:parent_dir.a:fpath
+    endif
+  endif
+  return a:fpath
+endfunction
+
 function! s:grep_on_move() abort
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
   let cur_line = g:clap.display.getcurline()
   let matched = s:matchlist(cur_line, pattern)
   try
-    let [fpath, lnum] = [matched[1], str2nr(matched[2])]
+    let [fpath, lnum] = [expand(matched[1]), str2nr(matched[2])]
   catch
     return
   endtry
+
+  let fpath = s:into_abs_path(fpath)
+  if !filereadable(fpath)
+    return
+  endif
+
   if !has_key(s:preview_cache, fpath)
-    if filereadable(expand(fpath))
-      let s:preview_cache[fpath] = {
-            \ 'lines': readfile(expand(fpath), ''),
-            \ 'filetype': clap#ext#into_filetype(fpath)
-            \ }
-    else
-      echom fpath.' is unreadable'
-      return
-    endif
+    let s:preview_cache[fpath] = {
+          \ 'lines': readfile(expand(fpath), ''),
+          \ 'filetype': clap#ext#into_filetype(fpath)
+          \ }
   endif
   let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]

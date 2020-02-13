@@ -15,6 +15,7 @@ CHANGELOG
 ### Fixed
 
 - The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
+- More robust fpath detection for grep preview.[#321](https://github.com/liuchengxu/vim-clap/issues/321)
 
 ### Changed
 
