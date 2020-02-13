@@ -145,7 +145,11 @@ function! s:make_preview_EndOfBuffer_invisible() abort
 endfunction
 
 function! s:init_theme() abort
-  hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+  if &background ==# 'dark'
+    hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
+  else
+    hi ClapDefaultPreview ctermbg=7 guibg=#ecf5ff
+  endif
 
   if !exists('s:palette') || !s:paint_is_ok()
     call s:apply_default_theme()

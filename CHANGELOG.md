@@ -12,6 +12,10 @@ CHANGELOG
 - Add preview support for `files`, `git_files` and `history` provider.
 - Add new highlight group `ClapSelectedSign` and `ClapCurrentSelectionSign` for the sign `texthl`, they are linked to `WarningMsg` by default.
 
+### Improved
+
+- Add `ClapDefaultPreview` for the light theme.
+
 ### Fixed
 
 - The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
