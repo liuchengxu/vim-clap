@@ -42,6 +42,15 @@ else
   let s:PromptFn = function('s:default_prompt')
 endif
 
+function! s:generate_prompt() abort
+  " Provider level prompt format has higher priority.
+  if has_key(g:clap.provider._(), 'prompt_format')
+    return s:fill_in_placeholders(g:clap.provider._().prompt_format)
+  else
+    return s:PromptFn()
+  endif
+endfunction
+
 if has('nvim')
   function! clap#spinner#set(text) abort
     let s:current_prompt = s:fill_in_placeholders(a:text)
@@ -56,7 +65,7 @@ if has('nvim')
   endfunction
 
   function! s:set_spinner() abort
-    let s:current_prompt = s:PromptFn()
+    let s:current_prompt = s:generate_prompt()
     call clap#spinner#set(s:current_prompt)
   endfunction
 else
@@ -73,7 +82,7 @@ else
   endfunction
 
   function! s:set_spinner() abort
-    let s:current_prompt = s:PromptFn()
+    let s:current_prompt = s:generate_prompt()
     call clap#spinner#set(s:current_prompt)
   endfunction
 endif
@@ -88,7 +97,7 @@ endfunction
 
 function! clap#spinner#width() abort
   if !exists('s:current_prompt')
-    let s:current_prompt = s:PromptFn()
+    let s:current_prompt = s:generate_prompt()
   endif
   return strdisplaywidth(s:current_prompt)
 endfunction

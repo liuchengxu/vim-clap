@@ -20,11 +20,24 @@ function! s:tags.source(...) abort
     return [v:exception, 'Ensure you have installed https://github.com/liuchengxu/vista.vim']
   endtry
 
-  let [data, _, _] = call('vista#finder#GetSymbols', a:000)
+  if len(g:clap.provider.args) == 1 && index(g:vista#executives, g:clap.provider.args[0]) > -1
+    let executive = g:clap.provider.args
+  else
+    let executive = []
+  endif
+
+  let [data, cur_executive, using_alternative] = call('vista#finder#GetSymbols', executive)
 
   if empty(data)
     return ['No symbols found via vista.vim']
   endif
+
+  if using_alternative
+    let self.prompt_format = ' %spinner%%forerunner_status%*'.cur_executive.':'
+  else
+    let self.prompt_format = ' %spinner%%forerunner_status%'.cur_executive.':'
+  endif
+  call clap#spinner#refresh()
 
   return vista#finder#PrepareSource(data)
 endfunction
