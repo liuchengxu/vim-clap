@@ -86,7 +86,7 @@ function! s:on_move_safe() abort
 endfunction
 
 if has('nvim')
-  function! s:wrap_insert_move(Move, args) abort
+  function! s:wrap_move(Move, args) abort
     call g:clap.display.goto_win()
 
     call call(a:Move, a:args)
@@ -99,11 +99,11 @@ if has('nvim')
   endfunction
 
   function! clap#navigation#linewise(direction) abort
-    return s:wrap_insert_move(function('s:navigate'), [a:direction])
+    return s:wrap_move(function('s:navigate'), [a:direction])
   endfunction
 
   function! clap#navigation#scroll(direction) abort
-    return s:wrap_insert_move(function('s:scroll'), [a:direction])
+    return s:wrap_move(function('s:scroll'), [a:direction])
   endfunction
 
   function! clap#navigation#line_down() abort
