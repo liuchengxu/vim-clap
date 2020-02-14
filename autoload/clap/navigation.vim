@@ -26,6 +26,10 @@ function! s:scroll(direction) abort
   let scroll_lines = getwinvar(g:clap.display.winid, '&scroll')
   if a:direction ==# 'down'
     execute 'normal!' scroll_lines.'j'
+  elseif a:direction ==# 'top'
+    normal! gg
+  elseif a:direction ==# 'bottom'
+    normal! G
   else
     execute 'normal!' scroll_lines.'k'
   endif
