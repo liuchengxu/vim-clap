@@ -11,6 +11,7 @@ CHANGELOG
 - Add `g:clap_project_root_markers` for specifing how vim-clap intentify a project root. Previously only the git-based project is supported, i.e., `g:clap_project_root_markers = ['.git', '.git/']`. The default value of `g:clap_project_root_markers` is `['.root', '.git', '.git/']` you can add `.root` file under the directory you want to the project root.([#290](https://github.com/liuchengxu/vim-clap/pull/290))
 - Add preview support for `files`, `git_files` and `history` provider.
 - Add new highlight group `ClapSelectedSign` and `ClapCurrentSelectionSign` for the sign `texthl`, they are linked to `WarningMsg` by default.
+- [neovim] normal mappings: j/k, gg/G, `<C-d>`/`<C-u>` and see `ftplugin/clap_input.vim`.
 
 ### Improved
 
@@ -29,6 +30,7 @@ CHANGELOG
 - Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
 - Update `clap_tags` syntax due to https://github.com/liuchengxu/vista.vim/pull/231.
 - Use a standalone floating win instead of virtual text for the matches count.([#315](https://github.com/liuchengxu/vim-clap/pull/315))
+- [neovim] `<Esc>` won't exit clap but enter the normal mode.[#322](https://github.com/liuchengxu/vim-clap/issues/322)
 
 ## [0.7] 2020-01-31
 
