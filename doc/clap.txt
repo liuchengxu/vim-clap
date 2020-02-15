@@ -667,6 +667,8 @@ Insert mode
 
 Normal mode
 
+Normal mode mappings are neovim only now.
+
 - Use `j`/`Down` or `k`/`Up` to navigate the result list up and down linewise.
 - Use `Ctrl-d`/`Ctrl-u`/`PageDown`/`PageUp` to scroll the result list down and up.
 - Use `gg` and `G` to scroll to the first and last item.

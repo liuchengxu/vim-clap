@@ -193,6 +193,8 @@ See `:help clap-options` for more information.
 
 #### Normal mode
 
+Normal mode mappings are neovim only now.
+
 - [x] Use <kbd>j</kbd>/<kbd>Down</kbd> or <kbd>k</kbd>/<kbd>Up</kbd> to navigate the result list up and down linewise.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
