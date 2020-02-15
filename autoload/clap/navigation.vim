@@ -26,6 +26,10 @@ function! s:scroll(direction) abort
   let scroll_lines = getwinvar(g:clap.display.winid, '&scroll')
   if a:direction ==# 'down'
     execute 'normal!' scroll_lines.'j'
+  elseif a:direction ==# 'top'
+    normal! gg
+  elseif a:direction ==# 'bottom'
+    normal! G
   else
     execute 'normal!' scroll_lines.'k'
   endif
@@ -82,7 +86,7 @@ function! s:on_move_safe() abort
 endfunction
 
 if has('nvim')
-  function! s:wrap_insert_move(Move, args) abort
+  function! s:wrap_move(Move, args) abort
     call g:clap.display.goto_win()
 
     call call(a:Move, a:args)
@@ -95,11 +99,11 @@ if has('nvim')
   endfunction
 
   function! clap#navigation#linewise(direction) abort
-    return s:wrap_insert_move(function('s:navigate'), [a:direction])
+    return s:wrap_move(function('s:navigate'), [a:direction])
   endfunction
 
   function! clap#navigation#scroll(direction) abort
-    return s:wrap_insert_move(function('s:scroll'), [a:direction])
+    return s:wrap_move(function('s:scroll'), [a:direction])
   endfunction
 
   function! clap#navigation#line_down() abort

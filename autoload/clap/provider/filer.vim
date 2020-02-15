@@ -205,7 +205,7 @@ function! s:filer_on_typed() abort
   " <Tab> and <Backspace> also trigger the CursorMoved event.
   " s:filter_or_send_message() is already handled in tab and bs action,
   " on_typed handler only needs to take care of the filtering.
-  if has_key(s:filer_cache, s:current_dir)
+  if exists('s:filer_cache') && has_key(s:filer_cache, s:current_dir)
     call clap#highlight#clear()
     call s:do_filter()
   endif

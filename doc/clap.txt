@@ -634,6 +634,7 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 8. Movement/Keybindings                                       *clap-movement*
                                                               *clap-keybindings*
 
+Insert mode
 
 - Use `Ctrl-j`/`Down` or `Ctrl-k`/`Up` to navigate the result list up and down linewise.
 
@@ -663,6 +664,15 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-u` to clear inputs.
 
+
+Normal mode
+
+Normal mode mappings are neovim only now.
+
+- Use `j`/`Down` or `k`/`Up` to navigate the result list up and down linewise.
+- Use `Ctrl-d`/`Ctrl-u`/`PageDown`/`PageUp` to scroll the result list down and up.
+- Use `gg` and `G` to scroll to the first and last item.
+- Use `Enter` to select the entry and exit.
 
 ===============================================================================
 9. API                                                                *clap-api*
