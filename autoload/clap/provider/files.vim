@@ -64,13 +64,11 @@ function! clap#provider#files#sink_impl(selected) abort
 endfunction
 
 function! clap#provider#files#sink_star_impl(lines) abort
-  call setqflist(map(map(a:lines, 's:into_filename(v:val)'),
+  call clap#util#open_quickfix(map(map(a:lines, 's:into_filename(v:val)'),
         \ '{'.
         \   '"filename": v:val,'.
         \   '"text": strftime("Modified %b,%d %Y %H:%M:%S", getftime(v:val))." ".getfperm(v:val)'.
         \ '}'))
-  copen
-  cc
 endfunction
 
 function! clap#provider#files#on_move_impl() abort

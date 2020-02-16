@@ -11,11 +11,13 @@ CHANGELOG
 - Add `g:clap_project_root_markers` for specifing how vim-clap intentify a project root. Previously only the git-based project is supported, i.e., `g:clap_project_root_markers = ['.git', '.git/']`. The default value of `g:clap_project_root_markers` is `['.root', '.git', '.git/']` you can add `.root` file under the directory you want to the project root.([#290](https://github.com/liuchengxu/vim-clap/pull/290))
 - Add preview support for `files`, `git_files` and `history` provider.
 - Add new highlight group `ClapSelectedSign` and `ClapCurrentSelectionSign` for the sign `texthl`, they are linked to `WarningMsg` by default.
+-  Add multi-selection support for `:Clap blines`.
 - [neovim] normal mappings: j/k, gg/G, `<C-d>`/`<C-u>` and see `ftplugin/clap_input.vim`.
 
 ### Improved
 
 - Add `ClapDefaultPreview` for the light theme.
+- Open quickfix window at the exact size of entries if there are only a few ones.
 
 ### Fixed
 

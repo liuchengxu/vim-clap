@@ -122,6 +122,7 @@ function! s:spawn(query) abort
 
   call s:clear_job_and_matches()
 
+  let s:icon_appended = v:false
   let s:preview_cache = {}
   let s:old_query = query
 
@@ -240,10 +241,7 @@ endfunction
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):\(.*\)'
-  call setqflist(map(a:lines, 's:into_qf_item(v:val, pattern)'))
-  let s:icon_appended = v:false
-  copen
-  cc
+  call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 
 function! s:apply_grep() abort
