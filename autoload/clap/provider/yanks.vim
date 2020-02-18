@@ -30,7 +30,7 @@ function! clap#provider#yanks#collect() abort
   " Trim yank entries(purge old ones)
   if len(s:yank_history) > s:max_yanks
     let oldest_yanked = remove(s:yank_history, -1)
-    if type(oldest_yanked) = v:t_string && has_key(s:yank_info_map, oldest_yanked)
+    if type(oldest_yanked) == v:t_string && has_key(s:yank_info_map, oldest_yanked)
       call remove(s:yank_info_map, oldest_yanked)
     endif
   endif
