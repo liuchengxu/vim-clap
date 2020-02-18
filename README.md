@@ -199,6 +199,7 @@ Normal mode mappings are neovim only now.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
+- [x] Actions defined by `g:clap_open_action`.
 
 See `:help clap-keybindings` for more information.
 

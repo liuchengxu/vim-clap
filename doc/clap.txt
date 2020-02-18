@@ -673,6 +673,7 @@ Normal mode mappings are neovim only now.
 - Use `Ctrl-d`/`Ctrl-u`/`PageDown`/`PageUp` to scroll the result list down and up.
 - Use `gg` and `G` to scroll to the first and last item.
 - Use `Enter` to select the entry and exit.
+- Actions defined by `g:clap_open_action`.
 
 ===============================================================================
 9. API                                                                *clap-api*
