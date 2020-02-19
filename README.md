@@ -199,6 +199,7 @@ Normal mode mappings are neovim only now.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
+- [x] Actions defined by `g:clap_open_action`.
 
 See `:help clap-keybindings` for more information.
 
@@ -220,8 +221,7 @@ By default vim-clap will use the colors extracted from your colorscheme, which i
 let g:clap_theme = 'material_design_dark'
 ```
 
-![clap-highlights](https://user-images.githubusercontent.com/8850248/72986238-bd106580-3e22-11ea-98ad-03faa9d6130c.png)
-
+![clap-highlights](https://user-images.githubusercontent.com/8850248/74818883-6cfdc380-533a-11ea-81fb-d09d90498c96.png)
 
 You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 

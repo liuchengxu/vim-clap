@@ -58,10 +58,12 @@ function! s:blines.init() abort
 endfunction
 
 function! s:into_qf_entry(line) abort
-  let lnum = matchstr(a:line, '^\s*\(\d\+\) ')
-  let lnum = str2nr(trim(lnum))
-
-  return { 'bufnr': g:clap.start.bufnr, 'lnum': lnum, 'text': a:line }
+  if a:line =~# '^\s*\d\+ '
+    let items = matchlist(a:line, '^\s*\(\d\+\) \(.*\)')
+    return { 'bufnr': g:clap.start.bufnr, 'lnum': str2nr(trim(items[1])), 'text': clap#util#trim_leading(items[2]) }
+  else
+    return { 'bufnr': g:clap.start.bufnr, 'text': a:line }
+  endif
 endfunction
 
 function! s:blines_sink_star(lines) abort
