@@ -221,8 +221,7 @@ By default vim-clap will use the colors extracted from your colorscheme, which i
 let g:clap_theme = 'material_design_dark'
 ```
 
-![clap-highlights](https://user-images.githubusercontent.com/8850248/72986238-bd106580-3e22-11ea-98ad-03faa9d6130c.png)
-
+![clap-highlights](https://user-images.githubusercontent.com/8850248/74818883-6cfdc380-533a-11ea-81fb-d09d90498c96.png)
 
 You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 
