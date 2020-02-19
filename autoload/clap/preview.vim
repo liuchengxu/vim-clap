@@ -51,7 +51,9 @@ endfunction
 function! clap#preview#show_with_line_highlight(lines, syntax, hi_lnum) abort
   call g:clap.preview.show(a:lines)
   call g:clap.preview.set_syntax(a:syntax)
-  call g:clap.preview.add_highlight(a:hi_lnum)
+  if a:hi_lnum > 0
+    call g:clap.preview.add_highlight(a:hi_lnum)
+  endif
 endfunction
 
 function! s:highlight_header() abort

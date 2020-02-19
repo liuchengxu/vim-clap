@@ -62,8 +62,9 @@ endfunction
 
 function! s:buffers_on_move() abort
   let bufnr = str2nr(s:extract_bufnr(g:clap.display.getcurline()))
-  let lnum = str2nr(s:line_info[bufnr])
-  let lines = getbufline(bufnr, 1, 10)
+  let lnum = str2nr(matchstr(s:line_info[bufnr], '\d\+'))
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
+  let lines = getbufline(bufnr, start+1, end+1)
   call insert(lines, bufname(bufnr))
   call g:clap.preview.show(lines)
   call g:clap.preview.setbufvar('&syntax', getbufvar(bufnr, '&syntax'))
