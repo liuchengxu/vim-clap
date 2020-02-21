@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "maple"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "built 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -34,6 +34,10 @@ if [ $confirmed -eq 0 ]; then
   echo "Cancelled"
 else
   ./prepare_release.py "$next_tag" "$next_maple_version"
+
+  # Fix Cargo.lock needs to be updated but --locked was passed to prevent this
+  cargo build --release --locked
+
   echo ''
   echo "New release $next_tag is ready to go!"
   echo ''
