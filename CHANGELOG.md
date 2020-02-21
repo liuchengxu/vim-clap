@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.8] 2020-02-21
+
 ### Added
 
 - Add new clap theme `let g:clap_theme = 'atom_dark'` by @GoldsteinE.
