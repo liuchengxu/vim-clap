@@ -137,6 +137,7 @@ mod tests {
           "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
           "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
         ];
+        let source = Source::List(source.to_vec());
         let query = "srlisrsr";
 
         let mut ranked = source.filter(Algo::Fzy, query).unwrap();
@@ -144,9 +145,10 @@ mod tests {
 
         println!("");
 
-        let (justified, truncated_map) = justify(ranked, 30);
+        let win_width = 62u16;
+        let (justified, truncated_map) = justify(ranked, win_width);
         for (truncated_line, _score, truncated_indices) in justified.iter() {
-            println!("truncated: {}", "-".repeat(30));
+            println!("truncated: {}", "-".repeat(win_width as usize));
             println!(
                 "truncated: {}",
                 wrap_matches(&truncated_line, &truncated_indices)
