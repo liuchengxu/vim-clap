@@ -1,8 +1,10 @@
 #![feature(pattern)]
 
 use extracted_fzy::match_and_score_with_positions;
+use fuzzy_filter::justify;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use std::collections::HashMap;
 
 use std::str::pattern::Pattern;
 
@@ -55,7 +57,11 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
 
 #[pyfunction]
 /// Filter the candidates given query using the fzy algorithm
-fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>>, Vec<String>)> {
+fn fuzzy_match(
+    query: &str,
+    candidates: Vec<String>,
+    winwidth: usize,
+) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
@@ -69,14 +75,25 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
-    let mut indices = Vec::with_capacity(ranked.len());
-    let mut filtered = Vec::with_capacity(ranked.len());
-    for (text, _, ids) in ranked.into_iter() {
-        indices.push(ids);
-        filtered.push(text);
+    let (justify_ranked, mut justified_map) = justify(ranked, winwidth as u16);
+
+    let mut indices = Vec::with_capacity(justify_ranked.len());
+    let mut filtered = Vec::with_capacity(justify_ranked.len());
+    for (text, _, ids) in justify_ranked.into_iter() {
+        if winwidth > 0 && justified_map.contains_key(&text) {
+            let raw_line = justified_map.get(&text).unwrap().clone();
+            let icon: String = raw_line.chars().take(2).collect();
+            indices.push(ids.into_iter().map(|x| x + 4).collect::<Vec<_>>());
+            let icon_truncated = format!("{}{}", icon, text);
+            filtered.push(icon_truncated.clone());
+            justified_map.insert(icon_truncated, raw_line);
+        } else {
+            indices.push(ids);
+            filtered.push(text);
+        }
     }
 
-    Ok((indices, filtered))
+    Ok((indices, filtered, justified_map))
 }
 
 /// This module is a python module implemented in Rust.

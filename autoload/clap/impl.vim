@@ -175,10 +175,10 @@ endfunction
 function! clap#impl#on_typed() abort
   " If user explicitly uses the external filter, just use the async impl then,
   " even the forerunner job is finished already.
-  " if clap#api#has_externalfilter()
+  if clap#api#has_externalfilter()
     call s:on_typed_async_impl()
     return
-  " endif
+  endif
   if exists('g:__clap_forerunner_result')
     call s:on_typed_sync_impl()
     return

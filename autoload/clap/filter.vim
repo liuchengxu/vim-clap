@@ -47,10 +47,17 @@ if s:py_exe !=# v:null
       return s:ext_filter(a:query, a:candidates)
     endfunction
 
-    function! s:ext_filter(query, candidates) abort
-      let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
-      return filtered
-    endfunction
+    if s:py_fn ==# 'clap_fzy_rs'
+      function! s:ext_filter(query, candidates, winwidth) abort
+        let [g:__clap_fuzzy_matched_indices, filtered, g:__clap_justified_map] = pyxeval(s:py_fn.'()')
+        return filtered
+      endfunction
+    else
+      function! s:ext_filter(query, candidates) abort
+        let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
+        return filtered
+      endfunction
+    endif
 
     let s:can_use_python = v:true
   catch
@@ -58,8 +65,8 @@ if s:py_exe !=# v:null
   endtry
 endif
 
-let s:has_py_dynamic_module = v:false
-let s:can_use_python = v:false
+" let s:has_py_dynamic_module = v:false
+" let s:can_use_python = v:false
 
 function! clap#filter#has_py_dynamic_module() abort
   return s:has_py_dynamic_module
@@ -84,7 +91,7 @@ endfunction
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
-      return s:ext_filter(a:query, a:candidates)
+      return s:ext_filter(a:query, a:candidates, winwidth(g:clap.display.winid))
     catch
       call clap#helper#echo_error(v:exception)
       return clap#filter#viml#(a:query, a:candidates)

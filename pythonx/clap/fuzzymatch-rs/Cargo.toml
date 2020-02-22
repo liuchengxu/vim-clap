@@ -18,6 +18,9 @@ version = "0.8.5"
 [dependencies.extracted_fzy]
 path = "../extracted_fzy"
 
+[dependencies.fuzzy-filter]
+path = "../../../fuzzy-filter"
+
 # https://github.com/PyO3/pyo3/issues/340
 # For running PyO3 test using `cargo test --no-default-features`
 [features]
