@@ -58,6 +58,9 @@ if s:py_exe !=# v:null
   endtry
 endif
 
+let s:has_py_dynamic_module = v:false
+let s:can_use_python = v:false
+
 function! clap#filter#has_py_dynamic_module() abort
   return s:has_py_dynamic_module
 endfunction

@@ -23,6 +23,7 @@ lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 crossbeam-channel = "0.4"
 
+fuzzy-filter = { path = "fuzzy-filter" }
 extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
 
 [build-dependencies]

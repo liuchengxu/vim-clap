@@ -196,7 +196,24 @@ function! s:init_display() abort
   endfunction
 
   function! display.getcurline() abort
-    return get(getbufline(self.bufnr, g:__clap_display_curlnum), 0, '')
+    let cur_line = get(getbufline(self.bufnr, g:__clap_display_curlnum), 0, '')
+    " g:__clap_justified_map can't store the truncated item with icon as the json_decode can fail.
+    if exists('g:__clap_justified_map')
+      " Rebuild the complete line info with icon
+      if g:clap_enable_icon
+        let icon = cur_line[:3]
+        let real_cur_line = cur_line[4:]
+      else
+        let real_cur_line = cur_line
+      endif
+      if has_key(g:__clap_justified_map, real_cur_line)
+        return icon.g:__clap_justified_map[real_cur_line]
+      else
+        return cur_line
+      endif
+    else
+      return cur_line
+    endif
   endfunction
 
   function! display.getcurlnum() abort

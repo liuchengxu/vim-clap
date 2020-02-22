@@ -1,0 +1,156 @@
+use std::collections::HashMap;
+use std::io::{self, BufRead};
+use std::path::PathBuf;
+
+use anyhow::Result;
+use extracted_fzy::match_and_score_with_positions;
+use fuzzy_matcher::skim::fuzzy_indices;
+use rayon::prelude::*;
+use structopt::clap::arg_enum;
+
+// Implement arg_enum for using it in the command line arguments.
+arg_enum! {
+  #[derive(Debug)]
+  pub enum Algo {
+      Skim,
+      Fzy,
+  }
+}
+
+/// The filtering source can from stdin, an input file or Vec<StringString>
+pub enum Source {
+    Stdin,
+    File(PathBuf),
+    List(Vec<String>),
+}
+
+pub type JustifiedMap = HashMap<String, String>;
+pub type FuzzyMatchedLine = (String, f64, Vec<usize>);
+
+impl Source {
+    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLine>> {
+        let scorer = |line: &str| match algo {
+            Algo::Skim => {
+                fuzzy_indices(line, &query).map(|(score, indices)| (score as f64, indices))
+            }
+            Algo::Fzy => match_and_score_with_positions(&query, line),
+        };
+
+        let filtered = match self {
+            Self::Stdin => io::stdin()
+                .lock()
+                .lines()
+                .filter_map(|lines_iter| {
+                    lines_iter.ok().and_then(|line| {
+                        scorer(&line).map(|(score, indices)| (line, score, indices))
+                    })
+                })
+                .collect::<Vec<_>>(),
+            Self::File(fpath) => std::fs::read_to_string(fpath)?
+                .par_lines()
+                .filter_map(|line| {
+                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                })
+                .collect::<Vec<_>>(),
+            Self::List(list) => list
+                .iter()
+                .filter_map(|line| {
+                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                })
+                .collect::<Vec<_>>(),
+        };
+
+        Ok(filtered)
+    }
+}
+
+// Long matched lines can cause the matched items invisible.
+pub fn justify(
+    ranked: impl IntoIterator<Item = FuzzyMatchedLine>,
+    win_width: u16,
+) -> (Vec<FuzzyMatchedLine>, JustifiedMap) {
+    let win_width = win_width as usize;
+    let mut justified_map = HashMap::new();
+    let justified = ranked
+        .into_iter()
+        .map(|(line, score, indices)| {
+            if let Some(last) = indices.last() {
+                if *last > win_width {
+                    let dots = "...";
+                    let mut start = *last - win_width + dots.len();
+                    if start > indices[0] {
+                        start = indices[0];
+                    }
+                    let end = line.len();
+                    let truncated = format!("{}{}", dots, &line[start..end]);
+                    let offset = line.len() - truncated.len();
+                    let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
+                    justified_map.insert(truncated.clone(), line.clone());
+                    (truncated, score, truncated_indices)
+                } else {
+                    (line, score, indices)
+                }
+            } else {
+                (line, score, indices)
+            }
+        })
+        .collect::<Vec<_>>();
+    (justified, justified_map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use termion::style::{Invert, Reset};
+
+    fn wrap_matches(line: &str, indices: &[usize]) -> String {
+        let mut ret = String::new();
+        let mut peekable = indices.iter().peekable();
+        for (idx, ch) in line.chars().enumerate() {
+            let next_id = **peekable.peek().unwrap_or(&&line.len());
+            if next_id == idx {
+                ret.push_str(format!("{}{}{}", Invert, ch, Reset).as_str());
+                peekable.next();
+            } else {
+                ret.push(ch);
+            }
+        }
+
+        ret
+    }
+    #[test]
+    fn truncate_to_matched() {
+        let source = [
+        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss".into(),
+        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss"
+            .into(),
+        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js".into(),
+        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js"
+            .into(),
+    ];
+        let source = Source::List(source.to_vec());
+        let query = "files";
+        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
+        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+        println!("");
+
+        let (justified, truncated_map) = justify(ranked, 30);
+        for (truncated_line, _score, truncated_indices) in justified.iter() {
+            println!("truncated: {}", "-".repeat(30));
+            println!(
+                "truncated: {}",
+                wrap_matches(&truncated_line, &truncated_indices)
+            );
+        }
+
+        println!("justified: {:?}", justified);
+        println!("truncated_map: {:?}", truncated_map);
+
+        // [--------------------------]
+        // [------------------...|---------------xx--x---]
+        //                     [-----------------xx--x---]
+        // [-----------------xx--x---]
+        // println!("{:#?}", ranked);
+    }
+}

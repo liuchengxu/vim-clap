@@ -89,6 +89,10 @@ function! s:on_complete() abort
     call clap#highlight#add_fuzzy_async(decoded.indices)
   endif
 
+  if has_key(decoded, 'justified_map')
+    let g:__clap_justified_map = decoded.justified_map
+  endif
+
   call clap#sign#reset_to_first_line()
   call g:clap#display_win.shrink_if_undersize()
 endfunction
