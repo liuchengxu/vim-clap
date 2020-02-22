@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Use the external tools, e.g., fzf, fzy as filter.
+" Description: Python and Rust implementation of fzy filter algorithm.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -38,18 +38,14 @@ endif
 
 execute s:py_exe 'from clap.fzy import' s:py_fn
 
-function! clap#filter#python#benchmark(query, candidates) abort
-  return s:py_filter(a:query, a:candidates)
-endfunction
-
 function! clap#filter#python#has_dynamic_module() abort
   return s:has_py_dynamic_module
 endfunction
 
 if s:using_dynamic_module
-  " Rust dynamic module has feature of truncating the long lines to make fuzzy matched items visible.
+  " Rust dynamic module has the feature of truncating the long lines to make fuzzy matched items visible.
   function! clap#filter#python#(query, candidates, winwidth) abort
-    let [g:__clap_fuzzy_matched_indices, filtered, g:__clap_justified_map] = pyxeval(s:py_fn.'()')
+    let [g:__clap_fuzzy_matched_indices, filtered, g:__clap_lines_truncated_map] = pyxeval(s:py_fn.'()')
     return filtered
   endfunction
 else

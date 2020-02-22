@@ -42,18 +42,18 @@ endfunction
 
 function RunBench100000() abort
   let candidates = readfile(expand('testdata.txt'), '', 100000)
-  call clap#filter#python#benchmark('sr', candidates)
+  call clap#filter#python#('sr', candidates)
   call timer_start(10000, { -> execute("qa!") } )
 endfunction
 
 function RunBench200000() abort
   let candidates = readfile(expand('testdata.txt'), '', 200000)
-  call clap#filter#python#benchmark('sr', candidates)
+  call clap#filter#python#('sr', candidates)
   call timer_start(15000, { -> execute("qa!") } )
 endfunction
 
 function RunBench300000() abort
   let candidates = readfile(expand('testdata.txt'), '', 300000)
-  call clap#filter#python#benchmark('sr', candidates)
+  call clap#filter#python#('sr', candidates)
   call timer_start(20000, { -> execute("qa!") } )
 endfunction
