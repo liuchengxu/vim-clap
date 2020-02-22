@@ -58,7 +58,7 @@ function! clap#debugging#info() abort
   echohl Normal | echon has('python3')           | echohl NONE
 
   echohl Type   | echo 'has py dynamic module: '            | echohl NONE
-  echohl Normal | echon clap#filter#has_py_dynamic_module() | echohl NONE
+  echohl Normal | echon clap#filter#python#has_dynamic_module() | echohl NONE
 
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE

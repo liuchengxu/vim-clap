@@ -5,72 +5,22 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 if has('python3') || has('python')
-  let s:py_exe = has('python3') ? 'python3' : 'python'
-  let s:pyfile = has('python3') ? 'py3file' : 'pyfile'
+  let s:has_python = v:true
 else
-  let s:py_exe = v:null
+  let s:has_python = v:false
 endif
 
 let s:can_use_python = v:false
 let s:has_py_dynamic_module = v:false
 
-if s:py_exe !=# v:null
-
+if s:has_python
   try
-    if has('win32')
-      let s:LIB = '\pythonx\clap\fuzzymatch_rs.pyd'
-      let s:SETUP_PY = '\setup_python.py'
-    else
-      let s:LIB = '/pythonx/clap/fuzzymatch_rs.so'
-      let s:SETUP_PY = '/setup_python.py'
-    endif
-
-    let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
-
-    " Import pythonx/clap
-    if !has('nvim')
-      execute s:pyfile s:plugin_root_dir.s:SETUP_PY
-    endif
-
-    let s:has_py_dynamic_module = filereadable(s:plugin_root_dir.s:LIB)
-
-    " For test only
-    if get(g:, 'clap_use_pure_python', 0)
-      let s:py_fn = 'clap_fzy_py'
-    else
-      let s:py_fn = s:has_py_dynamic_module ? 'clap_fzy_rs' : 'clap_fzy_py'
-    endif
-
-    execute s:py_exe 'from clap.fzy import' s:py_fn
-
-    function! clap#filter#benchmark(query, candidates) abort
-      return s:ext_filter(a:query, a:candidates)
-    endfunction
-
-    if s:py_fn ==# 'clap_fzy_rs'
-      function! s:ext_filter(query, candidates, winwidth) abort
-        let [g:__clap_fuzzy_matched_indices, filtered, g:__clap_justified_map] = pyxeval(s:py_fn.'()')
-        return filtered
-      endfunction
-    else
-      function! s:ext_filter(query, candidates) abort
-        let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
-        return filtered
-      endfunction
-    endif
-
+    let s:has_py_dynamic_module = clap#filter#python#has_dynamic_module()
     let s:can_use_python = v:true
   catch
     call clap#helper#echo_error(v:exception)
   endtry
 endif
-
-" let s:has_py_dynamic_module = v:false
-" let s:can_use_python = v:false
-
-function! clap#filter#has_py_dynamic_module() abort
-  return s:has_py_dynamic_module
-endfunction
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
@@ -91,7 +41,7 @@ endfunction
 if s:can_use_python
   function! clap#filter#(query, candidates) abort
     try
-      return s:ext_filter(a:query, a:candidates, winwidth(g:clap.display.winid))
+      return clap#filter#python#(a:query, a:candidates, winwidth(g:clap.display.winid))
     catch
       call clap#helper#echo_error(v:exception)
       return clap#filter#viml#(a:query, a:candidates)
