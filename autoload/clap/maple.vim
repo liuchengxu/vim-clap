@@ -90,7 +90,7 @@ function! s:on_complete() abort
   endif
 
   if has_key(decoded, 'justified_map')
-    let g:__clap_justified_map = decoded.justified_map
+    let g:__clap_lines_truncated_map = decoded.justified_map
   endif
 
   call clap#sign#reset_to_first_line()
