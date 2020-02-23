@@ -38,7 +38,7 @@ pub fn run(
     if let Some(number) = number {
         let total = ranked.len();
         let payload = ranked.into_iter().take(number);
-        let (justified_payload, mut justified_map) = justify(payload, 62);
+        let (justified_payload, mut justified_map) = justify(payload, 62, None);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
         if enable_icon {

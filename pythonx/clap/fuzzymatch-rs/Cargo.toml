@@ -21,6 +21,9 @@ path = "../extracted_fzy"
 [dependencies.fuzzy-filter]
 path = "../../../fuzzy-filter"
 
+[dev-dependencies]
+termion = "1.5.1"
+
 # https://github.com/PyO3/pyo3/issues/340
 # For running PyO3 test using `cargo test --no-default-features`
 [features]
