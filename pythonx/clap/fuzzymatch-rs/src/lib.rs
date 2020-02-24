@@ -3,6 +3,7 @@
 use extracted_fzy::match_and_score_with_positions;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use std::collections::HashMap;
 
 use std::str::pattern::Pattern;
 
@@ -55,7 +56,11 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
 
 #[pyfunction]
 /// Filter the candidates given query using the fzy algorithm
-fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>>, Vec<String>)> {
+fn fuzzy_match(
+    query: &str,
+    candidates: Vec<String>,
+    winwidth: usize,
+) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
@@ -69,6 +74,9 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
+    let _ = winwidth;
+    let truncated_map = HashMap::new();
+
     let mut indices = Vec::with_capacity(ranked.len());
     let mut filtered = Vec::with_capacity(ranked.len());
     for (text, _, ids) in ranked.into_iter() {
@@ -76,7 +84,7 @@ fn fuzzy_match(query: &str, candidates: Vec<String>) -> PyResult<(Vec<Vec<usize>
         filtered.push(text);
     }
 
-    Ok((indices, filtered))
+    Ok((indices, filtered, truncated_map))
 }
 
 /// This module is a python module implemented in Rust.

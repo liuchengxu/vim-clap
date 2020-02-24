@@ -4,38 +4,24 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+function! s:padding(indicator) abort
+  let indicator_len = strlen(a:indicator)
+  if indicator_len < g:__clap_indicator_winwidth
+    return repeat(' ', g:__clap_indicator_winwidth - indicator_len).a:indicator
+  else
+    return a:indicator
+  endif
+endfunction
+
 if has('nvim')
-  let s:ns_id = nvim_create_namespace('clap')
-
-  function! s:padding(indicator) abort
-    let width = g:clap#floating_win#input.width
-    let input_len = len(g:clap.input.get())
-    let indicator = repeat(' ', width - input_len - len(a:indicator) - 2).a:indicator
-    return indicator
-  endfunction
-
-  function! clap#indicator#repadding() abort
-    if exists('s:current_indicator')
-      call nvim_buf_set_virtual_text(g:clap.input.bufnr, s:ns_id, 0, [[s:padding(s:current_indicator), 'LinNr']], {})
-    endif
-  endfunction
-
-  function! s:apply_indicator(indicator) abort
-    if bufexists(g:clap.input.bufnr)
-      let s:current_indicator = a:indicator
-      call nvim_buf_clear_highlight(g:clap.input.bufnr, s:ns_id, 0, -1)
-      call nvim_buf_set_virtual_text(g:clap.input.bufnr, s:ns_id, 0, [[s:padding(a:indicator), 'LinNr']], {})
+  function! s:set_indicator(indicator) abort
+    if bufexists(g:__clap_indicator_bufnr)
+      call setbufline(g:__clap_indicator_bufnr, 1, s:padding(a:indicator))
     endif
   endfunction
 else
-  function! s:apply_indicator(indicator) abort
-    let indicator_len = strlen(a:indicator)
-    if indicator_len < 18
-      let indicator = repeat(' ', 18 - indicator_len).a:indicator
-    else
-      let indicator = a:indicator
-    endif
-    call popup_settext(g:clap_indicator_winid, indicator)
+  function! s:set_indicator(indicator) abort
+    call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
   endfunction
 endif
 
@@ -50,7 +36,12 @@ function! clap#indicator#set_matches(indicator) abort
   if get(g:, 'clap_disable_matches_indicator', v:false)
     return
   endif
-  call s:apply_indicator(a:indicator)
+  call s:set_indicator(a:indicator)
+endfunction
+
+function! clap#indicator#set_none() abort
+  " Don't repeat(' ') directly as we can see the trailing char of listchars.
+  call clap#indicator#set_matches(repeat(' ', &columns).' for eliminating the trailing char')
 endfunction
 
 let &cpoptions = s:save_cpo

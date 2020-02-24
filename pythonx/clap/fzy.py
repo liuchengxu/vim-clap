@@ -43,6 +43,7 @@ try:
     from clap.fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
     def clap_fzy_rs():
-        return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"))
+        return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
+                              int(vim.eval("a:winwidth")))
 except Exception:
     pass

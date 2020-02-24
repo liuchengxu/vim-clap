@@ -20,11 +20,24 @@ function! s:tags.source(...) abort
     return [v:exception, 'Ensure you have installed https://github.com/liuchengxu/vista.vim']
   endtry
 
-  let [data, _, _] = call('vista#finder#GetSymbols', a:000)
+  if len(g:clap.provider.args) == 1 && index(g:vista#executives, g:clap.provider.args[0]) > -1
+    let executive = g:clap.provider.args
+  else
+    let executive = []
+  endif
+
+  let [data, cur_executive, using_alternative] = call('vista#finder#GetSymbols', executive)
 
   if empty(data)
     return ['No symbols found via vista.vim']
   endif
+
+  if using_alternative
+    let self.prompt_format = ' %spinner%%forerunner_status%*'.cur_executive.':'
+  else
+    let self.prompt_format = ' %spinner%%forerunner_status%'.cur_executive.':'
+  endif
+  call clap#spinner#refresh()
 
   return vista#finder#PrepareSource(data)
 endfunction
@@ -35,11 +48,9 @@ function! s:tags.on_move() abort
   catch
     return
   endtry
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
-  call g:clap.preview.show(lines)
-  call g:clap.preview.set_syntax(s:origin_syntax)
-  call g:clap.preview.add_highlight(hi_lnum+1)
+  call clap#preview#show_with_line_highlight(lines, s:origin_syntax, hi_lnum+1)
 endfunction
 
 function! s:tags.on_enter() abort

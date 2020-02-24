@@ -152,9 +152,9 @@ Command                                | List                                   
   let g:clap_provider_alias = {'hist:': 'command_history'}
   ```
 
-- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected"}`.
+- `g:clap_selected_sign`: Dict, `{ 'text': ' >', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected"}`.
 
-- `g:clap_current_selection_sign`: Dict, `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection"}`.
+- `g:clap_current_selection_sign`: Dict, `{ 'text': '>>', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection"}`.
 
 - `g:clap_no_matches_msg`: String, `'NO MATCHES FOUND'`, message to show when there is no matches found.
 
@@ -174,11 +174,13 @@ See `:help clap-options` for more information.
 
 ### Keybindings
 
+#### Insert mode
+
 - [x] Use <kbd>Ctrl-j</kbd>/<kbd>Down</kbd> or <kbd>Ctrl-k</kbd>/<kbd>Up</kbd> to navigate the result list up and down linewise.
 - [x] Use <kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>Ctrl-a</kbd>/<kbd>Home</kbd> to go to the start of the input.
 - [x] Use <kbd>Ctrl-e</kbd>/<kbd>End</kbd> to go to the end of the input.
-- [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-g</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
+- [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-g</kbd>, <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd>(vim) to exit.
 - [x] Use <kbd>Ctrl-h</kbd>/<kbd>BS</kbd> to delete previous character.
 - [x] Use <kbd>Ctrl-d</kbd> to delete next character.
 - [x] Use <kbd>Ctrl-b</kbd> to move cursor left one character.
@@ -188,6 +190,16 @@ See `:help clap-options` for more information.
     - Use <kbd>Tab</kbd> to expand the directory for `:Clap filer`.
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
+
+#### Normal mode
+
+Normal mode mappings are neovim only now.
+
+- [x] Use <kbd>j</kbd>/<kbd>Down</kbd> or <kbd>k</kbd>/<kbd>Up</kbd> to navigate the result list up and down linewise.
+- [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
+- [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
+- [x] Use <kbd>Enter</kbd> to select the entry and exit.
+- [x] Actions defined by `g:clap_open_action`.
 
 See `:help clap-keybindings` for more information.
 
@@ -209,8 +221,7 @@ By default vim-clap will use the colors extracted from your colorscheme, which i
 let g:clap_theme = 'material_design_dark'
 ```
 
-![clap-highlights](https://user-images.githubusercontent.com/8850248/72986238-bd106580-3e22-11ea-98ad-03faa9d6130c.png)
-
+![clap-highlights](https://user-images.githubusercontent.com/8850248/74818883-6cfdc380-533a-11ea-81fb-d09d90498c96.png)
 
 You could also set `g:clap_theme` to be a `Dict` to specify the palette:
 

@@ -34,11 +34,9 @@ function! s:blines.on_move() abort
     return
   endif
   let lnum = str2nr(items[0])
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
-  call g:clap.preview.show(lines)
-  call g:clap.preview.set_syntax(s:origin_syntax)
-  call g:clap.preview.add_highlight(hi_lnum+1)
+  call clap#preview#show_with_line_highlight(lines, s:origin_syntax, hi_lnum+1)
 endfunction
 
 function! s:blines.on_enter() abort
@@ -59,9 +57,23 @@ function! s:blines.init() abort
   endif
 endfunction
 
+function! s:into_qf_entry(line) abort
+  if a:line =~# '^\s*\d\+ '
+    let items = matchlist(a:line, '^\s*\(\d\+\) \(.*\)')
+    return { 'bufnr': g:clap.start.bufnr, 'lnum': str2nr(trim(items[1])), 'text': clap#util#trim_leading(items[2]) }
+  else
+    return { 'bufnr': g:clap.start.bufnr, 'text': a:line }
+  endif
+endfunction
+
+function! s:blines_sink_star(lines) abort
+  call clap#util#open_quickfix(map(a:lines, 's:into_qf_entry(v:val)'))
+endfunction
+
 " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
 " `blines` provider, so we did a hard code for blines provider here.
 let s:blines.source_type = g:__t_func_list
+let s:blines['sink*'] = function('s:blines_sink_star')
 let g:clap#provider#blines# = s:blines
 
 let &cpoptions = s:save_cpo

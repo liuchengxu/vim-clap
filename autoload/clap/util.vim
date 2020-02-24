@@ -101,23 +101,12 @@ function! clap#util#define_open_action_mappings() abort
   for k in keys(g:clap_open_action)
     let lhs = substitute(toupper(k), 'CTRL', 'C', '')
     execute 'inoremap <silent> <buffer> <nowait> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
+    execute 'nnoremap <silent> <buffer> <nowait> <'.lhs.'> :<c-u>call clap#handler#try_open("'.k.'")<CR>'
   endfor
 endfunction
 
 function! clap#util#trim_leading(str) abort
   return substitute(a:str, '^\s*', '', '')
-endfunction
-
-" Given the origin lnum and the size of range, return
-" [origin_lnum-range_size, origin_lnum+range_size] and the target lnum that
-" the origin line should be positioned.
-" 0-based
-function! clap#util#get_preview_line_range(origin_lnum, range_size) abort
-  if a:origin_lnum - a:range_size > 0
-    return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size]
-  else
-    return [0, a:origin_lnum + a:range_size, a:origin_lnum]
-  endif
 endfunction
 
 function! clap#util#buflisted() abort
@@ -158,6 +147,18 @@ function! clap#util#getfsize(fname) abort
     let size = printf('%.1f', l:size/1024.0/1024.0/1024.0) . 'G'
   endif
   return size
+endfunction
+
+function! clap#util#open_quickfix(qf_entries) abort
+  let entries_len = len(a:qf_entries)
+  call setqflist(a:qf_entries)
+  " If there are only a few items, open the qf window at exact size.
+  if entries_len < 15
+    execute 'copen' entries_len
+  else
+    copen
+  endif
+  cc
 endfunction
 
 let &cpoptions = s:save_cpo

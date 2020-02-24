@@ -265,13 +265,13 @@ g:clap_project_root_markers                       *g:clap_project_root_markers*
 g:clap_current_selection_sign                   *g:clap_current_selection_sign*
 
   Type: |Dict|
-  Default: `{ 'text': '>>', 'texthl': "WarningMsg", "linehl": "ClapCurrentSelection" }`
+  Default: `{ 'text': '>>', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection" }`
 
 
 g:clap_selected_sign                                     *g:clap_selected_sign*
 
   Type: |Dict|
-  Default: `{ 'text': ' >', 'texthl': "WarningMsg", "linehl": "ClapSelected" }`
+  Default: `{ 'text': ' >', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected" }`
 
 
 g:clap_open_action                                         *g:clap_open_action*
@@ -359,6 +359,9 @@ g:ClapPrompt                                              *g:ClapPrompt*
   endfunction
 
   let g:ClapPrompt = function('ClapFormat')
+<
+  This is a user level prompt format. There is also a provider level prompt
+  format which has higher priority than the user level one.
 
 
 g:clap_spinner_frames                            *g:clap_spinner_frames*
@@ -631,6 +634,7 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 8. Movement/Keybindings                                       *clap-movement*
                                                               *clap-keybindings*
 
+Insert mode
 
 - Use `Ctrl-j`/`Down` or `Ctrl-k`/`Up` to navigate the result list up and down linewise.
 
@@ -660,6 +664,16 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 
 - Use `Ctrl-u` to clear inputs.
 
+
+Normal mode
+
+Normal mode mappings are neovim only now.
+
+- Use `j`/`Down` or `k`/`Up` to navigate the result list up and down linewise.
+- Use `Ctrl-d`/`Ctrl-u`/`PageDown`/`PageUp` to scroll the result list down and up.
+- Use `gg` and `G` to scroll to the first and last item.
+- Use `Enter` to select the entry and exit.
+- Actions defined by `g:clap_open_action`.
 
 ===============================================================================
 9. API                                                                *clap-api*

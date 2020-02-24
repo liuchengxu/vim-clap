@@ -71,6 +71,7 @@ Field                 | Type                | Required      | Has default implem
 `support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 `enable_rooter`       | Bool                | Optional      | No
 `syntax`              | String              | Optional      | No
+`prompt_format`       | String              | Optional      | No
 `init`                | Funcref             | Optional      | **Yes**
 
 - `sink`:
@@ -106,6 +107,8 @@ Field                 | Type                | Required      | Has default implem
 
 - `syntax`: used to set the syntax highlight for the display buffer easier. `let s:provider.syntax = 'provider_syntax'` is equal to `let s:provider.on_enter = { -> g:clap.display.setbufvar('&syntax', 'provider_syntax')}`.
 
+- `prompt_format`: used for showing some dynamic information, checkout [autoload/clap/provider/tags.vim](autoload/clap/provider/tags.vim) for the usage. Don't forget to call `clap#spinner#refresh()` to reveal the changes after setting a new `prompt_format` in the provider.
+
 - `init`: used for initializing the display window.
 
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
@@ -126,6 +129,7 @@ Field                 | Type    | Required      | Has default implementation
 `jobstop`             | funcref | **mandatory** | **Yes** if you use `clap#dispatcher#job_start(cmd)`
 `support_open_action` | Bool    | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
 `enable_rooter`       | Bool    | Optional      | No
+`prompt_format`       | String  | Optional      | No
 `syntax`              | String  | Optional      | No
 
 - `on_typed`: reference to function to spawn an async job.

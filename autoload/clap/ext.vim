@@ -14,7 +14,7 @@ function! s:init_ext2ft() abort
     endif
   endfor
 
-  let s:ext2ft = {}
+  let s:ext2ft = {'h': 'c', 'hpp': 'cpp', 'vimrc': 'vim'}
   for line in matched
     let splitted = split(line)
     let ext = split(splitted[0], '\.')[-1]

@@ -16,6 +16,8 @@ let s:old_query = ''
 let s:grep_timer = -1
 let s:icon_appended = v:false
 
+let s:path_seperator = has('win32') ? '\' : '/'
+
 if has('nvim')
   let s:default_prompt = 'Type anything you want to find'
 else
@@ -120,6 +122,7 @@ function! s:spawn(query) abort
 
   call s:clear_job_and_matches()
 
+  let s:icon_appended = v:false
   let s:preview_cache = {}
   let s:old_query = query
 
@@ -151,6 +154,9 @@ endfunction
 function! s:grep_exit() abort
   call clap#dispatcher#jobstop()
   let s:old_query = ''
+  if exists('s:parent_dir')
+    unlet s:parent_dir
+  endif
 endfunction
 
 function! s:matchlist(line, pattern) abort
@@ -161,31 +167,48 @@ function! s:matchlist(line, pattern) abort
   endif
 endfunction
 
+function! s:into_abs_path(fpath) abort
+  if exists('s:parent_dir')
+    return s:parent_dir.a:fpath
+  else
+    if exists('g:__clap_provider_cwd') && filereadable(g:__clap_provider_cwd.s:path_seperator.a:fpath)
+      let s:parent_dir = g:__clap_provider_cwd.s:path_seperator
+      return s:parent_dir.a:fpath
+    elseif filereadable(getcwd().s:path_seperator.a:fpath)
+      let s:parent_dir = getcwd().s:path_seperator
+      return s:parent_dir.a:fpath
+    elseif filereadable(clap#path#project_root_or_default(g:clap.start.bufnr).s:path_seperator.a:fpath)
+      let s:parent_dir = clap#path#project_root_or_default(g:clap.start.bufnr).s:path_seperator
+      return s:parent_dir.a:fpath
+    endif
+  endif
+  return a:fpath
+endfunction
+
 function! s:grep_on_move() abort
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
   let cur_line = g:clap.display.getcurline()
   let matched = s:matchlist(cur_line, pattern)
   try
-    let [fpath, lnum] = [matched[1], str2nr(matched[2])]
+    let [fpath, lnum] = [expand(matched[1]), str2nr(matched[2])]
   catch
     return
   endtry
-  if !has_key(s:preview_cache, fpath)
-    if filereadable(expand(fpath))
-      let s:preview_cache[fpath] = {
-            \ 'lines': readfile(expand(fpath), ''),
-            \ 'filetype': clap#ext#into_filetype(fpath)
-            \ }
-    else
-      echom fpath.' is unreadable'
-      return
-    endif
+
+  let fpath = s:into_abs_path(fpath)
+  if !filereadable(fpath)
+    return
   endif
-  let [start, end, hi_lnum] = clap#util#get_preview_line_range(lnum, 5)
+
+  if !has_key(s:preview_cache, fpath)
+    let s:preview_cache[fpath] = {
+          \ 'lines': readfile(expand(fpath), ''),
+          \ 'filetype': clap#ext#into_filetype(fpath)
+          \ }
+  endif
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
-  call g:clap.preview.show(preview_lines)
-  call g:clap.preview.set_syntax(s:preview_cache[fpath].filetype)
-  call g:clap.preview.add_highlight(hi_lnum)
+  call clap#preview#show_with_line_highlight(preview_lines, s:preview_cache[fpath].filetype, hi_lnum)
 endfunction
 
 function! s:grep_sink(selected) abort
@@ -218,10 +241,7 @@ endfunction
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):\(.*\)'
-  call setqflist(map(a:lines, 's:into_qf_item(v:val, pattern)'))
-  let s:icon_appended = v:false
-  copen
-  cc
+  call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 
 function! s:apply_grep() abort

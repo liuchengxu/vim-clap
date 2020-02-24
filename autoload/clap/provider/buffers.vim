@@ -47,18 +47,34 @@ function! s:buffers() abort
   endif
 endfunction
 
+function! s:extract_bufnr(line) abort
+  return matchstr(a:line, '^\[\zs\d\+\ze\]')
+endfunction
+
 function! s:buffers_sink(selected) abort
   call g:clap.start.goto_win()
-  let b = matchstr(a:selected, '^\[\zs\d\+\ze\]')
+  let b = s:extract_bufnr(a:selected)
   if has_key(g:clap, 'open_action')
     execute g:clap.open_action
   endif
   execute 'buffer' b
 endfunction
 
+function! s:buffers_on_move() abort
+  let bufnr = str2nr(s:extract_bufnr(g:clap.display.getcurline()))
+  let lnum = str2nr(matchstr(s:line_info[bufnr], '\d\+'))
+  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
+  let lines = getbufline(bufnr, start+1, end+1)
+  call insert(lines, bufname(bufnr))
+  call g:clap.preview.show(lines)
+  call g:clap.preview.setbufvar('&syntax', getbufvar(bufnr, '&syntax'))
+  call clap#preview#highlight_header()
+endfunction
+
 let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
+let s:buffers.on_move = function('s:buffers_on_move')
 let s:buffers.syntax = 'clap_buffers'
 let s:buffers.support_open_action = v:true
 

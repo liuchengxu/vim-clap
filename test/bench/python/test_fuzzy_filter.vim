@@ -40,20 +40,24 @@ function RunInputMulti() abort
   call timer_start(20000, { -> execute("qa!") } )
 endfunction
 
+function! PythonFilter(query, candidates) abort
+  call clap#filter#python#(a:query, a:candidates, 60)
+endfunction
+
 function RunBench100000() abort
   let candidates = readfile(expand('testdata.txt'), '', 100000)
-  call clap#filter#benchmark('sr', candidates)
+  call PythonFilter('sr', candidates)
   call timer_start(10000, { -> execute("qa!") } )
 endfunction
 
 function RunBench200000() abort
   let candidates = readfile(expand('testdata.txt'), '', 200000)
-  call clap#filter#benchmark('sr', candidates)
+  call PythonFilter('sr', candidates)
   call timer_start(15000, { -> execute("qa!") } )
 endfunction
 
 function RunBench300000() abort
   let candidates = readfile(expand('testdata.txt'), '', 300000)
-  call clap#filter#benchmark('sr', candidates)
+  call PythonFilter('sr', candidates)
   call timer_start(20000, { -> execute("qa!") } )
 endfunction

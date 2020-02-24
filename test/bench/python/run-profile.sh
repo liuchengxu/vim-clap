@@ -15,21 +15,28 @@ run_exe() {
     -c "call $test_fn()"
 }
 
+STATS_LOG=stats.log
+FILTER_FUNCTION='clap#filter#python#()'
+
+append_log() {
+  echo "$1" >> $STATS_LOG
+}
+
 note() {
   local exe=$1
   local from=$2
 
-  echo "====== $exe ======" >> stats.log
-  grep 'ext_filter()' $from.log | head -2 | sed -e 's/^[ \t]*//' >> stats.log
+  echo "====== $exe ======" >> $STATS_LOG
+  grep $FILTER_FUNCTION "$from".log | head -2 | sed -e 's/^[ \t]*//' >> $STATS_LOG
 
-  echo '' >> stats.log
+  append_log ''
 }
 
 run_once() {
   run_exe vim  vimprofile  RunInputOnce
   run_exe nvim nvimprofile RunInputOnce
 
-  echo '[once]' >> stats.log
+  append_log '[once]'
   note vim vimprofile
   note nvim nvimprofile
 }
@@ -38,7 +45,7 @@ run_multi() {
   run_exe vim  vimprofile_multi  RunInputMulti
   run_exe nvim nvimprofile_multi RunInputMulti
 
-  echo '[multi]' >> stats.log
+  append_log '[multi]'
   note vim vimprofile_multi
   note nvim nvimprofile_multi
 }
@@ -47,7 +54,7 @@ bench_100000() {
   run_exe vim  vimprofile_bench_100000  RunBench100000
   run_exe nvim nvimprofile_bench_100000 RunBench100000
 
-  echo '[bench100000]' >> stats.log
+  append_log '[bench100000]'
   note vim vimprofile_bench_100000
   note nvim nvimprofile_bench_100000
 }
@@ -56,7 +63,7 @@ bench_200000() {
   run_exe vim  vimprofile_bench_200000  RunBench200000
   run_exe nvim nvimprofile_bench_200000 RunBench200000
 
-  echo '[bench200000]' >> stats.log
+  append_log '[bench200000]'
   note vim vimprofile_bench_200000
   note nvim nvimprofile_bench_200000
 }
@@ -65,7 +72,7 @@ bench_300000() {
   run_exe vim  vimprofile_bench_300000  RunBench300000
   run_exe nvim nvimprofile_bench_300000 RunBench300000
 
-  echo '[bench300000]' >> stats.log
+  append_log '[bench300000]'
   note vim vimprofile_bench_300000
   note nvim nvimprofile_bench_300000
 }
@@ -81,17 +88,17 @@ run_all() {
 }
 
 test_python_and_rust() {
-  echo 'stats of pure Python fuzzy filter performance:' > stats.log
-  echo '' >> stats.log
+  echo 'stats of pure Python fuzzy filter performance:' > $STATS_LOG
+  append_log ''
   USE_PURE_PYTHON=1
   $1
 
-  echo '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>' >> stats.log
-  echo '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<' >> stats.log
-  echo '' >> stats.log
+  append_log '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'
+  append_log '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'
+  append_log ''
 
-  echo 'stats of Rust fuzzy filter performance:' >> stats.log
-  echo '' >> stats.log
+  append_log 'stats of Rust fuzzy filter performance:'
+  append_log ''
   USE_PURE_PYTHON=0
   $1
 }

@@ -3,15 +3,28 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.8] 2020-02-21
+
 ### Added
 
+- Add new clap theme `let g:clap_theme = 'atom_dark'` by @GoldsteinE.
 - Add new provider `:Clap search_history` by @markwu. ([#289](https://github.com/liuchengxu/vim-clap/pull/289))
 - Add new provider `:Clap maps` by @markwu. ([#293](https://github.com/liuchengxu/vim-clap/pull/293))
 - Add `g:clap_project_root_markers` for specifing how vim-clap intentify a project root. Previously only the git-based project is supported, i.e., `g:clap_project_root_markers = ['.git', '.git/']`. The default value of `g:clap_project_root_markers` is `['.root', '.git', '.git/']` you can add `.root` file under the directory you want to the project root.([#290](https://github.com/liuchengxu/vim-clap/pull/290))
+- Add preview support for `yanks`, `buffers`, `files`, `git_files` and `history` provider.
+- Add new highlight group `ClapSelectedSign` and `ClapCurrentSelectionSign` for the sign `texthl`, they are linked to `WarningMsg` by default.
+-  Add multi-selection support for `:Clap blines`.
+- [neovim] normal mappings: j/k, gg/G, `<C-d>`/`<C-u>` and see `ftplugin/clap_input.vim`.
+
+### Improved
+
+- Add `ClapDefaultPreview` for the light theme.
+- Open quickfix window at the exact size of entries if there are only a few ones.
 
 ### Fixed
 
 - The minimal requred version for neovim is v0.4.2 as v0.4.0 does not work.
+- More robust fpath detection for grep preview.[#321](https://github.com/liuchengxu/vim-clap/issues/321)
 
 ### Changed
 
@@ -20,6 +33,8 @@ CHANGELOG
 - Set `&foldcoloumn` to 0 for neovim by default.
 - Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
 - Update `clap_tags` syntax due to https://github.com/liuchengxu/vista.vim/pull/231.
+- Use a standalone floating win instead of virtual text for the matches count.([#315](https://github.com/liuchengxu/vim-clap/pull/315))
+- [neovim] `<Esc>` won't exit clap but enter the normal mode.[#322](https://github.com/liuchengxu/vim-clap/issues/322)
 
 ## [0.7] 2020-01-31
 

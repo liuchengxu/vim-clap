@@ -25,14 +25,17 @@ let s:symbol_right_bufnr = nvim_create_buf(v:false, v:true)
 
 let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 
+let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
+let g:__clap_indicator_bufnr = s:indicator_bufnr
+
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
 let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
-let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay'
-let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview'
+let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
+let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
 "  -----------------------------
 " | spinner | input             |
@@ -155,13 +158,12 @@ function! g:clap#floating_win#spinner.shrink() abort
 
       let opts = nvim_win_get_config(s:spinner_winid)
       let opts.col += opts.width
-      let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+      let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth
       if opts.width < 0
         let opts.width = 1
       endif
       let g:clap#floating_win#input.width = opts.width
       call nvim_win_set_config(s:input_winid, opts)
-      call clap#indicator#repadding()
     endif
   endif
 endfunction
@@ -172,7 +174,7 @@ function! g:clap#floating_win#input.open() abort
   endif
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
-  let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2
+  let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth
   " E5555: API call: 'width' key must be a positive Integer
   " Avoid E5555 here and it seems to be fine later.
   if opts.width < 0
@@ -192,19 +194,43 @@ function! g:clap#floating_win#input.open() abort
 
   call setwinvar(s:input_winid, '&winhl', 'Normal:ClapInput')
   call s:set_minimal_buf_style(s:input_bufnr, 'clap_input')
+  " Disable the auto-completion plugin
   let s:save_completeopt = &completeopt
   call nvim_set_option('completeopt', '')
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:false)
   endif
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
+  " Disable the auto-pairs plugin
   call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
+  call setbufvar(s:input_bufnr, 'autopairs_loaded', 1)
   let g:clap.input.winid = s:input_winid
+endfunction
+
+function! s:open_indicator_win() abort
+  let opts = nvim_win_get_config(s:input_winid)
+  let opts.col += opts.width
+  let opts.width = g:__clap_indicator_winwidth
+  let opts.focusable = v:false
+
+  if !nvim_buf_is_valid(s:indicator_bufnr)
+    let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
+    let g:__clap_indicator_bufnr = s:indicator_bufnr
+  endif
+  silent let s:indicator_winid = nvim_open_win(s:indicator_bufnr, v:true, opts)
+  call setwinvar(s:indicator_winid, '&winhl', 'Normal:ClapInput')
+  call clap#api#setbufvar_batch(s:indicator_bufnr, {
+        \ '&signcolumn': 'no',
+        \ '&foldcolumn': 0,
+        \ '&number': 0,
+        \ '&relativenumber': 0,
+        \ '&cursorline': 0,
+        \ })
 endfunction
 
 function! s:open_win_border_right() abort
   if s:symbol_width > 0
-    let opts = nvim_win_get_config(s:input_winid)
+    let opts = nvim_win_get_config(s:indicator_winid)
     let opts.col += opts.width
     let opts.width = s:symbol_width
     let opts.focusable = v:false
@@ -251,6 +277,7 @@ function! s:create_preview_win(height) abort
 
   call clap#api#setbufvar_batch(s:preview_bufnr, {
         \ '&number': 0,
+        \ '&relativenumber': 0,
         \ '&cursorline': 0,
         \ '&signcolumn': 'no',
         \ '&foldcolumn': 0,
@@ -293,11 +320,15 @@ endfunction
 function! clap#floating_win#open() abort
   let g:__clap_display_curlnum = 1
 
+  let s:save_winheight = &winheight
+  let &winheight = 1
+
   " The order matters.
   call g:clap#floating_win#display.open()
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
+  call s:open_indicator_win()
   call s:open_win_border_right()
 
   " This seemingly does not look good.
@@ -327,6 +358,7 @@ function! s:win_close(winid) abort
 endfunction
 
 function! clap#floating_win#close() abort
+  let &winheight = s:save_winheight
   silent! autocmd! ClapEnsureAllClosed
 
   if s:symbol_width > 0
@@ -337,6 +369,7 @@ function! clap#floating_win#close() abort
   noautocmd call g:clap#floating_win#preview.close()
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
+  call s:win_close(s:indicator_winid)
 
   " I don't know why, but this could be related to the cursor move in grep.vim
   " thus I have to go back to the start window in grep.vim

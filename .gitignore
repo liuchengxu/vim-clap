@@ -11,6 +11,7 @@ __pycache__
 /doc/tags
 /target
 /bin
+testdata.txt
 
 !.editorconfig
 !.travis.yml
