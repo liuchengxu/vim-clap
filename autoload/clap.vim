@@ -85,6 +85,8 @@ let s:default_action = {
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
 
+let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@')
+
 function! s:inject_default_impl_is_ok(provider_info) abort
   let provider_info = a:provider_info
 

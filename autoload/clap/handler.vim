@@ -15,7 +15,7 @@ function! clap#handler#relaunch_providers() abort
 endfunction
 
 function! clap#handler#relaunch_is_ok() abort
-  if g:clap.input.get() ==# '@@'
+  if g:clap.input.get() ==# g:clap_providers_relaunch_code
     call clap#handler#relaunch_providers()
     return v:true
   endif
@@ -31,6 +31,7 @@ function! clap#handler#on_typed() abort
     call g:clap.provider.on_typed()
     return
   endif
+
   let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return
