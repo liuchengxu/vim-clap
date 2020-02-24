@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Ensure the long matched elements always at least partially visible. ([#330](https://github.com/liuchengxu/vim-clap/pull/330))
+
 ## [0.8] 2020-02-21
 
 ### Added
