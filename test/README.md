@@ -3,6 +3,10 @@
 ## Profile fzy implementation in Pure Python and Rust
 
 ```bash
+$ cd bench/python
+```
+
+```bash
 $ cd test
 $ bash fetch_testdata.sh
 $ ./run-profile.sh --all
@@ -98,5 +102,5 @@ FUNCTION  <SNR>27_ext_filter()
 
 ### Conclusion
 
-- `pynvim` of Neovim is slower than `python` of vim, especially when using the Python dynamic module written in Rust.
+- `pynvim` of Neovim is slower than `python` of vim, especially when using the Python dynamic module written in Rust. The bottlenecks in this case is the `roundtrips` of neovim, see https://github.com/liuchengxu/vim-clap/commit/75eb77ec5b6c0263cbfb55a90865234a3eafbf3d#r36451422 .
 - With Rust, vim is practically 16x faster, neovim is 7x faster.

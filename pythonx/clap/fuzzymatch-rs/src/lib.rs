@@ -1,7 +1,7 @@
 #![feature(pattern)]
 
 use extracted_fzy::match_and_score_with_positions;
-use fuzzy_filter::justify;
+use fuzzy_filter::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
@@ -76,7 +76,8 @@ fn fuzzy_match(
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
     // println!("ranked: {:?}", ranked);
-    let (justify_ranked, mut justified_map) = justify(ranked, winwidth as u16, Some(4));
+    let (justify_ranked, mut justified_map) =
+        truncate_long_matched_lines(ranked, winwidth, Some(4));
 
     let mut indices = Vec::with_capacity(justify_ranked.len());
     let mut filtered = Vec::with_capacity(justify_ranked.len());

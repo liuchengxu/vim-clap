@@ -1,30 +1,9 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use fuzzy_filter::{justify, Algo, Source};
-use rayon::prelude::*;
+use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo};
 
 use crate::icon::prepend_icon;
-
-pub fn apply_fuzzy_filter_and_rank(
-    query: &str,
-    input: Option<PathBuf>,
-    algo: Option<Algo>,
-) -> Result<Vec<(String, f64, Vec<usize>)>> {
-    let algo = algo.unwrap_or(Algo::Fzy);
-
-    let source = if let Some(fpath) = input {
-        Source::File(fpath)
-    } else {
-        Source::Stdin
-    };
-
-    let mut ranked = source.filter(algo, query)?;
-
-    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-    Ok(ranked)
-}
 
 pub fn run(
     query: String,
@@ -33,12 +12,12 @@ pub fn run(
     number: Option<usize>,
     enable_icon: bool,
 ) -> Result<()> {
-    let ranked = apply_fuzzy_filter_and_rank(&query, input, algo)?;
+    let ranked = fuzzy_filter_and_rank(&query, input, algo.unwrap_or(Algo::Fzy))?;
 
     if let Some(number) = number {
         let total = ranked.len();
         let payload = ranked.into_iter().take(number);
-        let (justified_payload, mut justified_map) = justify(payload, 62, None);
+        let (justified_payload, mut justified_map) = truncate_long_matched_lines(payload, 62, None);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
         if enable_icon {

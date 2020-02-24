@@ -1,0 +1,20 @@
+[package]
+name = "fuzzy_filter"
+version = "0.1.0"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+edition = "2018"
+license = "MIT"
+publish = false
+homepage = "https://github.com/liuchengxu/vim-clap"
+categories = ["Fuzzy Filter Library"]
+
+[dependencies]
+rayon = "1.2"
+anyhow = "1.0"
+structopt = "0.3"
+fuzzy-matcher = "0.3.1"
+
+extracted_fzy = { path = "../extracted_fzy" }
+
+[dev-dependencies]
+termion = "1.5.1"

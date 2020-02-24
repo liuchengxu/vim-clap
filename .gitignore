@@ -9,9 +9,9 @@ __pycache__
 /*.rc
 [1-9]*.vim
 /doc/tags
-target/
+target
 /bin
-test/testdata.txt
+testdata.txt
 
 !.editorconfig
 !.travis.yml
