@@ -23,7 +23,7 @@ lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 crossbeam-channel = "0.4"
 
-extracted_fzy = { path = "pythonx/clap/extracted_fzy" }
+extracted_fzy = { path = "crates/extracted_fzy" }
 
 [build-dependencies]
 built = { package = "built", version = "0.4", features = ["git2"]}
