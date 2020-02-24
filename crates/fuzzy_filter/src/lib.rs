@@ -70,6 +70,24 @@ impl Source {
     }
 }
 
+pub fn fuzzy_filter_and_rank(
+    query: &str,
+    input: Option<PathBuf>,
+    algo: Algo,
+) -> Result<Vec<(String, f64, Vec<usize>)>> {
+    let source = if let Some(fpath) = input {
+        Source::File(fpath)
+    } else {
+        Source::Stdin
+    };
+
+    let mut ranked = source.filter(algo, query)?;
+
+    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+    Ok(ranked)
+}
+
 // Long matched lines can cause the matched items invisible.
 pub fn justify(
     ranked: impl IntoIterator<Item = FuzzyMatchedLine>,
