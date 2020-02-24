@@ -20,7 +20,7 @@ structopt = "0.3"
 bytecount = "0.6"
 serde_json = "1.0"
 lazy_static = "1.4.0"
-fuzzy-matcher = "0.3.1"
+fuzzy-matcher = "0.3.4"
 crossbeam-channel = "0.4"
 
 fuzzy_filter = { path = "crates/fuzzy_filter" }
