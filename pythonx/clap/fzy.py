@@ -43,7 +43,12 @@ try:
     from clap.fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
     def str2bool(v):
-        return v.lower() in ("yes", "true", "t", "1")
+        #  For neovim, vim.eval("a:enable_icon") is str
+        #  For vim, vim.eval("a:enable_icon") is bool
+        if isinstance(v, bool):
+            return v
+        else:
+            return v.lower() in ("yes", "true", "t", "1")
 
     def clap_fzy_rs():
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
