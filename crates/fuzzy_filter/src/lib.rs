@@ -32,6 +32,12 @@ impl From<Vec<String>> for Source {
     }
 }
 
+impl From<PathBuf> for Source {
+    fn from(fpath: PathBuf) -> Self {
+        Self::File(fpath)
+    }
+}
+
 pub type LinesTruncatedMap = HashMap<String, String>;
 pub type FuzzyMatchedLineInfo = (String, f64, Vec<usize>);
 
@@ -78,11 +84,7 @@ pub fn fuzzy_filter_and_rank(
     input: Option<PathBuf>,
     algo: Algo,
 ) -> Result<Vec<(String, f64, Vec<usize>)>> {
-    let source = if let Some(fpath) = input {
-        Source::File(fpath)
-    } else {
-        Source::Stdin
-    };
+    let source = input.map(Into::into).unwrap_or(Source::Stdin);
 
     let mut ranked = source.filter(algo, query)?;
 
