@@ -16,10 +16,10 @@ crate-type = ["cdylib"]
 version = "0.8.5"
 
 [dependencies.extracted_fzy]
-path = "../extracted_fzy"
+path = "../../../crates/extracted_fzy"
 
 [dependencies.fuzzy-filter]
-path = "../../../fuzzy-filter"
+path = "../../../crates/fuzzy-filter"
 
 [dev-dependencies]
 termion = "1.5.1"
