@@ -42,9 +42,10 @@ Supported Providers & Tools                                    *clap-support*
                          for files is [ `fd`, `rg`, `git`, `find` ] .
 
                          Use `++finder` to specify another finder
-                         executable for the files and pass the options
-                         after, e.g., `:Clap files ++finder=rg --files` means
-                         the actual command line used is `rg --files` .
+                         executable for the files or pass any options other
+                         than the provided `--hidden`. For example,
+                         `:Clap files ++finder=rg --files --follow --hidden` means
+                         the actual command used for `file` is `rg --files --follow --hidden` .
 
                          If you have `fd` installed, `:Clap files` is equivalent to
                          `:Clap files ++finder=fd --type f` .
