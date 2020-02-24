@@ -16,7 +16,13 @@ crate-type = ["cdylib"]
 version = "0.8.5"
 
 [dependencies.extracted_fzy]
-path = "../extracted_fzy"
+path = "../../../crates/extracted_fzy"
+
+[dependencies.fuzzy_filter]
+path = "../../../crates/fuzzy_filter"
+
+[dev-dependencies]
+termion = "1.5.1"
 
 # https://github.com/PyO3/pyo3/issues/340
 # For running PyO3 test using `cargo test --no-default-features`
