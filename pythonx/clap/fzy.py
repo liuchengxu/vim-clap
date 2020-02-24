@@ -42,8 +42,12 @@ def clap_fzy_py():
 try:
     from clap.fuzzymatch_rs import fuzzy_match as fuzzy_match_rs
 
+    def str2bool(v):
+        return v.lower() in ("yes", "true", "t", "1")
+
     def clap_fzy_rs():
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
-                              int(vim.eval("a:winwidth")))
+                              int(vim.eval("a:winwidth")),
+                              str2bool(vim.eval("a:enable_icon")))
 except Exception:
     pass

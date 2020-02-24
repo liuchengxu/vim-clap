@@ -61,6 +61,7 @@ fn fuzzy_match(
     query: &str,
     candidates: Vec<String>,
     winwidth: usize,
+    enable_icon: bool,
 ) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
@@ -75,29 +76,18 @@ fn fuzzy_match(
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
-    // println!("ranked: {:?}", ranked);
-    let (justify_ranked, mut justified_map) =
-        truncate_long_matched_lines(ranked, winwidth, Some(4));
+    // 2 = chars(icon)
+    let starting_point = if enable_icon { Some(2) } else { None };
+    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, starting_point);
 
-    let mut indices = Vec::with_capacity(justify_ranked.len());
-    let mut filtered = Vec::with_capacity(justify_ranked.len());
-    for (text, _, ids) in justify_ranked.into_iter() {
-        /*
-          if winwidth > 0 && justified_map.contains_key(&text) {
-              let raw_line = justified_map.get(&text).unwrap().clone();
-              let icon: String = raw_line.chars().take(2).collect();
-              indices.push(ids.into_iter().map(|x| x + 4).collect::<Vec<_>>());
-              let icon_truncated = format!("{}{}", icon, text);
-              filtered.push(icon_truncated.clone());
-              justified_map.insert(icon_truncated, raw_line);
-          } else {
-        */
+    let mut indices = Vec::with_capacity(lines.len());
+    let mut filtered = Vec::with_capacity(lines.len());
+    for (text, _, ids) in lines.into_iter() {
         indices.push(ids);
         filtered.push(text);
-        // }
     }
 
-    Ok((indices, filtered, justified_map))
+    Ok((indices, filtered, truncated_map))
 }
 
 /// This module is a python module implemented in Rust.
@@ -134,54 +124,5 @@ fn py_and_rs_subscore_should_work() {
             .unwrap();
         let rs_result = substr_scorer(niddle, haystack).unwrap();
         assert_eq!(py_result, rs_result);
-    }
-}
-
-#[test]
-fn truncate_long_matched_lines_should_work() {
-    use termion::style::{Invert, Reset};
-
-    fn wrap_matches(line: &str, indices: &[usize]) -> String {
-        let mut ret = String::new();
-        let mut peekable = indices.iter().peekable();
-        for (idx, ch) in line.chars().enumerate() {
-            let next_id = **peekable.peek().unwrap_or(&&line.len());
-            if next_id == idx {
-                ret.push_str(format!("{}{}{}", Invert, ch, Reset).as_str());
-                peekable.next();
-            } else {
-                ret.push(ch);
-            }
-        }
-
-        ret
-    }
-
-    // let source = vec!["fuzzy-filter/target/debug/build/memchr-c1c0eb0055864ad6/build_script_build-c1c0eb0055864ad6.dSYM/Contents/Resources/DWARF/build_script_build-c1c0eb0055864ad6".into()];
-    // let query = "srcsrsr";
-
-    // let source = vec![
-    // " fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib".into(),
-    // " fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
-    // " target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
-    // " target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
-    // ];
-    // let query = "srlisrsr";
-
-    let source = vec![" target/debug/deps/librustversion-903f7f9b8fc1cc96.dylib.dSYM/Contents/Resources/DWARF/librustversion-903f7f9b8fc1cc96.dylib".into()];
-    let query = "srlis";
-
-    let winwidth = 62;
-    let (truncated_indices, truncated_lines, truncated_map) =
-        fuzzy_match(query, source, winwidth).unwrap();
-
-    println!("justified_map: {:#?}", truncated_map);
-    for (idx, indices) in truncated_indices.into_iter().enumerate() {
-        println!("truncated: {}", "-".repeat(winwidth as usize));
-
-        println!(
-            "truncated: {}",
-            wrap_matches(&truncated_lines[idx], &indices[..])
-        );
     }
 }

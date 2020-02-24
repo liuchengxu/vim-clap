@@ -131,8 +131,9 @@ pub fn truncate_long_matched_lines(
                 }
                 let end = line.len();
                 let truncated = if let Some(starting_point) = starting_point {
+                    let icon: String = line.chars().take(starting_point).collect();
                     start += starting_point;
-                    format!("{}{}{}", &line[..starting_point], DOTS, &line[start..end])
+                    format!("{}{}{}", icon, DOTS, &line[start..end])
                 } else {
                     format!("{}{}", DOTS, &line[start..end])
                 };
@@ -169,7 +170,7 @@ mod tests {
         ret
     }
 
-    fn run_test(source: Source, query: &str) {
+    fn run_test(source: Source, query: &str, starting_point: Option<usize>) {
         let mut ranked = source.filter(Algo::Fzy, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
@@ -177,7 +178,8 @@ mod tests {
         println!("query: {:?}", query);
 
         let winwidth = 50usize;
-        let (truncated_lines, truncated_map) = truncated_long_matched_lines(ranked, winwidth, None);
+        let (truncated_lines, truncated_map) =
+            truncate_long_matched_lines(ranked, winwidth, starting_point);
         for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
             println!("truncated: {}", "-".repeat(winwidth));
             println!(
@@ -200,7 +202,7 @@ mod tests {
     ]
         .into();
         let query = "files";
-        run_test(source, query)
+        run_test(source, query, None);
     }
 
     #[test]
@@ -212,7 +214,7 @@ mod tests {
         "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
         ].into();
         let query = "srlisresource";
-        run_test(source, query)
+        run_test(source, query, None);
     }
 
     #[test]
@@ -221,6 +223,23 @@ mod tests {
         "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
         ].into();
         let query = "srcggithub";
-        run_test(source, query)
+        run_test(source, query, None);
+    }
+
+    #[test]
+    fn starting_point_should_work() {
+        let source: Source = vec![
+          " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
+          " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
+        ].into();
+        let query = "srlisrlisrsr";
+        run_test(source, query, Some(2));
+
+        let source: Source = vec![
+          "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
+          "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
+        ].into();
+        let query = "srlisrlisrsr";
+        run_test(source, query, None);
     }
 }
