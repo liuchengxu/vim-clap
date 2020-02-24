@@ -106,7 +106,6 @@ pub fn fuzzy_filter_and_rank(
 ///  `last_idx - start >= winwidth`
 /// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
 ///
-/// |~~~~~~~~~~~~~~~~~~[---------------------------------------------------xx--x--]
 pub fn truncate_long_matched_lines(
     lines: impl IntoIterator<Item = FuzzyMatchedLineInfo>,
     winwidth: usize,
@@ -122,8 +121,14 @@ pub fn truncate_long_matched_lines(
                 if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
                     start = indices[0];
                 }
-                if indices[0] - start >= DOTS.len() {
-                    start += DOTS.len();
+                // [--------------------------]
+                // [-----------------------------------------------------------------xx--x--]
+                for _ in 0..3 {
+                    if indices[0] - start >= DOTS.len() {
+                        start += DOTS.len();
+                    } else {
+                        break;
+                    }
                 }
                 let trailing_dist = line.len() - last_idx;
                 if trailing_dist < indices[0] - start {

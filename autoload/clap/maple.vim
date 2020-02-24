@@ -89,8 +89,8 @@ function! s:on_complete() abort
     call clap#highlight#add_fuzzy_async(decoded.indices)
   endif
 
-  if has_key(decoded, 'justified_map')
-    let g:__clap_lines_truncated_map = decoded.justified_map
+  if has_key(decoded, 'truncated_map')
+    let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
   call clap#sign#reset_to_first_line()
