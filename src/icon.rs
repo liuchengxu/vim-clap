@@ -180,7 +180,7 @@ pub fn icon_for_path(path: &Path) -> &str {
         })
 }
 
-pub fn icon_for(line: &str) -> &str {
+fn icon_for(line: &str) -> &str {
     let path = Path::new(line);
     icon_for_path(&path)
 }
