@@ -8,6 +8,8 @@ use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use structopt::clap::arg_enum;
 
+pub const DOTS: &str = "...";
+
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
   #[derive(Debug)]
@@ -30,11 +32,11 @@ impl From<Vec<String>> for Source {
     }
 }
 
-pub type JustifiedMap = HashMap<String, String>;
-pub type FuzzyMatchedLine = (String, f64, Vec<usize>);
+pub type LinesTruncatedMap = HashMap<String, String>;
+pub type FuzzyMatchedLineInfo = (String, f64, Vec<usize>);
 
 impl Source {
-    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLine>> {
+    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLineInfo>> {
         let scorer = |line: &str| match algo {
             Algo::Skim => {
                 fuzzy_indices(line, &query).map(|(score, indices)| (score as f64, indices))
@@ -70,6 +72,7 @@ impl Source {
     }
 }
 
+/// Return the ranked results after applying fuzzy filter given the query String and a list of candidates.
 pub fn fuzzy_filter_and_rank(
     query: &str,
     input: Option<PathBuf>,
@@ -88,51 +91,61 @@ pub fn fuzzy_filter_and_rank(
     Ok(ranked)
 }
 
-// Long matched lines can cause the matched items invisible.
-pub fn justify(
-    ranked: impl IntoIterator<Item = FuzzyMatchedLine>,
-    win_width: u16,
+/// Long matched lines can cause the matched items invisible.
+///
+/// [--------------------------]
+///                                              end
+/// [-------------------------------------xx--x---]
+///                     start    winwidth
+/// |~~~~~~~~~~~~~~~~~~[------------------xx--x---]
+///
+///  `start >= indices[0]`
+/// |----------[x-------------------------xx--x---]
+///
+/// |~~~~~~~~~~~~~~~~~~[----------xx--x------------------------------x-----]
+///  `last_idx - start >= winwidth`
+/// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
+///
+/// |~~~~~~~~~~~~~~~~~~[---------------------------------------------------xx--x--]
+pub fn truncated_long_matched_lines(
+    lines: impl IntoIterator<Item = FuzzyMatchedLineInfo>,
+    winwidth: usize,
     starting_point: Option<usize>,
-) -> (Vec<FuzzyMatchedLine>, JustifiedMap) {
-    let win_width = win_width as usize;
-    let mut justified_map = HashMap::new();
-    let justified = ranked
+) -> (Vec<FuzzyMatchedLineInfo>, LinesTruncatedMap) {
+    let mut truncated_map = HashMap::new();
+    let lines = lines
         .into_iter()
         .map(|(line, score, indices)| {
-            if let Some(last) = indices.last() {
-                if *last > win_width {
-                    let dots = "...";
-                    let mut start = *last - win_width + dots.len();
-                    if start > indices[0] {
-                        start = indices[0];
-                    }
-                    if let Some(starting_point) = starting_point {
-                        start += starting_point;
-                    }
-                    let end = line.len();
-                    let truncated = if let Some(starting_point) = starting_point {
-                        format!(
-                            "{}{}{}",
-                            &line[..starting_point],
-                            dots,
-                            &line[start - 2..end]
-                        )
-                    } else {
-                        format!("{}{}", dots, &line[start..end])
-                    };
-                    let offset = line.len() - truncated.len();
-                    let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
-                    justified_map.insert(truncated.clone(), line.clone());
-                    (truncated, score, truncated_indices)
-                } else {
-                    (line, score, indices)
+            let last_idx = indices.last().expect("indices are non-empty; qed");
+            if *last_idx > winwidth {
+                let mut start = *last_idx - winwidth;
+                if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
+                    start = indices[0];
                 }
+                if indices[0] - start >= DOTS.len() {
+                    start += DOTS.len();
+                }
+                let trailing_dist = line.len() - last_idx;
+                if trailing_dist < indices[0] - start {
+                    start += trailing_dist;
+                }
+                let end = line.len();
+                let truncated = if let Some(starting_point) = starting_point {
+                    start += starting_point;
+                    format!("{}{}{}", &line[..starting_point], DOTS, &line[start..end])
+                } else {
+                    format!("{}{}", DOTS, &line[start..end])
+                };
+                let offset = line.len() - truncated.len();
+                let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
+                truncated_map.insert(truncated.clone(), line);
+                (truncated, score, truncated_indices)
             } else {
                 (line, score, indices)
             }
         })
         .collect::<Vec<_>>();
-    (justified, justified_map)
+    (lines, truncated_map)
 }
 
 #[cfg(test)]
@@ -155,8 +168,28 @@ mod tests {
 
         ret
     }
+
+    fn run_test(source: Source, query: &str) {
+        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
+        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+        println!("");
+        println!("query: {:?}", query);
+
+        let winwidth = 50usize;
+        let (truncated_lines, truncated_map) = truncated_long_matched_lines(ranked, winwidth, None);
+        for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
+            println!("truncated: {}", "-".repeat(winwidth));
+            println!(
+                "truncated: {}",
+                wrap_matches(&truncated_line, &truncated_indices)
+            );
+            println!("raw_line: {}", truncated_map.get(truncated_line).unwrap());
+        }
+    }
+
     #[test]
-    fn truncate_to_matched() {
+    fn case1() {
         let source: Source = vec![
         "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss".into(),
         "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss"
@@ -167,45 +200,27 @@ mod tests {
     ]
         .into();
         let query = "files";
+        run_test(source, query)
+    }
 
+    #[test]
+    fn case2() {
         let source: Source = vec![
-          "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib".into(),
-          "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
+        "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib".into(),
+        "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
+        "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
+        "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
         ].into();
-        let query = "srlisrsr";
+        let query = "srlisresource";
+        run_test(source, query)
+    }
 
-        // let source: Source = vec![
-        // "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
-        // ].into();
-        // let query = "srcggithub";
-        //
-        //
-
-        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
-        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-        println!("");
-        println!("ranked: {:?}", ranked);
-
-        let win_width = 62u16;
-        let (justified, truncated_map) = justify(ranked, win_width, None);
-        for (truncated_line, _score, truncated_indices) in justified.iter() {
-            println!("truncated: {}", "-".repeat(win_width as usize));
-            println!(
-                "truncated: {}",
-                wrap_matches(&truncated_line, &truncated_indices)
-            );
-        }
-
-        println!("justified: {:?}", justified);
-        println!("truncated_map: {:?}", truncated_map);
-
-        // [--------------------------]
-        // [------------------...|---------------xx--x---]
-        //                     [-----------------xx--x---]
-        // [-----------------xx--x---]
-        // println!("{:#?}", ranked);
+    #[test]
+    fn case3() {
+        let source: Source = vec![
+        "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
+        ].into();
+        let query = "srcggithub";
+        run_test(source, query)
     }
 }
