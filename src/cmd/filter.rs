@@ -17,34 +17,25 @@ pub fn run(
     if let Some(number) = number {
         let total = ranked.len();
         let payload = ranked.into_iter().take(number);
-        let (justified_payload, mut justified_map) = truncate_long_matched_lines(payload, 62, None);
+        let (truncated_payload, truncated_map) = truncate_long_matched_lines(payload, 62, None);
         let mut lines = Vec::with_capacity(number);
         let mut indices = Vec::with_capacity(number);
         if enable_icon {
-            for (text, _, idxs) in justified_payload {
+            for (text, _, idxs) in truncated_payload {
                 let iconized = prepend_icon(&text);
-                // if let Some(x) = justified_map.get(&text) {
-                // println!("iconized: {}", iconized);
-                // justified_map.insert(iconized.clone(), x.clone());
-                // }
-
                 lines.push(iconized);
                 indices.push(idxs);
             }
         } else {
-            for (text, _, idxs) in justified_payload {
+            for (text, _, idxs) in truncated_payload {
                 lines.push(text);
                 indices.push(idxs);
             }
         }
-        // let justified_map = justified_map
-        // .into_iter()
-        // .map(|(a, b)| (b, a))
-        // .collect::<std::collections::HashMap<_, _>>();
-        if justified_map.is_empty() {
+        if truncated_map.is_empty() {
             println_json!(total, lines, indices);
         } else {
-            println_json!(total, lines, indices, justified_map);
+            println_json!(total, lines, indices, truncated_map);
         }
     } else {
         for (text, _, indices) in ranked.iter() {
