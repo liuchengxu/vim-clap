@@ -123,16 +123,17 @@ pub fn truncate_long_matched_lines(
                 if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
                     start = indices[0];
                 }
+                let line_len = line.len();
                 // [--------------------------]
                 // [-----------------------------------------------------------------xx--x--]
                 for _ in 0..3 {
-                    if indices[0] - start >= DOTS.len() {
+                    if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
                         start += DOTS.len();
                     } else {
                         break;
                     }
                 }
-                let trailing_dist = line.len() - last_idx;
+                let trailing_dist = line_len - last_idx;
                 if trailing_dist < indices[0] - start {
                     start += trailing_dist;
                 }
@@ -144,7 +145,7 @@ pub fn truncate_long_matched_lines(
                 } else {
                     format!("{}{}", DOTS, &line[start..end])
                 };
-                let offset = line.len() - truncated.len();
+                let offset = line_len - truncated.len();
                 let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
                 truncated_map.insert(truncated.clone(), line);
                 (truncated, score, truncated_indices)
