@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Now you can use `++query=@visual` to search the visual selection. ([#336](https://github.com/liuchengxu/vim-clap/pull/336))
+
 ## [0.8] 2020-02-21
 
 ### Added
