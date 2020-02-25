@@ -161,5 +161,15 @@ function! clap#util#open_quickfix(qf_entries) abort
   cc
 endfunction
 
+function! clap#util#get_visual_selection() abort
+  try
+    let a_save = @a
+    silent normal! gv"ay
+    return escape(@a, '"')
+  finally
+    let @a = a_save
+  endtry
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
