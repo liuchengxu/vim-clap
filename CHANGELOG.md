@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+- Add new option `g:clap_insert_mode_only` to disable the feature of other mode, use the insert mode only. ([#335](https://github.com/liuchengxu/vim-clap/pull/335))
+
 ## [0.8] 2020-02-21
 
 ### Added
