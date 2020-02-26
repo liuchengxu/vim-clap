@@ -349,7 +349,11 @@ function! s:parse_opts(args) abort
     let idx += 1
   endfor
   if has_key(g:clap.context, 'query')
-    let g:clap.context.query = clap#util#expand(g:clap.context.query)
+    if g:clap.context.query ==# '@visual'
+      let g:clap.context.query = clap#util#get_visual_selection()
+    else
+      let g:clap.context.query = clap#util#expand(g:clap.context.query)
+    endif
   endif
   let g:clap.provider.args = a:args[idx :]
 endfunction
