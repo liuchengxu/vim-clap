@@ -101,7 +101,9 @@ function! clap#util#define_open_action_mappings() abort
   for k in keys(g:clap_open_action)
     let lhs = substitute(toupper(k), 'CTRL', 'C', '')
     execute 'inoremap <silent> <buffer> <nowait> <'.lhs.'> <Esc>:call clap#handler#try_open("'.k.'")<CR>'
-    execute 'nnoremap <silent> <buffer> <nowait> <'.lhs.'> :<c-u>call clap#handler#try_open("'.k.'")<CR>'
+    if !g:clap_insert_mode_only
+      execute 'nnoremap <silent> <buffer> <nowait> <'.lhs.'> :<c-u>call clap#handler#try_open("'.k.'")<CR>'
+    endif
   endfor
 endfunction
 
@@ -159,6 +161,16 @@ function! clap#util#open_quickfix(qf_entries) abort
     copen
   endif
   cc
+endfunction
+
+function! clap#util#get_visual_selection() abort
+  try
+    let a_save = @a
+    silent normal! gv"ay
+    return escape(@a, '"')
+  finally
+    let @a = a_save
+  endtry
 endfunction
 
 let &cpoptions = s:save_cpo

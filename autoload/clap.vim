@@ -85,6 +85,8 @@ let s:default_action = {
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
 
+let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
+
 function! s:inject_default_impl_is_ok(provider_info) abort
   let provider_info = a:provider_info
 
@@ -348,7 +350,11 @@ function! s:parse_opts(args) abort
     let idx += 1
   endfor
   if has_key(g:clap.context, 'query')
-    let g:clap.context.query = clap#util#expand(g:clap.context.query)
+    if g:clap.context.query ==# '@visual'
+      let g:clap.context.query = clap#util#get_visual_selection()
+    else
+      let g:clap.context.query = clap#util#expand(g:clap.context.query)
+    endif
   endif
   let g:clap.provider.args = a:args[idx :]
 endfunction

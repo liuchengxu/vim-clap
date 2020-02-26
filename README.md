@@ -132,6 +132,8 @@ Command                                | List                                   
 
 - Use `:Clap grep ++query=<cword>` to grep the word under cursor.
 
+- Use `:Clap grep ++query=@visual` to grep the visual selection.
+
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
 ### Global variables
