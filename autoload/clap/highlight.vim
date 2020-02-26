@@ -24,6 +24,10 @@ function! s:builtin_fuzzy_idx_offset() abort
   endif
 endfunction
 
+function! clap#highlight#provider_has_offset() abort
+  return s:builtin_fuzzy_idx_offset() > 0
+endfunction
+
 function! s:maple_fuzzy_idx_offset() abort
   if s:should_check_offset()
         \ && index(s:related_maple_providers, g:clap.provider.id) > -1
