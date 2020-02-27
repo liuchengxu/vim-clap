@@ -45,6 +45,9 @@ let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfB
 " |          preview            |
 "  -----------------------------
 function! g:clap#floating_win#display.open() abort
+  if exists('s:display_winid') && nvim_win_is_valid(s:display_winid)
+    return
+  endif
   " Check if the buffer is still valid as when switching between the sessions, it could become invalid.
   if !nvim_buf_is_valid(s:display_bufnr)
     let s:display_bufnr = nvim_create_buf(v:false, v:true)
@@ -122,6 +125,9 @@ function! s:open_win_border_left() abort
 endfunction
 
 function! g:clap#floating_win#spinner.open() abort
+  if exists('s:spinner_winid') && nvim_win_is_valid(s:spinner_winid)
+    return
+  endif
   let opts = nvim_win_get_config(s:display_winid)
   let opts.col += s:symbol_width
   let opts.row -= 1
@@ -163,6 +169,9 @@ function! g:clap#floating_win#spinner.shrink() abort
 endfunction
 
 function! g:clap#floating_win#input.open() abort
+  if exists('s:input_winid') && nvim_win_is_valid(s:input_winid)
+    return
+  endif
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
   let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth

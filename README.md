@@ -29,6 +29,8 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Commands](#commands)
   * [Global variables](#global-variables)
   * [Keybindings](#keybindings)
+    * [Insert mode](#insert-mode)
+    * [Normal mode](#normal-mode)
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
 * [How to define your own provider](#how-to-define-your-own-provider)
@@ -192,6 +194,7 @@ See `:help clap-options` for more information.
     - Use <kbd>Tab</kbd> to expand the directory for `:Clap filer`.
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
+- [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
 
 #### Normal mode
 
@@ -199,6 +202,7 @@ Normal mode mappings are neovim only now.
 
 - [x] Use <kbd>j</kbd>/<kbd>Down</kbd> or <kbd>k</kbd>/<kbd>Up</kbd> to navigate the result list up and down linewise.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
+- [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Actions defined by `g:clap_open_action`.
