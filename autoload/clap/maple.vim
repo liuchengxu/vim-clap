@@ -201,7 +201,7 @@ function! clap#maple#forerunner_exec_subcommand(cmd) abort
 endfunction
 
 function! clap#maple#filter_subcommand(query) abort
-  let global_opt = '--number '.g:clap.display.preload_capacity
+  let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let global_opt .= ' --enable-icon'

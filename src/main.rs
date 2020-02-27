@@ -44,7 +44,14 @@ impl Maple {
                 crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
-                crate::cmd::filter::run(query, input, algo, self.number, self.enable_icon)?;
+                crate::cmd::filter::run(
+                    query,
+                    input,
+                    algo,
+                    self.number,
+                    self.enable_icon,
+                    self.winwidth,
+                )?;
             }
             Cmd::Exec {
                 cmd,
