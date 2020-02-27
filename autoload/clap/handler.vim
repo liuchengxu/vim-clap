@@ -8,11 +8,30 @@ let s:old_input = ''
 let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
 
+function! clap#handler#relaunch_providers() abort
+  call clap#handler#exit()
+  call timer_start(10, { -> clap#for('providers') })
+  call g:clap.input.set('')
+endfunction
+
+function! clap#handler#relaunch_is_ok() abort
+  if g:clap.input.get() ==# g:clap_providers_relaunch_code
+    call clap#handler#relaunch_providers()
+    return v:true
+  endif
+  return v:false
+endfunction
+
 function! clap#handler#on_typed() abort
+  if clap#handler#relaunch_is_ok()
+    return
+  endif
+
   if g:clap.provider.is_rpc_type()
     call g:clap.provider.on_typed()
     return
   endif
+
   let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return

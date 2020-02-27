@@ -39,6 +39,10 @@ function! s:move_manager.ctrl_e(_winid) abort
   call s:mock_input()
 endfunction
 
+function! s:move_manager.ctrl_l(_winid) abort
+  call clap#handler#relaunch_providers()
+endfunction
+
 function! s:apply_on_typed() abort
   if g:clap.provider.is_sync()
     let g:__clap_should_refilter = v:true
@@ -121,6 +125,7 @@ let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
+let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)
@@ -167,6 +172,9 @@ function! s:apply_input(_timer) abort
 endfunction
 
 function! s:apply_input_with_delay() abort
+  if clap#handler#relaunch_is_ok()
+    return
+  endif
   if s:input_timer != -1
     call timer_stop(s:input_timer)
   endif

@@ -44,6 +44,8 @@ endif
 
 inoremap <silent> <buffer> <expr> <C-E> col('.')>strlen(getline('.'))<bar><bar>pumvisible()?"\<Lt>C-E>":"\<Lt>End>"
 
+inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR>
+
 inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#sink()<CR>
 inoremap <silent> <buffer> <C-c> <Esc>:<c-u>call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-g> <Esc>:<c-u>call clap#handler#exit()<CR>
@@ -70,6 +72,8 @@ endif
 nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
 nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
+
+nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers()<CR>
 
 nnoremap <silent> <buffer> <Down> :<c-u>call clap#navigation#linewise('down')<CR>
 nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise('up')<CR>
