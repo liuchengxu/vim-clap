@@ -248,6 +248,18 @@ g:clap_insert_mode_only                            *g:clap_insert_mode_only*
   to `v:true` .
 
 
+g:clap_providers_relaunch_code                  *g:clap_providers_relaunch_code*
+
+  Type: |String|
+  Default: `'@@'`
+
+  This feature is inspired by VS code command palette prefix-based searching.
+  You can input `@@` or use `<C-L>` to invoke `:Clap` to reselect the provider
+  at any time. Although it does not use the prefix searching, it's more
+  convient due to the inherent fuzzy matching feature of vim-clap since you
+  don't have to remember each provider's prefix.
+
+
 g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
 
   Type: |Bool|
