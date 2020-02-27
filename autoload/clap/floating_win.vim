@@ -263,6 +263,9 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:create_preview_win(height) abort
+  if !nvim_win_is_valid(s:display_winid)
+    return
+  endif
   let opts = nvim_win_get_config(s:display_winid)
   let opts.row += opts.height
   let opts.height = a:height
