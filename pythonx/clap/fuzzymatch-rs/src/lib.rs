@@ -1,6 +1,7 @@
 #![feature(pattern)]
 
 use extracted_fzy::match_and_score_with_positions;
+use fuzzy_filter::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
@@ -60,6 +61,7 @@ fn fuzzy_match(
     query: &str,
     candidates: Vec<String>,
     winwidth: usize,
+    enable_icon: bool,
 ) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
@@ -74,12 +76,13 @@ fn fuzzy_match(
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
-    let _ = winwidth;
-    let truncated_map = HashMap::new();
+    // 2 = chars(icon)
+    let starting_point = if enable_icon { Some(2) } else { None };
+    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, starting_point);
 
-    let mut indices = Vec::with_capacity(ranked.len());
-    let mut filtered = Vec::with_capacity(ranked.len());
-    for (text, _, ids) in ranked.into_iter() {
+    let mut indices = Vec::with_capacity(lines.len());
+    let mut filtered = Vec::with_capacity(lines.len());
+    for (text, _, ids) in lines.into_iter() {
         indices.push(ids);
         filtered.push(text);
     }

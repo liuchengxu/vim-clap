@@ -193,6 +193,7 @@ function! clap#_exit() abort
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_forerunner_result',
+        \ 'g:__clap_lines_truncated_map',
         \ ])
 
   call clap#sign#reset()

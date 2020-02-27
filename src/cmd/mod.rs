@@ -97,6 +97,10 @@ pub struct Maple {
     #[structopt(short = "n", long = "number", name = "NUM")]
     pub number: Option<usize>,
 
+    /// Width of clap window.
+    #[structopt(short = "w", long = "winwidth")]
+    pub winwidth: Option<usize>,
+
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
     #[structopt(long = "enable-icon")]
     pub enable_icon: bool,

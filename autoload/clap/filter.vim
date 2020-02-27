@@ -39,9 +39,13 @@ function! clap#filter#capacity() abort
 endfunction
 
 if s:can_use_python
+  function! s:enable_icon() abort
+    return clap#highlight#provider_has_offset() ? v:true : v:false
+  endfunction
+
   function! clap#filter#(query, candidates) abort
     try
-      return clap#filter#python#(a:query, a:candidates, winwidth(g:clap.display.winid))
+      return clap#filter#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon())
     catch
       call clap#helper#echo_error(v:exception)
       return clap#filter#viml#(a:query, a:candidates)

@@ -32,6 +32,12 @@ impl From<Vec<String>> for Source {
     }
 }
 
+impl From<PathBuf> for Source {
+    fn from(fpath: PathBuf) -> Self {
+        Self::File(fpath)
+    }
+}
+
 pub type LinesTruncatedMap = HashMap<String, String>;
 pub type FuzzyMatchedLineInfo = (String, f64, Vec<usize>);
 
@@ -78,11 +84,7 @@ pub fn fuzzy_filter_and_rank(
     input: Option<PathBuf>,
     algo: Algo,
 ) -> Result<Vec<(String, f64, Vec<usize>)>> {
-    let source = if let Some(fpath) = input {
-        Source::File(fpath)
-    } else {
-        Source::Stdin
-    };
+    let source = input.map(Into::into).unwrap_or(Source::Stdin);
 
     let mut ranked = source.filter(algo, query)?;
 
@@ -106,8 +108,7 @@ pub fn fuzzy_filter_and_rank(
 ///  `last_idx - start >= winwidth`
 /// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
 ///
-/// |~~~~~~~~~~~~~~~~~~[---------------------------------------------------xx--x--]
-pub fn truncated_long_matched_lines(
+pub fn truncate_long_matched_lines(
     lines: impl IntoIterator<Item = FuzzyMatchedLineInfo>,
     winwidth: usize,
     starting_point: Option<usize>,
@@ -122,21 +123,29 @@ pub fn truncated_long_matched_lines(
                 if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
                     start = indices[0];
                 }
-                if indices[0] - start >= DOTS.len() {
-                    start += DOTS.len();
+                let line_len = line.len();
+                // [--------------------------]
+                // [-----------------------------------------------------------------xx--x--]
+                for _ in 0..3 {
+                    if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
+                        start += DOTS.len();
+                    } else {
+                        break;
+                    }
                 }
-                let trailing_dist = line.len() - last_idx;
+                let trailing_dist = line_len - last_idx;
                 if trailing_dist < indices[0] - start {
                     start += trailing_dist;
                 }
                 let end = line.len();
                 let truncated = if let Some(starting_point) = starting_point {
+                    let icon: String = line.chars().take(starting_point).collect();
                     start += starting_point;
-                    format!("{}{}{}", &line[..starting_point], DOTS, &line[start..end])
+                    format!("{}{}{}", icon, DOTS, &line[start..end])
                 } else {
                     format!("{}{}", DOTS, &line[start..end])
                 };
-                let offset = line.len() - truncated.len();
+                let offset = line_len - truncated.len();
                 let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
                 truncated_map.insert(truncated.clone(), line);
                 (truncated, score, truncated_indices)
@@ -169,15 +178,15 @@ mod tests {
         ret
     }
 
-    fn run_test(source: Source, query: &str) {
+    fn run_test(source: Source, query: &str, starting_point: Option<usize>, winwidth: usize) {
         let mut ranked = source.filter(Algo::Fzy, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
         println!("");
         println!("query: {:?}", query);
 
-        let winwidth = 50usize;
-        let (truncated_lines, truncated_map) = truncated_long_matched_lines(ranked, winwidth, None);
+        let (truncated_lines, truncated_map) =
+            truncate_long_matched_lines(ranked, winwidth, starting_point);
         for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
             println!("truncated: {}", "-".repeat(winwidth));
             println!(
@@ -200,7 +209,7 @@ mod tests {
     ]
         .into();
         let query = "files";
-        run_test(source, query)
+        run_test(source, query, None, 50usize);
     }
 
     #[test]
@@ -212,7 +221,7 @@ mod tests {
         "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
         ].into();
         let query = "srlisresource";
-        run_test(source, query)
+        run_test(source, query, None, 50usize);
     }
 
     #[test]
@@ -221,6 +230,33 @@ mod tests {
         "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
         ].into();
         let query = "srcggithub";
-        run_test(source, query)
+        run_test(source, query, None, 50usize);
+    }
+
+    #[test]
+    fn case4() {
+        let source: Source = vec![
+            "        // Wait until propagation delay period after block we plan to mine on".into(),
+        ]
+        .into();
+        let query = "bmine";
+        run_test(source, query, None, 58usize);
+    }
+
+    #[test]
+    fn starting_point_should_work() {
+        let source: Source = vec![
+          " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
+          " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
+        ].into();
+        let query = "srlisrlisrsr";
+        run_test(source, query, Some(2), 50usize);
+
+        let source: Source = vec![
+          "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
+          "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
+        ].into();
+        let query = "srlisrlisrsr";
+        run_test(source, query, None, 50usize);
     }
 }
