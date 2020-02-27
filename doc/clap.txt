@@ -238,6 +238,16 @@ g:clap_dispatcher_drop_cache                      *g:clap_dispatcher_drop_cache*
   results especially when there are hundreds of thousands of results.
 
 
+g:clap_insert_mode_only                            *g:clap_insert_mode_only*
+
+  Type: |Bool|
+  Default: `v:false`
+
+  Disable the feature of other modes. `<Esc>` will be used for exiting the
+  clap window instead of exiting the insert mode if you set this variable
+  to `v:true` .
+
+
 g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
 
   Type: |Bool|

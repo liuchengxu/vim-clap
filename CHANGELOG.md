@@ -3,6 +3,11 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add new option `g:clap_insert_mode_only` to disable the feature of other mode, use the insert mode only. ([#335](https://github.com/liuchengxu/vim-clap/pull/335))
+- Now you can use `:Clap grep ++query=@visual` to search the visual selection. ([#336](https://github.com/liuchengxu/vim-clap/pull/336))
+
 ## [0.8] 2020-02-21
 
 ### Added
