@@ -39,12 +39,16 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
   if !empty(origin_line)
         \ && clap#util#trim_leading(origin_line[0]) == file_text
     let lines = getbufline(g:clap.start.bufnr, start, end)
+    call insert(lines, bufname(g:clap.start.bufnr))
+    let l:preview_header_added = 1
     let hi_lnum += 1
     let origin_bufnr = g:clap.start.bufnr
   else
     " TODO try cwd + file_text
     if filereadable(expand(file_text))
       let lines = readfile(expand(file_text), '', end)[start :]
+      call insert(lines, file_text)
+      let l:preview_header_added = 1
     else
       let lines = [file_text]
       let should_add_hi = v:false
@@ -68,6 +72,10 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
     endif
     if !empty(ft)
       call g:clap.preview.set_syntax(ft)
+    endif
+    if exists('l:preview_header_added')
+      let hi_lnum += 1
+      call clap#preview#highlight_header()
     endif
     call g:clap.preview.add_highlight(hi_lnum)
   endif

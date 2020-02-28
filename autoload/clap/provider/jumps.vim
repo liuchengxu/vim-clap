@@ -31,6 +31,7 @@ function! s:jumps.sink(line) abort
   let delta = idx - pointer
   let cmd = delta < 0 ? abs(delta)."\<C-O>" : delta."\<C-I>"
   execute 'normal!' cmd
+  normal! zz
 endfunction
 
 function! s:jumps.on_move() abort
