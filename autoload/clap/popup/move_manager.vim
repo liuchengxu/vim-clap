@@ -8,9 +8,34 @@ let s:input = ''
 let s:input_timer = -1
 let s:input_delay = get(g:, 'clap_popup_input_delay', 100)
 let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
-let s:cursor_width = strdisplaywidth(s:cursor_shape)
+let s:cursor_length = strlen(s:cursor_shape)
 
 let s:move_manager = {}
+
+" Returns part of s:input like strcharpart(), but composing characters are not
+" counted separately.
+function! s:strpart_input(start, ...) abort
+  if s:input ==# ''
+    return ''
+  endif
+  let start = max([a:start, 0])
+  let start_byte = byteidx(s:input, start)
+  if start_byte < 0
+    return ''
+  endif
+  let len = -1
+  if a:0 >= 1
+    if a:1 <= 0
+      return ''
+    endif
+    let len = byteidx(s:input, start + a:1) - start_byte
+  endif
+  if len < 0
+    return strpart(s:input, start_byte)
+  else
+    return strpart(s:input, start_byte, len)
+  endif
+endfunction
 
 function! s:move_manager.ctrl_a(_winid) abort
   let s:cursor_idx = 0
@@ -27,7 +52,7 @@ endfunction
 
 function! s:move_manager.ctrl_f(_winid) abort
   let s:cursor_idx += 1
-  let input_len = strlen(s:input)
+  let input_len = strchars(s:input, 1)
   if s:cursor_idx > input_len
     let s:cursor_idx = input_len
   endif
@@ -35,7 +60,7 @@ function! s:move_manager.ctrl_f(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_e(_winid) abort
-  let s:cursor_idx = strlen(s:input)
+  let s:cursor_idx = strchars(s:input, 1)
   call s:mock_input()
 endfunction
 
@@ -52,16 +77,12 @@ function! s:apply_on_typed() abort
 endfunction
 
 function! s:backspace() abort
-  if empty(s:input) || s:cursor_idx == 0
+  if s:cursor_idx <= 0
     return 1
   endif
-  if s:cursor_idx == 1
-    let s:input = s:input[1:]
-  else
-    let truncated = s:input[:s:cursor_idx-2]
-    let remained = s:input[s:cursor_idx :]
-    let s:input = truncated.remained
-  endif
+  let truncated = s:strpart_input(0, s:cursor_idx-1)
+  let remained = s:strpart_input(s:cursor_idx)
+  let s:input = truncated.remained
   let s:cursor_idx -= 1
   if s:cursor_idx < 0
     let s:cursor_idx = 0
@@ -79,16 +100,12 @@ function! s:move_manager.bs(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_d(_winid) abort
-  if empty(s:input) || s:cursor_idx == strlen(s:input)
+  if s:cursor_idx >= strchars(s:input, 1)
     return
   endif
-  if s:cursor_idx == 0
-    let s:input = s:input[1:]
-  else
-    let remained = s:input[:s:cursor_idx-1]
-    let truncated = s:input[s:cursor_idx+1:]
-    let s:input = remained.truncated
-  endif
+  let remained = s:strpart_input(0, s:cursor_idx)
+  let truncated = s:strpart_input(s:cursor_idx+1)
+  let s:input = remained.truncated
   call s:apply_on_typed()
 endfunction
 
@@ -137,19 +154,8 @@ endfunction
 call s:define_open_action_filter()
 
 function! s:move_manager.printable(key) abort
-  let s:insert_at_the_begin = v:false
-  if s:input ==# '' || s:cursor_idx == strlen(s:input)
-    let s:input .= a:key
-    let s:cursor_idx += 1
-  else
-    if s:cursor_idx == 0
-      let s:input = a:key . s:input
-      let s:insert_at_the_begin = v:true
-    else
-      let s:input = s:input[:s:cursor_idx-1].a:key.s:input[s:cursor_idx :]
-      let s:cursor_idx += 1
-    endif
-  endif
+  let s:input = s:strpart_input(0, s:cursor_idx).a:key.s:strpart_input(s:cursor_idx)
+  let s:cursor_idx = strchars(s:strpart_input(0, s:cursor_idx) . a:key, 1)
 
   " Always hold a delay before reacting actually.
   "
@@ -185,22 +191,11 @@ function! s:hl_cursor() abort
   if exists('w:clap_cursor_id')
     call matchdelete(w:clap_cursor_id)
   endif
-  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, s:cursor_idx + 1, s:cursor_width]])
+  let w:clap_cursor_id = matchaddpos('ClapPopupCursor', [[1, byteidx(s:input, s:cursor_idx) + 1, s:cursor_length]])
 endfunction
 
 function! s:mock_input() abort
-  if s:input ==# ''
-        \ || type(s:cursor_idx) ==# v:t_string
-        \ || s:cursor_idx == strlen(s:input)
-    let input = s:input.s:cursor_shape
-  elseif get(s:, 'insert_at_the_begin', v:false)
-    let input = s:input[0].s:cursor_shape.s:input[1:]
-    let s:cursor_idx = 1
-  elseif s:cursor_idx == 0
-    let input = s:cursor_shape.s:input
-  else
-    let input = join([s:input[:s:cursor_idx-1], s:input[s:cursor_idx :]], s:cursor_shape)
-  endif
+  let input = s:strpart_input(0, s:cursor_idx).s:cursor_shape.s:strpart_input(s:cursor_idx)
   let input_winid = g:clap#popup#input.winid
   call popup_settext(input_winid, input)
   call win_execute(input_winid, 'noautocmd call s:hl_cursor()')
@@ -224,8 +219,8 @@ function! clap#popup#move_manager#filter(winid, key) abort
 
     let char_nr = char2nr(a:key)
 
-    " ASCII printable characters
-    if char_nr >= 32 && char_nr < 126
+    " ASCII printable characters and multibyte characters
+    if char_nr >= 32 && char_nr < 126 || byteidx(a:key, 1) > 1
       call s:move_manager.printable(a:key)
     endif
   catch
