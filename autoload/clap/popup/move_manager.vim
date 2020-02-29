@@ -150,7 +150,7 @@ call s:define_open_action_filter()
 
 function! s:move_manager.printable(key) abort
   let s:input = s:strpart_input(0, s:cursor_idx).a:key.s:strpart_input(s:cursor_idx)
-  let s:cursor_idx += strchars(a:key, 1)
+  let s:cursor_idx = strchars(s:strpart_input(0, s:cursor_idx) . a:key, 1)
 
   " Always hold a delay before reacting actually.
   "
