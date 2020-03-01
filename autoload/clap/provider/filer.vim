@@ -122,7 +122,13 @@ endfunction
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
-  call clap#filter#on_typed(function('clap#filter#'), query, s:filer_cache[s:current_dir])
+  let candidates = s:filer_cache[s:current_dir]
+  if query ==# ''
+    call g:clap.display.set_lines(candidates)
+    call g:clap#display_win.shrink_if_undersize()
+  else
+    call clap#filter#on_typed(function('clap#filter#'), query, candidates)
+  endif
 endfunction
 
 function! s:reset_to(new_dir) abort

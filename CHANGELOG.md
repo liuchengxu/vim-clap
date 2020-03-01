@@ -5,6 +5,7 @@ CHANGELOG
 
 ### Added
 
+- Support multi-byte input for vim's popup thanks to @Bakudankun. You need patch 8.2.0329 to make it work as expected. ([#320](https://github.com/liuchengxu/vim-clap/pull/320))
 - Add new option `g:clap_insert_mode_only` to disable the feature of other mode, use the insert mode only. ([#335](https://github.com/liuchengxu/vim-clap/pull/335))
 - Add new option `g:clap_providers_relaunch_code`(`@@` default). You can input `@@` or use <kbd>C-L</kbd> to invoke `:Clap` to reselect another provider at any time.([#328](https://github.com/liuchengxu/vim-clap/pull/328))
 - Add new keymapping <kbd>C-L</kbd>.([#328](https://github.com/liuchengxu/vim-clap/pull/328))
