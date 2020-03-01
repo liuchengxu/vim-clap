@@ -172,7 +172,7 @@ function! s:init_theme() abort
     call s:apply_default_theme()
   endif
 
-  if !s:is_nvim && get(g:, 'clap_popup_cursor_shape', '|') ==# ''
+  if !s:is_nvim && get(g:, 'clap_popup_cursor_shape', '') ==# ''
     " block cursor
     call s:reverse_PopupCursor()
   endif
