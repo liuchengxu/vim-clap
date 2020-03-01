@@ -144,6 +144,23 @@ function! s:make_preview_EndOfBuffer_invisible() abort
         \ )
 endfunction
 
+function! s:reverse_PopupCursor() abort
+  if !hlexists('ClapSearchText')
+    return
+  endif
+  let ctermbg = s:extract('ClapSearchText', 'bg', 'cterm')
+  let guibg = s:extract('ClapSearchText', 'bg', 'gui')
+  let ctermfg = s:extract('ClapSearchText', 'fg', 'cterm')
+  let guifg = s:extract('ClapSearchText', 'fg', 'gui')
+  execute printf(
+        \ 'hi ClapPopupCursor guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold,reverse gui=bold,reverse',
+        \ guifg,
+        \ ctermfg,
+        \ ctermbg,
+        \ guibg,
+        \ )
+endfunction
+
 function! s:init_theme() abort
   if &background ==# 'dark'
     hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
@@ -153,6 +170,11 @@ function! s:init_theme() abort
 
   if !exists('s:palette') || !s:paint_is_ok()
     call s:apply_default_theme()
+  endif
+
+  if !s:is_nvim && get(g:, 'clap_popup_cursor_shape', '|') ==# ''
+    " block cursor
+    call s:reverse_PopupCursor()
   endif
 
   call s:hi_clap_symbol()

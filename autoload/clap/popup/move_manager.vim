@@ -195,7 +195,8 @@ function! s:hl_cursor() abort
 endfunction
 
 function! s:mock_input() abort
-  let input = s:strpart_input(0, s:cursor_idx).s:cursor_shape.s:strpart_input(s:cursor_idx)
+  " The trailing space is for block cursor
+  let input = s:strpart_input(0, s:cursor_idx).s:cursor_shape.s:strpart_input(s:cursor_idx).' '
   let input_winid = g:clap#popup#input.winid
   call popup_settext(input_winid, input)
   call win_execute(input_winid, 'noautocmd call s:hl_cursor()')
