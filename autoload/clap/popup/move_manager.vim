@@ -139,6 +139,7 @@ let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
+let s:move_manager["\<Del>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
