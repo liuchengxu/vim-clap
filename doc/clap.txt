@@ -160,9 +160,10 @@ g:clap_maple_delay                                          *g:clap_maple_delay*
 g:clap_popup_cursor_shape                            *g:clap_popup_cursor_shape*
 
   Type: |String|
-  Default: `'|'`
+  Default: `''`
 
   This variable controls the mocked cursor shape in the popup window of vim.
+  If empty, the cursor will be block style.
 
 
 g:clap_on_move_delay                                      *g:clap_on_move_delay*

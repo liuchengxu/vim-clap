@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:input = ''
 let s:input_timer = -1
 let s:input_delay = get(g:, 'clap_popup_input_delay', 100)
-let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '|')
+let s:cursor_shape = get(g:, 'clap_popup_cursor_shape', '')
 let s:cursor_length = strlen(s:cursor_shape)
 
 let s:move_manager = {}
@@ -139,6 +139,7 @@ let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
+let s:move_manager["\<Del>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
@@ -195,7 +196,8 @@ function! s:hl_cursor() abort
 endfunction
 
 function! s:mock_input() abort
-  let input = s:strpart_input(0, s:cursor_idx).s:cursor_shape.s:strpart_input(s:cursor_idx)
+  " The trailing space is for block cursor
+  let input = s:strpart_input(0, s:cursor_idx).s:cursor_shape.s:strpart_input(s:cursor_idx).' '
   let input_winid = g:clap#popup#input.winid
   call popup_settext(input_winid, input)
   call win_execute(input_winid, 'noautocmd call s:hl_cursor()')
