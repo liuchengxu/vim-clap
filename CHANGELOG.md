@@ -9,13 +9,18 @@ CHANGELOG
 - Add new option `g:clap_insert_mode_only` to disable the feature of other mode, use the insert mode only. ([#335](https://github.com/liuchengxu/vim-clap/pull/335))
 - Add new option `g:clap_providers_relaunch_code`(`@@` default). You can input `@@` or use <kbd>C-L</kbd> to invoke `:Clap` to reselect another provider at any time.([#328](https://github.com/liuchengxu/vim-clap/pull/328))
 - Add new keymapping <kbd>C-L</kbd>.([#328](https://github.com/liuchengxu/vim-clap/pull/328))
+- Add preview support for `Clap filer`.
 
 ### Improved
 
 - Now you can use `:Clap grep ++query=@visual` to search the visual selection. ([#336](https://github.com/liuchengxu/vim-clap/pull/336))
 - Ensure the long matched elements from the filter always at least partially visible. ([#330](https://github.com/liuchengxu/vim-clap/pull/330))
-- Use file name as the preview header for `Clap grep`, `Clap marks` and `Clap jumps`.
-- Use block-style cursor for vim's popup when `g:clap_popup_cursor_shape == ''`. The default value has been changed to that.
+- Use file name as the preview header for `Clap grep`, `Clap blines`, `Clap marks` and `Clap jumps`.
+- Make `<Del>` work in vim's popup.
+
+### Changed
+
+- Change the default value of `g:clap_popup_cursor_shape` from `'|'` to `''` for using the new block-style cursor in vim's popup By @Bakudankun. ([#340](https://github.com/liuchengxu/vim-clap/pull/340))
 
 ## [0.8] 2020-02-21
 
