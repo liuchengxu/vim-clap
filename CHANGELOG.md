@@ -15,7 +15,7 @@ CHANGELOG
 
 - Now you can use `:Clap grep ++query=@visual` to search the visual selection. ([#336](https://github.com/liuchengxu/vim-clap/pull/336))
 - Ensure the long matched elements from the filter always at least partially visible. ([#330](https://github.com/liuchengxu/vim-clap/pull/330))
-- Use file name as the preview header for `Clap grep`, `Clap blines`, `Clap marks` and `Clap jumps`.
+- Use file name as the preview header for `Clap grep`, `Clap blines`, `Clap tags`, `Clap marks` and `Clap jumps`.
 - Make `<Del>` work in vim's popup.
 
 ### Changed
