@@ -4,32 +4,73 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:base03  = { 'hex': '#002b36', 'xterm': '234', 'xterm_hex': '#1c1c1c' }
+let s:base02  = { 'hex': '#073642', 'xterm': '235', 'xterm_hex': '#262626' }
+let s:base01  = { 'hex': '#586e75', 'xterm': '240', 'xterm_hex': '#585858' }
+let s:base00  = { 'hex': '#657b83', 'xterm': '241', 'xterm_hex': '#626262' }
+let s:base0   = { 'hex': '#839496', 'xterm': '244', 'xterm_hex': '#808080' }
+let s:base1   = { 'hex': '#93a1a1', 'xterm': '245', 'xterm_hex': '#8a8a8a' }
+let s:base2   = { 'hex': '#eee8d5', 'xterm': '254', 'xterm_hex': '#e4e4e4' }
+let s:base3   = { 'hex': '#fdf6e3', 'xterm': '230', 'xterm_hex': '#ffffd7' }
+let s:yellow  = { 'hex': '#b58900', 'xterm': '136', 'xterm_hex': '#af8700' }
+let s:orange  = { 'hex': '#cb4b16', 'xterm': '166', 'xterm_hex': '#d75f00' }
+let s:red     = { 'hex': '#dc322f', 'xterm': '160', 'xterm_hex': '#d70000' }
+let s:magenta = { 'hex': '#d33682', 'xterm': '125', 'xterm_hex': '#af005f' }
+let s:violet  = { 'hex': '#6c71c4', 'xterm':  '61', 'xterm_hex': '#5f5faf' }
+let s:blue    = { 'hex': '#268bd2', 'xterm':  '33', 'xterm_hex': '#0087ff' }
+let s:cyan    = { 'hex': '#2aa198', 'xterm':  '37', 'xterm_hex': '#00afaf' }
+let s:green   = { 'hex': '#859900', 'xterm':  '64', 'xterm_hex': '#5f8700' }
+
 let s:palette = {}
 
-" base3 bg
-" base03 fg
-let s:palette.display = { 'ctermbg': '230', 'guibg': '#fdf6e3', 'guifg': '#002b36', 'ctermfg': '234' }
+let s:palette.display = {
+  \'ctermbg': s:base3.xterm,
+  \'guibg':   s:base3.hex,
+  \'ctermfg': s:base03.xterm,
+  \'guifg':   s:base03.hex,
+\}
 
 " Let ClapInput, ClapSpinner and ClapSearchText use the same backgound.
-" base2
-let s:bg0 = { 'ctermbg': '254', 'guibg': '#eee8d5' }
+" bg: base2
+let s:bg0 = {
+  \'guibg': s:base2.hex,
+  \'ctermbg': s:base2.xterm,
+\}
 let s:palette.input = s:bg0
-" base01
-let s:palette.spinner = extend({ 'ctermfg': '240', 'guifg':'#586e75', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)
-" base02
-let s:palette.search_text = extend({ 'ctermfg': '235', 'guifg': '#073642', 'cterm': 'bold', 'gui': 'bold' }, s:bg0)
+" fg: base01
+let s:palette.spinner = extend({
+  \'guifg': s:base01.hex,
+  \'ctermfg': s:base01.xterm,
+  \'cterm': 'bold',
+  \'gui': 'bold',
+\}, s:bg0)
+
 
 let s:palette.preview = s:bg0
 
-" base02 bg
-let s:selected = { 'ctermbg': '235', 'guibg': '#073642', 'cterm': 'bold', 'gui': 'bold' }
+let s:selected = {
+  \'guifg': s:base02.hex,
+  \'ctermfg': s:base02.xterm,
+  \'cterm': 'bold',
+  \'gui': 'bold',
+\}
+let s:palette.search_text = extend(s:selected, s:bg0)
 let s:palette.selected = s:selected
 let s:palette.selected_sign = s:selected
-" base2 bg
-" base02 fg
-let s:palette.current_selection = { 'ctermbg': '254', 'guibg': '#eee8d5', 'ctermfg': '235', 'guifg': '#073642', 'cterm': 'bold', 'gui': 'bold' }
-" red
-let s:palette.current_selection_sign = extend({ 'ctermfg': '160', 'guifg': '#dc322f' }, s:palette.current_selection)
+
+let s:palette.current_selection = {
+  \'guibg': s:base2.hex,
+  \'ctermbg': s:base2.xterm,
+  \'guifg': s:base02.hex,
+  \'ctermfg': s:base02.xterm,
+  \'cterm': 'bold',
+  \'gui': 'bold',
+\}
+
+let s:palette.current_selection_sign = extend({
+  \'guifg': s:red.hex,
+  \'ctermfg': s:red.xterm,
+\}, s:palette.current_selection)
 
 let g:clap#themes#solarized_light#palette = s:palette
 
