@@ -31,13 +31,11 @@ let s:palette.display = {
 \}
 
 " Let ClapInput, ClapSpinner and ClapSearchText use the same backgound.
-" bg: base2
 let s:bg0 = {
   \'guibg': s:base2.hex,
   \'ctermbg': s:base2.xterm,
 \}
 let s:palette.input = s:bg0
-" fg: base01
 let s:palette.spinner = extend({
   \'guifg': s:base01.hex,
   \'ctermfg': s:base01.xterm,
