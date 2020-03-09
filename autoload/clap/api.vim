@@ -411,6 +411,9 @@ function! s:init_provider() abort
   " external filter, use cat instead.
   function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
     if clap#filter#external#using_maple()
+      if g:clap.provider.id ==# 'blines'
+        return printf('%s %s', a:ext_filter_cmd, a:input_file)
+      endif
       let cmd = printf('%s --input %s', a:ext_filter_cmd, a:input_file)
     else
       let cmd = printf('%s %s | %s', s:cat_or_type, a:input_file, a:ext_filter_cmd)
