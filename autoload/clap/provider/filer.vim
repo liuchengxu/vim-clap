@@ -100,6 +100,7 @@ function! s:send_message() abort
 endfunction
 
 function! s:filter_or_send_message() abort
+  call g:clap.preview.hide()
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
@@ -181,8 +182,10 @@ function! s:tab_action() abort
 
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
-    " TODO: preview file
+    call clap#preview#file(current_entry)
     return ''
+  else
+    call g:clap.preview.hide()
   endif
 
   call s:reset_to(current_entry)
@@ -218,6 +221,15 @@ function! s:filer_on_typed() abort
   return ''
 endfunction
 
+function! s:filer_on_move() abort
+  let current_entry = s:get_current_entry()
+  if filereadable(current_entry)
+    call clap#preview#file(current_entry)
+  else
+    call g:clap.preview.hide()
+  endif
+endfunction
+
 function! s:filer_on_no_matches(input) abort
   execute 'edit' a:input
 endfunction
@@ -247,6 +259,7 @@ endfunction
 let s:filer.init = function('s:start_rpc_service')
 let s:filer.sink = function('s:filer_sink')
 let s:filer.syntax = 'clap_filer'
+let s:filer.on_move = function('s:filer_on_move')
 let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.tab_action = function('s:tab_action')

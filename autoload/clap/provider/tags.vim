@@ -50,7 +50,10 @@ function! s:tags.on_move() abort
   endtry
   let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let lines = getbufline(g:clap.start.bufnr, start, end)
+  call insert(lines, bufname(g:clap.start.bufnr).':'.lnum)
+  let hi_lnum += 1
   call clap#preview#show_with_line_highlight(lines, s:origin_syntax, hi_lnum+1)
+  call clap#preview#highlight_header()
 endfunction
 
 function! s:tags.on_enter() abort
