@@ -79,6 +79,15 @@ pub enum Cmd {
         #[structopt(index = 1, short, long, parse(from_os_str))]
         meta_info: PathBuf,
     },
+    #[structopt(name = "blines")]
+    Blines {
+        /// Initial query string
+        #[structopt(index = 1, short, long)]
+        query: String,
+
+        #[structopt(index = 2, short, long, parse(from_os_str))]
+        input: PathBuf,
+    },
 }
 
 #[derive(StructOpt, Debug)]

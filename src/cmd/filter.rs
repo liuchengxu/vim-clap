@@ -1,19 +1,19 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo};
+use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Source};
 
 use crate::icon::prepend_icon;
 
 pub fn run(
     query: String,
-    input: Option<PathBuf>,
+    source: Source,
     algo: Option<Algo>,
     number: Option<usize>,
     enable_icon: bool,
     winwidth: Option<usize>,
 ) -> Result<()> {
-    let ranked = fuzzy_filter_and_rank(&query, input, algo.unwrap_or(Algo::Fzy))?;
+    let ranked = fuzzy_filter_and_rank(&query, source, algo.unwrap_or(Algo::Fzy))?;
 
     if let Some(number) = number {
         let total = ranked.len();
@@ -47,4 +47,18 @@ pub fn run(
     }
 
     Ok(())
+}
+
+pub fn blines(
+    query: String,
+    input: PathBuf,
+    number: Option<usize>,
+    winwidth: Option<usize>,
+) -> Result<()> {
+    let lines = std::fs::read_to_string(&input)?
+        .lines()
+        .enumerate()
+        .map(|(idx, item)| format!("{} {}", idx + 1, item))
+        .collect::<Vec<_>>();
+    run(query, Source::List(lines), None, number, false, winwidth)
 }

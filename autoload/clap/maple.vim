@@ -212,6 +212,11 @@ function! clap#maple#filter_subcommand(query) abort
   return cmd
 endfunction
 
+function! clap#maple#blines_subcommand(query) abort
+  let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
+  return printf('%s %s blines "%s"', s:maple_bin, global_opt, a:query)
+endfunction
+
 function! clap#maple#run_exec(cmd) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon

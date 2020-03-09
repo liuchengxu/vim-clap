@@ -81,11 +81,9 @@ impl Source {
 /// Return the ranked results after applying fuzzy filter given the query String and a list of candidates.
 pub fn fuzzy_filter_and_rank(
     query: &str,
-    input: Option<PathBuf>,
+    source: Source,
     algo: Algo,
 ) -> Result<Vec<(String, f64, Vec<usize>)>> {
-    let source = input.map(Into::into).unwrap_or(Source::Stdin);
-
     let mut ranked = source.filter(algo, query)?;
 
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use fuzzy_filter::Source;
 use structopt::StructOpt;
 
 use crate::cmd::{Cmd, Maple};
@@ -44,14 +45,18 @@ impl Maple {
                 crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
+                let source = input.map(Into::into).unwrap_or(Source::Stdin);
                 crate::cmd::filter::run(
                     query,
-                    input,
+                    source,
                     algo,
                     self.number,
                     self.enable_icon,
                     self.winwidth,
                 )?;
+            }
+            Cmd::Blines { query, input } => {
+                crate::cmd::filter::blines(query, input, self.number, self.winwidth)?;
             }
             Cmd::Exec {
                 cmd,
