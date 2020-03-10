@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Usage: ./ci/get_changelog.sh new_tag
+# Usage: ./ci/get_changelog.sh new_tag {prev_tag}
 #
 # Update prev_tag manually for new release.
 
@@ -15,7 +15,7 @@ cur_header="[${cur_tag:1:8}]"
 
 # FIXME get prev_tag in GA
 # prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1 --max-count=1)")
-prev_tag="v0.6"
+prev_tag=${2:-v0.8}
 prev_header="[${prev_tag:1:8}]"
 
 begin=$(grep -Fn "$cur_header" CHANGELOG.md | awk '{split($0,a,":"); print a[1]}')

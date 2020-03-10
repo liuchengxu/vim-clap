@@ -59,3 +59,9 @@ fname = 'Cargo.toml'
 lines = read_file(fname)
 lines[4] = 'version = "{version}"\n'.format(version=next_maple_version)
 write_back(lines, fname)
+
+#  update_release_note.sh
+fname = 'update_release_note.sh'
+lines = read_file(fname)
+lines[2] = 'new_tag=v{version}'.format(version=next_tag)
+write_back(lines, fname)
