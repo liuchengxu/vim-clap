@@ -12,6 +12,7 @@ __pycache__
 target
 /bin
 testdata.txt
+publish.sh
 
 !.editorconfig
 !.travis.yml

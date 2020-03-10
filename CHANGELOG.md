@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.9] 2020-03-10
+
 ### Added
 
 - Support multi-byte input for vim's popup thanks to @Bakudankun. You need patch 8.2.0329 to make it work as expected. ([#320](https://github.com/liuchengxu/vim-clap/pull/320))

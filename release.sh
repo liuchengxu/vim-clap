@@ -36,13 +36,15 @@ else
   ./prepare_release.py "$next_tag" "$next_maple_version"
 
   # Fix Cargo.lock needs to be updated but --locked was passed to prevent this
-  cargo build --release --locked
+  cargo build --release
 
   echo ''
   echo "New release $next_tag is ready to go!"
   echo ''
   echo 'Now run git diff to check again, then commit and tag a new version:'
-  echo "    git commit -m $next_tag"
-  echo "    git tag $next_tag"
-  echo "    git push origin $next_tag"
+  echo "    git commit -m $next_tag" > publish.sh
+  echo "    git tag $next_tag" >> publish.sh
+  echo "    git push origin $next_tag" >> publish.sh
+  echo 'Run `bash publish.sh` to publish this new release'
+
 fi
