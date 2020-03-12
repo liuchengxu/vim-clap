@@ -1,3 +1,9 @@
-syntax match ClapLinesBufnr /^\[\d\+\]/
+syntax match ClapLinesBufnr /^\[\d\+\]/ nextgroup=ClapLinesBufname
 
-hi default link ClapLinesBufnr Number
+syntax match ClapLinesBufname / \f*\.\f* / nextgroup=ClapLinesNumber
+
+syntax match ClapLinesNumber / \d\+ /
+
+hi default link ClapLinesBufnr   Function
+hi default link ClapLinesBufname Type
+hi default link ClapLinesNumber  Number
