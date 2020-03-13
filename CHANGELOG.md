@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add `init` for `Clap grep` to fill the content when query is empty.([#347](https://github.com/liuchengxu/vim-clap/pull/347))
+
 ### Improved
 
 - Refine the syntax of `Clap lines` with `ClapLinesBufname` and `ClapLinesNumber` group added.

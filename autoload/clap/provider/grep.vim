@@ -299,8 +299,9 @@ if !clap#maple#is_available() && s:grep_enable_icon
 endif
 
 function! s:grep.init() abort
-  echom clap#maple#ripgrep_forerunner_subcommand()
-  call clap#forerunner#start(clap#maple#ripgrep_forerunner_subcommand())
+  if clap#maple#is_available()
+    call clap#forerunner#start_subcommand(clap#maple#ripgrep_forerunner_subcommand())
+  endif
 endfunction
 
 let g:clap#provider#grep# = s:grep
