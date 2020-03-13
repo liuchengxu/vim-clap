@@ -247,7 +247,7 @@ function! s:grep_sink_star(lines) abort
   call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 
-function! s:apply_grep() abort
+function! s:apply_grep(_timer) abort
   let query = g:clap.input.get()
   if empty(query)
     return
@@ -271,7 +271,15 @@ function! s:grep_with_delay() abort
   endif
 
   if empty(g:clap.input.get())
-    call clap#indicator#set_matches(s:default_prompt)
+    if exists('s:initial_size')
+      call clap#indicator#set_matches('['.string(s:initial_size).']')
+    elseif has_key(g:clap.display, 'initial_size')
+      let s:initial_size = g:clap.display.initial_size
+      unlet g:clap.display.initial_size
+      call clap#indicator#set_matches('['.string(s:initial_size).']')
+    else
+      call clap#indicator#set_matches(s:default_prompt)
+    endif
     call g:clap.display.clear_highlight()
     if exists('g:__clap_forerunner_result')
       call g:clap.display.set_lines_lazy(g:__clap_forerunner_result)
@@ -279,7 +287,7 @@ function! s:grep_with_delay() abort
     return
   endif
 
-  let s:grep_timer = timer_start(s:grep_delay, { -> s:apply_grep() })
+  let s:grep_timer = timer_start(s:grep_delay, function('s:apply_grep'))
 endfunction
 
 let s:grep = {}
