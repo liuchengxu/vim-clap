@@ -5,7 +5,7 @@ CHANGELOG
 
 ### Added
 
-- Add `init` for `Clap grep` to fill the content when query is empty.([#347](https://github.com/liuchengxu/vim-clap/pull/347))
+- Add `init` for `Clap grep`, fill the content when query is empty for git repo.([#347](https://github.com/liuchengxu/vim-clap/pull/347))
 
 ### Improved
 
