@@ -89,6 +89,9 @@ impl Maple {
                 )?;
             }
             Cmd::Helptags { meta_info } => crate::cmd::helptags::run(meta_info)?,
+            Cmd::RipgrepForerunner { cmd_dir } => {
+                crate::cmd::grep::run_forerunner(cmd_dir, self.number, self.enable_icon)?
+            }
         }
         Ok(())
     }

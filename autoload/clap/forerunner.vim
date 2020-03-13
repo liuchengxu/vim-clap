@@ -129,10 +129,24 @@ if clap#maple#is_available()
     let s:chunks = []
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
     call clap#spinner#refresh()
+    call s:start_maple(a:cmd)
+  endfunction
+
+  function! clap#forerunner#start_exec(cmd) abort
+    let s:chunks = []
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
+    call clap#spinner#refresh()
     call s:start_maple(clap#maple#forerunner_exec_subcommand(a:cmd))
   endfunction
 else
   function! clap#forerunner#start(cmd) abort
+    let s:chunks = []
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
+    call clap#spinner#refresh()
+    call s:start_maple(a:cmd)
+  endfunction
+
+  function! clap#forerunner#start_exec(cmd) abort
     let s:chunks = []
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
     call clap#spinner#refresh()

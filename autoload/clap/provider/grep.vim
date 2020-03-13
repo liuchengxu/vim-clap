@@ -254,6 +254,10 @@ function! s:apply_grep() abort
   endif
 
   try
+    if has_key(g:clap.display, 'initial_size')
+      let s:initial_size = g:clap.display.initial_size
+      unlet g:clap.display.initial_size
+    endif
     call s:spawn(query)
   catch /^vim-clap/
     call g:clap.display.set_lines([v:exception])
@@ -269,6 +273,9 @@ function! s:grep_with_delay() abort
   if empty(g:clap.input.get())
     call clap#indicator#set_matches(s:default_prompt)
     call g:clap.display.clear_highlight()
+    if exists('g:__clap_forerunner_result')
+      call g:clap.display.set_lines_lazy(g:__clap_forerunner_result)
+    endif
     return
   endif
 
@@ -277,24 +284,24 @@ endfunction
 
 let s:grep = {}
 
-let s:grep.sink = function('s:grep_sink')
-
-let s:grep['sink*'] = function('s:grep_sink_star')
-
-let s:grep.on_typed = function('s:grep_with_delay')
-
-let s:grep.on_move = function('s:grep_on_move')
-
 let s:grep.syntax = 'clap_grep'
+let s:grep.enable_rooter = v:true
+let s:grep.support_open_action = v:true
+
+let s:grep.sink = function('s:grep_sink')
+let s:grep['sink*'] = function('s:grep_sink_star')
+let s:grep.on_typed = function('s:grep_with_delay')
+let s:grep.on_move = function('s:grep_on_move')
+let s:grep.on_exit = function('s:grep_exit')
 
 if !clap#maple#is_available() && s:grep_enable_icon
   let s:grep.converter = function('s:draw_icon')
 endif
 
-let s:grep.on_exit = function('s:grep_exit')
-
-let s:grep.support_open_action = v:true
-let s:grep.enable_rooter = v:true
+function! s:grep.init() abort
+  echom clap#maple#ripgrep_forerunner_subcommand()
+  call clap#forerunner#start(clap#maple#ripgrep_forerunner_subcommand())
+endfunction
 
 let g:clap#provider#grep# = s:grep
 

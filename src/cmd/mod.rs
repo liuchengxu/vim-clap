@@ -88,6 +88,12 @@ pub enum Cmd {
         #[structopt(index = 2, short, long, parse(from_os_str))]
         input: PathBuf,
     },
+    #[structopt(name = "ripgrep-forerunner")]
+    RipgrepForerunner {
+        /// Specify the working directory of CMD
+        #[structopt(long = "cmd-dir", parse(from_os_str))]
+        cmd_dir: Option<PathBuf>,
+    },
 }
 
 #[derive(StructOpt, Debug)]
