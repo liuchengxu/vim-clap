@@ -5,6 +5,7 @@ CHANGELOG
 
 ### Improved
 
+- Print a note about Rust nightly is requred for building the Python dynamic module.
 - Refine the syntax of `Clap lines` with `ClapLinesBufname` and `ClapLinesNumber` group added.
 
 ### Fixed

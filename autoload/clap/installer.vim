@@ -68,6 +68,7 @@ function! clap#installer#build_python_dynamic_module() abort
 
   if executable('cargo')
     if !s:has_rust_nightly(v:true)
+      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
       return
     endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
