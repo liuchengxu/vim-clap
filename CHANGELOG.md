@@ -7,6 +7,10 @@ CHANGELOG
 
 - Refine the syntax of `Clap lines` with `ClapLinesBufname` and `ClapLinesNumber` group added.
 
+### Fixed
+
+- `Clap filer` always selects the first entry when you narrow down and navigate the list. ([#348](https://github.com/liuchengxu/vim-clap/issues/348))
+
 ## [0.9] 2020-03-10
 
 ### Added
