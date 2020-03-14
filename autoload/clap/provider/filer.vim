@@ -215,6 +215,11 @@ function! s:filer_on_typed() abort
   " s:filter_or_send_message() is already handled in tab and bs action,
   " on_typed handler only needs to take care of the filtering.
   if exists('s:filer_cache') && has_key(s:filer_cache, s:current_dir)
+    let cur_input = g:clap.input.get()
+    if cur_input ==# s:last_input
+      return
+    endif
+    let s:last_input = cur_input
     call clap#highlight#clear()
     call s:do_filter()
   endif
@@ -239,6 +244,7 @@ function! s:start_rpc_service() abort
   let s:filer_error_cache = {}
   let s:filer_empty_cache = {}
   let s:last_request_id = 0
+  let s:last_input = ''
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
     let target_dir = g:clap.provider.args[0]
     if target_dir[-1:] ==# '/'
