@@ -102,8 +102,8 @@ function! s:create_preview() abort
   if !exists('s:preview_winid') || empty(popup_getpos(s:preview_winid))
     let pos = popup_getpos(s:display_winid)
     let line = pos.line + pos.height
-    let s:preview_winid = popup_create([], {
-          \ 'wrap': v:false,
+    let preview_opts = {
+          \ 'wrap': v:true,
           \ 'zindex': 100,
           \ 'scrollbar': 0,
           \ 'highlight': 'ClapPreview',
@@ -111,7 +111,20 @@ function! s:create_preview() abort
           \ 'line': line,
           \ 'minwidth': pos.width,
           \ 'maxwidth': pos.width,
-          \ })
+          \ }
+    if g:clap_popup_border !=? 'nil'
+      let borderchars = ['─', '│', '─', '│']
+      if g:clap_popup_border ==? 'rounded'
+        let borderchars += ['╭', '╮', '╯', '╰']
+      else
+        let borderchars += ['┌', '┐', '┘', '└']
+      endif
+      let preview_opts.border = []
+      let preview_opts.borderchars = borderchars
+      let preview_opts.minwidth -= 2
+      let preview_opts.maxwidth -= 2
+    endif
+    let s:preview_winid = popup_create([], preview_opts)
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
