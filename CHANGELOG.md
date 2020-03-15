@@ -6,6 +6,7 @@ CHANGELOG
 ### Added
 
 - Add `init` for `Clap grep`, fill the content when query is empty for git repo.([#347](https://github.com/liuchengxu/vim-clap/pull/347))
+- Add `g:clap_popup_border` for adding the border for the preview popup. ([#349](https://github.com/liuchengxu/vim-clap/pull/349))
 
 ### Improved
 
