@@ -157,6 +157,9 @@ function! s:grep_exit() abort
   if exists('s:parent_dir')
     unlet s:parent_dir
   endif
+  if exists('s:initial_size')
+    unlet s:initial_size
+  endif
 endfunction
 
 function! s:matchlist(line, pattern) abort
