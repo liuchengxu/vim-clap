@@ -75,7 +75,12 @@ pub fn run_forerunner(
     // Do not use --vimgrep here.
     cmd.args(&args);
 
+    // Only spawn the forerunner job for git repo for now.
     if let Some(mut dir) = cmd_dir.clone() {
+        if !is_git_repo(&mut dir) {
+            return Ok(());
+        }
+    } else if let Ok(mut dir) = std::env::current_dir() {
         if !is_git_repo(&mut dir) {
             return Ok(());
         }

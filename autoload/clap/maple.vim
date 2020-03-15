@@ -217,7 +217,8 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
   if g:clap_enable_icon
     let global_opt .= ' --enable-icon'
   endif
-  return printf('%s %s ripgrep-forerunner', s:maple_bin, global_opt)
+  let cmd_dir = clap#rooter#working_dir()
+  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, cmd_dir)
 endfunction
 
 function! clap#maple#blines_subcommand(query) abort

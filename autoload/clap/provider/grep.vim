@@ -264,7 +264,7 @@ function! s:apply_grep(_timer) abort
   endtry
 endfunction
 
-function! s:grep_with_delay() abort
+function! s:grep_on_typed() abort
   if s:grep_timer != -1
     call timer_stop(s:grep_timer)
     let s:grep_timer = -1
@@ -298,7 +298,7 @@ let s:grep.support_open_action = v:true
 
 let s:grep.sink = function('s:grep_sink')
 let s:grep['sink*'] = function('s:grep_sink_star')
-let s:grep.on_typed = function('s:grep_with_delay')
+let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_move = function('s:grep_on_move')
 let s:grep.on_exit = function('s:grep_exit')
 
@@ -308,6 +308,7 @@ endif
 
 function! s:grep.init() abort
   if clap#maple#is_available()
+    call clap#rooter#try_set_cwd()
     call clap#forerunner#start_subcommand(clap#maple#ripgrep_forerunner_subcommand())
   endif
 endfunction
