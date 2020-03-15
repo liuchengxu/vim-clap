@@ -148,6 +148,20 @@ g:clap_popup_input_delay                              *g:clap_popup_input_delay*
   This option is only meaningful for Vim, NeoVim does not have this delay.
 
 
+g:clap_popup_border                                        *g:clap_popup_border*
+
+  Type: |String|
+  Default: `'rounded'`
+
+  This variable adds the border to the preview popup, avaliable border style:
+  `'rounded'`, `'sharp'`.
+
+  Set it to `'nil'` to disable the border.
+
+  NeoVim's floating_win is unsupported as it does not have a native
+  border option and the workaround is not good for clap's use case.
+
+
 g:clap_maple_delay                                          *g:clap_maple_delay*
 
   Type: |Number|
