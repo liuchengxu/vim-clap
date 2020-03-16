@@ -212,6 +212,15 @@ function! clap#maple#filter_subcommand(query) abort
   return cmd
 endfunction
 
+function! clap#maple#ripgrep_forerunner_subcommand() abort
+  let global_opt = '--number '.g:clap.display.preload_capacity
+  if g:clap_enable_icon
+    let global_opt .= ' --enable-icon'
+  endif
+  let cmd_dir = clap#rooter#working_dir()
+  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, cmd_dir)
+endfunction
+
 function! clap#maple#blines_subcommand(query) abort
   let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
   return printf('%s %s blines "%s"', s:maple_bin, global_opt, a:query)

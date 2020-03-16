@@ -50,3 +50,58 @@ pub fn run(
 
     Ok(())
 }
+
+fn is_git_repo(dir: &mut PathBuf) -> bool {
+    dir.push(".git");
+    let is_git_repo = if dir.exists() { true } else { false };
+    dir.pop();
+    is_git_repo
+}
+
+pub fn run_forerunner(
+    cmd_dir: Option<PathBuf>,
+    number: Option<usize>,
+    enable_icon: bool,
+) -> Result<()> {
+    let mut cmd = Command::new("rg");
+    let args = [
+        "--column",
+        "--line-number",
+        "--no-heading",
+        "--color=never",
+        "--smart-case",
+        "",
+    ];
+    // Do not use --vimgrep here.
+    cmd.args(&args);
+
+    // Only spawn the forerunner job for git repo for now.
+    if let Some(mut dir) = cmd_dir.clone() {
+        if !is_git_repo(&mut dir) {
+            return Ok(());
+        }
+    } else if let Ok(mut dir) = std::env::current_dir() {
+        if !is_git_repo(&mut dir) {
+            return Ok(());
+        }
+    }
+
+    set_current_dir(&mut cmd, cmd_dir);
+
+    let mut light_cmd = LightCommand::new_grep(&mut cmd, number, enable_icon);
+
+    light_cmd.execute(&args.iter().map(|x| x.to_string()).collect::<Vec<_>>())?;
+
+    Ok(())
+}
+
+#[test]
+fn test_git_repo() {
+    let mut cmd_dir: PathBuf = "/Users/xuliucheng/.vim/plugged/vim-clap".into();
+    cmd_dir.push(".git");
+    if cmd_dir.exists() {
+        println!("{:?} exists", cmd_dir);
+    } else {
+        println!("{:?} does not exist", cmd_dir);
+    }
+}
