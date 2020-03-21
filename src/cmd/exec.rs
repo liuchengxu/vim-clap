@@ -35,7 +35,7 @@ pub fn run(
     let mut light_cmd = LightCommand::new(
         &mut exec_cmd,
         number,
-        output.clone(),
+        output,
         enable_icon,
         false,
         output_threshold,

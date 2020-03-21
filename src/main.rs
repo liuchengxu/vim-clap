@@ -44,9 +44,11 @@ impl Maple {
                 crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Filter { query, input, algo } => {
-                let source = input.map(Into::into).unwrap_or(Source::Stdin);
+                let source = input
+                    .map(Into::into)
+                    .unwrap_or(Source::<std::iter::Empty<_>>::Stdin);
                 crate::cmd::filter::run(
-                    query,
+                    &query,
                     source,
                     algo,
                     self.number,
@@ -55,7 +57,7 @@ impl Maple {
                 )?;
             }
             Cmd::Blines { query, input } => {
-                crate::cmd::filter::blines(query, input, self.number, self.winwidth)?;
+                crate::cmd::filter::blines(&query, &input, self.number, self.winwidth)?;
             }
             Cmd::Exec {
                 cmd,
@@ -78,10 +80,15 @@ impl Maple {
                 glob,
                 cmd_dir,
             } => {
+                let g = match &glob {
+                    Some(s) => Some(s.as_str()),
+                    None => None,
+                };
+
                 crate::cmd::grep::run(
                     grep_cmd,
-                    grep_query,
-                    glob,
+                    &grep_query,
+                    g,
                     cmd_dir,
                     self.number,
                     self.enable_icon,
