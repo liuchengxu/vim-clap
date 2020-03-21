@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde_json::json;
 
 use super::{write_response, Message};
-use crate::icon::prepend_filer_icon;
+use icon::prepend_filer_icon;
 
 fn into_string(entry: std::fs::DirEntry, enable_icon: bool) -> String {
     let path_str = if entry.path().is_dir() {

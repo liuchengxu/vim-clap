@@ -5,9 +5,9 @@ use std::process::{Command, Output};
 use std::time::SystemTime;
 
 use anyhow::Result;
+use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
 use crate::error::DummyError;
-use crate::icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
 
 /// Remove the last element if it's empty string.
 #[inline]
