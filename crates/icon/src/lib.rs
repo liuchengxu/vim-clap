@@ -1,8 +1,11 @@
-use std::collections::HashMap;
+mod constants;
+
+use constants::*;
+
 use std::path::Path;
 
-use lazy_static::lazy_static;
 use regex::Regex;
+use lazy_static::lazy_static;
 
 pub const DEFAULT_ICON: &str = "";
 pub const DEFAULT_ICONIZED: &str = " ";
@@ -15,18 +18,23 @@ pub const DEFAULT_FILER_ICON: &str = "";
 //
 // pub static ref EXACTMATCH_MAP: HashMap<&'static str, &'static str>
 // pub static ref EXTENSION_MAP: HashMap<&'static str, &'static str>
-include!("constants.rs");
+// include!("constants.rs");
+
+/// The type used to represent icons.
+///
+/// This could be changed into different type later,
+/// so functions take and return this type, not `char` or `&str` directly.
+type Icon = &'static str;
 
 /// Return appropriate icon for the path. If no icon matched, return the specified default one.
 ///
 /// Try matching the exactmatch map against the file name, and then the extension map.
 #[inline]
-pub fn get_icon_or(path: &Path, default: &'static str) -> &'static str {
+pub fn get_icon_or(path: &Path, default: Icon) -> Icon {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
-        .and_then(|ext| {
-            let ext: &str = &ext.to_lowercase();
-            EXACTMATCH_MAP.get(ext)
+        .and_then(|filename| {
+            EXACTMATCH_MAP.get(filename.to_lowercase().as_str())
         })
         .unwrap_or_else(|| {
             path.extension()
@@ -36,7 +44,7 @@ pub fn get_icon_or(path: &Path, default: &'static str) -> &'static str {
         })
 }
 
-fn icon_for(line: &str) -> &str {
+fn icon_for(line: &str) -> Icon {
     let path = Path::new(line);
     get_icon_or(&path, DEFAULT_ICON)
 }
@@ -46,7 +54,7 @@ pub fn prepend_icon(line: &str) -> String {
 }
 
 #[inline]
-pub fn icon_for_filer(path: &Path) -> &str {
+pub fn icon_for_filer(path: &Path) -> Icon {
     if path.is_dir() {
         FOLDER_ICON
     } else {

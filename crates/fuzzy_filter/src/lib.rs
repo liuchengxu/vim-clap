@@ -19,20 +19,20 @@ arg_enum! {
   }
 }
 
-/// The filtering source can from stdin, an input file or Vec<StringString>
-pub enum Source {
+/// The filtering source can from stdin, an input file or Vec<String>
+pub enum Source<I: Iterator<Item = String>> {
     Stdin,
     File(PathBuf),
-    List(Vec<String>),
+    List(I),
 }
 
-impl From<Vec<String>> for Source {
+impl From<Vec<String>> for Source<std::vec::IntoIter<String>> {
     fn from(source_list: Vec<String>) -> Self {
-        Self::List(source_list)
+        Self::List(source_list.into_iter())
     }
 }
 
-impl From<PathBuf> for Source {
+impl<I: Iterator<Item = String>> From<PathBuf> for Source<I> {
     fn from(fpath: PathBuf) -> Self {
         Self::File(fpath)
     }
@@ -41,7 +41,7 @@ impl From<PathBuf> for Source {
 pub type LinesTruncatedMap = HashMap<String, String>;
 pub type FuzzyMatchedLineInfo = (String, f64, Vec<usize>);
 
-impl Source {
+impl<I: Iterator<Item = String>> Source<I> {
     pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLineInfo>> {
         let scorer = |line: &str| match algo {
             Algo::Skim => {
@@ -67,7 +67,6 @@ impl Source {
                 })
                 .collect::<Vec<_>>(),
             Self::List(list) => list
-                .iter()
                 .filter_map(|line| {
                     scorer(&line).map(|(score, indices)| (line.into(), score, indices))
                 })
@@ -79,9 +78,9 @@ impl Source {
 }
 
 /// Return the ranked results after applying fuzzy filter given the query String and a list of candidates.
-pub fn fuzzy_filter_and_rank(
+pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     query: &str,
-    source: Source,
+    source: Source<I>,
     algo: Algo,
 ) -> Result<Vec<(String, f64, Vec<usize>)>> {
     let mut ranked = source.filter(algo, query)?;
