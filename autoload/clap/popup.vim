@@ -111,6 +111,7 @@ function! s:create_preview() abort
           \ 'line': line,
           \ 'minwidth': pos.width,
           \ 'maxwidth': pos.width,
+          \ 'posinvert': v:false,
           \ }
     if g:clap_popup_border !=? 'nil'
       let borderchars = ['─', '│', '─', '│']
