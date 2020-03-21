@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Source};
 
-use crate::icon::prepend_icon;
+use icon::prepend_icon;
 
 pub fn run(
     query: String,
