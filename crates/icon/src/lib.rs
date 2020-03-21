@@ -5,7 +5,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 pub const DEFAULT_ICON: &str = "";
-#[allow(dead_code)]
 pub const DEFAULT_ICONIZED: &str = " ";
 pub const FOLDER_ICON: &str = "";
 pub const DEFAULT_FILER_ICON: &str = "";
@@ -67,7 +66,6 @@ pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
     format!("{} {}", icon_for_filer(path), line)
 }
 
-#[allow(dead_code)]
 pub fn prepend_grep_icon(line: &str) -> String {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(.*):\d+:\d+:").unwrap();
