@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"
-categories = ["Draw an icon according to the path name"]
+description = ["Draw an icon according to the path name"]
 
 [dependencies]
 regex = "1"
