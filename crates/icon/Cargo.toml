@@ -6,7 +6,9 @@ edition = "2018"
 license = "MIT"
 publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"
-description = "Draw an icon according to the path name"
+description = """
+icon is a tool for drawing an icon according to the path name for vim-clap.
+"""
 
 [dependencies]
 regex = "1"
