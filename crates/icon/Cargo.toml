@@ -3,8 +3,10 @@ name = "icon"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+publish = false
+homepage = "https://github.com/liuchengxu/vim-clap"
+categories = ["Draw an icon according to the path name"]
 
 [dependencies]
 regex = "1"
