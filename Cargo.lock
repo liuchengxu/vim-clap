@@ -310,6 +310,7 @@ dependencies = [
  "built",
  "bytecount",
  "crossbeam-channel",
+ "extracted_fzy",
  "fuzzy-matcher",
  "fuzzy_filter",
  "icon",
