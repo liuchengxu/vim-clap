@@ -31,9 +31,7 @@ function! s:maps_source() abort
   let s:map_reg = empty(v:register) ? '' : ('"'.v:register)
   let s:map_op  = mode ==# 'o' ? v:operator : ''
 
-  redir => cout
-  silent execute 'verbose' mode.'map'
-  redir END
+  let cout = execute('verbose '.mode.'map')
   let list = []
   let curr = ''
   for line in split(cout, "\n")

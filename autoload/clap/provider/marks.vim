@@ -14,9 +14,7 @@ endfunction
 
 function! s:marks.source() abort
   call g:clap.start.goto_win()
-  redir => cout
-  silent marks
-  redir END
+  let cout = execute('marks')
   call g:clap.input.goto_win()
   let list = split(cout, "\n")
   return extend(list[0:0], map(list[1:], 's:format_mark(v:val)'))

@@ -7,15 +7,13 @@ set cpoptions&vim
 let s:command = {}
 
 function! s:command.sink(selected) abort
-  let cmd = matchstr(a:selected, '^[!b ]*\zs\(\w*\)\ze ')
+  " :h command, note the characters in the first two columns
+  let cmd = matchstr(a:selected, '^[!"|b ]*\zs\(\w*\)\ze ')
   execute cmd
 endfunction
 
 function! s:command.source() abort
-  redir => l:command
-  silent command
-  redir END
-  return split(l:command, "\n")
+  return split(execute('command'), "\n")
 endfunction
 
 let s:command.syntax = 'clap_command'

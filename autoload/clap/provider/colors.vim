@@ -16,9 +16,7 @@ function! s:colors.source() abort
 endfunction
 
 function! s:colors.on_enter() abort
-  redir => s:old_color
-  silent colorscheme
-  redir END
+  let s:old_color = execute('colorscheme')
   let s:old_bg = &background
 endfunction
 
