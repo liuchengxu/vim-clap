@@ -62,8 +62,15 @@ pub(super) fn handle_message(msg: Message) {
     }
 }
 
-#[test]
-fn test_dir() {
-    let entries = read_dir_entries("/.DocumentRevisions-V100/", true).unwrap();
-    println!("entry: {:?}", entries);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dir() {
+        let a = std::env::current_dir().unwrap();
+        let curr_dir = a.to_str().unwrap();
+        let entries = read_dir_entries(curr_dir, true).unwrap();
+        println!("entry: {:?}", entries);
+    }
 }

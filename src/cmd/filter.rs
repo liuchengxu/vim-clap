@@ -182,7 +182,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
         let mut top_results: VecDeque<(&str, &[usize])> = VecDeque::with_capacity(ITEMS_TO_SHOW);
 
         // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-        let mut count = 0;
+        let mut total = 0;
         let if_ok_return = iter.try_for_each(|(text, score, indices)| {
             // Best results are stored in front.
             //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
@@ -198,8 +198,8 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
             insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
 
             // Stop iterating after 7 iterations.
-            count += 1;
-            if count == ITEMS_TO_SHOW {
+            total += 1;
+            if total == ITEMS_TO_SHOW {
                 Err(())
             } else {
                 Ok(())
@@ -212,7 +212,6 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
 
         // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
         // the queue with best results the same size.
-        let mut counter = 0_usize;
         let mut past = std::time::Instant::now();
         iter.for_each(|(text, score, indices)| {
                 // Best results are stored in front.
@@ -224,8 +223,8 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     .find(|&(_, &other_score)| other_score > score);
                 insert_both!(pop; idx.map(|(i, _)| i), score, text, indices => buffer, top_results, top_scores);
 
-                counter = counter.wrapping_add(1);
-                if counter % 16 == 0 {
+                total = total.wrapping_add(1);
+                if total % 16 == 0 {
                     use std::time::{Duration, Instant};
 
                     const UPDATE_INTERVAL: Duration = Duration::from_secs(2);
@@ -233,7 +232,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
-                        println_json!(top_results);
+                        println_json!(total, top_results);
                     }
                 }
             });
@@ -322,7 +321,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
-                        println_json!(top_results);
+                        println_json!(total, top_results);
                     }
                 }
 
@@ -429,4 +428,72 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    // This is a very time-consuming test,
+    // results of which could be proved only be inspecting stdout.
+    // Definetly not something you want to run with `cargo test`.
+    #[ignore]
+    fn dynamic_results() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        const ALPHABET: [u8; 32] = [
+            b'q', b'w', b'e', b'r', b't', b'y', b'u', b'i', b'o', b'p', b'[', b']', b'a', b's',
+            b'd', b'f', b'g', b'h', b'j', b'k', b'l', b';', b'z', b'x', b'c', b'v', b'b', b'n',
+            b'm', b',', b'.', b' ',
+        ];
+
+        // To mock the endless randomized text, we need three numbers:
+        // 1. A number of letters to change.
+        // then for each such number
+        // 2. Alphabet index to get a new letter,
+        // 3. Changing text index to write a new letter.
+        let now = SystemTime::now();
+        let mut bytes: usize = now
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_else(|_| UNIX_EPOCH.duration_since(now).unwrap())
+            .as_secs() as usize;
+
+        let mut changing_text: [u8; 16] = [ALPHABET[31]; 16];
+        let mut total_lines_created: usize = 0;
+        dyn_fuzzy_filter_and_rank(
+            "abc",
+            Source::List(
+                std::iter::repeat_with(|| {
+                    bytes = bytes.reverse_bits().rotate_right(3).wrapping_add(1);
+
+                    let mut n = bytes;
+                    // Number of letter to change.
+                    let i = (n % 4) + 1;
+                    n /= 4;
+                    for _ in 0..i {
+                        let text_idx = n % 16;
+                        n /= 16;
+                        let ab_idx = n % 32;
+                        n /= 32;
+
+                        changing_text[text_idx] = ALPHABET[ab_idx];
+                    }
+
+                    total_lines_created += 1;
+                    if total_lines_created % 99999_usize.next_power_of_two() == 0 {
+                        println!("Total lines created: {}", total_lines_created)
+                    }
+
+                    unsafe { String::from_utf8_unchecked(changing_text.as_ref().to_owned()) }
+                })
+                .take(usize::max_value() >> 8),
+            ),
+            Algo::Fzy,
+            Some(100),
+            false,
+            None,
+        )
+        .unwrap()
+    }
 }

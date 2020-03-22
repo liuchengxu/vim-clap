@@ -91,13 +91,18 @@ pub fn run_forerunner(
     Ok(())
 }
 
-#[test]
-fn test_git_repo() {
-    let mut cmd_dir: PathBuf = "/Users/xuliucheng/.vim/plugged/vim-clap".into();
-    cmd_dir.push(".git");
-    if cmd_dir.exists() {
-        println!("{:?} exists", cmd_dir);
-    } else {
-        println!("{:?} does not exist", cmd_dir);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_git_repo() {
+        let mut cmd_dir: PathBuf = "/Users/xuliucheng/.vim/plugged/vim-clap".into();
+        cmd_dir.push(".git");
+        if cmd_dir.exists() {
+            println!("{:?} exists", cmd_dir);
+        } else {
+            println!("{:?} does not exist", cmd_dir);
+        }
     }
 }
