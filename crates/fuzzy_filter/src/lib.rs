@@ -157,7 +157,6 @@ pub fn truncate_long_matched_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use termion::style::{Invert, Reset};
 
     fn wrap_matches(line: &str, indices: &[usize]) -> String {
         let mut ret = String::new();
@@ -165,7 +164,19 @@ mod tests {
         for (idx, ch) in line.chars().enumerate() {
             let next_id = **peekable.peek().unwrap_or(&&line.len());
             if next_id == idx {
-                ret.push_str(format!("{}{}{}", Invert, ch, Reset).as_str());
+                #[cfg(not(target_os = "windows"))]
+                {
+                    ret.push_str(
+                        format!("{}{}{}", termion::style::Invert, ch, termion::style::Reset)
+                            .as_str(),
+                    );
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    ret.push_str(format!("~{}~", ch).as_str());
+                }
+
                 peekable.next();
             } else {
                 ret.push(ch);
@@ -175,7 +186,12 @@ mod tests {
         ret
     }
 
-    fn run_test(source: Source, query: &str, starting_point: Option<usize>, winwidth: usize) {
+    fn run_test<I: Iterator<Item = String>>(
+        source: Source<I>,
+        query: &str,
+        starting_point: Option<usize>,
+        winwidth: usize,
+    ) {
         let mut ranked = source.filter(Algo::Fzy, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
@@ -196,7 +212,7 @@ mod tests {
 
     #[test]
     fn case1() {
-        let source: Source = vec![
+        let source: Source<_> = vec![
         "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss".into(),
         "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss"
             .into(),
@@ -211,7 +227,7 @@ mod tests {
 
     #[test]
     fn case2() {
-        let source: Source = vec![
+        let source: Source<_> = vec![
         "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib".into(),
         "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
         "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
@@ -223,7 +239,7 @@ mod tests {
 
     #[test]
     fn case3() {
-        let source: Source = vec![
+        let source: Source<_> = vec![
         "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
         ].into();
         let query = "srcggithub";
@@ -232,7 +248,7 @@ mod tests {
 
     #[test]
     fn case4() {
-        let source: Source = vec![
+        let source: Source<_> = vec![
             "        // Wait until propagation delay period after block we plan to mine on".into(),
         ]
         .into();
@@ -242,14 +258,14 @@ mod tests {
 
     #[test]
     fn starting_point_should_work() {
-        let source: Source = vec![
+        let source: Source<_> = vec![
           " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
           " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
         ].into();
         let query = "srlisrlisrsr";
         run_test(source, query, Some(2), 50usize);
 
-        let source: Source = vec![
+        let source: Source<_> = vec![
           "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
           "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
         ].into();

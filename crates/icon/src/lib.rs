@@ -4,8 +4,8 @@ use constants::*;
 
 use std::path::Path;
 
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 pub const DEFAULT_ICON: &str = "";
 pub const DEFAULT_ICONIZED: &str = " ";
@@ -33,9 +33,7 @@ type Icon = &'static str;
 pub fn get_icon_or(path: &Path, default: Icon) -> Icon {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
-        .and_then(|filename| {
-            EXACTMATCH_MAP.get(filename.to_lowercase().as_str())
-        })
+        .and_then(|filename| EXACTMATCH_MAP.get(filename.to_lowercase().as_str()))
         .unwrap_or_else(|| {
             path.extension()
                 .and_then(std::ffi::OsStr::to_str)
