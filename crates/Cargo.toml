@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "maple",
+    "maple_cli",
     "extracted_fzy",
     "fuzzy_filter",
     "icon",
