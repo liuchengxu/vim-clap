@@ -36,7 +36,8 @@ pub fn match_and_score_with_positions<'a>(
 ///
 /// # Examples
 ///
-/// ```ignore
+// This is a proper code, that should compile, but `matches()` function is private.
+/// ```compile_fail
 /// assert_eq!(Some(5), extracted_fzy::matches("amo汉漢", "app/models/order/汉语/漢語"));
 /// assert_eq!(6, "汉漢".len()); // Length of this two chars in bytes.
 /// ```
