@@ -23,9 +23,9 @@ lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 crossbeam-channel = "0.4"
 
-icon = { path = "crates/icon" }
-fuzzy_filter = { path = "crates/fuzzy_filter" }
-extracted_fzy = { path = "crates/extracted_fzy" }
+icon = { path = "../icon" }
+fuzzy_filter = { path = "../fuzzy_filter" }
+extracted_fzy = { path = "../extracted_fzy" }
 
 [build-dependencies]
 built = { package = "built", version = "0.4", features = ["git2"]}
