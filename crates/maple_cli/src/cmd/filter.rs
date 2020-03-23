@@ -367,7 +367,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 number,
             ),
             Source::List(list) => dyn_collect_number(
-                list.into_iter().filter_map(|line| {
+                list.filter_map(|line| {
                     scorer(&line).map(|(score, indices)| (line, score, indices))
                 }),
                 number,
@@ -412,7 +412,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 }))
             }
             Source::List(list) => {
-                dyn_collect_all(list.into_iter().filter_map(|line| {
+                dyn_collect_all(list.filter_map(|line| {
                     scorer(&line).map(|(score, indices)| (line, score, indices))
                 }))
             }
