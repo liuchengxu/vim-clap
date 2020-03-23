@@ -25,6 +25,7 @@ crossbeam-channel = "0.4"
 
 icon = { path = "crates/icon" }
 fuzzy_filter = { path = "crates/fuzzy_filter" }
+extracted_fzy = { path = "crates/extracted_fzy" }
 
 [build-dependencies]
 built = { package = "built", version = "0.4", features = ["git2"]}

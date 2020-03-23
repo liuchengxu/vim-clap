@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "extracted_fzy",
+    "fuzzy_filter",
+    "icon",
+]

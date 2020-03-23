@@ -7,19 +7,14 @@ use super::{write_response, Message};
 use icon::prepend_filer_icon;
 
 fn into_string(entry: std::fs::DirEntry, enable_icon: bool) -> String {
-    let path_str = if entry.path().is_dir() {
+    let path = entry.path();
+    let path_str = if path.is_dir() {
         format!(
             "{}/",
-            entry
-                .path()
-                .file_name()
-                .and_then(std::ffi::OsStr::to_str)
-                .unwrap()
+            path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()
         )
     } else {
-        entry
-            .path()
-            .file_name()
+        path.file_name()
             .and_then(std::ffi::OsStr::to_str)
             .map(Into::into)
             .unwrap()

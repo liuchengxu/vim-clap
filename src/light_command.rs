@@ -115,7 +115,7 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    fn tempfile(&self, args: &[String]) -> Result<PathBuf> {
+    fn tempfile(&self, args: &[&str]) -> Result<PathBuf> {
         if let Some(ref output) = self.output {
             Ok(output.into())
         } else {
@@ -132,7 +132,7 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Cache the stdout into a tempfile if the output threshold exceeds.
-    fn try_cache(&self, cmd_stdout: &[u8], args: &[String]) -> Result<(String, Option<PathBuf>)> {
+    fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
         if self.total > self.output_threshold {
             let tempfile = self.tempfile(args)?;
             File::create(&tempfile)?.write_all(cmd_stdout)?;
@@ -149,7 +149,7 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    pub fn execute(&mut self, args: &[String]) -> Result<()> {
+    pub fn execute(&mut self, args: &[&str]) -> Result<()> {
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
