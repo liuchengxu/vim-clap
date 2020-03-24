@@ -93,28 +93,41 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
         Algo::Fzy => match_and_score_with_positions(query, line),
     };
 
+    /// The constant to define the length of `top_` queues.
+    const ITEMS_TO_SHOW: usize = 8;
+
+    const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
+
+    trait Insert<T> {
+        fn pop_and_insert(&mut self, idx: usize, value: T);
+    }
+    impl<T: Copy> Insert<T> for [T; ITEMS_TO_SHOW] {
+        fn pop_and_insert(&mut self, idx: usize, value: T) {
+            if idx < MAX_IDX {
+                self.copy_within(idx..MAX_IDX, idx + 1);
+                self[idx] = value;
+            } else {
+                self[MAX_IDX] = value;
+            }
+        }
+    }
+
     /// This macro is a special thing for [`dyn_collect_all`] and [`dyn_collect_number`].
     macro_rules! insert_both {
             // This macro pushes all things into buffer, pops one worst item from each top queue
             // and then inserts all things into `top_` queues.
             (pop; $index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
                 match $index {
-                    // If index is 0, then the worst item is better than this we want to push in,
+                    // If index is last possible, then the worst item is better than this we want to push in,
                     // and we do nothing.
-                    Some(0) => $buffer.push(($text, $score, $indices)),
-                    // If index is not zero, then one item gets popped from the queue
+                    Some(MAX_IDX) => $buffer.push(($text, $score, $indices)),
+                    // Else, one item gets popped from the queue
                     // and other is inserted.
                     Some(idx) => {
-                        $top_results.pop_back();
-                        $top_scores.pop_back();
-                        // `index - 1` because one item was popped
-                        insert_both!(idx - 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
+                        insert_both!(idx + 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
                     }
                     None => {
-                        $top_results.pop_back();
-                        $top_scores.pop_back();
-                        // `index - 1` because one item was popped
-                        insert_both!(ITEMS_TO_SHOW - 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
+                        insert_both!(0, $score, $text, $indices => $buffer, $top_results, $top_scores);
                     }
                 }
             }};
@@ -123,25 +136,8 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
             // `top_` queues.
             ($index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
                 $buffer.push(($text, $score, $indices));
-                // I just pushed the item into this buffer, lol, `unwrap()` can't fail.
-                // let (text, _, indices) = buffer.last().unwrap();
-                let last = $buffer.last().unwrap();
-                //XXX SAFETY: as long as `top_results` isn't used after `buffer`
-                //XXX starts to change it's elements' internals or is dropped,
-                //XXX that's safe. When `buffer` is reallocated it can change
-                //XXX the adress of data it holds but not internals of that data,
-                //XXX so `text.as_str()` and `indxs.as_slice()`
-                //XXX will never become invalidated on `buffer` reallocation,
-                //XXX only on explicit mutability or drop of the item,
-                //XXX or when buffer itself will get dropped.
-                let (text_ref, indices_ref) = unsafe {
-                    (
-                        std::mem::transmute::<&str, &'static str>(last.0.as_str()),
-                        std::mem::transmute::<&[_], &'static [_]>(last.2.as_slice()),
-                    )
-                };
-                $top_results.insert($index, (text_ref, indices_ref));
-                $top_scores.insert($index, $score);
+                $top_results.pop_and_insert($index, $buffer.len() - 1);
+                $top_scores.pop_and_insert($index, $score);
             }};
         }
 
@@ -165,21 +161,13 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     fn dyn_collect_all(
         mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
     ) -> Vec<FuzzyMatchedLineInfo> {
-        use std::collections::VecDeque;
-
-        /// The constant to define the length of `top_` queues.
-        const ITEMS_TO_SHOW: usize = 7;
-
         let mut buffer = Vec::with_capacity({
             let (low, high) = iter.size_hint();
             high.unwrap_or(low)
         });
 
-        // VecDeque always leaves one space empty and raw buffer is always a power of two,
-        // so 7 capacity will create VecDeque with buffer for 8 items, even though it'll use only 7.
-        // Real capacity will be the same for 6 and 5 too, exactly 7.
-        let mut top_scores: VecDeque<f64> = VecDeque::with_capacity(ITEMS_TO_SHOW);
-        let mut top_results: VecDeque<(&str, &[usize])> = VecDeque::with_capacity(ITEMS_TO_SHOW);
+        let mut top_scores: [f64; ITEMS_TO_SHOW] = [f64::NEG_INFINITY; ITEMS_TO_SHOW];
+        let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
         // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
         let mut total = 0;
@@ -192,12 +180,12 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 .enumerate()
                 .find(|&(_, &other_score)| other_score > score)
             {
-                Some((idx, _)) => idx,
-                None => top_scores.len(),
+                Some((idx, _)) => idx + 1,
+                None => 0,
             };
             insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
 
-            // Stop iterating after 7 iterations.
+            // Stop iterating after `ITEMS_TO_SHOW` iterations.
             total += 1;
             if total == ITEMS_TO_SHOW {
                 Err(())
@@ -232,7 +220,11 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
-                        println_json!(total, top_results);
+                        println_json!(total);
+                        for &idx in top_results.iter() {
+                            let (text, _, indices) = std::ops::Index::index(buffer.as_slice(), idx);
+                            println_json!(text, indices);
+                        }
                     }
                 }
             });
@@ -249,26 +241,18 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     /// The vector is not sorted nor truncated.
     //
     // Even though the current implementation isn't the most effective thing to do it,
-    // I think, it's just good enough. And should be more effective then full
+    // I think, it's just good enough. And should be more effective than full
     // `collect()` into Vec on big numbers of iterations.
     fn dyn_collect_number(
         mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
         number: usize,
     ) -> (usize, Vec<FuzzyMatchedLineInfo>) {
-        use std::collections::VecDeque;
-
-        /// The constant to define the length of `top_` queues.
-        const ITEMS_TO_SHOW: usize = 7;
-
         // To not have problems with queues after sorting and truncating the buffer,
         // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
         let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
 
-        // VecDeque always leaves one space empty and raw buffer is always a power of two,
-        // so 7 capacity will create VecDeque with buffer for 8 items, even though it'll use only 7.
-        // Real capacity will be the same for 6 and 5 too, exactly 7.
-        let mut top_scores: VecDeque<f64> = VecDeque::with_capacity(ITEMS_TO_SHOW);
-        let mut top_results: VecDeque<(&str, &[usize])> = VecDeque::with_capacity(ITEMS_TO_SHOW);
+        let mut top_scores: [f64; ITEMS_TO_SHOW] = [f64::NEG_INFINITY; ITEMS_TO_SHOW];
+        let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
         // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
         let mut total = 0;
@@ -281,12 +265,12 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 .enumerate()
                 .find(|&(_, &other_score)| other_score > score)
             {
-                Some((idx, _)) => idx,
-                None => top_scores.len(),
+                Some((idx, _)) => idx + 1,
+                None => 0,
             };
             insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
 
-            // Stop iterating after 7 iterations.
+            // Stop iterating after `ITEMS_TO_SHOW` iterations.
             total += 1;
             if total == ITEMS_TO_SHOW {
                 Err(())
@@ -321,26 +305,21 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
-                        println_json!(total, top_results);
+                        println_json!(total);
+                        for &idx in top_results.iter() {
+                            let (text, _, indices) = std::ops::Index::index( buffer.as_slice(), idx);
+                            println_json!(text, indices);
+                        }
                     }
                 }
 
                 if buffer.len() == buffer.capacity() {
                     buffer.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
-                    let mut scores = VecDeque::with_capacity(ITEMS_TO_SHOW);
-                    let mut results = VecDeque::with_capacity(ITEMS_TO_SHOW);
-                    for (text, score, indices) in buffer[..ITEMS_TO_SHOW].iter() {
-                        let (text_ref, indices_ref) = unsafe {(
-                            std::mem::transmute::<&str, &'static str>(text.as_str()),
-                            std::mem::transmute::<&[_], &'static [_]>(indices.as_slice()),
-                        )};
-                        scores.push_back(*score);
-                        results.push_back((text_ref, indices_ref));
+                    for (idx, (_, score, _)) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
+                        top_scores[idx] = *score;
+                        top_results[idx] = idx;
                     }
-
-                    top_scores = scores;
-                    top_results = results;
 
                     let half = buffer.len() / 2;
                     buffer.truncate(half);
