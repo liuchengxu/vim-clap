@@ -30,9 +30,7 @@ function! s:format_buffer(b) abort
 endfunction
 
 function! s:buffers() abort
-  redir => l:buffers
-    silent buffers
-  redir END
+  let l:buffers = execute('buffers')
   let s:line_info = {}
   for line in split(l:buffers, "\n")
     let bufnr = str2nr(trim(matchstr(line, '^\s*\d\+')))
@@ -61,7 +59,14 @@ function! s:buffers_sink(selected) abort
 endfunction
 
 function! s:buffers_on_move() abort
-  let bufnr = str2nr(s:extract_bufnr(g:clap.display.getcurline()))
+  let curline = g:clap.display.getcurline()
+  if empty(curline)
+    return
+  endif
+  let bufnr = str2nr(s:extract_bufnr(curline))
+  if !has_key(s:line_info, bufnr)
+    return
+  endif
   let lnum = str2nr(matchstr(s:line_info[bufnr], '\d\+'))
   let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
   let lines = getbufline(bufnr, start+1, end+1)

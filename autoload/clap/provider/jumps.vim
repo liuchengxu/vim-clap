@@ -8,9 +8,7 @@ let s:jumps = {}
 
 function! s:jumps.source() abort
   call g:clap.start.goto_win()
-  redir => cout
-  silent jumps
-  redir END
+  let cout = execute('jumps')
   call g:clap.input.goto_win()
   let s:jumplist = split(cout, '\n')
   return [s:jumplist[0]] + reverse(s:jumplist[1:])
