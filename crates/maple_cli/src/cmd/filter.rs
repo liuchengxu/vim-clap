@@ -166,7 +166,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
             high.unwrap_or(low)
         });
 
-        let mut top_scores: [f64; ITEMS_TO_SHOW] = [f64::NEG_INFINITY; ITEMS_TO_SHOW];
+        let mut top_scores: [f64; ITEMS_TO_SHOW] = [std::f64::NEG_INFINITY; ITEMS_TO_SHOW];
         let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
         // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
@@ -251,7 +251,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
         // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
         let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
 
-        let mut top_scores: [f64; ITEMS_TO_SHOW] = [f64::NEG_INFINITY; ITEMS_TO_SHOW];
+        let mut top_scores: [f64; ITEMS_TO_SHOW] = [std::f64::NEG_INFINITY; ITEMS_TO_SHOW];
         let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
         // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
