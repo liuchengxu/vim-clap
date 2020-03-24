@@ -88,7 +88,5 @@ fn run(maple: Maple) -> Result<()> {
 }
 
 pub fn main() -> Result<()> {
-    let maple = Maple::from_args();
-
-    run(maple)
+    run(Maple::from_args())
 }
