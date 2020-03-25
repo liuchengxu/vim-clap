@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 pub(crate) type Score = i32;
 
 pub(crate) const SCORE_STARTER: Score = 0;
@@ -27,11 +29,13 @@ pub(crate) fn score_add(score: Score, rhs: Score) -> Score {
     score.saturating_add(rhs)
 }
 
+/*
 /// Subs `rhs` from the score and returns the result.
 #[inline]
 pub(crate) fn score_sub(score: Score, rhs: Score) -> Score {
     score.saturating_sub(rhs)
 }
+*/
 
 /// Multiplies `score` by `rhs`.
 #[inline]
