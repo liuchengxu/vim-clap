@@ -104,11 +104,11 @@ pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
 ///  `last_idx - start >= winwidth`
 /// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
 ///
-pub fn truncate_long_matched_lines(
-    lines: impl IntoIterator<Item = FuzzyMatchedLineInfo>,
+pub fn truncate_long_matched_lines<T>(
+    lines: impl IntoIterator<Item = (String, T, Vec<usize>)>,
     winwidth: usize,
     starting_point: Option<usize>,
-) -> (Vec<FuzzyMatchedLineInfo>, LinesTruncatedMap) {
+) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
     let lines = lines
         .into_iter()
