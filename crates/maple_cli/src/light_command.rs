@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 use std::time::SystemTime;
 
 use anyhow::Result;
-use icon::{prepend_grep_icon, prepend_icon};
+use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICON};
 
 use crate::error::DummyError;
 
@@ -13,8 +13,10 @@ use crate::error::DummyError;
 #[inline]
 fn trim_trailing(lines: &mut Vec<String>) {
     if let Some(last_line) = lines.last() {
-        // DEFAULT_ICON + one space, so the length of empty iconized line is 2.
-        if last_line.is_empty() || last_line.len() == 2 {
+        // " " len is 4.
+        if last_line.is_empty()
+            || (last_line.len() == 4 && last_line.chars().next().unwrap() == DEFAULT_ICON)
+        {
             lines.remove(lines.len() - 1);
         }
     }
@@ -172,4 +174,12 @@ impl<'a> LightCommand<'a> {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_trim_trailing() {
+    let empty_iconized_line = " ";
+
+    assert_eq!(empty_iconized_line.len(), 4);
+    assert!(empty_iconized_line.chars().next().unwrap() == DEFAULT_ICON);
 }
