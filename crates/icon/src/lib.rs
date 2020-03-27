@@ -21,7 +21,7 @@ type Icon = char;
 ///
 /// Try matching the exactmatch map against the file name, and then the extension map.
 #[inline]
-pub fn get_icon_or(path: &Path, default: char) -> char {
+pub fn get_icon_or(path: &Path, default: Icon) -> Icon {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
         .and_then(|filename| {
