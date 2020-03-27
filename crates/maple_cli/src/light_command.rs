@@ -5,7 +5,7 @@ use std::process::{Command, Output};
 use std::time::SystemTime;
 
 use anyhow::Result;
-use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICONIZED};
+use icon::{prepend_grep_icon, prepend_icon, DEFAULT_ICON};
 
 use crate::error::DummyError;
 
@@ -13,7 +13,10 @@ use crate::error::DummyError;
 #[inline]
 fn trim_trailing(lines: &mut Vec<String>) {
     if let Some(last_line) = lines.last() {
-        if last_line.is_empty() || last_line == DEFAULT_ICONIZED {
+        // DEFAULT_ICONIZED  " ";
+        if last_line.is_empty()
+            || (last_line.len() == 2 && last_line.chars().next().unwrap() == DEFAULT_ICON)
+        {
             lines.remove(lines.len() - 1);
         }
     }

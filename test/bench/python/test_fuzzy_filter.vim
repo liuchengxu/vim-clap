@@ -41,7 +41,7 @@ function RunInputMulti() abort
 endfunction
 
 function! PythonFilter(query, candidates) abort
-  call clap#filter#python#(a:query, a:candidates, 60)
+  call clap#filter#python#(a:query, a:candidates, 60, v:true)
 endfunction
 
 function RunBench100000() abort

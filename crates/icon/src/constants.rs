@@ -149,6 +149,6 @@ pub static EXACTMATCH_ICON_TABLE: &[(&[u8], char)] = &[
     (b"rust-toolchain", ''),
 ];
 
-pub(crate) fn bsearch_icon_table(c: &[u8], table: &[(&[u8], char)]) -> Option<usize> {
+pub fn bsearch_icon_table(c: &[u8], table: &[(&[u8], char)]) -> Option<usize> {
     table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
 }

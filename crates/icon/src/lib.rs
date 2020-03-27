@@ -1,18 +1,15 @@
 mod constants;
 
-use constants::{bsearch_icon_table, EXACTMATCH_ICON_TABLE, EXTENSION_ICON_TABLE};
+pub use constants::{bsearch_icon_table, EXACTMATCH_ICON_TABLE, EXTENSION_ICON_TABLE};
 
 use std::path::Path;
 
 use lazy_static::lazy_static;
 use regex::Regex;
 
-// pub const DEFAULT_ICON: &str = "";
 pub const DEFAULT_ICON: char = '';
 pub const FOLDER_ICON: char = '';
 pub const DEFAULT_FILER_ICON: char = '';
-
-pub const DEFAULT_ICONIZED: &str = " ";
 
 /// The type used to represent icons.
 ///

@@ -34,6 +34,12 @@ with open('exactmatch_map.json', 'r') as f:
         'pub static EXACTMATCH_ICON_TABLE: &[(&[u8], char)] = &[%s];' %
         joined_tuples)
 
+lines.append('''
+pub fn bsearch_icon_table(c: &[u8], table: &[(&[u8], char)]) ->Option<usize> {
+    table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
+}
+  ''')
+
 with open('src/constants.rs', 'w') as f:
     f.write('\n'.join(lines))
 
