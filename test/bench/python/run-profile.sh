@@ -79,8 +79,6 @@ bench_300000() {
 
 run_bench() {
   bench_100000
-  bench_200000
-  bench_300000
 }
 
 run_all() {

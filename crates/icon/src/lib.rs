@@ -25,20 +25,16 @@ pub fn get_icon_char(path: &Path, default: char) -> char {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
         .and_then(|filename| {
-            match bsearch_icon_table(filename.to_lowercase().as_bytes(), EXACTMATCH_ICON_TABLE) {
-                Some(idx) => Some(EXACTMATCH_ICON_TABLE[idx].1),
-                None => None,
-            }
+            bsearch_icon_table(filename.to_lowercase().as_bytes(), EXACTMATCH_ICON_TABLE)
+                .map(|idx| EXACTMATCH_ICON_TABLE[idx].1)
         })
         .unwrap_or_else(|| {
             path.extension()
                 .and_then(std::ffi::OsStr::to_str)
-                .and_then(
-                    |ext| match bsearch_icon_table(ext.as_bytes(), EXTENSION_ICON_TABLE) {
-                        Some(idx) => Some(EXTENSION_ICON_TABLE[idx].1),
-                        None => None,
-                    },
-                )
+                .and_then(|ext| {
+                    bsearch_icon_table(ext.as_bytes(), EXTENSION_ICON_TABLE)
+                        .map(|idx| EXTENSION_ICON_TABLE[idx].1)
+                })
                 .unwrap_or(default)
         })
 }
