@@ -18,9 +18,8 @@ with open('extension_map.json', 'r') as f:
     sorted_dict = {k: disordered[k] for k in sorted(disordered)}
 
     joined_tuples = ','.join(
-        map(lambda kv: '(b"%s", \'%s\')' % (kv[0], kv[1]),
-            sorted_dict.items()))
-    lines.append('pub static EXTENSION_ICON_TABLE: &[(&[u8], char)] = &[%s];' %
+        map(lambda kv: '("%s", \'%s\')' % (kv[0], kv[1]), sorted_dict.items()))
+    lines.append('pub static EXTENSION_ICON_TABLE: &[(&str, char)] = &[%s];' %
                  joined_tuples)
 
 with open('exactmatch_map.json', 'r') as f:
@@ -28,14 +27,12 @@ with open('exactmatch_map.json', 'r') as f:
     sorted_dict = {k: disordered[k] for k in sorted(disordered)}
 
     joined_tuples = ','.join(
-        map(lambda kv: '(b"%s", \'%s\')' % (kv[0], kv[1]),
-            sorted_dict.items()))
-    lines.append(
-        'pub static EXACTMATCH_ICON_TABLE: &[(&[u8], char)] = &[%s];' %
-        joined_tuples)
+        map(lambda kv: '("%s", \'%s\')' % (kv[0], kv[1]), sorted_dict.items()))
+    lines.append('pub static EXACTMATCH_ICON_TABLE: &[(&str, char)] = &[%s];' %
+                 joined_tuples)
 
 lines.append('''
-pub fn bsearch_icon_table(c: &[u8], table: &[(&[u8], char)]) ->Option<usize> {
+pub fn bsearch_icon_table(c: &str, table: &[(&str, char)]) ->Option<usize> {
     table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
 }
   ''')
