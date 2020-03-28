@@ -1,13 +1,11 @@
-//! Okay, the one and only reason for this lib is my OS.
-//!
-//! Original "rff" crate has `terminal` module which utilizes `std::os::unix`
-//! thus it doesn't compile on non-unix OS.
+//! Working with utf8-encoded strings.
 
-mod scoring_utils;
-use scoring_utils::*;
+pub mod matcher;
+pub use matcher::{matcher, NeedleUTF8};
 
-pub type MatchWithPositions = (Score, Vec<usize>);
+use crate::scoring_utils::*;
 
+#[inline]
 pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
     match matches(needle, haystack) {
         Some(needle_length) => {
@@ -48,7 +46,12 @@ fn matches(needle: &str, haystack: &str) -> Option<usize> {
     Some(needle_length)
 }
 
-fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (Score, Vec<usize>) {
+#[inline]
+pub fn score_with_positions(
+    needle: &str,
+    needle_length: usize,
+    haystack: &str,
+) -> (Score, Vec<usize>) {
     // empty needle
     if needle_length == 0 {
         return (SCORE_MIN, vec![]);
@@ -59,11 +62,6 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
     // perfect match
     if needle_length == haystack_length {
         return (SCORE_MAX, (0..needle_length).collect());
-    }
-
-    // unreasonably large haystack
-    if haystack_length > 1024 {
-        return (SCORE_MIN, vec![]);
     }
 
     let (d, m) = calculate_score(needle, needle_length, haystack, haystack_length);
@@ -102,6 +100,7 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
     (m.get(needle_length - 1, haystack_length - 1), positions)
 }
 
+#[inline]
 fn calculate_score(
     needle: &str,
     needle_length: usize,
@@ -159,7 +158,7 @@ fn calculate_score(
 }
 
 /// Compares two characters case-insensitively
-#[inline(always)]
+#[inline]
 fn eq(a: char, b: char) -> bool {
     match a {
         _ if a == b => true,
@@ -168,6 +167,7 @@ fn eq(a: char, b: char) -> bool {
     }
 }
 
+#[inline]
 fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<Score> {
     let mut last_char = '/';
 
@@ -182,6 +182,7 @@ fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<Score> {
         })
 }
 
+#[inline]
 fn bonus_for_char(prev: char, current: char) -> Score {
     match current {
         'a'..='z' | '0'..='9' => bonus_for_prev(prev),
@@ -193,6 +194,7 @@ fn bonus_for_char(prev: char, current: char) -> Score {
     }
 }
 
+#[inline]
 fn bonus_for_prev(ch: char) -> Score {
     match ch {
         '/' => SCORE_MATCH_SLASH,
@@ -202,32 +204,17 @@ fn bonus_for_prev(ch: char) -> Score {
     }
 }
 
-/// The Matrix type represents a 2-dimensional Matrix.
-struct Matrix {
-    cols: usize,
-    contents: Vec<Score>,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl Matrix {
-    /// Creates a new Matrix with the given width and height
-    fn new(width: usize, height: usize) -> Matrix {
-        Matrix {
-            contents: vec![SCORE_STARTER; width * height],
-            cols: width,
-        }
-    }
-
-    /// Returns a reference to the specified coordinates of the Matrix
-    fn get(&self, col: usize, row: usize) -> Score {
-        debug_assert!(col * row < self.contents.len());
-        unsafe { *self.contents.get_unchecked(row * self.cols + col) }
-    }
-
-    /// Sets the coordinates of the Matrix to the specified value
-    fn set(&mut self, col: usize, row: usize, val: Score) {
-        debug_assert!(col * row < self.contents.len());
-        unsafe {
-            *self.contents.get_unchecked_mut(row * self.cols + col) = val;
-        }
+    #[test]
+    fn abc() {
+        let abc = "abc";
+        let cba = "cba";
+        let res = match_and_score_with_positions(abc, cba);
+        // assert!(res.is_some());
+        assert!(res.is_none());
+        println!("{:?}", res);
     }
 }

@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use extracted_fzy::match_and_score_with_positions;
+use fulf::utf8::match_and_score_with_positions;
 use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use structopt::clap::arg_enum;

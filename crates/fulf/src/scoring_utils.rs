@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 pub(crate) type Score = i32;
+pub(crate) type MatchWithPositions = (Score, Vec<usize>);
 
 pub(crate) const SCORE_STARTER: Score = 0;
 
@@ -46,4 +47,37 @@ pub(crate) fn score_mul(score: Score, rhs: Score) -> Score {
 #[inline]
 pub(crate) fn score_from_usize(u: usize) -> Score {
     Score::try_from(u).unwrap_or(SCORE_MAX)
+}
+
+/// The Matrix type represents a 2-dimensional Matrix.
+pub(crate) struct Matrix {
+    cols: usize,
+    contents: Vec<Score>,
+}
+
+impl Matrix {
+    /// Creates a new Matrix with the given width and height
+    #[inline]
+    pub fn new(width: usize, height: usize) -> Matrix {
+        Matrix {
+            contents: vec![SCORE_STARTER; width * height],
+            cols: width,
+        }
+    }
+
+    /// Returns a reference to the specified coordinates of the Matrix
+    #[inline]
+    pub fn get(&self, col: usize, row: usize) -> Score {
+        debug_assert!(col * row < self.contents.len());
+        unsafe { *self.contents.get_unchecked(row * self.cols + col) }
+    }
+
+    /// Sets the coordinates of the Matrix to the specified value
+    #[inline]
+    pub fn set(&mut self, col: usize, row: usize, val: Score) {
+        debug_assert!(col * row < self.contents.len());
+        unsafe {
+            *self.contents.get_unchecked_mut(row * self.cols + col) = val;
+        }
+    }
 }

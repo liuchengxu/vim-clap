@@ -81,7 +81,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     winwidth: Option<usize>,
 ) -> Result<()> {
     use {
-        extracted_fzy::match_and_score_with_positions,
+        fulf::utf8::match_and_score_with_positions,
         fuzzy_filter::FuzzyMatchedLineInfo,
         fuzzy_matcher::skim::fuzzy_indices,
         rayon::slice::ParallelSliceMut,
@@ -465,7 +465,7 @@ mod tests {
                         println!("Total lines created: {}", total_lines_created)
                     }
 
-                    unsafe { String::from_utf8_unchecked(changing_text.as_ref().to_owned()) }
+                    String::from_utf8(changing_text.as_ref().to_owned()).unwrap()
                 })
                 .take(usize::max_value() >> 8),
             ),

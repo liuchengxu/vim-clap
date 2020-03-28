@@ -1,0 +1,12 @@
+[package]
+name = "fulf"
+edition = "2018"
+version = "0.1.0"
+authors = ["ImmConCon <somewhat.fluffy@gmail.com>"]
+license = "MIT"
+publish = false
+
+[dependencies]
+memchr = "2.*"
+ignore = "0.4.*"
+smallbitvec = "2.*"
