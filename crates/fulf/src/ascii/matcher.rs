@@ -45,6 +45,7 @@ pub fn matcher(mut line: &[u8], needle: &[u8]) -> Option<LineMetaData> {
     Some(())
 }
 
+/*
 /// Converts a slice of bytes into valid ASCII-only string in place,
 /// replacing any byte that is not ASCII with arbitrary ASCII byte.
 ///
@@ -95,6 +96,7 @@ pub fn bytes_to_ascii_strange(s: &mut [u8]) {
     // Last part that is too small.
     s.iter_mut().for_each(|b| *b = *b & MASK);
 }
+*/
 
 /// Converts a slice of bytes into valid ASCII-only string, returning `String` and
 /// replacing any byte that is not ASCII with `?` character.

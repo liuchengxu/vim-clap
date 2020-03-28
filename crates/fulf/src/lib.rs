@@ -2,12 +2,12 @@
 //!
 //! Like regex searcher, but not regex searcher.
 
-pub mod ascii;
-pub mod fileworks;
-pub mod threadworks;
-pub mod utf8;
-
+mod fileworks;
 mod scoring_utils;
+mod threadworks;
+
+pub mod ascii;
+pub mod utf8;
 
 mod renamemeplsmynamesucks;
 pub use renamemeplsmynamesucks::*;

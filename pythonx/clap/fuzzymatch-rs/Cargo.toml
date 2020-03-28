@@ -15,8 +15,8 @@ crate-type = ["cdylib"]
 [dependencies.pyo3]
 version = "0.8.5"
 
-[dependencies.extracted_fzy]
-path = "../../../crates/extracted_fzy"
+[dependencies.fulf]
+path = "../../../crates/fulf"
 
 [dependencies.fuzzy_filter]
 path = "../../../crates/fuzzy_filter"
