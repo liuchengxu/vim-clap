@@ -1,7 +1,4 @@
-use {
-    memchr::memchr,
-    std::ops::{Index, IndexMut},
-};
+use {memchr::memchr, std::ops::Index};
 
 type LineMetaData = ();
 
@@ -44,59 +41,6 @@ pub fn matcher(mut line: &[u8], needle: &[u8]) -> Option<LineMetaData> {
 
     Some(())
 }
-
-/*
-/// Converts a slice of bytes into valid ASCII-only string in place,
-/// replacing any byte that is not ASCII with arbitrary ASCII byte.
-///
-/// Gives some very strange results, but is very fast.
-///
-//
-// Despite its speed, quite useless thing, really. But was fun to write.
-#[inline]
-pub fn bytes_to_ascii_strange(s: &mut [u8]) {
-    let mut s = s;
-    // A little bit hacky.
-    //
-    // The slice could be divided into three parts:
-    // 1. Unaligned (for u32) start.
-    // 2. Middle, aligned for u32.
-    // 3. End, aligned for u32, but too small.
-    let ptr = s.as_ptr();
-    let skip = ptr as usize % std::mem::align_of::<u32>();
-
-    const SIZE_U32: usize = std::mem::size_of::<u32>();
-
-    const MASK: u8 = 127;
-    // If the last bit is set, the byte is not a valid ASCII.
-    // So, to make sure it's valid ASCII, this bit should be unset.
-    if s.len() > 18 {
-        // Unaligned start.
-        for idx in 0..skip {
-            let b = s.index_mut(idx);
-            *b = *b & MASK;
-        }
-
-        unsafe {
-            const MASKPACK: u32 = u32::from_ne_bytes([MASK; SIZE_U32]);
-
-            s = s.get_unchecked_mut(skip..);
-            let s_len = s.len();
-            let (ptr, mid_len) = (s.as_mut_ptr(), s_len / SIZE_U32);
-
-            // Aligned middle.
-            let mid = std::slice::from_raw_parts_mut(ptr as *mut u32, mid_len);
-            mid.iter_mut()
-                .for_each(|packed| *packed = *packed & MASKPACK);
-
-            s = s.index_mut(s_len - s_len % SIZE_U32..);
-        }
-    }
-
-    // Last part that is too small.
-    s.iter_mut().for_each(|b| *b = *b & MASK);
-}
-*/
 
 /// Converts a slice of bytes into valid ASCII-only string, returning `String` and
 /// replacing any byte that is not ASCII with `?` character.

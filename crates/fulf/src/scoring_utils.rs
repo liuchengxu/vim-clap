@@ -30,14 +30,6 @@ pub(crate) fn score_add(score: Score, rhs: Score) -> Score {
     score.saturating_add(rhs)
 }
 
-/*
-/// Subs `rhs` from the score and returns the result.
-#[inline]
-pub(crate) fn score_sub(score: Score, rhs: Score) -> Score {
-    score.saturating_sub(rhs)
-}
-*/
-
 /// Multiplies `score` by `rhs`.
 #[inline]
 pub(crate) fn score_mul(score: Score, rhs: Score) -> Score {
