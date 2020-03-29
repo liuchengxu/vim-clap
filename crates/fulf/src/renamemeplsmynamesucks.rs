@@ -16,6 +16,9 @@ use {
 type ScoringResult = (Box<str>, Score, Box<[usize]>);
 type MWP = ScoringResult;
 
+/// A struct to define rules to run fuzzy-search.
+/// 
+/// Read fields' documentation for more.
 #[derive(Debug, Clone)]
 pub struct Rules {
     /// What should be searched.
