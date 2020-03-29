@@ -1,4 +1,4 @@
-mod dynamic;
+pub mod dynamic;
 
 use std::path::Path;
 

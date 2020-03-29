@@ -32,7 +32,7 @@ fn run(maple: Maple) -> Result<()> {
             let source = input
                 .map(Into::into)
                 .unwrap_or(Source::<std::iter::Empty<_>>::Stdin);
-            maple_cli::cmd::filter::run(
+            maple_cli::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
                 &query,
                 source,
                 algo,

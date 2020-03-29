@@ -4,11 +4,14 @@ use fuzzy_filter::FuzzyMatchedLineInfo;
 use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
+use std::time::{Duration, Instant};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 8;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
+
+const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 trait Insert<T> {
     fn pop_and_insert(&mut self, idx: usize, value: T);
@@ -122,22 +125,25 @@ fn dyn_collect_all(
                     .rev() // .rev(), because worse items are at the end.
                     .enumerate()
                     .find(|&(_, &other_score)| other_score > score);
+
                 insert_both!(pop; idx.map(|(i, _)| i), score, text, indices => buffer, top_results, top_scores);
 
                 total = total.wrapping_add(1);
+
                 if total % 16 == 0 {
-                    use std::time::{Duration, Instant};
-
-                    const UPDATE_INTERVAL: Duration = Duration::from_secs(2);
-
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
-                        println_json!(total);
+                        let mut indices = Vec::with_capacity(top_results.len());
+                        let mut lines = Vec::with_capacity(top_results.len());
                         for &idx in top_results.iter() {
-                            let (text, _, indices) = std::ops::Index::index(buffer.as_slice(), idx);
-                            println_json!(text, indices);
+                            let (text, _, idxs) = std::ops::Index::index(buffer.as_slice(), idx);
+                            indices.push(idxs);
+                            // enable_icon
+                            let text = prepend_icon(&text);
+                            lines.push(text);
                         }
+                        println_json!(total, lines, indices);
                     }
                 }
             });
@@ -211,10 +217,7 @@ fn dyn_collect_number(
 
                 total += 1;
                 if total % 16 == 0 {
-                    use std::time::{Duration, Instant};
-
-                    const UPDATE_INTERVAL: Duration = Duration::from_secs(2);
-
+                  // FIXME: use a function or macro for this
                     let now = Instant::now();
                     if now > past + UPDATE_INTERVAL {
                         past = now;
@@ -223,6 +226,7 @@ fn dyn_collect_number(
                         for &idx in top_results.iter() {
                             let (text, _, idxs) = std::ops::Index::index( buffer.as_slice(), idx);
                             indices.push(idxs);
+                            let text = prepend_icon(&text);
                             lines.push(text);
                         }
                         println_json!(total, lines, indices);
@@ -289,6 +293,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
         let ranked = filtered;
 
         let payload = ranked.into_iter().take(number);
+
         let winwidth = winwidth.unwrap_or(62);
         let (truncated_payload, truncated_map) =
             truncate_long_matched_lines(payload, winwidth, None);

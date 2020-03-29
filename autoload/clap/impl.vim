@@ -109,6 +109,11 @@ function! s:on_typed_async_impl() abort
   " Do not clear the outdated content as it would cause the annoying flicker.
   " call g:clap.display.clear()
 
+  if exists('g:__clap_forerunner_tempfile')
+    call clap#filter_dyn#()
+    return
+  endif
+
   let cmd = g:clap.provider.source_async_or_default()
 
   if clap#filter#external#using_maple()
@@ -179,6 +184,7 @@ function! clap#impl#on_typed() abort
     call s:on_typed_async_impl()
     return
   endif
+
   if exists('g:__clap_forerunner_result')
     call s:on_typed_sync_impl()
     return
