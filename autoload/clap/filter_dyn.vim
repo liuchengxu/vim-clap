@@ -30,7 +30,8 @@ function! s:start_rpc() abort
 endfunction
 
 function! s:handle_message(msg) abort
-  if g:clap.input.get() !=# s:last_query
+  if !g:clap.display.win_is_valid()
+        \ || g:clap.input.get() !=# s:last_query
     return
   endif
   let decoded = json_decode(a:msg)
@@ -59,7 +60,7 @@ let s:MessageHandler = function('s:handle_message')
 function! clap#filter_dyn#() abort
   call s:job_stop()
   let s:last_query = g:clap.input.get()
-  let filter_cmd = printf('--enable-icon --number 50 filter --input %s %s', g:__clap_forerunner_tempfile, g:clap.input.get())
+  let filter_cmd = printf('--enable-icon --number 100 filter --input %s %s', g:__clap_forerunner_tempfile, g:clap.input.get())
   let s:rpc_cmd = clap#maple#run(filter_cmd)
   echom "cmd:".s:rpc_cmd
   " let s:rpc_cmd = clap#maple#run('--number 100 filter --input /Users/xuliucheng/root.txt '.g:clap.input.get())

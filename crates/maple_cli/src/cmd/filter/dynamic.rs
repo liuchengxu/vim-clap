@@ -7,7 +7,7 @@ use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
 
 /// The constant to define the length of `top_` queues.
-const ITEMS_TO_SHOW: usize = 8;
+const ITEMS_TO_SHOW: usize = 100;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
 
