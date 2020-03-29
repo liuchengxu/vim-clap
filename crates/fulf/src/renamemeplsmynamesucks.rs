@@ -48,7 +48,7 @@ pub struct Rules {
     ///
     /// 1. This is a line in a text that is not code.
     ///
-    /// 2. This a non-formatted line of automatically generated code.
+    /// 2. This is a non-formatted line of automatically generated code.
     ///
     /// 3. This is a very bad code.
     ///
