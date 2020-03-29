@@ -54,6 +54,9 @@ if s:is_nvim
     return nvim_buf_line_count(self.bufnr)
   endfunction
 
+  function! s:_win_is_valid() dict abort
+    return nvim_win_is_valid(self.winid)
+  endfunction
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
@@ -63,6 +66,10 @@ else
   function! s:_line_count() dict abort
     " 8.1.1967
     return line('$', self.winid)
+  endfunction
+
+  function! display.win_is_valid() dict abort
+    return !empty(popup_getpos(self.winid))
   endfunction
 endif
 
@@ -608,6 +615,7 @@ endfunction
 function! s:inject_base_api(dict) abort
   let dict = a:dict
   let dict.line_count = function('s:_line_count')
+  let dict.win_is_valid = function('s:_win_is_valid')
   let dict.goto_win = function('s:_goto_win')
   let dict.get_lines = function('s:_get_lines')
   let dict.getbufvar = function('s:_getbufvar')
