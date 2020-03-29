@@ -57,7 +57,7 @@ function! s:cmd_of(ext_filter) abort
   endif
 endfunction
 
-function! clap#filter#external#has_default() abort
+function! clap#filter#async#external#has_default() abort
   return s:default_ext_filter isnot v:null
 endfunction
 
@@ -72,7 +72,7 @@ function! s:default_external_cmd() abort
 endfunction
 
 " Filter using the external tools given the current input.
-function! clap#filter#external#get_cmd_or_default() abort
+function! clap#filter#async#external#get_cmd_or_default() abort
   let external_filter = s:get_external_filter()
 
   if external_filter isnot v:null
@@ -82,7 +82,7 @@ function! clap#filter#external#get_cmd_or_default() abort
   return s:default_external_cmd()
 endfunction
 
-function! clap#filter#external#using_maple() abort
+function! clap#filter#async#external#using_maple() abort
   return s:cur_ext_filter ==# 'maple'
 endfunction
 

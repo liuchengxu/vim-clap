@@ -128,7 +128,7 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    call clap#filter#on_typed(function('clap#filter#'), query, candidates)
+    call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
 

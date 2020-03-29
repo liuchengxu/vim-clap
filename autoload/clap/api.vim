@@ -239,7 +239,7 @@ function! s:init_display() abort
   " Optional argument: pattern to match
   " Default: input
   function! display.add_highlight(...) abort
-    let pattern = a:0 > 0 ? a:1 : clap#filter#viml#matchadd_pattern()
+    let pattern = a:0 > 0 ? a:1 : clap#filter#sync#viml#matchadd_pattern()
     if empty(pattern)
       return
     endif
@@ -417,7 +417,7 @@ function! s:init_provider() abort
   " Currently only maple extension supports --input option, for the other
   " external filter, use cat instead.
   function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
-    if clap#filter#external#using_maple()
+    if clap#filter#async#external#using_maple()
       if g:clap.provider.id ==# 'blines'
         return printf('%s %s', a:ext_filter_cmd, a:input_file)
       endif
@@ -430,7 +430,7 @@ function! s:init_provider() abort
 
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
-    let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
+    let ext_filter_cmd = clap#filter#async#external#get_cmd_or_default()
     if exists('g:__clap_forerunner_tempfile')
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tempfile)
     else
@@ -493,7 +493,7 @@ function! s:init_provider() abort
         let lines = copy(Source())
       endif
 
-      let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
+      let ext_filter_cmd = clap#filter#async#external#get_cmd_or_default()
 
       let tmp = s:into_source_tmp_file(lines)
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
@@ -566,7 +566,7 @@ function! s:init_provider() abort
   function! provider.can_async() abort
     " The default async implementation is not doable and the provider does not
     " provide a source_async implementation explicitly.
-    if !clap#filter#external#has_default() && !has_key(self._(), 'source_async')
+    if !clap#filter#async#external#has_default() && !has_key(self._(), 'source_async')
       return v:false
     else
       return !get(g:, 'clap_disable_optional_async', v:false)

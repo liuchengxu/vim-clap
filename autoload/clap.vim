@@ -99,7 +99,7 @@ function! s:inject_default_impl_is_ok(provider_info) abort
       let provider_info.on_typed = function('clap#impl#on_typed')
     endif
     if !has_key(provider_info, 'filter')
-      let provider_info.filter = function('clap#filter#')
+      let provider_info.filter = function('clap#filter#sync')
     endif
   else
     if !has_key(provider_info, 'on_typed')

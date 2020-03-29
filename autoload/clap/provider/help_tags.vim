@@ -8,7 +8,7 @@ function! s:get_doc_tags() abort
   return ['/doc/tags'] + map(filter(split(&helplang, ','), 'v:val !=? "en"'), '"/doc/tags-".v:val')
 endfunction
 
-if clap#maple#is_available() && clap#filter#python#has_dynamic_module()
+if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
 
   function! s:help_tags_source() abort
     let tmp = tempname()
