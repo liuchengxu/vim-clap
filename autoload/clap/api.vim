@@ -68,7 +68,7 @@ else
     return line('$', self.winid)
   endfunction
 
-  function! display.win_is_valid() dict abort
+  function! s:_win_is_valid() dict abort
     return !empty(popup_getpos(self.winid))
   endfunction
 endif
