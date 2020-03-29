@@ -110,7 +110,7 @@ function! s:on_typed_async_impl() abort
   " call g:clap.display.clear()
 
   if !s:is_nvim && exists('g:__clap_forerunner_tempfile')
-    call clap#filter_dyn#()
+    call clap#filter#async#dyn#start()
     return
   endif
 
