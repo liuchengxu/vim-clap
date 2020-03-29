@@ -3,6 +3,8 @@
 //! Original "rff" crate has `terminal` module which utilizes `std::os::unix`
 //! thus it doesn't compile on non-unix OS.
 
+mod scoring_utils;
+
 use crate::scoring_utils::*;
 
 pub type MatchWithPositions = (Score, Vec<usize>);

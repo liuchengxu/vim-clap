@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 pub(crate) type Score = i32;
 
 pub(crate) const SCORE_STARTER: Score = 0;
