@@ -57,7 +57,12 @@ function! clap#filter#async#dyn#start() abort
   call s:job_stop()
 
   let s:last_query = g:clap.input.get()
-  let filter_cmd = printf('--enable-icon --number 100 filter --input %s "%s"', g:__clap_forerunner_tempfile, g:clap.input.get())
+  let filter_cmd = printf('%s --number 100 --winwidth %d filter --input %s "%s"',
+        \ g:clap_enable_icon ? '--enable-icon' : '',
+        \ winwidth(g:clap.display.winid),
+        \ g:__clap_forerunner_tempfile,
+        \ g:clap.input.get()
+        \ )
   let maple_cmd = clap#maple#run(filter_cmd)
   let job = job_start(clap#job#wrap_cmd(maple_cmd), {
         \ 'err_cb': function('s:err_cb'),
