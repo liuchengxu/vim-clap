@@ -122,8 +122,16 @@ function! s:handle_message(msg) abort
     call g:clap.display.set_lines(decoded.lines)
   endif
 
+  if has_key(decoded, 'truncated_map')
+    let g:__clap_lines_truncated_map = decoded.truncated_map
+  endif
+
   if has_key(decoded, 'indices')
-    call clap#highlight#add_fuzzy_async(decoded.indices)
+    try
+      call clap#highlight#add_fuzzy_async(decoded.indices)
+    catch
+      return
+    endtry
   endif
 endfunction
 
