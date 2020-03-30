@@ -67,15 +67,8 @@ fn select_top_items_to_show(
 ) -> std::result::Result<usize, usize> {
     let mut total = 0;
     let if_ok_return = iter.try_for_each(|(text, score, indices)| {
-        // Best results are stored in front.
-        //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
-        let idx = match top_scores
-            .iter()
-            .rev() // .rev(), because worse items are at the end.
-            .enumerate()
-            .find(|&(_, &other_score)| other_score > score)
-        {
-            Some((idx, _)) => idx + 1,
+        let idx = match find_best_score_idx(top_scores, score) {
+            Some(idx) => idx + 1,
             None => 0,
         };
 

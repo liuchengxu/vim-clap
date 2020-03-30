@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Dynamic update version of maple filter.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 let s:job_id = -1
 
 function! s:out_cb(channel, message) abort
@@ -63,3 +66,6 @@ function! clap#filter#async#dyn#start() abort
         \ })
   let s:job_id = clap#job#parse_vim8_job_id(string(job))
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
