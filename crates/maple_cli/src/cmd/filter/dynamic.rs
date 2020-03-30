@@ -55,7 +55,46 @@ macro_rules! insert_both {
                 $top_results.pop_and_insert($index, $buffer.len() - 1);
                 $top_scores.pop_and_insert($index, $score);
             }};
+}
+
+/// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
+fn select_top_items_to_show(
+    buffer: &mut Vec<(String, i64, Vec<usize>)>,
+    top_scores: &mut [i64; ITEMS_TO_SHOW],
+    top_results: &mut [usize; ITEMS_TO_SHOW],
+    iter: &mut impl Iterator<Item = FuzzyMatchedLineInfo>,
+) -> std::result::Result<usize, usize> {
+    let mut total = 0;
+    let if_ok_return = iter.try_for_each(|(text, score, indices)| {
+        // Best results are stored in front.
+        //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
+        let idx = match top_scores
+            .iter()
+            .rev() // .rev(), because worse items are at the end.
+            .enumerate()
+            .find(|&(_, &other_score)| other_score > score)
+        {
+            Some((idx, _)) => idx + 1,
+            None => 0,
+        };
+
+        insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
+
+        // Stop iterating after `ITEMS_TO_SHOW` iterations.
+        total += 1;
+        if total == ITEMS_TO_SHOW {
+            Err(())
+        } else {
+            Ok(())
         }
+    });
+
+    if let Ok(()) = if_ok_return {
+        Ok(total)
+    } else {
+        Err(total)
+    }
+}
 
 /// To get dynamic updates, not so much should be changed, actually.
 /// First: instead of collecting iterator into vector, this iterator
@@ -85,33 +124,12 @@ fn dyn_collect_all(
     let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
-    // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-    let mut total = 0;
-    let if_ok_return = iter.try_for_each(|(text, score, indices)| {
-        // Best results are stored in front.
-        //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
-        let idx = match top_scores
-            .iter()
-            .rev() // .rev(), because worse items are at the end.
-            .enumerate()
-            .find(|&(_, &other_score)| other_score > score)
-        {
-            Some((idx, _)) => idx + 1,
-            None => 0,
-        };
-        insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
+    let should_return =
+        select_top_items_to_show(&mut buffer, &mut top_scores, &mut top_results, &mut iter);
 
-        // Stop iterating after `ITEMS_TO_SHOW` iterations.
-        total += 1;
-        if total == ITEMS_TO_SHOW {
-            Err(())
-        } else {
-            Ok(())
-        }
-    });
-
-    if let Ok(()) = if_ok_return {
-        return buffer;
+    let mut total = match should_return {
+        Ok(_) => return buffer,
+        Err(t) => t,
     };
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
@@ -173,33 +191,12 @@ fn dyn_collect_number(
     let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
-    // First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-    let mut total = 0;
-    let if_ok_return = iter.try_for_each(|(text, score, indices)| {
-        // Best results are stored in front.
-        //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
-        let idx = match top_scores
-            .iter()
-            .rev() // .rev(), because worse items are at the end.
-            .enumerate()
-            .find(|&(_, &other_score)| other_score > score)
-        {
-            Some((idx, _)) => idx + 1,
-            None => 0,
-        };
-        insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
+    let should_return =
+        select_top_items_to_show(&mut buffer, &mut top_scores, &mut top_results, &mut iter);
 
-        // Stop iterating after `ITEMS_TO_SHOW` iterations.
-        total += 1;
-        if total == ITEMS_TO_SHOW {
-            Err(())
-        } else {
-            Ok(())
-        }
-    });
-
-    if let Ok(()) = if_ok_return {
-        return (total, buffer);
+    let mut total = match should_return {
+        Ok(t) => return (t, buffer),
+        Err(t) => t,
     };
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
