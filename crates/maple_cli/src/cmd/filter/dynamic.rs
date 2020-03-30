@@ -406,7 +406,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            Algo::Fzy,
+            Some(Algo::Fzy),
             Some(100),
             false,
             None,
