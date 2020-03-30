@@ -11,6 +11,7 @@ const ITEMS_TO_SHOW: usize = 100;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
 
+/// Refresh the top filtered results per 200 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 trait Insert<T> {
@@ -96,6 +97,45 @@ fn select_top_items_to_show(
     }
 }
 
+// Best results are stored in front, the bigger the better.
+#[inline]
+fn find_best_score_idx(top_scores: &[i64; ITEMS_TO_SHOW], score: i64) -> Option<usize> {
+    top_scores
+        .iter()
+        .rev() // .rev(), because worse items are at the end.
+        .enumerate()
+        .find(|&(_, &other_score)| other_score > score)
+        .map(|(idx, _)| idx)
+}
+
+/// Returns the new freshed time when the new top scored items are sent to the client.
+///
+/// Printing to stdout is to send to the client.
+fn try_notify_top_results(
+    total: usize,
+    past: &Instant,
+    top_results_len: usize,
+    top_results: &[usize; ITEMS_TO_SHOW],
+    buffer: &[FuzzyMatchedLineInfo],
+) -> std::result::Result<Instant, ()> {
+    if total % 16 == 0 {
+        let now = Instant::now();
+        if now > *past + UPDATE_INTERVAL {
+            let mut indices = Vec::with_capacity(top_results_len);
+            let mut lines = Vec::with_capacity(top_results_len);
+            for &idx in top_results.iter() {
+                let (text, _, idxs) = std::ops::Index::index(buffer, idx);
+                indices.push(idxs);
+                let text = prepend_icon(&text);
+                lines.push(text);
+            }
+            println_json!(total, lines, indices);
+            return Ok(now);
+        }
+    }
+    Err(())
+}
+
 /// To get dynamic updates, not so much should be changed, actually.
 /// First: instead of collecting iterator into vector, this iterator
 /// should be `for_each`ed or something like this.
@@ -136,35 +176,18 @@ fn dyn_collect_all(
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
     iter.for_each(|(text, score, indices)| {
-                // Best results are stored in front.
-                //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
-                let idx = top_scores
-                    .iter()
-                    .rev() // .rev(), because worse items are at the end.
-                    .enumerate()
-                    .find(|&(_, &other_score)| other_score > score);
+        let idx = find_best_score_idx(&top_scores, score);
 
-                insert_both!(pop; idx.map(|(i, _)| i), score, text, indices => buffer, top_results, top_scores);
+        insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
 
-                total = total.wrapping_add(1);
+        total = total.wrapping_add(1);
 
-                if total % 16 == 0 {
-                    let now = Instant::now();
-                    if now > past + UPDATE_INTERVAL {
-                        past = now;
-                        let mut indices = Vec::with_capacity(top_results.len());
-                        let mut lines = Vec::with_capacity(top_results.len());
-                        for &idx in top_results.iter() {
-                            let (text, _, idxs) = std::ops::Index::index(buffer.as_slice(), idx);
-                            indices.push(idxs);
-                            // enable_icon
-                            let text = prepend_icon(&text);
-                            lines.push(text);
-                        }
-                        println_json!(total, lines, indices);
-                    }
-                }
-            });
+        if let Ok(now) =
+            try_notify_top_results(total, &past, top_results.len(), &top_results, &buffer)
+        {
+            past = now;
+        }
+    });
 
     buffer
 }
@@ -203,45 +226,30 @@ fn dyn_collect_number(
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
     iter.for_each(|(text, score, indices)| {
-                // Best results are stored in front.
-                //XXX I can't say, if bigger score is better or not. Let's assume the bigger the better.
-                let idx = top_scores
-                    .iter()
-                    .rev() // .rev(), because worse items are at the end.
-                    .enumerate()
-                    .find(|&(_, &other_score)| other_score > score);
-                insert_both!(pop; idx.map(|(i, _)| i), score, text, indices => buffer, top_results, top_scores);
+        let idx = find_best_score_idx(&top_scores, score);
 
-                total += 1;
-                if total % 16 == 0 {
-                  // FIXME: use a function or macro for this
-                    let now = Instant::now();
-                    if now > past + UPDATE_INTERVAL {
-                        past = now;
-                        let mut indices = Vec::with_capacity(top_results.len());
-                        let mut lines = Vec::with_capacity(top_results.len());
-                        for &idx in top_results.iter() {
-                            let (text, _, idxs) = std::ops::Index::index( buffer.as_slice(), idx);
-                            indices.push(idxs);
-                            let text = prepend_icon(&text);
-                            lines.push(text);
-                        }
-                        println_json!(total, lines, indices);
-                    }
-                }
+        insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
 
-                if buffer.len() == buffer.capacity() {
-                    buffer.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+        total += 1;
 
-                    for (idx, (_, score, _)) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
-                        top_scores[idx] = *score;
-                        top_results[idx] = idx;
-                    }
+        if let Ok(now) =
+            try_notify_top_results(total, &past, top_results.len(), &top_results, &buffer)
+        {
+            past = now;
+        }
 
-                    let half = buffer.len() / 2;
-                    buffer.truncate(half);
-                }
-            });
+        if buffer.len() == buffer.capacity() {
+            buffer.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+            for (idx, (_, score, _)) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
+                top_scores[idx] = *score;
+                top_results[idx] = idx;
+            }
+
+            let half = buffer.len() / 2;
+            buffer.truncate(half);
+        }
+    });
 
     (total, buffer)
 }
@@ -286,33 +294,13 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 number,
             ),
         };
-
-        let ranked = filtered;
-
-        let payload = ranked.into_iter().take(number);
-
-        let winwidth = winwidth.unwrap_or(62);
-        let (truncated_payload, truncated_map) =
-            truncate_long_matched_lines(payload, winwidth, None);
-        let mut lines = Vec::with_capacity(number);
-        let mut indices = Vec::with_capacity(number);
-        if enable_icon {
-            for (text, _, idxs) in truncated_payload {
-                let iconized = prepend_icon(&text);
-                lines.push(iconized);
-                indices.push(idxs);
-            }
-        } else {
-            for (text, _, idxs) in truncated_payload {
-                lines.push(text);
-                indices.push(idxs);
-            }
-        }
-        if truncated_map.is_empty() {
-            println_json!(total, lines, indices);
-        } else {
-            println_json!(total, lines, indices, truncated_map);
-        }
+        print_top_items(
+            total,
+            number,
+            filtered.into_iter().take(number),
+            winwidth.unwrap_or(62),
+            enable_icon,
+        );
     } else {
         let mut filtered = match source {
             Source::Stdin => dyn_collect_all(io::stdin().lock().lines().filter_map(|lines_iter| {
