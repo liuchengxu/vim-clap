@@ -29,6 +29,20 @@ impl<T: Copy> Insert<T> for [T; ITEMS_TO_SHOW] {
     }
 }
 
+/// Combine json and println macro.
+///
+/// Neovim needs Content-length info when using stdio-based communication.
+macro_rules! print_json_with_length {
+  ( $( $field:expr ),+ ) => {
+    {
+      let msg = serde_json::json!({ $(stringify!($field): $field,)* });
+      if let Ok(s) = serde_json::to_string(&msg) {
+          println!("Content-length: {}\n\n{}", s.len(), s);
+      }
+    }
+  }
+}
+
 /// This macro is a special thing for [`dyn_collect_all`] and [`dyn_collect_number`].
 macro_rules! insert_both {
             // This macro pushes all things into buffer, pops one worst item from each top queue
@@ -129,7 +143,9 @@ fn try_notify_top_results(
                 };
                 lines.push(text);
             }
-            println_json!(total, lines, indices);
+
+            print_json_with_length!(total, lines, indices);
+
             return Ok(now);
         }
     }
@@ -309,13 +325,18 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 number,
             ),
         };
-        print_top_items(
-            total,
+        let (lines, indices, truncated_map) = process_top_items(
             number,
             filtered.into_iter().take(number),
             winwidth.unwrap_or(62),
             enable_icon,
         );
+
+        if truncated_map.is_empty() {
+            print_json_with_length!(total, lines, indices);
+        } else {
+            print_json_with_length!(total, lines, indices, truncated_map);
+        }
     } else {
         let mut filtered = match source {
             Source::Stdin => dyn_collect_all(

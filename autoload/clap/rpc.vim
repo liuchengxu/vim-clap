@@ -54,6 +54,9 @@ if has('nvim')
   function! s:on_event(job_id, data, event) abort
     " We only process the job that was spawned last time.
     if a:job_id == s:job_id
+      if a:data == ['']
+        return
+      endif
       if a:event ==# 'stdout'
         call s:handle_stdout(a:data)
       elseif a:event ==# 'stderr'

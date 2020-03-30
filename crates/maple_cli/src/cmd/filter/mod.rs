@@ -8,12 +8,15 @@ use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Sou
 use icon::prepend_icon;
 
 /// Return the info of the truncated top items ranked by the filtering score.
-fn print_top_items<T>(
-    total: usize,
+fn process_top_items<T>(
     top_size: usize,
     top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
     winwidth: usize,
     enable_icon: bool,
+) -> (
+    Vec<String>,
+    Vec<Vec<usize>>,
+    std::collections::HashMap<String, String>,
 ) {
     let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
     let mut lines = Vec::with_capacity(top_size);
@@ -29,11 +32,7 @@ fn print_top_items<T>(
             indices.push(idxs);
         }
     }
-    if truncated_map.is_empty() {
-        println_json!(total, lines, indices);
-    } else {
-        println_json!(total, lines, indices, truncated_map);
-    }
+    (lines, indices, truncated_map)
 }
 
 pub fn run<I: Iterator<Item = String>>(
@@ -48,13 +47,17 @@ pub fn run<I: Iterator<Item = String>>(
 
     if let Some(number) = number {
         let total = ranked.len();
-        print_top_items(
-            total,
+        let (lines, indices, truncated_map) = process_top_items(
             number,
             ranked.into_iter().take(number),
             winwidth.unwrap_or(62),
             enable_icon,
         );
+        if truncated_map.is_empty() {
+            println_json!(total, lines, indices);
+        } else {
+            println_json!(total, lines, indices, truncated_map);
+        }
     } else {
         for (text, _, indices) in ranked.iter() {
             println_json!(text, indices);
