@@ -97,8 +97,8 @@ fn select_top_items_to_show(
 fn find_best_score_idx(top_scores: &[i64; ITEMS_TO_SHOW], score: i64) -> Option<usize> {
     top_scores
         .iter()
-        .rev() // .rev(), because worse items are at the end.
         .enumerate()
+        .rev() // .rev(), because worse items are at the end.
         .find(|&(_, &other_score)| other_score > score)
         .map(|(idx, _)| idx)
 }
