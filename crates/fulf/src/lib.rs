@@ -9,7 +9,7 @@ mod threadworks;
 pub mod ascii;
 pub mod utf8;
 
-mod renamemeplsmynamesucks;
-pub use renamemeplsmynamesucks::*;
+mod interface;
+pub use interface::*;
 
 pub use ignore::{Walk, WalkBuilder};

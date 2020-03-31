@@ -398,9 +398,35 @@ mod tests {
         };
 
         let current_dir = std::env::current_dir().unwrap();
+        let needle = "sopa";
 
-        let (results, total) = very_simple(current_dir, "err", sort_and_print);
+        let (results, total) = default_searcher(current_dir.clone(), needle, sort_and_print);
 
         println!("Total: {}\nCapped results: {:?}", total, results);
+
+        let sort_and_print = |results: &mut [MWP], total| {
+            results.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+
+            let now = SystemTime::now();
+
+            if let Ok(dur) = now.duration_since(past) {
+                if dur > DELAY {
+                    past = now;
+
+                    for idx in 0..8 {
+                        if let Some(pack) = results.get(idx) {
+                            let (s, _score, pos) = pack;
+                            println!("Total: {}\n{}\n{:?}", total, s, pos);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+        println!(
+            "{:?}",
+            with_fzy_algo(current_dir, needle, 1024, true, sort_and_print)
+        );
     }
 }
