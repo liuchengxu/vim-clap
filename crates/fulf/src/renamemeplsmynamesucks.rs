@@ -1,17 +1,15 @@
 use {
     crate::{
         ascii::{self, bytes_into_ascii_string_lossy},
-        fileworks::ByteLines,
         scoring_utils::Score,
-        threadworks::{MWPuple, MWPutex, ThreadMe, Threader},
+        threadworks,
         utf8::{self, NeedleUTF8},
     },
     ignore,
-    std::{
-        ops::DerefMut,
-        sync::{Arc, Mutex, MutexGuard},
-    },
+    std::{fs, io, path::Path, thread},
 };
+
+pub use threadworks::KillUs;
 
 type ScoringResult = (Box<str>, Score, Box<[usize]>);
 type MWP = ScoringResult;
@@ -57,15 +55,6 @@ pub struct Rules {
     /// And in any of those cases there's probably no point in fuzzing such line.
     pub max_line_len: usize,
 
-    /// If set to `false`, any error will be ignored, if it didn't cause panic
-    /// in the main thread.
-    ///
-    /// If set to `true`, all errors are stored and returned,
-    /// so you can do whatever you want with them.
-    ///
-    /// Ignoring errors is probably faster.
-    pub with_errors: bool,
-
     /// The number of bonus threads to spawn.
     ///
     /// If it is 0, the main thread will be used anyway.
@@ -82,7 +71,7 @@ impl PartialEq for Rules {
     fn eq(&self, other: &Self) -> bool {
         self.results_cap == other.results_cap
             && self.max_line_len == other.max_line_len
-            && self.with_errors == other.with_errors
+            // && self.with_errors == other.with_errors
             && self.needle == other.needle
             && (self.force_utf8 == other.force_utf8 || !self.needle.is_ascii())
     }
@@ -94,9 +83,9 @@ impl Default for Rules {
         Self {
             needle: Default::default(),
             force_utf8: false,
-            results_cap: 0,
-            max_line_len: 0,
-            with_errors: false,
+            results_cap: 500_usize.next_power_of_two(),
+            max_line_len: 1024_usize.next_power_of_two(),
+            // with_errors: false,
             bonus_threads: 0,
         }
     }
@@ -104,304 +93,248 @@ impl Default for Rules {
 
 struct NoError;
 
-impl From<std::io::Error> for NoError {
+impl From<io::Error> for NoError {
     #[inline]
-    fn from(_: std::io::Error) -> Self {
+    fn from(_: io::Error) -> Self {
         Self
     }
 }
 
-//XXX Attention, please!
-//XXX Those two macros are quite similar, thus to not do something wrong occasionally,
-//XXX those macros have different order of elements. Please, if you change the macro,
-//XXX do not make number and order of elements the same.
-macro_rules! ascii {
-    ($dir_walker:expr, $needle:expr, $capnum:expr, $shared:expr, $threadcount:expr, $max_line_len:expr, $printer:expr) => {{
-        let (dir_walker, needle, capnum, shared, threadcount, max_line_len, printer) = (
-            $dir_walker,
-            $needle,
-            $capnum,
-            $shared,
-            $threadcount,
-            $max_line_len,
-            $printer,
-        );
+macro_rules! match_and_score {
+    (ascii, $needle:expr, $max_line_len:expr) => {{
+        let max_line_len = $max_line_len;
+        let needle: Box<[u8]> = $needle.into();
 
-        let needle = Box::<[u8]>::from(needle);
+        let match_and_score = move |line: &[u8]| -> Option<MWP> {
+            if line.len() > max_line_len {
+                return None;
+            }
+            let needle = needle.as_ref();
 
-        let closure = move |v: Vec<u8>, inner: &mut Vec<MWP>, shared: &Mutex<_>| {
-            ByteLines::new(v.as_slice()).for_each(|line| {
-                if line.len() > max_line_len {
-                    return;
-                }
+            if let Some(()) = ascii::matcher(line, needle) {
+                let (score, posits) = ascii::score_with_positions(needle, line);
 
-                if let Some(()) = ascii::matcher(line, needle.as_ref()) {
-                    let (score, posits) = ascii::score_with_positions(needle.as_ref(), line);
-                    inner.push((
-                        bytes_into_ascii_string_lossy(line.to_owned()).into_boxed_str(),
-                        score,
-                        posits.into_boxed_slice(),
-                    ));
+                let s = Some((
+                    bytes_into_ascii_string_lossy(line.to_owned()).into_boxed_str(),
+                    score,
+                    posits.into_boxed_slice(),
+                ));
 
-                    let inner_len = inner.len();
-                    if inner_len == inner.capacity() {
-                        append_to_shared(shared, inner, printer);
-                    }
-                }
-            });
+                s
+            } else {
+                None
+            }
         };
 
-        let threadme = ThreadMe::new(
-            capnum,
-            Mutex::new(dir_walker),
-            shared,
-            closure,
-            append_to_shared,
-            printer,
-        );
-        let threadme = Arc::new(threadme);
+        match_and_score
+    }};
 
-        let errors = Threader::run_chain(Arc::clone(&threadme), threadcount);
+    (utf8, $needle:expr, $max_line_len:expr) => {{
+        let (needle, max_line_len) = ($needle, $max_line_len);
 
-        // This should never return error.
-        let results = match Arc::try_unwrap(threadme) {
-            Ok(o) => o.into_shared(),
-            _ => panic!(),
+        let (needle, needle_charcount) = NeedleUTF8::new(needle).unwrap_or_else(Default::default);
+        let match_and_score = move |line: &[u8]| -> Option<MWP> {
+            if line.len() > max_line_len {
+                return None;
+            }
+
+            if let Some(()) = utf8::matcher(line, needle.as_matcher_needle()) {
+                let (score, posits) = utf8::score_with_positions(
+                    needle.as_ref(),
+                    needle_charcount,
+                    String::from_utf8_lossy(line).as_ref(),
+                );
+                Some((
+                    String::from_utf8_lossy(line).into_owned().into_boxed_str(),
+                    score,
+                    posits.into_boxed_slice(),
+                ))
+            } else {
+                None
+            }
         };
 
-        (results, errors)
+        match_and_score
     }};
 }
 
-//XXX Attention, please!
-//XXX Those two macros are quite similar, thus to not do something wrong occasionally,
-//XXX those macros have different order of elements. Please, if you change the macro,
-//XXX do not make number and order of elements the same.
-macro_rules! utf8 {
-    ($needle:expr, $capnum:expr, $dir_walker:expr, $threadcount:expr, $shared:expr, $printer:expr, $max_line_len:expr) => {{
-        let (needle, capnum, dir_walker, shared, threadcount, printer, max_line_len) = (
-            $needle,
-            $capnum,
-            $dir_walker,
-            $shared,
-            $threadcount,
-            $printer,
-            $max_line_len,
-        );
-
-        let (needle, needle_len) = match NeedleUTF8::new(needle) {
-            Some(n) => n,
-            // Empty needle if none.
-            None => return ((Vec::new(), 0), Vec::new()),
-        };
-
-        let closure = move |v: Vec<u8>, inner: &mut Vec<MWP>, shared: &Mutex<_>| {
-            ByteLines::new(v.as_slice()).for_each(|line| {
-                if line.len() > max_line_len {
-                    return;
-                }
-
-                if let Some(()) = utf8::matcher(line, needle.as_matcher_needle()) {
-                    let (score, posits) = utf8::score_with_positions(
-                        needle.as_ref(),
-                        needle_len,
-                        String::from_utf8_lossy(line).as_ref(),
-                    );
-                    inner.push((
-                        String::from_utf8_lossy(line).into_owned().into_boxed_str(),
-                        score,
-                        posits.into_boxed_slice(),
-                    ));
-
-                    let inner_len = inner.len();
-                    if inner_len == inner.capacity() {
-                        append_to_shared(shared, inner, printer);
-                    }
-                }
-            });
-        };
-
-        let threadme = ThreadMe::new(
-            capnum,
-            Mutex::new(dir_walker),
-            shared,
-            closure,
-            append_to_shared,
-            printer,
-        );
-        let threadme = Arc::new(threadme);
-
-        let errors = Threader::run_chain(Arc::clone(&threadme), threadcount);
-
-        // This should never return error.
-        let results = match Arc::try_unwrap(threadme) {
-            Ok(o) => o.into_shared(),
-            _ => panic!(),
-        };
-
-        (results, errors)
-    }};
-}
-
-/// Probably, the main function there.
-///
-/// Directory iterator and `Rules` are simple, but `printer()` is tricky:
-/// it takes a slice with already sorted results (bigger score at the start),
-/// and a number of total lines that provided any score.
-///
-/// `printer()` has very strict bounds;
-/// probably only safe static function could satisfy those.
 #[inline]
-pub fn starter<F>(
-    dir_walker: ignore::Walk,
+pub fn very_simple(
+    path: impl AsRef<Path>,
+    needle: impl Into<Box<str>>,
+    sort_and_print: impl FnMut(&mut [MWP], usize),
+) -> (Vec<MWP>, usize) {
+    let r = {
+        let mut r = Rules::default();
+        r.needle = needle.into();
+        r.bonus_threads = if cfg!(target_pointer_width = "64") {
+            2
+        } else {
+            0
+        };
+
+        r
+    };
+
+    let dir_iter = ignore::Walk::new(path);
+
+    setter(dir_iter, r, sort_and_print)
+}
+
+#[inline]
+pub fn setter(
+    iter: ignore::Walk,
     r: Rules,
-    printer: F,
-) -> (MWPuple<MWP>, Vec<ignore::Error>)
-where
-    F: Fn(&[MWP], usize) + Send + Sync + 'static + Copy,
-{
-    let capnum = r.results_cap;
-    let shared: MWPutex<MWP> = Mutex::new((Vec::with_capacity(capnum * 2), 0));
+    sort_and_print: impl FnMut(&mut [MWP], usize),
+) -> (Vec<MWP>, usize) {
     let needle = r.needle;
-    let threadcount = r.bonus_threads;
     let max_line_len = r.max_line_len;
 
-    if needle.is_empty() {
+    if needle.is_empty() || needle.len() > max_line_len {
         return Default::default();
     }
 
-    // `ThreadMe` needs two functions or closures:
+    // `spawner()` needs a match and score Fn that returns Option<T>,
+    // plus sort and print Fn, that returns nothing but sorts appended results in place.
     //
-    // F: Fn(Vec<u8>, &mut Vec<S>) + Send + Sync + 'static, // do_text_into_inner: F,
-    // G: Fn(&Mutex<Vec<S>>, &mut Vec<S>) + Send + Sync + 'static, // do_shared_and_inner: G,
+    // And last, the most tricky part - iterator over iterators that produce a bunch of lines
+    // on each iteration (probably just `fs::read(path).unwrap_or(&[])`).
     //
-    // First one takes a whole file's buffer with mutable access to inner thread's score-storage.
+    // First two are no magic, but the last one is tricky. Like, how could it be created?
     //
-    // Second takes a reference to shared buffer behind a mutex,
-    // and a mutable access to the inner thread's score-storage.
-    //
+    // For example, getting a directory to search in, then `ignore::Walk::new()`,
+    // then this ignore iterator gets collected into some vectors (one for each thread to spawn),
+    // and then that vectors are `into_iter`ed, collected and fed to spawner?
 
-    match r.with_errors {
-        // Make errors empty and return empty vector.
-        false => {
-            let dir_walker = dir_walker.map(|res| {
-                if let Ok(res) = res {
-                    Ok(res.into_path())
-                } else {
-                    Err(NoError)
+    let threadcount = r.bonus_threads + 1;
+    let mut files_chunks = vec![Vec::with_capacity(1024); threadcount as usize];
+
+    let usize_tc = threadcount as usize;
+    let mut index = 0;
+    let mut errcount = 0_u32;
+    iter.for_each(|res| match res {
+        Ok(dir_entry) => {
+            let path = dir_entry.into_path();
+
+            if path.is_file() {
+                index += 1;
+                if index == usize_tc {
+                    index = 0;
                 }
-            });
 
-            // Errors are ignored, so this match won't return errors you can work with.
-            let (results, _errors) = match (r.force_utf8, needle.is_ascii()) {
-                // ascii
-                (false, true) => ascii!(
-                    dir_walker,
-                    needle,
-                    capnum,
-                    shared,
-                    threadcount,
-                    max_line_len,
-                    printer
-                ),
-                // utf8
-                (true, _) | (_, false) => utf8!(
-                    needle,
-                    capnum,
-                    dir_walker,
-                    threadcount,
-                    shared,
-                    printer,
-                    max_line_len
-                ),
-            };
+                files_chunks[index].push(path);
+            }
+        }
+        Err(_) => {
+            errcount += 1;
+            if errcount > 16000 {
+                panic!()
+            }
+        }
+    });
 
-            (results, Vec::new())
+    let files_chunks = files_chunks.into_iter().map(|vec_with_path| {
+        vec_with_path
+            .into_iter()
+            .filter_map(|path| match fs::read(path) {
+                Ok(buffer) => Some(buffer),
+                _ => None,
+            })
+    });
+
+    let capnum = r.results_cap;
+
+    match (r.force_utf8, needle.is_ascii()) {
+        // ascii
+        (false, true) => {
+            let match_and_score = match_and_score!(ascii, needle, max_line_len);
+
+            spawner(files_chunks, capnum, match_and_score, sort_and_print)
         }
 
-        // Return errors.
-        true => {
-            let dir_walker = dir_walker.map(|res| match res {
-                Ok(res) => Ok(res.into_path()),
-                Err(e) => Err(e),
-            });
+        // utf8
+        (true, _) | (_, false) => {
+            let match_and_score = match_and_score!(utf8, needle, max_line_len);
 
-            let (results, errors) = match (r.force_utf8, needle.is_ascii()) {
-                // ascii
-                (false, true) => ascii!(
-                    dir_walker,
-                    needle,
-                    capnum,
-                    shared,
-                    threadcount,
-                    max_line_len,
-                    printer
-                ),
-                // utf8
-                (true, _) | (_, false) => utf8!(
-                    needle,
-                    capnum,
-                    dir_walker,
-                    threadcount,
-                    shared,
-                    printer,
-                    max_line_len
-                ),
-            };
-
-            (results, errors)
+            spawner(files_chunks, capnum, match_and_score, sort_and_print)
         }
     }
 }
 
 #[inline]
-// let append_to_shared = |shared: &Mutex<Vec<MWP>>, unshared: &mut Vec<MWP>| {
-fn append_to_shared<F>(shared: &MWPutex<MWP>, unshared: &mut Vec<MWP>, printer: F)
-where
-    F: Fn(&[MWP], usize),
-{
-    if !unshared.is_empty() {
-        let mut lock = lock_any(shared);
-        let (sh, total) = lock.deref_mut();
-        let inner_len = unshared.len();
+fn spawner<T: Send + 'static>(
+    files_chunks: impl Iterator<Item = impl Iterator<Item = impl AsRef<[u8]>> + Send + 'static>,
+    capnum: usize,
+    match_and_score: impl Fn(&[u8]) -> Option<T> + Send + 'static + Clone,
+    mut sort_and_print: impl FnMut(&mut [T], usize),
+) -> (Vec<T>, usize) {
+    let (sx, rx) = flume::unbounded();
+    let mut threads = Vec::with_capacity(10);
 
-        *total = total.wrapping_add(inner_len);
+    files_chunks.for_each(|files| {
+        let t;
+        let sender = sx.clone();
+        let match_and_score = match_and_score.clone();
+        t = thread::spawn(move || threadworks::spawn_me(files, sender, capnum, match_and_score));
 
-        sh.append(unshared);
-        sh.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-        let len = sh.capacity() / 2;
-        sh.truncate(len);
+        threads.push(t);
+    });
+    drop(sx);
 
-        printer(sh, total.clone());
+    let mut shared = Vec::with_capacity(capnum * 2);
+    let mut total = 0_usize;
 
-        drop(lock);
+    while let Ok(mut inner) = rx.recv() {
+        // append_to_shared(&mut shared, &mut inner, &mut total, capnum, sort_and_print);
+        if !inner.is_empty() {
+            let inner_len = inner.len();
+
+            total = total.wrapping_add(inner_len);
+
+            shared.append(&mut inner);
+            sort_and_print(&mut shared, total.clone());
+            shared.truncate(capnum);
+        }
     }
-}
 
-#[inline]
-fn lock_any<T>(m: &Mutex<T>) -> MutexGuard<T> {
-    match m.lock() {
-        Ok(g) => g,
-        Err(pois) => pois.into_inner(),
-    }
+    threads.into_iter().for_each(|t| t.join().unwrap());
+
+    (shared, total)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{Duration, SystemTime};
 
     #[test]
     fn basic_functionality_test() {
-        fn pointer(a: &[MWP], b: usize) {
-            println!("Total: {};\nTop results:\n{:?}", b, a);
-        }
+        const DELAY: Duration = Duration::from_secs(2);
+        let mut past = SystemTime::now();
 
-        let a = starter(
-            ignore::Walk::new(std::env::current_dir().unwrap()),
-            Rules::default(),
-            pointer,
-        );
+        let sort_and_print = |results: &mut [MWP], total| {
+            results.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-        println!("{:?}", a);
+            let now = SystemTime::now();
+
+            if let Ok(dur) = now.duration_since(past) {
+                if dur > DELAY {
+                    past = now;
+
+                    for idx in 0..8 {
+                        if let Some(pack) = results.get(idx) {
+                            let (s, _score, pos) = pack;
+                            println!("Total: {}\n{}\n{:?}", total, s, pos);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+
+        let current_dir = std::env::current_dir().unwrap();
+
+        very_simple(current_dir, "err", sort_and_print);
     }
 }

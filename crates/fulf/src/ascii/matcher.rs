@@ -9,6 +9,9 @@ pub fn matcher(mut line: &[u8], needle: &[u8]) -> Option<LineMetaData> {
 
     for &letter in needle.iter() {
         let line_len = line.len();
+        if line_len < nee_len {
+            return None;
+        }
 
         let rcase_idx = if letter.is_ascii_lowercase() {
             memchr(letter.to_ascii_uppercase(), line)
@@ -29,7 +32,9 @@ pub fn matcher(mut line: &[u8], needle: &[u8]) -> Option<LineMetaData> {
             (Some(o_idx), None) => o_idx,
             (None, Some(r_idx)) => r_idx,
             (None, None) => return None,
-        };
+        }
+        // ASCII letter length is always 1, so this is always +1.
+        +1;
 
         if next_idx < line_len {
             nee_len = nee_len.saturating_sub(1);

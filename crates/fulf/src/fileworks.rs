@@ -1,5 +1,5 @@
 use {
-    memchr::{memchr, memrchr2},
+    memchr::{memchr2, memrchr2},
     std::iter::{DoubleEndedIterator, FusedIterator, Iterator},
 };
 
@@ -33,7 +33,7 @@ impl<'a> Iterator for ByteLines<'a> {
         // Shrink all newlines at the start of text.
         text = shrink_newlines(text);
 
-        let line = match memchr(NL, text) {
+        let line = match memchr2(NL, CR, text) {
             Some(newline_idx) => {
                 self.text = &text[newline_idx..];
                 &text[..newline_idx]
@@ -63,7 +63,7 @@ impl<'a> Iterator for ByteLines<'a> {
         text = shrink_newlines(text);
 
         while !text.is_empty() {
-            match memchr(NL, text) {
+            match memchr2(NL, CR, text) {
                 Some(newline_idx) => {
                     accum = f(accum, &text[..newline_idx]);
                     text = shrink_newlines(&text[newline_idx..]);
@@ -174,7 +174,7 @@ fn shrink_newlines(mut text: &[u8]) -> &[u8] {
             }
             &text[1..]
         }
-        _ => return text,
+        _ => text,
     };
 
     let mut first_not_n_or_r_idx = None;

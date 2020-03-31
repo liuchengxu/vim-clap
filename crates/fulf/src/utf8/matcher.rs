@@ -2,6 +2,7 @@ use {memchr::memchr, smallbitvec::SmallBitVec, std::ops::Index};
 
 type MatcherNeedle<'a> = (usize, &'a [&'a str], &'a [CaseToStr], &'a SmallBitVec);
 
+#[derive(Clone, Default)]
 pub struct NeedleUTF8 {
     owned_str: Box<str>,
 
@@ -204,6 +205,7 @@ pub fn matcher(mut line: &[u8], needle: MatcherNeedle) -> Option<LineMetaData> {
 /// # Representation
 ///
 /// First char encoding will always start from the first byte of buffer.
+#[derive(Clone)]
 pub struct CaseToStr {
     //XXX SAFETY: this field *must* be of same type with
     //XXX `MAX_LENGTH` constant for safety reasons. Always!

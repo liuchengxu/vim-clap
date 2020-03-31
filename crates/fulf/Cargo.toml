@@ -10,3 +10,4 @@ publish = false
 memchr = "2.*"
 ignore = "0.4.*"
 smallbitvec = "2.*"
+flume = "0.7.*"
