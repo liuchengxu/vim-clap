@@ -259,7 +259,7 @@ function! clap#maple#run_grep(cmd, query, enable_icon, glob) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#run(cmd) abort
+function! clap#maple#build_cmd(cmd) abort
   return printf('%s %s', s:maple_bin, a:cmd)
 endfunction
 
