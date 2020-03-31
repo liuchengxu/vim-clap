@@ -1,17 +1,18 @@
+mod source;
+
 use std::collections::HashMap;
-use std::io::{self, BufRead};
-use std::path::PathBuf;
 
 use anyhow::Result;
-use extracted_fzy::match_and_score_with_positions;
-use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use structopt::clap::arg_enum;
+
+pub use source::Source;
 
 pub const DOTS: &str = "...";
 
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
+  /// Supported fuzzy match algorithm.
   #[derive(Debug)]
   pub enum Algo {
       Skim,
@@ -19,70 +20,19 @@ arg_enum! {
   }
 }
 
-/// The filtering source can from stdin, an input file or Vec<String>
-pub enum Source<I: Iterator<Item = String>> {
-    Stdin,
-    File(PathBuf),
-    List(I),
-}
-
-impl From<Vec<String>> for Source<std::vec::IntoIter<String>> {
-    fn from(source_list: Vec<String>) -> Self {
-        Self::List(source_list.into_iter())
-    }
-}
-
-impl<I: Iterator<Item = String>> From<PathBuf> for Source<I> {
-    fn from(fpath: PathBuf) -> Self {
-        Self::File(fpath)
-    }
-}
-
+/// Map of truncated line to original line.
 pub type LinesTruncatedMap = HashMap<String, String>;
+/// Tuple of (matched line text, filtering score, indices of matched elements)
 pub type FuzzyMatchedLineInfo = (String, i64, Vec<usize>);
 
-impl<I: Iterator<Item = String>> Source<I> {
-    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLineInfo>> {
-        let scorer = |line: &str| match algo {
-            Algo::Skim => fuzzy_indices(line, &query),
-            Algo::Fzy => match_and_score_with_positions(&query, line)
-                .map(|(score, indices)| (score as i64, indices)),
-        };
-
-        let filtered = match self {
-            Self::Stdin => io::stdin()
-                .lock()
-                .lines()
-                .filter_map(|lines_iter| {
-                    lines_iter.ok().and_then(|line| {
-                        scorer(&line).map(|(score, indices)| (line, score, indices))
-                    })
-                })
-                .collect::<Vec<_>>(),
-            Self::File(fpath) => std::fs::read_to_string(fpath)?
-                .par_lines()
-                .filter_map(|line| {
-                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
-                })
-                .collect::<Vec<_>>(),
-            Self::List(list) => list
-                .filter_map(|line| {
-                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
-                })
-                .collect::<Vec<_>>(),
-        };
-
-        Ok(filtered)
-    }
-}
-
-/// Return the ranked results after applying fuzzy filter given the query String and a list of candidates.
+/// Returns the ranked results after applying the fuzzy filter
+/// given the query String and filtering source.
 pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     query: &str,
     source: Source<I>,
     algo: Algo,
-) -> Result<Vec<(String, i64, Vec<usize>)>> {
-    let mut ranked = source.filter(algo, query)?;
+) -> Result<Vec<FuzzyMatchedLineInfo>> {
+    let mut ranked = source.fuzzy_filter(algo, query)?;
 
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
@@ -113,38 +63,42 @@ pub fn truncate_long_matched_lines<T>(
     let lines = lines
         .into_iter()
         .map(|(line, score, indices)| {
-            let last_idx = indices.last().expect("indices are non-empty; qed");
-            if *last_idx > winwidth {
-                let mut start = *last_idx - winwidth;
-                if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
-                    start = indices[0];
-                }
-                let line_len = line.len();
-                // [--------------------------]
-                // [-----------------------------------------------------------------xx--x--]
-                for _ in 0..3 {
-                    if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
-                        start += DOTS.len();
-                    } else {
-                        break;
+            if !indices.is_empty() {
+                let last_idx = indices.last().expect("indices are non-empty; qed");
+                if *last_idx > winwidth {
+                    let mut start = *last_idx - winwidth;
+                    if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
+                        start = indices[0];
                     }
-                }
-                let trailing_dist = line_len - last_idx;
-                if trailing_dist < indices[0] - start {
-                    start += trailing_dist;
-                }
-                let end = line.len();
-                let truncated = if let Some(starting_point) = starting_point {
-                    let icon: String = line.chars().take(starting_point).collect();
-                    start += starting_point;
-                    format!("{}{}{}", icon, DOTS, &line[start..end])
+                    let line_len = line.len();
+                    // [--------------------------]
+                    // [-----------------------------------------------------------------xx--x--]
+                    for _ in 0..3 {
+                        if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
+                            start += DOTS.len();
+                        } else {
+                            break;
+                        }
+                    }
+                    let trailing_dist = line_len - last_idx;
+                    if trailing_dist < indices[0] - start {
+                        start += trailing_dist;
+                    }
+                    let end = line.len();
+                    let truncated = if let Some(starting_point) = starting_point {
+                        let icon: String = line.chars().take(starting_point).collect();
+                        start += starting_point;
+                        format!("{}{}{}", icon, DOTS, &line[start..end])
+                    } else {
+                        format!("{}{}", DOTS, &line[start..end])
+                    };
+                    let offset = line_len - truncated.len();
+                    let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
+                    truncated_map.insert(truncated.clone(), line);
+                    (truncated, score, truncated_indices)
                 } else {
-                    format!("{}{}", DOTS, &line[start..end])
-                };
-                let offset = line_len - truncated.len();
-                let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
-                truncated_map.insert(truncated.clone(), line);
-                (truncated, score, truncated_indices)
+                    (line, score, indices)
+                }
             } else {
                 (line, score, indices)
             }

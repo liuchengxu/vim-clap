@@ -54,7 +54,12 @@ function! s:on_complete() abort
     return
   endif
 
-  let decoded = json_decode(s:chunks[0])
+  try
+    let decoded = json_decode(s:chunks[0])
+  catch
+    echoerr '[maple]decoded on_complete:'.string(s:chunks)
+    return
+  endtry
   if has_key(decoded, 'error')
     call g:clap.display.set_lines([
           \ 'The external job runs into some issue:',
@@ -77,7 +82,7 @@ function! s:on_complete() abort
     return
   endif
 
-  call clap#impl#refresh_matches_count(string(decoded.total))
+  call clap#state#refresh_matches_count(string(decoded.total))
 
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))

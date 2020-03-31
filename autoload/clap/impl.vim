@@ -51,19 +51,6 @@ function! s:get_source() abort
   return l:lines
 endfunction
 
-" NOTE: some local variable without explicit l:, e.g., count,
-" may run into some erratic read-only error.
-function! clap#impl#refresh_matches_count(cnt_str) abort
-  let l:matches_cnt = a:cnt_str
-
-  if get(g:clap.display, 'initial_size', -1) > 0
-    let l:matches_cnt .= '/'.g:clap.display.initial_size
-  endif
-
-  call clap#indicator#set_matches('['.l:matches_cnt.']')
-  call clap#sign#reset_to_first_line()
-endfunction
-
 function! s:on_typed_sync_impl() abort
   call g:clap.display.clear_highlight()
 
@@ -110,10 +97,10 @@ function! s:on_typed_async_impl() abort
   " call g:clap.display.clear()
 
   " if !s:is_nvim && exists('g:__clap_forerunner_tempfile')
-  if exists('g:__clap_forerunner_tempfile')
+  " if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#start()
     return
-  endif
+  " endif
 
   let cmd = g:clap.provider.source_async_or_default()
 

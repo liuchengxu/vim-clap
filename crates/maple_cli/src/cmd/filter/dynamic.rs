@@ -310,6 +310,17 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 enable_icon,
                 number,
             ),
+            Source::Exec(exec) => dyn_collect_number(
+                std::io::BufReader::new(exec.stream_stdout()?)
+                    .lines()
+                    .filter_map(|lines_iter| {
+                        lines_iter.ok().and_then(|line| {
+                            scorer(&line).map(|(score, indices)| (line, score, indices))
+                        })
+                    }),
+                enable_icon,
+                number,
+            ),
             Source::File(fpath) => dyn_collect_number(
                 std::fs::read_to_string(fpath)?.lines().filter_map(|line| {
                     scorer(&line).map(|(score, indices)| (line.into(), score, indices))
@@ -345,6 +356,16 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                         scorer(&line).map(|(score, indices)| (line, score, indices))
                     })
                 }),
+                enable_icon,
+            ),
+            Source::Exec(exec) => dyn_collect_all(
+                std::io::BufReader::new(exec.stream_stdout()?)
+                    .lines()
+                    .filter_map(|lines_iter| {
+                        lines_iter.ok().and_then(|line| {
+                            scorer(&line).map(|(score, indices)| (line, score, indices))
+                        })
+                    }),
                 enable_icon,
             ),
             Source::File(fpath) => dyn_collect_all(
@@ -438,5 +459,75 @@ mod tests {
             None,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_pipe() {
+        use std::io::Read;
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+
+        let mut the_process = Command::new("rg")
+            .arg("fn")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Failed to execute.");
+        /*
+        // Get a Pipestream which implements the writer trait.
+        // Scope, to ensure the borrow ends.
+        let _ = {
+            let the_stdin_stream = the_process
+                .stdin
+                .as_mut()
+                .expect("Couldn't get mutable Pipestream.");
+            // Write to it in binary.
+            the_stdin_stream
+                .write(b"123456")
+                .ok()
+                .expect("Couldn't write to stream.");
+            the_stdin_stream
+                .write(b"Foo this, foo that!")
+                .ok()
+                .expect("Couldn't write to stream.");
+            // Flush the output so it ends.
+            the_stdin_stream
+                .flush()
+                .ok()
+                .expect("Couldn't flush the stream.");
+        };
+        */
+
+        let stdout_stream = the_process
+            .stdout
+            .as_mut()
+            .expect("Couldn't get mutable Pipestream.");
+
+        // let mut buffer = Vec::new();
+        // stdout_stream
+        // .read_to_end(&mut buffer)
+        // .expect("Fail to read_to_end");
+        // stdout_stream.lines().expect("Fail to read_to_end");
+        // println!("buffer:{:?}", buffer);
+
+        // Wait on output.
+        // match the_process.wait_with_output() {
+        // Ok(out) => print!("{}", String::from_utf8_lossy(&out.stdout)),
+        // Err(error) => print!("{}", error),
+        // }
+    }
+
+    #[test]
+    fn test_subprocess() {
+        use std::io::{BufRead, BufReader};
+        use subprocess::Exec;
+
+        let mut cmd = Exec::cmd("fd").args(&["--type", "f"]).cwd("/");
+        // let s = cmd.stream_stdout().expect("Couldn't get stdout stream");
+        // let reader = BufReader::new(s);
+        // for line in reader.lines() {
+        for line in get_lines_stream(cmd) {
+            println!("{}", line.unwrap());
+        }
     }
 }

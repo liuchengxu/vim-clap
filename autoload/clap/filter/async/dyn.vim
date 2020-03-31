@@ -43,7 +43,7 @@ if has('nvim')
       try
         call s:MessageHandler(trim(s:round_message))
       catch
-        call clap#helper#echo_error('Failed to handle message:'.v:exception)
+        call clap#helper#echo_error('[dyn]Failed to handle message:'.v:exception.', throwpoint:'.v:throwpoint)
       finally
         let s:round_message = ''
       endtry
@@ -114,7 +114,7 @@ function! s:handle_message(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'total')
-    call clap#impl#refresh_matches_count(string(decoded.total))
+    call clap#state#refresh_matches_count(string(decoded.total))
   endif
 
   if has_key(decoded, 'lines')
@@ -148,11 +148,21 @@ function! clap#filter#async#dyn#start() abort
   call s:job_stop()
 
   let s:last_query = g:clap.input.get()
-  let filter_cmd = printf('%s --number 100 --winwidth %d filter --input %s "%s"',
+
+  " let filter_cmd = printf('%s --number 100 --winwidth %d filter --input %s "%s"',
+        " \ g:clap_enable_icon ? '--enable-icon' : '',
+        " \ winwidth(g:clap.display.winid),
+        " \ g:__clap_forerunner_tempfile,
+        " \ g:clap.input.get()
+        " \ )
+
+  let cmd_dir = clap#rooter#working_dir()
+  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
         \ g:clap_enable_icon ? '--enable-icon' : '',
         \ winwidth(g:clap.display.winid),
-        \ g:__clap_forerunner_tempfile,
-        \ g:clap.input.get()
+        \ g:clap.input.get(),
+        \ 'fd --type f',
+        \ cmd_dir,
         \ )
 
   let maple_cmd = clap#maple#run(filter_cmd)

@@ -55,7 +55,11 @@ if s:is_nvim
   endfunction
 
   function! s:_win_is_valid() dict abort
-    return nvim_win_is_valid(self.winid)
+    if self.winid == -1
+      return v:false
+    else
+      return nvim_win_is_valid(self.winid)
+    endif
   endfunction
 else
   function! s:_get_lines() dict abort
@@ -602,6 +606,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_display_win() abort
+    call clap#filter#async#dyn#start()
     if has_key(self._(), 'init')
       call self._().init()
     else
