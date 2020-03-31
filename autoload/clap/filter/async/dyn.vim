@@ -123,7 +123,7 @@ endfunction
 
 let s:MessageHandler = function('s:handle_message')
 
-function! clap#filter#async#dyn#start() abort
+function! clap#filter#async#dyn#start(cmd) abort
   call s:job_stop()
 
   let s:last_query = g:clap.input.get()
@@ -133,7 +133,7 @@ function! clap#filter#async#dyn#start() abort
         \ g:clap_enable_icon ? '--enable-icon' : '',
         \ winwidth(g:clap.display.winid),
         \ g:clap.input.get(),
-        \ 'fd --type f',
+        \ a:cmd,
         \ cmd_dir,
         \ )
 

@@ -96,11 +96,13 @@ function! s:on_typed_async_impl() abort
   " Do not clear the outdated content as it would cause the annoying flicker.
   " call g:clap.display.clear()
 
-  " if !s:is_nvim && exists('g:__clap_forerunner_tempfile')
-  " if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#start()
+  if g:clap.provider.source_type == g:__t_string
+    call clap#filter#async#dyn#start(g:clap.provider._().source)
     return
-  " endif
+  elseif g:clap.provider.source_type == g:__t_func_string
+    call clap#filter#async#dyn#start(g:clap.provider._().source())
+    return
+  endif
 
   let cmd = g:clap.provider.source_async_or_default()
 

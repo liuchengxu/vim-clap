@@ -25,7 +25,6 @@ function! clap#state#handle_message(msg) abort
   endif
 
   if has_key(decoded, 'lines')
-    let g:lines = decoded.lines
     call g:clap.display.set_lines(decoded.lines)
   endif
 
