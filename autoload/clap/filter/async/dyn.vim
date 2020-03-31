@@ -111,28 +111,7 @@ function! s:handle_message(msg) abort
     return
   endif
 
-  let decoded = json_decode(a:msg)
-
-  if has_key(decoded, 'total')
-    call clap#state#refresh_matches_count(string(decoded.total))
-  endif
-
-  if has_key(decoded, 'lines')
-    let g:lines = decoded.lines
-    call g:clap.display.set_lines(decoded.lines)
-  endif
-
-  if has_key(decoded, 'truncated_map')
-    let g:__clap_lines_truncated_map = decoded.truncated_map
-  endif
-
-  if has_key(decoded, 'indices')
-    try
-      call clap#highlight#add_fuzzy_async(decoded.indices)
-    catch
-      return
-    endtry
-  endif
+  call clap#state#handle_message(a:msg)
 endfunction
 
 function! s:job_stop() abort
@@ -149,13 +128,6 @@ function! clap#filter#async#dyn#start() abort
 
   let s:last_query = g:clap.input.get()
 
-  " let filter_cmd = printf('%s --number 100 --winwidth %d filter --input %s "%s"',
-        " \ g:clap_enable_icon ? '--enable-icon' : '',
-        " \ winwidth(g:clap.display.winid),
-        " \ g:__clap_forerunner_tempfile,
-        " \ g:clap.input.get()
-        " \ )
-
   let cmd_dir = clap#rooter#working_dir()
   let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
         \ g:clap_enable_icon ? '--enable-icon' : '',
@@ -165,7 +137,7 @@ function! clap#filter#async#dyn#start() abort
         \ cmd_dir,
         \ )
 
-  let maple_cmd = clap#maple#run(filter_cmd)
+  let maple_cmd = clap#maple#build_cmd(filter_cmd)
 
   call s:start_dyn_filter_job(maple_cmd)
 endfunction

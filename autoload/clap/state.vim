@@ -17,5 +17,30 @@ function! clap#state#refresh_matches_count(cnt_str) abort
   call clap#sign#reset_to_first_line()
 endfunction
 
+function! clap#state#handle_message(msg) abort
+  let decoded = json_decode(a:msg)
+
+  if has_key(decoded, 'total')
+    call clap#state#refresh_matches_count(string(decoded.total))
+  endif
+
+  if has_key(decoded, 'lines')
+    let g:lines = decoded.lines
+    call g:clap.display.set_lines(decoded.lines)
+  endif
+
+  if has_key(decoded, 'truncated_map')
+    let g:__clap_lines_truncated_map = decoded.truncated_map
+  endif
+
+  if has_key(decoded, 'indices')
+    try
+      call clap#highlight#add_fuzzy_async(decoded.indices)
+    catch
+      return
+    endtry
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

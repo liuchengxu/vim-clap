@@ -123,7 +123,7 @@ endfunction
 function! clap#rpc#start(MessageHandler) abort
   call clap#rpc#stop()
   let s:MessageHandler = a:MessageHandler
-  let s:rpc_cmd = clap#maple#run('rpc')
+  let s:rpc_cmd = clap#maple#build_cmd('rpc')
   call s:start_rpc()
   return
 endfunction
