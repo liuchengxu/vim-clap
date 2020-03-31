@@ -4,7 +4,7 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:related_maple_providers = ['files', 'git_files']
+let s:related_maple_providers = ['files', 'git_files', 'grep']
 let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
 let s:default_priority = 10

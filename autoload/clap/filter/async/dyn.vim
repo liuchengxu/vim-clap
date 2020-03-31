@@ -60,7 +60,7 @@ if has('nvim')
         if a:data == ['']
           return
         endif
-        call clap#helper#echo_error('[dyn]on_event:'.string(a:data))
+        " call clap#helper#echo_error('[dyn]on_event:'.string(a:data))
       endif
     endif
   endfunction
@@ -137,6 +137,7 @@ function! clap#filter#async#dyn#start(cmd) abort
         \ cmd_dir,
         \ )
 
+  echom "cmd:".filter_cmd
   let maple_cmd = clap#maple#build_cmd(filter_cmd)
 
   call s:start_dyn_filter_job(maple_cmd)
