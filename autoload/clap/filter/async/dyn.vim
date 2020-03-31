@@ -137,7 +137,6 @@ function! clap#filter#async#dyn#start(cmd) abort
         \ cmd_dir,
         \ )
 
-  echom "cmd:".filter_cmd
   let maple_cmd = clap#maple#build_cmd(filter_cmd)
 
   call s:start_dyn_filter_job(maple_cmd)
