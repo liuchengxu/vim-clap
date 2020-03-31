@@ -335,6 +335,8 @@ mod tests {
 
         let current_dir = std::env::current_dir().unwrap();
 
-        very_simple(current_dir, "err", sort_and_print);
+        let (results, total) = very_simple(current_dir, "err", sort_and_print);
+
+        println!("Total: {}\nCapped results: {:?}", total, results);
     }
 }
