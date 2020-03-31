@@ -122,8 +122,43 @@ macro_rules! match_and_score {
     }};
 }
 
+/// The default search function, very simple to use.
+///
+/// # Arguments
+///
+/// `path` - a path of directory to search in.
+/// The search respects ignore files and is recursive:
+/// all files in the given folder and its subfolders
+/// are searched.
+///
+/// `needle` - a string to fuzzy-search.
+///
+/// `sort_and_print` - a function or a closure, that takes two arguments:
+///
+/// 1. A mutable slice of unsorted results provided by fzy algorithm;
+/// Those should be always sorted within the function
+/// (but partially, as only 512 results are kept in the storage).
+///
+/// 2. A number of total results that passed the matcher and provided
+/// at least some score. The number of total results could be bigger than
+/// the length of slice.
+///
+/// # Returns
+///
+/// Returns what `spawner` returns, but the type is defined by fzy algorithm.
+///
+/// # Alternatives
+///
+/// If you need a better control over algorithms, rules and directory
+/// traversal, use `setter` function.
+///
+/// If you need to read files in a manner different from `ignore::Walk`,
+/// you can use `spawner` function.
+///
+/// If you need something much different than anything there,
+/// go and write it yourself.
 #[inline]
-pub fn very_simple(
+pub fn default_searcher(
     path: impl AsRef<Path>,
     needle: impl Into<Box<str>>,
     sort_and_print: impl FnMut(&mut [MWP], usize),
@@ -214,6 +249,15 @@ pub fn with_fzy_algo(
     }
 }
 
+/// A function that turns configured directory iterator
+/// and a number of bonus threads into the iterator used by `spawner`.
+///
+/// Collects all files from iterator into `Rules::bonus_threads + 1`
+/// vectors and then passes them as iterators to `spawner` function.
+/// `Rules::results_cap` is passed to `spawner` as `capnum`, and
+/// all other things are passed as is.
+///
+/// Returns what `spawner` returns.
 #[inline]
 pub fn setter<T: Send + 'static, N: Clone + Send + 'static>(
     iter: ignore::Walk,
@@ -269,8 +313,16 @@ pub fn setter<T: Send + 'static, N: Clone + Send + 'static>(
     )
 }
 
+/// The number of threads to spawn is defined by the number of items
+/// in the iterator.
+///
+/// # Returns
+///
+/// Vector, already sorted by `sort_and_print` function,
+/// and a number of total results
+/// (a number of `Some`s provided by `match_and_score` fn).
 #[inline]
-fn spawner<T: Send + 'static, N: Clone + Send + 'static>(
+pub fn spawner<T: Send + 'static, N: Clone + Send + 'static>(
     files_chunks: impl Iterator<Item = impl Iterator<Item = impl AsRef<[u8]>> + Send + 'static>,
     capnum: usize,
     needle: N,
