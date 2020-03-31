@@ -1,3 +1,9 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+" Description: Change state of current filtering, e.g., matches count.
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 " NOTE: some local variable without explicit l:, e.g., count,
 " may run into some erratic read-only error.
 function! clap#state#refresh_matches_count(cnt_str) abort
@@ -10,3 +16,6 @@ function! clap#state#refresh_matches_count(cnt_str) abort
   call clap#indicator#set_matches('['.l:matches_cnt.']')
   call clap#sign#reset_to_first_line()
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
