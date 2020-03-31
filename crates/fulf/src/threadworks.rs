@@ -38,20 +38,21 @@ impl KillUs {
 }
 
 #[inline]
-pub fn spawn_me<P, T, L>(
+pub fn spawn_me<P, T, L, N>(
     files: impl Iterator<Item = P>,
     sender: flume::Sender<Vec<T>>,
     capnum: usize,
-    liner: L,
+    match_and_score: L,
+    needle: N,
 ) where
     P: AsRef<[u8]>,
-    L: Fn(&[u8]) -> Option<T>,
+    L: Fn(&[u8], &N) -> Option<T>,
 {
     let mut inner = Vec::with_capacity(capnum);
 
     files.for_each(|filebuf| {
         ByteLines::new(filebuf.as_ref()).for_each(|line| {
-            if let Some(t) = liner(line) {
+            if let Some(t) = match_and_score(line, &needle) {
                 if inner.len() == inner.capacity() {
                     let msg = mem::replace(&mut inner, Vec::with_capacity(capnum));
 
