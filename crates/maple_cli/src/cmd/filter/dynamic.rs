@@ -72,16 +72,21 @@ macro_rules! insert_both {
             }};
 }
 
+type SelectedTopItemsInfo = (usize, [i64; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
+
+/// Returns Ok if all items in the iterator has been processed.
+///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
 fn select_top_items_to_show(
     buffer: &mut Vec<FuzzyMatchedLineInfo>,
-    top_scores: &mut [i64; ITEMS_TO_SHOW],
-    top_results: &mut [usize; ITEMS_TO_SHOW],
     iter: &mut impl Iterator<Item = FuzzyMatchedLineInfo>,
-) -> std::result::Result<usize, usize> {
+) -> std::result::Result<usize, SelectedTopItemsInfo> {
+    let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
+    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
+
     let mut total = 0;
-    let if_ok_return = iter.try_for_each(|(text, score, indices)| {
-        let idx = match find_best_score_idx(top_scores, score) {
+    let res = iter.try_for_each(|(text, score, indices)| {
+        let idx = match find_best_score_idx(&top_scores, score) {
             Some(idx) => idx + 1,
             None => 0,
         };
@@ -97,10 +102,10 @@ fn select_top_items_to_show(
         }
     });
 
-    if let Ok(()) = if_ok_return {
+    if res.is_ok() {
         Ok(total)
     } else {
-        Err(total)
+        Err((total, top_scores, top_results))
     }
 }
 
@@ -178,15 +183,11 @@ fn dyn_collect_all(
         high.unwrap_or(low)
     });
 
-    let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
-    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
+    let should_return = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let should_return =
-        select_top_items_to_show(&mut buffer, &mut top_scores, &mut top_results, &mut iter);
-
-    let mut total = match should_return {
+    let (mut total, mut top_scores, mut top_results) = match should_return {
         Ok(_) => return buffer,
-        Err(t) => t,
+        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
@@ -234,15 +235,11 @@ fn dyn_collect_number(
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
 
-    let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
-    let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
+    let should_return = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let should_return =
-        select_top_items_to_show(&mut buffer, &mut top_scores, &mut top_results, &mut iter);
-
-    let mut total = match should_return {
+    let (mut total, mut top_scores, mut top_results) = match should_return {
         Ok(t) => return (t, buffer),
-        Err(t) => t,
+        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
@@ -282,7 +279,7 @@ fn dyn_collect_number(
     (total, buffer)
 }
 
-/// Return the ranked results after applying fuzzy filter given the query string and a list of candidates.
+/// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     query: &str,
     source: Source<I>,
@@ -459,75 +456,5 @@ mod tests {
             None,
         )
         .unwrap()
-    }
-
-    #[test]
-    fn test_pipe() {
-        use std::io::Read;
-        use std::io::Write;
-        use std::process::{Command, Stdio};
-
-        let mut the_process = Command::new("rg")
-            .arg("fn")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to execute.");
-        /*
-        // Get a Pipestream which implements the writer trait.
-        // Scope, to ensure the borrow ends.
-        let _ = {
-            let the_stdin_stream = the_process
-                .stdin
-                .as_mut()
-                .expect("Couldn't get mutable Pipestream.");
-            // Write to it in binary.
-            the_stdin_stream
-                .write(b"123456")
-                .ok()
-                .expect("Couldn't write to stream.");
-            the_stdin_stream
-                .write(b"Foo this, foo that!")
-                .ok()
-                .expect("Couldn't write to stream.");
-            // Flush the output so it ends.
-            the_stdin_stream
-                .flush()
-                .ok()
-                .expect("Couldn't flush the stream.");
-        };
-        */
-
-        let stdout_stream = the_process
-            .stdout
-            .as_mut()
-            .expect("Couldn't get mutable Pipestream.");
-
-        // let mut buffer = Vec::new();
-        // stdout_stream
-        // .read_to_end(&mut buffer)
-        // .expect("Fail to read_to_end");
-        // stdout_stream.lines().expect("Fail to read_to_end");
-        // println!("buffer:{:?}", buffer);
-
-        // Wait on output.
-        // match the_process.wait_with_output() {
-        // Ok(out) => print!("{}", String::from_utf8_lossy(&out.stdout)),
-        // Err(error) => print!("{}", error),
-        // }
-    }
-
-    #[test]
-    fn test_subprocess() {
-        use std::io::{BufRead, BufReader};
-        use subprocess::Exec;
-
-        let mut cmd = Exec::cmd("fd").args(&["--type", "f"]).cwd("/");
-        // let s = cmd.stream_stdout().expect("Couldn't get stdout stream");
-        // let reader = BufReader::new(s);
-        // for line in reader.lines() {
-        for line in get_lines_stream(cmd) {
-            println!("{}", line.unwrap());
-        }
     }
 }

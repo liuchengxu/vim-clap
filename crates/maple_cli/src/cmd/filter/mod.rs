@@ -1,5 +1,6 @@
 pub mod dynamic;
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
@@ -7,17 +8,13 @@ use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Sou
 
 use icon::prepend_icon;
 
-/// Return the info of the truncated top items ranked by the filtering score.
+/// Returns the info of the truncated top items ranked by the filtering score.
 fn process_top_items<T>(
     top_size: usize,
     top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
     winwidth: usize,
     enable_icon: bool,
-) -> (
-    Vec<String>,
-    Vec<Vec<usize>>,
-    std::collections::HashMap<String, String>,
-) {
+) -> (Vec<String>, Vec<Vec<usize>>, HashMap<String, String>) {
     let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
     let mut lines = Vec::with_capacity(top_size);
     let mut indices = Vec::with_capacity(top_size);
