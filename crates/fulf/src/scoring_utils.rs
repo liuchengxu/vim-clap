@@ -3,6 +3,9 @@ use std::convert::TryFrom;
 pub(crate) type Score = i32;
 pub(crate) type MatchWithPositions = (Score, Vec<usize>);
 
+pub type ScoringResult = (Box<str>, Score, Box<[usize]>);
+pub type MWP = ScoringResult;
+
 pub(crate) const SCORE_STARTER: Score = 0;
 
 pub(crate) const SCORE_DEFAULT_BONUS: Score = 0;

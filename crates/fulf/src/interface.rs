@@ -1,18 +1,13 @@
 use {
     crate::{
         ascii::{self, bytes_into_ascii_string_lossy},
-        scoring_utils::Score,
-        threadworks,
-        utf8::{self, NeedleUTF8},
+        fileworks::ByteLines,
+        scoring_utils::MWP,
+        utf8,
     },
     ignore,
-    std::{fs, io, path::Path, thread},
+    std::{fs, mem, ops::Deref, path::Path, thread},
 };
-
-pub use threadworks::KillUs;
-
-type ScoringResult = (Box<str>, Score, Box<[usize]>);
-type MWP = ScoringResult;
 
 /// A struct to define rules to run fuzzy-search.
 ///
@@ -57,69 +52,218 @@ impl Default for Rules {
     }
 }
 
-struct NoError;
+/// I'm stuck with some serious lifetime problems, so here we go.
+pub trait ForEach: Sized {
+    /// Like `Iterator::Item`.
+    type Item: Send + 'static;
 
-impl From<io::Error> for NoError {
+    /// A function to create the struct. Akin to `new`.
+    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self;
+
+    /// Like `Iterator::for_each`, but doesn't need `next` at all, thus much simpler.
+    fn for_each<F: FnMut(Self::Item)>(self, f: F);
+
+    /// A function that turns configured directory iterator
+    /// and a number of bonus threads into the iterator used by `spawner`.
+    ///
+    /// Collects all files from iterator into `Rules::bonus_threads + 1`
+    /// vectors and then passes them as iterators to `spawner` function.
+    /// `Rules::results_cap` is passed to `spawner` as `capnum`, and
+    /// all other things are passed as is.
+    ///
+    /// Returns what `spawner` returns.
     #[inline]
-    fn from(_: io::Error) -> Self {
-        Self
+    fn setter(
+        iter: ignore::Walk,
+        needle: Box<str>,
+
+        r: Rules,
+
+        sort_and_print: impl FnMut(&mut [Self::Item], usize),
+    ) -> (Vec<Self::Item>, usize) {
+        let threadcount = r.bonus_threads + 1;
+        let mut files_chunks = vec![Vec::with_capacity(1024); threadcount as usize];
+
+        let usize_tc = threadcount as usize;
+        let mut index = 0;
+        let mut errcount = 0_u32;
+        iter.for_each(|res| match res {
+            Ok(dir_entry) => {
+                let path = dir_entry.into_path().into_boxed_path();
+
+                if path.is_file() {
+                    index += 1;
+                    if index == usize_tc {
+                        index = 0;
+                    }
+
+                    files_chunks[index].push(path);
+                }
+            }
+            Err(_) => {
+                errcount += 1;
+                if errcount > 16000 {
+                    panic!()
+                }
+            }
+        });
+
+        let files_chunks = files_chunks.into_iter();
+
+        let capnum = r.results_cap;
+
+        Self::spawner(files_chunks, needle, capnum, sort_and_print)
+    }
+
+    /// The number of threads to spawn is defined by the number of items
+    /// in the iterator.
+    ///
+    /// # Returns
+    ///
+    /// Vector, already sorted by `sort_and_print` function,
+    /// and a number of total results
+    /// (a number of `Some`s provided by `match_and_score` fn).
+    #[inline]
+    fn spawner(
+        files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
+        needle: Box<str>,
+
+        capnum: usize,
+
+        mut sort_and_print: impl FnMut(&mut [Self::Item], usize),
+    ) -> (Vec<Self::Item>, usize) {
+        let (sx, rx) = flume::unbounded();
+        let mut threads = Vec::with_capacity(10);
+
+        files_chunks.for_each(|files| {
+            let t;
+            let sender = sx.clone();
+            let needle = needle.clone();
+            t = thread::spawn(move || spawn_me(Self::create(files, needle), sender, capnum));
+
+            threads.push(t);
+        });
+        drop(sx);
+
+        let mut shared = Vec::with_capacity(capnum * 2);
+        let mut total = 0_usize;
+
+        while let Ok(mut inner) = rx.recv() {
+            if !inner.is_empty() {
+                let inner_len = inner.len();
+
+                total = total.wrapping_add(inner_len);
+
+                shared.append(&mut inner);
+                sort_and_print(&mut shared, total.clone());
+                shared.truncate(capnum);
+            }
+        }
+
+        threads.into_iter().for_each(|t| t.join().unwrap());
+
+        (shared, total)
     }
 }
 
-macro_rules! match_and_score {
-    (ascii, $max_line_len:expr) => {{
-        let max_line_len = $max_line_len;
+struct FzyAscii {
+    files: Vec<Box<Path>>,
+    needle: Box<[u8]>,
+}
 
-        let match_and_score = move |line: &[u8], needle: &Box<[u8]>| -> Option<MWP> {
-            if line.len() > max_line_len {
-                return None;
+impl ForEach for FzyAscii {
+    type Item = MWP;
+
+    #[inline]
+    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self {
+        Self {
+            files,
+            needle: needle.into(),
+        }
+    }
+
+    #[inline]
+    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
+        let needle = self.needle.deref();
+
+        self.files.iter().for_each(|file| match fs::read(file) {
+            Ok(filebuf) => {
+                ByteLines::new(&filebuf).for_each(|line| {
+                    if let Some(()) = ascii::matcher(line, needle) {
+                        let (score, pos) = ascii::score_with_positions(needle, line);
+
+                        f((
+                            bytes_into_ascii_string_lossy(line.to_owned()).into_boxed_str(),
+                            score,
+                            pos.into_boxed_slice(),
+                        ))
+                    }
+                });
             }
-            let needle = needle.as_ref();
 
-            if let Some(()) = ascii::matcher(line, needle) {
-                let (score, posits) = ascii::score_with_positions(needle, line);
+            _ => (),
+        });
+    }
+}
 
-                let s = Some((
-                    bytes_into_ascii_string_lossy(line.to_owned()).into_boxed_str(),
-                    score,
-                    posits.into_boxed_slice(),
-                ));
+pub struct FzyUtf8 {
+    files: Vec<Box<Path>>,
+    needle: Box<str>,
+}
 
-                s
-            } else {
-                None
+impl ForEach for FzyUtf8 {
+    type Item = MWP;
+
+    #[inline]
+    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self {
+        Self { files, needle }
+    }
+
+    #[inline]
+    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
+        self.files.iter().for_each(|file| match fs::read(file) {
+            Ok(filebuf) => {
+                let valid_str = match std::str::from_utf8(&filebuf) {
+                    Ok(s) => s,
+                    Err(utf8_e) => unsafe {
+                        std::str::from_utf8_unchecked(filebuf.get_unchecked(..utf8_e.valid_up_to()))
+                    },
+                };
+
+                valid_str.lines().for_each(|line| {
+                    if let Some((score, pos)) =
+                        utf8::match_and_score_with_positions(&self.needle, line)
+                    {
+                        f((
+                            line.to_owned().into_boxed_str(),
+                            score,
+                            pos.into_boxed_slice(),
+                        ))
+                    }
+                });
             }
-        };
 
-        match_and_score
-    }};
+            _ => (),
+        });
+    }
+}
 
-    (utf8, $max_line_len:expr, $needle_charcount:expr) => {{
-        let (max_line_len, needle_charcount) = ($max_line_len, $needle_charcount);
+#[inline]
+fn spawn_me<FE: ForEach>(resulter: FE, sender: flume::Sender<Vec<FE::Item>>, capnum: usize) {
+    let mut inner = Vec::with_capacity(capnum);
 
-        let match_and_score = move |line: &[u8], needle: &NeedleUTF8| -> Option<MWP> {
-            if line.len() > max_line_len {
-                return None;
-            }
+    resulter.for_each(|result| {
+        if inner.len() == inner.capacity() {
+            let msg = mem::replace(&mut inner, Vec::with_capacity(capnum));
 
-            if let Some(()) = utf8::matcher(line, needle.as_matcher_needle()) {
-                let (score, posits) = utf8::score_with_positions(
-                    needle.as_ref(),
-                    needle_charcount,
-                    String::from_utf8_lossy(line).as_ref(),
-                );
-                Some((
-                    String::from_utf8_lossy(line).into_owned().into_boxed_str(),
-                    score,
-                    posits.into_boxed_slice(),
-                ))
-            } else {
-                None
-            }
-        };
+            let _any_result = sender.send(msg);
+        }
 
-        match_and_score
-    }};
+        inner.push(result);
+    });
+
+    // Whatever is is, we will return anyway.
+    let _any_result = sender.send(inner);
 }
 
 /// The default search function, very simple to use.
@@ -203,9 +347,11 @@ pub fn default_searcher(
 #[inline]
 pub fn with_fzy_algo(
     path: impl AsRef<Path>,
+
     needle: impl Into<Box<str>>,
     max_line_len: usize,
     force_utf8: bool,
+
     sort_and_print: impl FnMut(&mut [MWP], usize),
 ) -> (Vec<MWP>, usize) {
     let needle = needle.into();
@@ -229,141 +375,11 @@ pub fn with_fzy_algo(
 
     match (force_utf8, needle.is_ascii()) {
         // ascii
-        (false, true) => {
-            let needle: Box<[u8]> = needle.into();
-
-            let match_and_score = match_and_score!(ascii, max_line_len);
-
-            setter(dir_iter, r, needle, match_and_score, sort_and_print)
-        }
+        (false, true) => FzyAscii::setter(dir_iter, needle, r, sort_and_print),
 
         // utf8
-        (true, _) | (_, false) => {
-            let (needle, needle_charcount) =
-                NeedleUTF8::new(needle).unwrap_or_else(Default::default);
-
-            let match_and_score = match_and_score!(utf8, max_line_len, needle_charcount);
-
-            setter(dir_iter, r, needle, match_and_score, sort_and_print)
-        }
+        (true, _) | (_, false) => FzyUtf8::setter(dir_iter, needle, r, sort_and_print),
     }
-}
-
-/// A function that turns configured directory iterator
-/// and a number of bonus threads into the iterator used by `spawner`.
-///
-/// Collects all files from iterator into `Rules::bonus_threads + 1`
-/// vectors and then passes them as iterators to `spawner` function.
-/// `Rules::results_cap` is passed to `spawner` as `capnum`, and
-/// all other things are passed as is.
-///
-/// Returns what `spawner` returns.
-#[inline]
-pub fn setter<T: Send + 'static, N: Clone + Send + 'static>(
-    iter: ignore::Walk,
-    r: Rules,
-    needle: N,
-    match_and_score: impl Fn(&[u8], &N) -> Option<T> + Send + 'static + Copy,
-    sort_and_print: impl FnMut(&mut [T], usize),
-) -> (Vec<T>, usize) {
-    let threadcount = r.bonus_threads + 1;
-    let mut files_chunks = vec![Vec::with_capacity(1024); threadcount as usize];
-
-    let usize_tc = threadcount as usize;
-    let mut index = 0;
-    let mut errcount = 0_u32;
-    iter.for_each(|res| match res {
-        Ok(dir_entry) => {
-            let path = dir_entry.into_path();
-
-            if path.is_file() {
-                index += 1;
-                if index == usize_tc {
-                    index = 0;
-                }
-
-                files_chunks[index].push(path);
-            }
-        }
-        Err(_) => {
-            errcount += 1;
-            if errcount > 16000 {
-                panic!()
-            }
-        }
-    });
-
-    let files_chunks = files_chunks.into_iter().map(|vec_with_path| {
-        vec_with_path
-            .into_iter()
-            .filter_map(|path| match fs::read(path) {
-                Ok(buffer) => Some(buffer),
-                _ => None,
-            })
-    });
-
-    let capnum = r.results_cap;
-
-    spawner(
-        files_chunks,
-        capnum,
-        needle,
-        match_and_score,
-        sort_and_print,
-    )
-}
-
-/// The number of threads to spawn is defined by the number of items
-/// in the iterator.
-///
-/// # Returns
-///
-/// Vector, already sorted by `sort_and_print` function,
-/// and a number of total results
-/// (a number of `Some`s provided by `match_and_score` fn).
-#[inline]
-pub fn spawner<T: Send + 'static, N: Clone + Send + 'static>(
-    files_chunks: impl Iterator<Item = impl Iterator<Item = impl AsRef<[u8]>> + Send + 'static>,
-    capnum: usize,
-    needle: N,
-    match_and_score: impl Fn(&[u8], &N) -> Option<T> + Send + 'static + Copy,
-    mut sort_and_print: impl FnMut(&mut [T], usize),
-) -> (Vec<T>, usize) {
-    let (sx, rx) = flume::unbounded();
-    let mut threads = Vec::with_capacity(10);
-
-    files_chunks.for_each(|files| {
-        let t;
-        let sender = sx.clone();
-        // let match_and_score = match_and_score.clone();
-        let needle = needle.clone();
-        t = thread::spawn(move || {
-            threadworks::spawn_me(files, sender, capnum, match_and_score, needle)
-        });
-
-        threads.push(t);
-    });
-    drop(sx);
-
-    let mut shared = Vec::with_capacity(capnum * 2);
-    let mut total = 0_usize;
-
-    while let Ok(mut inner) = rx.recv() {
-        // append_to_shared(&mut shared, &mut inner, &mut total, capnum, sort_and_print);
-        if !inner.is_empty() {
-            let inner_len = inner.len();
-
-            total = total.wrapping_add(inner_len);
-
-            shared.append(&mut inner);
-            sort_and_print(&mut shared, total.clone());
-            shared.truncate(capnum);
-        }
-    }
-
-    threads.into_iter().for_each(|t| t.join().unwrap());
-
-    (shared, total)
 }
 
 #[cfg(test)]

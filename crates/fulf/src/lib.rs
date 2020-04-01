@@ -4,7 +4,6 @@
 
 mod fileworks;
 mod scoring_utils;
-mod threadworks;
 
 pub mod ascii;
 pub mod utf8;
