@@ -190,7 +190,6 @@ dependencies = [
  "fuzzy-matcher",
  "rayon",
  "structopt",
- "subprocess",
 ]
 
 [[package]]
@@ -558,15 +557,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "subprocess"
-version = "0.2.5"
-source = "git+https://github.com/hniksic/rust-subprocess#fa60ef18244d8edcc1b3146f100e595e264cdd9b"
-dependencies = [
- "libc",
- "winapi",
 ]
 
 [[package]]

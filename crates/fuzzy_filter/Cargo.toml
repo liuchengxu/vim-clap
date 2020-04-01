@@ -14,9 +14,14 @@ anyhow = "1.0"
 structopt = "0.3"
 fuzzy-matcher = "0.3.1"
 
-subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
+subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = true }
 
 extracted_fzy = { path = "../extracted_fzy" }
 
 [target.'cfg(not(windows))'.dev-dependencies]
 termion = "1.5.1"
+
+[features]
+# Allow dynamic filtering
+# Avoid introduce needless dependency in pythonx/clap/fuzzymatch-rs as it's sync only.
+enable_dyn = []
