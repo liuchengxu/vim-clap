@@ -77,7 +77,7 @@ function! s:on_complete() abort
     return
   endif
 
-  call clap#impl#refresh_matches_count(string(decoded.total))
+  call clap#state#refresh_matches_count(string(decoded.total))
 
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
