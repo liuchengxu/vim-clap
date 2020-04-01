@@ -22,6 +22,7 @@ extracted_fzy = { path = "../extracted_fzy" }
 termion = "1.5.1"
 
 [features]
+default = ["enable_dyn"]
 # Allow dynamic filtering
 # Avoid introduce needless dependency in pythonx/clap/fuzzymatch-rs as it's sync only.
 enable_dyn = ["subprocess"]
