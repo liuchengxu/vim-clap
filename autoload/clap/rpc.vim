@@ -77,7 +77,7 @@ if has('nvim')
 else
 
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && a:channel) == s:job_channel
+    if s:job_id > 0 && a:channel == s:job_channel
       " call clap#provider#filer#handle_stdout(a:message)
       if a:message =~# '^Content-length:' || a:message ==# ''
         return
