@@ -1,9 +1,34 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
 use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Source};
 
 use icon::prepend_icon;
+
+/// Returns the info of the truncated top items ranked by the filtering score.
+fn process_top_items<T>(
+    top_size: usize,
+    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    winwidth: usize,
+    enable_icon: bool,
+) -> (Vec<String>, Vec<Vec<usize>>, HashMap<String, String>) {
+    let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
+    let mut lines = Vec::with_capacity(top_size);
+    let mut indices = Vec::with_capacity(top_size);
+    if enable_icon {
+        for (text, _, idxs) in truncated_lines {
+            lines.push(prepend_icon(&text));
+            indices.push(idxs);
+        }
+    } else {
+        for (text, _, idxs) in truncated_lines {
+            lines.push(text);
+            indices.push(idxs);
+        }
+    }
+    (lines, indices, truncated_map)
+}
 
 pub fn run<I: Iterator<Item = String>>(
     query: &str,
@@ -17,24 +42,12 @@ pub fn run<I: Iterator<Item = String>>(
 
     if let Some(number) = number {
         let total = ranked.len();
-        let payload = ranked.into_iter().take(number);
-        let winwidth = winwidth.unwrap_or(62);
-        let (truncated_payload, truncated_map) =
-            truncate_long_matched_lines(payload, winwidth, None);
-        let mut lines = Vec::with_capacity(number);
-        let mut indices = Vec::with_capacity(number);
-        if enable_icon {
-            for (text, _, idxs) in truncated_payload {
-                let iconized = prepend_icon(&text);
-                lines.push(iconized);
-                indices.push(idxs);
-            }
-        } else {
-            for (text, _, idxs) in truncated_payload {
-                lines.push(text);
-                indices.push(idxs);
-            }
-        }
+        let (lines, indices, truncated_map) = process_top_items(
+            number,
+            ranked.into_iter().take(number),
+            winwidth.unwrap_or(62),
+            enable_icon,
+        );
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);
         } else {

@@ -7,6 +7,8 @@ use rayon::prelude::*;
 use structopt::clap::arg_enum;
 
 pub use source::Source;
+#[cfg(feature = "enable_dyn")]
+pub use subprocess;
 
 pub const DOTS: &str = "...";
 

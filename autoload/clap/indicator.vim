@@ -30,7 +30,7 @@ endif
 " If you feel the responsive is slow, try to disable the indicator.
 " especially for the outside async jobs which could be cpu-intensive.
 "
-" If the initial_size is possible, use clap#impl#refresh_matches_count()
+" If the initial_size is possible, use clap#state#refresh_matches_count()
 " instead in that it will combine the initial_size info.
 function! clap#indicator#set_matches(indicator) abort
   if get(g:, 'clap_disable_matches_indicator', v:false)
