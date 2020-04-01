@@ -8,7 +8,11 @@ macro_rules! println_json {
 }
 
 pub mod cmd;
-pub use {anyhow::Result, fuzzy_filter::Source, structopt::StructOpt, subprocess};
+pub use {
+    anyhow::Result,
+    fuzzy_filter::{subprocess, Source},
+    structopt::StructOpt,
+};
 
 mod error;
 mod light_command;

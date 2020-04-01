@@ -5,12 +5,14 @@ use fuzzy_matcher::skim::fuzzy_indices;
 use rayon::prelude::*;
 use std::io::BufRead;
 use std::path::PathBuf;
+#[cfg(feature = "enable_dyn")]
 use subprocess::Exec;
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
 pub enum Source<I: Iterator<Item = String>> {
     Stdin,
+    #[cfg(feature = "enable_dyn")]
     Exec(Exec),
     File(PathBuf),
     List(I),
@@ -28,6 +30,7 @@ impl<I: Iterator<Item = String>> From<PathBuf> for Source<I> {
     }
 }
 
+#[cfg(feature = "enable_dyn")]
 impl<I: Iterator<Item = String>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(exec)
@@ -56,6 +59,7 @@ impl<I: Iterator<Item = String>> Source<I> {
                     })
                 })
                 .collect::<Vec<_>>(),
+            #[cfg(feature = "enable_dyn")]
             Self::Exec(exec_cmd) => std::io::BufReader::new(exec_cmd.stream_stdout()?)
                 .lines()
                 .filter_map(|lines_iter| {

@@ -31,6 +31,7 @@ pub(crate) fn score_add(score: Score, rhs: Score) -> Score {
 
 /// Subs `rhs` from the score and returns the result.
 #[inline]
+#[allow(dead_code)]
 pub(crate) fn score_sub(score: Score, rhs: Score) -> Score {
     score.saturating_sub(rhs)
 }

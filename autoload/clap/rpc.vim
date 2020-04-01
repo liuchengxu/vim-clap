@@ -80,7 +80,7 @@ if has('nvim')
 else
 
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && a:channel == s:job_channel
       " call clap#provider#filer#handle_stdout(a:message)
       if a:message =~# '^Content-length:' || a:message ==# ''
         return
@@ -105,6 +105,7 @@ else
           \ 'out_cb': function('s:out_cb'),
           \ 'noblock': 1,
           \ })
+    let s:job_channel = job_getchannel(s:job)
     let s:job_id = clap#job#get_vim8_job_id(s:job)
   endfunction
 

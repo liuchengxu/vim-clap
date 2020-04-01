@@ -328,7 +328,6 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "subprocess",
 ]
 
 [[package]]

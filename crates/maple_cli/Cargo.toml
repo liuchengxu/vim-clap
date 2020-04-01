@@ -20,8 +20,6 @@ lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 crossbeam-channel = "0.4"
 
-subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
-
 icon = { path = "../icon" }
-fuzzy_filter = { path = "../fuzzy_filter" }
+fuzzy_filter = { path = "../fuzzy_filter", features = ["enable_dyn"] }
 extracted_fzy = { path = "../extracted_fzy" }
