@@ -180,7 +180,7 @@ else
   endfunction
 
   function! s:out_cb(channel, message) abort
-    if s:job_id > 0 && clap#job#vim8_job_id_of(a:channel) == s:job_id
+    if s:job_id > 0 && a:channel == s:job_channel
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -212,7 +212,7 @@ else
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#job#get_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -226,7 +226,8 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ })
-    let s:job_id = clap#job#parse_vim8_job_id(string(job))
+    let s:job_channel = job_getchannel(job)
+    let s:job_id = clap#job#get_vim8_job_id(job)
   endfunction
 
 endif

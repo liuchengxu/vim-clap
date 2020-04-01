@@ -3,25 +3,13 @@
 //! Original "rff" crate has `terminal` module which utilizes `std::os::unix`
 //! thus it doesn't compile on non-unix OS.
 
-use std::f64::{INFINITY, NEG_INFINITY};
+mod scoring_utils;
 
-pub const SCORE_MAX: f64 = INFINITY;
-pub const SCORE_MIN: f64 = NEG_INFINITY;
-pub const SCORE_GAP_LEADING: f64 = -0.005;
-pub const SCORE_GAP_TRAILING: f64 = -0.005;
-pub const SCORE_GAP_INNER: f64 = -0.01;
-pub const SCORE_MATCH_CONSECUTIVE: f64 = 1.0;
-pub const SCORE_MATCH_SLASH: f64 = 0.9;
-pub const SCORE_MATCH_WORD: f64 = 0.8;
-pub const SCORE_MATCH_CAPITAL: f64 = 0.7;
-pub const SCORE_MATCH_DOT: f64 = 0.6;
+use crate::scoring_utils::*;
 
-pub type MatchWithPositions<'a> = (f64, Vec<usize>);
+pub type MatchWithPositions = (Score, Vec<usize>);
 
-pub fn match_and_score_with_positions<'a>(
-    needle: &str,
-    haystack: &'a str,
-) -> Option<MatchWithPositions<'a>> {
+pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
     match matches(needle, haystack) {
         Some(needle_length) => {
             let (score, positions) = score_with_positions(needle, needle_length, haystack);
@@ -30,6 +18,7 @@ pub fn match_and_score_with_positions<'a>(
         None => None,
     }
 }
+
 /// Searches for needle's chars in the haystack.
 /// Returns `None` if haystack doesn't hold all needle's chars.
 /// Returns `Some(len)` with needle's length otherwise.
@@ -60,7 +49,7 @@ fn matches(needle: &str, haystack: &str) -> Option<usize> {
     Some(needle_length)
 }
 
-fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (f64, Vec<usize>) {
+fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (Score, Vec<usize>) {
     // empty needle
     if needle_length == 0 {
         return (SCORE_MIN, vec![]);
@@ -79,25 +68,25 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
     }
 
     let (d, m) = calculate_score(needle, needle_length, haystack, haystack_length);
-    let mut positions = vec![0 as usize; needle_length];
+    let mut positions = vec![0_usize; needle_length];
 
     {
         let mut match_required = false;
         let mut j = haystack_length - 1;
 
         for i in (0..needle_length).rev() {
-            while j > (0 as usize) {
+            while j > (0_usize) {
                 let last = if i > 0 && j > 0 {
                     d.get(i - 1, j - 1)
                 } else {
-                    0.0
+                    SCORE_DEFAULT_BONUS
                 };
 
                 let d = d.get(i, j);
                 let m = m.get(i, j);
 
-                if d != SCORE_MIN && (match_required || d == m) {
-                    if i > 0 && j > 0 && m == last + SCORE_MATCH_CONSECUTIVE {
+                if d != SCORE_MIN && (match_required || score_eq(d, m)) {
+                    if i > 0 && j > 0 && score_eq(m, score_add(last, SCORE_MATCH_CONSECUTIVE)) {
                         match_required = true;
                     }
 
@@ -138,25 +127,28 @@ fn calculate_score(
                 let bonus_score = bonus[j];
 
                 let score = match i {
-                    0 => ((j as f64) * SCORE_GAP_LEADING) + bonus_score,
+                    0 => score_add(
+                        bonus_score,
+                        score_mul(score_from_usize(j), SCORE_GAP_LEADING),
+                    ),
                     _ if j > 0 => {
                         let m = m.get(i - 1, j - 1);
                         let d = d.get(i - 1, j - 1);
 
-                        let m = m + bonus_score;
-                        let d = d + SCORE_MATCH_CONSECUTIVE;
+                        let m = score_add(m, bonus_score);
+                        let d = score_add(d, SCORE_MATCH_CONSECUTIVE);
 
                         (m).max(d)
                     }
                     _ => SCORE_MIN,
                 };
 
-                prev_score = score.max(prev_score + gap_score);
+                prev_score = score.max(score_add(prev_score, gap_score));
 
                 d.set(i, j, score);
                 m.set(i, j, prev_score);
             } else {
-                prev_score += gap_score;
+                prev_score = score_add(prev_score, gap_score);
 
                 d.set(i, j, SCORE_MIN);
                 m.set(i, j, prev_score);
@@ -177,7 +169,7 @@ fn eq(a: char, b: char) -> bool {
     }
 }
 
-fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<f64> {
+fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<Score> {
     let mut last_char = '/';
 
     let len = haystack_length;
@@ -191,49 +183,49 @@ fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<f64> {
         })
 }
 
-fn bonus_for_char(prev: char, current: char) -> f64 {
+fn bonus_for_char(prev: char, current: char) -> Score {
     match current {
         'a'..='z' | '0'..='9' => bonus_for_prev(prev),
         'A'..='Z' => match prev {
             'a'..='z' => SCORE_MATCH_CAPITAL,
             _ => bonus_for_prev(prev),
         },
-        _ => 0.0,
+        _ => SCORE_DEFAULT_BONUS,
     }
 }
 
-fn bonus_for_prev(ch: char) -> f64 {
+fn bonus_for_prev(ch: char) -> Score {
     match ch {
         '/' => SCORE_MATCH_SLASH,
         '-' | '_' | ' ' => SCORE_MATCH_WORD,
         '.' => SCORE_MATCH_DOT,
-        _ => 0.0,
+        _ => SCORE_DEFAULT_BONUS,
     }
 }
 
 /// The Matrix type represents a 2-dimensional Matrix.
 struct Matrix {
     cols: usize,
-    contents: Vec<f64>,
+    contents: Vec<Score>,
 }
 
 impl Matrix {
     /// Creates a new Matrix with the given width and height
     fn new(width: usize, height: usize) -> Matrix {
         Matrix {
-            contents: vec![0.0; width * height],
+            contents: vec![SCORE_STARTER; width * height],
             cols: width,
         }
     }
 
     /// Returns a reference to the specified coordinates of the Matrix
-    fn get(&self, col: usize, row: usize) -> f64 {
+    fn get(&self, col: usize, row: usize) -> Score {
         debug_assert!(col * row < self.contents.len());
         unsafe { *self.contents.get_unchecked(row * self.cols + col) }
     }
 
     /// Sets the coordinates of the Matrix to the specified value
-    fn set(&mut self, col: usize, row: usize, val: f64) {
+    fn set(&mut self, col: usize, row: usize, val: Score) {
         debug_assert!(col * row < self.contents.len());
         unsafe {
             *self.contents.get_unchecked_mut(row * self.cols + col) = val;
