@@ -54,6 +54,13 @@ if s:is_nvim
     return nvim_buf_line_count(self.bufnr)
   endfunction
 
+  function! s:_win_is_valid() dict abort
+    if self.winid == -1
+      return v:false
+    else
+      return nvim_win_is_valid(self.winid)
+    endif
+  endfunction
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
@@ -63,6 +70,10 @@ else
   function! s:_line_count() dict abort
     " 8.1.1967
     return line('$', self.winid)
+  endfunction
+
+  function! s:_win_is_valid() dict abort
+    return !empty(popup_getpos(self.winid))
   endfunction
 endif
 
@@ -232,7 +243,7 @@ function! s:init_display() abort
   " Optional argument: pattern to match
   " Default: input
   function! display.add_highlight(...) abort
-    let pattern = a:0 > 0 ? a:1 : clap#filter#viml#matchadd_pattern()
+    let pattern = a:0 > 0 ? a:1 : clap#filter#sync#viml#matchadd_pattern()
     if empty(pattern)
       return
     endif
@@ -410,7 +421,7 @@ function! s:init_provider() abort
   " Currently only maple extension supports --input option, for the other
   " external filter, use cat instead.
   function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
-    if clap#filter#external#using_maple()
+    if clap#filter#async#external#using_maple()
       if g:clap.provider.id ==# 'blines'
         return printf('%s %s', a:ext_filter_cmd, a:input_file)
       endif
@@ -423,7 +434,7 @@ function! s:init_provider() abort
 
   " Pipe the source into the external filter
   function! s:wrap_async_cmd(source_cmd) abort
-    let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
+    let ext_filter_cmd = clap#filter#async#external#get_cmd_or_default()
     if exists('g:__clap_forerunner_tempfile')
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tempfile)
     else
@@ -486,7 +497,7 @@ function! s:init_provider() abort
         let lines = copy(Source())
       endif
 
-      let ext_filter_cmd = clap#filter#external#get_cmd_or_default()
+      let ext_filter_cmd = clap#filter#async#external#get_cmd_or_default()
 
       let tmp = s:into_source_tmp_file(lines)
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
@@ -559,7 +570,7 @@ function! s:init_provider() abort
   function! provider.can_async() abort
     " The default async implementation is not doable and the provider does not
     " provide a source_async implementation explicitly.
-    if !clap#filter#external#has_default() && !has_key(self._(), 'source_async')
+    if !clap#filter#async#external#has_default() && !has_key(self._(), 'source_async')
       return v:false
     else
       return !get(g:, 'clap_disable_optional_async', v:false)
@@ -608,6 +619,7 @@ endfunction
 function! s:inject_base_api(dict) abort
   let dict = a:dict
   let dict.line_count = function('s:_line_count')
+  let dict.win_is_valid = function('s:_win_is_valid')
   let dict.goto_win = function('s:_goto_win')
   let dict.get_lines = function('s:_get_lines')
   let dict.getbufvar = function('s:_getbufvar')

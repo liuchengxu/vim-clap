@@ -44,7 +44,7 @@ function! s:handle_round_message(message) abort
       call g:clap.display.set_lines(result.entries)
     endif
     call clap#sign#reset_to_first_line()
-    call clap#impl#refresh_matches_count(string(result.total))
+    call clap#state#refresh_matches_count(string(result.total))
     call g:clap#display_win.shrink_if_undersize()
 
   else
@@ -128,7 +128,7 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    call clap#filter#on_typed(function('clap#filter#'), query, candidates)
+    call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
 

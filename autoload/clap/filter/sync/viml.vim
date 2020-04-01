@@ -48,11 +48,11 @@ function! s:filter(line, pattern) abort
 endfunction
 
 " Return substring pattern or the smartcase input pattern.
-function! clap#filter#viml#matchadd_pattern() abort
+function! clap#filter#sync#viml#matchadd_pattern() abort
   return get(s:, 'matchadd_pattern', '')
 endfunction
 
-function! clap#filter#viml#(query, candidates) abort
+function! clap#filter#sync#viml#(query, candidates) abort
   let s:pattern_builder.input = a:query
   let l:filter_pattern = s:pattern_builder.build()
   return filter(copy(a:candidates), 's:filter(v:val, l:filter_pattern)')

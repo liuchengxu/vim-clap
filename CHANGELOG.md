@@ -12,6 +12,7 @@ CHANGELOG
 
 - Print a note about Rust nightly is requred for building the Python dynamic module.
 - Refine the syntax of `Clap lines` with `ClapLinesBufname` and `ClapLinesNumber` group added.
+- [perf] Use const table instead of `lazy_static` for the icons, [more info](https://github.com/liuchengxu/vim-clap/pull/354#discussion_r395975392). Thanks to @ImmemorConsultrixContrarie .
 
 ### Fixed
 

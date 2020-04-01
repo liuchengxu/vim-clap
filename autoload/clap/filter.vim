@@ -15,7 +15,7 @@ let s:has_py_dynamic_module = v:false
 
 if s:has_python
   try
-    let s:has_py_dynamic_module = clap#filter#python#has_dynamic_module()
+    let s:has_py_dynamic_module = clap#filter#sync#python#has_dynamic_module()
     let s:can_use_python = v:true
   catch
     call clap#helper#echo_error(v:exception)
@@ -43,17 +43,17 @@ if s:can_use_python
     return clap#highlight#provider_has_offset() ? v:true : v:false
   endfunction
 
-  function! clap#filter#(query, candidates) abort
+  function! clap#filter#sync(query, candidates) abort
     try
-      return clap#filter#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon())
+      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon())
     catch
       call clap#helper#echo_error(v:exception)
-      return clap#filter#viml#(a:query, a:candidates)
+      return clap#filter#sync#viml#(a:query, a:candidates)
     endtry
   endfunction
 else
-  function! clap#filter#(query, candidates) abort
-    return clap#filter#viml#(a:query, a:candidates)
+  function! clap#filter#sync(query, candidates) abort
+    return clap#filter#sync#viml#(a:query, a:candidates)
   endfunction
 endif
 
@@ -64,15 +64,15 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
     let l:lines = [g:clap_no_matches_msg]
     let g:__clap_has_no_matches = v:true
     call g:clap.display.set_lines_lazy(lines)
-    " In clap#impl#refresh_matches_count() we reset the sign to the first line,
+    " In clap#state#refresh_matches_count() we reset the sign to the first line,
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.
-    call clap#impl#refresh_matches_count('0')
+    call clap#state#refresh_matches_count('0')
     call g:clap.preview.hide()
   else
     let g:__clap_has_no_matches = v:false
     call g:clap.display.set_lines_lazy(lines)
-    call clap#impl#refresh_matches_count(string(len(l:lines)))
+    call clap#state#refresh_matches_count(string(len(l:lines)))
   endif
 
   call g:clap#display_win.shrink_if_undersize()

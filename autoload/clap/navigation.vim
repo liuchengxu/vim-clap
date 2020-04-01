@@ -79,7 +79,9 @@ endfunction
 
 function! s:on_move_safe() abort
   " try
+  if g:clap.display.win_is_valid()
     call g:clap.provider.on_move()
+  endif
   " catch
     " call g:clap.preview.show([v:exception])
   " endtry

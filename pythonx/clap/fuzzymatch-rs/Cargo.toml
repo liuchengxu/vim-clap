@@ -13,13 +13,14 @@ name = "fuzzymatch_rs"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
-version = "0.8.5"
+version = "0.9.1"
 
 [dependencies.fulf]
 path = "../../../crates/fulf"
 
 [dependencies.fuzzy_filter]
 path = "../../../crates/fuzzy_filter"
+default-features = false
 
 # https://github.com/PyO3/pyo3/issues/340
 # For running PyO3 test using `cargo test --no-default-features`

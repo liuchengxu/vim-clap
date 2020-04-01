@@ -77,7 +77,7 @@ function! s:on_complete() abort
     return
   endif
 
-  call clap#impl#refresh_matches_count(string(decoded.total))
+  call clap#state#refresh_matches_count(string(decoded.total))
 
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))
@@ -259,7 +259,7 @@ function! clap#maple#run_grep(cmd, query, enable_icon, glob) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#run(cmd) abort
+function! clap#maple#build_cmd(cmd) abort
   return printf('%s %s', s:maple_bin, a:cmd)
 endfunction
 
