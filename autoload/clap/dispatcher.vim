@@ -212,7 +212,7 @@ else
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_id > 0 && clap#job#parse_vim8_job_id(a:job) == s:job_id
+    if s:job_id > 0 && clap#job#get_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -226,7 +226,7 @@ else
           \ 'close_cb': function('s:close_cb'),
           \ 'noblock': 1,
           \ })
-    let s:job_id = clap#job#parse_vim8_job_id(string(job))
+    let s:job_id = clap#job#get_vim8_job_id(job)
   endfunction
 
 endif

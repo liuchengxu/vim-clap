@@ -25,11 +25,11 @@ else
   endfunction
 
   function! clap#job#vim8_job_id_of(channel) abort
-    return clap#job#parse_vim8_job_id(ch_getjob(a:channel))
+    return ch_info(a:channel)['id']
   endfunction
 
-  function! clap#job#parse_vim8_job_id(job_str) abort
-    return str2nr(matchstr(a:job_str, '\d\+'))
+  function! clap#job#get_vim8_job_id(job) abort
+    return ch_info(job_getchannel(a:job))['id']
   endfunction
 
   if has('win32')
@@ -49,7 +49,7 @@ else
           \ 'noblock': 1,
           \ 'mode': 'raw',
           \ })
-    return clap#job#parse_vim8_job_id(string(job))
+    return ch_info(job_getchannel(job))['id']
   endfunction
 endif
 

@@ -105,7 +105,7 @@ else
           \ 'out_cb': function('s:out_cb'),
           \ 'noblock': 1,
           \ })
-    let s:job_id = clap#job#parse_vim8_job_id(string(s:job))
+    let s:job_id = clap#job#get_vim8_job_id(s:job)
   endfunction
 
   function! clap#rpc#send_message(msg) abort
