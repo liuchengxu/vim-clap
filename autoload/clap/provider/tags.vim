@@ -9,7 +9,7 @@ let s:tags = {}
 function! s:tags.source(...) abort
   let [bufnr, winnr, fname, fpath] = [
         \ g:clap.start.bufnr,
-        \ g:clap.start.winid,
+        \ win_id2win(g:clap.start.winid),
         \ bufname(g:clap.start.bufnr),
         \ expand('#'.g:clap.start.bufnr.':p')
         \ ]
