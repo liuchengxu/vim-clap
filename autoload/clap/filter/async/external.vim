@@ -47,9 +47,6 @@ function! s:get_external_filter() abort
 endfunction
 
 function! s:cmd_of(ext_filter) abort
-  if g:clap.provider.id ==# 'blines'
-    return clap#maple#blines_subcommand(g:clap.input.get())
-  endif
   if a:ext_filter ==# 'maple'
     return clap#maple#filter_subcommand(g:clap.input.get())
   else
