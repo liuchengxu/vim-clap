@@ -41,7 +41,7 @@ if has('nvim')
       endif
 
       try
-        call s:MessageHandler(trim(s:round_message))
+        call s:handle_message(trim(s:round_message))
       catch
         call clap#helper#echo_error('[dyn]Failed to handle message:'.v:exception.', throwpoint:'.v:throwpoint)
       finally
@@ -81,7 +81,7 @@ else
         return
       endif
       try
-        call s:MessageHandler(a:message)
+        call s:handle_message(a:message)
       catch
         call clap#helper#echo_error('[dyn]Failed to handle message:'.a:message.', exception:'.v:exception.', '.v:throwpoint)
       endtry
@@ -122,25 +122,20 @@ function! s:job_stop() abort
   endif
 endfunction
 
-let s:MessageHandler = function('s:handle_message')
-
 function! clap#filter#async#dyn#start(cmd) abort
   call s:job_stop()
 
   let s:last_query = g:clap.input.get()
 
-  let cmd_dir = clap#rooter#working_dir()
   let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
         \ g:clap_enable_icon ? '--enable-icon' : '',
         \ winwidth(g:clap.display.winid),
         \ g:clap.input.get(),
         \ a:cmd,
-        \ cmd_dir,
+        \ clap#rooter#working_dir(),
         \ )
 
-  let maple_cmd = clap#maple#build_cmd(filter_cmd)
-
-  call s:start_dyn_filter_job(maple_cmd)
+  call s:start_dyn_filter_job(clap#maple#build_cmd(filter_cmd))
 endfunction
 
 let &cpoptions = s:save_cpo
