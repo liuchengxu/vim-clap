@@ -3,7 +3,7 @@
 //! Cheating!
 
 pub mod matcher;
-pub use matcher::{bytes_into_ascii_string_lossy, matcher};
+pub use matcher::{ascii_from_bytes, matcher};
 
 use crate::scoring_utils::*;
 

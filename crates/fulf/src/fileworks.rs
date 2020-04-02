@@ -8,6 +8,7 @@ const NL: u8 = b'\n';
 /// `\r` char.
 const CR: u8 = b'\r';
 
+#[derive(Clone)]
 pub struct ByteLines<'a> {
     text: &'a [u8],
 }
@@ -21,6 +22,13 @@ impl<'a> ByteLines<'a> {
 
 impl<'a> Iterator for ByteLines<'a> {
     type Item = &'a [u8];
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // If there's only newlines in the text, no items will be produced, so lower bound is 0.
+        // But the maximum of items takes every second ASCII char to be a newline char.
+        let high = self.text.len() / 2;
+        (0, Some(high))
+    }
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -149,26 +157,26 @@ impl FusedIterator for ByteLines<'_> {}
 fn shrink_newlines(mut text: &[u8]) -> &[u8] {
     // This match checks if there's just one or two newlines,
     // as those are the most frequent patterns.
-    text = match text {
-        &[CR, NL, CR, NL, not_cr, ..] => {
+    text = match *text {
+        [CR, NL, CR, NL, not_cr, ..] => {
             if not_cr != CR {
                 return &text[4..];
             }
             &text[4..]
         }
-        &[NL, NL, not_nl, ..] => {
+        [NL, NL, not_nl, ..] => {
             if not_nl != NL {
                 return &text[2..];
             }
             &text[2..]
         }
-        &[CR, NL, not_cr_nl, ..] => {
+        [CR, NL, not_cr_nl, ..] => {
             if not_cr_nl != CR && not_cr_nl != NL {
                 return &text[2..];
             }
             &text[2..]
         }
-        &[NL, not_nl_or_cr, ..] => {
+        [NL, not_nl_or_cr, ..] => {
             if not_nl_or_cr != NL && not_nl_or_cr != CR {
                 return &text[1..];
             }
@@ -199,29 +207,29 @@ fn shrink_newlines(mut text: &[u8]) -> &[u8] {
 fn shrink_newlines_back(mut text: &[u8]) -> &[u8] {
     // This match checks if there's just one or two newlines,
     // as those are the most frequent patterns.
-    text = match text {
-        &[.., not_nl, CR, NL, CR, NL] => {
+    text = match *text {
+        [.., not_nl, CR, NL, CR, NL] => {
             let l4 = text.len() - 4;
             if not_nl != NL {
                 return &text[..l4];
             }
             &text[..l4]
         }
-        &[.., not_nl, NL, NL] => {
+        [.., not_nl, NL, NL] => {
             let l2 = text.len() - 2;
             if not_nl != NL {
                 return &text[..l2];
             }
             &text[..l2]
         }
-        &[.., not_cr_nl, CR, NL] => {
+        [.., not_cr_nl, CR, NL] => {
             let l2 = text.len() - 2;
             if not_cr_nl != NL && not_cr_nl != CR {
                 return &text[..l2];
             }
             &text[..l2]
         }
-        &[.., not_nl_cr, NL] => {
+        [.., not_nl_cr, NL] => {
             let l1 = text.len() - 1;
             if not_nl_cr != NL && not_nl_cr != CR {
                 return &text[..l1];

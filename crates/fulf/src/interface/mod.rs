@@ -1,12 +1,12 @@
 use {
     crate::{
-        ascii::{self, bytes_into_ascii_string_lossy},
+        ascii::{self},
         fileworks::ByteLines,
         scoring_utils::MWP,
         utf8,
     },
     ignore,
-    std::{fs, mem, ops::Deref, path::Path, thread},
+    std::{fs, mem, path::Path, thread},
 };
 
 /// A struct to define rules to run fuzzy-search.
@@ -52,13 +52,16 @@ impl Default for Rules {
     }
 }
 
-/// I'm stuck with some serious lifetime problems, so here we go.
-pub trait ForEach: Sized {
+/// A trait to define algorithm.
+pub trait FuzzySearcher: Sized {
+    /// The datapack needed for algorithm to work.
+    type SearchData: Clone + Send + 'static;
+
     /// Like `Iterator::Item`.
     type Item: Send + 'static;
 
     /// A function to create the struct. Akin to `new`.
-    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self;
+    fn create(files: Vec<Box<Path>>, needle: Self::SearchData) -> Self;
 
     /// Like `Iterator::for_each`, but doesn't need `next` at all, thus much simpler.
     fn for_each<F: FnMut(Self::Item)>(self, f: F);
@@ -75,7 +78,7 @@ pub trait ForEach: Sized {
     #[inline]
     fn setter(
         iter: ignore::Walk,
-        needle: Box<str>,
+        needle: Self::SearchData,
 
         r: Rules,
 
@@ -121,18 +124,17 @@ pub trait ForEach: Sized {
     /// # Returns
     ///
     /// Vector, already sorted by `sort_and_print` function,
-    /// and a number of total results
-    /// (a number of `Some`s provided by `match_and_score` fn).
+    /// and a number of total results.
     #[inline]
     fn spawner(
         files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
-        needle: Box<str>,
+        needle: Self::SearchData,
 
         capnum: usize,
 
         mut sort_and_print: impl FnMut(&mut [Self::Item], usize),
     ) -> (Vec<Self::Item>, usize) {
-        let (sx, rx) = flume::unbounded();
+        let (sx, rx) = flume::bounded(256);
         let mut threads = Vec::with_capacity(10);
 
         files_chunks.for_each(|files| {
@@ -155,7 +157,7 @@ pub trait ForEach: Sized {
                 total = total.wrapping_add(inner_len);
 
                 shared.append(&mut inner);
-                sort_and_print(&mut shared, total.clone());
+                sort_and_print(&mut shared, total);
                 shared.truncate(capnum);
             }
         }
@@ -166,71 +168,166 @@ pub trait ForEach: Sized {
     }
 }
 
-struct FzyAscii {
+/// Default algorithm.
+pub struct FzyAscii {
     files: Vec<Box<Path>>,
-    needle: Box<[u8]>,
+    needle: Box<str>,
+    max_line_len: usize,
 }
 
-impl ForEach for FzyAscii {
+impl FuzzySearcher for FzyAscii {
+    type SearchData = (Box<str>, usize);
+
     type Item = MWP;
 
     #[inline]
-    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self {
+    fn create(files: Vec<Box<Path>>, needle: Self::SearchData) -> Self {
         Self {
             files,
-            needle: needle.into(),
+            needle: needle.0,
+            max_line_len: needle.1,
         }
     }
 
     #[inline]
     fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        let needle = self.needle.deref();
+        let needle = self.needle.as_bytes();
 
-        self.files.iter().for_each(|file| match fs::read(file) {
-            Ok(filebuf) => {
-                ByteLines::new(&filebuf).for_each(|line| {
-                    if let Some(()) = ascii::matcher(line, needle) {
-                        let (score, pos) = ascii::score_with_positions(needle, line);
+        self.files.iter().for_each(|file| {
+            if let Ok(filebuf) = fs::read(file) {
+                match ascii::ascii_from_bytes(&filebuf) {
+                    // Checked ASCII
+                    Ok(ascii_str) => {
+                        ByteLines::new(ascii_str.as_bytes()).for_each(|line| {
+                            if line.len() > self.max_line_len {
+                                return;
+                            }
 
-                        f((
-                            bytes_into_ascii_string_lossy(line.to_owned()).into_boxed_str(),
-                            score,
-                            pos.into_boxed_slice(),
-                        ))
+                            if let Some(()) = ascii::matcher(line, needle) {
+                                let (score, pos) = ascii::score_with_positions(needle, line);
+
+                                f((
+                                    // SAFETY: the whole text is checked and is ASCII, which is utf8 always;
+                                    // the line is a part of a text, so is utf8 too.
+                                    unsafe { String::from_utf8_unchecked(line.to_owned()) }
+                                        .into_boxed_str(),
+                                    score,
+                                    pos.into_boxed_slice(),
+                                ))
+                            }
+                        });
                     }
-                });
+                    // Maybe utf8. Fall back to utf8 scoring for as long as it is valid utf8.
+                    Err(first_non_ascii_byte) => fallback_utf8(
+                        &filebuf,
+                        first_non_ascii_byte,
+                        &self.needle,
+                        self.max_line_len,
+                        &mut f,
+                    ),
+                }
             }
-
-            _ => (),
         });
     }
 }
 
+#[cold]
+fn fallback_utf8<F: FnMut(<FzyAscii as FuzzySearcher>::Item)>(
+    filebuf: &[u8],
+    first_non_ascii_byte: usize,
+    needle: &str,
+    max_line_len: usize,
+    mut f: F,
+) {
+    let byteneedle = needle.as_bytes();
+
+    let first_newline_in_utf8_line = match memchr::memrchr(b'\n', &filebuf) {
+        Some(idx) => idx,
+        None => 0,
+    };
+
+    ByteLines::new(&filebuf[..first_newline_in_utf8_line]).for_each(|line| {
+        if line.len() > max_line_len {
+            return;
+        }
+
+        if let Some(()) = ascii::matcher(line, byteneedle) {
+            let (score, pos) = ascii::score_with_positions(byteneedle, line);
+
+            f((
+                // SAFETY: the whole text is checked and is ASCII, which is utf8 always;
+                // the line is a part of a text, so is utf8 too.
+                unsafe { String::from_utf8_unchecked(line.to_owned()) }.into_boxed_str(),
+                score,
+                pos.into_boxed_slice(),
+            ))
+        }
+    });
+
+    let valid_up_to = match std::str::from_utf8(&filebuf[first_non_ascii_byte..]) {
+        Ok(_valid_str) => filebuf.len(),
+        Err(utf8_e) => utf8_e.valid_up_to(),
+    };
+
+    // SAFETY: just checked validness.
+    let valid_str =
+        unsafe { std::str::from_utf8_unchecked(&filebuf[first_newline_in_utf8_line..valid_up_to]) };
+    valid_str.lines().for_each(|line| {
+        if line.len() > max_line_len {
+            return;
+        }
+
+        if let Some((score, pos)) = utf8::match_and_score_with_positions(needle, line) {
+            f((
+                line.to_owned().into_boxed_str(),
+                score,
+                pos.into_boxed_slice(),
+            ))
+        }
+    });
+}
+
+/// Utf8 version of the default algorithm.
+///
+/// Is slower than `FzyAscii` and is used only
+/// if the search string contains non-ASCII letters.
 pub struct FzyUtf8 {
     files: Vec<Box<Path>>,
     needle: Box<str>,
+    max_line_len: usize,
 }
 
-impl ForEach for FzyUtf8 {
+impl FuzzySearcher for FzyUtf8 {
+    type SearchData = (Box<str>, usize);
+
     type Item = MWP;
 
     #[inline]
-    fn create(files: Vec<Box<Path>>, needle: Box<str>) -> Self {
-        Self { files, needle }
+    fn create(files: Vec<Box<Path>>, needle: Self::SearchData) -> Self {
+        Self {
+            files,
+            needle: needle.0,
+            max_line_len: needle.1,
+        }
     }
 
     #[inline]
     fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        self.files.iter().for_each(|file| match fs::read(file) {
-            Ok(filebuf) => {
+        self.files.iter().for_each(|file| {
+            if let Ok(filebuf) = fs::read(file) {
                 let valid_str = match std::str::from_utf8(&filebuf) {
                     Ok(s) => s,
+                    //XXX SAFETY: stdlib guarantees that it's valid.
                     Err(utf8_e) => unsafe {
                         std::str::from_utf8_unchecked(filebuf.get_unchecked(..utf8_e.valid_up_to()))
                     },
                 };
 
                 valid_str.lines().for_each(|line| {
+                    if line.len() > self.max_line_len {
+                        return;
+                    }
+
                     if let Some((score, pos)) =
                         utf8::match_and_score_with_positions(&self.needle, line)
                     {
@@ -242,14 +339,12 @@ impl ForEach for FzyUtf8 {
                     }
                 });
             }
-
-            _ => (),
         });
     }
 }
 
 #[inline]
-fn spawn_me<FE: ForEach>(resulter: FE, sender: flume::Sender<Vec<FE::Item>>, capnum: usize) {
+fn spawn_me<FE: FuzzySearcher>(resulter: FE, sender: flume::Sender<Vec<FE::Item>>, capnum: usize) {
     let mut inner = Vec::with_capacity(capnum);
 
     resulter.for_each(|result| {
@@ -307,15 +402,11 @@ pub fn default_searcher(
     needle: impl Into<Box<str>>,
     sort_and_print: impl FnMut(&mut [MWP], usize),
 ) -> (Vec<MWP>, usize) {
-    with_fzy_algo(
-        path,
-        needle,
-        1024_usize.next_power_of_two(),
-        false,
-        sort_and_print,
-    )
+    with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), sort_and_print)
 }
 
+/// A function to use default fuzzy-search algorithm.
+///
 /// `max_line_len` sets maximum number of bytes for any line.
 ///
 /// If the line exceeds that number, it is not checked for match at all.
@@ -335,22 +426,12 @@ pub fn default_searcher(
 /// 4. Some very rare other reasons.
 ///
 /// And in any of those cases there's probably no point in fuzzing such line.
-///
-///
-/// If `force_utf8` is `false`, fast ASCII search will be used,
-/// unless needle includes non-ASCII chars.
-///
-/// If it is `true`, any line matched will be converted to
-/// `str` with [`String::from_utf8_lossy`].
-///
-/// [`String::from_utf8_lossy`]: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
 #[inline]
 pub fn with_fzy_algo(
     path: impl AsRef<Path>,
 
     needle: impl Into<Box<str>>,
     max_line_len: usize,
-    force_utf8: bool,
 
     sort_and_print: impl FnMut(&mut [MWP], usize),
 ) -> (Vec<MWP>, usize) {
@@ -373,12 +454,12 @@ pub fn with_fzy_algo(
 
     let dir_iter = ignore::Walk::new(path);
 
-    match (force_utf8, needle.is_ascii()) {
+    if needle.is_ascii() {
         // ascii
-        (false, true) => FzyAscii::setter(dir_iter, needle, r, sort_and_print),
-
+        FzyAscii::setter(dir_iter, (needle, max_line_len), r, sort_and_print)
+    } else {
         // utf8
-        (true, _) | (_, false) => FzyUtf8::setter(dir_iter, needle, r, sort_and_print),
+        FzyUtf8::setter(dir_iter, (needle, max_line_len), r, sort_and_print)
     }
 }
 
@@ -442,7 +523,7 @@ mod tests {
         };
         println!(
             "{:?}",
-            with_fzy_algo(current_dir, needle, 1024, true, sort_and_print)
+            with_fzy_algo(current_dir, needle, 1024, sort_and_print)
         );
     }
 }

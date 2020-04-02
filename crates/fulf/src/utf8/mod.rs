@@ -1,8 +1,5 @@
 //! Working with utf8-encoded strings.
 
-pub mod matcher;
-pub use matcher::{matcher, NeedleUTF8};
-
 use crate::scoring_utils::*;
 
 #[inline]

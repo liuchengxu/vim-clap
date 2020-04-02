@@ -5,7 +5,7 @@
 mod fileworks;
 mod scoring_utils;
 
-pub mod ascii;
+mod ascii;
 pub mod utf8;
 
 mod interface;
