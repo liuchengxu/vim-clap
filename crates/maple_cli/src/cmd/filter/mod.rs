@@ -71,7 +71,7 @@ pub fn blines(
     number: Option<usize>,
     winwidth: Option<usize>,
 ) -> Result<()> {
-    run(
+    crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
         query,
         Source::List(
             std::fs::read_to_string(&input)?

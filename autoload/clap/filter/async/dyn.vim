@@ -122,6 +122,12 @@ function! s:job_stop() abort
   endif
 endfunction
 
+function! clap#filter#async#dyn#start_directly(maple_cmd) abort
+  call s:job_stop()
+  let s:last_query = g:clap.input.get()
+  call s:start_dyn_filter_job(a:maple_cmd)
+endfunction
+
 function! clap#filter#async#dyn#start(cmd) abort
   call s:job_stop()
 

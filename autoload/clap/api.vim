@@ -422,9 +422,6 @@ function! s:init_provider() abort
   " external filter, use cat instead.
   function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
     if clap#filter#async#external#using_maple()
-      if g:clap.provider.id ==# 'blines'
-        return printf('%s %s', a:ext_filter_cmd, a:input_file)
-      endif
       let cmd = printf('%s --input %s', a:ext_filter_cmd, a:input_file)
     else
       let cmd = printf('%s %s | %s', s:cat_or_type, a:input_file, a:ext_filter_cmd)
@@ -448,15 +445,6 @@ function! s:init_provider() abort
   " Return the cached source tmp file,
   " otherwise write the source list into a temp file and then return it.
   function! s:into_source_tmp_file(source_list) abort
-    if g:clap.provider.id ==# 'blines'
-      let tmp = expand('#'.g:clap.start.bufnr.':p')
-      " We do not delete the temp file manually, but rely on the auto deletion of system,
-      " so it's safe to use the origin buffer as temp file directly, otherwise
-      " we should ensure it won't get deleted by mistake later.
-      let g:clap.provider.source_tempfile = tmp
-      return tmp
-    endif
-
     if has_key(g:clap.provider, 'source_tempfile')
       let tmp = g:clap.provider.source_tempfile
       return tmp
@@ -480,19 +468,16 @@ function! s:init_provider() abort
 
       let Source = self._().source
 
-      " FIXME: optimize for blines provider.
-      " if a buffer has 1 million lines, writing a tmp file costs too much,
-      " and it's unneccessary.
-
       if self.source_type == g:__t_string
         return s:wrap_async_cmd(Source)
       elseif self.source_type == g:__t_func_string
         return s:wrap_async_cmd(Source())
       elseif self.source_type == g:__t_list
         let lines = copy(Source)
-      elseif self.id ==# 'blines'
+      " This optimization has been moved to on_typed_async_impl()
+      " elseif self.id ==# 'blines'
         " Do not call Source() but use the raw content for blines when it's huge.
-        let lines = []
+        " let lines = []
       elseif self.source_type == g:__t_func_list
         let lines = copy(Source())
       endif
@@ -502,8 +487,6 @@ function! s:init_provider() abort
       let tmp = s:into_source_tmp_file(lines)
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
 
-      " TODO: could be faster using rg directly?
-      " let cmd = printf('rg %s %s', g:clap.input.get(), tmp)
       return cmd
     endif
   endfunction
