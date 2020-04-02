@@ -38,11 +38,11 @@ function! clap#api#has_externalfilter() abort
 endfunction
 
 function! s:_system(cmd) abort
-  let lines = system(a:cmd)
+  let lines = systemlist(a:cmd)
   if v:shell_error
     return ['Fail to call system('.a:cmd.')']
   endif
-  return split(lines, "\n")
+  return lines
 endfunction
 
 if s:is_nvim
