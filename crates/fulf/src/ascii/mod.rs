@@ -2,7 +2,7 @@
 //!
 //! Cheating!
 
-pub mod matcher;
+mod matcher;
 pub use matcher::{ascii_from_bytes, matcher};
 
 use crate::scoring_utils::*;

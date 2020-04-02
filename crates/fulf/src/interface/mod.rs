@@ -134,7 +134,7 @@ pub trait FuzzySearcher: Sized {
 
         mut sort_and_print: impl FnMut(&mut [Self::Item], usize),
     ) -> (Vec<Self::Item>, usize) {
-        let (sx, rx) = flume::bounded(256);
+        let (sx, rx) = flume::bounded(100);
         let mut threads = Vec::with_capacity(10);
 
         files_chunks.for_each(|files| {
