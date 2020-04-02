@@ -123,25 +123,28 @@ function! s:job_stop() abort
 endfunction
 
 function! clap#filter#async#dyn#start_directly(maple_cmd) abort
-  call s:job_stop()
+  " call s:job_stop()
   let s:last_query = g:clap.input.get()
-  call s:start_dyn_filter_job(a:maple_cmd)
+  " call s:start_dyn_filter_job(a:maple_cmd)
+  call clap#job#stdio#start_service(function('s:handle_message'), a:maple_cmd)
 endfunction
 
 function! clap#filter#async#dyn#start(cmd) abort
-  call s:job_stop()
+  " call s:job_stop()
 
   let s:last_query = g:clap.input.get()
 
-  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
-        \ g:clap_enable_icon ? '--enable-icon' : '',
-        \ winwidth(g:clap.display.winid),
-        \ g:clap.input.get(),
-        \ a:cmd,
-        \ clap#rooter#working_dir(),
-        \ )
+  call clap#job#stdio#start_dyn_filter_service(function('s:handle_message'), a:cmd)
 
-  call s:start_dyn_filter_job(clap#maple#build_cmd(filter_cmd))
+  " let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
+        " \ g:clap_enable_icon ? '--enable-icon' : '',
+        " \ winwidth(g:clap.display.winid),
+        " \ g:clap.input.get(),
+        " \ a:cmd,
+        " \ clap#rooter#working_dir(),
+        " \ )
+
+  " call s:start_dyn_filter_job(clap#maple#build_cmd(filter_cmd))
 endfunction
 
 let &cpoptions = s:save_cpo
