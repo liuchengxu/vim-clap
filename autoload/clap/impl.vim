@@ -104,19 +104,18 @@ function! s:on_typed_async_impl() abort
     return
   endif
 
-  if g:clap.provider.source_type == g:__t_string
-    call clap#filter#async#dyn#start(g:clap.provider._().source)
-    return
-  elseif g:clap.provider.source_type == g:__t_func_string
-    call clap#filter#async#dyn#start(g:clap.provider._().source())
-    return
-  endif
-
-  let cmd = g:clap.provider.source_async_or_default()
-
   if clap#filter#async#external#using_maple()
+    if g:clap.provider.source_type == g:__t_string
+      call clap#filter#async#dyn#start(g:clap.provider._().source)
+      return
+    elseif g:clap.provider.source_type == g:__t_func_string
+      call clap#filter#async#dyn#start(g:clap.provider._().source())
+      return
+    endif
+    let cmd = g:clap.provider.source_async_or_default()
     call clap#rooter#run(function('clap#maple#job_start'), cmd)
   else
+    let cmd = g:clap.provider.source_async_or_default()
     call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
   endif
 
@@ -127,6 +126,7 @@ endfunction
 function! s:detect_should_switch_to_async() abort
   " Optimze for blines provider.
   if g:clap.provider.id ==# 'blines'
+        \ && g:clap.display.initial_size > 100000
     return v:true
   endif
 
