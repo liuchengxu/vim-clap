@@ -96,12 +96,19 @@ function! s:on_typed_async_impl() abort
   " Do not clear the outdated content as it would cause the annoying flicker.
   " call g:clap.display.clear()
 
-  let cmd = g:clap.provider.source_async_or_default()
-
-  if clap#filter#async#external#using_maple()
-    call clap#rooter#run(function('clap#maple#job_start'), cmd)
+  if g:clap.provider.id ==# 'blines'
+    let source_file = expand('#'.g:clap.start.bufnr.':p')
+    let blines_cmd = clap#maple#blines_subcommand(g:clap.input.get())
+    let maple_cmd = printf('%s %s', blines_cmd, source_file)
+    call clap#rooter#run(function('clap#maple#job_start'), maple_cmd)
   else
-    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+    let cmd = g:clap.provider.source_async_or_default()
+
+    if clap#filter#async#external#using_maple()
+      call clap#rooter#run(function('clap#maple#job_start'), cmd)
+    else
+      call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+    endif
   endif
 
   call clap#spinner#set_busy()
@@ -111,7 +118,6 @@ endfunction
 function! s:detect_should_switch_to_async() abort
   " Optimze for blines provider.
   if g:clap.provider.id ==# 'blines'
-        \ && g:clap.display.initial_size > 100000
     return v:true
   endif
 
