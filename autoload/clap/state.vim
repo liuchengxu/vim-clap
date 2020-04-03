@@ -19,7 +19,7 @@ function! clap#state#refresh_matches_count(cnt_str) abort
 endfunction
 
 function! clap#state#refresh_matches_count_on_forerunner_done() abort
-  call clap#indicator#set_matches('['..s:current_matches..'/'..g:clap.display.initial_size..']')
+  call clap#indicator#set_matches(printf('[%s/%s]', s:current_matches, g:clap.display.initial_size))
 endfunction
 
 function! clap#state#handle_message(msg) abort
