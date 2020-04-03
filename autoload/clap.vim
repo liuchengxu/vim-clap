@@ -186,6 +186,7 @@ function! clap#_exit() abort
 
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
+        \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_lines_truncated_map',
         \ ])
@@ -285,7 +286,6 @@ endfunction
 
 function! s:clear_state() abort
   call s:unlet_vars([
-        \ 'g:__clap_provider_cwd',
         \ 'g:__clap_raw_source',
         \ 'g:__clap_initial_source_size',
         \ ])
