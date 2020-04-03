@@ -1,5 +1,6 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Maple RPC service.
+" Description: Manage a stdio-based service using job feature.
+" There is at most one service per Vim/NeoVim session.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -57,20 +58,24 @@ if has('nvim')
       if a:event ==# 'stdout'
         call s:handle_stdout(a:data)
       elseif a:event ==# 'stderr'
+        if a:data == ['']
+          return
+        endif
         call clap#helper#echo_error('on_event:'.string(a:data))
       endif
     endif
   endfunction
 
-  function! s:start_rpc() abort
-    let s:job_id = jobstart(s:rpc_cmd, {
+  function! s:start_service_job(cmd) abort
+    call clap#job#stdio#stop_service()
+    let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ })
   endfunction
 
-  function! clap#rpc#send_message(msg) abort
+  function! clap#job#stdio#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
 
@@ -78,7 +83,6 @@ else
 
   function! s:out_cb(channel, message) abort
     if s:job_id > 0 && a:channel == s:job_channel
-      " call clap#provider#filer#handle_stdout(a:message)
       if a:message =~# '^Content-length:' || a:message ==# ''
         return
       endif
@@ -96,8 +100,9 @@ else
     endif
   endfunction
 
-  function! s:start_rpc() abort
-    let s:job = job_start(clap#job#wrap_cmd(s:rpc_cmd), {
+  function! s:start_service_job(cmd) abort
+    call clap#job#stdio#stop_service()
+    let s:job = job_start(clap#job#wrap_cmd(a:cmd), {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
           \ 'noblock': 1,
@@ -106,23 +111,42 @@ else
     let s:job_id = clap#job#get_vim8_job_id(s:job)
   endfunction
 
-  function! clap#rpc#send_message(msg) abort
+  function! clap#job#stdio#send_message(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
   endfunction
 endif
 
-function! clap#rpc#stop() abort
+function! clap#job#stdio#stop_service() abort
   if s:job_id > 0
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif
 endfunction
 
-function! clap#rpc#start(MessageHandler) abort
-  call clap#rpc#stop()
+function! clap#job#stdio#start_service(MessageHandler, maple_cmd) abort
   let s:MessageHandler = a:MessageHandler
-  let s:rpc_cmd = clap#maple#build_cmd('rpc')
-  call s:start_rpc()
+  call s:start_service_job(a:maple_cmd)
+  return
+endfunction
+
+function! clap#job#stdio#start_rpc_service(MessageHandler) abort
+  let s:MessageHandler = a:MessageHandler
+  call s:start_service_job(clap#maple#build_cmd('rpc'))
+  return
+endfunction
+
+function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
+  let s:MessageHandler = a:MessageHandler
+
+  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
+        \ g:clap_enable_icon ? '--enable-icon' : '',
+        \ winwidth(g:clap.display.winid),
+        \ g:clap.input.get(),
+        \ a:cmd,
+        \ clap#rooter#working_dir(),
+        \ )
+
+  call s:start_service_job(clap#maple#build_cmd(filter_cmd))
   return
 endfunction
 

@@ -13,7 +13,7 @@ if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
   function! s:help_tags_source() abort
     let tmp = tempname()
     call writefile([join(s:get_doc_tags(), ','), &runtimepath], tmp)
-    return clap#maple#inject_bin('helptags '.tmp)
+    return clap#maple#build_cmd('helptags '.tmp)
   endfunction
 
   function! s:help_tags_sink(line) abort
