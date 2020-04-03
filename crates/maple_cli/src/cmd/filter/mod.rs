@@ -1,5 +1,7 @@
 pub mod dynamic;
 
+pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
+
 use std::collections::HashMap;
 use std::path::Path;
 

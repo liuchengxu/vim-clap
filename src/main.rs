@@ -57,7 +57,7 @@ fn run(maple: Maple) -> Result<()> {
                     maple.winwidth,
                 )?;
             } else {
-                maple_cli::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
+                maple_cli::cmd::filter::dyn_run(
                     &query,
                     source,
                     algo,
