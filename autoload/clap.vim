@@ -184,7 +184,6 @@ function! clap#_exit() abort
         \ 'should_switch_to_async',
         \ ])
 
-        " \ 'g:__clap_provider_cwd',
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_forerunner_result',
