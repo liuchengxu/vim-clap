@@ -8,6 +8,7 @@ set cpoptions&vim
 " may run into some erratic read-only error.
 function! clap#state#refresh_matches_count(cnt_str) abort
   let l:matches_cnt = a:cnt_str
+  let s:current_matches = a:cnt_str
 
   if get(g:clap.display, 'initial_size', -1) > 0
     let l:matches_cnt .= '/'.g:clap.display.initial_size
@@ -15,6 +16,10 @@ function! clap#state#refresh_matches_count(cnt_str) abort
 
   call clap#indicator#set_matches('['.l:matches_cnt.']')
   call clap#sign#reset_to_first_line()
+endfunction
+
+function! clap#state#refresh_matches_count_on_forerunner_done() abort
+  call clap#indicator#set_matches('['..s:current_matches..'/'..g:clap.display.initial_size..']')
 endfunction
 
 function! clap#state#handle_message(msg) abort
