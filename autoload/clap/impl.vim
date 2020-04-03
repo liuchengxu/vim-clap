@@ -105,6 +105,10 @@ function! s:on_typed_async_impl() abort
   endif
 
   if clap#filter#async#external#using_maple()
+    if exists('g:__clap_forerunner_tempfile')
+      call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+      return
+    endif
     if g:clap.provider.source_type == g:__t_string
       call clap#filter#async#dyn#start(g:clap.provider._().source)
       return
