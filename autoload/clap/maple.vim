@@ -201,14 +201,15 @@ function! clap#maple#forerunner_exec_subcommand(cmd) abort
   return printf('%s %s %s', s:maple_bin, global_opt, subcommand)
 endfunction
 
-function! clap#maple#filter_subcommand(query) abort
+" Returns the filtered results after the input stream is complete.
+function! clap#maple#sync_filter_subcommand(query) abort
   let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
     let global_opt .= ' --enable-icon'
   endif
 
-  let cmd = printf('%s %s filter "%s"', s:maple_bin, global_opt, a:query)
+  let cmd = printf('%s %s filter "%s" --sync', s:maple_bin, global_opt, a:query)
 
   return cmd
 endfunction

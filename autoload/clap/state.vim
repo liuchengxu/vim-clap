@@ -48,5 +48,25 @@ function! clap#state#handle_message(msg) abort
   endif
 endfunction
 
+" Returns the cached source tmp file.
+"
+" Write the providers whose `source` is list-style into a tempfile.
+function! clap#state#into_tempfile(source_list) abort
+  if has_key(g:clap.provider, 'source_tempfile')
+    let tmp = g:clap.provider.source_tempfile
+    return tmp
+  else
+    let tmp = tempname()
+    if writefile(a:source_list, tmp) == 0
+      call add(g:clap.tmps, tmp)
+      let g:clap.provider.source_tempfile = tmp
+      return tmp
+    else
+      call g:clap.abort('Fail to write source to a temp file')
+      return ''
+    endif
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

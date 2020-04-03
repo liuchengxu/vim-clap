@@ -442,25 +442,6 @@ function! s:init_provider() abort
     return cmd
   endfunction
 
-  " Return the cached source tmp file,
-  " otherwise write the source list into a temp file and then return it.
-  function! s:into_source_tmp_file(source_list) abort
-    if has_key(g:clap.provider, 'source_tempfile')
-      let tmp = g:clap.provider.source_tempfile
-      return tmp
-    else
-      let tmp = tempname()
-      if writefile(a:source_list, tmp) == 0
-        call add(g:clap.tmps, tmp)
-        let g:clap.provider.source_tempfile = tmp
-        return tmp
-      else
-        call g:clap.abort('Fail to write source to a temp file')
-        return ''
-      endif
-    endif
-  endfunction
-
   function! provider.source_async_or_default() abort
     if has_key(self._(), 'source_async')
       return self._().source_async()
@@ -472,7 +453,9 @@ function! s:init_provider() abort
         return s:wrap_async_cmd(Source)
       elseif self.source_type == g:__t_func_string
         return s:wrap_async_cmd(Source())
-      elseif self.source_type == g:__t_list
+      endif
+
+      if self.source_type == g:__t_list
         let lines = copy(Source)
       " This optimization has been moved to on_typed_async_impl()
       " elseif self.id ==# 'blines'
@@ -484,7 +467,7 @@ function! s:init_provider() abort
 
       let ext_filter_cmd = clap#filter#async#external#get_cmd_or_default()
 
-      let tmp = s:into_source_tmp_file(lines)
+      let tmp = clap#state#into_tempfile(lines)
       let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
 
       return cmd
