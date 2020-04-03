@@ -183,9 +183,3 @@ fn test_trim_trailing() {
     assert_eq!(empty_iconized_line.len(), 4);
     assert!(empty_iconized_line.chars().next().unwrap() == DEFAULT_ICON);
 }
-
-#[test]
-fn test_cache_dir() {
-    println!("{:?}", std::env::temp_dir());
-    // File::create(&tempfile)?.write_all(cmd_stdout)?;
-}
