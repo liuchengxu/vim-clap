@@ -314,6 +314,9 @@ function! clap#for(provider_id_or_alias) abort
     return
   endif
 
+  call s:clear_state()
+
+  " g:__clap_provider_cwd can be set during this process, so this needs to be executed after s:clear_state()
   if has_key(g:clap.provider._(), 'source')
     if has_key(g:clap.provider._(), 'source_type')
       let g:clap.provider.source_type = g:clap.provider._().source_type
@@ -322,8 +325,6 @@ function! clap#for(provider_id_or_alias) abort
       let g:clap.registrar[provider_id]['source_type'] = g:clap.provider.source_type
     endif
   endif
-
-  call s:clear_state()
 
   call clap#handler#init()
 
