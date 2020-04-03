@@ -80,7 +80,13 @@ function! clap#filter#async#external#get_cmd_or_default() abort
 endfunction
 
 function! clap#filter#async#external#using_maple() abort
-  return s:cur_ext_filter ==# 'maple'
+  if has_key(g:clap.context, 'externalfilter')
+    return g:clap.context.externalfilter ==# 'maple'
+  elseif has_key(g:clap.context, 'ef')
+    return g:clap.context.ef ==# 'maple'
+  else
+    return s:default_ext_filter ==# 'maple'
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

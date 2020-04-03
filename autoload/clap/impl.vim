@@ -118,6 +118,7 @@ endfunction
 function! s:detect_should_switch_to_async() abort
   " Optimze for blines provider.
   if g:clap.provider.id ==# 'blines'
+        \ && g:clap.display.initial_size > 100000
     return v:true
   endif
 

@@ -96,7 +96,7 @@ function! s:send_message() abort
         \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
         \ 'id': s:last_request_id
         \ })
-  call clap#rpc#send_message(msg)
+  call clap#job#stdio#send_message(msg)
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -258,7 +258,7 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   let s:enable_icon = g:clap_enable_icon ? v:true : v:false
   call s:set_prompt()
-  call clap#rpc#start(function('s:handle_round_message'))
+  call clap#job#stdio#start_rpc_service(function('s:handle_round_message'))
   call s:send_message()
 endfunction
 

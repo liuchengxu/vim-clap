@@ -182,10 +182,6 @@ function! clap#maple#get_enable_icon_opt() abort
   endif
 endfunction
 
-function! clap#maple#inject_bin(cmd) abort
-  return printf('%s %s', s:maple_bin, a:cmd)
-endfunction
-
 function! clap#maple#forerunner_exec_subcommand(cmd) abort
   " No global --number option.
   let global_opt = clap#maple#get_enable_icon_opt()

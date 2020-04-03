@@ -136,14 +136,6 @@ function! s:detect_source_type() abort
 endfunction
 
 function! clap#_init() abort
-  if has_key(g:clap.provider._(), 'source')
-    if has_key(g:clap.provider._(), 'source_type')
-      let g:clap.provider.source_type = g:clap.provider._().source_type
-    else
-      let g:clap.provider.source_type = s:detect_source_type()
-    endif
-  endif
-
   call clap#spinner#init()
 
   call g:clap.provider.init_display_win()
@@ -320,6 +312,15 @@ function! clap#for(provider_id_or_alias) abort
   if !has_key(g:clap.registrar, provider_id)
         \ && !s:try_register_is_ok(provider_id)
     return
+  endif
+
+  if has_key(g:clap.provider._(), 'source')
+    if has_key(g:clap.provider._(), 'source_type')
+      let g:clap.provider.source_type = g:clap.provider._().source_type
+    else
+      let g:clap.provider.source_type = s:detect_source_type()
+      let g:clap.registrar[provider_id]['source_type'] = g:clap.provider.source_type
+    endif
   endif
 
   call s:clear_state()
