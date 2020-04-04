@@ -106,7 +106,6 @@ function! s:on_typed_async_impl() abort
 
   if clap#filter#async#external#using_maple()
     if exists('g:__clap_forerunner_tempfile')
-      unsilent echom 'impl from tempfile'
       call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
       return
     endif
