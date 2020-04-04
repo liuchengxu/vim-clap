@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Improved
+
+- [perf]Try using the cached file when rerunning the same command under the same directory.
+
 ## [0.10] 2020-04-04
 
 ### Added
