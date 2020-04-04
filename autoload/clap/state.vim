@@ -7,6 +7,11 @@ set cpoptions&vim
 " NOTE: some local variable without explicit l:, e.g., count,
 " may run into some erratic read-only error.
 function! clap#state#refresh_matches_count(cnt_str) abort
+  call clap#state#refresh_bare_matches_count(a:cnt_str)
+  call clap#sign#reset_to_first_line()
+endfunction
+
+function! clap#state#refresh_bare_matches_count(cnt_str) abort
   let l:matches_cnt = a:cnt_str
   let s:current_matches = a:cnt_str
 
@@ -15,7 +20,6 @@ function! clap#state#refresh_matches_count(cnt_str) abort
   endif
 
   call clap#indicator#set_matches('['.l:matches_cnt.']')
-  call clap#sign#reset_to_first_line()
 endfunction
 
 function! clap#state#refresh_matches_count_on_forerunner_done() abort
@@ -28,7 +32,7 @@ function! clap#state#handle_message(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'total')
-    call clap#state#refresh_matches_count(string(decoded.total))
+    call clap#state#refresh_bare_matches_count(string(decoded.total))
   endif
 
   if has_key(decoded, 'lines')
