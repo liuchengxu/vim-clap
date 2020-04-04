@@ -100,15 +100,27 @@ function! s:on_typed_async_impl() abort
     let source_file = expand('#'.g:clap.start.bufnr.':p')
     let blines_cmd = clap#maple#blines_subcommand(g:clap.input.get())
     let maple_cmd = printf('%s %s', blines_cmd, source_file)
-    call clap#rooter#run(function('clap#maple#job_start'), maple_cmd)
+    call clap#filter#async#dyn#start_directly(maple_cmd)
+    return
+  endif
+
+  if clap#filter#async#external#using_maple()
+    if exists('g:__clap_forerunner_tempfile')
+      call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+      return
+    endif
+    if g:clap.provider.source_type == g:__t_string
+      call clap#filter#async#dyn#start(g:clap.provider._().source)
+      return
+    elseif g:clap.provider.source_type == g:__t_func_string
+      call clap#filter#async#dyn#start(g:clap.provider._().source())
+      return
+    endif
+    let cmd = g:clap.provider.source_async_or_default()
+    call clap#rooter#run(function('clap#maple#job_start'), cmd)
   else
     let cmd = g:clap.provider.source_async_or_default()
-
-    if clap#filter#async#external#using_maple()
-      call clap#rooter#run(function('clap#maple#job_start'), cmd)
-    else
-      call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
-    endif
+    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
   endif
 
   call clap#spinner#set_busy()
@@ -173,10 +185,12 @@ function! clap#impl#on_typed() abort
     call s:on_typed_async_impl()
     return
   endif
+
   if exists('g:__clap_forerunner_result')
     call s:on_typed_sync_impl()
     return
   endif
+
   if g:clap.provider.can_async() &&
         \ (get(g:clap.context, 'async') is v:true || s:should_switch_to_async())
     call s:on_typed_async_impl()

@@ -26,6 +26,18 @@ pub enum Cmd {
         #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
         algo: Option<Algo>,
 
+        /// Shell command to produce the whole dataset that query is applied on.
+        #[structopt(short, long)]
+        cmd: Option<String>,
+
+        /// Working directory of shell command.
+        #[structopt(short, long)]
+        cmd_dir: Option<String>,
+
+        /// Synchronous filtering, returns after the input stream is complete.
+        #[structopt(short, long)]
+        sync: bool,
+
         /// Read input from a file instead of stdin, only absolute file path is supported.
         #[structopt(long = "input", parse(from_os_str))]
         input: Option<PathBuf>,

@@ -1,3 +1,7 @@
+pub mod dynamic;
+
+pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -69,7 +73,7 @@ pub fn blines(
     number: Option<usize>,
     winwidth: Option<usize>,
 ) -> Result<()> {
-    run(
+    crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
         query,
         Source::List(
             std::fs::read_to_string(&input)?

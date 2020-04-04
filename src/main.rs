@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    Result, Source, StructOpt,
+    subprocess, Result, Source, StructOpt,
 };
 
 pub mod built_info {
@@ -28,18 +28,44 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::RPC => {
             maple_cli::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
         }
-        Cmd::Filter { query, input, algo } => {
-            let source = input
-                .map(Into::into)
-                .unwrap_or(Source::<std::iter::Empty<_>>::Stdin);
-            maple_cli::cmd::filter::run(
-                &query,
-                source,
-                algo,
-                maple.number,
-                maple.enable_icon,
-                maple.winwidth,
-            )?;
+        Cmd::Filter {
+            query,
+            input,
+            algo,
+            cmd,
+            cmd_dir,
+            sync,
+        } => {
+            let source = if let Some(cmd_str) = cmd {
+                if let Some(dir) = cmd_dir {
+                    subprocess::Exec::shell(cmd_str).cwd(dir).into()
+                } else {
+                    subprocess::Exec::shell(cmd_str).into()
+                }
+            } else {
+                input
+                    .map(Into::into)
+                    .unwrap_or(Source::<std::iter::Empty<_>>::Stdin)
+            };
+            if sync {
+                maple_cli::cmd::filter::run(
+                    &query,
+                    source,
+                    algo,
+                    maple.number,
+                    maple.enable_icon,
+                    maple.winwidth,
+                )?;
+            } else {
+                maple_cli::cmd::filter::dyn_run(
+                    &query,
+                    source,
+                    algo,
+                    maple.number,
+                    maple.enable_icon,
+                    maple.winwidth,
+                )?;
+            }
         }
         Cmd::Blines { query, input } => {
             maple_cli::cmd::filter::blines(&query, &input, maple.number, maple.winwidth)?;
