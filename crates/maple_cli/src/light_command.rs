@@ -10,6 +10,7 @@ use anyhow::Result;
 use icon::{prepend_grep_icon, prepend_icon};
 
 use crate::error::DummyError;
+use crate::utils::read_first_lines;
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -192,7 +193,21 @@ impl<'a> LightCommand<'a> {
                         let info = path_str.split('_').collect::<Vec<_>>();
                         if info.len() == 2 {
                             let total = info[1].parse::<u64>().unwrap();
-                            println_json!(total, tempfile);
+                            let using_cache = true;
+                            if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                                let lines = if self.grep_enable_icon {
+                                    lines_iter
+                                        .map(|x| prepend_grep_icon(&x))
+                                        .collect::<Vec<_>>()
+                                } else if self.enable_icon {
+                                    lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
+                                } else {
+                                    lines_iter.collect::<Vec<_>>()
+                                };
+                                println_json!(total, lines, tempfile, using_cache);
+                            } else {
+                                println_json!(total, tempfile, using_cache);
+                            }
                             // TODO: refresh the cache periodly?
                             return Ok(());
                         }
@@ -273,4 +288,23 @@ fn test_tmp_dir() {
         println!("does not exist, crate dir");
         std::fs::create_dir_all(&dir).unwrap();
     }
+}
+
+#[test]
+fn test_lines() {
+    use std::io::BufRead;
+    let file: PathBuf = "/Users/xuliucheng/.spacevim".into();
+    let file = File::open(&file).unwrap();
+
+    // io::stdin().lock().lines().filter_map(|lines_iter| {
+    // lines_iter.ok().and_then(|line| {
+    // scorer(&line).map(|(score, indices)| (line, score, indices))
+    // })
+    // }),
+    let lines = std::io::BufReader::new(file)
+        .lines()
+        .filter_map(|i| i.ok())
+        .take(10)
+        .collect::<Vec<_>>();
+    println!("lines: {:?}", lines);
 }

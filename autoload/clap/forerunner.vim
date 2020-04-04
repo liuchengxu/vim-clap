@@ -46,12 +46,18 @@ function! s:on_complete_maple() abort
     let decoded = json_decode(s:chunks[0])
 
     " Using the cached file
-    if keys(decoded) == ['tempfile', 'total']
+    if has_key(decoded, 'using_cache')
       let g:__clap_forerunner_tempfile = decoded.tempfile
       let g:clap.display.initial_size = decoded.total
       call clap#state#refresh_matches_count_on_forerunner_done()
       let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
       call clap#spinner#refresh()
+      if has_key(decoded, 'lines')
+        let cur_lines = g:clap.display.get_lines()
+        if empty(cur_lines) || cur_lines == ['']
+          call g:clap.display.set_lines(decoded.lines)
+        endif
+      endif
       return
     endif
 
