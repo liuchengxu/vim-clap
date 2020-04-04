@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 new_tag=v0.10
-prev_tag=$(git tag | tail -n2 | head -n1)
+# If the latest tag is v0.10, returns v0.9
+prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1  --max-count=1)")
 changelog=$(./ci/get_changelog.sh "$new_tag" "$prev_tag")
 
 echo "Release $new_tag" > tmp_release_notes
