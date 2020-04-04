@@ -199,6 +199,21 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    fn prepend_icon_for_cached_lines(
+        &self,
+        lines_iter: impl Iterator<Item = String>,
+    ) -> Vec<String> {
+        if self.grep_enable_icon {
+            lines_iter
+                .map(|x| prepend_grep_icon(&x))
+                .collect::<Vec<_>>()
+        } else if self.enable_icon {
+            lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
+        } else {
+            lines_iter.collect::<Vec<_>>()
+        }
+    }
+
     /// Firstly try the cache given the command args and working dir.
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
@@ -210,15 +225,7 @@ impl<'a> LightCommand<'a> {
                     let total = info[1].parse::<u64>().unwrap();
                     let using_cache = true;
                     if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                        let lines = if self.grep_enable_icon {
-                            lines_iter
-                                .map(|x| prepend_grep_icon(&x))
-                                .collect::<Vec<_>>()
-                        } else if self.enable_icon {
-                            lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
-                        } else {
-                            lines_iter.collect::<Vec<_>>()
-                        };
+                        let lines = self.prepend_icon_for_cached_lines(lines_iter);
                         println_json!(total, lines, tempfile, using_cache);
                     } else {
                         println_json!(total, tempfile, using_cache);
