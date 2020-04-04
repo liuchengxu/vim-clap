@@ -45,6 +45,14 @@ function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
+    " Using the cached file
+    if keys(decoded) == ['tempfile', 'total']
+      let g:__clap_forerunner_tempfile = decoded.tempfile
+      let g:clap.display.initial_size = decoded.total
+      call clap#state#refresh_matches_count_on_forerunner_done()
+      return
+    endif
+
     call s:on_complete_common(decoded.lines, decoded.total)
 
     if has_key(decoded, 'tempfile')

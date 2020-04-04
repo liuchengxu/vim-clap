@@ -93,9 +93,9 @@ function! clap#state#clear_pre() abort
         \ ])
 
   if exists('g:__clap_forerunner_tempfile')
-    if filereadable(g:__clap_forerunner_tempfile)
-      call delete(g:__clap_forerunner_tempfile)
-    endif
+    " if filereadable(g:__clap_forerunner_tempfile)
+      " call delete(g:__clap_forerunner_tempfile)
+    " endif
     unlet g:__clap_forerunner_tempfile
   endif
 endfunction

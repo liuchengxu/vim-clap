@@ -30,7 +30,7 @@ pub fn run(
     number: Option<usize>,
     enable_icon: bool,
 ) -> Result<()> {
-    let mut exec_cmd = prepare_exec_cmd(&cmd, cmd_dir);
+    let mut exec_cmd = prepare_exec_cmd(&cmd, cmd_dir.clone());
 
     let mut light_cmd = LightCommand::new(
         &mut exec_cmd,
@@ -41,5 +41,11 @@ pub fn run(
         output_threshold,
     );
 
-    light_cmd.execute(&cmd.split_whitespace().map(Into::into).collect::<Vec<_>>())
+    let args = cmd.split_whitespace().map(Into::into).collect::<Vec<_>>();
+
+    if let Some(dir) = cmd_dir {
+        light_cmd.try_cache_or_execute(&args, dir)
+    } else {
+        light_cmd.execute(&args)
+    }
 }

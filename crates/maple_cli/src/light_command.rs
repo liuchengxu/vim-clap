@@ -1,4 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
@@ -20,6 +22,20 @@ fn trim_trailing(lines: &mut Vec<String>) {
     }
 }
 
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
+fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
+    let mut dir = std::env::temp_dir();
+    dir.push("clap_cache");
+    dir.push(args.join("_"));
+    dir.push(format!("{}", calculate_hash(&cmd_dir)));
+    dir
+}
+
 pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
     if let Some(cmd_dir) = cmd_dir {
         // If cmd_dir is not a directory, use its parent as current dir.
@@ -36,6 +52,7 @@ pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
 #[derive(Debug)]
 pub struct LightCommand<'a> {
     cmd: &'a mut Command,
+    cmd_dir: Option<PathBuf>,
     total: usize,
     number: Option<usize>,
     output: Option<String>,
@@ -55,6 +72,7 @@ impl<'a> LightCommand<'a> {
     ) -> Self {
         Self {
             cmd,
+            cmd_dir: None,
             number,
             total: 0usize,
             output,
@@ -67,6 +85,7 @@ impl<'a> LightCommand<'a> {
     pub fn new_grep(cmd: &'a mut Command, number: Option<usize>, grep_enable_icon: bool) -> Self {
         Self {
             cmd,
+            cmd_dir: None,
             number,
             total: 0usize,
             output: None,
@@ -121,12 +140,20 @@ impl<'a> LightCommand<'a> {
             Ok(output.into())
         } else {
             let mut dir = std::env::temp_dir();
+            dir.push("clap_cache");
+            dir.push(args.join("_"));
+            if let Some(mut cmd_dir) = self.cmd_dir.clone() {
+                dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
+            }
+            if !dir.exists() {
+                std::fs::create_dir_all(&dir)?;
+            }
             dir.push(format!(
                 "{}_{}",
-                args.join("_"),
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)?
-                    .as_secs()
+                    .as_secs(),
+                self.total
             ));
             Ok(dir)
         }
@@ -150,7 +177,35 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    /// Firstly try the cache given the command args and working dir.
+    /// If the cache exists, returns the cache file directly.
+    pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
+        let cache_dir = get_cache_dir(args, &cmd_dir);
+        if cache_dir.exists() {
+            if let Ok(mut entries) = std::fs::read_dir(cache_dir) {
+                // TODO: get latest modifed cache file?
+                if let Some(Ok(first_entry)) = entries.next() {
+                    let tempfile = first_entry.path();
+                    if let Some(path_str) = first_entry.file_name().to_str() {
+                        let info = path_str.split('_').collect::<Vec<_>>();
+                        if info.len() == 2 {
+                            let total = info[1].parse::<u64>().unwrap();
+                            println_json!(total, tempfile);
+                            // TODO: refresh the cache periodly?
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+
+        self.cmd_dir = Some(cmd_dir);
+
+        self.execute(args)
+    }
+
     pub fn execute(&mut self, args: &[&str]) -> Result<()> {
+        // TODO: reuse the cache
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
@@ -182,4 +237,38 @@ fn test_trim_trailing() {
 
     assert_eq!(empty_iconized_line.len(), 4);
     assert!(empty_iconized_line.chars().next().unwrap() == DEFAULT_ICON);
+}
+
+#[test]
+fn test_tmp_dir() {
+    let mut dir = std::env::temp_dir();
+    let args = ["fd", "--type", "f"];
+    dir.push("clap_cache");
+    dir.push(args.join("_"));
+    std::fs::create_dir_all(&dir).unwrap();
+
+    println!("dir:{:?}", dir);
+
+    let cmd_dir: PathBuf = "/Users/xuliucheng".into();
+    let hashed_cmd_dir = calculate_hash(&cmd_dir);
+
+    println!("hashed dir:{:?}", hashed_cmd_dir);
+
+    dir.push(format!("{}", hashed_cmd_dir));
+
+    if dir.exists() {
+        println!("exists");
+        if let Ok(mut entries) = std::fs::read_dir(dir) {
+            if let Some(Ok(first_entry)) = entries.next() {
+                println!("first_entry: {:?}", first_entry.file_name());
+            }
+            // let filenames = entries.map(|x| x.unwrap().file_name());
+            // for f in filenames {
+            // println!("entries: {:?}", f);
+            // }
+        }
+    } else {
+        println!("does not exist, crate dir");
+        std::fs::create_dir_all(&dir).unwrap();
+    }
 }
