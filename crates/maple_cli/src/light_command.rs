@@ -1,12 +1,12 @@
 use std::collections::hash_map::DefaultHasher;
-use std::fs::File;
+use std::fs::{DirEntry, File};
 use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::SystemTime;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use icon::{prepend_grep_icon, prepend_icon};
 
 use crate::error::DummyError;
@@ -35,6 +35,25 @@ fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
     dir.push(args.join("_"));
     dir.push(format!("{}", calculate_hash(&cmd_dir)));
     dir
+}
+
+/// Returns the cached entry given the cmd args and working dir.
+fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
+    let cache_dir = get_cache_dir(args, &cmd_dir);
+    if cache_dir.exists() {
+        let mut entries = std::fs::read_dir(cache_dir)?;
+
+        // TODO: get latest modifed cache file?
+        if let Some(Ok(first_entry)) = entries.next() {
+            return Ok(first_entry);
+        }
+    }
+
+    Err(anyhow!(
+        "Couldn't get the cached entry for {:?} {:?}",
+        args,
+        cmd_dir
+    ))
 }
 
 pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
@@ -183,35 +202,29 @@ impl<'a> LightCommand<'a> {
     /// Firstly try the cache given the command args and working dir.
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
-        let cache_dir = get_cache_dir(args, &cmd_dir);
-        if cache_dir.exists() {
-            if let Ok(mut entries) = std::fs::read_dir(cache_dir) {
-                // TODO: get latest modifed cache file?
-                if let Some(Ok(first_entry)) = entries.next() {
-                    let tempfile = first_entry.path();
-                    if let Some(path_str) = first_entry.file_name().to_str() {
-                        let info = path_str.split('_').collect::<Vec<_>>();
-                        if info.len() == 2 {
-                            let total = info[1].parse::<u64>().unwrap();
-                            let using_cache = true;
-                            if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                                let lines = if self.grep_enable_icon {
-                                    lines_iter
-                                        .map(|x| prepend_grep_icon(&x))
-                                        .collect::<Vec<_>>()
-                                } else if self.enable_icon {
-                                    lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
-                                } else {
-                                    lines_iter.collect::<Vec<_>>()
-                                };
-                                println_json!(total, lines, tempfile, using_cache);
-                            } else {
-                                println_json!(total, tempfile, using_cache);
-                            }
-                            // TODO: refresh the cache periodly?
-                            return Ok(());
-                        }
+        if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
+            let tempfile = cached_entry.path();
+            if let Some(path_str) = cached_entry.file_name().to_str() {
+                let info = path_str.split('_').collect::<Vec<_>>();
+                if info.len() == 2 {
+                    let total = info[1].parse::<u64>().unwrap();
+                    let using_cache = true;
+                    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                        let lines = if self.grep_enable_icon {
+                            lines_iter
+                                .map(|x| prepend_grep_icon(&x))
+                                .collect::<Vec<_>>()
+                        } else if self.enable_icon {
+                            lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
+                        } else {
+                            lines_iter.collect::<Vec<_>>()
+                        };
+                        println_json!(total, lines, tempfile, using_cache);
+                    } else {
+                        println_json!(total, tempfile, using_cache);
                     }
+                    // TODO: refresh the cache periodly?
+                    return Ok(());
                 }
             }
         }
