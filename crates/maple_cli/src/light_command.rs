@@ -144,6 +144,8 @@ impl<'a> LightCommand<'a> {
             dir.push(args.join("_"));
             if let Some(mut cmd_dir) = self.cmd_dir.clone() {
                 dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
+            } else {
+                dir.push("no_cmd_dir");
             }
             if !dir.exists() {
                 std::fs::create_dir_all(&dir)?;
