@@ -145,22 +145,6 @@ function! clap#_init() abort
   call g:clap.display.setbufvar('&filetype', '')
 endfunction
 
-function! s:unlet_vars(vars) abort
-  for var in a:vars
-    if exists(var)
-      execute 'unlet' var
-    endif
-  endfor
-endfunction
-
-function! s:remove_provider_tmp_vars(vars) abort
-  for var in a:vars
-    if has_key(g:clap.provider, var)
-      call remove(g:clap.provider, var)
-    endif
-  endfor
-endfunction
-
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
@@ -178,19 +162,9 @@ function! clap#_exit() abort
   call g:clap.input.clear()
   call g:clap.display.clear()
 
-  call s:remove_provider_tmp_vars([
-        \ 'args',
-        \ 'source_tempfile',
-        \ 'should_switch_to_async',
-        \ ])
-
-  call s:unlet_vars([
-        \ 'g:__clap_fuzzy_matched_indices',
-        \ 'g:__clap_forerunner_result',
-        \ 'g:__clap_lines_truncated_map',
-        \ ])
-
   call clap#sign#reset()
+
+  call clap#state#clear_post()
 
   call map(g:clap.tmps, 'delete(v:val)')
   let g:clap.tmps = []
@@ -283,21 +257,6 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
-function! s:clear_state() abort
-  call s:unlet_vars([
-        \ 'g:__clap_raw_source',
-        \ 'g:__clap_provider_cwd',
-        \ 'g:__clap_initial_source_size',
-        \ ])
-
-  if exists('g:__clap_forerunner_tempfile')
-    if filereadable(g:__clap_forerunner_tempfile)
-      call delete(g:__clap_forerunner_tempfile)
-    endif
-    unlet g:__clap_forerunner_tempfile
-  endif
-endfunction
-
 function! clap#for(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
@@ -314,7 +273,7 @@ function! clap#for(provider_id_or_alias) abort
     return
   endif
 
-  call s:clear_state()
+  call clap#state#clear_pre()
 
   " g:__clap_provider_cwd can be set during this process, so this needs to be executed after s:clear_state()
   if has_key(g:clap.provider._(), 'source')

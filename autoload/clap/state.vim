@@ -68,5 +68,52 @@ function! clap#state#into_tempfile(source_list) abort
   endif
 endfunction
 
+function! s:unlet_vars(vars) abort
+  for var in a:vars
+    if exists(var)
+      execute 'unlet' var
+    endif
+  endfor
+endfunction
+
+function! s:remove_provider_tmp_vars(vars) abort
+  for var in a:vars
+    if has_key(g:clap.provider, var)
+      call remove(g:clap.provider, var)
+    endif
+  endfor
+endfunction
+
+" Clear the previous temp state when invoking a new provider.
+function! clap#state#clear_pre() abort
+  call s:unlet_vars([
+        \ 'g:__clap_raw_source',
+        \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_initial_source_size',
+        \ ])
+
+  if exists('g:__clap_forerunner_tempfile')
+    if filereadable(g:__clap_forerunner_tempfile)
+      call delete(g:__clap_forerunner_tempfile)
+    endif
+    unlet g:__clap_forerunner_tempfile
+  endif
+endfunction
+
+" Clear temp state on clap#_exit()
+function! clap#state#clear_post() abort
+  call s:remove_provider_tmp_vars([
+        \ 'args',
+        \ 'source_tempfile',
+        \ 'should_switch_to_async',
+        \ ])
+
+  call s:unlet_vars([
+        \ 'g:__clap_fuzzy_matched_indices',
+        \ 'g:__clap_forerunner_result',
+        \ 'g:__clap_lines_truncated_map',
+        \ ])
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
