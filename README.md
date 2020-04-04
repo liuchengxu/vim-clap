@@ -42,8 +42,11 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 
 ## Features
 
-- [x] Pure vimscript.
-- [x] Work out of the box, without any extra dependency.
+- [x] ~~Pure vimscript~~.
+  - Pin to some early version of vim-clap if you prefer the pure vimscript plugin.
+- [x] ~~Work out of the box, without any extra dependency~~.
+  - Most providers work out of the box.
+  - A few providers work badly in some cases without the Rust binary.
 - [x] Extensible, easy to add new source providers.
 - [x] Find or dispatch anything on the fly, with smart cache strategy.
 - [x] Avoid touching the current window layout, less eye movement.
