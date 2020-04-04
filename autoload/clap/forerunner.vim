@@ -50,6 +50,8 @@ function! s:on_complete_maple() abort
       let g:__clap_forerunner_tempfile = decoded.tempfile
       let g:clap.display.initial_size = decoded.total
       call clap#state#refresh_matches_count_on_forerunner_done()
+      let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
+      call clap#spinner#refresh()
       return
     endif
 
