@@ -191,6 +191,10 @@ function! clap#maple#forerunner_exec_subcommand(cmd) abort
   " No global --number option.
   let global_opt = clap#maple#get_enable_icon_opt()
 
+  if has_key(g:clap.context, 'no-cache')
+    let global_opt .= ' --no-cache'
+  endif
+
   let cmd_dir = clap#rooter#working_dir()
   let subcommand = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
         \ a:cmd,
@@ -219,6 +223,7 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
   if g:clap_enable_icon
     let global_opt .= ' --enable-icon'
   endif
+
   let cmd_dir = clap#rooter#working_dir()
   return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, cmd_dir)
 endfunction

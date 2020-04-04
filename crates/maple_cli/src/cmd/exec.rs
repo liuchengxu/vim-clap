@@ -29,6 +29,7 @@ pub fn run(
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
     enable_icon: bool,
+    no_cache: bool,
 ) -> Result<()> {
     let mut exec_cmd = prepare_exec_cmd(&cmd, cmd_dir.clone());
 
@@ -43,8 +44,8 @@ pub fn run(
 
     let args = cmd.split_whitespace().map(Into::into).collect::<Vec<_>>();
 
-    if let Some(dir) = cmd_dir {
-        light_cmd.try_cache_or_execute(&args, dir)
+    if !no_cache && cmd_dir.is_some() {
+        light_cmd.try_cache_or_execute(&args, cmd_dir.unwrap())
     } else {
         light_cmd.execute(&args)
     }

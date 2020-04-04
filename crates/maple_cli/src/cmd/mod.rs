@@ -132,6 +132,10 @@ pub struct Maple {
     #[structopt(long = "enable-icon")]
     pub enable_icon: bool,
 
+    /// Do not use the cached file for exec subcommand.
+    #[structopt(long = "no-cache")]
+    pub no_cache: bool,
+
     #[structopt(subcommand)]
     pub command: Cmd,
 }
