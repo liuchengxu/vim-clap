@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.10] 2020-04-04
+
 ### Added
 
 - Add `init` for `Clap grep`, fill the content when query is empty for git repo.([#347](https://github.com/liuchengxu/vim-clap/pull/347))

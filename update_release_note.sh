@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-new_tag=v0.9
-
+new_tag=v0.10
 prev_tag=$(git tag | tail -n2 | head -n1)
 changelog=$(./ci/get_changelog.sh "$new_tag" "$prev_tag")
 
