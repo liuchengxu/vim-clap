@@ -11,7 +11,7 @@ const ITEMS_TO_SHOW: usize = 30;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
 
-/// Refresh the top filtered results per 200 ms.
+/// Refresh the top filtered results per 300 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(300);
 
 trait Insert<T> {
