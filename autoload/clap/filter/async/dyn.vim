@@ -30,7 +30,7 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   else
     let enable_icon_opt = ''
   endif
-  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --input %s',
+  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --input "%s"',
         \ enable_icon_opt,
         \ winwidth(g:clap.display.winid),
         \ g:clap.input.get(),
