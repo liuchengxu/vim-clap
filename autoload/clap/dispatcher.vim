@@ -228,6 +228,7 @@ else
           \ })
     let s:job_channel = job_getchannel(job)
     let s:job_id = clap#job#get_vim8_job_id(job)
+    call clap#job#track(s:job_id, s:job)
   endfunction
 
 endif
