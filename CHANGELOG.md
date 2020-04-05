@@ -12,6 +12,10 @@ CHANGELOG
 
 - [perf]Try using the cached file when rerunning the same command under the same directory.
 
+### Fixed
+
+- Wrong Vim job stop API usage.([#377](https://github.com/liuchengxu/vim-clap/pull/377))
+
 ## [0.10] 2020-04-04
 
 ### Added
