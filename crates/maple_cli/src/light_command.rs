@@ -33,6 +33,7 @@ fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
     let mut dir = std::env::temp_dir();
     dir.push("clap_cache");
     dir.push(args.join("_"));
+    // TODO: use a readable cache cmd_dir name?
     dir.push(format!("{}", calculate_hash(&cmd_dir)));
     dir
 }
@@ -204,13 +205,11 @@ impl<'a> LightCommand<'a> {
         lines_iter: impl Iterator<Item = String>,
     ) -> Vec<String> {
         if self.grep_enable_icon {
-            lines_iter
-                .map(|x| prepend_grep_icon(&x))
-                .collect::<Vec<_>>()
+            lines_iter.map(|x| prepend_grep_icon(&x)).collect()
         } else if self.enable_icon {
-            lines_iter.map(|x| prepend_icon(&x)).collect::<Vec<_>>()
+            lines_iter.map(|x| prepend_icon(&x)).collect()
         } else {
-            lines_iter.collect::<Vec<_>>()
+            lines_iter.collect()
         }
     }
 
