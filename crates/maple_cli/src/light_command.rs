@@ -29,6 +29,7 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
+// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
 fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
     let mut dir = std::env::temp_dir();
     dir.push("clap_cache");
@@ -70,6 +71,8 @@ pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
     }
 }
 
+/// A wrapper of std::process::Command for building cache, adding icon and minimalize the
+/// throughput.
 #[derive(Debug)]
 pub struct LightCommand<'a> {
     cmd: &'a mut Command,
@@ -83,6 +86,7 @@ pub struct LightCommand<'a> {
 }
 
 impl<'a> LightCommand<'a> {
+    /// Contructs LightCommand from various common opts.
     pub fn new(
         cmd: &'a mut Command,
         number: Option<usize>,
@@ -103,6 +107,7 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    /// Contructs LightCommand from grep opts.
     pub fn new_grep(cmd: &'a mut Command, number: Option<usize>, grep_enable_icon: bool) -> Self {
         Self {
             cmd,
@@ -130,7 +135,8 @@ impl<'a> LightCommand<'a> {
         Ok(cmd_output)
     }
 
-    /// Normally we only care about the top N items and number of total results.
+    /// Normally we only care about the top N items and number of total results if it's not a
+    /// forerunner job.
     fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<()> {
         if let Some(number) = self.number {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
@@ -240,8 +246,13 @@ impl<'a> LightCommand<'a> {
         self.execute(args)
     }
 
+    /// Execute the command directly and capture the output.
+    ///
+    /// Truncate the results to `self.number` if specified,
+    /// otherwise print the total results or write them to
+    /// a tempfile if they are more than `self.output_threshold`.
+    /// This cached tempfile can be reused on the following runs.
     pub fn execute(&mut self, args: &[&str]) -> Result<()> {
-        // TODO: reuse the cache
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
