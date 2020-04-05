@@ -83,6 +83,7 @@ fn run(maple: Maple) -> Result<()> {
                 cmd_dir,
                 maple.number,
                 maple.enable_icon,
+                maple.no_cache,
             )?;
         }
         Cmd::Grep {

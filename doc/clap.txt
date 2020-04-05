@@ -192,11 +192,15 @@ g:clap_on_move_delay                                      *g:clap_on_move_delay*
 g:clap_forerunner_status_sign          *g:clap_forerunner_status_sign*
 
   Type: |Dict|
-  Default: `{ 'running': '!', 'done': '•' }`
+  Default: `{ 'running': '!', 'done': '•', 'using_cache': '*' }`
 
   The async forerunner job is done in this vim-clap session. Everything should
   be fast and deterministic even you have 1 million items as long as you
   install the `maple` Rust extension.
+
+  When it's in `using_cache` status, which means clap is using the cached file
+  collected from previous run, the results could be outdated, use `+no-cache`
+  to rebuild the cache and start a new fresh run, e.g., `:Clap files +no-cache /` .
 
 
 g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*

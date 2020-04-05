@@ -46,7 +46,7 @@ let g:clap#provider_alias = s:provider_alias
 
 let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
 
-let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!'})
+let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!', 'using_cache': '*'})
 
 " Backward compatible
 if exists('g:clap_forerunner_status_sign_done')

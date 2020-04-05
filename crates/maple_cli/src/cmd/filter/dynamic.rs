@@ -7,12 +7,12 @@ use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
 
 /// The constant to define the length of `top_` queues.
-const ITEMS_TO_SHOW: usize = 100;
+const ITEMS_TO_SHOW: usize = 30;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
 
-/// Refresh the top filtered results per 200 ms.
-const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
+/// Refresh the top filtered results per 300 ms.
+const UPDATE_INTERVAL: Duration = Duration::from_millis(300);
 
 trait Insert<T> {
     fn pop_and_insert(&mut self, idx: usize, value: T);

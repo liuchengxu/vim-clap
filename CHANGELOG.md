@@ -3,6 +3,15 @@ CHANGELOG
 
 ## [unreleased]
 
+### Changed
+
+- Change `ITEMS_TO_SHOW` from `100` to 30, `UPDATE_INTERVAL` from 200ms to 300ms. A normal screen can only show about 50 rows, 30 rows should look like the same to 100 rows as the default clap window size is 1/3 of the screen height, but it reduces the overhead of communication between vim and maple significantly.
+- Add `using_cache` status to `g:clap_forerunner_status_sign`, the default sign is `*`, which indicates clap is using the cached file which could be outdated. Use `+no-cache` to run without cache and also rebuild the cache accordingly, e.g., `:Clap files +no-cache /`.
+
+### Improved
+
+- [perf]Try using the cached file when rerunning the same command under the same directory.
+
 ## [0.10] 2020-04-04
 
 ### Added
