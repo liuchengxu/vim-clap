@@ -229,7 +229,7 @@ impl<'a> LightCommand<'a> {
                     } else {
                         println_json!(total, tempfile, using_cache);
                     }
-                    // TODO: refresh the cache periodly?
+                    // TODO: refresh the cache or mark it as outdated?
                     return Ok(());
                 }
             }
