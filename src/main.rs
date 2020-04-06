@@ -64,6 +64,7 @@ fn run(maple: Maple) -> Result<()> {
                     maple.number,
                     maple.enable_icon,
                     maple.winwidth,
+                    false,
                 )?;
             }
         }
