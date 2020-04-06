@@ -4,7 +4,9 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+" Now the added icon offset of matched items are handled in maple.
 " let s:related_maple_providers = ['files', 'git_files']
+
 let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
 let s:default_priority = 10
