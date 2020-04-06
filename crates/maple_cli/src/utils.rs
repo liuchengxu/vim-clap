@@ -33,6 +33,13 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
+#[inline]
+pub(crate) fn clap_cache_dir() -> PathBuf {
+    let mut dir = std::env::temp_dir();
+    dir.push("clap_cache");
+    dir
+}
+
 /// Returns the cache path for clap.
 ///
 /// The reason for using hash(cmd_dir) instead of cmd_dir directory is to avoid the possible issue
@@ -40,8 +47,7 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 ///
 /// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
 pub fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push("clap_cache");
+    let mut dir = clap_cache_dir();
     dir.push(args.join("_"));
     // TODO: use a readable cache cmd_dir name?
     dir.push(format!("{}", calculate_hash(&cmd_dir)));

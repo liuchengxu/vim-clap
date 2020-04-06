@@ -35,6 +35,7 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::RipgrepForerunner { cmd_dir } => {
             maple_cli::cmd::grep::run_forerunner(cmd_dir, maple.number, maple.enable_icon)?
         }
+        Cmd::Cache { list } => maple_cli::cmd::cache::run(list)?,
         Cmd::Filter {
             query,
             input,
