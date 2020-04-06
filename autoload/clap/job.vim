@@ -64,13 +64,5 @@ else
   endfunction
 endif
 
-function! clap#job#cwd() abort
-  if clap#should_use_raw_cwd()
-    return getcwd()
-  else
-    return clap#path#project_root_or_default(g:clap.start.bufnr)
-  endif
-endfunction
-
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
