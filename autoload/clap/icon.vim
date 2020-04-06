@@ -220,7 +220,8 @@ function! s:get_attrs(group) abort
 endfunction
 
 function! clap#icon#def_color_components() abort
-  let s:use_gui = has('gui_running') || (has('termguicolors') && &termguicolors)
+  " TODO: more robust gui_running detection for neovim, ref #378
+  let s:use_gui = exists('g:neovide') || (has('termguicolors') && &termguicolors) || (!has('nvim') && has('gui_running'))
   let s:gui_or_cterm = s:use_gui ? 'gui' : 'cterm'
 
   let s:normal_fg = s:get_color('Normal', 'fg')
