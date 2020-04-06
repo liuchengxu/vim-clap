@@ -132,7 +132,8 @@ fn try_notify_top_results(
     top_results_len: usize,
     top_results: &[usize; ITEMS_TO_SHOW],
     buffer: &[FuzzyMatchedLineInfo],
-) -> std::result::Result<Instant, ()> {
+    last_lines: &[String],
+) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
     if total % 16 == 0 {
         let now = Instant::now();
         if now > *past + UPDATE_INTERVAL {
@@ -149,9 +150,13 @@ fn try_notify_top_results(
                 lines.push(text);
             }
 
-            print_json_with_length!(total, lines, indices);
-
-            return Ok(now);
+            if last_lines != lines.as_slice() {
+                print_json_with_length!(total, lines, indices);
+                return Ok((now, Some(lines)));
+            } else {
+                print_json_with_length!(total);
+                return Ok((now, None));
+            }
         }
     }
     Err(())
@@ -190,6 +195,8 @@ fn dyn_collect_all(
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
+    let mut last_lines = Vec::with_capacity(top_results.len());
+
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
@@ -200,15 +207,19 @@ fn dyn_collect_all(
 
         total = total.wrapping_add(1);
 
-        if let Ok(now) = try_notify_top_results(
+        if let Ok((now, new_lines)) = try_notify_top_results(
             enable_icon,
             total,
             &past,
             top_results.len(),
             &top_results,
             &buffer,
+            &last_lines,
         ) {
             past = now;
+            if let Some(lines) = new_lines {
+                last_lines = lines;
+            }
         }
     });
 
@@ -242,6 +253,8 @@ fn dyn_collect_number(
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
+    let mut last_lines = Vec::with_capacity(top_results.len());
+
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
@@ -252,15 +265,19 @@ fn dyn_collect_number(
 
         total += 1;
 
-        if let Ok(now) = try_notify_top_results(
+        if let Ok((now, new_lines)) = try_notify_top_results(
             enable_icon,
             total,
             &past,
             top_results.len(),
             &top_results,
             &buffer,
+            &last_lines,
         ) {
             past = now;
+            if let Some(lines) = new_lines {
+                last_lines = lines;
+            }
         }
 
         if buffer.len() == buffer.capacity() {
