@@ -25,8 +25,15 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::Version => {
             version();
         }
+        Cmd::Helptags { meta_info } => maple_cli::cmd::helptags::run(meta_info)?,
         Cmd::RPC => {
             maple_cli::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
+        }
+        Cmd::Blines { query, input } => {
+            maple_cli::cmd::filter::blines(&query, &input, maple.number, maple.winwidth)?;
+        }
+        Cmd::RipgrepForerunner { cmd_dir } => {
+            maple_cli::cmd::grep::run_forerunner(cmd_dir, maple.number, maple.enable_icon)?
         }
         Cmd::Filter {
             query,
@@ -68,9 +75,6 @@ fn run(maple: Maple) -> Result<()> {
                 )?;
             }
         }
-        Cmd::Blines { query, input } => {
-            maple_cli::cmd::filter::blines(&query, &input, maple.number, maple.winwidth)?;
-        }
         Cmd::Exec {
             cmd,
             output,
@@ -106,10 +110,6 @@ fn run(maple: Maple) -> Result<()> {
                 maple.number,
                 maple.enable_icon,
             )?;
-        }
-        Cmd::Helptags { meta_info } => maple_cli::cmd::helptags::run(meta_info)?,
-        Cmd::RipgrepForerunner { cmd_dir } => {
-            maple_cli::cmd::grep::run_forerunner(cmd_dir, maple.number, maple.enable_icon)?
         }
     }
     Ok(())
