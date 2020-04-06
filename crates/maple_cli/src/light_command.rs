@@ -1,16 +1,14 @@
-use std::collections::hash_map::DefaultHasher;
-use std::fs::{DirEntry, File};
-use std::hash::{Hash, Hasher};
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::SystemTime;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use icon::{prepend_grep_icon, prepend_icon};
 
 use crate::error::DummyError;
-use crate::utils::read_first_lines;
+use crate::utils::{calculate_hash, get_cached_entry, read_first_lines};
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -21,41 +19,6 @@ fn trim_trailing(lines: &mut Vec<String>) {
             lines.remove(lines.len() - 1);
         }
     }
-}
-
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
-// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
-fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push("clap_cache");
-    dir.push(args.join("_"));
-    // TODO: use a readable cache cmd_dir name?
-    dir.push(format!("{}", calculate_hash(&cmd_dir)));
-    dir
-}
-
-/// Returns the cached entry given the cmd args and working dir.
-fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
-    let cache_dir = get_cache_dir(args, &cmd_dir);
-    if cache_dir.exists() {
-        let mut entries = std::fs::read_dir(cache_dir)?;
-
-        // TODO: get latest modifed cache file?
-        if let Some(Ok(first_entry)) = entries.next() {
-            return Ok(first_entry);
-        }
-    }
-
-    Err(anyhow!(
-        "Couldn't get the cached entry for {:?} {:?}",
-        args,
-        cmd_dir
-    ))
 }
 
 pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
