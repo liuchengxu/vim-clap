@@ -164,21 +164,17 @@ impl<'a> LightCommand<'a> {
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
         if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
-            let tempfile = cached_entry.path();
-            if let Some(path_str) = cached_entry.file_name().to_str() {
-                let info = path_str.split('_').collect::<Vec<_>>();
-                if info.len() == 2 {
-                    let total = info[1].parse::<u64>().unwrap();
-                    let using_cache = true;
-                    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                        let lines = self.prepend_icon_for_cached_lines(lines_iter);
-                        println_json!(total, lines, tempfile, using_cache);
-                    } else {
-                        println_json!(total, tempfile, using_cache);
-                    }
-                    // TODO: refresh the cache or mark it as outdated?
-                    return Ok(());
+            if let Ok(total) = CacheEntry::get_total(&cached_entry) {
+                let using_cache = true;
+                let tempfile = cached_entry.path();
+                if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                    let lines = self.prepend_icon_for_cached_lines(lines_iter);
+                    println_json!(using_cache, total, tempfile, lines);
+                } else {
+                    println_json!(using_cache, total, tempfile);
                 }
+                // TODO: refresh the cache or mark it as outdated?
+                return Ok(());
             }
         }
 

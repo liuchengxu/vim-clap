@@ -1,6 +1,6 @@
 use crate::utils::{calculate_hash, clap_cache_dir};
-use anyhow::Result;
-use std::fs::read_dir;
+use anyhow::{anyhow, Result};
+use std::fs::{read_dir, DirEntry};
 use std::path::PathBuf;
 use std::time::SystemTime;
 
@@ -13,9 +13,10 @@ const PATH_SEPERATOR: &str = "/";
 pub struct CacheEntry;
 
 impl CacheEntry {
+    /// Construct the cache entry given command arguments and its working directory, the `total`
+    /// info is cached in the file name.
     pub fn new(cmd_args: &[&str], cmd_dir: Option<PathBuf>, total: usize) -> Result<PathBuf> {
-        let mut dir = std::env::temp_dir();
-        dir.push("clap_cache");
+        let mut dir = clap_cache_dir();
         dir.push(cmd_args.join("_"));
         if let Some(mut cmd_dir) = cmd_dir {
             dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
@@ -33,6 +34,20 @@ impl CacheEntry {
             total
         ));
         Ok(dir)
+    }
+
+    /// Get the total number of this cache entry from its file name.
+    pub fn get_total(cached_entry: &DirEntry) -> Result<usize> {
+        if let Some(path_str) = cached_entry.file_name().to_str() {
+            let info = path_str.split('_').collect::<Vec<_>>();
+            if info.len() == 2 {
+                info[1].parse().map_err(Into::into)
+            } else {
+                Err(anyhow!("Invalid cache entry name: {:?}", info))
+            }
+        } else {
+            Err(anyhow!("Couldn't get total from cached entry"))
+        }
     }
 }
 
