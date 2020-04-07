@@ -219,7 +219,9 @@ function! clap#maple#sync_filter_subcommand(query) abort
 endfunction
 
 function! clap#maple#ripgrep_forerunner_subcommand() abort
-  let global_opt = '--number '.g:clap.display.preload_capacity
+  " let global_opt = '--number '.g:clap.display.preload_capacity
+  " TODO: add max_output
+  let global_opt = ''
   if g:clap_enable_icon
     let global_opt .= ' --enable-icon'
   endif
@@ -247,7 +249,7 @@ function! clap#maple#run_exec(cmd) abort
   call clap#maple#job_start(cmd)
 endfunction
 
-function! clap#maple#run_grep(cmd, query, enable_icon, glob) abort
+function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if a:enable_icon
     let global_opt .= ' --enable-icon'
@@ -255,7 +257,7 @@ function! clap#maple#run_grep(cmd, query, enable_icon, glob) abort
 
   let cmd_dir = clap#rooter#working_dir()
   let cmd = substitute(a:cmd, '"', "'", 'g')
-  let subcommand = printf('grep "%s" "%s" --cmd-dir "%s"', cmd, a:query, cmd_dir)
+  let subcommand = printf('grep "%s" "%s" --sync --cmd-dir "%s"', cmd, a:query, cmd_dir)
 
   if a:glob isnot v:null
     let subcommand .= printf(' --glob "%s"', a:glob)

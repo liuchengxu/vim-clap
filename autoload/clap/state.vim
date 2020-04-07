@@ -93,6 +93,7 @@ function! clap#state#clear_pre() abort
   call s:unlet_vars([
         \ 'g:__clap_raw_source',
         \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
         \ ])
 
@@ -111,7 +112,6 @@ function! clap#state#clear_post() abort
 
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
-        \ 'g:__clap_forerunner_result',
         \ 'g:__clap_lines_truncated_map',
         \ ])
 endfunction

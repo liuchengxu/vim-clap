@@ -97,20 +97,32 @@ fn run(maple: Maple) -> Result<()> {
             grep_query,
             glob,
             cmd_dir,
+            sync,
+            input,
         } => {
             let g = match &glob {
                 Some(s) => Some(s.as_str()),
                 None => None,
             };
 
-            maple_cli::cmd::grep::run(
-                grep_cmd,
-                &grep_query,
-                g,
-                cmd_dir,
-                maple.number,
-                maple.enable_icon,
-            )?;
+            if sync {
+                maple_cli::cmd::grep::run(
+                    grep_cmd,
+                    &grep_query,
+                    g,
+                    cmd_dir,
+                    maple.number,
+                    maple.enable_icon,
+                )?;
+            } else {
+                maple_cli::cmd::grep::dyn_grep(
+                    &grep_query,
+                    cmd_dir,
+                    input,
+                    maple.number,
+                    maple.enable_icon,
+                )?;
+            }
         }
     }
     Ok(())

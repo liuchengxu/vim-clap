@@ -71,10 +71,15 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Contructs LightCommand from grep opts.
-    pub fn new_grep(cmd: &'a mut Command, number: Option<usize>, grep_enable_icon: bool) -> Self {
+    pub fn new_grep(
+        cmd: &'a mut Command,
+        cmd_dir: Option<PathBuf>,
+        number: Option<usize>,
+        grep_enable_icon: bool,
+    ) -> Self {
         Self {
             cmd,
-            cmd_dir: None,
+            cmd_dir,
             number,
             total: 0usize,
             output: None,
