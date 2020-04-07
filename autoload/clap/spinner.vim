@@ -82,8 +82,10 @@ else
   endfunction
 
   function! s:set_spinner() abort
-    let s:current_prompt = s:generate_prompt()
-    call clap#spinner#set(s:current_prompt)
+    if exists('g:clap_spinner_winid')
+      let s:current_prompt = s:generate_prompt()
+      call clap#spinner#set(s:current_prompt)
+    endif
   endfunction
 endif
 
