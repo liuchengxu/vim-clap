@@ -149,7 +149,7 @@ function! g:clap#floating_win#spinner.open() abort
 endfunction
 
 function! g:clap#floating_win#spinner.shrink() abort
-  if nvim_win_is_valid(s:spinner_winid)
+  if exists('s:spinner_winid') && nvim_win_is_valid(s:spinner_winid)
     let width = clap#spinner#width()
     let opts = nvim_win_get_config(s:spinner_winid)
     if opts.width != width
