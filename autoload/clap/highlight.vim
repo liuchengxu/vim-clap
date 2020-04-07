@@ -4,7 +4,9 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:related_maple_providers = ['files', 'git_files']
+" Now the added icon offset of matched items are handled in maple.
+" let s:related_maple_providers = ['files', 'git_files']
+
 let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
 let s:default_priority = 10
@@ -26,15 +28,6 @@ endfunction
 
 function! clap#highlight#provider_has_offset() abort
   return s:builtin_fuzzy_idx_offset() > 0
-endfunction
-
-function! s:maple_fuzzy_idx_offset() abort
-  if s:should_check_offset()
-        \ && index(s:related_maple_providers, g:clap.provider.id) > -1
-      return 4
-  else
-    return 0
-  endif
 endfunction
 
 if has('nvim')
@@ -125,8 +118,7 @@ endfunction
 
 " Used by the async job.
 function! clap#highlight#add_fuzzy_async(hl_lines) abort
-  let offset = s:maple_fuzzy_idx_offset()
-  call s:apply_add_highlight(a:hl_lines, offset)
+  call s:apply_add_highlight(a:hl_lines, 0)
 endfunction
 
 function! clap#highlight#fg_only(group_name, cermfg, guifg) abort

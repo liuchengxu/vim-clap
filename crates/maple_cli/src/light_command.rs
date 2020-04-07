@@ -1,16 +1,14 @@
-use std::collections::hash_map::DefaultHasher;
-use std::fs::{DirEntry, File};
-use std::hash::{Hash, Hasher};
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
-use std::time::SystemTime;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use icon::{prepend_grep_icon, prepend_icon};
 
+use crate::cmd::cache::CacheEntry;
 use crate::error::DummyError;
-use crate::utils::read_first_lines;
+use crate::utils::{get_cached_entry, read_first_lines};
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -21,41 +19,6 @@ fn trim_trailing(lines: &mut Vec<String>) {
             lines.remove(lines.len() - 1);
         }
     }
-}
-
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
-// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
-fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push("clap_cache");
-    dir.push(args.join("_"));
-    // TODO: use a readable cache cmd_dir name?
-    dir.push(format!("{}", calculate_hash(&cmd_dir)));
-    dir
-}
-
-/// Returns the cached entry given the cmd args and working dir.
-fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
-    let cache_dir = get_cache_dir(args, &cmd_dir);
-    if cache_dir.exists() {
-        let mut entries = std::fs::read_dir(cache_dir)?;
-
-        // TODO: get latest modifed cache file?
-        if let Some(Ok(first_entry)) = entries.next() {
-            return Ok(first_entry);
-        }
-    }
-
-    Err(anyhow!(
-        "Couldn't get the cached entry for {:?} {:?}",
-        args,
-        cmd_dir
-    ))
 }
 
 pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
@@ -162,36 +125,14 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    fn tempfile(&self, args: &[&str]) -> Result<PathBuf> {
-        if let Some(ref output) = self.output {
-            Ok(output.into())
-        } else {
-            let mut dir = std::env::temp_dir();
-            dir.push("clap_cache");
-            dir.push(args.join("_"));
-            if let Some(mut cmd_dir) = self.cmd_dir.clone() {
-                dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
-            } else {
-                dir.push("no_cmd_dir");
-            }
-            if !dir.exists() {
-                std::fs::create_dir_all(&dir)?;
-            }
-            dir.push(format!(
-                "{}_{}",
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)?
-                    .as_secs(),
-                self.total
-            ));
-            Ok(dir)
-        }
-    }
-
     /// Cache the stdout into a tempfile if the output threshold exceeds.
     fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
         if self.total > self.output_threshold {
-            let tempfile = self.tempfile(args)?;
+            let tempfile = if let Some(ref output) = self.output {
+                output.into()
+            } else {
+                CacheEntry::new(args, self.cmd_dir.clone(), self.total)?
+            };
             File::create(&tempfile)?.write_all(cmd_stdout)?;
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
@@ -223,21 +164,17 @@ impl<'a> LightCommand<'a> {
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
         if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
-            let tempfile = cached_entry.path();
-            if let Some(path_str) = cached_entry.file_name().to_str() {
-                let info = path_str.split('_').collect::<Vec<_>>();
-                if info.len() == 2 {
-                    let total = info[1].parse::<u64>().unwrap();
-                    let using_cache = true;
-                    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                        let lines = self.prepend_icon_for_cached_lines(lines_iter);
-                        println_json!(total, lines, tempfile, using_cache);
-                    } else {
-                        println_json!(total, tempfile, using_cache);
-                    }
-                    // TODO: refresh the cache or mark it as outdated?
-                    return Ok(());
+            if let Ok(total) = CacheEntry::get_total(&cached_entry) {
+                let using_cache = true;
+                let tempfile = cached_entry.path();
+                if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                    let lines = self.prepend_icon_for_cached_lines(lines_iter);
+                    println_json!(using_cache, total, tempfile, lines);
+                } else {
+                    println_json!(using_cache, total, tempfile);
                 }
+                // TODO: refresh the cache or mark it as outdated?
+                return Ok(());
             }
         }
 

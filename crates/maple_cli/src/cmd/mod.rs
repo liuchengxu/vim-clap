@@ -4,6 +4,7 @@ use fuzzy_filter::Algo;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+pub mod cache;
 pub mod exec;
 pub mod filter;
 pub mod grep;
@@ -105,6 +106,12 @@ pub enum Cmd {
         /// Specify the working directory of CMD
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
+    },
+    #[structopt(name = "cache")]
+    Cache {
+        /// List the current cached entries.
+        #[structopt(short, long)]
+        list: bool,
     },
 }
 

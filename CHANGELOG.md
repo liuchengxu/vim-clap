@@ -10,7 +10,7 @@ CHANGELOG
 
 ### Improved
 
-- [perf]Try using the cached file when rerunning the same command under the same directory.
+- [perf]Try using the cached file when rerunning the same command under the same directory. The cache directory uses https://doc.rust-lang.org/std/env/fn.temp_dir.html which will be purged when you restart the computer. Or you can use `maple cache --list` to list the current cached info.
 
 ### Fixed
 
