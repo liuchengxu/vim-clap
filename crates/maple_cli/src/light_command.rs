@@ -2,13 +2,13 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
-use std::time::SystemTime;
 
 use anyhow::Result;
 use icon::{prepend_grep_icon, prepend_icon};
 
+use crate::cmd::cache::CacheEntry;
 use crate::error::DummyError;
-use crate::utils::{calculate_hash, get_cached_entry, read_first_lines};
+use crate::utils::{get_cached_entry, read_first_lines};
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -125,36 +125,14 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    fn tempfile(&self, args: &[&str]) -> Result<PathBuf> {
-        if let Some(ref output) = self.output {
-            Ok(output.into())
-        } else {
-            let mut dir = std::env::temp_dir();
-            dir.push("clap_cache");
-            dir.push(args.join("_"));
-            if let Some(mut cmd_dir) = self.cmd_dir.clone() {
-                dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
-            } else {
-                dir.push("no_cmd_dir");
-            }
-            if !dir.exists() {
-                std::fs::create_dir_all(&dir)?;
-            }
-            dir.push(format!(
-                "{}_{}",
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)?
-                    .as_secs(),
-                self.total
-            ));
-            Ok(dir)
-        }
-    }
-
     /// Cache the stdout into a tempfile if the output threshold exceeds.
     fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
         if self.total > self.output_threshold {
-            let tempfile = self.tempfile(args)?;
+            let tempfile = if let Some(ref output) = self.output {
+                output.into()
+            } else {
+                CacheEntry::new(args, self.cmd_dir.clone(), self.total)?
+            };
             File::create(&tempfile)?.write_all(cmd_stdout)?;
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
