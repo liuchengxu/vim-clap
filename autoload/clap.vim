@@ -336,7 +336,7 @@ function! clap#(bang, ...) abort
   let g:clap.start.winid = win_getid()
   let g:clap.start.old_pos = getpos('.')
 
-  let g:clap.context = {}
+  let g:clap.context = {'visible': v:false}
   let g:clap.tmps = []
 
   if a:bang
