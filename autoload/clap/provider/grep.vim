@@ -238,6 +238,10 @@ function! s:grep_sink(selected) abort
   call call('clap#util#blink', s:grep_blink)
 endfunction
 
+function! clap#provider#grep#inject_icon_appended(appended) abort
+  let s:icon_appended = a:appended
+endfunction
+
 function! s:into_qf_item(line, pattern) abort
   let matched = s:matchlist(a:line, a:pattern)
   let [fpath, linenr, column, text] = [matched[1], str2nr(matched[2]), str2nr(matched[3]), matched[4]]
