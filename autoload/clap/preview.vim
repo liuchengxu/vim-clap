@@ -22,6 +22,10 @@ endfunction
 
 " Preview entry for files,history provider
 function! clap#preview#file(fname) abort
+  " The preview action can be postponed, user can have closed the main window.
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   let fpath = expand(a:fname)
   if filereadable(fpath)
     call s:peek_file(a:fname, fpath)
@@ -63,15 +67,19 @@ function! s:highlight_header() abort
 endfunction
 
 if has('nvim')
-  " Sometime the first line of preview window is used for the header.
+  " Sometimes the first line of preview window is used for the header.
   function! clap#preview#highlight_header() abort
-    try
-      let winid = win_getid()
-      call g:clap.preview.goto_win()
-      call s:highlight_header()
-    finally
-      noautocmd call win_gotoid(winid)
-    endtry
+    " try
+      " let winid = win_getid()
+      " Do not use matchaddpos() as it needs to be executed in that window.
+      " call g:clap.preview.goto_win()
+      " call s:highlight_header()
+      if nvim_buf_is_valid(g:clap.preview.bufnr)
+        call nvim_buf_add_highlight(g:clap.preview.bufnr, -1, 'Title', 0, 0, -1)
+      endif
+    " finally
+      " noautocmd call win_gotoid(winid)
+    " endtry
   endfunction
 else
   function! clap#preview#highlight_header() abort
