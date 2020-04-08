@@ -28,10 +28,18 @@ impl Cache {
         let cache_dir = clap_cache_dir();
         let cache_dir_str = cache_dir.clone().into_os_string().into_string().unwrap();
         if self.purge {
-            self.purge(&cache_dir)?;
+            remove_dir_contents(&cache_dir)?;
             println!("Current cache directory {} has been purged", cache_dir_str);
             return Ok(());
         }
+        if self.list {
+            self.list(cache_dir)?;
+        }
+        Ok(())
+    }
+
+    fn list(&self, cache_dir: PathBuf) -> Result<()> {
+        let cache_dir_str = cache_dir.clone().into_os_string().into_string().unwrap();
         println!("Current cache directory:");
         println!("\t{}\n", cache_dir_str);
         if self.list {
@@ -55,10 +63,6 @@ impl Cache {
             }
         }
         Ok(())
-    }
-
-    fn purge(&self, target_dir: &PathBuf) -> Result<()> {
-        remove_dir_contents(target_dir)
     }
 }
 
