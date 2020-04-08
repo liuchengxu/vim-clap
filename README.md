@@ -27,6 +27,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [vim-plug](#vim-plug)
 * [Usage](#usage)
   * [Commands](#commands)
+    * [Providers](#providers)
   * [Global variables](#global-variables)
   * [Keybindings](#keybindings)
     * [Insert mode](#insert-mode)
@@ -91,6 +92,10 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 ### Commands
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
+
+`:Clap!! [provider_id_or_alias] {provider_args}` means to disable/refresh the cache, a shortcut to add `+no-cache` option. For example, `:Clap!! files ~` equals to `:Clap files +no-cache ~`.
+
+#### Providers
 
 Command                                | List                                                | Requirement
 :----                                  | :----                                               | :----

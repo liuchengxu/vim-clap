@@ -7,6 +7,8 @@ CHANGELOG
 
 - New provider `:Clap grep2` with cache and dynamic refresh support. `grep2` is much faster than the previous `grep` provider as it'll reuse the cached contents from previous run and do the filtering with dynamic results. `grep2` is not a typical grep tool but a fuzzy filter tool, for it tries to collect all the output and then filtering on the results. `grep` is merely to dispatch the rg command and show the results returned by rg directly, no fuzzy filter actually. ([#383](https://github.com/liuchengxu/vim-clap/pull/383))
 
+- Double bang version of `:Clap!!`, shortcut for `:Clap [provider_id_or_alias] +no-cache`, e.g., `:Clap!! files ~` is same to `:Clap files +no-cache ~`.
+
 ### Changed
 
 - Change `ITEMS_TO_SHOW` from `100` to 30, `UPDATE_INTERVAL` from 200ms to 300ms. A normal screen can only show about 50 rows, 30 rows should look like the same to 100 rows as the default clap window size is 1/3 of the screen height, but it reduces the overhead of communication between vim and maple significantly.

@@ -354,8 +354,14 @@ function! clap#(bang, ...) abort
       call clap#debugging#info_to_clipboard()
       return
     endif
-    let provider_id_or_alias = a:1
-    call s:parse_opts(a:000[1:])
+    if a:1 ==# '!'
+      let g:clap.context['no-cache'] = v:true
+      let provider_id_or_alias = a:2
+      call s:parse_opts(a:000[2:])
+    else
+      let provider_id_or_alias = a:1
+      call s:parse_opts(a:000[1:])
+    endif
   endif
 
   call clap#for(provider_id_or_alias)
