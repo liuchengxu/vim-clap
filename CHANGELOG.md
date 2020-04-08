@@ -17,6 +17,7 @@ CHANGELOG
 - `has('gui_running')` does not work for neovim. [#378](https://github.com/liuchengxu/vim-clap/issues/378)
 - Wrong Vim job stop API usage.([#377](https://github.com/liuchengxu/vim-clap/pull/377))
 - https://github.com/liuchengxu/vim-clap/issues/371#issuecomment-610176970
+- The postponed preview action can be triggered when the main window is closed. #382
 
 ## [0.10] 2020-04-04
 
