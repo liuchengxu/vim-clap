@@ -1,6 +1,6 @@
-use crate::utils::{calculate_hash, clap_cache_dir};
+use crate::utils::{calculate_hash, clap_cache_dir, remove_dir_contents};
 use anyhow::{anyhow, Result};
-use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry};
+use std::fs::{read_dir, DirEntry};
 use std::path::PathBuf;
 use std::time::SystemTime;
 use structopt::StructOpt;
@@ -58,19 +58,7 @@ impl Cache {
     }
 
     fn purge(&self, target_dir: &PathBuf) -> Result<()> {
-        let entries = read_dir(target_dir)?;
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-
-                if path.is_dir() {
-                    remove_dir_all(path)?;
-                } else {
-                    remove_file(path)?;
-                }
-            };
-        }
-        Ok(())
+        remove_dir_contents(target_dir)
     }
 }
 

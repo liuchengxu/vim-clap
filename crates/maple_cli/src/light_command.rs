@@ -8,7 +8,7 @@ use icon::{prepend_grep_icon, prepend_icon};
 
 use crate::cmd::cache::CacheEntry;
 use crate::error::DummyError;
-use crate::utils::{get_cached_entry, read_first_lines};
+use crate::utils::{get_cached_entry, read_first_lines, remove_dir_contents};
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -139,9 +139,19 @@ impl<'a> LightCommand<'a> {
             } else {
                 CacheEntry::new(args, self.cmd_dir.clone(), self.total)?
             };
+
+            // Remove the other outdated cache file if there are any.
+            //
+            // There should one cache file in parent_dir at this moment.
+            if let Some(parent_dir) = tempfile.parent() {
+                remove_dir_contents(&parent_dir.to_path_buf())?;
+            }
+
             File::create(&tempfile)?.write_all(cmd_stdout)?;
+
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
+
             Ok((
                 // lines used for displaying directly.
                 // &cmd_output.stdout[..nth_newline_index]

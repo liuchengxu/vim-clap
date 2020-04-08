@@ -203,6 +203,7 @@ function! s:grep_on_move() abort
     return
   endif
 
+  let s:preview_cache = get(s:, 'preview_cache', {})
   if !has_key(s:preview_cache, fpath)
     let s:preview_cache[fpath] = {
           \ 'lines': readfile(expand(fpath), ''),

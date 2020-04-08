@@ -1,9 +1,26 @@
 use anyhow::{anyhow, Result};
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{read_dir, DirEntry, File};
+use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
 use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
+
+/// Removes all the file and directories under `target_dir`.
+pub fn remove_dir_contents(target_dir: &PathBuf) -> Result<()> {
+    let entries = read_dir(target_dir)?;
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+
+            if path.is_dir() {
+                remove_dir_all(path)?;
+            } else {
+                remove_file(path)?;
+            }
+        };
+    }
+    Ok(())
+}
 
 /// Returns true if the `dir` is a git repo, including git submodule.
 pub fn is_git_repo(dir: &Path) -> bool {
