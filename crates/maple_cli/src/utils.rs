@@ -5,6 +5,13 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 
+/// Returns true if the `dir` is a git repo, including git submodule.
+pub fn is_git_repo(dir: &Path) -> bool {
+    let mut gitdir = dir.to_owned();
+    gitdir.push(".git");
+    gitdir.exists()
+}
+
 // The output is wrapped in a Result to allow matching on errors
 // Returns an Iterator to the Reader of the lines of the file.
 pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>

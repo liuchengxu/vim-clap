@@ -1,10 +1,21 @@
+use crate::cmd::cache::CacheEntry;
 use crate::light_command::{set_current_dir, LightCommand};
-use crate::utils::{get_cached_entry, read_first_lines};
+use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
 use anyhow::{anyhow, Result};
 use fuzzy_filter::{subprocess, Source};
 use icon::prepend_grep_icon;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
+
+const RG_ARGS: [&str; 7] = [
+    "rg",
+    "--column",
+    "--line-number",
+    "--no-heading",
+    "--color=never",
+    "--smart-case",
+    "",
+];
 
 fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
     let args = cmd_str.split_whitespace().collect::<Vec<&str>>();
@@ -56,33 +67,29 @@ fn cache_exists(
     with_length: bool,
 ) -> Result<PathBuf> {
     if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
-        let tempfile = cached_entry.path();
-        if let Some(path_str) = cached_entry.file_name().to_str() {
-            let info = path_str.split('_').collect::<Vec<_>>();
-            if info.len() == 2 {
-                if send_response {
-                    let total = info[1].parse::<u64>().unwrap();
-                    let using_cache = true;
-                    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                        let lines = lines_iter
-                            .map(|x| prepend_grep_icon(&x))
-                            .collect::<Vec<_>>();
-                        if with_length {
-                            print_json_with_length!(total, lines, tempfile, using_cache);
-                        } else {
-                            println_json!(total, lines, tempfile, using_cache);
-                        }
+        if let Ok(total) = CacheEntry::get_total(&cached_entry) {
+            let tempfile = cached_entry.path();
+            if send_response {
+                let using_cache = true;
+                if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                    let lines = lines_iter
+                        .map(|x| prepend_grep_icon(&x))
+                        .collect::<Vec<_>>();
+                    if with_length {
+                        print_json_with_length!(total, tempfile, using_cache, lines);
                     } else {
-                        if with_length {
-                            print_json_with_length!(total, tempfile, using_cache);
-                        } else {
-                            println_json!(total, tempfile, using_cache);
-                        }
+                        println_json!(total, tempfile, using_cache, lines);
+                    }
+                } else {
+                    if with_length {
+                        print_json_with_length!(total, tempfile, using_cache);
+                    } else {
+                        println_json!(total, tempfile, using_cache);
                     }
                 }
-                // TODO: refresh the cache or mark it as outdated?
-                return Ok(tempfile);
             }
+            // TODO: refresh the cache or mark it as outdated?
+            return Ok(tempfile);
         }
     }
     Err(anyhow!(
@@ -126,22 +133,6 @@ pub fn dyn_grep(
 
     crate::cmd::filter::dyn_run(grep_query, source, None, number, enable_icon, None, true)
 }
-
-fn is_git_repo(dir: &Path) -> bool {
-    let mut gitdir = dir.to_owned();
-    gitdir.push(".git");
-    gitdir.exists()
-}
-
-const RG_ARGS: [&str; 7] = [
-    "rg",
-    "--column",
-    "--line-number",
-    "--no-heading",
-    "--color=never",
-    "--smart-case",
-    "",
-];
 
 pub fn run_forerunner(
     cmd_dir: Option<PathBuf>,
