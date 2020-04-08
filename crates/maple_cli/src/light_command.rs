@@ -142,7 +142,7 @@ impl<'a> LightCommand<'a> {
 
             // Remove the other outdated cache file if there are any.
             //
-            // There should one cache file in parent_dir at this moment.
+            // There should be only one cache file in parent_dir at this moment.
             if let Some(parent_dir) = tempfile.parent() {
                 remove_dir_contents(&parent_dir.to_path_buf())?;
             }
