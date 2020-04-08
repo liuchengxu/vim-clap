@@ -132,6 +132,7 @@ impl<'a> LightCommand<'a> {
 
     /// Cache the stdout into a tempfile if the output threshold exceeds.
     fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
+        // TODO: add a cache upper bound?
         if self.total > self.output_threshold {
             let tempfile = if let Some(ref output) = self.output {
                 output.into()

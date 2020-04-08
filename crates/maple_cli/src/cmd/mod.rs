@@ -116,11 +116,7 @@ pub enum Cmd {
         cmd_dir: Option<PathBuf>,
     },
     #[structopt(name = "cache")]
-    Cache {
-        /// List the current cached entries.
-        #[structopt(short, long)]
-        list: bool,
-    },
+    Cache(crate::cmd::cache::Cache),
 }
 
 #[derive(StructOpt, Debug)]

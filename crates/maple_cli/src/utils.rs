@@ -36,7 +36,7 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 #[inline]
 pub(crate) fn clap_cache_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
-    dir.push("clap_cache");
+    dir.push("vim.clap");
     dir
 }
 

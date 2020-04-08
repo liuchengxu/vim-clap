@@ -38,7 +38,7 @@ fn run(maple: Maple) -> Result<()> {
             maple.enable_icon,
             maple.no_cache,
         )?,
-        Cmd::Cache { list } => maple_cli::cmd::cache::run(list)?,
+        Cmd::Cache(cache) => cache.run()?,
         Cmd::Filter {
             query,
             input,
