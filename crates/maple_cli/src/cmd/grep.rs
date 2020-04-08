@@ -98,23 +98,26 @@ pub fn dyn_grep(
     input: Option<PathBuf>,
     number: Option<usize>,
     enable_icon: bool,
+    no_cache: bool,
 ) -> Result<()> {
     let rg_cmd = "rg --column --line-number --no-heading --color=never --smart-case ''";
 
     let source: Source<std::iter::Empty<_>> = if let Some(tempfile) = input {
         Source::File(tempfile)
     } else if let Some(dir) = cmd_dir {
-        if let Ok(cached_file) = cache_exists(&RG_ARGS, &dir, false, true) {
-            let cached_source: Source<std::iter::Empty<_>> = Source::File(cached_file).into();
-            return crate::cmd::filter::dyn_run(
-                grep_query,
-                cached_source,
-                None,
-                number,
-                enable_icon,
-                None,
-                true,
-            );
+        if !no_cache {
+            if let Ok(cached_file) = cache_exists(&RG_ARGS, &dir, false, true) {
+                let cached_source: Source<std::iter::Empty<_>> = Source::File(cached_file).into();
+                return crate::cmd::filter::dyn_run(
+                    grep_query,
+                    cached_source,
+                    None,
+                    number,
+                    enable_icon,
+                    None,
+                    true,
+                );
+            }
         }
         subprocess::Exec::shell(rg_cmd).cwd(dir).into()
     } else {
@@ -144,10 +147,13 @@ pub fn run_forerunner(
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
     enable_icon: bool,
+    no_cache: bool,
 ) -> Result<()> {
-    if let Some(ref dir) = cmd_dir {
-        if cache_exists(&RG_ARGS, dir, true, false).is_ok() {
-            return Ok(());
+    if !no_cache {
+        if let Some(ref dir) = cmd_dir {
+            if cache_exists(&RG_ARGS, dir, true, false).is_ok() {
+                return Ok(());
+            }
         }
     }
 

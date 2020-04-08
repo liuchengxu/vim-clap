@@ -221,9 +221,14 @@ endfunction
 function! clap#maple#ripgrep_forerunner_subcommand() abort
   " let global_opt = '--number '.g:clap.display.preload_capacity
   " TODO: add max_output
-  let global_opt = ''
   if g:clap_enable_icon
-    let global_opt .= ' --enable-icon'
+    let global_opt = '--enable-icon'
+  else
+    let global_opt = ''
+  endif
+
+  if has_key(g:clap.context, 'no-cache')
+    let global_opt .= ' --no-cache'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
