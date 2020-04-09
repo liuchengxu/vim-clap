@@ -63,5 +63,5 @@ write_back(lines, fname)
 #  update_release_note.sh
 fname = 'update_release_note.sh'
 lines = read_file(fname)
-lines[2] = 'new_tag=v{version}'.format(version=next_tag)
+lines[2] = 'new_tag=v{version}\n'.format(version=next_tag)
 write_back(lines, fname)

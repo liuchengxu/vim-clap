@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-current_tag=$(git tag | tail -1)
+current_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --max-count=1)")
 echo 'Prepare new release for vim-clap'
 echo ''
 
@@ -42,7 +42,8 @@ else
   echo "New release $next_tag is ready to go!"
   echo ''
   echo 'Now run git diff to check again, then commit and tag a new version:'
-  echo "    git commit -m $next_tag" > publish.sh
+  echo '    git add -u' > publish.sh
+  echo "    git commit -m $next_tag" >> publish.sh
   echo "    git tag $next_tag" >> publish.sh
   echo "    git push origin $next_tag" >> publish.sh
   echo 'Run `bash publish.sh` to publish this new release'
