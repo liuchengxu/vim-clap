@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Changed
+
+- `grep2` will not match the file path by default. ([#385](https://github.com/liuchengxu/vim-clap/pull/385))
+
 ## [0.11] 2020-04-09
 
 ### Added

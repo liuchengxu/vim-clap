@@ -352,7 +352,7 @@ fn apply_fzy_on_grep_line(line: &str, query: &str) -> Option<(i64, Vec<usize>)> 
     match_and_score_with_positions(query, truncated_line).map(|(score, indices)| {
         (
             score as i64,
-            indices.into_iter().map(|x| x + offset).collect::<Vec<_>>(),
+            indices.into_iter().map(|x| x + offset).collect(),
         )
     })
 }
