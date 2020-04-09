@@ -90,5 +90,6 @@ pub fn blines(
         false,
         winwidth,
         false,
+        false,
     )
 }

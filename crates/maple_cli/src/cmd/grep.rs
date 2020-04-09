@@ -123,6 +123,7 @@ pub fn dyn_grep(
                     enable_icon,
                     None,
                     true,
+                    true,
                 );
             }
         }
@@ -131,7 +132,16 @@ pub fn dyn_grep(
         subprocess::Exec::shell(rg_cmd).into()
     };
 
-    crate::cmd::filter::dyn_run(grep_query, source, None, number, enable_icon, None, true)
+    crate::cmd::filter::dyn_run(
+        grep_query,
+        source,
+        None,
+        number,
+        enable_icon,
+        None,
+        true,
+        true,
+    )
 }
 
 pub fn run_forerunner(
