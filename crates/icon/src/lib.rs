@@ -64,6 +64,7 @@ pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
     format!("{} {}", icon_for_filer(path), line)
 }
 
+/// Prepend an icon to the output line of ripgrep.
 pub fn prepend_grep_icon(line: &str) -> String {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(.*):\d+:\d+:").unwrap();
@@ -74,4 +75,20 @@ pub fn prepend_grep_icon(line: &str) -> String {
         .map(|m| icon_for(m.as_str()))
         .unwrap_or(DEFAULT_ICON);
     format!("{} {}", icon, line)
+}
+
+/// Prepend an icon for various kind of output line.
+pub enum IconPainter {
+    File,
+    Grep,
+}
+
+impl IconPainter {
+    /// Returns a `String` of raw str with icon added.
+    pub fn paint(&self, raw_str: &str) -> String {
+        match *self {
+            Self::File => prepend_icon(raw_str),
+            Self::Grep => prepend_grep_icon(raw_str),
+        }
+    }
 }
