@@ -147,7 +147,7 @@ mod tests {
         starting_point: Option<usize>,
         winwidth: usize,
     ) {
-        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
+        let mut ranked = source.fuzzy_filter(Algo::Fzy, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
         println!("");

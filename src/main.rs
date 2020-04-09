@@ -32,10 +32,13 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::Blines { query, input } => {
             maple_cli::cmd::filter::blines(&query, &input, maple.number, maple.winwidth)?;
         }
-        Cmd::RipgrepForerunner { cmd_dir } => {
-            maple_cli::cmd::grep::run_forerunner(cmd_dir, maple.number, maple.enable_icon)?
-        }
-        Cmd::Cache { list } => maple_cli::cmd::cache::run(list)?,
+        Cmd::RipgrepForerunner { cmd_dir } => maple_cli::cmd::grep::run_forerunner(
+            cmd_dir,
+            maple.number,
+            maple.enable_icon,
+            maple.no_cache,
+        )?,
+        Cmd::Cache(cache) => cache.run()?,
         Cmd::Filter {
             query,
             input,
@@ -97,20 +100,33 @@ fn run(maple: Maple) -> Result<()> {
             grep_query,
             glob,
             cmd_dir,
+            sync,
+            input,
         } => {
             let g = match &glob {
                 Some(s) => Some(s.as_str()),
                 None => None,
             };
 
-            maple_cli::cmd::grep::run(
-                grep_cmd,
-                &grep_query,
-                g,
-                cmd_dir,
-                maple.number,
-                maple.enable_icon,
-            )?;
+            if sync {
+                maple_cli::cmd::grep::run(
+                    grep_cmd,
+                    &grep_query,
+                    g,
+                    cmd_dir,
+                    maple.number,
+                    maple.enable_icon,
+                )?;
+            } else {
+                maple_cli::cmd::grep::dyn_grep(
+                    &grep_query,
+                    cmd_dir,
+                    input,
+                    maple.number,
+                    maple.enable_icon,
+                    maple.no_cache,
+                )?;
+            }
         }
     }
     Ok(())

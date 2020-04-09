@@ -27,6 +27,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [vim-plug](#vim-plug)
 * [Usage](#usage)
   * [Commands](#commands)
+    * [Providers](#providers)
   * [Global variables](#global-variables)
   * [Keybindings](#keybindings)
     * [Insert mode](#insert-mode)
@@ -46,7 +47,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   - Pin to some early version of vim-clap if you prefer the pure vimscript plugin.
 - [x] ~~Work out of the box, without any extra dependency~~.
   - Most providers work great out of the box.
-  - A few providers work badly in some cases without the Rust binary.
+  - A few providers are unable to work or work badly without the Rust binary.
 - [x] Extensible, easy to add new source providers.
 - [x] Find or dispatch anything on the fly, with smart cache strategy.
 - [x] Avoid touching the current window layout, less eye movement.
@@ -92,6 +93,12 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
+`:Clap!! [provider_id_or_alias] {provider_args}` means to disable/refresh the cache, a shortcut to add `+no-cache` option. For example, `:Clap!! files ~` equals to `:Clap files +no-cache ~`. Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
+
+<img width="561" alt="截屏2020-04-08 下午5 11 50" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
+
+#### Providers
+
 Command                                | List                                                | Requirement
 :----                                  | :----                                               | :----
 `Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer                  | **[git][git]**
@@ -107,6 +114,7 @@ Command                                | List                                   
 `Clap gfiles` or `Clap git_files`      | Files managed by git                                | **[git][git]**
 `Clap git_diff_files`                  | Files managed by git and having uncommitted changes | **[git][git]**
 `Clap grep`**<sup>+</sup>**            | Grep on the fly                                     | **[rg][rg]**
+`Clap grep2`**<sup>+</sup>**           | Grep on the fly with cache and dynamic results      | **[maple][maple]**
 `Clap history`                         | Open buffers and `v:oldfiles`                       | _none_
 `Clap help_tags`                       | Help tags                                           | _none_
 `Clap jumps`                           | Jumps                                               | _none_

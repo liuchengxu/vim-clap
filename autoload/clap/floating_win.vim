@@ -353,6 +353,8 @@ function! clap#floating_win#open() abort
 
   startinsert
 
+  let g:clap.context.visible = v:true
+
   call g:clap.provider.apply_query()
 endfunction
 

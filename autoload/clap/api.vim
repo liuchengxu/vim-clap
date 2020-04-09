@@ -23,11 +23,11 @@ function! s:_setbufvar(varname, val) dict abort
 endfunction
 
 function! s:_setbufvar_batch(dict) dict abort
-  call map(a:dict, { key, val -> setbufvar(self.bufnr, key, val) })
+  call map(a:dict, 'setbufvar(self.bufnr, v:key, v:val)')
 endfunction
 
 function! clap#api#setbufvar_batch(bufnr, dict) abort
-  call map(a:dict, { key, val -> setbufvar(a:bufnr, key, val) })
+  call map(a:dict, 'setbufvar(a:bufnr, v:key, v:val)')
 endfunction
 
 " If the user has specified the externalfilter option in the context.

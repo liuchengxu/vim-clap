@@ -4,6 +4,7 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:is_nvim = has('nvim')
 let s:old_input = ''
 let s:multi_select_enabled = v:false
 let s:support_multi_select = v:false
@@ -23,6 +24,12 @@ function! clap#handler#relaunch_is_ok() abort
 endfunction
 
 function! clap#handler#on_typed() abort
+  " CursorMoved event can be triggered when the floating_win
+  " has been created but not visible yet.
+  if s:is_nvim && !g:clap.context.visible
+    return
+  endif
+
   if clap#handler#relaunch_is_ok()
     return
   endif

@@ -25,6 +25,8 @@ endfunction
 function! clap#state#refresh_matches_count_on_forerunner_done() abort
   if exists('s:current_matches')
     call clap#indicator#set_matches(printf('[%s/%s]', s:current_matches, g:clap.display.initial_size))
+  else
+    call clap#indicator#set_matches(printf('[%s/%s]', g:clap.display.initial_size, g:clap.display.initial_size))
   endif
 endfunction
 
@@ -91,8 +93,10 @@ endfunction
 " Clear the previous temp state when invoking a new provider.
 function! clap#state#clear_pre() abort
   call s:unlet_vars([
+        \ 's:current_matches',
         \ 'g:__clap_raw_source',
         \ 'g:__clap_provider_cwd',
+        \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
         \ ])
 
@@ -111,7 +115,6 @@ function! clap#state#clear_post() abort
 
   call s:unlet_vars([
         \ 'g:__clap_fuzzy_matched_indices',
-        \ 'g:__clap_forerunner_result',
         \ 'g:__clap_lines_truncated_map',
         \ ])
 endfunction

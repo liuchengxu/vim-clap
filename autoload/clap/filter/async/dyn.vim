@@ -39,5 +39,29 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   call clap#job#stdio#start_service(function('s:handle_message'), clap#maple#build_cmd(filter_cmd))
 endfunction
 
+function! clap#filter#async#dyn#start_grep() abort
+  let s:last_query = g:clap.input.get()
+  let grep_cmd = printf('%s --number 100 --winwidth %d grep "" "%s" --cmd-dir "%s"',
+        \ g:clap_enable_icon ? '--enable-icon' : '',
+        \ winwidth(g:clap.display.winid),
+        \ g:clap.input.get(),
+        \ clap#rooter#working_dir(),
+        \ )
+  let maple_cmd = clap#maple#build_cmd(grep_cmd)
+  call clap#job#stdio#start_service(function('s:handle_message'), maple_cmd)
+endfunction
+
+function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
+  let s:last_query = g:clap.input.get()
+  let grep_cmd = printf('%s %s --number 100 --winwidth %d grep "" "%s" --input "%s"',
+        \ g:clap_enable_icon ? '--enable-icon' : '',
+        \ has_key(g:clap.context, 'no-cache') ? '--no-cache' : '',
+        \ winwidth(g:clap.display.winid),
+        \ g:clap.input.get(),
+        \ a:tempfile
+        \ )
+  call clap#job#stdio#start_service(function('s:handle_message'), clap#maple#build_cmd(grep_cmd))
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

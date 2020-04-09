@@ -1,9 +1,33 @@
 use anyhow::{anyhow, Result};
 use std::collections::hash_map::DefaultHasher;
-use std::fs::{read_dir, DirEntry, File};
+use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
 use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
+
+/// Removes all the file and directories under `target_dir`.
+pub fn remove_dir_contents(target_dir: &PathBuf) -> Result<()> {
+    let entries = read_dir(target_dir)?;
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+
+            if path.is_dir() {
+                remove_dir_all(path)?;
+            } else {
+                remove_file(path)?;
+            }
+        };
+    }
+    Ok(())
+}
+
+/// Returns true if the `dir` is a git repo, including git submodule.
+pub fn is_git_repo(dir: &Path) -> bool {
+    let mut gitdir = dir.to_owned();
+    gitdir.push(".git");
+    gitdir.exists()
+}
 
 // The output is wrapped in a Result to allow matching on errors
 // Returns an Iterator to the Reader of the lines of the file.
@@ -36,7 +60,7 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 #[inline]
 pub(crate) fn clap_cache_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
-    dir.push("clap_cache");
+    dir.push("vim.clap");
     dir
 }
 

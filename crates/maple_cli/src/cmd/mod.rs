@@ -84,6 +84,14 @@ pub enum Cmd {
         /// Specify the working directory of CMD
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
+
+        /// Synchronous filtering, returns after the input stream is complete.
+        #[structopt(short, long)]
+        sync: bool,
+
+        /// Read input from a cached grep tempfile, only absolute file path is supported.
+        #[structopt(long = "input", parse(from_os_str))]
+        input: Option<PathBuf>,
     },
     #[structopt(name = "rpc")]
     RPC,
@@ -108,11 +116,7 @@ pub enum Cmd {
         cmd_dir: Option<PathBuf>,
     },
     #[structopt(name = "cache")]
-    Cache {
-        /// List the current cached entries.
-        #[structopt(short, long)]
-        list: bool,
-    },
+    Cache(crate::cmd::cache::Cache),
 }
 
 #[derive(StructOpt, Debug)]

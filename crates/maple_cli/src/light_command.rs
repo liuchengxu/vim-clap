@@ -8,7 +8,7 @@ use icon::{prepend_grep_icon, prepend_icon};
 
 use crate::cmd::cache::CacheEntry;
 use crate::error::DummyError;
-use crate::utils::{get_cached_entry, read_first_lines};
+use crate::utils::{get_cached_entry, read_first_lines, remove_dir_contents};
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -71,10 +71,15 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Contructs LightCommand from grep opts.
-    pub fn new_grep(cmd: &'a mut Command, number: Option<usize>, grep_enable_icon: bool) -> Self {
+    pub fn new_grep(
+        cmd: &'a mut Command,
+        cmd_dir: Option<PathBuf>,
+        number: Option<usize>,
+        grep_enable_icon: bool,
+    ) -> Self {
         Self {
             cmd,
-            cmd_dir: None,
+            cmd_dir,
             number,
             total: 0usize,
             output: None,
@@ -127,15 +132,26 @@ impl<'a> LightCommand<'a> {
 
     /// Cache the stdout into a tempfile if the output threshold exceeds.
     fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
+        // TODO: add a cache upper bound?
         if self.total > self.output_threshold {
             let tempfile = if let Some(ref output) = self.output {
                 output.into()
             } else {
                 CacheEntry::new(args, self.cmd_dir.clone(), self.total)?
             };
+
+            // Remove the other outdated cache file if there are any.
+            //
+            // There should be only one cache file in parent_dir at this moment.
+            if let Some(parent_dir) = tempfile.parent() {
+                remove_dir_contents(&parent_dir.to_path_buf())?;
+            }
+
             File::create(&tempfile)?.write_all(cmd_stdout)?;
+
             // FIXME find the nth newline index of stdout.
             // let _end = std::cmp::min(cmd_stdout.len(), 500);
+
             Ok((
                 // lines used for displaying directly.
                 // &cmd_output.stdout[..nth_newline_index]

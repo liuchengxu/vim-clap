@@ -336,7 +336,7 @@ function! clap#(bang, ...) abort
   let g:clap.start.winid = win_getid()
   let g:clap.start.old_pos = getpos('.')
 
-  let g:clap.context = {}
+  let g:clap.context = {'visible': v:false}
   let g:clap.tmps = []
 
   if a:bang
@@ -354,8 +354,14 @@ function! clap#(bang, ...) abort
       call clap#debugging#info_to_clipboard()
       return
     endif
-    let provider_id_or_alias = a:1
-    call s:parse_opts(a:000[1:])
+    if a:1 ==# '!'
+      let g:clap.context['no-cache'] = v:true
+      let provider_id_or_alias = a:2
+      call s:parse_opts(a:000[2:])
+    else
+      let provider_id_or_alias = a:1
+      call s:parse_opts(a:000[1:])
+    endif
   endif
 
   call clap#for(provider_id_or_alias)
