@@ -2,7 +2,7 @@ use super::*;
 use extracted_fzy::match_and_score_with_positions;
 use fuzzy_filter::FuzzyMatchedLineInfo;
 use fuzzy_matcher::skim::fuzzy_indices;
-use icon::{prepend_grep_icon, ICON_LEN};
+use icon::ICON_LEN;
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
@@ -113,13 +113,12 @@ fn find_best_score_idx(top_scores: &[i64; ITEMS_TO_SHOW], score: i64) -> Option<
 ///
 /// Printing to stdout is to send the printed content to the client.
 fn try_notify_top_results(
-    enable_icon: bool,
+    icon_painter: &Option<IconPainter>,
     total: usize,
     past: &Instant,
     top_results_len: usize,
     top_results: &[usize; ITEMS_TO_SHOW],
     buffer: &[FuzzyMatchedLineInfo],
-    add_icon: impl Fn(&str) -> String,
     last_lines: &[String],
 ) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
     if total % 16 == 0 {
@@ -129,9 +128,9 @@ fn try_notify_top_results(
             let mut lines = Vec::with_capacity(top_results_len);
             for &idx in top_results.iter() {
                 let (text, _, idxs) = std::ops::Index::index(buffer, idx);
-                let text = if enable_icon {
+                let text = if let Some(painter) = icon_painter {
                     indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
-                    add_icon(&text)
+                    painter.paint(&text)
                 } else {
                     indices.push(idxs.clone());
                     text.clone()
@@ -170,8 +169,7 @@ fn try_notify_top_results(
 /// So, this particular function won't work in parallel context at all.
 fn dyn_collect_all(
     mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
-    enable_icon: bool,
-    add_icon: impl Fn(&str) -> String + Copy,
+    icon_painter: &Option<IconPainter>,
 ) -> Vec<FuzzyMatchedLineInfo> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
@@ -198,13 +196,12 @@ fn dyn_collect_all(
         total = total.wrapping_add(1);
 
         if let Ok((now, new_lines)) = try_notify_top_results(
-            enable_icon,
+            &icon_painter,
             total,
             &past,
             top_results.len(),
             &top_results,
             &buffer,
-            add_icon,
             &last_lines,
         ) {
             past = now;
@@ -230,9 +227,8 @@ fn dyn_collect_all(
 // `collect()` into Vec on big numbers of iterations.
 fn dyn_collect_number(
     mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
-    enable_icon: bool,
     number: usize,
-    add_icon: impl Fn(&str) -> String + Copy,
+    icon_painter: &Option<IconPainter>,
 ) -> (usize, Vec<FuzzyMatchedLineInfo>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
@@ -258,13 +254,12 @@ fn dyn_collect_number(
         total += 1;
 
         if let Ok((now, new_lines)) = try_notify_top_results(
-            enable_icon,
+            &icon_painter,
             total,
             &past,
             top_results.len(),
             &top_results,
             &buffer,
-            add_icon,
             &last_lines,
         ) {
             past = now;
@@ -349,42 +344,34 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
             .map(|(score, indices)| (score as i64, indices)),
     };
 
-    let add_icon = if grep_icon {
-        prepend_grep_icon
+    let icon_painter = if enable_icon {
+        if grep_icon {
+            Some(IconPainter::Grep)
+        } else {
+            Some(IconPainter::File)
+        }
     } else {
-        prepend_icon
+        None
     };
 
     if let Some(number) = number {
         let (total, filtered) = match source {
-            Source::Stdin => {
-                dyn_collect_number(source_iter_stdin!(scorer), enable_icon, number, add_icon)
+            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
+            Source::Exec(exec) => {
+                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter)
             }
-            Source::Exec(exec) => dyn_collect_number(
-                source_iter_exec!(scorer, exec),
-                enable_icon,
-                number,
-                add_icon,
-            ),
-            Source::File(fpath) => dyn_collect_number(
-                source_iter_file!(scorer, fpath),
-                enable_icon,
-                number,
-                add_icon,
-            ),
-            Source::List(list) => dyn_collect_number(
-                source_iter_list!(scorer, list),
-                enable_icon,
-                number,
-                add_icon,
-            ),
+            Source::File(fpath) => {
+                dyn_collect_number(source_iter_file!(scorer, fpath), number, &icon_painter)
+            }
+            Source::List(list) => {
+                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter)
+            }
         };
         let (lines, indices, truncated_map) = process_top_items(
             number,
             filtered.into_iter().take(number),
             winwidth.unwrap_or(62),
-            enable_icon,
-            add_icon,
+            icon_painter,
         );
 
         if truncated_map.is_empty() {
@@ -394,16 +381,10 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
         }
     } else {
         let mut filtered = match source {
-            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), enable_icon, add_icon),
-            Source::Exec(exec) => {
-                dyn_collect_all(source_iter_exec!(scorer, exec), enable_icon, add_icon)
-            }
-            Source::File(fpath) => {
-                dyn_collect_all(source_iter_file!(scorer, fpath), enable_icon, add_icon)
-            }
-            Source::List(list) => {
-                dyn_collect_all(source_iter_list!(scorer, list), enable_icon, add_icon)
-            }
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
+            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
+            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
         };
 
         filtered.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
