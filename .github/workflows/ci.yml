@@ -39,7 +39,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@master
-    - name: Build maple
+    - name: Run tests under crates
       run: cd crates && cargo test --verbose --all -- --nocapture
 
   maple_binary:
