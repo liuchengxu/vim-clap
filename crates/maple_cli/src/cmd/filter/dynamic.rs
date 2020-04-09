@@ -329,13 +329,16 @@ macro_rules! source_iter_list {
 }
 
 lazy_static! {
+    // match the file path and line number of grep line.
     static ref GREP_RE: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
 }
 
 /// Do not match the file path when using ripgrep.
 #[inline]
 fn strip_grep_filepath(line: &str) -> (&str, usize) {
-    let mat = GREP_RE.find(line).unwrap();
+    let mat = GREP_RE
+        .find(line)
+        .expect("Each line of ripgrep output is file_path:line_number:column_nnumber:text; qed");
     (&line[mat.end()..], mat.end())
 }
 
