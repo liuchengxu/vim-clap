@@ -64,6 +64,14 @@ pub(super) fn handle_message(msg: Message) {
 
 #[test]
 fn test_dir() {
-    let entries = read_dir_entries("/.DocumentRevisions-V100/", true).unwrap();
+    let entries = read_dir_entries(
+        &std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap(),
+        false,
+    )
+    .unwrap();
     println!("entry: {:?}", entries);
 }

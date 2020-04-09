@@ -481,6 +481,7 @@ mod tests {
             Some(100),
             false,
             None,
+            false,
         )
         .unwrap()
     }
