@@ -3,52 +3,71 @@ use anyhow::Result;
 use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
+use structopt::StructOpt;
 
-// This can work with the piped command, e.g., git ls-files | uniq.
-fn prepare_exec_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> Command {
-    let mut cmd = if cfg!(target_os = "windows") {
-        let mut cmd = Command::new("cmd");
-        cmd.args(&["/C", cmd_str]);
-        cmd
-    } else {
-        let mut cmd = Command::new("bash");
-        cmd.arg("-c").arg(cmd_str);
-        cmd
-    };
+/// Execute the shell command
+#[derive(StructOpt, Debug, Clone)]
+pub struct Exec {
+    /// Specify the system command to run.
+    #[structopt(index = 1, short, long)]
+    cmd: String,
 
-    set_current_dir(&mut cmd, cmd_dir);
+    /// Specify the output file path when the output of command exceeds the threshold.
+    #[structopt(long = "output")]
+    output: Option<String>,
 
-    cmd
+    /// Specify the threshold for writing the output of command to a tempfile.
+    #[structopt(long = "output-threshold", default_value = "100000")]
+    output_threshold: usize,
+
+    /// Specify the working directory of CMD
+    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    cmd_dir: Option<PathBuf>,
 }
 
-pub fn run(
-    cmd: String,
-    output: Option<String>,
-    output_threshold: usize,
-    cmd_dir: Option<PathBuf>,
-    number: Option<usize>,
-    enable_icon: bool,
-    no_cache: bool,
-) -> Result<()> {
-    let mut exec_cmd = prepare_exec_cmd(&cmd, cmd_dir.clone());
-
-    let mut light_cmd = LightCommand::new(
-        &mut exec_cmd,
-        number,
-        output,
-        if enable_icon {
-            Some(IconPainter::File)
+impl Exec {
+    // This can work with the piped command, e.g., git ls-files | uniq.
+    fn prepare_exec_cmd(&self) -> Command {
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.args(&["/C", &self.cmd]);
+            cmd
         } else {
-            None
-        },
-        output_threshold,
-    );
+            let mut cmd = Command::new("bash");
+            cmd.arg("-c").arg(&self.cmd);
+            cmd
+        };
 
-    let args = cmd.split_whitespace().map(Into::into).collect::<Vec<_>>();
+        set_current_dir(&mut cmd, self.cmd_dir.clone());
 
-    if !no_cache && cmd_dir.is_some() {
-        light_cmd.try_cache_or_execute(&args, cmd_dir.unwrap())
-    } else {
-        light_cmd.execute(&args)
+        cmd
+    }
+
+    pub fn run(&self, number: Option<usize>, enable_icon: bool, no_cache: bool) -> Result<()> {
+        let mut exec_cmd = self.prepare_exec_cmd();
+
+        let mut light_cmd = LightCommand::new(
+            &mut exec_cmd,
+            number,
+            self.output.clone(),
+            if enable_icon {
+                Some(IconPainter::File)
+            } else {
+                None
+            },
+            self.output_threshold,
+        );
+
+        let args = self
+            .cmd
+            .split_whitespace()
+            .map(Into::into)
+            .collect::<Vec<_>>();
+
+        if !no_cache && self.cmd_dir.is_some() {
+            light_cmd.try_cache_or_execute(&args, self.cmd_dir.clone().unwrap())
+        } else {
+            light_cmd.execute(&args)
+        }
     }
 }

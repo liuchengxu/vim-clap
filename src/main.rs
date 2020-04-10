@@ -80,21 +80,8 @@ fn run(maple: Maple) -> Result<()> {
                 )?;
             }
         }
-        Cmd::Exec {
-            cmd,
-            output,
-            cmd_dir,
-            output_threshold,
-        } => {
-            maple_cli::cmd::exec::run(
-                cmd,
-                output,
-                output_threshold,
-                cmd_dir,
-                maple.number,
-                maple.enable_icon,
-                maple.no_cache,
-            )?;
+        Cmd::Exec(exec) => {
+            exec.run(maple.number, maple.enable_icon, maple.no_cache)?;
         }
         Cmd::Grep {
             grep_cmd,
