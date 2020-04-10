@@ -3,7 +3,7 @@ use crate::light_command::{set_current_dir, LightCommand};
 use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
 use anyhow::{anyhow, Result};
 use fuzzy_filter::{subprocess, Source};
-use icon::prepend_grep_icon;
+use icon::{prepend_grep_icon, IconPainter};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -56,7 +56,16 @@ pub fn run(
 
     cmd.args(&args[1..]);
 
-    let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, enable_icon);
+    let mut light_cmd = LightCommand::new_grep(
+        &mut cmd,
+        None,
+        number,
+        if enable_icon {
+            Some(IconPainter::Grep)
+        } else {
+            None
+        },
+    );
 
     light_cmd.execute(&args)?;
 
@@ -178,7 +187,16 @@ pub fn run_forerunner(
 
     set_current_dir(&mut cmd, cmd_dir.clone());
 
-    let mut light_cmd = LightCommand::new_grep(&mut cmd, cmd_dir, number, enable_icon);
+    let mut light_cmd = LightCommand::new_grep(
+        &mut cmd,
+        cmd_dir,
+        number,
+        if enable_icon {
+            Some(IconPainter::Grep)
+        } else {
+            None
+        },
+    );
 
     light_cmd.execute(&RG_ARGS)?;
 

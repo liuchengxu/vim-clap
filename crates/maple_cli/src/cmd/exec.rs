@@ -1,9 +1,8 @@
+use crate::light_command::{set_current_dir, LightCommand};
+use anyhow::Result;
+use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
-
-use anyhow::Result;
-
-use crate::light_command::{set_current_dir, LightCommand};
 
 // This can work with the piped command, e.g., git ls-files | uniq.
 fn prepare_exec_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> Command {
@@ -37,8 +36,11 @@ pub fn run(
         &mut exec_cmd,
         number,
         output,
-        enable_icon,
-        false,
+        if enable_icon {
+            Some(IconPainter::File)
+        } else {
+            None
+        },
         output_threshold,
     );
 

@@ -78,6 +78,7 @@ pub fn prepend_grep_icon(line: &str) -> String {
 }
 
 /// Prepend an icon for various kind of output line.
+#[derive(Clone, Debug)]
 pub enum IconPainter {
     File,
     Grep,
