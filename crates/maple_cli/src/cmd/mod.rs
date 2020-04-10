@@ -4,6 +4,7 @@ use fuzzy_filter::Algo;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+pub mod blines;
 pub mod cache;
 pub mod exec;
 pub mod filter;
@@ -95,21 +96,14 @@ pub enum Cmd {
     },
     #[structopt(name = "rpc")]
     RPC,
-    #[structopt(name = "blines")]
-    Blines {
-        /// Initial query string
-        #[structopt(index = 1, short, long)]
-        query: String,
-
-        #[structopt(index = 2, short, long, parse(from_os_str))]
-        input: PathBuf,
-    },
     #[structopt(name = "ripgrep-forerunner")]
     RipgrepForerunner {
         /// Specify the working directory of CMD
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
     },
+    #[structopt(name = "blines")]
+    Blines(crate::cmd::blines::Blines),
     #[structopt(name = "helptags")]
     Helptags(crate::cmd::helptags::Helptags),
     #[structopt(name = "cache")]
