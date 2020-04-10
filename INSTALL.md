@@ -40,7 +40,7 @@ Now, only `maple` binary is mandatory for getting a fast and quite responsive vi
 
 ### `Rust`
 
-If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using this single command `:call clap#helper#build_all()`.
+If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using this single command `:call clap#installer#build_all()`.
 
 #### `maple` binary
 
@@ -50,29 +50,26 @@ If you have installed Rust on your system, specifically, `cargo` executable exis
 
 2. Reduce the overhead of async job of Vim/NeoVim dramastically.
 
-To install `maple` you can use the helper function and run `:call clap#helper#build_maple()`, or install it manually:
+To install `maple` you can use the installer function and run `:call clap#installer#build_maple()`, or install it manually:
 
   ```bash
   cd path/to/vim-clap
 
   # Compile the release build
   cargo build --release
-
-  # Or use cargo install globally
-  cargo install --path . --force
   ```
 
 #### Python dynamic module
 
 If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed. This Python dynamic module is mainly for saving the async job when the data set is small.
 
-[Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it if you want to run the helper function successfully:
+[Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it if you want to run the installer function successfully:
 
 ```bash
 $ rustup toolchain install nightly
 ```
 
-Then use `:call clap#helper#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
+Then use `:call clap#installer#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
 
 ## Download the prebuilt binary
 
