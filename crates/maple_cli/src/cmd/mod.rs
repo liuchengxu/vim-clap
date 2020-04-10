@@ -95,11 +95,6 @@ pub enum Cmd {
     },
     #[structopt(name = "rpc")]
     RPC,
-    #[structopt(name = "helptags")]
-    Helptags {
-        #[structopt(index = 1, short, long, parse(from_os_str))]
-        meta_info: PathBuf,
-    },
     #[structopt(name = "blines")]
     Blines {
         /// Initial query string
@@ -115,6 +110,8 @@ pub enum Cmd {
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
     },
+    #[structopt(name = "helptags")]
+    Helptags(crate::cmd::helptags::Helptags),
     #[structopt(name = "cache")]
     Cache(crate::cmd::cache::Cache),
 }

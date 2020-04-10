@@ -27,6 +27,9 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     (cmd, args)
 }
 
+/// Runs grep command and returns until its output stream is completed.
+///
+/// Write the output to the cache file if neccessary.
 pub fn run(
     grep_cmd: String,
     grep_query: &str,
