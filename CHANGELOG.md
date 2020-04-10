@@ -7,6 +7,10 @@ CHANGELOG
 
 - `grep2` will not match the file path by default. ([#385](https://github.com/liuchengxu/vim-clap/pull/385))
 
+### Fixed
+
+- `ITEMS_TO_SHOW` is fixed at the moment, only 30 rows can be shown correctly for dyn filter. https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611601076
+
 ## [0.11] 2020-04-09
 
 ### Added
