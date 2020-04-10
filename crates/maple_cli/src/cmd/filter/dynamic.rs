@@ -338,7 +338,7 @@ lazy_static! {
 fn strip_grep_filepath(line: &str) -> (&str, usize) {
     let mat = GREP_RE
         .find(line)
-        .expect("Each line of ripgrep output is file_path:line_number:column_nnumber:text; qed");
+        .expect("The format of each line of ripgrep output is file_path:line_number:column_nnumber:text; qed");
     (&line[mat.end()..], mat.end())
 }
 
