@@ -41,6 +41,12 @@ pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     Ok(ranked)
 }
 
+// https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
+#[inline]
+fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
+    line.chars().take(end).skip(start).collect()
+}
+
 /// Long matched lines can cause the matched items invisible.
 ///
 /// [--------------------------]
@@ -90,9 +96,9 @@ pub fn truncate_long_matched_lines<T>(
                     let truncated = if let Some(starting_point) = starting_point {
                         let icon: String = line.chars().take(starting_point).collect();
                         start += starting_point;
-                        format!("{}{}{}", icon, DOTS, &line[start..end])
+                        format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
                     } else {
-                        format!("{}{}", DOTS, &line[start..end])
+                        format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
                     };
                     let offset = line_len - truncated.len();
                     let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
@@ -226,5 +232,14 @@ mod tests {
         ].into();
         let query = "srlisrlisrsr";
         run_test(source, query, None, 50usize);
+    }
+
+    #[test]
+    fn test_print_multibyte_string_slice() {
+        let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
+        let start = 33;
+        let end = 300;
+        // println!("{}", &multibyte_str[33..300]);
+        println!("{}", utf8_str_slice(multibyte_str, start, end));
     }
 }

@@ -27,6 +27,9 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     (cmd, args)
 }
 
+/// Runs grep command and returns until its output stream is completed.
+///
+/// Write the output to the cache file if neccessary.
 pub fn run(
     grep_cmd: String,
     grep_query: &str,
@@ -123,6 +126,7 @@ pub fn dyn_grep(
                     enable_icon,
                     None,
                     true,
+                    true,
                 );
             }
         }
@@ -131,7 +135,16 @@ pub fn dyn_grep(
         subprocess::Exec::shell(rg_cmd).into()
     };
 
-    crate::cmd::filter::dyn_run(grep_query, source, None, number, enable_icon, None, true)
+    crate::cmd::filter::dyn_run(
+        grep_query,
+        source,
+        None,
+        number,
+        enable_icon,
+        None,
+        true,
+        true,
+    )
 }
 
 pub fn run_forerunner(
@@ -170,15 +183,4 @@ pub fn run_forerunner(
     light_cmd.execute(&RG_ARGS)?;
 
     Ok(())
-}
-
-#[test]
-fn test_git_repo() {
-    let mut cmd_dir: PathBuf = "/Users/xuliucheng/.vim/plugged/vim-clap".into();
-    cmd_dir.push(".git");
-    if cmd_dir.exists() {
-        println!("{:?} exists", cmd_dir);
-    } else {
-        println!("{:?} does not exist", cmd_dir);
-    }
 }

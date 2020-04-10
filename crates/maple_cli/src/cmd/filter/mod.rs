@@ -3,7 +3,6 @@ pub mod dynamic;
 pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use anyhow::Result;
 use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Source};
@@ -68,27 +67,4 @@ pub fn run<I: Iterator<Item = String>>(
     }
 
     Ok(())
-}
-
-/// Looks for matches of `query` in lines of the current vim buffer.
-pub fn blines(
-    query: &str,
-    input: &Path,
-    number: Option<usize>,
-    winwidth: Option<usize>,
-) -> Result<()> {
-    crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
-        query,
-        Source::List(
-            std::fs::read_to_string(&input)?
-                .lines()
-                .enumerate()
-                .map(|(idx, item)| format!("{} {}", idx + 1, item)),
-        ),
-        None,
-        number,
-        false,
-        winwidth,
-        false,
-    )
 }
