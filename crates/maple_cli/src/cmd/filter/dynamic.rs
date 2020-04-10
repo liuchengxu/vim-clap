@@ -315,8 +315,12 @@ macro_rules! source_iter_exec {
 // Generate an filtered iterator from Source::File(fpath).
 macro_rules! source_iter_file {
     ( $scorer:ident, $fpath:ident ) => {
-        std::fs::read_to_string($fpath)?
+        // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+        // The line stream can contain invalid UTF-8 data.
+        std::io::BufReader::new(std::fs::File::open($fpath).unwrap())
             .lines()
+            .filter(|x| x.is_ok())
+            .map(|x| x.unwrap())
             .filter_map(|line| $scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
     };
 }
