@@ -371,9 +371,8 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     source: Source<I>,
     algo: Option<Algo>,
     number: Option<usize>,
-    enable_icon: bool,
     winwidth: Option<usize>,
-    grep_icon: bool,
+    icon_painter: Option<IconPainter>,
     exclude_grep_filepath: bool,
 ) -> Result<()> {
     let algo = algo.unwrap_or(Algo::Fzy);
@@ -394,16 +393,6 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                     .map(|(score, indices)| (score as i64, indices))
             }
         }
-    };
-
-    let icon_painter = if enable_icon {
-        if grep_icon {
-            Some(IconPainter::Grep)
-        } else {
-            Some(IconPainter::File)
-        }
-    } else {
-        None
     };
 
     if let Some(number) = number {
@@ -512,9 +501,8 @@ mod tests {
             ),
             Some(Algo::Fzy),
             Some(100),
-            false,
             None,
-            false,
+            None,
             false,
         )
         .unwrap()

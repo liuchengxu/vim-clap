@@ -132,9 +132,12 @@ pub fn dyn_grep(
                     cached_source,
                     None,
                     number,
-                    enable_icon,
                     None,
-                    true,
+                    if enable_icon {
+                        Some(IconPainter::Grep)
+                    } else {
+                        None
+                    },
                     true,
                 );
             }
@@ -149,9 +152,12 @@ pub fn dyn_grep(
         source,
         None,
         number,
-        enable_icon,
         None,
-        true,
+        if enable_icon {
+            Some(IconPainter::Grep)
+        } else {
+            None
+        },
         true,
     )
 }

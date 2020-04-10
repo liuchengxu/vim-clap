@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    subprocess, Result, Source, StructOpt,
+    subprocess, IconPainter, Result, Source, StructOpt,
 };
 
 pub mod built_info {
@@ -73,9 +73,12 @@ fn run(maple: Maple) -> Result<()> {
                     source,
                     algo,
                     maple.number,
-                    maple.enable_icon,
                     maple.winwidth,
-                    false,
+                    if maple.enable_icon {
+                        Some(IconPainter::File)
+                    } else {
+                        None
+                    },
                     false,
                 )?;
             }

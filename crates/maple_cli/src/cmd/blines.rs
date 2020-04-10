@@ -28,9 +28,8 @@ impl Blines {
             ),
             None,
             number,
-            false,
             winwidth,
-            false,
+            None,
             false,
         )
     }

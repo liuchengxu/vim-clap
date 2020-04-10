@@ -25,6 +25,7 @@ pub mod cmd;
 pub use {
     anyhow::Result,
     fuzzy_filter::{subprocess, Source},
+    icon::IconPainter,
     structopt::StructOpt,
 };
 
