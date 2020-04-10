@@ -339,28 +339,29 @@ lazy_static! {
 
 /// Do not match the file path when using ripgrep.
 #[inline]
-fn strip_grep_filepath(line: &str) -> (&str, usize) {
-    let mat = GREP_RE
+fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
+    GREP_RE
         .find(line)
-        .expect("The format of each line of ripgrep output is file_path:line_number:column_nnumber:text; qed");
-    (&line[mat.end()..], mat.end())
+        .map(|mat| (&line[mat.end()..], mat.end()))
 }
 
 #[inline]
 fn apply_skim_on_grep_line(line: &str, query: &str) -> Option<(i64, Vec<usize>)> {
-    let (truncated_line, offset) = strip_grep_filepath(line);
-    fuzzy_indices(truncated_line, query)
-        .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+        fuzzy_indices(truncated_line, query)
+            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+    })
 }
 
 #[inline]
 fn apply_fzy_on_grep_line(line: &str, query: &str) -> Option<(i64, Vec<usize>)> {
-    let (truncated_line, offset) = strip_grep_filepath(line);
-    match_and_score_with_positions(query, truncated_line).map(|(score, indices)| {
-        (
-            score as i64,
-            indices.into_iter().map(|x| x + offset).collect(),
-        )
+    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+        match_and_score_with_positions(query, truncated_line).map(|(score, indices)| {
+            (
+                score as i64,
+                indices.into_iter().map(|x| x + offset).collect(),
+            )
+        })
     })
 }
 
