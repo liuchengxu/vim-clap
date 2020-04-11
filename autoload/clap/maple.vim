@@ -257,7 +257,7 @@ endfunction
 function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if a:enable_icon
-    let global_opt .= ' --enable-icon'
+    let global_opt .= ' --icon-painter=Grep'
   endif
 
   let cmd_dir = clap#rooter#working_dir()
