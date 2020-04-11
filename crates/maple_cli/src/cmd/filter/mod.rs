@@ -23,7 +23,12 @@ fn process_top_items<T>(
     let mut indices = Vec::with_capacity(top_size);
     if let Some(painter) = icon_painter {
         for (text, _, idxs) in truncated_lines {
-            lines.push(painter.paint(&text));
+            let iconized = if let Some(origin_text) = truncated_map.get(&text) {
+                format!("{} {}", painter.get_icon(origin_text), text)
+            } else {
+                painter.paint(&text)
+            };
+            lines.push(iconized);
             indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect());
         }
     } else {

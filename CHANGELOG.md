@@ -14,6 +14,7 @@ CHANGELOG
 ### Fixed
 
 - `ITEMS_TO_SHOW` is fixed at the moment, only 30 rows can be shown correctly for dyn filter. https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611601076
+- Fix wrong icon for dyn filter when the text is truncated.
 
 ## [0.11] 2020-04-09
 
