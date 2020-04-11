@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use crate::cmd::filter::ContentFiltering;
 use fuzzy_filter::Algo;
+use icon::IconPainter;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -80,8 +81,10 @@ pub enum Cmd {
         #[structopt(long = "input", parse(from_os_str))]
         input: Option<PathBuf>,
     },
+    /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
     RPC,
+    /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
     RipgrepForerunner {
         /// Specify the working directory of CMD
@@ -119,13 +122,13 @@ pub struct Maple {
     #[structopt(short = "w", long = "winwidth")]
     pub winwidth: Option<usize>,
 
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long = "enable-icon")]
-    pub enable_icon: bool,
-
     /// Do not use the cached file for exec subcommand.
     #[structopt(long = "no-cache")]
     pub no_cache: bool,
+
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    #[structopt(short, long, possible_values = &IconPainter::variants(), case_insensitive = true)]
+    pub icon_painter: Option<IconPainter>,
 
     #[structopt(subcommand)]
     pub command: Cmd,

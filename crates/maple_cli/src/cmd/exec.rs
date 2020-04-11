@@ -43,18 +43,19 @@ impl Exec {
         cmd
     }
 
-    pub fn run(&self, number: Option<usize>, enable_icon: bool, no_cache: bool) -> Result<()> {
+    pub fn run(
+        &self,
+        number: Option<usize>,
+        icon_painter: Option<IconPainter>,
+        no_cache: bool,
+    ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 
         let mut light_cmd = LightCommand::new(
             &mut exec_cmd,
             number,
             self.output.clone(),
-            if enable_icon {
-                Some(IconPainter::File)
-            } else {
-                None
-            },
+            icon_painter,
             self.output_threshold,
         );
 

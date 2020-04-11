@@ -181,7 +181,7 @@ let s:can_enable_icon = ['files', 'git_files']
 function! clap#maple#get_enable_icon_opt() abort
   if g:clap_enable_icon
         \ && index(s:can_enable_icon, g:clap.provider.id) > -1
-    return '--enable-icon'
+    return '--icon-painter=File'
   else
     return ''
   endif
@@ -210,7 +210,7 @@ function! clap#maple#sync_filter_subcommand(query) abort
   let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let global_opt .= ' --enable-icon'
+    let global_opt .= ' --icon-painter=File'
   endif
 
   let cmd = printf('%s %s filter "%s" --sync', s:maple_bin, global_opt, a:query)
@@ -222,7 +222,7 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
   " let global_opt = '--number '.g:clap.display.preload_capacity
   " TODO: add max_output
   if g:clap_enable_icon
-    let global_opt = '--enable-icon'
+    let global_opt = '--icon-painter=Grep'
   else
     let global_opt = ''
   endif
@@ -243,7 +243,7 @@ endfunction
 function! clap#maple#run_exec(cmd) abort
   let global_opt = '--number '.g:clap.display.preload_capacity
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let global_opt .= ' --enable-icon'
+    let global_opt .= ' --icon-painter=File'
   endif
 
   let cmd_dir = clap#rooter#working_dir()

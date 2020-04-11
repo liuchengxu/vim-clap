@@ -37,7 +37,7 @@ pub fn run(
     glob: Option<&str>,
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
 ) -> Result<()> {
     let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, cmd_dir);
 
@@ -57,16 +57,7 @@ pub fn run(
 
     cmd.args(&args[1..]);
 
-    let mut light_cmd = LightCommand::new_grep(
-        &mut cmd,
-        None,
-        number,
-        if enable_icon {
-            Some(IconPainter::Grep)
-        } else {
-            None
-        },
-    );
+    let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter);
 
     light_cmd.execute(&args)?;
 
@@ -117,7 +108,7 @@ pub fn dyn_grep(
     cmd_dir: Option<PathBuf>,
     input: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     no_cache: bool,
 ) -> Result<()> {
     let rg_cmd = "rg --column --line-number --no-heading --color=never --smart-case ''";
@@ -134,11 +125,7 @@ pub fn dyn_grep(
                     None,
                     number,
                     None,
-                    if enable_icon {
-                        Some(IconPainter::Grep)
-                    } else {
-                        None
-                    },
+                    icon_painter,
                     ContentFiltering::GrepExcludeFilePath,
                 );
             }
@@ -154,11 +141,7 @@ pub fn dyn_grep(
         None,
         number,
         None,
-        if enable_icon {
-            Some(IconPainter::Grep)
-        } else {
-            None
-        },
+        icon_painter,
         ContentFiltering::GrepExcludeFilePath,
     )
 }
@@ -166,7 +149,7 @@ pub fn dyn_grep(
 pub fn run_forerunner(
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     no_cache: bool,
 ) -> Result<()> {
     if !no_cache {
@@ -194,16 +177,7 @@ pub fn run_forerunner(
 
     set_current_dir(&mut cmd, cmd_dir.clone());
 
-    let mut light_cmd = LightCommand::new_grep(
-        &mut cmd,
-        cmd_dir,
-        number,
-        if enable_icon {
-            Some(IconPainter::Grep)
-        } else {
-            None
-        },
-    );
+    let mut light_cmd = LightCommand::new_grep(&mut cmd, cmd_dir, number, icon_painter);
 
     light_cmd.execute(&RG_ARGS)?;
 

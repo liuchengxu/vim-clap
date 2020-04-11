@@ -2,10 +2,10 @@ mod constants;
 
 pub use constants::{bsearch_icon_table, EXACTMATCH_ICON_TABLE, EXTENSION_ICON_TABLE};
 
-use std::path::Path;
-
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::path::Path;
+use structopt::clap::arg_enum;
 
 pub const DEFAULT_ICON: char = '';
 pub const FOLDER_ICON: char = '';
@@ -77,11 +77,13 @@ pub fn prepend_grep_icon(line: &str) -> String {
     format!("{} {}", icon, line)
 }
 
-/// Prepend an icon for various kind of output line.
-#[derive(Clone, Debug)]
-pub enum IconPainter {
-    File,
-    Grep,
+arg_enum! {
+  /// Prepend an icon for various kind of output line.
+  #[derive(Clone, Debug)]
+  pub enum IconPainter {
+      File,
+      Grep,
+  }
 }
 
 impl IconPainter {

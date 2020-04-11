@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    subprocess, ContentFiltering, IconPainter, Result, Source, StructOpt,
+    subprocess, ContentFiltering, Result, Source, StructOpt,
 };
 
 pub mod built_info {
@@ -35,7 +35,7 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::RipgrepForerunner { cmd_dir } => maple_cli::cmd::grep::run_forerunner(
             cmd_dir,
             maple.number,
-            maple.enable_icon,
+            maple.icon_painter,
             maple.no_cache,
         )?,
         Cmd::Cache(cache) => cache.run()?,
@@ -65,7 +65,7 @@ fn run(maple: Maple) -> Result<()> {
                     source,
                     algo,
                     maple.number,
-                    maple.enable_icon,
+                    maple.icon_painter,
                     maple.winwidth,
                 )?;
             } else {
@@ -75,17 +75,13 @@ fn run(maple: Maple) -> Result<()> {
                     algo,
                     maple.number,
                     maple.winwidth,
-                    if maple.enable_icon {
-                        Some(IconPainter::File)
-                    } else {
-                        None
-                    },
+                    maple.icon_painter,
                     content_filtering.unwrap_or(ContentFiltering::Full),
                 )?;
             }
         }
         Cmd::Exec(exec) => {
-            exec.run(maple.number, maple.enable_icon, maple.no_cache)?;
+            exec.run(maple.number, maple.icon_painter, maple.no_cache)?;
         }
         Cmd::Grep {
             grep_cmd,
@@ -107,7 +103,7 @@ fn run(maple: Maple) -> Result<()> {
                     g,
                     cmd_dir,
                     maple.number,
-                    maple.enable_icon,
+                    maple.icon_painter,
                 )?;
             } else {
                 maple_cli::cmd::grep::dyn_grep(
@@ -115,7 +111,7 @@ fn run(maple: Maple) -> Result<()> {
                     cmd_dir,
                     input,
                     maple.number,
-                    maple.enable_icon,
+                    maple.icon_painter,
                     maple.no_cache,
                 )?;
             }

@@ -40,7 +40,7 @@ pub fn run<I: Iterator<Item = String>>(
     source: Source<I>,
     algo: Option<Algo>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     winwidth: Option<usize>,
 ) -> Result<()> {
     let ranked = fuzzy_filter_and_rank(query, source, algo.unwrap_or(Algo::Fzy))?;
@@ -51,11 +51,7 @@ pub fn run<I: Iterator<Item = String>>(
             number,
             ranked.into_iter().take(number),
             winwidth.unwrap_or(62),
-            if enable_icon {
-                Some(IconPainter::File)
-            } else {
-                None
-            },
+            icon_painter,
         );
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);
