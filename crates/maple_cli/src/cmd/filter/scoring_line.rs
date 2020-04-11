@@ -2,12 +2,16 @@ use extracted_fzy::match_and_score_with_positions;
 pub use fuzzy_matcher::skim::fuzzy_indices as fuzzy_indices_skim;
 use lazy_static::lazy_static;
 use regex::Regex;
+use structopt::clap::arg_enum;
 
-#[derive(Debug, Clone)]
-pub enum ContentFiltering {
-    Full,
-    FileNameOnly,
-    GrepExcludeFilePath,
+// Implement arg_enum so that we could control it from the command line.
+arg_enum! {
+  #[derive(Debug, Clone)]
+  pub enum ContentFiltering {
+      Full,
+      FileNameOnly,
+      GrepExcludeFilePath,
+  }
 }
 
 // Returns the score and indices of matched chars
@@ -82,7 +86,7 @@ mod tests {
     fn test_exclude_grep_filepath() {
         let query = "macro";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let (_, origin_indices) = fuzzy_indices(line, query).unwrap();
+        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
         let (_, indices) = apply_fzy_on_grep_line(line, query).unwrap();
         assert_eq!(origin_indices, indices);
     }
@@ -91,7 +95,7 @@ mod tests {
     fn test_file_name_only() {
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
-        let (_, origin_indices) = fuzzy_indices(line, query).unwrap();
+        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
         let (_, indices) = apply_fzy_on_file_line(line, query).unwrap();
         assert_eq!(origin_indices, indices);
     }

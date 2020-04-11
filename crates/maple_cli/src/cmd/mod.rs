@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::cmd::filter::ContentFiltering;
 use fuzzy_filter::Algo;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -43,6 +44,10 @@ pub enum Cmd {
         /// Read input from a file instead of stdin, only absolute file path is supported.
         #[structopt(long = "input", parse(from_os_str))]
         input: Option<PathBuf>,
+
+        /// Apply the filter on the full line content or parial of it.
+        #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
+        content_filtering: Option<ContentFiltering>,
     },
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]

@@ -46,6 +46,7 @@ fn run(maple: Maple) -> Result<()> {
             cmd,
             cmd_dir,
             sync,
+            content_filtering,
         } => {
             let source = if let Some(cmd_str) = cmd {
                 if let Some(dir) = cmd_dir {
@@ -79,7 +80,7 @@ fn run(maple: Maple) -> Result<()> {
                     } else {
                         None
                     },
-                    ContentFiltering::Full,
+                    content_filtering.unwrap_or(ContentFiltering::Full),
                 )?;
             }
         }
