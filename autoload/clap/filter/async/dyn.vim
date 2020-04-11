@@ -28,17 +28,26 @@ endfunction
 
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   let s:last_query = g:clap.input.get()
+
   if g:clap_enable_icon && index(['files', 'git_files'], g:clap.provider.id) > -1
     let enable_icon_opt = '--enable-icon'
   else
     let enable_icon_opt = ''
   endif
-  let filter_cmd = printf('%s --number %d --winwidth %d filter "%s" --input "%s"',
+
+  if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
+    let content_filtering = '--content-filtering=FileNameOnly'
+  else
+    let content_filtering = ''
+  endif
+
+  let filter_cmd = printf('%s --number %d --winwidth %d filter "%s" --input "%s" %s',
         \ enable_icon_opt,
         \ s:DYN_ITEMS_TO_SHOW,
         \ winwidth(g:clap.display.winid),
         \ g:clap.input.get(),
-        \ a:tempfile
+        \ a:tempfile,
+        \ content_filtering,
         \ )
   call clap#job#stdio#start_service(function('s:handle_message'), clap#maple#build_cmd(filter_cmd))
 endfunction
