@@ -8,8 +8,10 @@ syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn c
 syntax match ClapIconUnknown /^\s*/
 
 execute 'syntax match ClapFpath' '/^.*:\d\+:\d\+:/' 'contains=ClapLinNrColumn,'.join(clap#icon#add_head_hl_groups(), ',')
+execute 'syntax match ClapFpathTruncated' '/^.*\.\.\./' 'contains='.join(clap#icon#add_head_hl_groups(), ',')
 
 hi default link ClapFpath            Keyword
+hi default link ClapFpathTruncated   Keyword
 hi default link ClapLinNr            LineNr
 hi default link ClapColumn           Comment
 hi default link ClapLinNrColumn      Type

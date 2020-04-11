@@ -7,6 +7,10 @@ CHANGELOG
 
 - Add `--content-filtering` in maple. You can use `:Clap files +name-only ~` to filter the file name instead of full file path, but you can only use it when clap is using the cached tempfile inside vim.
 
+### Improved
+
+- icon highlight for truncated grep text.
+
 ### Changed
 
 - `grep2` will not match the file path by default. ([#385](https://github.com/liuchengxu/vim-clap/pull/385))
