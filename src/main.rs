@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    subprocess, IconPainter, Result, Source, StructOpt,
+    subprocess, ContentFiltering, IconPainter, Result, Source, StructOpt,
 };
 
 pub mod built_info {
@@ -79,7 +79,7 @@ fn run(maple: Maple) -> Result<()> {
                     } else {
                         None
                     },
-                    false,
+                    ContentFiltering::Full,
                 )?;
             }
         }

@@ -23,6 +23,7 @@ macro_rules! print_json_with_length {
 
 pub mod cmd;
 pub use {
+    crate::cmd::filter::ContentFiltering,
     anyhow::Result,
     fuzzy_filter::{subprocess, Source},
     icon::IconPainter,

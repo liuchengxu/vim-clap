@@ -1,4 +1,5 @@
 use crate::cmd::cache::CacheEntry;
+use crate::cmd::filter::ContentFiltering;
 use crate::light_command::{set_current_dir, LightCommand};
 use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
 use anyhow::{anyhow, Result};
@@ -138,7 +139,7 @@ pub fn dyn_grep(
                     } else {
                         None
                     },
-                    true,
+                    ContentFiltering::GrepExcludeFilePath,
                 );
             }
         }
@@ -158,7 +159,7 @@ pub fn dyn_grep(
         } else {
             None
         },
-        true,
+        ContentFiltering::GrepExcludeFilePath,
     )
 }
 

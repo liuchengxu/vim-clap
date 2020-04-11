@@ -1,11 +1,8 @@
+use super::scoring_line::*;
 use super::*;
-use extracted_fzy::match_and_score_with_positions;
 use fuzzy_filter::FuzzyMatchedLineInfo;
-use fuzzy_matcher::skim::fuzzy_indices;
 use icon::ICON_LEN;
-use lazy_static::lazy_static;
 use rayon::slice::ParallelSliceMut;
-use regex::Regex;
 use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
 
@@ -317,7 +314,7 @@ macro_rules! source_iter_file {
     ( $scorer:ident, $fpath:ident ) => {
         // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
         // The line stream can contain invalid UTF-8 data.
-        std::io::BufReader::new(std::fs::File::open($fpath).unwrap())
+        std::io::BufReader::new(std::fs::File::open($fpath)?)
             .lines()
             .filter(|x| x.is_ok())
             .map(|x| x.unwrap())
@@ -332,39 +329,6 @@ macro_rules! source_iter_list {
     };
 }
 
-lazy_static! {
-    // match the file path and line number of grep line.
-    static ref GREP_RE: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
-}
-
-/// Do not match the file path when using ripgrep.
-#[inline]
-fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
-    GREP_RE
-        .find(line)
-        .map(|mat| (&line[mat.end()..], mat.end()))
-}
-
-#[inline]
-fn apply_skim_on_grep_line(line: &str, query: &str) -> Option<(i64, Vec<usize>)> {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
-        fuzzy_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
-}
-
-#[inline]
-fn apply_fzy_on_grep_line(line: &str, query: &str) -> Option<(i64, Vec<usize>)> {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
-        match_and_score_with_positions(query, truncated_line).map(|(score, indices)| {
-            (
-                score as i64,
-                indices.into_iter().map(|x| x + offset).collect(),
-            )
-        })
-    })
-}
-
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     query: &str,
@@ -373,26 +337,21 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     number: Option<usize>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
-    exclude_grep_filepath: bool,
+    content_filtering: ContentFiltering,
 ) -> Result<()> {
     let algo = algo.unwrap_or(Algo::Fzy);
 
     let scorer = |line: &str| match algo {
-        Algo::Skim => {
-            if exclude_grep_filepath {
-                apply_skim_on_grep_line(line, query)
-            } else {
-                fuzzy_indices(line, query)
-            }
-        }
-        Algo::Fzy => {
-            if exclude_grep_filepath {
-                apply_fzy_on_grep_line(line, query)
-            } else {
-                match_and_score_with_positions(query, line)
-                    .map(|(score, indices)| (score as i64, indices))
-            }
-        }
+        Algo::Skim => match content_filtering {
+            ContentFiltering::Full => fuzzy_indices_skim(line, query),
+            ContentFiltering::FileNameOnly => apply_skim_on_file_line(line, query),
+            ContentFiltering::GrepExcludeFilePath => apply_skim_on_grep_line(line, query),
+        },
+        Algo::Fzy => match content_filtering {
+            ContentFiltering::Full => fuzzy_indices_fzy(line, query),
+            ContentFiltering::FileNameOnly => apply_fzy_on_file_line(line, query),
+            ContentFiltering::GrepExcludeFilePath => apply_fzy_on_grep_line(line, query),
+        },
     };
 
     if let Some(number) = number {
@@ -503,17 +462,8 @@ mod tests {
             Some(100),
             None,
             None,
-            false,
+            ContentFiltering::Full,
         )
         .unwrap()
-    }
-
-    #[test]
-    fn test_exclude_grep_filepath() {
-        let query = "macro";
-        let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let (_, origin_indices) = fuzzy_indices(line, query).unwrap();
-        let (_, indices) = apply_fzy_on_grep_line(line, query).unwrap();
-        assert_eq!(origin_indices, indices);
     }
 }

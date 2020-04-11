@@ -1,6 +1,8 @@
 pub mod dynamic;
+mod scoring_line;
 
 pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
+pub use scoring_line::ContentFiltering;
 
 use std::collections::HashMap;
 
