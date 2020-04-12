@@ -5,6 +5,8 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 
+const CLAP_CACHE: &str = "vim.clap";
+
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents(target_dir: &PathBuf) -> Result<()> {
     let entries = read_dir(target_dir)?;
@@ -60,7 +62,7 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 #[inline]
 pub(crate) fn clap_cache_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
-    dir.push("vim.clap");
+    dir.push(CLAP_CACHE);
     dir
 }
 
@@ -84,7 +86,8 @@ pub fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
     if cache_dir.exists() {
         let mut entries = read_dir(cache_dir)?;
 
-        // TODO: get latest modifed cache file?
+        // Everytime when we are about to create a new cache entry, the old entry will be removed,
+        // so there is only one cache entry, therefore it should be always the latest one.
         if let Some(Ok(first_entry)) = entries.next() {
             return Ok(first_entry);
         }
