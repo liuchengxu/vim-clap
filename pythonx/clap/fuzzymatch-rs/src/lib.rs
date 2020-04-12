@@ -69,7 +69,14 @@ fn fuzzy_match(
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
         Box::new(|line: &str| {
-            fzy_scorer_fn(line, query).map(|(score, indices)| (score as f64, indices))
+            if enable_icon {
+                // " " is 4 bytes, but the offset of highlight is 2.
+                fzy_scorer_fn(&line[4..], query).map(|(score, indices)| {
+                    (score as f64, indices.into_iter().map(|x| x + 4).collect())
+                })
+            } else {
+                fzy_scorer_fn(line, query).map(|(score, indices)| (score as f64, indices))
+            }
         })
     };
 
@@ -129,4 +136,14 @@ fn py_and_rs_subscore_should_work() {
         let rs_result = substr_scorer(niddle, haystack).unwrap();
         assert_eq!(py_result, rs_result);
     }
+}
+
+#[test]
+fn test_skip_icon() {
+    let lines = vec![" .dependabot/config.yml".into(), " .editorconfig".into()];
+    let query = "con";
+    println!(
+        "ret: {:#?}",
+        fuzzy_match(query, lines, 62, true, "Full".to_string())
+    );
 }

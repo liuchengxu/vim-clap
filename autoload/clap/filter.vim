@@ -39,8 +39,16 @@ function! clap#filter#capacity() abort
 endfunction
 
 if s:can_use_python
+
+  let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
+
   function! s:enable_icon() abort
-    return clap#highlight#provider_has_offset() ? v:true : v:false
+    if g:clap_enable_icon
+          \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+      return v:true
+    else
+      return v:false
+    endif
   endfunction
 
   function! s:content_filtering() abort

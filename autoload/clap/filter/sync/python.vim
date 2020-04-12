@@ -53,7 +53,7 @@ if s:using_dynamic_module
     return filtered
   endfunction
 else
-  function! clap#filter#sync#python#(query, candidates, _winwidth, _enable_icon, _content_filtering) abort
+  function! clap#filter#sync#python#(query, candidates, _winwidth, enable_icon, _content_filtering) abort
     let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
     return filtered
   endfunction
