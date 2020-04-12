@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.12] 2020-04-12
+
 ### Added
 
 - Add `--content-filtering` in maple. You can use `:Clap files +name-only ~` to filter the file name instead of full file path, but you can only use it when clap is using the cached tempfile inside vim.
