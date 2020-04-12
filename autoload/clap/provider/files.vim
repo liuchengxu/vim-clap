@@ -31,6 +31,10 @@ endif
 function! s:files.source() abort
   call clap#rooter#try_set_cwd()
 
+  if has_key(g:clap.context, 'name-only')
+    let g:__clap_builtin_content_filtering_enum = 'FileNameOnly'
+  endif
+
   if has_key(g:clap.context, 'finder')
     let finder = g:clap.context.finder
     return finder.' '.join(g:clap.provider.args, ' ')
@@ -73,6 +77,12 @@ endfunction
 
 function! clap#provider#files#on_move_impl() abort
   call clap#preview#file(s:into_filename(g:clap.display.getcurline()))
+endfunction
+
+function! s:files.on_exit() abort
+  if exists('g:__clap_builtin_content_filtering_enum')
+    unlet g:__clap_builtin_content_filtering_enum
+  endif
 endfunction
 
 let s:files.sink = function('clap#provider#files#sink_impl')

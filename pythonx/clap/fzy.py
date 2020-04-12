@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import vim
-
 from clap.scorer import fzy_scorer, substr_scorer
 
 
@@ -53,6 +52,7 @@ try:
     def clap_fzy_rs():
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
                               int(vim.eval("a:winwidth")),
-                              str2bool(vim.eval("a:enable_icon")))
+                              str2bool(vim.eval("a:enable_icon")),
+                              vim.eval("a:content_filtering"))
 except Exception:
     pass

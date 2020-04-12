@@ -43,9 +43,17 @@ if s:can_use_python
     return clap#highlight#provider_has_offset() ? v:true : v:false
   endfunction
 
+  function! s:content_filtering() abort
+    if exists('g:__clap_builtin_content_filtering_enum')
+      return g:__clap_builtin_content_filtering_enum
+    else
+      return 'Full'
+    endif
+  endfunction
+
   function! clap#filter#sync(query, candidates) abort
     try
-      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon())
+      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:content_filtering())
     catch
       call clap#helper#echo_error(v:exception)
       return clap#filter#sync#viml#(a:query, a:candidates)

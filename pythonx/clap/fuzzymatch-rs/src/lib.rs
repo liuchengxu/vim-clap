@@ -1,6 +1,6 @@
 #![feature(pattern)]
 
-use extracted_fzy::match_and_score_with_positions;
+use fuzzy_filter::{get_appropriate_scorer, Algo};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -62,12 +62,14 @@ fn fuzzy_match(
     candidates: Vec<String>,
     winwidth: usize,
     enable_icon: bool,
+    content_filtering: String,
 ) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
+    let fzy_scorer_fn = get_appropriate_scorer(Algo::Fzy, content_filtering.into());
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
         Box::new(|line: &str| {
-            match_and_score_with_positions(query, line).map(|(score, idxs)| (score as f64, idxs))
+            fzy_scorer_fn(line, query).map(|(score, indices)| (score as f64, indices))
         })
     };
 

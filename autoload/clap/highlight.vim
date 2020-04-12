@@ -19,8 +19,14 @@ endfunction
 
 function! s:builtin_fuzzy_idx_offset() abort
   if s:should_check_offset()
-        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+    if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
+      return 0
+    endif
+    if index(s:related_builtin_providers, g:clap.provider.id) > -1
       return 2
+    else
+      return 0
+    endif
   else
     return 0
   endif

@@ -23,6 +23,23 @@ arg_enum! {
   }
 }
 
+impl From<&str> for ContentFiltering {
+    fn from(filtering: &str) -> Self {
+        match filtering {
+            "Full" => Self::Full,
+            "FileNameOnly" => Self::FileNameOnly,
+            "GrepExcludeFilePath" => Self::GrepExcludeFilePath,
+            _ => Self::Full,
+        }
+    }
+}
+
+impl From<String> for ContentFiltering {
+    fn from(filtering: String) -> Self {
+        Self::from(filtering.as_str())
+    }
+}
+
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
   /// Supported fuzzy match algorithm.
