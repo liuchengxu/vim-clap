@@ -160,7 +160,9 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
+ "lazy_static",
  "rayon",
+ "regex",
  "structopt",
 ]
 

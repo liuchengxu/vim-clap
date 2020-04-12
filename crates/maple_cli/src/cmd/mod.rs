@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cmd::filter::ContentFiltering;
+use crate::ContentFiltering;
 use fuzzy_filter::Algo;
 use icon::IconPainter;
 use structopt::clap::AppSettings;

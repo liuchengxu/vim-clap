@@ -1,13 +1,11 @@
 pub mod dynamic;
-mod scoring_line;
 
 pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
-pub use scoring_line::ContentFiltering;
 
 use std::collections::HashMap;
 
 use anyhow::Result;
-use fuzzy_filter::{fuzzy_filter_and_rank, Algo, Source};
+use fuzzy_filter::{fuzzy_filter_and_rank, Algo, ContentFiltering, Source};
 use printer::truncate_long_matched_lines;
 
 use icon::{IconPainter, ICON_LEN};

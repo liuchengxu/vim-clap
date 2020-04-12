@@ -1,6 +1,5 @@
-use super::scoring_line::*;
 use super::*;
-use fuzzy_filter::FuzzyMatchedLineInfo;
+use fuzzy_filter::{get_appropriate_scorer, FuzzyMatchedLineInfo};
 use icon::ICON_LEN;
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
@@ -341,18 +340,8 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
 ) -> Result<()> {
     let algo = algo.unwrap_or(Algo::Fzy);
 
-    let scorer = |line: &str| match algo {
-        Algo::Skim => match content_filtering {
-            ContentFiltering::Full => fuzzy_indices_skim(line, query),
-            ContentFiltering::FileNameOnly => apply_skim_on_file_line(line, query),
-            ContentFiltering::GrepExcludeFilePath => apply_skim_on_grep_line(line, query),
-        },
-        Algo::Fzy => match content_filtering {
-            ContentFiltering::Full => fuzzy_indices_fzy(line, query),
-            ContentFiltering::FileNameOnly => apply_fzy_on_file_line(line, query),
-            ContentFiltering::GrepExcludeFilePath => apply_fzy_on_grep_line(line, query),
-        },
-    };
+    let scorer_fn = get_appropriate_scorer(algo, content_filtering);
+    let scorer = |line: &str| scorer_fn(line, query);
 
     if let Some(number) = number {
         let (total, filtered) = match source {

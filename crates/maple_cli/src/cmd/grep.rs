@@ -1,7 +1,7 @@
 use crate::cmd::cache::CacheEntry;
-use crate::cmd::filter::ContentFiltering;
 use crate::light_command::{set_current_dir, LightCommand};
 use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
+use crate::ContentFiltering;
 use anyhow::{anyhow, Result};
 use fuzzy_filter::{subprocess, Source};
 use icon::{prepend_grep_icon, IconPainter};
