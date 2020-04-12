@@ -64,31 +64,37 @@ pub fn run(
     Ok(())
 }
 
+pub enum SendResponse {
+    Json,
+    JsonWithContentLength,
+}
+
 fn cache_exists(
     args: &[&str],
     cmd_dir: &PathBuf,
-    send_response: bool,
-    with_length: bool,
+    send_response: Option<SendResponse>,
 ) -> Result<PathBuf> {
     if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
         if let Ok(total) = CacheEntry::get_total(&cached_entry) {
             let tempfile = cached_entry.path();
-            if send_response {
+            if let Some(response_ty) = send_response {
                 let using_cache = true;
                 if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
                     let lines = lines_iter
                         .map(|x| prepend_grep_icon(&x))
                         .collect::<Vec<_>>();
-                    if with_length {
-                        print_json_with_length!(total, tempfile, using_cache, lines);
-                    } else {
-                        println_json!(total, tempfile, using_cache, lines);
+                    match response_ty {
+                        SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
+                        SendResponse::JsonWithContentLength => {
+                            print_json_with_length!(total, tempfile, using_cache, lines)
+                        }
                     }
                 } else {
-                    if with_length {
-                        print_json_with_length!(total, tempfile, using_cache);
-                    } else {
-                        println_json!(total, tempfile, using_cache);
+                    match response_ty {
+                        SendResponse::Json => println_json!(total, tempfile, using_cache),
+                        SendResponse::JsonWithContentLength => {
+                            print_json_with_length!(total, tempfile, using_cache)
+                        }
                     }
                 }
             }
@@ -117,7 +123,7 @@ pub fn dyn_grep(
         Source::File(tempfile)
     } else if let Some(dir) = cmd_dir {
         if !no_cache {
-            if let Ok(cached_file) = cache_exists(&RG_ARGS, &dir, false, true) {
+            if let Ok(cached_file) = cache_exists(&RG_ARGS, &dir, None) {
                 let cached_source: Source<std::iter::Empty<_>> = Source::File(cached_file).into();
                 return crate::cmd::filter::dyn_run(
                     grep_query,
@@ -154,7 +160,7 @@ pub fn run_forerunner(
 ) -> Result<()> {
     if !no_cache {
         if let Some(ref dir) = cmd_dir {
-            if cache_exists(&RG_ARGS, dir, true, false).is_ok() {
+            if cache_exists(&RG_ARGS, dir, Some(SendResponse::Json)).is_ok() {
                 return Ok(());
             }
         }
