@@ -7,7 +7,8 @@ pub use scoring_line::ContentFiltering;
 use std::collections::HashMap;
 
 use anyhow::Result;
-use fuzzy_filter::{fuzzy_filter_and_rank, truncate_long_matched_lines, Algo, Source};
+use fuzzy_filter::{fuzzy_filter_and_rank, Algo, Source};
+use printer::truncate_long_matched_lines;
 
 use icon::{IconPainter, ICON_LEN};
 

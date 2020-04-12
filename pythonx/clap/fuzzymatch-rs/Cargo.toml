@@ -18,6 +18,9 @@ version = "0.9.1"
 [dependencies.extracted_fzy]
 path = "../../../crates/extracted_fzy"
 
+[dependencies.printer]
+path = "../../../crates/printer"
+
 [dependencies.fuzzy_filter]
 path = "../../../crates/fuzzy_filter"
 default-features = false

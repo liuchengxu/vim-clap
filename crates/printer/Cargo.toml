@@ -1,26 +1,19 @@
 [package]
-name = "maple_cli"
+name = "printer"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2018"
 license = "MIT"
 publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"
-description = "vim-clap external filter gadget"
 
 [dependencies]
-regex = "1"
-rayon = "1.2"
 serde = { package = "serde", version = "1.0",  features = ["derive"] }
-anyhow = "1.0"
-structopt = "0.3"
-bytecount = "0.6"
 serde_json = "1.0"
-lazy_static = "1.4.0"
-fuzzy-matcher = "0.3.1"
-crossbeam-channel = "0.4"
 
 icon = { path = "../icon" }
-printer = { path = "../printer" }
+
+[target.'cfg(not(windows))'.dev-dependencies]
+rayon = "1.2"
+termion = "1.5.1"
 fuzzy_filter = { path = "../fuzzy_filter" }
-extracted_fzy = { path = "../extracted_fzy" }

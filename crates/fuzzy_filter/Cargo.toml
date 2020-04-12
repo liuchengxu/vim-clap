@@ -18,9 +18,6 @@ subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = tr
 
 extracted_fzy = { path = "../extracted_fzy" }
 
-[target.'cfg(not(windows))'.dev-dependencies]
-termion = "1.5.1"
-
 [features]
 default = ["enable_dyn"]
 # Allow dynamic filtering

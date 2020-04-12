@@ -1,8 +1,7 @@
-use crate::{Algo, FuzzyMatchedLineInfo};
+use super::*;
 use anyhow::Result;
 use extracted_fzy::match_and_score_with_positions;
 use fuzzy_matcher::skim::fuzzy_indices;
-use rayon::prelude::*;
 use std::io::BufRead;
 use std::path::PathBuf;
 #[cfg(feature = "enable_dyn")]

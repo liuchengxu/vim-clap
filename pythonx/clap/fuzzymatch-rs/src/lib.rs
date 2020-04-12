@@ -1,7 +1,7 @@
 #![feature(pattern)]
 
 use extracted_fzy::match_and_score_with_positions;
-use fuzzy_filter::truncate_long_matched_lines;
+use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
