@@ -60,6 +60,10 @@ Supported Providers & Tools                                    *clap-support*
                          the git base directory or `getcwd()` . For example,
                          use `Clap files ..` to search files under the parent directory.
 
+                         `:Clap files +name-only` to filer the file name
+                         instead of the full file path. Require you have built
+                         the Python dynamic module or in the cache mode.
+
 
                                                      *:Clap-filetypes*
 :Clap filetypes          List File types.
