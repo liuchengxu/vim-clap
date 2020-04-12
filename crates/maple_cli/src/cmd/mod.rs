@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
+use crate::cmd::filter::ContentFiltering;
 use fuzzy_filter::Algo;
+use icon::IconPainter;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -43,25 +45,10 @@ pub enum Cmd {
         /// Read input from a file instead of stdin, only absolute file path is supported.
         #[structopt(long = "input", parse(from_os_str))]
         input: Option<PathBuf>,
-    },
-    /// Execute the command
-    #[structopt(name = "exec")]
-    Exec {
-        /// Specify the system command to run.
-        #[structopt(index = 1, short, long)]
-        cmd: String,
 
-        /// Specify the output file path when the output of command exceeds the threshold.
-        #[structopt(long = "output")]
-        output: Option<String>,
-
-        /// Specify the threshold for writing the output of command to a tempfile.
-        #[structopt(long = "output-threshold", default_value = "100000")]
-        output_threshold: usize,
-
-        /// Specify the working directory of CMD
-        #[structopt(long = "cmd-dir", parse(from_os_str))]
-        cmd_dir: Option<PathBuf>,
+        /// Apply the filter on the full line content or parial of it.
+        #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
+        content_filtering: Option<ContentFiltering>,
     },
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
@@ -94,14 +81,19 @@ pub enum Cmd {
         #[structopt(long = "input", parse(from_os_str))]
         input: Option<PathBuf>,
     },
+    /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
     RPC,
+    /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
     RipgrepForerunner {
         /// Specify the working directory of CMD
         #[structopt(long = "cmd-dir", parse(from_os_str))]
         cmd_dir: Option<PathBuf>,
     },
+    /// Execute the command
+    #[structopt(name = "exec")]
+    Exec(crate::cmd::exec::Exec),
     #[structopt(name = "blines")]
     Blines(crate::cmd::blines::Blines),
     #[structopt(name = "helptags")]
@@ -130,13 +122,13 @@ pub struct Maple {
     #[structopt(short = "w", long = "winwidth")]
     pub winwidth: Option<usize>,
 
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long = "enable-icon")]
-    pub enable_icon: bool,
-
     /// Do not use the cached file for exec subcommand.
     #[structopt(long = "no-cache")]
     pub no_cache: bool,
+
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    #[structopt(short, long, possible_values = &IconPainter::variants(), case_insensitive = true)]
+    pub icon_painter: Option<IconPainter>,
 
     #[structopt(subcommand)]
     pub command: Cmd,

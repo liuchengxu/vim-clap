@@ -1,6 +1,8 @@
 pub mod dynamic;
+mod scoring_line;
 
 pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
+pub use scoring_line::ContentFiltering;
 
 use std::collections::HashMap;
 
@@ -21,7 +23,12 @@ fn process_top_items<T>(
     let mut indices = Vec::with_capacity(top_size);
     if let Some(painter) = icon_painter {
         for (text, _, idxs) in truncated_lines {
-            lines.push(painter.paint(&text));
+            let iconized = if let Some(origin_text) = truncated_map.get(&text) {
+                format!("{} {}", painter.get_icon(origin_text), text)
+            } else {
+                painter.paint(&text)
+            };
+            lines.push(iconized);
             indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect());
         }
     } else {
@@ -38,7 +45,7 @@ pub fn run<I: Iterator<Item = String>>(
     source: Source<I>,
     algo: Option<Algo>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     winwidth: Option<usize>,
 ) -> Result<()> {
     let ranked = fuzzy_filter_and_rank(query, source, algo.unwrap_or(Algo::Fzy))?;
@@ -49,11 +56,7 @@ pub fn run<I: Iterator<Item = String>>(
             number,
             ranked.into_iter().take(number),
             winwidth.unwrap_or(62),
-            if enable_icon {
-                Some(IconPainter::File)
-            } else {
-                None
-            },
+            icon_painter,
         );
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);

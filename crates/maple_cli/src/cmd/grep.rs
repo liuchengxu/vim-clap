@@ -1,9 +1,10 @@
 use crate::cmd::cache::CacheEntry;
+use crate::cmd::filter::ContentFiltering;
 use crate::light_command::{set_current_dir, LightCommand};
 use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
 use anyhow::{anyhow, Result};
 use fuzzy_filter::{subprocess, Source};
-use icon::prepend_grep_icon;
+use icon::{prepend_grep_icon, IconPainter};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -36,7 +37,7 @@ pub fn run(
     glob: Option<&str>,
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
 ) -> Result<()> {
     let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, cmd_dir);
 
@@ -56,7 +57,7 @@ pub fn run(
 
     cmd.args(&args[1..]);
 
-    let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, enable_icon);
+    let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter);
 
     light_cmd.execute(&args)?;
 
@@ -107,7 +108,7 @@ pub fn dyn_grep(
     cmd_dir: Option<PathBuf>,
     input: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     no_cache: bool,
 ) -> Result<()> {
     let rg_cmd = "rg --column --line-number --no-heading --color=never --smart-case ''";
@@ -123,10 +124,9 @@ pub fn dyn_grep(
                     cached_source,
                     None,
                     number,
-                    enable_icon,
                     None,
-                    true,
-                    true,
+                    icon_painter,
+                    ContentFiltering::GrepExcludeFilePath,
                 );
             }
         }
@@ -140,17 +140,16 @@ pub fn dyn_grep(
         source,
         None,
         number,
-        enable_icon,
         None,
-        true,
-        true,
+        icon_painter,
+        ContentFiltering::GrepExcludeFilePath,
     )
 }
 
 pub fn run_forerunner(
     cmd_dir: Option<PathBuf>,
     number: Option<usize>,
-    enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     no_cache: bool,
 ) -> Result<()> {
     if !no_cache {
@@ -178,7 +177,7 @@ pub fn run_forerunner(
 
     set_current_dir(&mut cmd, cmd_dir.clone());
 
-    let mut light_cmd = LightCommand::new_grep(&mut cmd, cmd_dir, number, enable_icon);
+    let mut light_cmd = LightCommand::new_grep(&mut cmd, cmd_dir, number, icon_painter);
 
     light_cmd.execute(&RG_ARGS)?;
 

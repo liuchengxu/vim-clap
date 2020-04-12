@@ -141,7 +141,7 @@ function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
   let s:MessageHandler = a:MessageHandler
 
   let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
-        \ g:clap_enable_icon ? '--enable-icon' : '',
+        \ g:clap_enable_icon ? '--icon-painter=File' : '',
         \ winwidth(g:clap.display.winid),
         \ g:clap.input.get(),
         \ a:cmd,

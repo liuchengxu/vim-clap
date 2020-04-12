@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use anyhow::Result;
-use icon::{prepend_grep_icon, prepend_icon};
+use icon::IconPainter;
 
 use crate::cmd::cache::CacheEntry;
 use crate::error::DummyError;
@@ -43,8 +43,7 @@ pub struct LightCommand<'a> {
     total: usize,
     number: Option<usize>,
     output: Option<String>,
-    enable_icon: bool,
-    grep_enable_icon: bool,
+    icon_painter: Option<IconPainter>,
     output_threshold: usize,
 }
 
@@ -54,8 +53,7 @@ impl<'a> LightCommand<'a> {
         cmd: &'a mut Command,
         number: Option<usize>,
         output: Option<String>,
-        enable_icon: bool,
-        grep_enable_icon: bool,
+        icon_painter: Option<IconPainter>,
         output_threshold: usize,
     ) -> Self {
         Self {
@@ -64,8 +62,7 @@ impl<'a> LightCommand<'a> {
             number,
             total: 0usize,
             output,
-            enable_icon,
-            grep_enable_icon,
+            icon_painter,
             output_threshold,
         }
     }
@@ -75,7 +72,7 @@ impl<'a> LightCommand<'a> {
         cmd: &'a mut Command,
         cmd_dir: Option<PathBuf>,
         number: Option<usize>,
-        grep_enable_icon: bool,
+        icon_painter: Option<IconPainter>,
     ) -> Self {
         Self {
             cmd,
@@ -83,8 +80,7 @@ impl<'a> LightCommand<'a> {
             number,
             total: 0usize,
             output: None,
-            enable_icon: false,
-            grep_enable_icon,
+            icon_painter,
             output_threshold: 0usize,
         }
     }
@@ -119,10 +115,8 @@ impl<'a> LightCommand<'a> {
     }
 
     fn try_prepend_icon<'b>(&self, top_n: impl std::iter::Iterator<Item = &'b str>) -> Vec<String> {
-        let mut lines = if self.grep_enable_icon {
-            top_n.map(prepend_grep_icon).collect::<Vec<_>>()
-        } else if self.enable_icon {
-            top_n.map(prepend_icon).collect::<Vec<_>>()
+        let mut lines = if let Some(ref painter) = self.icon_painter {
+            top_n.map(|x| painter.paint(x)).collect::<Vec<_>>()
         } else {
             top_n.map(Into::into).collect::<Vec<_>>()
         };
@@ -163,19 +157,6 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    fn prepend_icon_for_cached_lines(
-        &self,
-        lines_iter: impl Iterator<Item = String>,
-    ) -> Vec<String> {
-        if self.grep_enable_icon {
-            lines_iter.map(|x| prepend_grep_icon(&x)).collect()
-        } else if self.enable_icon {
-            lines_iter.map(|x| prepend_icon(&x)).collect()
-        } else {
-            lines_iter.collect()
-        }
-    }
-
     /// Firstly try the cache given the command args and working dir.
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
@@ -184,7 +165,11 @@ impl<'a> LightCommand<'a> {
                 let using_cache = true;
                 let tempfile = cached_entry.path();
                 if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                    let lines = self.prepend_icon_for_cached_lines(lines_iter);
+                    let lines: Vec<String> = if let Some(ref painter) = self.icon_painter {
+                        lines_iter.map(|x| painter.paint(&x)).collect()
+                    } else {
+                        lines_iter.collect()
+                    };
                     println_json!(using_cache, total, tempfile, lines);
                 } else {
                     println_json!(using_cache, total, tempfile);

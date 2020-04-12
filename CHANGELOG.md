@@ -3,6 +3,14 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add `--content-filtering` in maple. You can use `:Clap files +name-only ~` to filter the file name instead of full file path, but you can only use it when clap is using the cached tempfile inside vim.
+
+### Improved
+
+- icon highlight for truncated grep text.
+
 ### Changed
 
 - `grep2` will not match the file path by default. ([#385](https://github.com/liuchengxu/vim-clap/pull/385))
@@ -10,6 +18,7 @@ CHANGELOG
 ### Fixed
 
 - `ITEMS_TO_SHOW` is fixed at the moment, only 30 rows can be shown correctly for dyn filter. https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611601076
+- Fix wrong icon for dyn filter when the text is truncated.
 
 ## [0.11] 2020-04-09
 

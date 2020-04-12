@@ -1,3 +1,4 @@
+use crate::cmd::filter::ContentFiltering;
 use anyhow::Result;
 use fuzzy_filter::Source;
 use std::path::PathBuf;
@@ -28,10 +29,9 @@ impl Blines {
             ),
             None,
             number,
-            false,
             winwidth,
-            false,
-            false,
+            None,
+            ContentFiltering::Full,
         )
     }
 }
