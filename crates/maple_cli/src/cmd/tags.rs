@@ -126,7 +126,7 @@ impl Tags {
                 Some(30),
                 None,
                 None,
-                ContentFiltering::Full,
+                ContentFiltering::TagNameOnly,
             )?;
         }
 

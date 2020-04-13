@@ -4,8 +4,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 lazy_static! {
-    // match the file path and line number of grep line.
-    static ref GREP_RE: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
+  // match the file path and line number of grep line.
+  static ref GREP_RE: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
+
+  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
 }
 
 /// Make the arguments order same to Skim's `fuzzy_indices()`.
@@ -63,6 +65,21 @@ pub(super) fn apply_fzy_on_file_line(line: &str, query: &str) -> ScorerOutput {
     })
 }
 
+#[inline]
+fn tag_name_only(line: &str) -> Option<&str> {
+    TAG_RE.find(line).map(|x| x.as_str())
+}
+
+#[inline]
+pub(super) fn apply_skim_on_tag_line(line: &str, query: &str) -> ScorerOutput {
+    tag_name_only(line).and_then(|tag_name| fuzzy_indices_skim(tag_name, query))
+}
+
+#[inline]
+pub(super) fn apply_fzy_on_tag_line(line: &str, query: &str) -> ScorerOutput {
+    tag_name_only(line).and_then(|tag_name| fuzzy_indices_fzy(tag_name, query))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -83,5 +100,12 @@ mod tests {
         let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
         let (_, indices) = apply_fzy_on_file_line(line, query).unwrap();
         assert_eq!(origin_indices, indices);
+    }
+
+    #[test]
+    fn test_tag_name_only() {
+        let line = "<Backspace>:60       [map]           inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>  ftplugin/clap_input.vim";
+        let mat = TAG_RE.find(line);
+        println!("{:?} {}", mat, mat.unwrap().as_str());
     }
 }

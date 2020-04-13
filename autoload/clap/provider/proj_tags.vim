@@ -22,7 +22,7 @@ function! s:proj_tags.on_typed() abort
 endfunction
 
 function! s:proj_tags.init() abort
-  call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
+  let g:__clap_builtin_content_filtering_enum = 'TagNameOnly'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
     call clap#forerunner#start_subcommand(clap#maple#tags_forerunner_subcommand())
@@ -57,6 +57,12 @@ function! s:proj_tags.on_move() abort
   call g:clap.preview.set_syntax(clap#ext#into_filetype(path))
   call g:clap.preview.add_highlight(hi_lnum+1)
   call clap#preview#highlight_header()
+endfunction
+
+function! s:proj_tags.on_exit() abort
+  if exists('g:__clap_builtin_content_filtering_enum')
+    unlet g:__clap_builtin_content_filtering_enum
+  endif
 endfunction
 
 let s:proj_tags.enable_rooter = v:true
