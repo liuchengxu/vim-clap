@@ -5,6 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:proj_tags = {}
+let s:PATH_SEPERATOR = has('win32') ? '\' : '/'
 
 function! s:proj_tags.on_typed() abort
   if exists('g:__clap_forerunner_tempfile')
@@ -51,7 +52,16 @@ function! s:proj_tags.on_move() abort
   let lnum = matchstr(curline, '^.*:\zs\(\d\+\)')
   let path = matchstr(curline, '\t\zs\f*$')
   let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
-  let lines = readfile(path)[start : end]
+  if filereadable(path)
+    let lines = readfile(path)[start : end]
+  else
+    let cwd = clap#rooter#working_dir()
+    if filereadable(cwd.s:PATH_SEPERATOR.path)
+      let lines = readfile(cwd.s:PATH_SEPERATOR.path)[start : end]
+    else
+      return
+    endif
+  endif
   call insert(lines, path)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(path))
