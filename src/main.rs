@@ -26,6 +26,7 @@ fn run(maple: Maple) -> Result<()> {
             version();
         }
         Cmd::Helptags(helptags) => helptags.run()?,
+        Cmd::Tags(tags) => tags.run(maple.no_cache)?,
         Cmd::RPC => {
             maple_cli::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
         }

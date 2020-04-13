@@ -1,10 +1,10 @@
-use crate::cmd::cache::CacheEntry;
+use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
-use crate::utils::{get_cached_entry, is_git_repo, read_first_lines};
+use crate::utils::is_git_repo;
 use crate::ContentFiltering;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use fuzzy_filter::{subprocess, Source};
-use icon::{prepend_grep_icon, IconPainter};
+use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -64,51 +64,6 @@ pub fn run(
     Ok(())
 }
 
-pub enum SendResponse {
-    Json,
-    JsonWithContentLength,
-}
-
-fn cache_exists(
-    args: &[&str],
-    cmd_dir: &PathBuf,
-    send_response: Option<SendResponse>,
-) -> Result<PathBuf> {
-    if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
-        if let Ok(total) = CacheEntry::get_total(&cached_entry) {
-            let tempfile = cached_entry.path();
-            if let Some(response_ty) = send_response {
-                let using_cache = true;
-                if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                    let lines = lines_iter
-                        .map(|x| prepend_grep_icon(&x))
-                        .collect::<Vec<_>>();
-                    match response_ty {
-                        SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
-                        SendResponse::JsonWithContentLength => {
-                            print_json_with_length!(total, tempfile, using_cache, lines)
-                        }
-                    }
-                } else {
-                    match response_ty {
-                        SendResponse::Json => println_json!(total, tempfile, using_cache),
-                        SendResponse::JsonWithContentLength => {
-                            print_json_with_length!(total, tempfile, using_cache)
-                        }
-                    }
-                }
-            }
-            // TODO: refresh the cache or mark it as outdated?
-            return Ok(tempfile);
-        }
-    }
-    Err(anyhow!(
-        "Cache does not exist for: {:?} in {:?}",
-        args,
-        cmd_dir
-    ))
-}
-
 pub fn dyn_grep(
     grep_query: &str,
     cmd_dir: Option<PathBuf>,
@@ -123,7 +78,7 @@ pub fn dyn_grep(
         Source::File(tempfile)
     } else if let Some(dir) = cmd_dir {
         if !no_cache {
-            if let Ok(cached_file) = cache_exists(&RG_ARGS, &dir, None) {
+            if let Ok((cached_file, _)) = cache_exists(&RG_ARGS, &dir) {
                 let cached_source: Source<std::iter::Empty<_>> = Source::File(cached_file).into();
                 return crate::cmd::filter::dyn_run(
                     grep_query,
@@ -160,7 +115,13 @@ pub fn run_forerunner(
 ) -> Result<()> {
     if !no_cache {
         if let Some(ref dir) = cmd_dir {
-            if cache_exists(&RG_ARGS, dir, Some(SendResponse::Json)).is_ok() {
+            if let Ok((cache, total)) = cache_exists(&RG_ARGS, dir) {
+                send_response_from_cache(
+                    &cache,
+                    total,
+                    SendResponse::Json,
+                    Some(IconPainter::Grep),
+                );
                 return Ok(());
             }
         }

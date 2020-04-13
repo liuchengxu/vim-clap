@@ -13,6 +13,7 @@ pub mod filter;
 pub mod grep;
 pub mod helptags;
 pub mod rpc;
+pub mod tags;
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {
@@ -100,6 +101,8 @@ pub enum Cmd {
     Helptags(crate::cmd::helptags::Helptags),
     #[structopt(name = "cache")]
     Cache(crate::cmd::cache::Cache),
+    #[structopt(name = "tags")]
+    Tags(crate::cmd::tags::Tags),
 }
 
 #[derive(StructOpt, Debug)]

@@ -218,6 +218,17 @@ function! clap#maple#sync_filter_subcommand(query) abort
   return cmd
 endfunction
 
+function! clap#maple#tags_forerunner_subcommand() abort
+  if has_key(g:clap.context, 'no-cache')
+    let global_opt = ' --no-cache'
+  else
+    let global_opt = ''
+  endif
+
+  let cmd_dir = clap#rooter#working_dir()
+  return printf('%s %s tags "" "%s" --forerunner', s:maple_bin, global_opt, cmd_dir)
+endfunction
+
 function! clap#maple#ripgrep_forerunner_subcommand() abort
   " let global_opt = '--number '.g:clap.display.preload_capacity
   " TODO: add max_output
