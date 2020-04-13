@@ -36,10 +36,10 @@ function! s:proj_tags.sink(selected) abort
   normal! m'
 
   if has_key(g:clap, 'open_action')
-    execute g:clap.open_action fpath
+    execute g:clap.open_action path
   else
     " Cannot use noautocmd here as it would lose syntax, and ...
-    execute 'edit' fpath
+    execute 'edit' path
   endif
 
   call cursor(lnum, 1)
@@ -51,7 +51,7 @@ function! s:proj_tags.on_move() abort
   let lnum = matchstr(curline, '^.*:\zs\(\d\+\)')
   let path = matchstr(curline, '\t\zs\f*$')
   let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
-  let lines = readfile(path)[start:end]
+  let lines = readfile(path)[start : end]
   call insert(lines, path)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(path))
