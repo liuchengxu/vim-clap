@@ -39,13 +39,29 @@ function! clap#filter#capacity() abort
 endfunction
 
 if s:can_use_python
+
+  let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
+
   function! s:enable_icon() abort
-    return clap#highlight#provider_has_offset() ? v:true : v:false
+    if g:clap_enable_icon
+          \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+      return v:true
+    else
+      return v:false
+    endif
+  endfunction
+
+  function! s:content_filtering() abort
+    if exists('g:__clap_builtin_content_filtering_enum')
+      return g:__clap_builtin_content_filtering_enum
+    else
+      return 'Full'
+    endif
   endfunction
 
   function! clap#filter#sync(query, candidates) abort
     try
-      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon())
+      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:content_filtering())
     catch
       call clap#helper#echo_error(v:exception)
       return clap#filter#sync#viml#(a:query, a:candidates)

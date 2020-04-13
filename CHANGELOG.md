@@ -3,6 +3,14 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Allow `:Clap files +name-only` to filter the file name only instead of the full file path. Require you have built the Python dynamic module or uses in the cached mode. ([#389](https://github.com/liuchengxu/vim-clap/pull/389))
+
+### Improved
+
+- Handle the icon highlight offset on Python and Rust side.
+
 ## [0.12] 2020-04-12
 
 ### Added

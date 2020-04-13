@@ -160,7 +160,9 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
+ "lazy_static",
  "rayon",
+ "regex",
  "structopt",
 ]
 
@@ -170,6 +172,7 @@ version = "0.1.0"
 dependencies = [
  "extracted_fzy",
  "fuzzy_filter",
+ "printer",
  "pyo3",
 ]
 
@@ -200,6 +203,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1010591b26bbfe835e9faeabeb11866061cc7dcebffd56ad7d0942d0e61aefd8"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "icon"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
+ "structopt",
 ]
 
 [[package]]
@@ -358,6 +370,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "printer"
+version = "0.1.0"
+dependencies = [
+ "icon",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

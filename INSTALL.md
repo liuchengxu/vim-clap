@@ -42,6 +42,8 @@ Now, only `maple` binary is mandatory for getting a fast and quite responsive vi
 
 If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using this single command `:call clap#installer#build_all()`.
 
+If you are using macOS or Linux, building the Rust deps is very convenient, just go to the clap plugin directory and run `make`.
+
 #### `maple` binary
 
 `maple` mainly serves two functions:

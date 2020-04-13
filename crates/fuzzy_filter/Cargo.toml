@@ -9,17 +9,16 @@ homepage = "https://github.com/liuchengxu/vim-clap"
 categories = ["Fuzzy Filter Library"]
 
 [dependencies]
+regex = "1"
 rayon = "1.2"
 anyhow = "1.0"
 structopt = "0.3"
+lazy_static = "1.4.0"
 fuzzy-matcher = "0.3.1"
 
 subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = true }
 
 extracted_fzy = { path = "../extracted_fzy" }
-
-[target.'cfg(not(windows))'.dev-dependencies]
-termion = "1.5.1"
 
 [features]
 default = ["enable_dyn"]

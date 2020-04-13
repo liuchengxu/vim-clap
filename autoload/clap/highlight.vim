@@ -4,34 +4,10 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" Now the added icon offset of matched items are handled in maple.
-" let s:related_maple_providers = ['files', 'git_files']
-
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
-
 let s:default_priority = 10
 
-" The icon can interfer the matched indices of fuzzy filter, but not the
-" substring filter.
-function! s:should_check_offset() abort
-  return g:clap_enable_icon && stridx(g:clap.input.get(), ' ') == -1
-endfunction
-
-function! s:builtin_fuzzy_idx_offset() abort
-  if s:should_check_offset()
-        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
-      return 2
-  else
-    return 0
-  endif
-endfunction
-
-function! clap#highlight#provider_has_offset() abort
-  return s:builtin_fuzzy_idx_offset() > 0
-endfunction
-
 if has('nvim')
-  function! s:apply_add_highlight(hl_lines, offset) abort
+  function! s:apply_add_highlight(hl_lines) abort
     " Currently neovim does not have win_execute()
     " and the highlight added by nvim_buf_add_highlight()
     " can be overrided by the sign's highlight.
@@ -50,10 +26,10 @@ if has('nvim')
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx))
+          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx, 'ClapFuzzyMatches'.group_idx))
           let group_idx += 1
         else
-          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group))
+          call add(w:clap_match_ids, clap#highlight#matchadd_char_at(lnum, idx, g:__clap_fuzzy_last_hl_group))
         endif
       endfor
       let lnum += 1
@@ -75,7 +51,7 @@ if has('nvim')
   endfunction
 
 else
-  function! s:apply_add_highlight(hl_lines, offset) abort
+  function! s:apply_add_highlight(hl_lines) abort
     " We do not have to clear the previous matches like neovim
     " as the previous lines have been deleted, and the associated text_props have also been removed.
     let lnum = 0
@@ -83,10 +59,10 @@ else
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call clap#highlight#add_highlight_at(lnum, idx+a:offset, 'ClapFuzzyMatches'.group_idx)
+          call clap#highlight#add_highlight_at(lnum, idx, 'ClapFuzzyMatches'.group_idx)
           let group_idx += 1
         else
-          call clap#highlight#add_highlight_at(lnum, idx+a:offset, g:__clap_fuzzy_last_hl_group)
+          call clap#highlight#add_highlight_at(lnum, idx, g:__clap_fuzzy_last_hl_group)
         endif
       endfor
       let lnum += 1
@@ -111,14 +87,12 @@ function! clap#highlight#add_fuzzy_sync() abort
   "
   " TODO: also add highlights for the cached lines?
   let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
-  let offset = s:builtin_fuzzy_idx_offset()
-
-  call s:apply_add_highlight(hl_lines, offset)
+  call s:apply_add_highlight(hl_lines)
 endfunction
 
 " Used by the async job.
 function! clap#highlight#add_fuzzy_async(hl_lines) abort
-  call s:apply_add_highlight(a:hl_lines, 0)
+  call s:apply_add_highlight(a:hl_lines)
 endfunction
 
 function! clap#highlight#fg_only(group_name, cermfg, guifg) abort

@@ -1,8 +1,6 @@
-use crate::{Algo, FuzzyMatchedLineInfo};
+use super::*;
+use crate::{fuzzy_indices_fzy, fuzzy_indices_skim};
 use anyhow::Result;
-use extracted_fzy::match_and_score_with_positions;
-use fuzzy_matcher::skim::fuzzy_indices;
-use rayon::prelude::*;
 use std::io::BufRead;
 use std::path::PathBuf;
 #[cfg(feature = "enable_dyn")]
@@ -44,9 +42,8 @@ impl<I: Iterator<Item = String>> Source<I> {
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn fuzzy_filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLineInfo>> {
         let scorer = |line: &str| match algo {
-            Algo::Skim => fuzzy_indices(line, &query),
-            Algo::Fzy => match_and_score_with_positions(&query, line)
-                .map(|(score, indices)| (score as i64, indices)),
+            Algo::Skim => fuzzy_indices_skim(line, &query),
+            Algo::Fzy => fuzzy_indices_fzy(line, &query),
         };
 
         let filtered = match self {

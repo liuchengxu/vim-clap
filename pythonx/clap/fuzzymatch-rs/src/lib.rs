@@ -1,7 +1,7 @@
 #![feature(pattern)]
 
-use extracted_fzy::match_and_score_with_positions;
-use fuzzy_filter::truncate_long_matched_lines;
+use fuzzy_filter::{get_appropriate_scorer, Algo};
+use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
@@ -62,12 +62,21 @@ fn fuzzy_match(
     candidates: Vec<String>,
     winwidth: usize,
     enable_icon: bool,
+    content_filtering: String,
 ) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
+    let fzy_scorer_fn = get_appropriate_scorer(Algo::Fzy, content_filtering.into());
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
         Box::new(|line: &str| {
-            match_and_score_with_positions(query, line).map(|(score, idxs)| (score as f64, idxs))
+            if enable_icon {
+                // " " is 4 bytes, but the offset of highlight is 2.
+                fzy_scorer_fn(&line[4..], query).map(|(score, indices)| {
+                    (score as f64, indices.into_iter().map(|x| x + 4).collect())
+                })
+            } else {
+                fzy_scorer_fn(line, query).map(|(score, indices)| (score as f64, indices))
+            }
         })
     };
 
@@ -127,4 +136,14 @@ fn py_and_rs_subscore_should_work() {
         let rs_result = substr_scorer(niddle, haystack).unwrap();
         assert_eq!(py_result, rs_result);
     }
+}
+
+#[test]
+fn test_skip_icon() {
+    let lines = vec![" .dependabot/config.yml".into(), " .editorconfig".into()];
+    let query = "con";
+    println!(
+        "ret: {:#?}",
+        fuzzy_match(query, lines, 62, true, "Full".to_string())
+    );
 }

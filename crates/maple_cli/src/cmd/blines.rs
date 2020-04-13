@@ -1,4 +1,4 @@
-use crate::cmd::filter::ContentFiltering;
+use crate::ContentFiltering;
 use anyhow::Result;
 use fuzzy_filter::Source;
 use std::path::PathBuf;
