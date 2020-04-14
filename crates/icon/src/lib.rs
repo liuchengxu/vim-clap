@@ -106,3 +106,25 @@ impl IconPainter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trim_trailing() {
+        let empty_iconized_line = " ";
+        assert_eq!(empty_iconized_line.len(), 4);
+        assert!(empty_iconized_line.chars().next().unwrap() == DEFAULT_ICON);
+    }
+
+    #[test]
+    fn test_icon_length() {
+        for table in [EXTENSION_ICON_TABLE, EXACTMATCH_ICON_TABLE].iter() {
+            for (_, i) in table.iter() {
+                let icon = format!("{} ", i);
+                assert_eq!(icon.len(), 4);
+            }
+        }
+    }
+}

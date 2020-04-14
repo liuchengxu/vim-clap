@@ -67,8 +67,6 @@ let g:clap#icon#extensions = {
       \ 'csh'          : '',
       \ 'awk'          : '',
       \ 'ps1'          : '',
-      \ 'ml'           : 'λ',
-      \ 'mli'          : 'λ',
       \ 'diff'         : '',
       \ 'db'           : '',
       \ 'sql'          : '',
