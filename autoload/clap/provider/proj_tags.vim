@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Project-wise tags
+" Description: Project-wide tags
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -33,40 +33,14 @@ endfunction
 function! s:proj_tags.sink(selected) abort
   let lnum = matchstr(a:selected, '^.*:\zs\(\d\+\)')
   let path = matchstr(a:selected, '\t\zs\f*$')
-
-  normal! m'
-
-  if has_key(g:clap, 'open_action')
-    execute g:clap.open_action path
-  else
-    " Cannot use noautocmd here as it would lose syntax, and ...
-    execute 'edit' path
-  endif
-
-  call cursor(lnum, 1)
-  normal! zz
+  call clap#sink#open_file(path, lnum, 1)
 endfunction
 
 function! s:proj_tags.on_move() abort
   let curline = g:clap.display.getcurline()
   let lnum = matchstr(curline, '^.*:\zs\(\d\+\)')
   let path = matchstr(curline, '\t\zs\f*$')
-  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
-  if filereadable(path)
-    let lines = readfile(path)[start : end]
-  else
-    let cwd = clap#rooter#working_dir()
-    if filereadable(cwd.s:PATH_SEPERATOR.path)
-      let lines = readfile(cwd.s:PATH_SEPERATOR.path)[start : end]
-    else
-      return
-    endif
-  endif
-  call insert(lines, path)
-  call g:clap.preview.show(lines)
-  call g:clap.preview.set_syntax(clap#ext#into_filetype(path))
-  call g:clap.preview.add_highlight(hi_lnum+1)
-  call clap#preview#highlight_header()
+  call clap#preview#file_at(path, lnum)
 endfunction
 
 function! s:proj_tags.on_exit() abort

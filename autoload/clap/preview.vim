@@ -40,6 +40,25 @@ function! clap#preview#file(fname) abort
   call s:show_file_props(a:fname)
 endfunction
 
+function! clap#preview#file_at(fpath, lnum) abort
+  let [start, end, hi_lnum] = clap#preview#get_line_range(a:lnum, 5)
+  if filereadable(a:fpath)
+    let lines = readfile(a:fpath)[start : end]
+  else
+    let cwd = clap#rooter#working_dir()
+    if filereadable(cwd.s:path_seperator.a:fpath)
+      let lines = readfile(cwd.s:path_seperator.a:fpath)[start : end]
+    else
+      return
+    endif
+  endif
+  call insert(lines, a:fpath)
+  call g:clap.preview.show(lines)
+  call g:clap.preview.set_syntax(clap#ext#into_filetype(a:fpath))
+  call g:clap.preview.add_highlight(hi_lnum+1)
+  call clap#preview#highlight_header()
+endfunction
+
 " Given the origin lnum and the size of range, return
 " [origin_lnum-range_size, origin_lnum+range_size] and the target lnum that
 " the origin line should be positioned.
