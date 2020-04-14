@@ -213,13 +213,3 @@ impl<'a> LightCommand<'a> {
         Ok(())
     }
 }
-
-#[test]
-fn test_trim_trailing() {
-    use icon::DEFAULT_ICON;
-
-    let empty_iconized_line = " ";
-
-    assert_eq!(empty_iconized_line.len(), 4);
-    assert!(empty_iconized_line.chars().next().unwrap() == DEFAULT_ICON);
-}

@@ -63,8 +63,6 @@ pub static EXTENSION_ICON_TABLE: &[(&str, char)] = &[
     ("lua", ''),
     ("markdown", ''),
     ("md", ''),
-    ("ml", 'λ'),
-    ("mli", 'λ'),
     ("mustache", ''),
     ("php", ''),
     ("pl", ''),
