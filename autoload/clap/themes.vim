@@ -148,10 +148,10 @@ function! s:reverse_PopupCursor() abort
   if !hlexists('ClapSearchText')
     return
   endif
-  let ctermbg = s:extract('ClapSearchText', 'bg', 'cterm')
-  let guibg = s:extract('ClapSearchText', 'bg', 'gui')
-  let ctermfg = s:extract('ClapSearchText', 'fg', 'cterm')
-  let guifg = s:extract('ClapSearchText', 'fg', 'gui')
+  let ctermbg = s:extract_or('ClapSearchText', 'bg', 'cterm', '60')
+  let guibg = s:extract_or('ClapSearchText', 'bg', 'gui', '#544a65')
+  let ctermfg = s:extract_or('ClapSearchText', 'fg', 'cterm', '249')
+  let guifg = s:extract_or('ClapSearchText', 'fg', 'gui', '#b2b2b2')
   execute printf(
         \ 'hi ClapPopupCursor guifg=%s ctermfg=%s ctermbg=%s guibg=%s cterm=bold,reverse gui=bold,reverse',
         \ guifg,

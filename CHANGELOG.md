@@ -9,7 +9,12 @@ CHANGELOG
 
 ### Improved
 
+- List all the autoloaded providers instead of the builtin ones in `:Clap providers`.
 - Handle the icon highlight offset on Python and Rust side.
+
+### Fixed
+
+- Add default value when `ClapSearchText` highlight group misses some attributes. #390
 
 ## [0.12] 2020-04-12
 
