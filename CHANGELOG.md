@@ -12,6 +12,10 @@ CHANGELOG
 - List all the autoloaded providers instead of the builtin ones in `:Clap providers`.
 - Handle the icon highlight offset on Python and Rust side.
 
+### Changed
+
+- Now `:Clap tags` will filter the tag name column only, same with `:Clap proj_tags`.
+
 ### Fixed
 
 - Add default value when `ClapSearchText` highlight group misses some attributes. #390
