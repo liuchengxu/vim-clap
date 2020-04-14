@@ -9,6 +9,7 @@ CHANGELOG
 
 ### Improved
 
+- List all the autoloaded providers instead of the builtin ones in `:Clap providers`.
 - Handle the icon highlight offset on Python and Rust side.
 
 ### Fixed

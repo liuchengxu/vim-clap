@@ -15,16 +15,18 @@ endfunction
 function! s:providers.source() abort
   if !exists('s:global_source')
     let s:global_source = []
-    for provider_id in g:clap#builtin_providers
-      let provider_path = globpath(&runtimepath, 'autoload/clap/provider/'.provider_id.'.vim')
-      if file_readable(provider_path)
-        let desc_line = readfile(provider_path, '', 2)[-1]
+    for autoload_provider in split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n")
+      let provider_id = fnamemodify(autoload_provider, ':t:r')
+      if file_readable(autoload_provider)
+        let desc_line = readfile(autoload_provider, '', 2)[-1]
         let desc = matchstr(desc_line, '^.*Description: \zs\(.*\)\ze\.\?$')
         if empty(desc)
           call add(s:global_source, provider_id.':')
         else
           call add(s:global_source, provider_id.': '.desc)
         endif
+      else
+        call add(s:global_source, provider_id.':')
       endif
     endfor
   endif
