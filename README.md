@@ -211,7 +211,7 @@ See `:help clap-options` for more information.
 ##### Normal mode
 
 - [x] Use <kbd>j</kbd>/<kbd>Down</kbd> or <kbd>k</kbd>/<kbd>Up</kbd> to navigate the result list up and down linewise.
-- [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-g</kbd> or <kbd>Esc</kbd>(vim) to exit.
+- [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-g</kbd> or <kbd>Esc</kbd> to exit.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
