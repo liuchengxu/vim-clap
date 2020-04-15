@@ -30,16 +30,19 @@ function! s:proj_tags.init() abort
   endif
 endfunction
 
+function! s:extract(tag_row) abort
+  let lnum = matchstr(a:tag_row, '^.*:\zs\(\d\+\)')
+  let path = matchstr(a:tag_row, '\t\zs\f*$')
+  return [lnum, path]
+endfunction
+
 function! s:proj_tags.sink(selected) abort
-  let lnum = matchstr(a:selected, '^.*:\zs\(\d\+\)')
-  let path = matchstr(a:selected, '\t\zs\f*$')
+  let [lnum, path] = s:extract(a:selected)
   call clap#sink#open_file(path, lnum, 1)
 endfunction
 
 function! s:proj_tags.on_move() abort
-  let curline = g:clap.display.getcurline()
-  let lnum = matchstr(curline, '^.*:\zs\(\d\+\)')
-  let path = matchstr(curline, '\t\zs\f*$')
+  let [lnum, path] = s:extract(g:clap.display.getcurline())
   call clap#preview#file_at(path, lnum)
 endfunction
 
