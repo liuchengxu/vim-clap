@@ -76,7 +76,7 @@ nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
 nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
 
-nnoremap <silent> <buffer> <Esc> <Esc>:<c-u>call clap#handler#exit()<CR>
+nnoremap <silent> <buffer> <Esc> :<c-u>call clap#handler#exit()<CR>
 
 nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers()<CR>
 
