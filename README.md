@@ -203,6 +203,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
+- [x] Use <kbd>Shift-Tab</kbd> to invoke the actions dialog(vim only).
 
 #### Normal mode
 
@@ -213,6 +214,7 @@ Normal mode mappings are neovim only now.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
+- [x] Use <kbd>Shift-Tab</kbd> to invoke the actions dialog.
 - [x] Actions defined by `g:clap_open_action`.
 
 See `:help clap-keybindings` for more information.
