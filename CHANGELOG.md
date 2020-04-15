@@ -19,6 +19,7 @@ CHANGELOG
 ### Fixed
 
 - Add default value when `ClapSearchText` highlight group misses some attributes. #390
+- The final result of dyn filter is not ordered, ref https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611616792 .
 
 ## [0.12] 2020-04-12
 
