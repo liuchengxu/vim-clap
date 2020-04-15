@@ -18,7 +18,6 @@ function! s:do_actions() abort
   let choice = choices[choice_num-1]
   if has_key(provider_actions, choice)
     call provider_actions[choice]()
-    redraw
   else
     echoerr 'Invalid action choice: '.choice
   endif
