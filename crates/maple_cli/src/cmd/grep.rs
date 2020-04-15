@@ -69,6 +69,7 @@ pub fn dyn_grep(
     cmd_dir: Option<PathBuf>,
     input: Option<PathBuf>,
     number: Option<usize>,
+    winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
     no_cache: bool,
 ) -> Result<()> {
@@ -85,7 +86,7 @@ pub fn dyn_grep(
                     cached_source,
                     None,
                     number,
-                    None,
+                    winwidth,
                     icon_painter,
                     ContentFiltering::GrepExcludeFilePath,
                 );
@@ -101,7 +102,7 @@ pub fn dyn_grep(
         source,
         None,
         number,
-        None,
+        winwidth,
         icon_painter,
         ContentFiltering::GrepExcludeFilePath,
     )

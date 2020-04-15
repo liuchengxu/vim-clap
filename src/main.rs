@@ -112,6 +112,7 @@ fn run(maple: Maple) -> Result<()> {
                     cmd_dir,
                     input,
                     maple.number,
+                    maple.winwidth,
                     maple.icon_painter,
                     maple.no_cache,
                 )?;
