@@ -33,10 +33,9 @@ endif
 " If the initial_size is possible, use clap#state#refresh_matches_count()
 " instead in that it will combine the initial_size info.
 function! clap#indicator#set_matches(indicator) abort
-  if get(g:, 'clap_disable_matches_indicator', v:false)
-    return
+  if !g:clap_disable_matches_indicator
+    call s:set_indicator(a:indicator)
   endif
-  call s:set_indicator(a:indicator)
 endfunction
 
 function! clap#indicator#set_none() abort

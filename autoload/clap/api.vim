@@ -230,6 +230,10 @@ function! s:init_display() abort
     endif
   endfunction
 
+  function! display.deletecurline() abort
+    call deletebufline(self.bufnr, g:__clap_display_curlnum)
+  endfunction
+
   function! display.getcurlnum() abort
     " This seemingly doesn't work as expected.
     " return getbufinfo(winbufnr(self.winid))[0].lnum

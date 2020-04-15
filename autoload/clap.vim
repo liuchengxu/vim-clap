@@ -88,6 +88,8 @@ let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicon
 let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
 let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@')
 
+let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
+
 let g:clap_popup_border = get(g:, 'clap_popup_border', 'rounded')
 
 function! s:inject_default_impl_is_ok(provider_info) abort

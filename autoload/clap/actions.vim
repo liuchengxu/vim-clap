@@ -15,6 +15,10 @@ function! s:do_actions() abort
   endif
   let choices = filter(keys(provider_actions), 'v:val !~# s:ACTIONS_TITLE_KEY')
   let choice_num = confirm(title, join(choices, "\n"))
+  " User aborts the dialog
+  if choice_num == 0
+    return
+  endif
   let choice = choices[choice_num-1]
   if has_key(provider_actions, choice)
     call provider_actions[choice]()
