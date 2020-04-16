@@ -32,7 +32,7 @@ endfunction
 
 function! s:extract(tag_row) abort
   let lnum = matchstr(a:tag_row, '^.*:\zs\(\d\+\)')
-  let path = matchstr(a:tag_row, '\t\zs\f*$')
+  let path = matchstr(a:tag_row, '\[.*@\zs\(\f*\)\ze\]')
   return [lnum, path]
 endfunction
 
@@ -54,7 +54,7 @@ endfunction
 
 let s:proj_tags.enable_rooter = v:true
 let s:proj_tags.support_open_action = v:true
-let s:proj_tags.syntax = 'clap_tags'
+let s:proj_tags.syntax = 'clap_proj_tags'
 
 let g:clap#provider#proj_tags# = s:proj_tags
 

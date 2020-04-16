@@ -33,16 +33,14 @@ impl TagInfo {
     pub fn format(&self) -> String {
         let pat_len = self.pattern.len();
         let name_lnum = format!("{}:{}", self.name, self.line);
-        let kind = format!("[{}]", self.kind);
+        let kind = format!("[{}@{}]", self.kind, self.path);
         format!(
-            "{text:<width1$} {kind:<width2$} {pattern:<width3$}\t{path}",
+            "{text:<width1$} {kind:<width2$} {pattern}",
             text = name_lnum,
-            width1 = 25,
+            width1 = 30,
             kind = kind,
-            width2 = 15,
+            width2 = 30,
             pattern = &self.pattern[2..pat_len - 2].trim(),
-            width3 = 25,
-            path = self.path
         )
     }
 }
