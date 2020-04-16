@@ -162,7 +162,8 @@ Supported Providers & Tools                                    *clap-support*
 
                                                      *:Clap-proj_tags*
 :Clap proj_tags         List tags in the current project.
-                        Require the Rust binary `maple`
+                        Require the Rust binary `maple` and universal-ctags
+                        with JSON output support.
 
                                                      *:Clap-windows*
 :Clap windows            List Windows
