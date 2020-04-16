@@ -28,7 +28,7 @@ function! s:git_diff_files_on_move() abort
   let command = systemlist(diff.' '.filediff)
 
   if !empty(command)
-    if command[0]=~#"^fatal"
+    if command[0]=~#'^fatal'
       let command = systemlist(diff.' -- '.filediff)
       if empty(command)
         let command = systemlist(diff.' --cached -- '.filediff)
