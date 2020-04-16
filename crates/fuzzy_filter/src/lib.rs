@@ -45,7 +45,7 @@ impl From<String> for ContentFiltering {
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
   /// Supported fuzzy match algorithm.
-  #[derive(Debug)]
+  #[derive(Debug, Clone)]
   pub enum Algo {
       Skim,
       Fzy,

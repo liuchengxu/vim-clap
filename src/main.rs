@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    subprocess, ContentFiltering, Result, Source, StructOpt,
+    Result, StructOpt,
 };
 
 pub mod built_info {
@@ -40,46 +40,8 @@ fn run(maple: Maple) -> Result<()> {
             maple.no_cache,
         )?,
         Cmd::Cache(cache) => cache.run()?,
-        Cmd::Filter {
-            query,
-            input,
-            algo,
-            cmd,
-            cmd_dir,
-            sync,
-            content_filtering,
-        } => {
-            let source = if let Some(cmd_str) = cmd {
-                if let Some(dir) = cmd_dir {
-                    subprocess::Exec::shell(cmd_str).cwd(dir).into()
-                } else {
-                    subprocess::Exec::shell(cmd_str).into()
-                }
-            } else {
-                input
-                    .map(Into::into)
-                    .unwrap_or(Source::<std::iter::Empty<_>>::Stdin)
-            };
-            if sync {
-                maple_cli::cmd::filter::run(
-                    &query,
-                    source,
-                    algo,
-                    maple.number,
-                    maple.icon_painter,
-                    maple.winwidth,
-                )?;
-            } else {
-                maple_cli::cmd::filter::dyn_run(
-                    &query,
-                    source,
-                    algo,
-                    maple.number,
-                    maple.winwidth,
-                    maple.icon_painter,
-                    content_filtering.unwrap_or(ContentFiltering::Full),
-                )?;
-            }
+        Cmd::Filter(filter) => {
+            filter.run(maple.number, maple.winwidth, maple.icon_painter)?;
         }
         Cmd::Exec(exec) => {
             exec.run(maple.number, maple.icon_painter, maple.no_cache)?;

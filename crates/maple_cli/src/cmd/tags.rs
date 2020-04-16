@@ -37,7 +37,7 @@ impl TagInfo {
         format!(
             "{text:<width1$} {kind:<width2$} {pattern:<width3$}\t{path}",
             text = name_lnum,
-            width1 = 20,
+            width1 = 25,
             kind = kind,
             width2 = 15,
             pattern = &self.pattern[2..pat_len - 2].trim(),

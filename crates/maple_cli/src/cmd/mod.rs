@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use crate::ContentFiltering;
-use fuzzy_filter::Algo;
 use icon::IconPainter;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -22,35 +20,7 @@ pub enum Cmd {
     Version,
     /// Fuzzy filter the input
     #[structopt(name = "filter")]
-    Filter {
-        /// Initial query string
-        #[structopt(index = 1, short, long)]
-        query: String,
-
-        /// Filter algorithm
-        #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
-        algo: Option<Algo>,
-
-        /// Shell command to produce the whole dataset that query is applied on.
-        #[structopt(short, long)]
-        cmd: Option<String>,
-
-        /// Working directory of shell command.
-        #[structopt(short, long)]
-        cmd_dir: Option<String>,
-
-        /// Synchronous filtering, returns after the input stream is complete.
-        #[structopt(short, long)]
-        sync: bool,
-
-        /// Read input from a file instead of stdin, only absolute file path is supported.
-        #[structopt(long = "input", parse(from_os_str))]
-        input: Option<PathBuf>,
-
-        /// Apply the filter on the full line content or parial of it.
-        #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
-        content_filtering: Option<ContentFiltering>,
-    },
+    Filter(crate::cmd::filter::Filter),
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
     Grep(crate::cmd::grep::Grep),
