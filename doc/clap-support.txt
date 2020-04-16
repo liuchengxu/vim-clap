@@ -160,6 +160,10 @@ Supported Providers & Tools                                    *clap-support*
                          See all the vista executives via `:echo g:vista#executives` .
 
 
+                                                     *:Clap-proj_tags*
+:Clap proj_tags         List tags in the current project.
+                        Require the Rust binary `maple`
+
                                                      *:Clap-windows*
 :Clap windows            List Windows
 

@@ -127,6 +127,7 @@ Command                                | List                                   
 `Clap loclist`                         | Entries of the location list                        | _none_
 `Clap registers`                       | Registers                                           | _none_
 `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**
+`Clap proj_tags`                       | Tags in the current project                         | **[maple][maple]**
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
 `Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
