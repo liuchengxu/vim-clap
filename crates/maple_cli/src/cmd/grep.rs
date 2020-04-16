@@ -146,46 +146,64 @@ impl Grep {
     }
 }
 
-pub fn run_forerunner(
+#[derive(StructOpt, Debug, Clone)]
+pub struct RipGrepForerunner {
+    /// Specify the working directory of CMD
+    #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
-    number: Option<usize>,
-    icon_painter: Option<IconPainter>,
-    no_cache: bool,
-) -> Result<()> {
-    if !no_cache {
-        if let Some(ref dir) = cmd_dir {
-            if let Ok((cache, total)) = cache_exists(&RG_ARGS, dir) {
-                send_response_from_cache(
-                    &cache,
-                    total,
-                    SendResponse::Json,
-                    Some(IconPainter::Grep),
-                );
-                return Ok(());
+}
+
+impl RipGrepForerunner {
+    /// Skip the forerunner job if `cmd_dir` is not a git repo.
+    ///
+    /// Only spawn the forerunner job for git repo for now.
+    fn should_skip(&self) -> bool {
+        if let Some(ref dir) = self.cmd_dir {
+            if !is_git_repo(dir) {
+                return true;
+            }
+        } else if let Ok(dir) = std::env::current_dir() {
+            if !is_git_repo(&dir) {
+                return true;
             }
         }
+        false
     }
 
-    let mut cmd = Command::new(RG_ARGS[0]);
-    // Do not use --vimgrep here.
-    cmd.args(&RG_ARGS[1..]);
+    pub fn run(
+        self,
+        number: Option<usize>,
+        icon_painter: Option<IconPainter>,
+        no_cache: bool,
+    ) -> Result<()> {
+        if !no_cache {
+            if let Some(ref dir) = self.cmd_dir {
+                if let Ok((cache, total)) = cache_exists(&RG_ARGS, dir) {
+                    send_response_from_cache(
+                        &cache,
+                        total,
+                        SendResponse::Json,
+                        Some(IconPainter::Grep),
+                    );
+                    return Ok(());
+                }
+            }
+        }
 
-    // Only spawn the forerunner job for git repo for now.
-    if let Some(dir) = &cmd_dir {
-        if !is_git_repo(dir) {
+        if self.should_skip() {
             return Ok(());
         }
-    } else if let Ok(dir) = std::env::current_dir() {
-        if !is_git_repo(&dir) {
-            return Ok(());
-        }
+
+        let mut cmd = Command::new(RG_ARGS[0]);
+        // Do not use --vimgrep here.
+        cmd.args(&RG_ARGS[1..]);
+
+        set_current_dir(&mut cmd, self.cmd_dir.clone());
+
+        let mut light_cmd = LightCommand::new_grep(&mut cmd, self.cmd_dir, number, icon_painter);
+
+        light_cmd.execute(&RG_ARGS)?;
+
+        Ok(())
     }
-
-    set_current_dir(&mut cmd, cmd_dir.clone());
-
-    let mut light_cmd = LightCommand::new_grep(&mut cmd, cmd_dir, number, icon_painter);
-
-    light_cmd.execute(&RG_ARGS)?;
-
-    Ok(())
 }

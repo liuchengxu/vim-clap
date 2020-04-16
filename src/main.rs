@@ -33,12 +33,9 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::Blines(blines) => {
             blines.run(maple.number, maple.winwidth)?;
         }
-        Cmd::RipgrepForerunner { cmd_dir } => maple_cli::cmd::grep::run_forerunner(
-            cmd_dir,
-            maple.number,
-            maple.icon_painter,
-            maple.no_cache,
-        )?,
+        Cmd::RipGrepForerunner(rip_grep_forerunner) => {
+            rip_grep_forerunner.run(maple.number, maple.icon_painter, maple.no_cache)?
+        }
         Cmd::Cache(cache) => cache.run()?,
         Cmd::Filter(filter) => {
             filter.run(maple.number, maple.winwidth, maple.icon_painter)?;

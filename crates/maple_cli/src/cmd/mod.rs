@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use icon::IconPainter;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -29,11 +27,7 @@ pub enum Cmd {
     RPC,
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
-    RipgrepForerunner {
-        /// Specify the working directory of CMD
-        #[structopt(long = "cmd-dir", parse(from_os_str))]
-        cmd_dir: Option<PathBuf>,
-    },
+    RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
     /// Execute the command
     #[structopt(name = "exec")]
     Exec(crate::cmd::exec::Exec),
