@@ -53,35 +53,7 @@ pub enum Cmd {
     },
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
-    Grep {
-        /// Specify the grep command to run, normally rg will be used.
-        ///
-        /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
-        ///                                                       |-----------------|
-        ///                                                   this can be seen as an option by mistake.
-        #[structopt(index = 1, short, long)]
-        grep_cmd: String,
-
-        /// Specify the query string for GREP_CMD.
-        #[structopt(index = 2, short, long)]
-        grep_query: String,
-
-        /// Delegate to -g option of rg
-        #[structopt(short = "g", long = "glob")]
-        glob: Option<String>,
-
-        /// Specify the working directory of CMD
-        #[structopt(long = "cmd-dir", parse(from_os_str))]
-        cmd_dir: Option<PathBuf>,
-
-        /// Synchronous filtering, returns after the input stream is complete.
-        #[structopt(short, long)]
-        sync: bool,
-
-        /// Read input from a cached grep tempfile, only absolute file path is supported.
-        #[structopt(long = "input", parse(from_os_str))]
-        input: Option<PathBuf>,
-    },
+    Grep(crate::cmd::grep::Grep),
     /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
     RPC,

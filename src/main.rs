@@ -84,39 +84,13 @@ fn run(maple: Maple) -> Result<()> {
         Cmd::Exec(exec) => {
             exec.run(maple.number, maple.icon_painter, maple.no_cache)?;
         }
-        Cmd::Grep {
-            grep_cmd,
-            grep_query,
-            glob,
-            cmd_dir,
-            sync,
-            input,
-        } => {
-            let g = match &glob {
-                Some(s) => Some(s.as_str()),
-                None => None,
-            };
-
-            if sync {
-                maple_cli::cmd::grep::run(
-                    grep_cmd,
-                    &grep_query,
-                    g,
-                    cmd_dir,
-                    maple.number,
-                    maple.icon_painter,
-                )?;
-            } else {
-                maple_cli::cmd::grep::dyn_grep(
-                    &grep_query,
-                    cmd_dir,
-                    input,
-                    maple.number,
-                    maple.winwidth,
-                    maple.icon_painter,
-                    maple.no_cache,
-                )?;
-            }
+        Cmd::Grep(grep) => {
+            grep.run(
+                maple.number,
+                maple.winwidth,
+                maple.icon_painter,
+                maple.no_cache,
+            )?;
         }
     }
     Ok(())
