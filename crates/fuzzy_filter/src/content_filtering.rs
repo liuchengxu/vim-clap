@@ -6,7 +6,7 @@ use regex::Regex;
 lazy_static! {
   // match the file path and line number of grep line.
   static ref GREP_RE: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
-
+  // match the tag_name:lnum of tag line.
   static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
 }
 
