@@ -22,8 +22,27 @@ function! s:git_diff_files.source() abort
 endfunction
 
 function! s:git_diff_files_on_move() abort
-  let filediff = systemlist('git diff '.g:clap.display.getcurline())
-  call g:clap.preview.show(filediff)
+  let diff = 'git --no-pager diff -U0'
+  let pipetail = '| tail -n +5'
+  let filediff = g:clap.display.getcurline().pipetail
+  let command = systemlist(diff.' '.filediff)
+
+  if !empty(command)
+    if command[0]=~#"^fatal"
+      let command = systemlist(diff.' -- '.filediff)
+      if empty(command)
+        let command = systemlist(diff.' --cached -- '.filediff)
+      endif
+    endif
+  else
+    let command = systemlist(diff.' --cached '.filediff)
+  endif
+
+  if !empty(command)
+    call g:clap.preview.show(command[:10])
+  else
+    call g:clap.preview.show([''])
+  endif
   call g:clap.preview.set_syntax('diff')
 endfunction
 
