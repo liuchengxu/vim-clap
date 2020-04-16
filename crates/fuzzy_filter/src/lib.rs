@@ -18,6 +18,7 @@ arg_enum! {
   #[derive(Debug, Clone)]
   pub enum ContentFiltering {
       Full,
+      TagNameOnly,
       FileNameOnly,
       GrepExcludeFilePath,
   }
@@ -27,6 +28,7 @@ impl From<&str> for ContentFiltering {
     fn from(filtering: &str) -> Self {
         match filtering {
             "Full" => Self::Full,
+            "TagNameOnly" => Self::TagNameOnly,
             "FileNameOnly" => Self::FileNameOnly,
             "GrepExcludeFilePath" => Self::GrepExcludeFilePath,
             _ => Self::Full,
@@ -43,7 +45,7 @@ impl From<String> for ContentFiltering {
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
   /// Supported fuzzy match algorithm.
-  #[derive(Debug)]
+  #[derive(Debug, Clone)]
   pub enum Algo {
       Skim,
       Fzy,
@@ -80,11 +82,13 @@ pub fn get_appropriate_scorer(
     match algo {
         Algo::Skim => match content_filtering {
             ContentFiltering::Full => fuzzy_indices_skim,
+            ContentFiltering::TagNameOnly => apply_skim_on_tag_line,
             ContentFiltering::FileNameOnly => apply_skim_on_file_line,
             ContentFiltering::GrepExcludeFilePath => apply_skim_on_grep_line,
         },
         Algo::Fzy => match content_filtering {
             ContentFiltering::Full => fuzzy_indices_fzy,
+            ContentFiltering::TagNameOnly => apply_fzy_on_tag_line,
             ContentFiltering::FileNameOnly => apply_fzy_on_file_line,
             ContentFiltering::GrepExcludeFilePath => apply_fzy_on_grep_line,
         },

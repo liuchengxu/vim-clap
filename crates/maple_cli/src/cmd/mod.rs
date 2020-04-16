@@ -1,7 +1,3 @@
-use std::path::PathBuf;
-
-use crate::ContentFiltering;
-use fuzzy_filter::Algo;
 use icon::IconPainter;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -13,6 +9,7 @@ pub mod filter;
 pub mod grep;
 pub mod helptags;
 pub mod rpc;
+pub mod tags;
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {
@@ -21,76 +18,16 @@ pub enum Cmd {
     Version,
     /// Fuzzy filter the input
     #[structopt(name = "filter")]
-    Filter {
-        /// Initial query string
-        #[structopt(index = 1, short, long)]
-        query: String,
-
-        /// Filter algorithm
-        #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
-        algo: Option<Algo>,
-
-        /// Shell command to produce the whole dataset that query is applied on.
-        #[structopt(short, long)]
-        cmd: Option<String>,
-
-        /// Working directory of shell command.
-        #[structopt(short, long)]
-        cmd_dir: Option<String>,
-
-        /// Synchronous filtering, returns after the input stream is complete.
-        #[structopt(short, long)]
-        sync: bool,
-
-        /// Read input from a file instead of stdin, only absolute file path is supported.
-        #[structopt(long = "input", parse(from_os_str))]
-        input: Option<PathBuf>,
-
-        /// Apply the filter on the full line content or parial of it.
-        #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
-        content_filtering: Option<ContentFiltering>,
-    },
+    Filter(crate::cmd::filter::Filter),
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
-    Grep {
-        /// Specify the grep command to run, normally rg will be used.
-        ///
-        /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
-        ///                                                       |-----------------|
-        ///                                                   this can be seen as an option by mistake.
-        #[structopt(index = 1, short, long)]
-        grep_cmd: String,
-
-        /// Specify the query string for GREP_CMD.
-        #[structopt(index = 2, short, long)]
-        grep_query: String,
-
-        /// Delegate to -g option of rg
-        #[structopt(short = "g", long = "glob")]
-        glob: Option<String>,
-
-        /// Specify the working directory of CMD
-        #[structopt(long = "cmd-dir", parse(from_os_str))]
-        cmd_dir: Option<PathBuf>,
-
-        /// Synchronous filtering, returns after the input stream is complete.
-        #[structopt(short, long)]
-        sync: bool,
-
-        /// Read input from a cached grep tempfile, only absolute file path is supported.
-        #[structopt(long = "input", parse(from_os_str))]
-        input: Option<PathBuf>,
-    },
+    Grep(crate::cmd::grep::Grep),
     /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
     RPC,
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
-    RipgrepForerunner {
-        /// Specify the working directory of CMD
-        #[structopt(long = "cmd-dir", parse(from_os_str))]
-        cmd_dir: Option<PathBuf>,
-    },
+    RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
     /// Execute the command
     #[structopt(name = "exec")]
     Exec(crate::cmd::exec::Exec),
@@ -100,6 +37,8 @@ pub enum Cmd {
     Helptags(crate::cmd::helptags::Helptags),
     #[structopt(name = "cache")]
     Cache(crate::cmd::cache::Cache),
+    #[structopt(name = "tags")]
+    Tags(crate::cmd::tags::Tags),
 }
 
 #[derive(StructOpt, Debug)]

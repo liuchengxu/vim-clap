@@ -1,6 +1,10 @@
-use crate::utils::{calculate_hash, clap_cache_dir, remove_dir_contents};
+use crate::utils::{
+    calculate_hash, clap_cache_dir, get_cached_entry, read_first_lines, remove_dir_contents,
+};
 use anyhow::{anyhow, Result};
-use std::fs::{read_dir, DirEntry};
+use icon::IconPainter;
+use std::fs::{read_dir, DirEntry, File};
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use structopt::StructOpt;
@@ -92,6 +96,34 @@ impl CacheEntry {
         Ok(dir)
     }
 
+    /// Write the `contents` to given cache entry.
+    ///
+    /// Remove all the existing old entries if there are any.
+    pub fn write<T: AsRef<[u8]>>(entry: &PathBuf, contents: T) -> Result<()> {
+        // Remove the other outdated cache file if there are any.
+        //
+        // There should be only one cache file in parent_dir at this moment.
+        if let Some(parent_dir) = entry.parent() {
+            remove_dir_contents(&parent_dir.to_path_buf())?;
+        }
+
+        File::create(entry)?.write_all(contents.as_ref())?;
+
+        Ok(())
+    }
+
+    /// Creates a new cache entry.
+    pub fn create<T: AsRef<[u8]>>(
+        cmd_args: &[&str],
+        cmd_dir: Option<PathBuf>,
+        total: usize,
+        contents: T,
+    ) -> Result<PathBuf> {
+        let entry = Self::new(cmd_args, cmd_dir, total)?;
+        Self::write(&entry, contents)?;
+        Ok(entry)
+    }
+
     /// Get the total number of this cache entry from its file name.
     pub fn get_total(cached_entry: &DirEntry) -> Result<usize> {
         if let Some(path_str) = cached_entry.file_name().to_str() {
@@ -105,4 +137,55 @@ impl CacheEntry {
             Err(anyhow!("Couldn't get total from cached entry"))
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum SendResponse {
+    Json,
+    JsonWithContentLength,
+}
+
+/// Reads the first lines from cache file and send back the cached info.
+pub fn send_response_from_cache(
+    tempfile: &PathBuf,
+    total: usize,
+    response_ty: SendResponse,
+    icon_painter: Option<IconPainter>,
+) {
+    let using_cache = true;
+    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+        let lines: Vec<String> = if let Some(painter) = icon_painter {
+            lines_iter.map(|x| painter.paint(&x)).collect()
+        } else {
+            lines_iter.collect()
+        };
+        match response_ty {
+            SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
+            SendResponse::JsonWithContentLength => {
+                print_json_with_length!(total, tempfile, using_cache, lines)
+            }
+        }
+    } else {
+        match response_ty {
+            SendResponse::Json => println_json!(total, tempfile, using_cache),
+            SendResponse::JsonWithContentLength => {
+                print_json_with_length!(total, tempfile, using_cache)
+            }
+        }
+    }
+}
+
+/// Returns the cache file path and number of total cached items.
+pub fn cache_exists(args: &[&str], cmd_dir: &PathBuf) -> Result<(PathBuf, usize)> {
+    if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
+        if let Ok(total) = CacheEntry::get_total(&cached_entry) {
+            let tempfile = cached_entry.path();
+            return Ok((tempfile, total));
+        }
+    }
+    Err(anyhow!(
+        "Cache does not exist for: {:?} in {:?}",
+        args,
+        cmd_dir
+    ))
 }

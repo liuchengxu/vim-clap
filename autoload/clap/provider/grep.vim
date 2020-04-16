@@ -225,18 +225,9 @@ function! s:grep_sink(selected) abort
   let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
   let matched = s:matchlist(line, pattern)
   let [fpath, linenr, column] = [matched[1], str2nr(matched[2]), str2nr(matched[3])]
-  let s:icon_appended = v:false
-
-  if has_key(g:clap, 'open_action')
-    execute g:clap.open_action fpath
-  else
-    " Cannot use noautocmd here as it would lose syntax, and ...
-    execute 'edit' fpath
-  endif
-
-  noautocmd call cursor(linenr, column)
-  normal! zz
+  call clap#sink#open_file(fpath, linenr, column)
   call call('clap#util#blink', s:grep_blink)
+  let s:icon_appended = v:false
 endfunction
 
 function! clap#provider#grep#inject_icon_appended(appended) abort

@@ -37,6 +37,8 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
 
   if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
     let content_filtering = '--content-filtering=FileNameOnly'
+  elseif g:clap.provider.id ==# 'proj_tags'
+    let content_filtering = '--content-filtering=TagNameOnly'
   else
     let content_filtering = ''
   endif
