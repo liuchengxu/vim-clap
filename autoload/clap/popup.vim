@@ -226,7 +226,7 @@ endfunction
 function! s:execute_in_input() abort
   let s:save_completeopt = &completeopt
   set completeopt=
-  setlocal nonumber
+  setlocal nonumber nospell
   let w:clap_search_text_hi_id = matchaddpos('ClapSearchText', [1])
   let b:coc_suggest_disable = 1
 endfunction

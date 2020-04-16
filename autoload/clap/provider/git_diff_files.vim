@@ -21,8 +21,15 @@ function! s:git_diff_files.source() abort
   endif
 endfunction
 
+function! s:git_diff_files_on_move() abort
+  let filediff = systemlist('git diff '.g:clap.display.getcurline())
+  call g:clap.preview.show(filediff)
+  call g:clap.preview.set_syntax('diff')
+endfunction
+
 let s:git_diff_files.sink = 'e'
 let s:git_diff_files.enable_rooter = v:true
+let s:git_diff_files.on_move = function('s:git_diff_files_on_move')
 
 let g:clap#provider#git_diff_files# = s:git_diff_files
 

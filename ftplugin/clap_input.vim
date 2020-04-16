@@ -42,6 +42,9 @@ if !exists('g:loaded_rsi')
   inoremap <silent> <buffer> <expr> <C-D> col('.')>strlen(getline('.'))?"\<Lt>C-D>":"\<Lt>Del>"
 endif
 
+" Use echo to clean the unwanted : at the bottom.
+cnoremap <silent> <buffer> q :<c-u>call clap#handler#exit()<CR>:echo<CR>
+
 inoremap <silent> <buffer> <expr> <C-E> col('.')>strlen(getline('.'))<bar><bar>pumvisible()?"\<Lt>C-E>":"\<Lt>End>"
 
 inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR>
@@ -72,6 +75,8 @@ endif
 nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
 nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
+
+nnoremap <silent> <buffer> <Esc> :<c-u>call clap#handler#exit()<CR>
 
 nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers()<CR>
 

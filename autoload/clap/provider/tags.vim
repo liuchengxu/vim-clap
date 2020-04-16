@@ -59,6 +59,13 @@ endfunction
 function! s:tags.on_enter() abort
   let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
   call g:clap.display.setbufvar('&syntax', 'clap_tags')
+  let g:__clap_builtin_content_filtering_enum = 'TagNameOnly'
+endfunction
+
+function! s:tags.on_exit() abort
+  if exists('g:__clap_builtin_content_filtering_enum')
+    unlet g:__clap_builtin_content_filtering_enum
+  endif
 endfunction
 
 let s:tags.sink = function('vista#finder#fzf#sink')

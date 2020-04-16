@@ -5,6 +5,7 @@ CHANGELOG
 
 ### Added
 
+- New provider `:Clap proj_tags` for project-wide tags.([#391](https://github.com/liuchengxu/vim-clap/pull/391))
 - Allow `:Clap files +name-only` to filter the file name only instead of the full file path. Require you have built the Python dynamic module or uses in the cached mode. ([#389](https://github.com/liuchengxu/vim-clap/pull/389))
 
 ### Improved
@@ -12,9 +13,15 @@ CHANGELOG
 - List all the autoloaded providers instead of the builtin ones in `:Clap providers`.
 - Handle the icon highlight offset on Python and Rust side.
 
+### Changed
+
+- Now `:Clap tags` will filter the tag name column only, same with `:Clap proj_tags`.
+
 ### Fixed
 
 - Add default value when `ClapSearchText` highlight group misses some attributes. #390
+- The final result of dyn filter is not ordered, ref https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611616792 .
+- Make use of command line `--winwidth` option, fix the unsuitable truncation for long matched lines.
 
 ## [0.12] 2020-04-12
 

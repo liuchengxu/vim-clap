@@ -195,10 +195,9 @@ function! clap#maple#forerunner_exec_subcommand(cmd) abort
     let global_opt .= ' --no-cache'
   endif
 
-  let cmd_dir = clap#rooter#working_dir()
   let subcommand = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
         \ a:cmd,
-        \ cmd_dir,
+        \ clap#rooter#working_dir(),
         \ clap#filter#capacity(),
         \ )
 
@@ -218,6 +217,16 @@ function! clap#maple#sync_filter_subcommand(query) abort
   return cmd
 endfunction
 
+function! clap#maple#tags_forerunner_subcommand() abort
+  if has_key(g:clap.context, 'no-cache')
+    let global_opt = ' --no-cache'
+  else
+    let global_opt = ''
+  endif
+
+  return printf('%s %s tags "" "%s" --forerunner', s:maple_bin, global_opt, clap#rooter#working_dir())
+endfunction
+
 function! clap#maple#ripgrep_forerunner_subcommand() abort
   " let global_opt = '--number '.g:clap.display.preload_capacity
   " TODO: add max_output
@@ -231,8 +240,7 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
     let global_opt .= ' --no-cache'
   endif
 
-  let cmd_dir = clap#rooter#working_dir()
-  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, cmd_dir)
+  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, clap#rooter#working_dir())
 endfunction
 
 function! clap#maple#blines_subcommand(query) abort
@@ -246,12 +254,9 @@ function! clap#maple#run_exec(cmd) abort
     let global_opt .= ' --icon-painter=File'
   endif
 
-  let cmd_dir = clap#rooter#working_dir()
-  let subcommand = printf('exec "%s" --cmd-dir "%s"', a:cmd, cmd_dir)
+  let subcommand = printf('exec "%s" --cmd-dir "%s"', a:cmd, clap#rooter#working_dir())
 
-  let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
-
-  call clap#maple#job_start(cmd)
+  call clap#maple#job_start(printf('%s %s %s', s:maple_bin, global_opt, subcommand))
 endfunction
 
 function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
@@ -260,17 +265,14 @@ function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
     let global_opt .= ' --icon-painter=Grep'
   endif
 
-  let cmd_dir = clap#rooter#working_dir()
   let cmd = substitute(a:cmd, '"', "'", 'g')
-  let subcommand = printf('grep "%s" "%s" --sync --cmd-dir "%s"', cmd, a:query, cmd_dir)
+  let subcommand = printf('grep "%s" "%s" --sync --cmd-dir "%s"', cmd, a:query, clap#rooter#working_dir())
 
   if a:glob isnot v:null
     let subcommand .= printf(' --glob "%s"', a:glob)
   endif
 
-  let cmd = printf('%s %s %s', s:maple_bin, global_opt, subcommand)
-
-  call clap#maple#job_start(cmd)
+  call clap#maple#job_start(printf('%s %s %s', s:maple_bin, global_opt, subcommand))
 endfunction
 
 function! clap#maple#build_cmd(cmd) abort

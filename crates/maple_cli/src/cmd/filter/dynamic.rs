@@ -343,7 +343,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     let scorer = |line: &str| scorer_fn(line, query);
 
     if let Some(number) = number {
-        let (total, filtered) = match source {
+        let (total, mut filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
             Source::Exec(exec) => {
                 dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter)
@@ -355,6 +355,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter)
             }
         };
+        filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
         let (lines, indices, truncated_map) = process_top_items(
             number,
             filtered.into_iter().take(number),
