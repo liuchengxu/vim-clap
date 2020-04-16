@@ -106,6 +106,6 @@ mod tests {
     fn test_tag_name_only() {
         let line = "<Backspace>:60       [map]           inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>  ftplugin/clap_input.vim";
         let mat = TAG_RE.find(line);
-        println!("{:?} {}", mat, mat.unwrap().as_str());
+        assert_eq!(mat.unwrap().as_str(), "<Backspace>:60");
     }
 }
