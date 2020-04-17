@@ -13,7 +13,7 @@ function! s:on_complete_common(lines, initial_size) abort
   endif
 
   let g:clap.display.initial_size = a:initial_size
-  call clap#state#refresh_matches_count_on_forerunner_done()
+  call clap#indicator#update_matches_on_forerunner_done()
 
   let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   call clap#spinner#refresh()
@@ -57,7 +57,7 @@ function! s:on_complete_maple() abort
           call g:clap.display.set_lines(decoded.lines)
         endif
       endif
-      call clap#state#refresh_matches_count_on_forerunner_done()
+      call clap#indicator#update_matches_on_forerunner_done()
       return
     endif
 

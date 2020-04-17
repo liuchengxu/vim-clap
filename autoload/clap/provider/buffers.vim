@@ -80,12 +80,7 @@ function! s:action_delete() abort
   let current_matches = g:clap.display.line_count()
   execute 'bdelete' s:current_bufnr
   call g:clap.display.deletecurline()
-  " The matches update currently has to be handled in each provider.
-  " TODO: handle the matches update automatically.
-  if g:clap.display.initial_size != -1
-    let g:clap.display.initial_size -= 1
-  endif
-  call clap#state#refresh_bare_matches_count(string(current_matches - 1))
+  call clap#indicator#update_matches_on_deletebufline()
   call g:clap.preview.hide()
   call g:clap#display_win.shrink_if_undersize()
 endfunction

@@ -32,7 +32,7 @@ function! s:handle_round_message(message) abort
     let error = decoded.error
     let s:filer_error_cache[error.dir] = error.message
     call g:clap.display.set_lines([error.message])
-    call clap#indicator#set_matches('[??]')
+    call clap#indicator#set('[??]')
 
   elseif has_key(decoded, 'result')
     let result = decoded.result

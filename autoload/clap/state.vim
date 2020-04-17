@@ -6,35 +6,16 @@ set cpoptions&vim
 
 " NOTE: some local variable without explicit l:, e.g., count,
 " may run into some erratic read-only error.
-function! clap#state#refresh_matches_count(cnt_str) abort
-  call clap#state#refresh_bare_matches_count(a:cnt_str)
+function! clap#state#refresh_matches_count(cnt) abort
+  call clap#indicator#set_matches_number(a:cnt)
   call clap#sign#reset_to_first_line()
-endfunction
-
-function! clap#state#refresh_bare_matches_count(cnt_str) abort
-  let l:matches_cnt = a:cnt_str
-  let s:current_matches = a:cnt_str
-
-  if get(g:clap.display, 'initial_size', -1) > 0
-    let l:matches_cnt .= '/'.g:clap.display.initial_size
-  endif
-
-  call clap#indicator#set_matches('['.l:matches_cnt.']')
-endfunction
-
-function! clap#state#refresh_matches_count_on_forerunner_done() abort
-  if exists('s:current_matches')
-    call clap#indicator#set_matches(printf('[%s/%s]', s:current_matches, g:clap.display.initial_size))
-  else
-    call clap#indicator#set_matches(printf('[%s/%s]', g:clap.display.initial_size, g:clap.display.initial_size))
-  endif
 endfunction
 
 function! clap#state#handle_message(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'total')
-    call clap#state#refresh_bare_matches_count(string(decoded.total))
+    call clap#indicator#set_matches_number(decoded.total)
   endif
 
   if has_key(decoded, 'lines')
@@ -99,7 +80,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
         \ ])
-
+  call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile
   endif

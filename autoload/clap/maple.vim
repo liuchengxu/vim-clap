@@ -68,21 +68,21 @@ function! s:on_complete() abort
           \ 'args: '.join(split(s:cmd)[1:], ' '),
           \ 'error:',
           \ ] + split(decoded.error, "\n"))
-    call clap#indicator#set_matches('[0]')
+    call clap#indicator#set_matches_number(0)
     call clap#sign#disable_cursorline()
     return
   endif
 
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
-    call clap#indicator#set_matches('[0]')
+    call clap#indicator#set_matches_number(0)
     call clap#sign#disable_cursorline()
     call g:clap#display_win.shrink_if_undersize()
     call g:clap.preview.hide()
     return
   endif
 
-  call clap#state#refresh_matches_count(string(decoded.total))
+  call clap#state#refresh_matches_count(decoded.total)
 
   if s:has_converter
     call g:clap.display.set_lines(map(decoded.lines, 's:Converter(v:val)'))

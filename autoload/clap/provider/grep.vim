@@ -271,13 +271,13 @@ function! s:grep_on_typed() abort
 
   if empty(g:clap.input.get())
     if exists('s:initial_size')
-      call clap#indicator#set_matches('['.string(s:initial_size).']')
+      call clap#indicator#set_matches_number(s:initial_size)
     elseif has_key(g:clap.display, 'initial_size')
       let s:initial_size = g:clap.display.initial_size
       unlet g:clap.display.initial_size
-      call clap#indicator#set_matches('['.string(s:initial_size).']')
+      call clap#indicator#set_matches_number(s:initial_size)
     else
-      call clap#indicator#set_matches(s:default_prompt)
+      call clap#indicator#set(s:default_prompt)
     endif
     call g:clap.display.clear_highlight()
     if exists('g:__clap_forerunner_result')
