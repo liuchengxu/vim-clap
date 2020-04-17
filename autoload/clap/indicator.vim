@@ -50,7 +50,7 @@ function! clap#indicator#set_matches_number(number) abort
   call clap#indicator#set('['.l:matches_cnt.']')
 endfunction
 
-function! clap#indicator#update_matches_on_deletebufline() abort
+function! clap#indicator#update_matches_on_deletecurline() abort
   let s:matches_number -= 1
   if get(g:clap.display, 'initial_size', -1) > 0
     let g:clap.display.initial_size -= 1
