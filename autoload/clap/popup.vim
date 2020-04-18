@@ -52,6 +52,7 @@ function! s:create_display() abort
 
     let g:clap#popup#display.width = s:display_opts.width
 
+    call setwinvar(s:display_winid, '&spell', 0)
     call win_execute(s:display_winid, 'call s:execute_in_display()')
     call popup_hide(s:display_winid)
 
@@ -126,6 +127,7 @@ function! s:create_preview() abort
       let preview_opts.maxwidth -= 2
     endif
     let s:preview_winid = popup_create([], preview_opts)
+    call setwinvar(s:preview_winid, '&spell', 0)
     call popup_hide(s:preview_winid)
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
