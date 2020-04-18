@@ -50,12 +50,12 @@ function! clap#popup#action#invoke() abort
 
   let display_menus = map(choices, "substitute(v:val, '&', '', '')")
 
-  let dialog_winid = popup_menu(display_menus, #{
-      \ filter: function('s:action_filter'),
-      \ callback: function('s:action_callback'),
-      \ title: ' '.title.' ',
-      \ zindex: 100000,
-      \ borderchars: ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
+  let dialog_winid = popup_menu(display_menus, {
+      \ 'filter': function('s:action_filter'),
+      \ 'callback': function('s:action_callback'),
+      \ 'title': ' '.title.' ',
+      \ 'zindex': 100000,
+      \ 'borderchars': ['─', '│', '─', '│', '╭', '╮', '╯', '╰'],
       \ })
 
   call win_execute(dialog_winid, 'call s:highlight_shortcut()')

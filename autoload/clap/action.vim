@@ -30,7 +30,7 @@ endfunction
 
 function! clap#action#invoke() abort
   if !has_key(g:clap.provider._(), 'action')
-    call clap#helper#echo_warn('action not implemented in provider:'.g:clap.provider.id)
+    call clap#helper#echo_warn('action not implemented in provider '.g:clap.provider.id)
     return ''
   endif
   if has('nvim')
