@@ -16,6 +16,9 @@ function! s:action_filter(id, key) abort
 endfunc
 
 function! s:action_callback(id, result) abort
+  if a:result == -1
+    return
+  endif
   if has_key(s:provider_action, a:result)
     call s:provider_action[a:result]()
   else
