@@ -1,5 +1,6 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Action dialog based on vim popup.
+scriptencoding utf-8
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
