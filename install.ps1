@@ -5,6 +5,8 @@ $APP = 'maple'
 $url = "https://github.com/liuchengxu/vim-clap/releases/download/$version/$APP-"
 $output = "$PSScriptRoot\bin\$APP.exe"
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
 if ([Environment]::Is64BitOperatingSystem) {
   $url += 'x86_64-pc-windows-msvc'
 } else {
