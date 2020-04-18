@@ -11,7 +11,7 @@ function! s:invoke_action() abort
   if has_key(provider_action, s:ACTIONS_TITLE_KEY)
     let title = provider_action[s:ACTIONS_TITLE_KEY]()
   else
-    let title = 'Choose actions:'
+    let title = 'Choose action:'
   endif
   let choices = filter(keys(provider_action), 'v:val !~# s:ACTIONS_TITLE_KEY')
   let choice_num = confirm(title, join(choices, "\n"))
@@ -33,7 +33,11 @@ function! clap#action#invoke() abort
     call clap#helper#echo_warn('action not implemented in provider:'.g:clap.provider.id)
     return ''
   endif
-  call s:invoke_action()
+  if has('nvim')
+    call s:invoke_action()
+  else
+    call clap#popup#action#invoke()
+  endif
   return ''
 endfunction
 
