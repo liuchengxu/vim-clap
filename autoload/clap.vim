@@ -287,7 +287,7 @@ function! clap#for(provider_id_or_alias) abort
     endif
   endif
 
-  call clap#handler#init()
+  call clap#selection#init()
 
   call g:clap.open_win()
 endfunction

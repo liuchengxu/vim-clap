@@ -93,10 +93,6 @@ function! clap#handler#internal_exit() abort
   call clap#exit()
 endfunction
 
-function! clap#handler#init() abort
-  call clap#selection#init()
-endfunction
-
 function! clap#handler#tab_action() abort
   if has_key(g:clap.provider._(), 'tab_action')
     call g:clap.provider._().tab_action()

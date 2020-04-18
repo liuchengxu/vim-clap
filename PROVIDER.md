@@ -73,7 +73,7 @@ Field                 | Type                | Required      | Has default implem
 `syntax`              | String              | Optional      | No
 `prompt_format`       | String              | Optional      | No
 `init`                | Funcref             | Optional      | **Yes**
-`actions`             | Dict                | Optional      | No
+`action`              | Dict                | Optional      | No
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -112,12 +112,12 @@ Field                 | Type                | Required      | Has default implem
 
 - `init`: used for initializing the display window.
 
-- `actions`: used for performing some action on the entry, e.g., delete buffer in `buffers` provider, based on `confirm()`. Each key except `title` uses the rule of `choices` of `confirm()`, each value is a `Funcref` called when the shortcut key for the choice is triggered.
+- `action`: used for performing some action on the entry, e.g., delete buffer in `buffers` provider, based on `confirm()`. Each key except `title` uses the rule of `choices` of `confirm()`, each value is a `Funcref` called when the shortcut key for the choice is triggered.
 
     `title` is a special key for defining the title of this dialog, it's optional, the default one would be `Choose action:`.
 
     ```vim
-    let s:buffers.actions = {
+    let s:buffers.action = {
           \ 'title': function('s:actions_title'),
           \ '&Delete': function('s:action_delete'),
           \ 'OpenInNew&Tab': { -> clap#selection#try_open('ctrl-t') },
