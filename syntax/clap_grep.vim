@@ -9,8 +9,8 @@ syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn c
 syntax match ClapIconUnknown /^\s*/
 
 execute 'syntax match ClapFpath' '/^.*:\d\+:\d\+:/' 'contains=ClapLinNrColumn,'.join(clap#icon#add_head_hl_groups(), ',')
-execute 'syntax match ClapFpathTruncated' '/^.*\.\.\./' 'contains='.join(clap#icon#add_head_hl_groups(), ',').',ClapFpathDots'
-syntax match ClapFpathDots '\.\.\.' contained
+execute 'syntax match ClapFpathTruncated' '/^.*\.\./' 'contains='.join(clap#icon#add_head_hl_groups(), ',').',ClapFpathDots'
+syntax match ClapFpathDots '\.\.' contained
 
 hi default link ClapFpath            Keyword
 hi default link ClapFpathTruncated   Keyword

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub const DOTS: &str = "...";
+pub const DOTS: &str = "..";
 
 /// Map of truncated line to original line.
 pub type LinesTruncatedMap = HashMap<String, String>;

@@ -17,6 +17,7 @@ CHANGELOG
 ### Changed
 
 - Now `:Clap tags` will filter the tag name column only, same with `:Clap proj_tags`.
+- Change truncated dots from `...` to `..` for displaying one more useful char.
 
 ### Fixed
 
