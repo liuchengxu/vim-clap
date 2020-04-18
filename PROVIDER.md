@@ -120,8 +120,8 @@ Field                 | Type                | Required      | Has default implem
     let s:buffers.actions = {
           \ 'title': function('s:actions_title'),
           \ '&Delete': function('s:action_delete'),
-          \ 'OpenInNew&Tab': { -> clap#handler#try_open('ctrl-t') },
-          \ 'Open&Vertically': { -> clap#handler#try_open('ctrl-v') },
+          \ 'OpenInNew&Tab': { -> clap#selection#try_open('ctrl-t') },
+          \ 'Open&Vertically': { -> clap#selection#try_open('ctrl-v') },
           \ }
     ```
 
