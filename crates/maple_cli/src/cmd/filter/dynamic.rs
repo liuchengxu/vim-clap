@@ -315,8 +315,11 @@ macro_rules! source_iter_file {
         // The line stream can contain invalid UTF-8 data.
         std::io::BufReader::new(std::fs::File::open($fpath)?)
             .lines()
-            .filter_map(|x| x.ok())
-            .filter_map(|line| $scorer(&line).map(|(score, indices)| (line.into(), score, indices)))
+            .filter_map(|x| {
+                x.ok().and_then(|line| {
+                    $scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                })
+            })
     };
 }
 

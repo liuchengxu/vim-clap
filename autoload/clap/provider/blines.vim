@@ -55,7 +55,7 @@ function! s:blines.init() abort
     let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
     call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
     call g:clap#display_win.shrink_if_undersize()
-    call clap#indicator#set_matches('['.line_count.']')
+    call clap#indicator#set_matches_number(line_count)
     call clap#sign#toggle_cursorline()
   endif
 endfunction

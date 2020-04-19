@@ -144,11 +144,12 @@ let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
 let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
+let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)
     let lhs = substitute(toupper(k), 'CTRL', 'C', '')
-    execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#handler#try_open("'.k.'") }'
+    execute 'let s:move_manager["\<'.lhs.'>"] = { _winid -> clap#selection#try_open("'.k.'") }'
   endfor
 endfunction
 

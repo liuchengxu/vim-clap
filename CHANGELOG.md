@@ -7,6 +7,7 @@ CHANGELOG
 
 - New provider `:Clap proj_tags` for project-wide tags.([#391](https://github.com/liuchengxu/vim-clap/pull/391))
 - Allow `:Clap files +name-only` to filter the file name only instead of the full file path. Require you have built the Python dynamic module or uses in the cached mode. ([#389](https://github.com/liuchengxu/vim-clap/pull/389))
+- Add provider `action` property. ([#396](https://github.com/liuchengxu/vim-clap/pull/396))
 
 ### Improved
 
@@ -16,6 +17,7 @@ CHANGELOG
 ### Changed
 
 - Now `:Clap tags` will filter the tag name column only, same with `:Clap proj_tags`.
+- Change truncated dots from `...` to `..` for displaying one more useful char.
 
 ### Fixed
 

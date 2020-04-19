@@ -73,6 +73,7 @@ Field                 | Type                | Required      | Has default implem
 `syntax`              | String              | Optional      | No
 `prompt_format`       | String              | Optional      | No
 `init`                | Funcref             | Optional      | **Yes**
+`action`              | Dict                | Optional      | No
 
 - `sink`:
   - String: vim command to handle the selected entry.
@@ -110,6 +111,19 @@ Field                 | Type                | Required      | Has default implem
 - `prompt_format`: used for showing some dynamic information, checkout [autoload/clap/provider/tags.vim](autoload/clap/provider/tags.vim) for the usage. Don't forget to call `clap#spinner#refresh()` to reveal the changes after setting a new `prompt_format` in the provider.
 
 - `init`: used for initializing the display window.
+
+- `action`: used for performing some action on the entry, e.g., delete buffer in `buffers` provider, based on `confirm()`. Each key except `title` uses the rule of `choices` of `confirm()`, each value is a `Funcref` called when the shortcut key for the choice is triggered.
+
+    `title` is a special key for defining the title of this dialog, it's optional, the default one would be `Choose action:`.
+
+    ```vim
+    let s:buffers.action = {
+          \ 'title': function('s:actions_title'),
+          \ '&Delete': function('s:action_delete'),
+          \ 'OpenInNew&Tab': { -> clap#selection#try_open('ctrl-t') },
+          \ 'Open&Vertically': { -> clap#selection#try_open('ctrl-v') },
+          \ }
+    ```
 
 You have to provide `sink` and `source` option. The `source` field is indispensable for a synchronous provider. In another word, if you provide the `source` option this provider will be seen as a sync one, which means you could use the default `on_typed` implementation of vim-clap.
 

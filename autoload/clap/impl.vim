@@ -11,7 +11,7 @@ let s:is_nvim = has('nvim')
 " =======================================
 function! s:reset_on_empty_input() abort
   call g:clap.display.set_lines_lazy(s:get_cache_or_raw_source())
-  call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
+  call clap#indicator#set_matches_number(g:__clap_initial_source_size)
   call clap#sign#toggle_cursorline()
   call g:clap#display_win.shrink_if_undersize()
   call g:clap.preview.hide()
@@ -84,7 +84,7 @@ function! s:on_typed_async_impl() abort
   if empty(l:cur_input)
     if exists('g:__clap_raw_source')
       call g:clap.display.set_lines_lazy(g:__clap_raw_source)
-      call clap#indicator#set_matches('['.g:__clap_initial_source_size.']')
+      call clap#indicator#set_matches_number(g:__clap_initial_source_size)
       call clap#sign#toggle_cursorline()
       call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()

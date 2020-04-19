@@ -76,12 +76,32 @@ function! s:buffers_on_move() abort
   call clap#preview#highlight_header()
 endfunction
 
+function! s:action_delete() abort
+  let current_matches = g:clap.display.line_count()
+  execute 'bdelete' s:current_bufnr
+  call g:clap.display.deletecurline()
+  call clap#indicator#update_matches_on_deletecurline()
+  call g:clap.preview.hide()
+  call g:clap#display_win.shrink_if_undersize()
+endfunction
+
+function! s:actions_title() abort
+  let s:current_bufnr = s:extract_bufnr(g:clap.display.getcurline())
+  return 'Choose action for buffer '.s:current_bufnr.':'
+endfunction
+
 let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
 let s:buffers.on_move = function('s:buffers_on_move')
 let s:buffers.syntax = 'clap_buffers'
 let s:buffers.support_open_action = v:true
+let s:buffers.action = {
+      \ 'title': function('s:actions_title'),
+      \ '&Delete': function('s:action_delete'),
+      \ 'OpenInNew&Tab': { -> clap#selection#try_open('ctrl-t') },
+      \ 'Open&Vertically': { -> clap#selection#try_open('ctrl-v') },
+      \ }
 
 let g:clap#provider#buffers# = s:buffers
 
