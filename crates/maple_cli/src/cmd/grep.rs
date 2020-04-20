@@ -43,13 +43,13 @@ pub struct Grep {
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
-    /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(short, long)]
-    sync: bool,
-
     /// Read input from a cached grep tempfile, only absolute file path is supported.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
+
+    /// Synchronous filtering, returns after the input stream is complete.
+    #[structopt(short, long)]
+    sync: bool,
 }
 
 fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {

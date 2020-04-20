@@ -56,10 +56,6 @@ pub struct Tags {
     #[structopt(index = 2, short, long, parse(from_os_str))]
     dir: PathBuf,
 
-    /// Runs as the forerunner job, create the new cache entry.
-    #[structopt(short, long)]
-    forerunner: bool,
-
     /// Specify the language.
     #[structopt(long = "languages")]
     languages: Option<String>,
@@ -67,6 +63,10 @@ pub struct Tags {
     /// Read input from a cached grep tempfile, only absolute file path is supported.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
+
+    /// Runs as the forerunner job, create the new cache entry.
+    #[structopt(short, long)]
+    forerunner: bool,
 }
 
 #[inline]

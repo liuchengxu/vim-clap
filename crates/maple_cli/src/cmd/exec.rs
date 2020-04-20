@@ -16,13 +16,13 @@ pub struct Exec {
     #[structopt(long = "output")]
     output: Option<String>,
 
-    /// Specify the threshold for writing the output of command to a tempfile.
-    #[structopt(long = "output-threshold", default_value = "100000")]
-    output_threshold: usize,
-
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
+
+    /// Specify the threshold for writing the output of command to a tempfile.
+    #[structopt(long = "output-threshold", default_value = "100000")]
+    output_threshold: usize,
 }
 
 impl Exec {
