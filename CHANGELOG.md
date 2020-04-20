@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.13] 2020-04-20
+
 ### Added
 
 - New provider `:Clap proj_tags` for project-wide tags.([#391](https://github.com/liuchengxu/vim-clap/pull/391))
