@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    Result, StructOpt,
+    Context, Result, StructOpt,
 };
 
 pub mod built_info {
@@ -24,6 +24,16 @@ fn run(maple: Maple) -> Result<()> {
     match maple.command {
         Cmd::Version => {
             version();
+        }
+        Cmd::CheckRelease => {
+            let local_git_tag = built_info::GIT_VERSION.context("Failed to get git tag info")?;
+            let remote_release = maple_cli::cmd::check_release::latest_remote_release()?;
+            let remote_tag = remote_release.tag_name;
+            if remote_tag != local_git_tag {
+                println!("New maple release {} is avaliable, please download it from https://github.com/liuchengxu/vim-clap/releases/tag/{}", remote_tag, remote_tag);
+            } else {
+                println!("No newer release, current maple version: {}", remote_tag);
+            }
         }
         Cmd::Helptags(helptags) => helptags.run()?,
         Cmd::Tags(tags) => tags.run(maple.no_cache)?,

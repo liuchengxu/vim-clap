@@ -27,7 +27,7 @@ mod utils;
 
 pub mod cmd;
 pub use {
-    anyhow::Result,
+    anyhow::{Context, Result},
     fuzzy_filter::{subprocess, ContentFiltering, Source},
     icon::IconPainter,
     structopt::StructOpt,
