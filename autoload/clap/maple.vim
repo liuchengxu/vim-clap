@@ -16,10 +16,10 @@ let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s
 
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
-  let s:maple_bin = s:maple_bin_localbuilt
+  let s:maple_bin = '"' . s:maple_bin_localbuilt . '"'
 " Check the prebuilt binary.
 elseif executable(s:maple_bin_prebuilt)
-  let s:maple_bin = s:maple_bin_prebuilt
+  let s:maple_bin = '"' . s:maple_bin_prebuilt . '"'
 elseif executable('maple')
   let s:maple_bin = 'maple'
 else
