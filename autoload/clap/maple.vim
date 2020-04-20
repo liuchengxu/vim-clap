@@ -16,10 +16,10 @@ let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s
 
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
-  let s:maple_bin = s:maple_bin_localbuilt
+  let s:maple_bin = '"' . s:maple_bin_localbuilt . '"'
 " Check the prebuilt binary.
 elseif executable(s:maple_bin_prebuilt)
-  let s:maple_bin = s:maple_bin_prebuilt
+  let s:maple_bin = '"' . s:maple_bin_prebuilt . '"'
 elseif executable('maple')
   let s:maple_bin = 'maple'
 else
@@ -240,7 +240,7 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
     let global_opt .= ' --no-cache'
   endif
 
-  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, clap#rooter#working_dir())
+  return printf('%s %s ripgrep-forerunner --cmd-dir "%s"', s:maple_bin, global_opt, clap#rooter#working_dir())
 endfunction
 
 function! clap#maple#blines_subcommand(query) abort

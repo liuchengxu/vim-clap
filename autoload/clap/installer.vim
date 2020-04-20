@@ -7,8 +7,10 @@ set cpoptions&vim
 let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
 
 function! s:run_term(cmd, cwd, success_info) abort
-  10new belowright bottom
+  belowright 10new
   setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
+
+  let bufnr = bufnr('')
 
   function! s:OnExit(status) closure abort
     if a:status == 0
@@ -29,8 +31,6 @@ function! s:run_term(cmd, cwd, success_info) abort
           \ 'exit_cb': {job, status -> s:OnExit(status)},
           \})
   endif
-
-  let bufnr = bufnr('')
 
   normal! G
 
@@ -106,7 +106,7 @@ endfunction
 
 function! clap#installer#download_binary() abort
   if has('win32')
-    let cmd = 'Powershell.exe -File '.s:plugin_root_dir.'\install.ps1'
+    let cmd = 'Powershell.exe -ExecutionPolicy ByPass -File "'.s:plugin_root_dir.'\install.ps1"'
   else
     let cmd = './install.sh'
   endif
