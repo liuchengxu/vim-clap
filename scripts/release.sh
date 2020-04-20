@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+MAPLE_CARGO_TOML="../Cargo.toml"
+
 current_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --max-count=1)")
 echo 'Prepare new release for vim-clap'
 echo ''
 
 echo "     Current tag: $current_tag"
-read -p "Next tag version: " next_tag
+read -p "Next tag version: v0." next_tag
 echo ''
 
-current_maple_version=$(cat Cargo.toml | grep '^version' | cut -f 2 -d '='  | tr -d '[:space:]' | tr -d '"')
+current_maple_version=$(cat "$MAPLE_CARGO_TOML" | grep '^version' | cut -f 2 -d '='  | tr -d '[:space:]' | tr -d '"')
 echo "Current maple version: $current_maple_version"
-read -p "   Next maple version: " next_maple_version
+read -p "   Next maple version: 0.1." next_maple_version
 echo ''
 
 ask() {
@@ -25,21 +29,22 @@ ask() {
   done
 }
 
-echo "          Next tag: $next_tag"
-echo "Next maple version: $next_maple_version"
+echo "          Next tag: v0.$next_tag"
+echo "Next maple version: v0.1.$next_maple_version"
 ask "confirmed?"
 confirmed=$?
 
 if [ $confirmed -eq 0 ]; then
   echo "Cancelled"
 else
-  ./prepare_release.py "$next_tag" "$next_maple_version"
+  ./prepare_release.py "v0.$next_tag" "0.1.$next_maple_version"
 
   # Fix Cargo.lock needs to be updated but --locked was passed to prevent this
+  cd ..
   cargo build --release
 
   echo ''
-  echo "New release $next_tag is ready to go!"
+  echo "New release v0.$next_tag is ready to go!"
   echo ''
   echo 'Now run git diff to check again, then commit and tag a new version:'
   echo '    git add -u' > publish.sh
