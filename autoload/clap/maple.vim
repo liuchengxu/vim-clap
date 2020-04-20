@@ -240,7 +240,7 @@ function! clap#maple#ripgrep_forerunner_subcommand() abort
     let global_opt .= ' --no-cache'
   endif
 
-  return printf('%s %s ripgrep-forerunner --cmd-dir %s', s:maple_bin, global_opt, clap#rooter#working_dir())
+  return printf('%s %s ripgrep-forerunner --cmd-dir "%s"', s:maple_bin, global_opt, clap#rooter#working_dir())
 endfunction
 
 function! clap#maple#blines_subcommand(query) abort
