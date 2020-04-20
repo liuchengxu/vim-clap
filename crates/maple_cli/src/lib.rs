@@ -21,6 +21,10 @@ macro_rules! print_json_with_length {
   }
 }
 
+mod error;
+mod light_command;
+mod utils;
+
 pub mod cmd;
 pub use {
     anyhow::Result,
@@ -28,7 +32,3 @@ pub use {
     icon::IconPainter,
     structopt::StructOpt,
 };
-
-mod error;
-mod light_command;
-mod utils;

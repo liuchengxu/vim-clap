@@ -7,7 +7,7 @@ CHANGELOG
 
 - New provider `:Clap proj_tags` for project-wide tags.([#391](https://github.com/liuchengxu/vim-clap/pull/391))
 - Allow `:Clap files +name-only` to filter the file name only instead of the full file path. Require you have built the Python dynamic module or uses in the cached mode. ([#389](https://github.com/liuchengxu/vim-clap/pull/389))
-- Add provider `action` property. ([#396](https://github.com/liuchengxu/vim-clap/pull/396))
+- Add provider `action` property, you can delete the buffer in `:Clap buffers` using the action dialog triggered by `<S-Tab>`. ([#396](https://github.com/liuchengxu/vim-clap/pull/396))
 
 ### Improved
 
@@ -21,6 +21,7 @@ CHANGELOG
 
 ### Fixed
 
+- Fix installer on Windows and some other job related issues. Thanks to @TissueFluid. ([#405](https://github.com/liuchengxu/vim-clap/pull/405))
 - Add default value when `ClapSearchText` highlight group misses some attributes. #390
 - The final result of dyn filter is not ordered, ref https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611616792 .
 - Make use of command line `--winwidth` option, fix the unsuitable truncation for long matched lines.

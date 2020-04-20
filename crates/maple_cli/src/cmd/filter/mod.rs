@@ -29,10 +29,6 @@ pub struct Filter {
     #[structopt(short, long)]
     cmd_dir: Option<String>,
 
-    /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(short, long)]
-    sync: bool,
-
     /// Read input from a file instead of stdin, only absolute file path is supported.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
@@ -40,6 +36,10 @@ pub struct Filter {
     /// Apply the filter on the full line content or parial of it.
     #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
     content_filtering: Option<ContentFiltering>,
+
+    /// Synchronous filtering, returns after the input stream is complete.
+    #[structopt(short, long)]
+    sync: bool,
 }
 
 impl Filter {
