@@ -21,7 +21,7 @@ CHANGELOG
 
 ### Fixed
 
-- Fix installer on Windows and some other windows specific issues. Thanks to @TissueFluid. ([#405](https://github.com/liuchengxu/vim-clap/pull/405))
+- Fix installer on Windows and some other job related issues. Thanks to @TissueFluid. ([#405](https://github.com/liuchengxu/vim-clap/pull/405))
 - Add default value when `ClapSearchText` highlight group misses some attributes. #390
 - The final result of dyn filter is not ordered, ref https://github.com/liuchengxu/vim-clap/pull/385#issuecomment-611616792 .
 - Make use of command line `--winwidth` option, fix the unsuitable truncation for long matched lines.
