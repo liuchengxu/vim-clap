@@ -48,7 +48,7 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
 endfunction
 
 function! s:grep_cmd_common() abort
-  return ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'grep', '', g:clap.input.get()]
+  return ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'grep', '""', g:clap.input.get()]
 endfunction
 
 function! clap#filter#async#dyn#start_grep() abort
