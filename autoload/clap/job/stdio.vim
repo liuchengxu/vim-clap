@@ -101,9 +101,9 @@ else
     endif
   endfunction
 
-  function! s:start_service_job(cmd) abort
+  function! s:start_service_job(cmd_list) abort
     call clap#job#stdio#stop_service()
-    let s:job = job_start(clap#job#wrap_cmd(a:cmd), {
+    let s:job = job_start(a:cmd_list, {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
           \ 'noblock': 1,
