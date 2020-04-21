@@ -46,7 +46,8 @@ function! clap#debugging#info() abort
 
   if maple_binary isnot v:null
     echohl Type | echo '           maple info: ' | echohl NONE
-    let maple_version = system(maple_binary.' version')
+    " Note: maple_binary has to be quoted, otherwise error happens when the path contains spaces.
+    let maple_version = system(printf('"%s" version', maple_binary))
     if v:shell_error
       echohl Normal | echon 'fail to fetch version info' | echohl NONE
     else
