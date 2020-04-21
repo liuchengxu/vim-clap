@@ -59,10 +59,10 @@ if has('nvim')
         call s:handle_stdout(a:data)
       elseif a:event ==# 'stderr'
         " Ignore the error
-        " if a:data == ['']
-          " return
-        " endif
-        " call clap#helper#echo_error('on_event:'.string(a:data))
+        if a:data == ['']
+          return
+        endif
+        call clap#helper#echo_error('on_event:'.string(a:data))
       endif
     endif
   endfunction
@@ -140,15 +140,10 @@ endfunction
 function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
   let s:MessageHandler = a:MessageHandler
 
-  let filter_cmd = printf('%s --number 100 --winwidth %d filter "%s" --cmd "%s" --cmd-dir "%s"',
-        \ g:clap_enable_icon ? '--icon-painter=File' : '',
-        \ winwidth(g:clap.display.winid),
-        \ g:clap.input.get(),
-        \ a:cmd,
-        \ clap#rooter#working_dir(),
-        \ )
+  let filter_cmd = g:clap_enable_icon ? ['--icon-painter=File'] : []
+  let filter_cmd += ['--number', '100', '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir()]
 
-  call s:start_service_job(clap#maple#build_cmd(filter_cmd))
+  call s:start_service_job(clap#maple#build_cmd_list(filter_cmd))
   return
 endfunction
 
