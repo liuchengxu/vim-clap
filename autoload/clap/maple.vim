@@ -244,7 +244,7 @@ function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
     call add(global_opt, '--icon-painter=Grep')
   endif
 
-  let subcommand = ['grep', a:cmd, a:query, '--sync', '--cmd-dir', clap#rooter#working_dir()]
+  let subcommand = ['grep', a:query, '--sync', '--grep-cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir()]
 
   if a:glob isnot v:null
     let subcommand += ['--glob', a:glob]

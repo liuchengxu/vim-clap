@@ -17,9 +17,7 @@ function! s:proj_tags.on_typed() abort
     endif
     call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
-    " let cmd = clap#maple#build_cmd(printf('tags "%s" "%s"', g:clap.input.get(), clap#rooter#working_dir()))
-    let cmd = clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir())
-    call clap#filter#async#dyn#start_directly(cmd)
+    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
   endif
 endfunction
 
