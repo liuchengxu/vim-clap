@@ -108,6 +108,11 @@ function! s:filter_or_send_message() abort
   endif
 endfunction
 
+function! s:stab_action() abort
+  call g:clap.input.set('')
+  call s:bs_action()
+endfunction
+
 function! s:bs_action() abort
   call clap#highlight#clear()
 
@@ -269,6 +274,7 @@ let s:filer.on_move = function('s:filer_on_move')
 let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.tab_action = function('s:tab_action')
+let s:filer.stab_action = function('s:stab_action')
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
 let g:clap#provider#filer# = s:filer

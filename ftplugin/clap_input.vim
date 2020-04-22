@@ -60,6 +60,7 @@ inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
 inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#tab_action()<CR>
+inoremap <silent> <buffer> <S-Tab>     <C-R>=clap#handler#stab_action()<CR>
 inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>
 
 inoremap <silent> <buffer> <C-j> <C-R>=clap#navigation#linewise('down')<CR>

@@ -101,6 +101,13 @@ function! clap#handler#tab_action() abort
   return clap#selection#toggle()
 endfunction
 
+function! clap#handler#stab_action() abort
+  if has_key(g:clap.provider._(), 'stab_action')
+    call g:clap.provider._().stab_action()
+  endif
+  return ''
+endfunction
+
 function! clap#handler#bs_action() abort
   if has_key(g:clap.provider._(), 'bs_action')
     call g:clap.provider._().bs_action()
