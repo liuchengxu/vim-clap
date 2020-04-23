@@ -83,6 +83,10 @@ Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
 
 " The bang version will try to download the prebuilt binary if cargo does not exist.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
+
+" `:Clap install-binary[!]` will run using the terminal feature which is inherently async.
+" If you don't want that and hope to run the hook synchorously:
+Plug 'liuchengxu/vim-clap', { 'do': has('win32') ? 'cargo build --release' : 'make' }
 ```
 
 The `do` hook for installing the extra binary is highly recommended, which can mostly help you get a performant vim-clap easily. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.
