@@ -67,7 +67,9 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
         return (SCORE_MIN, vec![]);
     }
 
-    let (d, m) = calculate_score(needle, needle_length, haystack, haystack_length);
+    #[allow(non_snake_case)]
+    let (D, M) = calculate_score(needle, needle_length, haystack, haystack_length);
+
     let mut positions = vec![0_usize; needle_length];
 
     {
@@ -75,23 +77,21 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
         let mut j = haystack_length - 1;
 
         for i in (0..needle_length).rev() {
-            while j > (0_usize) {
+            while j > 0_usize {
                 let last = if i > 0 && j > 0 {
-                    d.get(i - 1, j - 1)
+                    D.get(i - 1, j - 1)
                 } else {
                     SCORE_DEFAULT_BONUS
                 };
 
-                let d = d.get(i, j);
-                let m = m.get(i, j);
+                let d = D.get(i, j);
+                let m = M.get(i, j);
 
                 if d != SCORE_MIN && (match_required || score_eq(d, m)) {
-                    if i > 0 && j > 0 && score_eq(m, score_add(last, SCORE_MATCH_CONSECUTIVE)) {
-                        match_required = true;
-                    }
-
+                    match_required =
+                        i > 0 && j > 0 && score_eq(m, score_add(last, SCORE_MATCH_CONSECUTIVE));
                     positions[i] = j;
-
+                    j -= 1;
                     break;
                 }
 
@@ -100,7 +100,7 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
         }
     }
 
-    (m.get(needle_length - 1, haystack_length - 1), positions)
+    (M.get(needle_length - 1, haystack_length - 1), positions)
 }
 
 fn calculate_score(
