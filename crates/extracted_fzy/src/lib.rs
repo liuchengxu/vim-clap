@@ -111,8 +111,10 @@ fn calculate_score(
 ) -> (Matrix, Matrix) {
     let bonus = compute_bonus(haystack, haystack_length);
 
-    let mut m = Matrix::new(needle_length, haystack_length);
-    let mut d = Matrix::new(needle_length, haystack_length);
+    #[allow(non_snake_case)]
+    let mut M = Matrix::new(needle_length, haystack_length);
+    #[allow(non_snake_case)]
+    let mut D = Matrix::new(needle_length, haystack_length);
 
     for (i, n) in needle.chars().enumerate() {
         let mut prev_score = SCORE_MIN;
@@ -132,31 +134,27 @@ fn calculate_score(
                         score_mul(score_from_usize(j), SCORE_GAP_LEADING),
                     ),
                     _ if j > 0 => {
-                        let m = m.get(i - 1, j - 1);
-                        let d = d.get(i - 1, j - 1);
-
-                        let m = score_add(m, bonus_score);
-                        let d = score_add(d, SCORE_MATCH_CONSECUTIVE);
-
-                        (m).max(d)
+                        let m = score_add(M.get(i - 1, j - 1), bonus_score);
+                        let d = score_add(D.get(i - 1, j - 1), SCORE_MATCH_CONSECUTIVE);
+                        m.max(d)
                     }
                     _ => SCORE_MIN,
                 };
 
                 prev_score = score.max(score_add(prev_score, gap_score));
 
-                d.set(i, j, score);
-                m.set(i, j, prev_score);
+                D.set(i, j, score);
+                M.set(i, j, prev_score);
             } else {
                 prev_score = score_add(prev_score, gap_score);
 
-                d.set(i, j, SCORE_MIN);
-                m.set(i, j, prev_score);
+                D.set(i, j, SCORE_MIN);
+                M.set(i, j, prev_score);
             }
         }
     }
 
-    (d, m)
+    (D, M)
 }
 
 /// Compares two characters case-insensitively
