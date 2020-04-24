@@ -6,6 +6,7 @@ CHANGELOG
 ### Fixed
 
 - When cmd in `job(cmd)` is a String, the path containing spaces could be problematic on Windows(GVim). Use List instead. ([#407](https://github.com/liuchengxu/vim-clap/pull/407))
+- The positions of matched items in Rust fzy implementation `extracted_fzy` crate is incorrect. The pure Python fzy impl is consistent with the original fzy C implementation. ([#409](https://github.com/liuchengxu/vim-clap/pull/409))
 
 ## [0.13] 2020-04-20
 

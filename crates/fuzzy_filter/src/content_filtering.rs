@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn test_exclude_grep_filepath() {
-        let query = "macro";
+        let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
         let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
         let (_, indices) = apply_fzy_on_grep_line(line, query).unwrap();
