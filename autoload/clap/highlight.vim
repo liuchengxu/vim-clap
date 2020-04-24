@@ -129,8 +129,7 @@ function! clap#highlight#matchadd_substr(patterns) abort
 
   " As most 8 submatches, ClapMatches[1-8]
   try
-    call map(a:patterns[1:8],
-          \ {key, val -> add(w:clap_match_ids, matchadd('ClapMatches'.(key+1), val, s:default_priority -1))})
+    call map(a:patterns[1:8], 'add(w:clap_match_ids, matchadd("ClapMatches".(v:key+1), v:val, s:default_priority - 1))')
   catch
     return
   endtry
