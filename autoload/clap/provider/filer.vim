@@ -202,11 +202,7 @@ function! s:smart_concatenate(cur_dir, curline) abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  if g:clap_enable_icon
-    let curline = a:selected[4:]
-  else
-    let curline = a:selected
-  endif
+  let curline = g:clap_enable_icon ? a:selected[4:] : a:selected
   execute 'edit' s:smart_concatenate(s:current_dir, curline)
 endfunction
 
