@@ -4,6 +4,7 @@ use structopt::StructOpt;
 
 pub mod blines;
 pub mod cache;
+pub mod check_release;
 pub mod exec;
 pub mod filter;
 pub mod grep;
@@ -43,6 +44,9 @@ pub enum Cmd {
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
     RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
+    /// Retrive the latest remote release info.
+    #[structopt(name = "check-release")]
+    CheckRelease(crate::cmd::check_release::CheckRelease),
 }
 
 #[derive(StructOpt, Debug)]

@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Added
+
+- Add new `check-release` command, you can use `maple check-release --download` to download the latest release binary to `bin` directory. And `:Clap install-binary!` will run this command when possible. ([#410](https://github.com/liuchengxu/vim-clap/pull/410))
+
 ### Fixed
 
 - When cmd in `job(cmd)` is a String, the path containing spaces could be problematic on Windows(GVim). Use List instead. ([#407](https://github.com/liuchengxu/vim-clap/pull/407))

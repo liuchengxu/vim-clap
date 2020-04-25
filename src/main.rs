@@ -1,6 +1,6 @@
 use maple_cli::{
     cmd::{Cmd, Maple},
-    Result, StructOpt,
+    Context, Result, StructOpt,
 };
 
 pub mod built_info {
@@ -24,6 +24,10 @@ fn run(maple: Maple) -> Result<()> {
     match maple.command {
         Cmd::Version => {
             version();
+        }
+        Cmd::CheckRelease(check_release) => {
+            let local_git_tag = built_info::GIT_VERSION.context("Failed to get git tag info")?;
+            check_release.check_new_release(local_git_tag)?;
         }
         Cmd::Helptags(helptags) => helptags.run()?,
         Cmd::Tags(tags) => tags.run(maple.no_cache)?,
