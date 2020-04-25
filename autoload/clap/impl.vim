@@ -98,10 +98,7 @@ function! s:on_typed_async_impl() abort
 
   if clap#filter#async#external#using_maple()
     if g:clap.provider.id ==# 'blines'
-      let source_file = expand('#'.g:clap.start.bufnr.':p')
-      let blines_cmd = clap#maple#blines_subcommand(g:clap.input.get())
-      let maple_cmd = printf('%s %s', blines_cmd, source_file)
-      call clap#filter#async#dyn#start_directly(maple_cmd)
+      call clap#filter#async#dyn#start_directly(clap#maple#blines_command())
       return
     endif
 

@@ -9,11 +9,7 @@ let s:pattern_builder = {}
 
 function! s:pattern_builder._force_case() abort
   " Smart case
-  if self.input =~? '\u'
-    return '\C'
-  else
-    return '\c'
-  endif
+  return self.input =~? '\u' ? '\C' : '\c'
 endfunction
 
 function! s:pattern_builder.smartcase() abort

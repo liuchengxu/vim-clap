@@ -2,7 +2,7 @@ use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
 use crate::utils::is_git_repo;
 use crate::ContentFiltering;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use fuzzy_filter::{subprocess::Exec, Source};
 use icon::IconPainter;
 use std::path::PathBuf;
@@ -23,17 +23,17 @@ const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never 
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Grep {
+    /// Specify the query string for GREP_CMD.
+    #[structopt(index = 1, short, long)]
+    grep_query: String,
+
     /// Specify the grep command to run, normally rg will be used.
     ///
     /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
     ///                                                       |-----------------|
     ///                                                   this can be seen as an option by mistake.
-    #[structopt(index = 1, short, long)]
-    grep_cmd: String,
-
-    /// Specify the query string for GREP_CMD.
-    #[structopt(index = 2, short, long)]
-    grep_query: String,
+    #[structopt(short, long, required_if("sync", "true"))]
+    grep_cmd: Option<String>,
 
     /// Delegate to -g option of rg
     #[structopt(short = "g", long = "glob")]
@@ -82,7 +82,11 @@ impl Grep {
     ///
     /// Write the output to the cache file if neccessary.
     fn sync_run(&self, number: Option<usize>, icon_painter: Option<IconPainter>) -> Result<()> {
-        let (mut cmd, mut args) = prepare_grep_and_args(&self.grep_cmd, self.cmd_dir.clone());
+        let grep_cmd = self
+            .grep_cmd
+            .clone()
+            .context("--grep-cmd is required when --sync is on")?;
+        let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, self.cmd_dir.clone());
 
         // We split out the grep opts and query in case of the possible escape issue of clap.
         args.push(&self.grep_query);

@@ -17,8 +17,7 @@ function! s:proj_tags.on_typed() abort
     endif
     call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
-    let cmd = clap#maple#build_cmd(printf('tags "%s" "%s"', g:clap.input.get(), clap#rooter#working_dir()))
-    call clap#filter#async#dyn#start_directly(cmd)
+    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
   endif
 endfunction
 
@@ -26,7 +25,7 @@ function! s:proj_tags.init() abort
   let g:__clap_builtin_content_filtering_enum = 'TagNameOnly'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#forerunner#start_subcommand(clap#maple#tags_forerunner_subcommand())
+    call clap#forerunner#start_command(clap#maple#tags_forerunner_command())
   endif
 endfunction
 

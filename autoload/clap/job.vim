@@ -37,6 +37,7 @@ else
     return ch_info(job_getchannel(a:job))['id']
   endfunction
 
+  " wrap_cmd is only neccessary when cmd is a String, otherwise vim panics.
   if has('win32')
     function! clap#job#wrap_cmd(cmd) abort
       return &shell . ' ' . &shellcmdflag . ' ' . a:cmd
@@ -47,8 +48,8 @@ else
     endfunction
   endif
 
-  function! clap#job#start_buffered(cmd, CloseCallback) abort
-    let job = job_start(clap#job#wrap_cmd(a:cmd), {
+  function! clap#job#start_buffered(cmd_list, CloseCallback) abort
+    let job = job_start(a:cmd_list, {
           \ 'in_io': 'null',
           \ 'close_cb': a:CloseCallback,
           \ 'noblock': 1,
