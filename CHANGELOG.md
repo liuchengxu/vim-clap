@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.14] 2020-04-25
+
 ### Added
 
 - Add new `check-release` command, you can use `maple check-release --download` to download the latest release binary to `bin` directory. And `:Clap install-binary!` will run this command when possible. ([#410](https://github.com/liuchengxu/vim-clap/pull/410))

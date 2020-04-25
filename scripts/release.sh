@@ -48,10 +48,10 @@ else
   echo ''
   echo 'Now run git diff to check again, then commit and tag a new version:'
   echo '    git add -u' > publish.sh
-  echo "    git commit -m $next_tag" >> publish.sh
+  echo "    git commit -m v0.$next_tag" >> publish.sh
   echo "    git push origin master" >> publish.sh
-  echo "    git tag $next_tag" >> publish.sh
-  echo "    git push origin $next_tag" >> publish.sh
+  echo "    git tag v0.$next_tag" >> publish.sh
+  echo "    git push origin v0.$next_tag" >> publish.sh
   echo 'Run `bash publish.sh` to publish this new release'
 
 fi
