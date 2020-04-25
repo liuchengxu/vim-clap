@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
+const USER: &str = "liuchengxu";
+const REPO: &str = "vim-clap";
+
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
 #[derive(StructOpt, Debug, Clone)]
@@ -70,9 +73,12 @@ pub struct RemoteRelease {
 fn get_raw_release_info() -> Result<Vec<u8>> {
     let mut dst = Vec::new();
     let mut handle = Easy::new();
-    handle.url("https://api.github.com/repos/liuchengxu/vim-clap/releases/latest")?;
+    handle.url(&format!(
+        "https://api.github.com/repos/{}/{}/releases/latest",
+        USER, REPO
+    ))?;
     let mut headers = List::new();
-    headers.append("User-Agent: liuchengxu")?;
+    headers.append(&format!("User-Agent: {}", USER))?;
     headers.append("Accept: application/json")?;
     handle.http_headers(headers)?;
 
@@ -133,7 +139,9 @@ fn get_asset_name() -> String {
 
 fn download_url(version: &str) -> String {
     format!(
-        "https://github.com/liuchengxu/vim-clap/releases/download/{}/{}",
+        "https://github.com/{}/{}/releases/download/{}/{}",
+        USER,
+        REPO,
         version,
         get_asset_name()
     )
