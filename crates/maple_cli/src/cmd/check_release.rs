@@ -182,17 +182,23 @@ fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
     Ok(temp_file)
 }
 
-#[test]
-fn test_extract_version_number() {
-    let tag = "v0.13-4-g58738c0";
-    assert_eq!(13u32, extract_local_version_number(tag));
-    let tag = "v0.13";
-    assert_eq!(13u32, extract_local_version_number(tag));
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_download_to_a_tempfile() {
-    let remote_release = latest_remote_release().unwrap();
-    let remote_tag = remote_release.tag_name;
-    download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
+    #[test]
+    fn test_extract_version_number() {
+        let tag = "v0.13-4-g58738c0";
+        assert_eq!(13u32, extract_local_version_number(tag));
+        let tag = "v0.13";
+        assert_eq!(13u32, extract_local_version_number(tag));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_download_to_a_tempfile() {
+        let remote_release = latest_remote_release().unwrap();
+        let remote_tag = remote_release.tag_name;
+        download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
+    }
 }
