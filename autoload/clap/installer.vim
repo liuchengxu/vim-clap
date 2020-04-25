@@ -42,9 +42,11 @@ if has('win32')
   let s:to = 'libfuzzymatch_rs.pyd'
   let s:rust_ext_cmd = printf('cargo +nightly build --release && copy %s %s', s:from, s:to)
   let s:rust_ext_cwd = s:plugin_root_dir.'\pythonx\clap'
+  let s:prebuilt_maple_binary = s:plugin_root_dir.'\bin\maple.exe'
 else
   let s:rust_ext_cmd = 'make build'
   let s:rust_ext_cwd = s:plugin_root_dir.'/pythonx/clap'
+  let s:prebuilt_maple_binary = s:plugin_root_dir.'/bin/maple'
 endif
 
 function! s:has_rust_nightly(show_warning) abort
@@ -114,10 +116,18 @@ function! clap#installer#download_binary() abort
 endfunction
 
 function! clap#installer#install(try_download) abort
+  " Always prefer to compile it locally.
   if executable('cargo')
     call clap#installer#build_all()
+  " People are willing to use the prebuilt binary
   elseif a:try_download
-    call clap#installer#download_binary()
+    " Since v0.14 maple itself is able to download the latest release binary.
+    if executable(s:prebuilt_maple_binary)
+      let cmd = [s:prebuilt_maple_binary, 'check-release', '--download']
+      call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully')
+    else
+      call clap#installer#download_binary()
+    endif
   else
     call clap#helper#echo_warn('Skipped, cargo does not exist and no prebuilt binary downloaded.')
   endif

@@ -332,9 +332,6 @@ function! clap#(bang, ...) abort
   elseif a:000 == ['install-binary!']
     call clap#installer#install(v:true)
     return
-  elseif a:000 == ['upgrade-binary']
-    call clap#check_release#try_upgrade()
-    return
   endif
 
   let g:clap.start.bufnr = bufnr('')

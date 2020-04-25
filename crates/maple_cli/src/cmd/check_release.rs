@@ -15,15 +15,18 @@ pub struct CheckRelease {
 
 impl CheckRelease {
     pub fn check_new_release(&self, local_tag: &str) -> Result<()> {
+        println!("Retriving the latest remote release info...");
         let remote_release = latest_remote_release()?;
         let remote_tag = remote_release.tag_name;
-        let remote_tag = "v0.14";
         let remote_version = extract_remote_version_number(&remote_tag);
         let local_version = extract_local_version_number(local_tag);
         if remote_version != local_version {
             if self.download {
-                // self.download_prebuilt_binary(&remote_tag)?;
-                self.download_prebuilt_binary("v0.13")?;
+                println!(
+                    "New maple release {} is avaliable, downloading...",
+                    remote_tag
+                );
+                self.download_prebuilt_binary(&remote_tag)?;
                 println!("Latest version {} download completed", remote_tag);
             } else {
                 println!(
@@ -49,7 +52,6 @@ impl CheckRelease {
             ));
         }
         let temp_file = download_prebuilt_binary_to_a_tempfile(version)?;
-        println!("bin_dir: {:?}", bin_dir);
         #[cfg(windows)]
         let bin_path = bin_dir.join("maple.exe");
         #[cfg(not(windows))]
@@ -160,9 +162,7 @@ fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or("tmp.bin");
 
-        println!("file to download: '{}'", fname);
         tmp_dir.push(format!("{}-{}", version, fname));
-        println!("will be located under: '{:?}'", tmp_dir);
         (File::create(&tmp_dir)?, tmp_dir)
     };
 
@@ -175,11 +175,6 @@ fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
 }
 
 #[test]
-fn test_curl() {
-    // println!("{:?}", check_new_release("v0.13-4-g58738c0").unwrap());
-}
-
-#[test]
 fn test_extract_version_number() {
     let tag = "v0.13-4-g58738c0";
     assert_eq!(13u32, extract_local_version_number(tag));
@@ -188,6 +183,8 @@ fn test_extract_version_number() {
 }
 
 #[test]
-fn test_download_to_tempfile() {
-    download_to_a_tempfile().unwrap();
+fn test_download_to_a_tempfile() {
+    let remote_release = latest_remote_release().unwrap();
+    let remote_tag = remote_release.tag_name;
+    download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
 }
