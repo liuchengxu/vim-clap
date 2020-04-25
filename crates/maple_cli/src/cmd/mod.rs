@@ -20,9 +20,6 @@ pub enum Cmd {
     /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
     RPC,
-    /// Retrive the latest remote release info.
-    #[structopt(name = "check-release")]
-    CheckRelease,
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
     Grep(crate::cmd::grep::Grep),
@@ -47,6 +44,9 @@ pub enum Cmd {
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
     RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
+    /// Retrive the latest remote release info.
+    #[structopt(name = "check-release")]
+    CheckRelease(crate::cmd::check_release::CheckRelease),
 }
 
 #[derive(StructOpt, Debug)]

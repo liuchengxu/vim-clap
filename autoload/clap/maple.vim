@@ -14,17 +14,24 @@ let s:bin_suffix = has('win32') ? '.exe' : ''
 let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
 let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
 
+let s:using_prebuilt_binary = v:false
+
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
   let s:maple_bin = '"' . s:maple_bin_localbuilt . '"'
 " Check the prebuilt binary.
 elseif executable(s:maple_bin_prebuilt)
   let s:maple_bin = '"' . s:maple_bin_prebuilt . '"'
+  let s:using_prebuilt_binary = v:true
 elseif executable('maple')
   let s:maple_bin = 'maple'
 else
   let s:maple_bin = v:null
 endif
+
+function! clap#maple#using_prebuilt_binary() abort
+  return s:using_prebuilt_binary
+endfunction
 
 function! clap#maple#binary() abort
   return s:maple_bin
