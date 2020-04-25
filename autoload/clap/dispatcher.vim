@@ -18,11 +18,7 @@ function! s:jobstop() abort
 endfunction
 
 function! s:put_raw_lines(lines) abort
-  if s:has_converter
-    let lines = map(a:lines, 's:Converter(v:val)')
-  else
-    let lines = a:lines
-  endif
+  let lines = s:Converter isnot v:null ? map(a:lines, 's:Converter(v:val)') : a:lines
 
   " Set or append lines
   if s:did_set_lines
@@ -218,7 +214,7 @@ else
   endfunction
 
   function! s:job_start(cmd) abort
-    let job = job_start(clap#job#wrap_cmd(a:cmd), {
+    let job = job_start(a:cmd, {
           \ 'in_io': 'null',
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
@@ -268,18 +264,13 @@ function! s:prepare_job_start(cmd) abort
   let s:cache_size = 0
   let s:loaded_size = 0
   let s:dropped_size = 0
+  let s:vim_output = []
   let g:clap.display.cache = []
-  let s:preload_is_complete = v:false
   let s:did_set_lines = v:false
+  let s:preload_is_complete = v:false
 
   let s:cmd = a:cmd
-
-  let s:vim_output = []
-
-  let s:has_converter = has_key(g:clap.provider._(), 'converter')
-  if s:has_converter
-    let s:Converter = g:clap.provider._().converter
-  endif
+  let s:Converter = has_key(g:clap.provider._(), 'converter') ? g:clap.provider._().converter : v:null
 endfunction
 
 function! s:job_strart_with_delay() abort

@@ -30,20 +30,22 @@ pub struct Cache {
 impl Cache {
     pub fn run(&self) -> Result<()> {
         let cache_dir = clap_cache_dir();
-        let cache_dir_str = cache_dir.clone().into_os_string().into_string().unwrap();
         if self.purge {
             remove_dir_contents(&cache_dir)?;
-            println!("Current cache directory {} has been purged", cache_dir_str);
+            println!(
+                "Current cache directory {} has been purged",
+                cache_dir.display()
+            );
             return Ok(());
         }
         if self.list {
-            self.list(cache_dir)?;
+            self.list(&cache_dir)?;
         }
         Ok(())
     }
 
-    fn list(&self, cache_dir: PathBuf) -> Result<()> {
-        let cache_dir_str = cache_dir.clone().into_os_string().into_string().unwrap();
+    fn list(&self, cache_dir: &PathBuf) -> Result<()> {
+        let cache_dir_str = cache_dir.display();
         println!("Current cache directory:");
         println!("\t{}\n", cache_dir_str);
         if self.list {

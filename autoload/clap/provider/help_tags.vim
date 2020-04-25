@@ -13,7 +13,9 @@ if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
   function! s:help_tags_source() abort
     let tmp = tempname()
     call writefile([join(s:get_doc_tags(), ','), &runtimepath], tmp)
-    return clap#maple#build_cmd('helptags '.tmp)
+    let helptags_cmd = clap#maple#build_cmd('helptags', tmp)
+    " Currently the source has to be a String even we use List in job arguments.
+    return printf('"%s" %s', helptags_cmd[0], join(helptags_cmd[1:], ' '))
   endfunction
 
   function! s:help_tags_sink(line) abort

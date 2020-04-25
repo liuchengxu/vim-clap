@@ -18,10 +18,10 @@ let s:using_prebuilt_binary = v:false
 
 " Check the local built.
 if executable(s:maple_bin_localbuilt)
-  let s:maple_bin = '"' . s:maple_bin_localbuilt . '"'
+  let s:maple_bin = s:maple_bin_localbuilt
 " Check the prebuilt binary.
 elseif executable(s:maple_bin_prebuilt)
-  let s:maple_bin = '"' . s:maple_bin_prebuilt . '"'
+  let s:maple_bin = s:maple_bin_prebuilt
   let s:using_prebuilt_binary = v:true
 elseif executable('maple')
   let s:maple_bin = 'maple'
@@ -185,105 +185,87 @@ endfunction
 
 let s:can_enable_icon = ['files', 'git_files']
 
-function! clap#maple#get_enable_icon_opt() abort
+function! clap#maple#forerunner_exec_command(cmd) abort
+  " No global --number option.
   if g:clap_enable_icon
         \ && index(s:can_enable_icon, g:clap.provider.id) > -1
-    return '--icon-painter=File'
+    let global_opt = ['--icon-painter=File']
   else
-    return ''
+    let global_opt = []
   endif
-endfunction
-
-function! clap#maple#forerunner_exec_subcommand(cmd) abort
-  " No global --number option.
-  let global_opt = clap#maple#get_enable_icon_opt()
 
   if has_key(g:clap.context, 'no-cache')
-    let global_opt .= ' --no-cache'
+    call add(global_opt, '--no-cache')
   endif
 
-  let subcommand = printf('exec "%s" --cmd-dir "%s" --output-threshold %d',
-        \ a:cmd,
-        \ clap#rooter#working_dir(),
-        \ clap#filter#capacity(),
-        \ )
+  let subcommand = ['exec', a:cmd, '--cmd-dir', clap#rooter#working_dir(), '--output-threshold', clap#filter#capacity()]
 
-  return printf('%s %s %s', s:maple_bin, global_opt, subcommand)
+  return [s:maple_bin] + global_opt + subcommand
 endfunction
 
 " Returns the filtered results after the input stream is complete.
-function! clap#maple#sync_filter_subcommand(query) abort
-  let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
+function! clap#maple#sync_filter_command(query) abort
+  let global_opt = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let global_opt .= ' --icon-painter=File'
+    call add(global_opt, '--icon-painter=File')
   endif
 
-  let cmd = printf('%s %s filter "%s" --sync', s:maple_bin, global_opt, a:query)
-
-  return cmd
+  return [s:maple_bin] + global_opt + ['filter', a:query, '--sync']
 endfunction
 
-function! clap#maple#tags_forerunner_subcommand() abort
-  if has_key(g:clap.context, 'no-cache')
-    let global_opt = ' --no-cache'
-  else
-    let global_opt = ''
-  endif
-
-  return printf('%s %s tags "" "%s" --forerunner', s:maple_bin, global_opt, clap#rooter#working_dir())
+function! clap#maple#tags_forerunner_command() abort
+  let global_opt = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+  return [s:maple_bin] + global_opt + ['tags', '', clap#rooter#working_dir(), '--forerunner']
 endfunction
 
-function! clap#maple#ripgrep_forerunner_subcommand() abort
-  " let global_opt = '--number '.g:clap.display.preload_capacity
+function! clap#maple#ripgrep_forerunner_command() abort
   " TODO: add max_output
-  if g:clap_enable_icon
-    let global_opt = '--icon-painter=Grep'
-  else
-    let global_opt = ''
-  endif
+  let global_opt = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
 
   if has_key(g:clap.context, 'no-cache')
-    let global_opt .= ' --no-cache'
+    call add(global_opt, '--no-cache')
   endif
 
-  return printf('%s %s ripgrep-forerunner --cmd-dir "%s"', s:maple_bin, global_opt, clap#rooter#working_dir())
+  return [s:maple_bin] + global_opt + ['ripgrep-forerunner', '--cmd-dir', clap#rooter#working_dir()]
 endfunction
 
-function! clap#maple#blines_subcommand(query) abort
-  let global_opt = '--number '.g:clap.display.preload_capacity.' --winwidth '.winwidth(g:clap.display.winid)
-  return printf('%s %s blines "%s"', s:maple_bin, global_opt, a:query)
+function! clap#maple#blines_command() abort
+  let blines_subcmd = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid), 'blines', g:clap.input.get(), expand('#'.g:clap.start.bufnr.':p')]
+  return [s:maple_bin] + blines_subcmd
 endfunction
 
 function! clap#maple#run_exec(cmd) abort
-  let global_opt = '--number '.g:clap.display.preload_capacity
+  let global_opt = ['--number', g:clap.display.preload_capacity]
   if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    let global_opt .= ' --icon-painter=File'
+    call add(global_opt, '--icon-painter=File')
   endif
-
-  let subcommand = printf('exec "%s" --cmd-dir "%s"', a:cmd, clap#rooter#working_dir())
-
-  call clap#maple#job_start(printf('%s %s %s', s:maple_bin, global_opt, subcommand))
+  let subcommand = ['exec', a:cmd, '--cmd-dir', clap#rooter#working_dir()]
+  call clap#maple#job_start([s:maple_bin] + global_opt + subcommand)
 endfunction
 
 function! clap#maple#run_sync_grep(cmd, query, enable_icon, glob) abort
-  let global_opt = '--number '.g:clap.display.preload_capacity
+  let global_opt = ['--number', g:clap.display.preload_capacity]
+
   if a:enable_icon
-    let global_opt .= ' --icon-painter=Grep'
+    call add(global_opt, '--icon-painter=Grep')
   endif
 
-  let cmd = substitute(a:cmd, '"', "'", 'g')
-  let subcommand = printf('grep "%s" "%s" --sync --cmd-dir "%s"', cmd, a:query, clap#rooter#working_dir())
+  let subcommand = ['grep', a:query, '--sync', '--grep-cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir()]
 
   if a:glob isnot v:null
-    let subcommand .= printf(' --glob "%s"', a:glob)
+    let subcommand += ['--glob', a:glob]
   endif
 
-  call clap#maple#job_start(printf('%s %s %s', s:maple_bin, global_opt, subcommand))
+  call clap#maple#job_start([s:maple_bin] + global_opt + subcommand)
 endfunction
 
-function! clap#maple#build_cmd(cmd) abort
-  return printf('%s %s', s:maple_bin, a:cmd)
+function! clap#maple#build_cmd(...) abort
+  return [s:maple_bin] + a:000
+endfunction
+
+function! clap#maple#build_cmd_list(cmd_list) abort
+  return insert(a:cmd_list, s:maple_bin)
 endfunction
 
 let &cpoptions = s:save_cpo

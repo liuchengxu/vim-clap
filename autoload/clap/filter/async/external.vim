@@ -48,7 +48,7 @@ endfunction
 
 function! s:cmd_of(ext_filter) abort
   if a:ext_filter ==# 'maple'
-    return clap#maple#sync_filter_subcommand(g:clap.input.get())
+    return clap#maple#sync_filter_command(g:clap.input.get())
   else
     return printf(s:ext_cmd[a:ext_filter], g:clap.input.get())
   endif
