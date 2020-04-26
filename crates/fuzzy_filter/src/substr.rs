@@ -3,6 +3,11 @@ fn find_start_at(slice: &str, start_at: usize, pat: &str) -> Option<usize> {
 }
 
 pub fn substr_indices(haystack: &str, niddle: &str) -> Option<(i64, Vec<usize>)> {
+    // unreasonably large haystack
+    if haystack.len() > 1024 {
+        return None;
+    }
+
     let haystack = haystack.to_lowercase();
     let haystack = haystack.as_str();
 
