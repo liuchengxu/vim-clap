@@ -71,72 +71,50 @@ function! s:on_complete_maple() abort
   endif
 endfunction
 
-function! s:on_event(job_id, data, event) abort
-  " We only process the job that was spawned last time.
-  if a:job_id == s:job_id
-    if a:event ==# 'stdout'
-      if len(a:data) > 1
-        " Second last is the real last one for neovim.
-        call extend(s:chunks, a:data[:-2])
-      endif
-    elseif a:event ==# 'stderr'
-      " Ignore the error
-    else
-      call s:on_complete()
-    endif
-  endif
-endfunction
-
-function! s:on_event_maple(job_id, data, event) abort
-  " We only process the job that was spawned last time.
-  if a:job_id == s:job_id
-    if a:event ==# 'stdout'
-      if len(a:data) > 1
-        " Second last is the real last one for neovim.
-        call extend(s:chunks, a:data[:-2])
-      endif
-    elseif a:event ==# 'stderr'
-      " Ignore the error
-    else
-      call s:on_complete_maple()
-    endif
-  endif
-endfunction
-
-function! s:close_cb(channel) abort
-  if clap#job#vim8_job_id_of(a:channel) == s:job_id
-    " https://github.com/vim/vim/issues/5143
-    if ch_canread(a:channel)
-      let s:chunks = split(ch_readraw(a:channel), "\n")
-      call s:on_complete()
-    endif
-  endif
-endfunction
-
-function! s:close_cb_maple(channel) abort
-  if clap#job#vim8_job_id_of(a:channel) == s:job_id
-    if ch_canread(a:channel)
-      let s:chunks = split(ch_readraw(a:channel), "\n")
-      call s:on_complete_maple()
-    endif
-  endif
-endfunction
-
 if has('nvim')
+  function! s:on_event(job_id, data, event) abort
+    " We only process the job that was spawned last time.
+    if a:job_id == s:job_id
+      if a:event ==# 'stdout'
+        if len(a:data) > 1
+          " Second last is the real last one for neovim.
+          call extend(s:chunks, a:data[:-2])
+        endif
+      elseif a:event ==# 'stderr'
+        " Ignore the error
+      else
+        call s:OnComplete()
+      endif
+    endif
+  endfunction
+
   function! s:start_maple(cmd) abort
-    let s:job_id = clap#job#start_buffered(a:cmd, function('s:on_event_maple'))
+    let s:job_id = clap#job#start_buffered(a:cmd, function('s:on_event'))
+    let s:OnComplete = function('s:on_complete_maple')
   endfunction
 
   function! s:start_forerunner(cmd) abort
     let s:job_id = clap#job#start_buffered(a:cmd, function('s:on_event'))
+    let s:OnComplete = function('s:on_complete')
   endfunction
 else
+  function! s:close_cb(channel) abort
+    if clap#job#vim8_job_id_of(a:channel) == s:job_id
+      if ch_canread(a:channel)
+        let s:chunks = split(ch_readraw(a:channel), "\n")
+        call s:OnComplete()
+      endif
+    endif
+  endfunction
+
   function! s:start_maple(cmd) abort
-    let s:job_id = clap#job#start_buffered(a:cmd, function('s:close_cb_maple'))
+    let s:job_id = clap#job#start_buffered(a:cmd, function('s:close_cb'))
+    let s:OnComplete = function('s:on_complete_maple')
   endfunction
 
   function! s:start_forerunner(cmd) abort
     let s:job_id = clap#job#start_buffered(a:cmd, function('s:close_cb'))
+    let s:OnComplete = function('s:on_complete')
   endfunction
 endif
 

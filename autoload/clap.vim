@@ -6,11 +6,7 @@ scriptencoding utf-8
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-if has('nvim')
-  let s:has_features = has('nvim-0.4')
-else
-  let s:has_features = has('patch-8.1.2114')
-endif
+let s:has_features = has('nvim') ? has('nvim-0.4') : has('patch-8.1.2114')
 
 if !s:has_features
   echoerr 'Vim-clap requires NeoVim >= 0.4.0 or Vim 8.1.2114+'
@@ -25,7 +21,6 @@ let s:builtin_providers = map(
       \ )
 
 let g:clap#autoload_dir = s:cur_dir
-
 let g:clap#builtin_providers = s:builtin_providers
 
 let g:__t_func = 0
@@ -43,9 +38,8 @@ let s:provider_alias = {
 
 let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {}))
 let g:clap#provider_alias = s:provider_alias
-
+let g:clap_disable_run_rooter = get(g:, 'clap_disable_run_rooter', v:false)
 let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
-
 let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!', 'using_cache': '*'})
 
 " Backward compatible
@@ -188,24 +182,22 @@ function! clap#exit() abort
 endfunction
 
 function! clap#should_use_raw_cwd() abort
-  return get(g:, 'clap_disable_run_rooter', v:false)
+  return g:clap_disable_run_rooter
         \ || !g:clap.provider.has_enable_rooter()
         \ || getbufvar(g:clap.start.bufnr, '&bt') ==# 'terminal'
 endfunction
 
 function! clap#register(provider_id, provider_info) abort
-  let provider_info = a:provider_info
-
   if has_key(g:clap.registrar, a:provider_id)
     call clap#helper#echo_error('This provider id already exists: '.a:provider_id)
     return
   endif
 
-  if !s:inject_default_impl_is_ok(provider_info)
+  if !s:inject_default_impl_is_ok(a:provider_info)
     return
   endif
 
-  let g:clap.registrar[a:provider_id] = provider_info
+  let g:clap.registrar[a:provider_id] = a:provider_info
 endfunction
 
 function! s:validate_provider(registration_info) abort
@@ -234,17 +226,15 @@ function! s:validate_provider(registration_info) abort
 endfunction
 
 function! s:try_register_is_ok(provider_id) abort
-  let provider_id = a:provider_id
-
   " User pre-defined config in the vimrc
-  if exists('g:clap_provider_{provider_id}')
-    let registration_info = g:clap_provider_{provider_id}
+  if exists('g:clap_provider_{a:provider_id}')
+    let registration_info = g:clap_provider_{a:provider_id}
   else
     " Try the autoloaded provider
     try
-      let registration_info = g:clap#provider#{provider_id}#
+      let registration_info = g:clap#provider#{a:provider_id}#
     catch /^Vim\%((\a\+)\)\=:E121/
-      call clap#helper#echo_error('Fail to load provider: '.provider_id.', E:'.v:exception)
+      call clap#helper#echo_error('Fail to load provider: '.a:provider_id.', E:'.v:exception)
       return v:false
     endtry
   endif
@@ -253,8 +243,8 @@ function! s:try_register_is_ok(provider_id) abort
     return v:false
   endif
 
-  let g:clap.registrar[provider_id] = {}
-  call extend(g:clap.registrar[provider_id], registration_info)
+  let g:clap.registrar[a:provider_id] = {}
+  call extend(g:clap.registrar[a:provider_id], registration_info)
 
   return s:validate_provider(registration_info)
 endfunction
