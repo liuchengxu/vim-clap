@@ -1,4 +1,4 @@
-use crate::{fuzzy_indices_skim, ScorerOutput};
+use crate::{fuzzy_indices_skim, substr_indices, ScorerOutput};
 use extracted_fzy::match_and_score_with_positions;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -41,6 +41,14 @@ pub(super) fn apply_fzy_on_grep_line(line: &str, query: &str) -> ScorerOutput {
 }
 
 #[inline]
+pub(super) fn apply_substr_on_grep_line(line: &str, query: &str) -> ScorerOutput {
+    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+        substr_indices(truncated_line, query)
+            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+    })
+}
+
+#[inline]
 fn file_name_only(line: &str) -> Option<(&str, usize)> {
     let fpath: std::path::PathBuf = line.into();
     fpath
@@ -66,6 +74,14 @@ pub(super) fn apply_fzy_on_file_line(line: &str, query: &str) -> ScorerOutput {
 }
 
 #[inline]
+pub(super) fn apply_substr_on_file_line(line: &str, query: &str) -> ScorerOutput {
+    file_name_only(line).and_then(|(truncated_line, offset)| {
+        substr_indices(truncated_line, query)
+            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+    })
+}
+
+#[inline]
 fn tag_name_only(line: &str) -> Option<&str> {
     TAG_RE.find(line).map(|x| x.as_str())
 }
@@ -78,6 +94,11 @@ pub(super) fn apply_skim_on_tag_line(line: &str, query: &str) -> ScorerOutput {
 #[inline]
 pub(super) fn apply_fzy_on_tag_line(line: &str, query: &str) -> ScorerOutput {
     tag_name_only(line).and_then(|tag_name| fuzzy_indices_fzy(tag_name, query))
+}
+
+#[inline]
+pub(super) fn apply_substr_on_tag_line(line: &str, query: &str) -> ScorerOutput {
+    tag_name_only(line).and_then(|tag_name| substr_indices(tag_name, query))
 }
 
 #[cfg(test)]

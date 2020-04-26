@@ -1,5 +1,6 @@
 mod content_filtering;
 mod source;
+mod substr;
 
 use anyhow::Result;
 use content_filtering::*;
@@ -11,6 +12,7 @@ pub use fuzzy_matcher::skim::fuzzy_indices as fuzzy_indices_skim;
 pub use source::Source;
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
+pub use substr::substr_indices;
 
 // Implement arg_enum so that we could control it from the command line.
 arg_enum! {
@@ -49,6 +51,7 @@ arg_enum! {
   pub enum Algo {
       Skim,
       Fzy,
+      SubString,
   }
 }
 
@@ -91,6 +94,12 @@ pub fn get_appropriate_scorer(
             ContentFiltering::TagNameOnly => apply_fzy_on_tag_line,
             ContentFiltering::FileNameOnly => apply_fzy_on_file_line,
             ContentFiltering::GrepExcludeFilePath => apply_fzy_on_grep_line,
+        },
+        Algo::SubString => match content_filtering {
+            ContentFiltering::Full => substr_indices,
+            ContentFiltering::TagNameOnly => apply_substr_on_tag_line,
+            ContentFiltering::FileNameOnly => apply_substr_on_file_line,
+            ContentFiltering::GrepExcludeFilePath => apply_substr_on_grep_line,
         },
     }
 }

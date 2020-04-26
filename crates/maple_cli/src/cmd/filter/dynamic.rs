@@ -340,8 +340,11 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     icon_painter: Option<IconPainter>,
     content_filtering: ContentFiltering,
 ) -> Result<()> {
-    let algo = algo.unwrap_or(Algo::Fzy);
-
+    let algo = if query.contains(" ") {
+        Algo::SubString
+    } else {
+        algo.unwrap_or(Algo::Fzy)
+    };
     let scorer_fn = get_appropriate_scorer(algo, content_filtering);
     let scorer = |line: &str| scorer_fn(line, query);
 
