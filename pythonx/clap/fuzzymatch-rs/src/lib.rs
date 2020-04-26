@@ -88,8 +88,8 @@ fn fuzzy_match(
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
 
     // 2 = chars(icon)
-    let starting_point = if enable_icon { Some(2) } else { None };
-    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, starting_point);
+    let skipped = if enable_icon { Some(2) } else { None };
+    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, skipped);
 
     let mut indices = Vec::with_capacity(lines.len());
     let mut filtered = Vec::with_capacity(lines.len());
