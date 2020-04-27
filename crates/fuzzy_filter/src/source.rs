@@ -44,6 +44,7 @@ impl<I: Iterator<Item = String>> Source<I> {
         let scorer = |line: &str| match algo {
             Algo::Skim => fuzzy_indices_skim(line, &query),
             Algo::Fzy => fuzzy_indices_fzy(line, &query),
+            Algo::SubString => substr_indices(line, &query),
         };
 
         let filtered = match self {

@@ -15,6 +15,11 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 
 /// Long matched lines can cause the matched items invisible.
 ///
+/// # Arguments
+///
+/// - winwidth: width of the display window.
+/// - skipped: number of skipped chars, used when need to skip the leading icons.
+///
 /// [--------------------------]
 ///                                              end
 /// [-------------------------------------xx--x---]
@@ -31,7 +36,7 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 pub fn truncate_long_matched_lines<T>(
     lines: impl IntoIterator<Item = (String, T, Vec<usize>)>,
     winwidth: usize,
-    starting_point: Option<usize>,
+    skipped: Option<usize>,
 ) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
     let lines = lines
@@ -59,9 +64,9 @@ pub fn truncate_long_matched_lines<T>(
                         start += trailing_dist;
                     }
                     let end = line.len();
-                    let truncated = if let Some(starting_point) = starting_point {
-                        let icon: String = line.chars().take(starting_point).collect();
-                        start += starting_point;
+                    let truncated = if let Some(n) = skipped {
+                        let icon: String = line.chars().take(n).collect();
+                        start += n;
                         format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
                     } else {
                         format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
@@ -118,7 +123,7 @@ mod tests {
     fn run_test<I: Iterator<Item = String>>(
         source: Source<I>,
         query: &str,
-        starting_point: Option<usize>,
+        skipped: Option<usize>,
         winwidth: usize,
     ) {
         let mut ranked = source.fuzzy_filter(Algo::Fzy, query).unwrap();
@@ -128,7 +133,7 @@ mod tests {
         println!("query: {:?}", query);
 
         let (truncated_lines, truncated_map) =
-            truncate_long_matched_lines(ranked, winwidth, starting_point);
+            truncate_long_matched_lines(ranked, winwidth, skipped);
         for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
             println!("truncated: {}", "-".repeat(winwidth));
             println!(

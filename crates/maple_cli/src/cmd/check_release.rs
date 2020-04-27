@@ -35,7 +35,7 @@ impl CheckRelease {
                 println!(
                     "New maple release {} is avaliable, please download it from {} or rerun with --download flag.",
                     remote_tag,
-                    download_url(&remote_tag)
+                    to_download_url(&remote_tag)
                 );
             }
         } else {
@@ -70,7 +70,7 @@ pub struct RemoteRelease {
     pub tag_name: String,
 }
 
-fn get_raw_release_info() -> Result<Vec<u8>> {
+fn get_latest_release_info() -> Result<Vec<u8>> {
     let mut dst = Vec::new();
     let mut handle = Easy::new();
     handle.url(&format!(
@@ -96,7 +96,7 @@ fn get_raw_release_info() -> Result<Vec<u8>> {
 }
 
 pub fn latest_remote_release() -> Result<RemoteRelease> {
-    let data = get_raw_release_info()?;
+    let data = get_latest_release_info()?;
     let release: RemoteRelease = serde_json::from_slice(&data).unwrap();
     Ok(release)
 }
@@ -137,7 +137,7 @@ fn get_asset_name() -> String {
     asset_name.into()
 }
 
-fn download_url(version: &str) -> String {
+fn to_download_url(version: &str) -> String {
     format!(
         "https://github.com/{}/{}/releases/download/{}/{}",
         USER,
@@ -156,11 +156,9 @@ fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
     use std::fs::File;
     use std::io::copy;
 
-    let target = download_url(version);
+    let target = to_download_url(version);
 
     let mut response = reqwest::blocking::get(&target)?;
-
-    let mut tmp_dir = std::env::temp_dir();
 
     let (mut dest, temp_file) = {
         let fname = response
@@ -170,6 +168,7 @@ fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or("tmp.bin");
 
+        let mut tmp_dir = std::env::temp_dir();
         tmp_dir.push(format!("{}-{}", version, fname));
         (File::create(&tmp_dir)?, tmp_dir)
     };
