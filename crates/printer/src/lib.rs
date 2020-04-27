@@ -15,6 +15,11 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 
 /// Long matched lines can cause the matched items invisible.
 ///
+/// # Arguments
+///
+/// - winwidth: width of the display window.
+/// - skipped: number of skipped chars, used when need to skip the leading icons.
+///
 /// [--------------------------]
 ///                                              end
 /// [-------------------------------------xx--x---]
