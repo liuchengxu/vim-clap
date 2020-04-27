@@ -1,4 +1,4 @@
-" Author: Jesse Cooke <clap@relativepath.io>
+" Author: Jesse Cooke <jesse@relativepath.io>
 " Description: Clap theme based on the Solarized Light theme.
 
 let s:save_cpo = &cpoptions
