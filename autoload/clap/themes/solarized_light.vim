@@ -80,7 +80,8 @@ let s:fuzzy = [
 \ ]
 let g:clap_fuzzy_match_hl_groups = s:fuzzy
 
-hi ClapFile ctermfg=249 ctermbg=NONE guifg=#b2b2b2 guibg=NONE
+let s:clap_file_style = 'ctermfg=' . s:base00.xterm . ' ctermbg=NONE guifg=' . s:base00.hex . ' guibg=NONE'
+execute 'highlight ClapFile '. s:clap_file_style
 
 let g:clap#themes#solarized_light#palette = s:palette
 
