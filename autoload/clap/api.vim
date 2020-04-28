@@ -55,11 +55,7 @@ if s:is_nvim
   endfunction
 
   function! s:_win_is_valid() dict abort
-    if self.winid == -1
-      return v:false
-    else
-      return nvim_win_is_valid(self.winid)
-    endif
+    return self.winid == -1 ? v:false : nvim_win_is_valid(self.winid)
   endfunction
 else
   function! s:_get_lines() dict abort
@@ -483,7 +479,6 @@ function! s:init_provider() abort
       return self._().source_async()
     else
       call g:clap.abort('source_async is unavailable')
-      return
     endif
   endfunction
 
@@ -543,7 +538,7 @@ function! s:init_provider() abort
     if !clap#filter#async#external#has_default() && !has_key(self._(), 'source_async')
       return v:false
     else
-      return !get(g:, 'clap_disable_optional_async', v:false)
+      return !g:clap_disable_optional_async
     endif
   endfunction
 

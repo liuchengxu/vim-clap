@@ -214,6 +214,7 @@ function! s:open_indicator_win() abort
   let opts.col += opts.width
   let opts.width = g:__clap_indicator_winwidth
   let opts.focusable = v:false
+  let opts.style = 'minimal'
 
   if !nvim_buf_is_valid(s:indicator_bufnr)
     let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
@@ -221,13 +222,7 @@ function! s:open_indicator_win() abort
   endif
   silent let s:indicator_winid = nvim_open_win(s:indicator_bufnr, v:true, opts)
   call setwinvar(s:indicator_winid, '&winhl', 'Normal:ClapInput')
-  call clap#api#setbufvar_batch(s:indicator_bufnr, {
-        \ '&signcolumn': 'no',
-        \ '&foldcolumn': 0,
-        \ '&number': 0,
-        \ '&relativenumber': 0,
-        \ '&cursorline': 0,
-        \ })
+  call setbufvar(s:indicator_bufnr, '&signcolumn', 'no')
 endfunction
 
 function! s:open_win_border_right() abort
@@ -271,6 +266,7 @@ function! s:create_preview_win(height) abort
   let opts = nvim_win_get_config(s:display_winid)
   let opts.row += opts.height
   let opts.height = a:height
+  let opts.style = 'minimal'
 
   if !nvim_buf_is_valid(s:preview_bufnr)
     let s:preview_bufnr = nvim_create_buf(v:false, v:true)
@@ -281,13 +277,7 @@ function! s:create_preview_win(height) abort
   call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
   " call setwinvar(s:preview_winid, '&winblend', 15)
 
-  call clap#api#setbufvar_batch(s:preview_bufnr, {
-        \ '&number': 0,
-        \ '&relativenumber': 0,
-        \ '&cursorline': 0,
-        \ '&signcolumn': 'no',
-        \ '&foldcolumn': 0,
-        \ })
+  call setbufvar(s:preview_bufnr, '&signcolumn', 'no')
 
   let g:clap#floating_win#preview.winid = s:preview_winid
   let g:clap#floating_win#preview.bufnr = s:preview_bufnr
