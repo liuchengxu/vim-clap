@@ -449,7 +449,7 @@ g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
           \ ]
 <
 
-  This vriable controls the highlight groups of the fuzzy matches chars. Each
+  This variable controls the highlight groups of the fuzzy matches chars. Each
   item of |g:clap_fuzzy_match_hl_groups| is `[ctermfg, guifg]` .
 
 
