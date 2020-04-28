@@ -74,7 +74,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_download_to_a_tempfile() {
-        let remote_release = latest_remote_release().unwrap();
+        let remote_release = crate::cmd::check_release::latest_remote_release().unwrap();
         let remote_tag = remote_release.tag_name;
         download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
     }
