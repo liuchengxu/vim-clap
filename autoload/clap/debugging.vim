@@ -22,6 +22,7 @@ function! s:get_global_variables() abort
   call filter(variable_list, 'v:val !~# ''clap#floating_win''')
   call filter(variable_list, 'v:val !~# ''clap#display_win''')
   call filter(variable_list, 'v:val !~# ''clap#builtin_providers''')
+  call filter(variable_list, 'v:val !~# ''clap#themes#''')
 
   call sort(variable_list)
 
@@ -71,7 +72,7 @@ function! clap#debugging#info() abort
   echohl Type   | echo '       Global Options:'  | echohl NONE
   let provider_var = []
   for variable in global_variables
-    if variable =~# 'clap_provider'
+    if variable =~# 'clap_provider_'
       call add(provider_var, variable)
     else
       echo '    let g:'.variable.' = '. string(g:[variable])

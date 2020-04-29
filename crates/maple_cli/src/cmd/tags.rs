@@ -69,7 +69,6 @@ pub struct Tags {
     forerunner: bool,
 }
 
-#[inline]
 fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = String>> {
     let stdout_stream = subprocess::Exec::shell(args.join(" "))
         .cwd(dir)

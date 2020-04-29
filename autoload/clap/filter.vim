@@ -46,11 +46,7 @@ if s:can_use_python
   endfunction
 
   function! s:content_filtering() abort
-    if exists('g:__clap_builtin_content_filtering_enum')
-      return g:__clap_builtin_content_filtering_enum
-    else
-      return 'Full'
-    endif
+    return exists('g:__clap_builtin_content_filtering_enum') ? g:__clap_builtin_content_filtering_enum : 'Full'
   endfunction
 
   function! clap#filter#sync(query, candidates) abort
