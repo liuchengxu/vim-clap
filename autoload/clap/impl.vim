@@ -175,7 +175,6 @@ endfunction
 "          \
 "           \
 "             on_move
-"
 function! clap#impl#on_typed() abort
   " If user explicitly uses the external filter, just use the async impl then,
   " even the forerunner job is finished already.

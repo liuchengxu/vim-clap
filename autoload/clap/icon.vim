@@ -166,10 +166,10 @@ let g:clap#icon#pattern_matches = {
 
 function! clap#icon#get(pattern) abort
   let ext = fnamemodify(a:pattern, ':e')
-  if !empty(ext)
-    return get(g:clap#icon#extensions, ext, g:clap#icon#default)
-  else
+  if empty(ext)
     return get(g:clap#icon#exact_matches, a:pattern, g:clap#icon#default)
+  else
+    return get(g:clap#icon#extensions, ext, g:clap#icon#default)
   endif
 endfunction
 
@@ -181,11 +181,7 @@ function! clap#icon#for(bufname) abort
   let ext = fnamemodify(expand(a:bufname), ':e')
   if empty(ext)
     let ft = getbufvar(a:bufname, '&ft')
-    if empty(ft)
-      return g:clap#icon#default
-    else
-      return s:icon_for(ft)
-    endif
+    return empty(ft) ? g:clap#icon#default : s:icon_for(ft)
   else
     return s:icon_for(ext)
   endif
