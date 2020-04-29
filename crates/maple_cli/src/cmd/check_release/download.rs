@@ -1,10 +1,10 @@
 use super::{REPO, USER};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::fs::File;
 use std::io::copy;
 use std::path::{Path, PathBuf};
 
-fn get_asset_name() -> String {
+fn get_asset_name() -> Result<String> {
     let asset_name = if cfg!(target_os = "macos") {
         "maple-x86_64-apple-darwin"
     } else if cfg!(target_os = "linux") {
@@ -12,19 +12,19 @@ fn get_asset_name() -> String {
     } else if cfg!(target_os = "windows") {
         "maple-x86_64-pc-windows-msvc"
     } else {
-        "no-avaliable-prebuilt-binary"
+        return Err(anyhow!("no-avaliable-prebuilt-binary for this platform"));
     };
-    asset_name.into()
+    Ok(asset_name.into())
 }
 
-pub fn to_download_url(version: &str) -> String {
-    format!(
+pub fn to_download_url(version: &str) -> Result<String> {
+    Ok(format!(
         "https://github.com/{}/{}/releases/download/{}/{}",
         USER,
         REPO,
         version,
-        get_asset_name()
-    )
+        get_asset_name()?
+    ))
 }
 
 #[cfg(unix)]
@@ -42,7 +42,7 @@ fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
 ///
 /// - `version`: "v0.13"
 pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
-    let target = to_download_url(version);
+    let target = to_download_url(version)?;
 
     let mut response = reqwest::blocking::get(&target)?;
 

@@ -36,7 +36,7 @@ impl CheckRelease {
                 println!(
                     "New maple release {} is avaliable, please download it from {} or rerun with --download flag.",
                     remote_tag,
-                    download::to_download_url(&remote_tag)
+                    download::to_download_url(&remote_tag)?
                 );
             }
         } else {
