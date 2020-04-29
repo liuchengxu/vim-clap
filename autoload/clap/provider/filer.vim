@@ -8,13 +8,6 @@ set cpoptions&vim
 
 let s:filer = {}
 
-let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
-
-function! clap#provider#filer#hi_empty_dir() abort
-  syntax match ClapEmptyDirectory /^.*Directory is empty/
-  hi default link ClapEmptyDirectory WarningMsg
-endfunction
-
 function! s:handle_round_message(message) abort
   try
     let decoded = json_decode(a:message)
@@ -36,13 +29,8 @@ function! s:handle_round_message(message) abort
 
   elseif has_key(decoded, 'result')
     let result = decoded.result
-    if result.total == 0
-      let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
-      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-    else
-      let s:filer_cache[result.dir] = result.entries
-      call g:clap.display.set_lines(result.entries)
-    endif
+    let s:filer_cache[result.dir] = result.entries
+    call g:clap.display.set_lines(result.entries)
     call clap#sign#reset_to_first_line()
     call clap#state#refresh_matches_count(string(result.total))
     call g:clap#display_win.shrink_if_undersize()
@@ -128,7 +116,10 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
+    let query_entry = g:clap_enable_icon ? ' '.query : query
+    call clap#filter#on_typed(
+      \ function('clap#filter#sync'), query, candidates + [query_entry]
+    \ )
   endif
 endfunction
 
@@ -173,22 +164,16 @@ function! s:tab_action() abort
     return
   endif
 
-  if has_key(s:filer_empty_cache, s:current_dir)
-    if g:clap.display.get_lines() != [s:DIRECTORY_IS_EMPTY]
-      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-    endif
-    return
-  endif
-
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
     call clap#preview#file(current_entry)
     return ''
-  else
-    call g:clap.preview.hide()
   endif
 
-  call s:reset_to(current_entry)
+  call g:clap.preview.hide()
+  if isdirectory(current_entry)
+    call s:reset_to(current_entry)
+  endif
 
   return ''
 endfunction
@@ -238,7 +223,6 @@ endfunction
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:filer_error_cache = {}
-  let s:filer_empty_cache = {}
   let s:last_request_id = 0
   let s:last_input = ''
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
