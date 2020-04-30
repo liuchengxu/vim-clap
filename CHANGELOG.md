@@ -7,6 +7,10 @@ CHANGELOG
 
 - Support substring matcher for dyn filter, used when the query contains space. ([#411](https://github.com/liuchengxu/vim-clap/pull/411))
 
+### Fixed
+
+- Reset handler state. (#418)
+
 ## [0.14] 2020-04-25
 
 ### Added
