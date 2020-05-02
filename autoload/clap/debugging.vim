@@ -50,7 +50,7 @@ function! clap#debugging#info() abort
     " Note: maple_binary has to be quoted, otherwise error happens when the path contains spaces.
     let maple_version = system(printf('"%s" version', maple_binary))
     if v:shell_error
-      echohl Normal | echon 'fail to fetch version info' | echohl NONE
+      echohl Normal | echon '[ERROR]fail to fetch version info' | echohl NONE
     else
       echohl Normal | echon maple_version | echohl NONE
     endif
