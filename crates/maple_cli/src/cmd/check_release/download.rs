@@ -68,6 +68,8 @@ pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) 
         if metadata.len() == total_size {
             println!("{} has alreay been downloaded", tmp_dir.display());
             return Ok(tmp_dir);
+        } else {
+            std::fs::remove_file(&tmp_dir)?;
         }
     }
 
