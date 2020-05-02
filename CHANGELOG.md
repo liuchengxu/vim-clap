@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.15] 2020-05-02
+
 ### Added
 
 - Support substring matcher for dyn filter, used when the query contains space. ([#411](https://github.com/liuchengxu/vim-clap/pull/411))
