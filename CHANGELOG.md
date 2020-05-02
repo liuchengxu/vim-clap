@@ -7,6 +7,7 @@ CHANGELOG
 
 - Support substring matcher for dyn filter, used when the query contains space. ([#411](https://github.com/liuchengxu/vim-clap/pull/411))
 - Add progress bar support for the download feature of maple. ([#419](https://github.com/liuchengxu/vim-clap/pull/419))
+- Add instructions for building the Rust binary via Docker in case of some users run into the libssl error when using the prebuilt binary, see more info in [INSTALL.md](./INSTALL.md).
 
 ### Fixed
 
