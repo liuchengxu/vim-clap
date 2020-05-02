@@ -1,8 +1,7 @@
 mod download;
+mod github;
 
 use anyhow::{anyhow, Context, Result};
-use curl::easy::{Easy, List};
-use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 const USER: &str = "liuchengxu";
@@ -15,15 +14,22 @@ pub struct CheckRelease {
     /// Download if the local version mismatches the latest remote version.
     #[structopt(long)]
     pub download: bool,
+    /// Disable the downloading progress_bar
+    #[structopt(long)]
+    pub no_progress: bool,
 }
 
 impl CheckRelease {
     pub fn check_new_release(&self, local_tag: &str) -> Result<()> {
         println!("Retriving the latest remote release info...");
-        let remote_release = latest_remote_release()?;
+        let remote_release = github::latest_remote_release()?;
         let remote_tag = remote_release.tag_name;
         let remote_version = extract_remote_version_number(&remote_tag);
         let local_version = extract_local_version_number(local_tag);
+        println!(
+            "remote_version: {}, local_version: {}",
+            remote_version, local_version
+        );
         if remote_version != local_version {
             if self.download {
                 println!(
@@ -36,7 +42,7 @@ impl CheckRelease {
                 println!(
                     "New maple release {} is avaliable, please download it from {} or rerun with --download flag.",
                     remote_tag,
-                    download::to_download_url(&remote_tag)?
+                    github::download_url_for(&remote_tag)?
                 );
             }
         } else {
@@ -46,60 +52,45 @@ impl CheckRelease {
     }
 
     fn download_prebuilt_binary(&self, version: &str) -> Result<()> {
-        let exe_dir = std::env::current_exe()?;
-        let bin_dir = exe_dir
-            .parent()
-            .context("Couldn't get the parent of current exe")?;
-        if !bin_dir.ends_with("bin") {
-            return Err(anyhow!(
-                "Current exe has to be under vim-clap/bin directory"
-            ));
-        }
-        let temp_file = download::download_prebuilt_binary_to_a_tempfile(version)?;
-        #[cfg(windows)]
-        let bin_path = bin_dir.join("maple.exe");
-        #[cfg(not(windows))]
-        let bin_path = bin_dir.join("maple");
+        let bin_path = get_binary_path()?;
+        let temp_file = self.download_to_tempfile(version)?;
+
         // Move the downloaded binary to bin/maple
         std::fs::rename(temp_file, bin_path)?;
+
         Ok(())
     }
+
+    fn download_to_tempfile(&self, version: &str) -> Result<std::path::PathBuf> {
+        if self.no_progress {
+            download::download_prebuilt_binary_to_a_tempfile(version)
+        } else {
+            let mut rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(download::download_prebuilt_binary_to_a_tempfile_async(
+                version,
+            ))
+        }
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemoteRelease {
-    pub tag_name: String,
-}
-
-fn get_latest_release_info() -> Result<Vec<u8>> {
-    let mut dst = Vec::new();
-    let mut handle = Easy::new();
-    handle.url(&format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        USER, REPO
-    ))?;
-    let mut headers = List::new();
-    headers.append(&format!("User-Agent: {}", USER))?;
-    headers.append("Accept: application/json")?;
-    handle.http_headers(headers)?;
-
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            dst.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-
-        transfer.perform()?;
+/// The prebuilt binary is put at bin/maple.
+fn get_binary_path() -> Result<impl AsRef<std::path::Path>> {
+    let exe_dir = std::env::current_exe()?;
+    let bin_dir = exe_dir
+        .parent()
+        .context("Couldn't get the parent of current exe")?;
+    if !bin_dir.ends_with("bin") {
+        return Err(anyhow!(
+            "Current exe has to be under vim-clap/bin directory"
+        ));
     }
 
-    Ok(dst)
-}
+    #[cfg(windows)]
+    let bin_path = bin_dir.join("maple.exe");
+    #[cfg(not(windows))]
+    let bin_path = bin_dir.join("maple");
 
-pub fn latest_remote_release() -> Result<RemoteRelease> {
-    let data = get_latest_release_info()?;
-    let release: RemoteRelease = serde_json::from_slice(&data).unwrap();
-    Ok(release)
+    Ok(bin_path)
 }
 
 /// remote: "v0.13"
