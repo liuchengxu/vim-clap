@@ -16,20 +16,16 @@ pub struct CheckRelease {
     pub download: bool,
     /// Disable the downloading progress_bar
     #[structopt(long)]
-    pub no_progress: bool,
+    pub no_progress_bar: bool,
 }
 
 impl CheckRelease {
     pub fn check_new_release(&self, local_tag: &str) -> Result<()> {
-        println!("Retriving the latest remote release info...");
+        println!("Retrieving the latest remote release info...");
         let remote_release = github::latest_remote_release()?;
         let remote_tag = remote_release.tag_name;
         let remote_version = extract_remote_version_number(&remote_tag);
         let local_version = extract_local_version_number(local_tag);
-        println!(
-            "remote_version: {}, local_version: {}",
-            remote_version, local_version
-        );
         if remote_version != local_version {
             if self.download {
                 println!(
@@ -62,7 +58,7 @@ impl CheckRelease {
     }
 
     fn download_to_tempfile(&self, version: &str) -> Result<std::path::PathBuf> {
-        if self.no_progress {
+        if self.no_progress_bar {
             download::download_prebuilt_binary_to_a_tempfile(version)
         } else {
             let mut rt = tokio::runtime::Runtime::new().unwrap();

@@ -106,12 +106,8 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_async_download_to_a_tempfile() {
-        let remote_release = crate::cmd::check_release::github::latest_remote_release().unwrap();
-        let remote_tag = remote_release.tag_name;
-        let target = crate::cmd::check_release::github::download_url_for(&remote_tag).unwrap();
-        let mut response = reqwest::get(&target);
-
         let mut rt = tokio::runtime::Runtime::new().unwrap();
         let file = rt.block_on(download_prebuilt_binary_to_a_tempfile_async("v0.14"));
         println!("async downloaded file: {:?}", file);
