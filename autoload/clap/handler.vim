@@ -85,6 +85,7 @@ endfunction
 function! clap#handler#exit() abort
   call clap#handler#internal_exit()
   call g:clap.provider.on_exit()
+  let s:old_input = ''
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 

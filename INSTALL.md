@@ -8,8 +8,13 @@
   * [`Rust`](#rust)
     * [`maple` binary](#maple-binary)
     * [Python dynamic module](#python-dynamic-module)
-* [Download the prebuilt binary](#download-the-prebuilt-binary)
-  * [`maple`](#maple)
+* [Download the prebuilt binary from GitHub release](#download-the-prebuilt-binary-from-github-release)
+  * [Quick installer](#quick-installer)
+    * [Unix](#unix)
+    * [Windows](#windows)
+  * [Manual](#manual)
+* [Build the Rust binary via Docker](#build-the-rust-binary-via-docker)
+  * [Linux](#linux)
 
 <!-- /TOC -->
 
@@ -73,14 +78,40 @@ $ rustup toolchain install nightly
 
 Then use `:call clap#installer#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
 
-## Download the prebuilt binary
+## Download the prebuilt binary from GitHub release
 
 You can call `:call clap#installer#download_binary()` in Vim/NeoVim, or do it manually as follows.
 
-### `maple`
+### Quick installer
+
+#### Unix
+
+```bash
+$ bash install.sh
+```
+
+#### Windows
+
+Run `install.ps1` in the powershell.
+
+### Manual
 
 1. Download the binary from the latest release https://github.com/liuchengxu/vim-clap/releases/ according to your system.
 2. Rename the downloaded binary to:
     - Unix: `maple`
     - Windows: `maple.exe`
-3. Move `maple`/`maple.exe` to `bin` directory. Don't forget to assign execute permission to `maple` via `chmod a+x bin/maple` if you are using a Unix system.
+3. Move `maple`/`maple.exe` to `bin` directory. Don't forget to assign execute permission to `maple` via `chmod a+x bin/maple` if you are using the Unix system.
+
+## Build the Rust binary via Docker
+
+### Linux
+
+If you run into the libssl error when using the prebuilt binary from GitHub release, you can try building a static Rust binary:
+
+```bash
+$ cd path/to/vim-clap
+$ docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
+$ cp target/x86_64-unknown-linux-musl/release/maple bin/maple
+# See if it really works
+$ ./bin/maple version
+```
