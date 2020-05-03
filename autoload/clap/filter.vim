@@ -63,9 +63,24 @@ else
   endfunction
 endif
 
-function! clap#filter#on_typed(FilterFn, query, candidates) abort
+function! clap#filter#on_typed(FilterFn, query, candidates, ...) abort
   let l:lines = a:FilterFn(a:query, a:candidates)
 
+  let l:query_prefix = get(a:, 1, v:false)
+  if l:query_prefix !=# v:false
+    let l:found = v:false
+    let l:entry_start_index = g:clap_enable_icon ? 4 : 0
+    for line in l:lines
+      if line[(l:entry_start_index):] ==# a:query
+        let l:found = v:true
+        break
+      endif
+    endfor
+    if !l:found
+      let query_entry = l:query_prefix.a:query
+      let l:lines = l:lines + [query_entry]
+    endif
+  endif
   if empty(l:lines)
     let l:lines = [g:clap_no_matches_msg]
     let g:__clap_has_no_matches = v:true

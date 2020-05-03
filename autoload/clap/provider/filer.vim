@@ -116,9 +116,9 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    let query_entry = g:clap_enable_icon ? ' '.query : query
+    let query_prefix = '+ '
     call clap#filter#on_typed(
-      \ function('clap#filter#sync'), query, candidates + [query_entry]
+      \ function('clap#filter#sync'), query, candidates, query_prefix
     \ )
   endif
 endfunction
