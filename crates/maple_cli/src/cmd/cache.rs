@@ -5,15 +5,9 @@ use anyhow::{anyhow, Result};
 use icon::IconPainter;
 use std::fs::{read_dir, DirEntry, File};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{self, PathBuf};
 use std::time::SystemTime;
 use structopt::StructOpt;
-
-#[cfg(target_os = "windows")]
-const PATH_SEPERATOR: &str = r"\";
-
-#[cfg(not(target_os = "windows"))]
-const PATH_SEPERATOR: &str = "/";
 
 /// List and remove all the cached contents.
 #[derive(StructOpt, Debug, Clone)]
@@ -65,7 +59,7 @@ impl Cache {
             entries.sort();
 
             for fname in entries {
-                println!("\t{}{}{}", cache_dir_str, PATH_SEPERATOR, fname);
+                println!("\t{}{}{}", cache_dir_str, path::MAIN_SEPARATOR, fname);
             }
         }
         Ok(())
