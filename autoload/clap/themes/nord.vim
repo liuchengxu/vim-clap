@@ -76,7 +76,7 @@ let s:palette.preview = {
   \ 'ctermbg': s:nord3_term
 \ }
 
-let g:clap#themes#material_design_dark#palette = s:palette
+let g:clap#themes#nord#palette = s:palette
 let g:clap_fuzzy_match_hl_groups = [
   \ [s:nord8_term, s:nord8_gui],
 \ ]
