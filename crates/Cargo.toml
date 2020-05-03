@@ -3,6 +3,7 @@
 members = [
     "maple_cli",
     "extracted_fzy",
+    "fulf",
     "fuzzy_filter",
     "icon",
     "printer"
