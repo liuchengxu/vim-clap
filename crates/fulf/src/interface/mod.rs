@@ -2,12 +2,12 @@ use {
     crate::{
         ascii::{self, ByteLines},
         scoring_utils::{MatchWithPositions, MWP},
-        utf8,
     },
     ignore,
     std::{
         fs, mem,
         path::{Path, MAIN_SEPARATOR},
+        sync::Arc,
         thread,
     },
 };
@@ -189,55 +189,66 @@ fn spawn_me<FE: FuzzySearcher>(resulter: FE, sender: flume::Sender<Vec<FE::Item>
     let _any_result = sender.send(inner);
 }
 
-#[derive(Clone)]
-pub struct FzyData {
-    pub root_folder: Box<str>,
-    pub needle: Box<str>,
-    pub max_line_len: usize,
+pub struct AsciiAlgo<A, S>
+where
+    A: Fn(&[u8], &[u8]) -> Option<MatchWithPositions> + Clone + Send + 'static,
+    S: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
+{
+    files: Vec<Box<Path>>,
+    search_data: AsciiSearchData<A, S>,
 }
 
-impl FzyData {
-    pub fn new(root_folder: Box<str>, needle: Box<str>, max_line_len: usize) -> Self {
+#[derive(Clone)]
+pub struct AsciiSearchData<A, S>
+where
+    A: Fn(&[u8], &[u8]) -> Option<MatchWithPositions> + Clone + Send + 'static,
+    S: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
+{
+    root_folder: Arc<str>,
+    needle: Arc<str>,
+    algo: A,
+    fallback_utf8_algo: S,
+}
+
+impl<A, S> AsciiSearchData<A, S>
+where
+    A: Fn(&[u8], &[u8]) -> Option<MatchWithPositions> + Clone + Send + 'static,
+    S: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
+{
+    pub fn new(root_folder: Arc<str>, needle: Arc<str>, algo: A, fallback_utf8_algo: S) -> Self {
         Self {
             root_folder,
             needle,
-            max_line_len,
+            algo,
+            fallback_utf8_algo,
         }
     }
 }
 
-/// Default algorithm.
-pub struct FzyAscii {
-    files: Vec<Box<Path>>,
-    root_folder: Box<str>,
-    needle: Box<str>,
-    max_line_len: usize,
-}
-
-impl FuzzySearcher for FzyAscii {
-    type SearchData = FzyData;
+impl<A, S> FuzzySearcher for AsciiAlgo<A, S>
+where
+    A: Fn(&[u8], &[u8]) -> Option<MatchWithPositions> + Clone + Send + 'static,
+    S: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
+{
+    type SearchData = AsciiSearchData<A, S>;
 
     type Item = MWP;
 
     #[inline]
     fn create(files: Vec<Box<Path>>, search_data: Self::SearchData) -> Self {
-        let FzyData {
-            root_folder,
-            needle,
-            max_line_len,
-        } = search_data;
-
-        Self {
-            files,
-            root_folder,
-            needle,
-            max_line_len,
-        }
+        Self { files, search_data }
     }
 
     #[inline]
     fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        let needle = self.needle.as_bytes();
+        let needle: &str = &self.search_data.needle;
+        let root_folder: &str = &self.search_data.root_folder;
+
+        let algo: &A = &self.search_data.algo;
+        let utf8_to_ascii_algo =
+            |line: &str, needle: &str| algo(line.as_bytes(), needle.as_bytes());
+
+        let fallback_algo: &S = &self.search_data.fallback_utf8_algo;
 
         self.files.iter().for_each(|file| {
             if let Ok(filebuf) = fs::read(file) {
@@ -246,66 +257,38 @@ impl FuzzySearcher for FzyAscii {
                     Some(ascii_str) => {
                         ByteLines::new(ascii_str.as_bytes()).enumerate().for_each(
                             |(line_idx, line)| {
-                                if line.len() > self.max_line_len {
-                                    return;
-                                }
+                                // SAFETY: the whole text is checked and is ASCII, which is utf8 always;
+                                // the line is a part of a text, so is utf8 too.
+                                let line = unsafe { std::str::from_utf8_unchecked(line) };
 
-                                if let Some(()) = ascii::matcher(line, needle) {
-                                    let (score, pos) = ascii::score_with_positions(needle, line);
-
-                                    let path_with_root = file.as_os_str().to_string_lossy();
-                                    let path_with_root = path_with_root.as_ref();
-
-                                    let path_without_root = path_with_root
-                                        .get(self.root_folder.len()..)
-                                        .map(|path| {
-                                            let is_slash = path
-                                                .as_bytes()
-                                                .get(0)
-                                                .map(|byte| *byte == MAIN_SEPARATOR as u8)
-                                                .unwrap_or(false);
-                                            if is_slash {
-                                                &path[1..]
-                                            } else {
-                                                path
-                                            }
-                                        })
-                                        .unwrap_or(path_with_root);
-
-                                    // SAFETY: the whole text is checked and is ASCII, which is utf8 always;
-                                    // the line is a part of a text, so is utf8 too.
-                                    let line = unsafe { std::str::from_utf8_unchecked(line) };
-
-                                    f((
-                                        format!("{}:{}:1{}", path_without_root, line_idx, line),
-                                        score,
-                                        pos.into_boxed_slice(),
-                                    ))
-                                }
+                                apply(
+                                    utf8_to_ascii_algo,
+                                    line,
+                                    needle,
+                                    file,
+                                    root_folder,
+                                    line_idx,
+                                    &mut f,
+                                );
                             },
                         );
                     }
                     // Maybe utf8. Fall back to utf8 scoring for as long as it is valid utf8.
-                    None => fallback_utf8(
-                        file,
-                        &filebuf,
-                        self.root_folder.as_ref(),
-                        &self.needle,
-                        self.max_line_len,
-                        &mut f,
-                    ),
+                    None => {
+                        generic_utf8(file, &filebuf, root_folder, needle, fallback_algo, &mut f)
+                    }
                 }
             }
         });
     }
 }
 
-fn fallback_utf8<F: FnMut(MWP)>(
+fn generic_utf8<F: FnMut(MWP)>(
     file: &Path,
     filebuf: &[u8],
     root_folder: &str,
     needle: &str,
-    max_line_len: usize,
+    utf8_algo: impl Fn(&str, &str) -> Option<MatchWithPositions>,
     mut f: F,
 ) {
     let valid_up_to = match std::str::from_utf8(filebuf) {
@@ -317,62 +300,81 @@ fn fallback_utf8<F: FnMut(MWP)>(
     let valid_str = unsafe { std::str::from_utf8_unchecked(&filebuf[..valid_up_to]) };
 
     valid_str.lines().enumerate().for_each(|(line_idx, line)| {
-        if line.len() > max_line_len {
-            return;
-        }
-
-        if let Some((score, pos)) = utf8::match_and_score_with_positions(needle, line) {
-            let path_with_root = file.as_os_str().to_string_lossy();
-            let path_with_root = path_with_root.as_ref();
-
-            let path_without_root = path_with_root
-                .get(root_folder.len()..)
-                .map(|path| {
-                    let is_slash = path
-                        .as_bytes()
-                        .get(0)
-                        .map(|byte| *byte == MAIN_SEPARATOR as u8)
-                        .unwrap_or(false);
-                    if is_slash {
-                        &path[1..]
-                    } else {
-                        path
-                    }
-                })
-                .unwrap_or(path_with_root);
-
-            f((
-                format!("{}:{}:1{}", path_without_root, line_idx, line),
-                score,
-                pos.into_boxed_slice(),
-            ))
-        }
+        apply(
+            &utf8_algo,
+            line,
+            needle,
+            file,
+            root_folder,
+            line_idx,
+            &mut f,
+        );
     });
 }
 
-pub struct GenericAlgo<A>
+fn apply(
+    algo: impl Fn(&str, &str) -> Option<MatchWithPositions>,
+    line: &str,
+    needle: &str,
+    filepath: &Path,
+    root_folder: &str,
+    line_idx: usize,
+    mut f: impl FnMut(MWP),
+) {
+    if let Some((score, pos)) = algo(line, needle) {
+        let path_with_root = filepath.as_os_str().to_string_lossy();
+        let path_with_root = path_with_root.as_ref();
+
+        let path_without_root = path_with_root
+            .get(root_folder.len()..)
+            .map(|path| {
+                path.chars()
+                    .next()
+                    .map(|ch| {
+                        if ch == MAIN_SEPARATOR {
+                            let mut buf = [0_u8; 4];
+                            let sep_len = ch.encode_utf8(&mut buf).len();
+
+                            &path[sep_len..]
+                        } else {
+                            path
+                        }
+                    })
+                    .unwrap_or(path)
+            })
+            .unwrap_or(path_with_root);
+
+        f((
+            format!("{}:{}:1{}", path_without_root, line_idx, line),
+            score,
+            pos.into_boxed_slice(),
+        ))
+    }
+}
+
+pub struct Utf8Algo<A>
 where
     A: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
 {
     files: Vec<Box<Path>>,
-    search_data: GenericSearchData<A>,
+    search_data: Utf8SearchData<A>,
 }
 
 #[derive(Clone)]
-pub struct GenericSearchData<A>
+pub struct Utf8SearchData<A>
 where
     A: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
 {
-    root_folder: Box<str>,
-    needle: Box<str>,
+    root_folder: Arc<str>,
+    needle: Arc<str>,
     algo: A,
 }
 
-impl<A> GenericSearchData<A>
+impl<A> Utf8SearchData<A>
 where
     A: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
 {
-    pub fn new(root_folder: Box<str>, needle: Box<str>, algo: A) -> Self {
+    pub fn new(root_folder: Arc<str>, needle: Arc<str>, algo: A) -> Self {
         Self {
             root_folder,
             needle,
@@ -381,11 +383,11 @@ where
     }
 }
 
-impl<A> FuzzySearcher for GenericAlgo<A>
+impl<A> FuzzySearcher for Utf8Algo<A>
 where
     A: Fn(&str, &str) -> Option<MatchWithPositions> + Clone + Send + 'static,
 {
-    type SearchData = GenericSearchData<A>;
+    type SearchData = Utf8SearchData<A>;
 
     type Item = MWP;
 
@@ -394,48 +396,13 @@ where
     }
 
     fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        let root_folder = self.search_data.root_folder.as_ref();
-        let needle = self.search_data.needle.as_ref();
-        let algo = self.search_data.algo;
+        let root_folder: &str = &self.search_data.root_folder;
+        let needle: &str = &self.search_data.needle;
+        let algo: &A = &self.search_data.algo;
 
         self.files.iter().for_each(|file| {
             if let Ok(filebuf) = fs::read(file) {
-                let valid_up_to = match std::str::from_utf8(&filebuf) {
-                    Ok(_valid_str) => filebuf.len(),
-                    Err(utf8_e) => utf8_e.valid_up_to(),
-                };
-
-                // SAFETY: just checked validness.
-                let valid_str = unsafe { std::str::from_utf8_unchecked(&filebuf[..valid_up_to]) };
-
-                valid_str.lines().enumerate().for_each(|(line_idx, line)| {
-                    if let Some((score, pos)) = algo(needle, line) {
-                        let path_with_root = file.as_os_str().to_string_lossy();
-                        let path_with_root = path_with_root.as_ref();
-
-                        let path_without_root = path_with_root
-                            .get(root_folder.len()..)
-                            .map(|path| {
-                                let is_slash = path
-                                    .as_bytes()
-                                    .get(0)
-                                    .map(|byte| *byte == MAIN_SEPARATOR as u8)
-                                    .unwrap_or(false);
-                                if is_slash {
-                                    &path[1..]
-                                } else {
-                                    path
-                                }
-                            })
-                            .unwrap_or(path_with_root);
-
-                        f((
-                            format!("{}:{}:1{}", path_without_root, line_idx, line),
-                            score,
-                            pos.into_boxed_slice(),
-                        ))
-                    }
-                });
+                generic_utf8(file, &filebuf, root_folder, needle, algo, &mut f);
             }
         });
     }
@@ -484,7 +451,7 @@ mod showcase {
     #[inline]
     pub fn default_searcher(
         path: impl AsRef<Path>,
-        needle: impl Into<Box<str>>,
+        needle: impl AsRef<str>,
         sort_and_print: impl FnMut(&mut [MWP], usize),
     ) -> Option<(Vec<MWP>, usize)> {
         with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), sort_and_print)
@@ -521,12 +488,12 @@ mod showcase {
     pub fn with_fzy_algo(
         path: impl AsRef<Path>,
 
-        needle: impl Into<Box<str>>,
+        needle: impl AsRef<str>,
         max_line_len: usize,
 
         sort_and_print: impl FnMut(&mut [MWP], usize),
     ) -> Option<(Vec<MWP>, usize)> {
-        let needle = needle.into();
+        let needle = needle.as_ref();
 
         if needle.is_empty() || needle.len() > max_line_len {
             return Default::default();
@@ -550,22 +517,31 @@ mod showcase {
 
         let is_ascii = needle.is_ascii();
 
+        let utf8_algo = move |line: &str, needle: &str| {
+            if line.len() > max_line_len {
+                None
+            } else {
+                crate::utf8::match_and_score_with_positions(needle, line)
+            }
+        };
+
         Some(if is_ascii {
             // ascii
-            let fzydata = FzyData::new(root_folder.into(), needle, max_line_len);
-            FzyAscii::setter(dir_iter, fzydata, r, sort_and_print)
-        } else {
-            // utf8
-            let algo = move |needle: &str, line: &str| {
+            let ascii_algo = move |line: &[u8], needle: &[u8]| {
                 if line.len() > max_line_len {
                     None
                 } else {
-                    utf8::match_and_score_with_positions(needle, line)
+                    ascii::match_and_score_with_positions(needle, line)
                 }
             };
 
-            let data = GenericSearchData::new(root_folder.into(), needle, algo);
-            GenericAlgo::setter(dir_iter, data, r, sort_and_print)
+            let data =
+                AsciiSearchData::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
+            AsciiAlgo::setter(dir_iter, data, r, sort_and_print)
+        } else {
+            // utf8
+            let data = Utf8SearchData::new(root_folder.into(), needle.into(), utf8_algo);
+            Utf8Algo::setter(dir_iter, data, r, sort_and_print)
         })
     }
 }
@@ -602,7 +578,7 @@ mod tests {
         };
 
         let current_dir = std::env::current_dir().unwrap();
-        let needle = "sopa";
+        let needle = "print";
 
         let (results, total) =
             default_searcher(current_dir.clone(), needle, sort_and_print).unwrap();
@@ -629,6 +605,8 @@ mod tests {
                 }
             }
         };
+
+        let needle = "sоме Uпiсоdе техт";
         println!(
             "{:?}",
             with_fzy_algo(current_dir, needle, 1024, sort_and_print)

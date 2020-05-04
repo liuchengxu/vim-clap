@@ -10,7 +10,15 @@ pub use matcher::{ascii_from_bytes, matcher};
 use crate::scoring_utils::*;
 
 #[inline]
-pub fn score_with_positions(needle: &[u8], haystack: &[u8]) -> (Score, Vec<usize>) {
+pub fn match_and_score_with_positions(
+    needle: &[u8],
+    haystack: &[u8],
+) -> Option<MatchWithPositions> {
+    matcher(haystack, needle).map(|_| score_with_positions(needle, haystack))
+}
+
+#[inline]
+fn score_with_positions(needle: &[u8], haystack: &[u8]) -> (Score, Vec<usize>) {
     let needle_length = needle.len();
     // empty needle
     if needle_length == 0 {
