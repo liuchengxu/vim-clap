@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:path_seperator = has('win32') ? '\' : '/'
 
 function! s:peek_file(fname, fpath) abort
-  let lines = readfile(a:fpath, '', 10)
+  let lines = readfile(a:fpath, '', get(g:, 'clap_preview_files_lines', '10'))
   call insert(lines, a:fpath)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(a:fname))
