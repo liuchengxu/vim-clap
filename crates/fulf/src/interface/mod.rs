@@ -241,6 +241,35 @@ where
 
     #[inline]
     fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
+        fn trim_ascii_whitespace(line: &str) -> (&str, usize) {
+            let mut iter = line.as_bytes().iter().enumerate();
+
+            let start_idx = iter
+                .find(|(_idx, c)| !c.is_ascii_whitespace())
+                .map(|idx_c| idx_c.0)
+                // This trim should not be used on an empty line,
+                // but if it would, the line will be indexed with the
+                // [0..0] range and won't panic.
+                .unwrap_or(0);
+
+            let end_idx = iter
+                .rfind(|(_idx, c)| !c.is_ascii_whitespace())
+                //x Inclusive range could not be used;
+                //x even though `[1..=0]` won't panic,
+                //x on a string that has only whitespaces,
+                //x the range will be [0..=0], which is not okay.
+                //
+                // `+1` because current index is the index of a
+                // first non-whitespace char, but range is not inclusive.
+                .map(|idx_c| idx_c.0 + 1)
+                .unwrap_or(start_idx);
+
+            // Because the index starts from 0
+            // and there's only one byte for each ASCII char,
+            // the number of trimmed whitespaces is `start_idx`.
+            (&line[start_idx..end_idx], start_idx)
+        }
+
         let needle: &str = &self.search_data.needle;
         let root_folder: &str = &self.search_data.root_folder;
 
@@ -262,6 +291,7 @@ where
                                 let line = unsafe { std::str::from_utf8_unchecked(line) };
 
                                 apply(
+                                    trim_ascii_whitespace,
                                     utf8_to_ascii_algo,
                                     line,
                                     needle,
@@ -291,6 +321,20 @@ fn generic_utf8<F: FnMut(MWP)>(
     utf8_algo: impl Fn(&str, &str) -> Option<MatchWithPositions>,
     mut f: F,
 ) {
+    fn trim_utf8_whitespace(line: &str) -> (&str, usize) {
+        let mut trimmed_start: usize = 0;
+        let line = line.trim_start_matches(|c: char| {
+            let is_w = c.is_whitespace();
+            if is_w {
+                trimmed_start += 1;
+            }
+
+            is_w
+        });
+
+        (line.trim_end(), trimmed_start)
+    }
+
     let valid_up_to = match std::str::from_utf8(filebuf) {
         Ok(_valid_str) => filebuf.len(),
         Err(utf8_e) => utf8_e.valid_up_to(),
@@ -301,6 +345,7 @@ fn generic_utf8<F: FnMut(MWP)>(
 
     valid_str.lines().enumerate().for_each(|(line_idx, line)| {
         apply(
+            trim_utf8_whitespace,
             &utf8_algo,
             line,
             needle,
@@ -313,6 +358,13 @@ fn generic_utf8<F: FnMut(MWP)>(
 }
 
 fn apply(
+    // ASCII trimming gets some bonuses,
+    // so this is not generic over utf8.
+    //
+    // Should return the trimmed whitespace,
+    // and the number of chars trimmed from the start,
+    // because that number is added to the column.
+    trim_whitespaces: impl Fn(&str) -> (&str, usize),
     algo: impl Fn(&str, &str) -> Option<MatchWithPositions>,
     line: &str,
     needle: &str,
@@ -344,8 +396,20 @@ fn apply(
             })
             .unwrap_or(path_with_root);
 
+        // N.B. Cannot trim before the algorithm,
+        // because this could change the result
+        // (trailing or leading whitespaces are valid to search,
+        // even if that's a very rare case).
+        let (trimmed_line, add_col) = trim_whitespaces(line);
+
         f((
-            format!("{}:{}:1{}", path_without_root, line_idx, line),
+            format!(
+                "{}:{row}:{col}:{line}",
+                path_without_root,
+                row = line_idx,
+                col = 1 + add_col,
+                line = trimmed_line,
+            ),
             score,
             pos.into_boxed_slice(),
         ))
