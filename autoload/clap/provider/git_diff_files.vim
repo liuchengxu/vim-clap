@@ -23,8 +23,7 @@ endfunction
 
 function! s:git_diff_files_on_move() abort
   let diff = 'git --no-pager diff -U0'
-  let pipetail = '| tail -n +5'
-  let filediff = g:clap.display.getcurline().pipetail
+  let filediff = g:clap.display.getcurline()
   let command = systemlist(diff.' '.filediff)
 
   if !empty(command)
@@ -39,7 +38,7 @@ function! s:git_diff_files_on_move() abort
   endif
 
   if !empty(command)
-    call g:clap.preview.show(command[:10])
+    call g:clap.preview.show(command[:15])
   else
     call g:clap.preview.show([''])
   endif
