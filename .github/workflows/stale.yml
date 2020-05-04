@@ -8,7 +8,7 @@ jobs:
   stale:
 
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/stale@v1
       with:
@@ -17,3 +17,4 @@ jobs:
         stale-pr-message: 'Stale pull request message'
         stale-issue-label: 'no-issue-activity'
         stale-pr-label: 'no-pr-activity'
+        exempt-issue-labels: 'bug,feature-request,enhancement'
