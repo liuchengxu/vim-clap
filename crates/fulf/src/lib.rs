@@ -2,6 +2,7 @@
 //!
 //! Like regex searcher, but not regex searcher.
 
+mod fzy_algo;
 mod scoring_utils;
 
 pub mod ascii;

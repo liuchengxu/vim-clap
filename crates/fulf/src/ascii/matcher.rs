@@ -52,8 +52,8 @@ pub fn matcher(mut line: &[u8], needle: &[u8]) -> Option<LineMetaData> {
 /// Returns `Some(&str)` if all bytes are ASCII, `None` otherwise.
 #[inline]
 pub fn ascii_from_bytes(bytes: &[u8]) -> Option<&str> {
-    // SAFETY: ASCII is always valid utf8, and bytes are ASCII.
     if bytes.is_ascii() {
+        // SAFETY: ASCII is always valid utf8, and those bytes are ASCII.
         unsafe { Some(std::str::from_utf8_unchecked(bytes)) }
     } else {
         None
