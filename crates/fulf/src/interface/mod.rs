@@ -401,19 +401,58 @@ fn apply(
         // (trailing or leading whitespaces are valid to search,
         // even if that's a very rare case).
         let (trimmed_line, add_col) = trim_whitespaces(line);
+        let bufs = (&mut [0_u8; 20], &mut [0_u8; 20]);
+        let row = fmt_usize(1 + line_idx, bufs.0);
+        let col = fmt_usize(1 + add_col, bufs.1);
+        // Three `:` chars, plus all other things. `row` and `len` are ascii digits.
+        let path_row_col_len = 3 + path_without_root.chars().count() + row.len() + col.len();
+        let mut pos = pos;
+        pos.iter_mut().for_each(|p| {
+            // Move right by the length of things before the line.
+            *p += path_row_col_len;
+            // Move left by the number of trimmed whitespace chars.
+            *p -= add_col;
+        });
 
         f((
             format!(
                 "{}:{row}:{col}:{line}",
                 path_without_root,
-                row = line_idx,
-                col = 1 + add_col,
+                row = row,
+                col = col,
                 line = trimmed_line,
             ),
             score,
             pos.into_boxed_slice(),
         ))
     }
+}
+
+/// Formats the number, returns the string.
+///
+/// Could be used with stack-allocated buffer.
+///
+/// # Panic
+///
+/// Panics if the buffer is not big enough.
+///
+/// # Note
+///
+/// As long as `usize` is not wider than u64,
+/// a buffer with 20 bytes is enough.
+fn fmt_usize(u: usize, buf: &mut [u8]) -> &mut str {
+    let len = buf.len();
+
+    let mut index = len;
+    let mut u = u;
+    while u != 0 {
+        index -= 1;
+        buf[index] = (u % 10) as u8 + b'0';
+        u /= 10;
+    }
+
+    // SAFETY: "mod 10 + b'0'" gives only ASCII chars, which is always utf8.
+    unsafe { std::str::from_utf8_unchecked_mut(&mut buf[index..len]) }
 }
 
 pub struct Utf8Algo<A>
