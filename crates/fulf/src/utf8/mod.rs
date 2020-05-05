@@ -2,14 +2,19 @@
 
 use crate::{
     fzy_algo::{self, score_with_positions},
-    scoring_utils::MatchWithPositions,
+    scoring_utils::{MatchWithPositions, Score},
 };
 
 #[inline]
-pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
+pub fn match_and_score_with_positions(
+    needle: &str,
+    haystack: &str,
+    prealloced_matricies: &mut (Vec<Score>, Vec<Score>),
+) -> Option<MatchWithPositions> {
     match matches(needle, haystack) {
         Some(needle_length) => {
-            let (score, positions) = score_with_positions(needle, needle_length, haystack);
+            let (score, positions) =
+                score_with_positions(needle, needle_length, haystack, prealloced_matricies);
             Some((score, positions))
         }
         None => None,
@@ -54,7 +59,7 @@ mod tests {
     fn abc() {
         let abc = "abc";
         let cba = "cba";
-        let res = match_and_score_with_positions(abc, cba);
+        let res = match_and_score_with_positions(abc, cba, &mut Default::default());
         // assert!(res.is_some());
         assert!(res.is_none());
     }

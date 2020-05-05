@@ -1,4 +1,5 @@
 use crate::scoring_utils::*;
+use std::mem;
 
 pub trait FzyItem: Copy {
     /// Virtual char: inserted before the first real char.
@@ -111,6 +112,7 @@ pub fn score_with_positions<A, S>(
     needle: A,
     needle_length: usize,
     haystack: A,
+    prealloced_matricies: &mut (Vec<Score>, Vec<Score>),
 ) -> (Score, Vec<usize>)
 where
     A: FzyScorable,
@@ -130,7 +132,13 @@ where
     }
 
     #[allow(non_snake_case)]
-    let (D, M) = calculate_score(needle, needle_length, haystack, haystack_length);
+    let (D, M) = calculate_score(
+        needle,
+        needle_length,
+        haystack,
+        haystack_length,
+        prealloced_matricies,
+    );
 
     let mut positions = vec![0_usize; needle_length];
 
@@ -162,7 +170,12 @@ where
         }
     }
 
-    (M.get(needle_length - 1, haystack_length - 1), positions)
+    // Get the score.
+    let score = M.get(needle_length - 1, haystack_length - 1);
+    // Put the matrix storage back.
+    mem::replace(prealloced_matricies, (M.destroy(), D.destroy()));
+    // Return the score and positions.
+    (score, positions)
 }
 
 fn calculate_score<A, S>(
@@ -170,6 +183,7 @@ fn calculate_score<A, S>(
     needle_length: usize,
     haystack: A,
     haystack_length: usize,
+    prealloced_matricies: &mut (Vec<Score>, Vec<Score>),
 ) -> (Matrix, Matrix)
 where
     A: FzyScorable,
@@ -178,10 +192,12 @@ where
 {
     let bonus = compute_bonus(haystack, haystack_length);
 
+    let (m, d) = mem::take(prealloced_matricies);
+
     #[allow(non_snake_case)]
-    let mut M = Matrix::new(needle_length, haystack_length);
+    let mut M = Matrix::new(needle_length, haystack_length, m);
     #[allow(non_snake_case)]
-    let mut D = Matrix::new(needle_length, haystack_length);
+    let mut D = Matrix::new(needle_length, haystack_length, d);
 
     for (i, n) in needle.fzy_iter().enumerate() {
         let mut prev_score = SCORE_MIN;
@@ -251,11 +267,44 @@ struct Matrix {
 
 impl Matrix {
     /// Creates a new Matrix with the given width and height
-    fn new(width: usize, height: usize) -> Matrix {
+    fn new(width: usize, height: usize, storage: Vec<Score>) -> Matrix {
+        /// Initializer.
+        ///
+        /// That's very strange, but I hadn't found initializer for `Copy`
+        /// items within vector's functions, only `resize_with()` for `Clone`.
+        fn init_vec<T: Copy>(v: &mut Vec<T>, init: T, len: usize) {
+            v.clear();
+            v.reserve_exact(len);
+
+            let mut ptr = v.as_mut_ptr();
+            for _ in 0..len {
+                //x SAFETY: this follows the restrictions of `add()`.
+                unsafe {
+                    *ptr = init;
+                    ptr = ptr.add(1);
+                }
+            }
+            //x SAFETY: `T` is `Copy`,
+            //x `v.reserve_exact(len);` gives enough capacity,
+            //x and all items in the range of (0..len) were
+            //x initialized in the loop up there.
+            unsafe {
+                v.set_len(len);
+            }
+        }
+
+        let mut storage = storage;
+        init_vec(&mut storage, SCORE_STARTER, width * height);
+
         Matrix {
-            contents: vec![SCORE_STARTER; width * height],
+            contents: storage,
             cols: width,
         }
+    }
+
+    /// Returns the inner vector from the matrix.
+    fn destroy(self) -> Vec<Score> {
+        self.contents
     }
 
     /// Returns a reference to the specified coordinates of the Matrix
