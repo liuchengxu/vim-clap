@@ -274,8 +274,8 @@ where
         let root_folder: &str = &self.search_data.root_folder;
 
         let algo: &A = &self.search_data.algo;
-        let utf8_to_ascii_algo =
-            |line: &str, needle: &str| algo(line.as_bytes(), needle.as_bytes());
+        let ascii_algo =
+            |line: &str| algo(line.as_bytes(), needle.as_bytes());
 
         let fallback_algo: &S = &self.search_data.fallback_utf8_algo;
 
@@ -292,9 +292,8 @@ where
 
                                 apply(
                                     trim_ascii_whitespace,
-                                    utf8_to_ascii_algo,
+                                    ascii_algo,
                                     line,
-                                    needle,
                                     file,
                                     root_folder,
                                     line_idx,
@@ -343,12 +342,13 @@ fn generic_utf8<F: FnMut(MWP)>(
     // SAFETY: just checked validness.
     let valid_str = unsafe { std::str::from_utf8_unchecked(&filebuf[..valid_up_to]) };
 
+    let take_line = |line: &str| utf8_algo(line, needle);
+
     valid_str.lines().enumerate().for_each(|(line_idx, line)| {
         apply(
             trim_utf8_whitespace,
-            &utf8_algo,
+            take_line,
             line,
-            needle,
             file,
             root_folder,
             line_idx,
@@ -357,23 +357,23 @@ fn generic_utf8<F: FnMut(MWP)>(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply(
     // ASCII trimming gets some bonuses,
     // so this is not generic over utf8.
     //
-    // Should return the trimmed whitespace,
+    // Should return the trimmed string,
     // and the number of chars trimmed from the start,
     // because that number is added to the column.
     trim_whitespaces: impl Fn(&str) -> (&str, usize),
-    algo: impl Fn(&str, &str) -> Option<MatchWithPositions>,
+    take_line: impl Fn(&str) -> Option<MatchWithPositions>,
     line: &str,
-    needle: &str,
     filepath: &Path,
     root_folder: &str,
     line_idx: usize,
     mut f: impl FnMut(MWP),
 ) {
-    if let Some((score, pos)) = algo(line, needle) {
+    if let Some((score, pos)) = take_line(line) {
         let path_with_root = filepath.as_os_str().to_string_lossy();
         let path_with_root = path_with_root.as_ref();
 
@@ -402,9 +402,11 @@ fn apply(
         // even if that's a very rare case).
         let (trimmed_line, add_col) = trim_whitespaces(line);
         let bufs = (&mut [0_u8; 20], &mut [0_u8; 20]);
+        // Humans' numbers start from 1.
         let row = fmt_usize(1 + line_idx, bufs.0);
         let col = fmt_usize(1 + add_col, bufs.1);
-        // Three `:` chars, plus all other things. `row` and `len` are ascii digits.
+        // Three `:` chars, plus all other chars;
+        // `row` and `len` are ascii digits, thus `len()`, not `chars().count()`.
         let path_row_col_len = 3 + path_without_root.chars().count() + row.len() + col.len();
         let mut pos = pos;
         pos.iter_mut().for_each(|p| {
