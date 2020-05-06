@@ -17,8 +17,10 @@ use {
 /// Read fields' documentation for more.
 #[derive(Debug, Clone)]
 pub struct Rules {
-    /// Maximum number of matched and fuzzed results that will remain in memory.
-    pub results_cap: usize,
+    /// Maximum number of matched and fuzzed results
+    /// that will remain in memory of every spawned thread
+    /// until passed down to the synchronization function.
+    pub thread_local_results_cap: usize,
 
     /// The number of bonus threads to spawn.
     ///
@@ -35,16 +37,9 @@ impl Rules {
     #[inline]
     pub const fn new() -> Self {
         Self {
-            results_cap: 512,
+            thread_local_results_cap: 128,
             bonus_threads: 0,
         }
-    }
-}
-
-impl PartialEq for Rules {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.results_cap == other.results_cap
     }
 }
 
@@ -85,12 +80,11 @@ pub trait FuzzySearcher: Sized {
 
         r: Rules,
 
-        sort_and_print: impl FnMut(&mut [Self::Item], usize),
-    ) -> (Vec<Self::Item>, usize) {
-        let threadcount = r.bonus_threads + 1;
-        let mut files_chunks = vec![Vec::with_capacity(1024); threadcount as usize];
+        sort_and_print: impl FnMut(Vec<Self::Item>),
+    ) {
+        let threadcount = r.bonus_threads as usize + 1;
+        let mut files_chunks = vec![Vec::with_capacity(1024); threadcount];
 
-        let usize_tc = threadcount as usize;
         let mut index = 0;
         let mut errcount = 0;
         iter.for_each(|res| match res {
@@ -99,7 +93,7 @@ pub trait FuzzySearcher: Sized {
 
                 if path.is_file() {
                     index += 1;
-                    if index == usize_tc {
+                    if index == threadcount {
                         index = 0;
                     }
 
@@ -116,18 +110,16 @@ pub trait FuzzySearcher: Sized {
 
         let files_chunks = files_chunks.into_iter();
 
-        let capnum = r.results_cap;
-
-        Self::spawner(files_chunks, needle, capnum, sort_and_print)
+        Self::spawner(
+            files_chunks,
+            needle,
+            r.thread_local_results_cap,
+            sort_and_print,
+        );
     }
 
     /// The number of threads to spawn is defined by the number of items
     /// in the iterator.
-    ///
-    /// # Returns
-    ///
-    /// Vector, already sorted by `sort_and_print` function,
-    /// and a number of total results.
     #[inline]
     fn spawner(
         files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
@@ -135,8 +127,8 @@ pub trait FuzzySearcher: Sized {
 
         capnum: usize,
 
-        mut sort_and_print: impl FnMut(&mut [Self::Item], usize),
-    ) -> (Vec<Self::Item>, usize) {
+        sort_and_print: impl FnMut(Vec<Self::Item>),
+    ) {
         let (sx, rx) = flume::bounded(100);
         let mut threads = Vec::with_capacity(16);
 
@@ -150,24 +142,9 @@ pub trait FuzzySearcher: Sized {
         });
         drop(sx);
 
-        let mut shared = Vec::with_capacity(capnum * 2);
-        let mut total = 0_usize;
-
-        while let Ok(mut inner) = rx.recv() {
-            if !inner.is_empty() {
-                let inner_len = inner.len();
-
-                total = total.wrapping_add(inner_len);
-
-                shared.append(&mut inner);
-                sort_and_print(&mut shared, total);
-                shared.truncate(capnum);
-            }
-        }
+        rx.iter().for_each(sort_and_print);
 
         threads.into_iter().for_each(|t| t.join().unwrap());
-
-        (shared, total)
     }
 }
 
@@ -185,8 +162,11 @@ fn spawn_me<FE: FuzzySearcher>(resulter: FE, sender: flume::Sender<Vec<FE::Item>
         inner.push(result);
     });
 
-    // Whatever is is, we will end this function's work right here anyway.
-    let _any_result = sender.send(inner);
+    // The last vector could be empty or partially filled.
+    if !inner.is_empty() {
+        // Whatever is is, we will end this function's work right here anyway.
+        let _any_result = sender.send(inner);
+    }
 }
 
 pub struct AsciiAlgo<A, S>
@@ -584,7 +564,7 @@ mod showcase {
     ///
     /// # Returns
     ///
-    /// Returns what `spawner` returns, but the type is defined by fzy algorithm.
+    /// Returns what `spawner` returns.
     ///
     /// # Alternatives
     ///
@@ -600,8 +580,8 @@ mod showcase {
     pub fn default_searcher(
         path: impl AsRef<Path>,
         needle: impl AsRef<str>,
-        sort_and_print: impl FnMut(&mut [MWP], usize),
-    ) -> Option<(Vec<MWP>, usize)> {
+        sort_and_print: impl FnMut(Vec<MWP>),
+    ) -> Result<(), ()> {
         with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), sort_and_print)
     }
 
@@ -609,7 +589,7 @@ mod showcase {
     ///
     /// # Returns
     ///
-    /// Return `None` if the root path cannot be represented as a utf8.
+    /// Return `Err` if the root path cannot be represented as a utf8.
     ///
     /// # Maximum line length
     ///
@@ -639,12 +619,12 @@ mod showcase {
         needle: impl AsRef<str>,
         max_line_len: usize,
 
-        sort_and_print: impl FnMut(&mut [MWP], usize),
-    ) -> Option<(Vec<MWP>, usize)> {
+        sort_and_print: impl FnMut(Vec<MWP>),
+    ) -> Result<(), ()> {
         let needle = needle.as_ref();
 
         if needle.is_empty() || needle.len() > max_line_len {
-            return Default::default();
+            return Err(());
         }
 
         let r = {
@@ -661,7 +641,7 @@ mod showcase {
         let path = path.as_ref();
         let dir_iter = ignore::Walk::new(path);
 
-        let root_folder = path.to_str()?;
+        let root_folder = path.to_str().ok_or(())?;
 
         let is_ascii = needle.is_ascii();
 
@@ -673,7 +653,7 @@ mod showcase {
             }
         };
 
-        Some(if is_ascii {
+        if is_ascii {
             // ascii
             let ascii_algo =
                 move |line: &[u8], needle: &[u8], prealloc: &mut (Vec<Score>, Vec<Score>)| {
@@ -686,12 +666,14 @@ mod showcase {
 
             let data =
                 AsciiSearchData::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
-            AsciiAlgo::setter(dir_iter, data, r, sort_and_print)
+            AsciiAlgo::setter(dir_iter, data, r, sort_and_print);
         } else {
             // utf8
             let data = Utf8SearchData::new(root_folder.into(), needle.into(), utf8_algo);
-            Utf8Algo::setter(dir_iter, data, r, sort_and_print)
-        })
+            Utf8Algo::setter(dir_iter, data, r, sort_and_print);
+        }
+
+        Ok(())
     }
 }
 
@@ -702,63 +684,95 @@ mod tests {
 
     #[test]
     fn basic_functionality_test() {
+        use std::{cmp::Ordering, io::Write};
+
+        fn insertion_sort_on_sorted(
+            global: &mut Vec<MWP>,
+            msg: impl IntoIterator<Item = MWP>,
+            mut cmp_by: impl FnMut(&MWP, &MWP) -> Ordering,
+        ) {
+            msg.into_iter().for_each(|x| {
+                let idx = global
+                    .binary_search_by(|probe| cmp_by(probe, &x))
+                    .unwrap_or_else(std::convert::identity);
+                global.insert(idx, x);
+            });
+        };
+
+        fn default_cmp(a: &MWP, b: &MWP) -> Ordering {
+            b.1.cmp(&a.1)
+        }
+
+        const YOUR_GLOBAL_CAPACITY: usize = 512;
+        const YOUR_DYNAMIC_PRINTNUMBER: usize = 8;
         const DELAY: Duration = Duration::from_secs(2);
-        let mut past = SystemTime::now();
 
-        let sort_and_print = |results: &mut [MWP], total| {
-            results.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+        macro_rules! test_init {
+            ($total: ident, $global_vec: ident, $closure_name:ident; $code:tt) => {{
+                let mut $global_vec = Vec::new();
+                let mut past = SystemTime::now();
+                let mut $total: usize = 0;
 
-            let now = SystemTime::now();
+                let mut init_flag = true;
 
-            if let Ok(dur) = now.duration_since(past) {
-                if dur > DELAY {
-                    past = now;
+                let $closure_name = |msg: Vec<MWP>| {
+                    // One-time capacity setter.
+                    if init_flag {
+                        init_flag = false;
+                        $global_vec.reserve(YOUR_GLOBAL_CAPACITY.saturating_sub($global_vec.len()));
+                    }
+                    // `msglen` will never be bigger than `thread_local_results_cap` from `Rules`,
+                    // so `truncate_len` could be evaluated just once:
+                    // `global_vec.capacity() - thread_local_results_cap`.
+                    let msglen = msg.len();
+                    let truncate_len = $global_vec.capacity() - msglen;
+                    // If you need to collect all the items without cap,
+                    // just reserve `msglen` here instead of truncating.
+                    $global_vec.truncate(truncate_len);
 
-                    for idx in 0..8 {
-                        if let Some(pack) = results.get(idx) {
-                            let (s, _score, pos) = pack;
-                            println!("Total: {}\n{}\n{:?}", total, s, pos);
-                        } else {
-                            break;
+                    insertion_sort_on_sorted(&mut $global_vec, msg, default_cmp);
+                    $total += msglen;
+
+                    let now = SystemTime::now();
+
+                    if let Ok(dur) = now.duration_since(past) {
+                        if dur > DELAY {
+                            past = now;
+
+                            let iter = $global_vec.iter().take(YOUR_DYNAMIC_PRINTNUMBER);
+                            let stdout = std::io::stdout();
+                            let mut stdout = stdout.lock();
+
+                            writeln!(&mut stdout, "Total: {}", $total).unwrap();
+                            iter.for_each(|pack| {
+                                let (s, _score, pos) = pack;
+                                writeln!(&mut stdout, "{}\n{:?}", s, pos).unwrap();
+                            });
+
+                            let _ = stdout.flush();
                         }
                     }
-                }
-            }
-        };
+                };
+
+                $code
+            }};
+        }
 
         let current_dir = std::env::current_dir().unwrap();
         let needle = "print";
-
-        let (results, total) =
+        test_init! (
+            total, global_vec, sort_and_print;
+        {
             default_searcher(current_dir.clone(), needle, sort_and_print).unwrap();
-
-        println!("Total: {}\nCapped results: {:?}", total, results);
-
-        let sort_and_print = |results: &mut [MWP], total| {
-            results.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-
-            let now = SystemTime::now();
-
-            if let Ok(dur) = now.duration_since(past) {
-                if dur > DELAY {
-                    past = now;
-
-                    for idx in 0..8 {
-                        if let Some(pack) = results.get(idx) {
-                            let (s, _score, pos) = pack;
-                            println!("Total: {}\n{}\n{:?}", total, s, pos);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        };
+            println!("Total: {}\nCapped results: {:?}", total, global_vec);
+        });
 
         let needle = "sоме Uпiсоdе техт";
-        println!(
-            "{:?}",
-            with_fzy_algo(current_dir, needle, 1024, sort_and_print)
-        );
+        test_init! (
+            total, global_vec, sort_and_print;
+        {
+            with_fzy_algo(current_dir, needle, 1024, sort_and_print).unwrap();
+            println!("{:?}", global_vec);
+        });
     }
 }
