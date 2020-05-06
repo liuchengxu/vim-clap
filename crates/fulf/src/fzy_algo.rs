@@ -280,7 +280,7 @@ impl Matrix {
             for _ in 0..len {
                 //x SAFETY: this follows the restrictions of `add()`.
                 unsafe {
-                    *ptr = init;
+                    std::ptr::write(ptr, init);
                     ptr = ptr.add(1);
                 }
             }
