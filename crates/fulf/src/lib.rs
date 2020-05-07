@@ -2,11 +2,9 @@
 //!
 //! Like regex searcher, but not regex searcher.
 
-mod fzy_algo;
-mod scoring_utils;
+mod bytelines;
 
-pub mod ascii;
-pub mod utf8;
+pub mod fzy_algo;
 
 mod interface;
 pub use interface::*;

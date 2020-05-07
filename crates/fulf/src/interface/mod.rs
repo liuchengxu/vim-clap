@@ -1,7 +1,7 @@
 use {
     crate::{
-        ascii::{self, ByteLines},
-        scoring_utils::{MatchWithPositions, Score, MWP},
+        bytelines::{ByteLines, Line},
+        fzy_algo::scoring_utils::{MatchWithPositions, Score, MWP},
     },
     ignore,
     std::{
@@ -50,19 +50,48 @@ impl Default for Rules {
     }
 }
 
-/// A trait to define algorithm.
-pub trait FuzzySearcher: Sized {
-    /// The datapack needed for algorithm to work.
-    type SearchData: Clone + Send + 'static;
+#[derive(Clone)]
+pub struct SpecializedAscii<A, U>
+where
+    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
+        + Clone
+        + Send
+        + 'static,
+    U: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
+        + Clone
+        + Send
+        + 'static,
+{
+    root_folder: Arc<str>,
+    needle: Arc<str>,
+    ascii_algo: A,
+    fallback_utf8_algo: U,
+}
 
-    /// Like `Iterator::Item`.
-    type Item: Send + 'static;
-
-    /// A function to create the struct. Akin to `new`.
-    fn create(files: Vec<Box<Path>>, search_data: Self::SearchData) -> Self;
-
-    /// Like `Iterator::for_each`, but doesn't need `next` at all, thus much simpler.
-    fn for_each<F: FnMut(Self::Item)>(self, f: F);
+impl<A, U> SpecializedAscii<A, U>
+where
+    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
+        + Clone
+        + Send
+        + 'static,
+    U: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
+        + Clone
+        + Send
+        + 'static,
+{
+    pub fn new(
+        root_folder: Arc<str>,
+        needle: Arc<str>,
+        ascii_algo: A,
+        fallback_utf8_algo: U,
+    ) -> Self {
+        Self {
+            root_folder,
+            needle,
+            ascii_algo,
+            fallback_utf8_algo,
+        }
+    }
 
     /// A function that turns configured directory iterator
     /// and a number of bonus threads into the iterator used by `spawner`.
@@ -71,17 +100,8 @@ pub trait FuzzySearcher: Sized {
     /// vectors and then passes them as iterators to `spawner` function.
     /// `Rules::results_cap` is passed to `spawner` as `capnum`, and
     /// all other things are passed as is.
-    ///
-    /// Returns what `spawner` returns.
     #[inline]
-    fn setter(
-        iter: ignore::Walk,
-        needle: Self::SearchData,
-
-        r: Rules,
-
-        sort_and_print: impl FnMut(Vec<Self::Item>),
-    ) {
+    pub fn setter(self, iter: ignore::Walk, r: Rules, sort_and_print: impl FnMut(Vec<MWP>)) {
         let threadcount = r.bonus_threads as usize + 1;
         let mut files_chunks = vec![Vec::with_capacity(1024); threadcount];
 
@@ -111,8 +131,8 @@ pub trait FuzzySearcher: Sized {
         let files_chunks = files_chunks.into_iter();
 
         Self::spawner(
+            self,
             files_chunks,
-            needle,
             r.thread_local_results_cap,
             sort_and_print,
         );
@@ -122,12 +142,12 @@ pub trait FuzzySearcher: Sized {
     /// in the iterator.
     #[inline]
     fn spawner(
+        self,
         files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
-        needle: Self::SearchData,
 
         capnum: usize,
 
-        sort_and_print: impl FnMut(Vec<Self::Item>),
+        sort_and_print: impl FnMut(Vec<MWP>),
     ) {
         let (sx, rx) = flume::bounded(100);
         let mut threads = Vec::with_capacity(16);
@@ -135,8 +155,8 @@ pub trait FuzzySearcher: Sized {
         files_chunks.for_each(|files| {
             let t;
             let sender = sx.clone();
-            let needle = needle.clone();
-            t = thread::spawn(move || spawn_me(Self::create(files, needle), sender, capnum));
+            let self_ = self.clone();
+            t = thread::spawn(move || self_.spawn_me(files, sender, capnum));
 
             threads.push(t);
         });
@@ -146,175 +166,72 @@ pub trait FuzzySearcher: Sized {
 
         threads.into_iter().for_each(|t| t.join().unwrap());
     }
-}
-
-#[inline]
-fn spawn_me<FE: FuzzySearcher>(resulter: FE, sender: flume::Sender<Vec<FE::Item>>, capnum: usize) {
-    let mut inner = Vec::with_capacity(capnum);
-
-    resulter.for_each(|result| {
-        if inner.len() == inner.capacity() {
-            let msg = mem::replace(&mut inner, Vec::with_capacity(capnum));
-
-            let _any_result = sender.send(msg);
-        }
-
-        inner.push(result);
-    });
-
-    // The last vector could be empty or partially filled.
-    if !inner.is_empty() {
-        // Whatever is is, we will end this function's work right here anyway.
-        let _any_result = sender.send(inner);
-    }
-}
-
-pub struct AsciiAlgo<A, S>
-where
-    A: Fn(&[u8], &[u8], &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-    S: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    files: Vec<Box<Path>>,
-    search_data: AsciiSearchData<A, S>,
-}
-
-#[derive(Clone)]
-pub struct AsciiSearchData<A, S>
-where
-    A: Fn(&[u8], &[u8], &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-    S: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    root_folder: Arc<str>,
-    needle: Arc<str>,
-    algo: A,
-    fallback_utf8_algo: S,
-}
-
-impl<A, S> AsciiSearchData<A, S>
-where
-    A: Fn(&[u8], &[u8], &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-    S: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    pub fn new(root_folder: Arc<str>, needle: Arc<str>, algo: A, fallback_utf8_algo: S) -> Self {
-        Self {
-            root_folder,
-            needle,
-            algo,
-            fallback_utf8_algo,
-        }
-    }
-}
-
-impl<A, S> FuzzySearcher for AsciiAlgo<A, S>
-where
-    A: Fn(&[u8], &[u8], &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-    S: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    type SearchData = AsciiSearchData<A, S>;
-
-    type Item = MWP;
 
     #[inline]
-    fn create(files: Vec<Box<Path>>, search_data: Self::SearchData) -> Self {
-        Self { files, search_data }
+    fn spawn_me(self, files: Vec<Box<Path>>, sender: flume::Sender<Vec<MWP>>, capnum: usize) {
+        let mut inner = Vec::with_capacity(capnum);
+
+        self.from_walk(files, |result| {
+            if inner.len() == inner.capacity() {
+                let msg = mem::replace(&mut inner, Vec::with_capacity(capnum));
+
+                let _any_result = sender.send(msg);
+            }
+
+            inner.push(result);
+        });
+
+        // The last vector could be empty or partially filled.
+        if !inner.is_empty() {
+            // Whatever is is, we will end this function's work right here anyway.
+            let _any_result = sender.send(inner);
+        }
     }
 
     #[inline]
-    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        fn trim_ascii_whitespace(line: &str) -> (&str, usize) {
-            let mut iter = line.as_bytes().iter().enumerate();
+    fn from_walk<F: FnMut(MWP)>(self, files: Vec<Box<Path>>, mut f: F) {
+        let needle: &str = &self.needle;
+        let root_folder: &str = &self.root_folder;
 
-            let start_idx = iter
-                .find(|(_idx, c)| !c.is_ascii_whitespace())
-                .map(|idx_c| idx_c.0)
-                // This trim should not be used on an empty line,
-                // but if it would, the line will be indexed with the
-                // [0..0] range and won't panic.
-                .unwrap_or(0);
+        let ascii_algo: A = self.ascii_algo;
 
-            let end_idx = iter
-                .rfind(|(_idx, c)| !c.is_ascii_whitespace())
-                //x Inclusive range could not be used;
-                //x even though `[1..=0]` won't panic,
-                //x on a string that has only whitespaces,
-                //x the range will be [0..=0], which is not okay.
-                //
-                // `+1` because current index is the index of a
-                // first non-whitespace char, but range is not inclusive.
-                .map(|idx_c| idx_c.0 + 1)
-                .unwrap_or(start_idx);
-
-            // Because the index starts from 0
-            // and there's only one byte for each ASCII char,
-            // the number of trimmed whitespaces is `start_idx`.
-            (&line[start_idx..end_idx], start_idx)
-        }
-
-        let needle: &str = &self.search_data.needle;
-        let root_folder: &str = &self.search_data.root_folder;
-
-        let algo: &A = &self.search_data.algo;
-
-        let fallback_algo: &S = &self.search_data.fallback_utf8_algo;
+        let fallback_utf8_algo: U = self.fallback_utf8_algo;
 
         let mut prealloc: (Vec<Score>, Vec<Score>) = (Vec::new(), Vec::new());
 
-        self.files.iter().for_each(|file| {
+        files.iter().for_each(|file| {
             if let Ok(filebuf) = fs::read(file) {
-                match ascii::ascii_from_bytes(&filebuf) {
-                    // Checked ASCII
-                    Some(ascii_str) => {
-                        ByteLines::new(ascii_str.as_bytes()).enumerate().for_each(
-                            |(line_idx, line)| {
-                                // SAFETY: the whole text is checked and is ASCII, which is utf8 always;
-                                // the line is a part of a text, so is utf8 too.
-                                let line = unsafe { std::str::from_utf8_unchecked(line) };
+                for (line_idx, line) in ByteLines::new(&filebuf).enumerate() {
+                    match line {
+                        Line::Ascii(line) => {
+                            let ascii_algo = |line: &str| ascii_algo(line, needle, &mut prealloc);
 
-                                let ascii_algo = |line: &str| {
-                                    algo(line.as_bytes(), needle.as_bytes(), &mut prealloc)
-                                };
+                            apply(
+                                Flag::Ascii,
+                                ascii_algo,
+                                line,
+                                file,
+                                root_folder,
+                                line_idx,
+                                &mut f,
+                            );
+                        }
+                        Line::Utf8(line) => {
+                            let fallback_utf8_algo =
+                                |line: &str| fallback_utf8_algo(line, needle, &mut prealloc);
 
-                                apply(
-                                    trim_ascii_whitespace,
-                                    ascii_algo,
-                                    line,
-                                    file,
-                                    root_folder,
-                                    line_idx,
-                                    &mut f,
-                                );
-                            },
-                        );
-                    }
-                    // Maybe utf8. Fall back to utf8 scoring for as long as it is valid utf8.
-                    None => {
-                        let utf8_line = |line: &str| fallback_algo(line, needle, &mut prealloc);
-
-                        generic_utf8(file, &filebuf, root_folder, utf8_line, &mut f)
+                            apply(
+                                Flag::Utf8,
+                                fallback_utf8_algo,
+                                line,
+                                file,
+                                root_folder,
+                                line_idx,
+                                &mut f,
+                            );
+                        }
+                        // Skip the current file if not utf8-encoded.
+                        Line::NotUtf8Line => return,
                     }
                 }
             }
@@ -322,57 +239,14 @@ where
     }
 }
 
-fn generic_utf8<F: FnMut(MWP)>(
-    file: &Path,
-    filebuf: &[u8],
-    root_folder: &str,
-    mut takes_line: impl FnMut(&str) -> Option<MatchWithPositions>,
-    mut f: F,
-) {
-    fn trim_utf8_whitespace(line: &str) -> (&str, usize) {
-        let mut trimmed_start: usize = 0;
-        let line = line.trim_start_matches(|c: char| {
-            let is_w = c.is_whitespace();
-            if is_w {
-                trimmed_start += 1;
-            }
-
-            is_w
-        });
-
-        (line.trim_end(), trimmed_start)
-    }
-
-    let valid_up_to = match std::str::from_utf8(filebuf) {
-        Ok(_valid_str) => filebuf.len(),
-        Err(utf8_e) => utf8_e.valid_up_to(),
-    };
-
-    // SAFETY: just checked validness.
-    let valid_str = unsafe { std::str::from_utf8_unchecked(&filebuf[..valid_up_to]) };
-
-    valid_str.lines().enumerate().for_each(|(line_idx, line)| {
-        apply(
-            trim_utf8_whitespace,
-            &mut takes_line,
-            line,
-            file,
-            root_folder,
-            line_idx,
-            &mut f,
-        );
-    });
+enum Flag {
+    Ascii,
+    Utf8,
 }
 
 #[allow(clippy::too_many_arguments)]
 fn apply(
-    // ASCII trimming gets some bonuses,
-    // so this is not generic over utf8.
-    //
-    // Should return the trimmed string,
-    // and the number of chars trimmed from the start,
-    // because that number is added to the column.
-    trim_whitespaces: impl Fn(&str) -> (&str, usize),
+    flag: Flag,
     mut takes_line: impl FnMut(&str) -> Option<MatchWithPositions>,
     line: &str,
     filepath: &Path,
@@ -407,7 +281,11 @@ fn apply(
         // because this could change the result
         // (trailing or leading whitespaces are valid to search,
         // even if that's a very rare case).
-        let (trimmed_line, add_col) = trim_whitespaces(line);
+        let (trimmed_line, add_col) = match flag {
+            Flag::Ascii => trim_ascii_whitespace(line),
+            Flag::Utf8 => trim_utf8_whitespace(line),
+        };
+
         let bufs = (&mut [0_u8; 20], &mut [0_u8; 20]);
         // Humans' numbers start from 1.
         let row = fmt_usize(1 + line_idx, bufs.0);
@@ -437,6 +315,49 @@ fn apply(
     }
 }
 
+fn trim_ascii_whitespace(line: &str) -> (&str, usize) {
+    let mut iter = line.as_bytes().iter().enumerate();
+
+    let start_idx = iter
+        .find(|(_idx, c)| !c.is_ascii_whitespace())
+        .map(|idx_c| idx_c.0)
+        // This trim should not be used on an empty line,
+        // but if it would, the line will be indexed with the
+        // [0..0] range and won't panic.
+        .unwrap_or(0);
+
+    let end_idx = iter
+        .rfind(|(_idx, c)| !c.is_ascii_whitespace())
+        //x Inclusive range could not be used;
+        //x even though `[1..=0]` won't panic,
+        //x on a string that has only whitespaces
+        //x the range will be [0..=0], which is not okay.
+        //
+        // `+1` because current index is the index of a
+        // first non-whitespace char, but range is not inclusive.
+        .map(|idx_c| idx_c.0 + 1)
+        .unwrap_or(start_idx);
+
+    // Because the index starts from 0
+    // and there's only one byte for each ASCII char,
+    // the number of trimmed whitespaces is `start_idx`.
+    (&line[start_idx..end_idx], start_idx)
+}
+
+fn trim_utf8_whitespace(line: &str) -> (&str, usize) {
+    let mut trimmed_start: usize = 0;
+    let line = line.trim_start_matches(|c: char| {
+        let is_w = c.is_whitespace();
+        if is_w {
+            trimmed_start += 1;
+        }
+
+        is_w
+    });
+
+    (line.trim_end(), trimmed_start)
+}
+
 /// Formats the number, returns the string.
 ///
 /// Could be used with stack-allocated buffer.
@@ -450,9 +371,7 @@ fn apply(
 /// As long as `usize` is not wider than u64,
 /// a buffer with 20 bytes is enough.
 fn fmt_usize(u: usize, buf: &mut [u8]) -> &mut str {
-    let len = buf.len();
-
-    let mut index = len;
+    let mut index = buf.len();
     let mut u = u;
     while u != 0 {
         index -= 1;
@@ -461,79 +380,7 @@ fn fmt_usize(u: usize, buf: &mut [u8]) -> &mut str {
     }
 
     // SAFETY: "mod 10 + b'0'" gives only ASCII chars, which is always utf8.
-    unsafe { std::str::from_utf8_unchecked_mut(&mut buf[index..len]) }
-}
-
-pub struct Utf8Algo<A>
-where
-    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    files: Vec<Box<Path>>,
-    search_data: Utf8SearchData<A>,
-}
-
-#[derive(Clone)]
-pub struct Utf8SearchData<A>
-where
-    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    root_folder: Arc<str>,
-    needle: Arc<str>,
-    algo: A,
-}
-
-impl<A> Utf8SearchData<A>
-where
-    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    pub fn new(root_folder: Arc<str>, needle: Arc<str>, algo: A) -> Self {
-        Self {
-            root_folder,
-            needle,
-            algo,
-        }
-    }
-}
-
-impl<A> FuzzySearcher for Utf8Algo<A>
-where
-    A: Fn(&str, &str, &mut (Vec<Score>, Vec<Score>)) -> Option<MatchWithPositions>
-        + Clone
-        + Send
-        + 'static,
-{
-    type SearchData = Utf8SearchData<A>;
-
-    type Item = MWP;
-
-    fn create(files: Vec<Box<Path>>, search_data: Self::SearchData) -> Self {
-        Self { files, search_data }
-    }
-
-    fn for_each<F: FnMut(Self::Item)>(self, mut f: F) {
-        let root_folder: &str = &self.search_data.root_folder;
-        let needle: &str = &self.search_data.needle;
-        let algo: &A = &self.search_data.algo;
-
-        let mut prealloc: (Vec<Score>, Vec<Score>) = (Vec::new(), Vec::new());
-
-        self.files.iter().for_each(|file| {
-            if let Ok(filebuf) = fs::read(file) {
-                let takes_line = |line: &str| algo(line, needle, &mut prealloc);
-
-                generic_utf8(file, &filebuf, root_folder, takes_line, &mut f);
-            }
-        });
-    }
+    unsafe { std::str::from_utf8_unchecked_mut(&mut buf[index..]) }
 }
 
 /// More of an example, than real thing, yeah. But could be useful.
@@ -649,28 +496,39 @@ mod showcase {
             if line.len() > max_line_len {
                 None
             } else {
-                crate::utf8::match_and_score_with_positions(needle, line, prealloc)
+                crate::fzy_algo::utf8::match_and_score_with_positions(needle, line, prealloc)
             }
         };
 
         if is_ascii {
             // ascii
             let ascii_algo =
-                move |line: &[u8], needle: &[u8], prealloc: &mut (Vec<Score>, Vec<Score>)| {
+                move |line: &str, needle: &str, prealloc: &mut (Vec<Score>, Vec<Score>)| {
                     if line.len() > max_line_len {
                         None
                     } else {
-                        ascii::match_and_score_with_positions(needle, line, prealloc)
+                        crate::fzy_algo::ascii::match_and_score_with_positions(
+                            needle.as_bytes(),
+                            line.as_bytes(),
+                            prealloc,
+                        )
                     }
                 };
 
-            let data =
-                AsciiSearchData::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
-            AsciiAlgo::setter(dir_iter, data, r, sort_and_print);
+            let spec =
+                SpecializedAscii::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
+            spec.setter(dir_iter, r, sort_and_print);
         } else {
             // utf8
-            let data = Utf8SearchData::new(root_folder.into(), needle.into(), utf8_algo);
-            Utf8Algo::setter(dir_iter, data, r, sort_and_print);
+            let unspec = SpecializedAscii::new(
+                root_folder.into(),
+                needle.into(),
+                // Just drop utf8 algorithm in both slots,
+                // and that algorithm will run for all lines.
+                utf8_algo,
+                utf8_algo,
+            );
+            unspec.setter(dir_iter, r, sort_and_print);
         }
 
         Ok(())

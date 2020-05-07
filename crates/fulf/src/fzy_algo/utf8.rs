@@ -1,8 +1,9 @@
 //! Working with utf8-encoded strings.
 
-use crate::{
-    fzy_algo::{self, score_with_positions},
+use super::{
+    score_with_positions,
     scoring_utils::{MatchWithPositions, Score},
+    FzyItem,
 };
 
 #[inline]
@@ -28,7 +29,7 @@ pub fn match_and_score_with_positions(
 /// # Examples
 ///
 // This is a proper code, that should compile, but `matches()` function is private.
-/// ```compile_fail
+/// ```ignore
 /// assert_eq!(Some(5), extracted_fzy::matches("amo汉漢", "app/models/order/汉语/漢語"));
 /// assert_eq!(6, "汉漢".len()); // Length of this two chars in bytes.
 /// ```
@@ -43,7 +44,7 @@ fn matches(needle: &str, haystack: &str) -> Option<usize> {
     // Use loop instead of `needle.all()`, to count needle's length.
     let mut needle_length = 0;
     for n in needle.chars() {
-        if !hchars.any(|h| fzy_algo::FzyItem::eq(n, h)) {
+        if !hchars.any(|h| FzyItem::eq(n, h)) {
             return None;
         }
         needle_length += 1;

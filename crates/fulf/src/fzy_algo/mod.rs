@@ -1,5 +1,8 @@
-use crate::scoring_utils::*;
-use std::mem;
+pub mod ascii;
+pub mod scoring_utils;
+pub mod utf8;
+
+use {scoring_utils::*, std::mem};
 
 pub trait FzyItem: Copy {
     /// Virtual char: inserted before the first real char.
