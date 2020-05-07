@@ -8,29 +8,46 @@ use {
     },
 };
 
+/// The result of `ByteLines` parser.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Line<'a> {
     Ascii(&'a str),
     Utf8(&'a str),
     NotUtf8Line,
 }
 
-/// Newline char.
-const NL: u8 = b'\n';
-
+/// Parses raw untrusted bytes into the strings.
+///
+/// # Examples
+///
+/// ```
+/// use fulf::bytelines::{ByteLines, Line::*};
+///
+/// let text = concat!("Hello, world!", '\n', "Тнis is пот АSСII-опlу liпе.", '\n');
+/// let lines = [text.as_bytes(), &[0_u8, 120, 43, 255, 100]].concat();
+/// let mut lines = ByteLines::new(&lines);
+/// assert_eq!(lines.next(), Some(Ascii("Hello, world!")));
+/// assert_eq!(lines.next(), Some(Utf8("Тнis is пот АSСII-опlу liпе.")));
+/// assert_eq!(lines.next(), Some(NotUtf8Line));
+/// assert_eq!(lines.next(), None);
+/// ```
+//
+//x XXX: poor Windows guys will be left with a '\r' char at the end of a string.
+//x Nowadays it's a lone `\n` even on Windows (everywhere except Notepad),
+//x so yeah, nobody cares.
 #[derive(Clone)]
 pub struct ByteLines<'a> {
     text: &'a [u8],
 }
-
-//x XXX: poor Windows guys will be left with a '\r' char at the end of a string.
-//x Nowadays it's a lone `\n` even on Windows (everywhere except Notepad),
-//x so yeah, nobody cares.
 impl<'a> ByteLines<'a> {
     #[inline]
     pub fn new(text: &'a [u8]) -> Self {
         Self { text }
     }
 }
+
+/// Newline char.
+const NL: u8 = b'\n';
 
 impl<'a> Iterator for ByteLines<'a> {
     type Item = Line<'a>;

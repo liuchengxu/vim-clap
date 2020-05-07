@@ -5,7 +5,7 @@ use {
     },
     ignore,
     std::{
-        fs, mem,
+        fs, io, mem,
         path::{Path, MAIN_SEPARATOR},
         sync::Arc,
         thread,
@@ -104,32 +104,53 @@ where
     /// vectors and then passes them as iterators to `spawner` function.
     /// `Rules::results_cap` is passed to `spawner` as `capnum`, and
     /// all other things are passed as is.
-    pub fn setter(self, iter: ignore::Walk, r: Rules, handle_results: impl FnMut(Vec<MWP>)) {
+    pub fn setter(
+        self,
+        mut iter: ignore::Walk,
+        r: Rules,
+        handle_results: impl FnMut(Vec<MWP>),
+    ) -> io::Result<()> {
         let threadcount = r.bonus_threads as usize + 1;
         let mut files_chunks = vec![Vec::with_capacity(1024); threadcount];
 
         let mut index = 0;
         let mut errcount = 0;
-        iter.for_each(|res| match res {
-            Ok(dir_entry) => {
-                let path = dir_entry.into_path().into_boxed_path();
+        iter.try_for_each(|res| {
+            match res {
+                Ok(dir_entry) => {
+                    let path = dir_entry.into_path().into_boxed_path();
 
-                if path.is_file() {
-                    index += 1;
-                    if index == threadcount {
-                        index = 0;
+                    if path.is_file() {
+                        index += 1;
+                        if index == threadcount {
+                            index = 0;
+                        }
+
+                        files_chunks[index].push(path);
                     }
+                }
+                Err(last_err) => {
+                    errcount += 1;
+                    if errcount > 16000 {
+                        // Most errors in `ignore` are bound to reading the configs;
+                        // the only error type that could get here is a symlink loop
+                        // (well, there could be IO too, but it's highly unlikely to get
+                        // that much IO errors).
+                        // I don't know if `ignore::Walk` can get out of the loop by itself,
+                        // so here's the exit, if no.
+                        return Err(io::Error::new(
+                            io::ErrorKind::Other,
+                            format!(
+                            "the directory tree is either endless or produce too many errors: {}",
+                            last_err
+                        ),
+                        ));
+                    }
+                }
+            }
 
-                    files_chunks[index].push(path);
-                }
-            }
-            Err(_) => {
-                errcount += 1;
-                if errcount > 16000 {
-                    panic!()
-                }
-            }
-        });
+            Ok(())
+        })?;
 
         let files_chunks = files_chunks.into_iter();
 
@@ -139,6 +160,8 @@ where
             r.thread_local_results_cap,
             handle_results,
         );
+
+        Ok(())
     }
 
     /// The number of threads to spawn is defined by the number of items
@@ -169,6 +192,7 @@ where
         threads.into_iter().for_each(|t| t.join().unwrap());
     }
 
+    /// Reads the given files and filters them.
     fn spawn_me(self, files: Vec<Box<Path>>, sender: flume::Sender<Vec<MWP>>, capnum: usize) {
         let needle: &str = &self.needle;
         let root_folder: &str = &self.root_folder;
@@ -187,13 +211,18 @@ where
                 for (line_idx, line) in ByteLines::new(&filebuf).enumerate() {
                     global_linecount += 1;
 
+                    // There are some mutable borrowing problems,
+                    // that this macro solves.
                     macro_rules! apply {
-                        ($algo_name:ident, $flag:expr, $line:expr) => {
+                        ($algo_name:ident, $encoding:expr, $line:expr) => {
                             let algo =
                                 |taken_line: &str| $algo_name(taken_line, needle, &mut prealloc);
                             let f = |result| {
+                                // Send the results when the buffer is full,
+                                // or force-send partial results after some time.
                                 if inner.len() == inner.capacity() || global_linecount >= 2048 {
                                     global_linecount = 0;
+                                    // Only send non-empty buffers.
                                     if !inner.is_empty() {
                                         let msg =
                                             mem::replace(&mut inner, Vec::with_capacity(capnum));
@@ -203,16 +232,16 @@ where
                                 inner.push(result);
                             };
 
-                            apply($flag, algo, $line, file, root_folder, line_idx, f);
+                            apply($encoding, algo, $line, file, root_folder, line_idx, f);
                         };
                     }
 
                     match line {
                         Line::Ascii(line) => {
-                            apply!(ascii_algo, Flag::Ascii, line);
+                            apply!(ascii_algo, Encoding::Ascii, line);
                         }
                         Line::Utf8(line) => {
-                            apply!(fallback_utf8_algo, Flag::Utf8, line);
+                            apply!(fallback_utf8_algo, Encoding::Utf8, line);
                         }
                         // Skip the current file if not utf8-encoded.
                         Line::NotUtf8Line => return,
@@ -229,14 +258,14 @@ where
     }
 }
 
-enum Flag {
+enum Encoding {
     Ascii,
     Utf8,
 }
 
 #[allow(clippy::too_many_arguments)]
 fn apply(
-    flag: Flag,
+    encoding: Encoding,
     mut takes_line: impl FnMut(&str) -> Option<MatchWithPositions>,
     line: &str,
     filepath: &Path,
@@ -271,9 +300,9 @@ fn apply(
         // because this could change the result
         // (trailing or leading whitespaces are valid to search,
         // even if that's a very rare case).
-        let (trimmed_line, add_col) = match flag {
-            Flag::Ascii => trim_ascii_whitespace(line),
-            Flag::Utf8 => trim_utf8_whitespace(line),
+        let (trimmed_line, add_col) = match encoding {
+            Encoding::Ascii => trim_ascii_whitespace(line),
+            Encoding::Utf8 => trim_utf8_whitespace(line),
         };
 
         let bufs = (&mut [0_u8; 20], &mut [0_u8; 20]);
@@ -305,6 +334,9 @@ fn apply(
     }
 }
 
+/// Specialized trim function,
+/// that counts the number of chars trimmed
+/// from the start of the line.
 fn trim_ascii_whitespace(line: &str) -> (&str, usize) {
     let mut iter = line.as_bytes().iter().enumerate();
 
@@ -334,6 +366,9 @@ fn trim_ascii_whitespace(line: &str) -> (&str, usize) {
     (&line[start_idx..end_idx], start_idx)
 }
 
+/// Specialized trim function,
+/// that counts the number of chars trimmed
+/// from the start of the line.
 fn trim_utf8_whitespace(line: &str) -> (&str, usize) {
     let mut trimmed_start: usize = 0;
     let line = line.trim_start_matches(|c: char| {
@@ -491,7 +526,7 @@ mod showcase {
 
             let spec =
                 SpecializedAscii::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
-            spec.setter(dir_iter, r, handle_results);
+            spec.setter(dir_iter, r, handle_results).unwrap();
         } else {
             // utf8
             let unspec = SpecializedAscii::new(
@@ -502,7 +537,7 @@ mod showcase {
                 utf8_algo,
                 utf8_algo,
             );
-            unspec.setter(dir_iter, r, handle_results);
+            unspec.setter(dir_iter, r, handle_results).unwrap();
         }
 
         Ok(())

@@ -2,7 +2,7 @@
 //!
 //! Like regex searcher, but not regex searcher.
 
-mod bytelines;
+pub mod bytelines;
 
 pub mod fzy_algo;
 
