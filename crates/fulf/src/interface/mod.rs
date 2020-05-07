@@ -35,10 +35,14 @@ pub struct Rules {
 
 impl Rules {
     #[inline]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            thread_local_results_cap: 128,
-            bonus_threads: 0,
+            thread_local_results_cap: 64,
+            bonus_threads: if cfg!(target_pointer_width = "64") {
+                2
+            } else {
+                0
+            },
         }
     }
 }
@@ -100,8 +104,7 @@ where
     /// vectors and then passes them as iterators to `spawner` function.
     /// `Rules::results_cap` is passed to `spawner` as `capnum`, and
     /// all other things are passed as is.
-    #[inline]
-    pub fn setter(self, iter: ignore::Walk, r: Rules, sort_and_print: impl FnMut(Vec<MWP>)) {
+    pub fn setter(self, iter: ignore::Walk, r: Rules, handle_results: impl FnMut(Vec<MWP>)) {
         let threadcount = r.bonus_threads as usize + 1;
         let mut files_chunks = vec![Vec::with_capacity(1024); threadcount];
 
@@ -134,20 +137,19 @@ where
             self,
             files_chunks,
             r.thread_local_results_cap,
-            sort_and_print,
+            handle_results,
         );
     }
 
     /// The number of threads to spawn is defined by the number of items
     /// in the iterator.
-    #[inline]
     fn spawner(
         self,
         files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
 
         capnum: usize,
 
-        sort_and_print: impl FnMut(Vec<MWP>),
+        handle_results: impl FnMut(Vec<MWP>),
     ) {
         let (sx, rx) = flume::bounded(100);
         let mut threads = Vec::with_capacity(16);
@@ -162,34 +164,12 @@ where
         });
         drop(sx);
 
-        rx.iter().for_each(sort_and_print);
+        rx.iter().for_each(handle_results);
 
         threads.into_iter().for_each(|t| t.join().unwrap());
     }
 
-    #[inline]
     fn spawn_me(self, files: Vec<Box<Path>>, sender: flume::Sender<Vec<MWP>>, capnum: usize) {
-        let mut inner = Vec::with_capacity(capnum);
-
-        self.from_walk(files, |result| {
-            if inner.len() == inner.capacity() {
-                let msg = mem::replace(&mut inner, Vec::with_capacity(capnum));
-
-                let _any_result = sender.send(msg);
-            }
-
-            inner.push(result);
-        });
-
-        // The last vector could be empty or partially filled.
-        if !inner.is_empty() {
-            // Whatever is is, we will end this function's work right here anyway.
-            let _any_result = sender.send(inner);
-        }
-    }
-
-    #[inline]
-    fn from_walk<F: FnMut(MWP)>(self, files: Vec<Box<Path>>, mut f: F) {
         let needle: &str = &self.needle;
         let root_folder: &str = &self.root_folder;
 
@@ -199,36 +179,40 @@ where
 
         let mut prealloc: (Vec<Score>, Vec<Score>) = (Vec::new(), Vec::new());
 
+        let mut inner = Vec::with_capacity(capnum);
+        let mut global_linecount: usize = 0;
+
         files.iter().for_each(|file| {
             if let Ok(filebuf) = fs::read(file) {
                 for (line_idx, line) in ByteLines::new(&filebuf).enumerate() {
+                    global_linecount += 1;
+
+                    macro_rules! apply {
+                        ($algo_name:ident, $flag:expr, $line:expr) => {
+                            let algo =
+                                |taken_line: &str| $algo_name(taken_line, needle, &mut prealloc);
+                            let f = |result| {
+                                if inner.len() == inner.capacity() || global_linecount >= 2048 {
+                                    global_linecount = 0;
+                                    if !inner.is_empty() {
+                                        let msg =
+                                            mem::replace(&mut inner, Vec::with_capacity(capnum));
+                                        let _any_result = sender.send(msg);
+                                    }
+                                }
+                                inner.push(result);
+                            };
+
+                            apply($flag, algo, $line, file, root_folder, line_idx, f);
+                        };
+                    }
+
                     match line {
                         Line::Ascii(line) => {
-                            let ascii_algo = |line: &str| ascii_algo(line, needle, &mut prealloc);
-
-                            apply(
-                                Flag::Ascii,
-                                ascii_algo,
-                                line,
-                                file,
-                                root_folder,
-                                line_idx,
-                                &mut f,
-                            );
+                            apply!(ascii_algo, Flag::Ascii, line);
                         }
                         Line::Utf8(line) => {
-                            let fallback_utf8_algo =
-                                |line: &str| fallback_utf8_algo(line, needle, &mut prealloc);
-
-                            apply(
-                                Flag::Utf8,
-                                fallback_utf8_algo,
-                                line,
-                                file,
-                                root_folder,
-                                line_idx,
-                                &mut f,
-                            );
+                            apply!(fallback_utf8_algo, Flag::Utf8, line);
                         }
                         // Skip the current file if not utf8-encoded.
                         Line::NotUtf8Line => return,
@@ -236,6 +220,12 @@ where
                 }
             }
         });
+
+        // The last vector could be empty or partially filled.
+        if !inner.is_empty() {
+            // Whatever is is, we will end this function's work right here anyway.
+            let _any_result = sender.send(inner);
+        }
     }
 }
 
@@ -399,15 +389,8 @@ mod showcase {
     ///
     /// `needle` - a string to fuzzy-search.
     ///
-    /// `sort_and_print` - a function or a closure, that takes two arguments:
-    ///
-    /// 1. A mutable slice of unsorted results provided by fzy algorithm;
-    /// Those should be always sorted within the function
-    /// (but partially, as only 512 results are kept in the storage).
-    ///
-    /// 2. A number of total results that passed the matcher and provided
-    /// at least some score. The number of total results could be bigger than
-    /// the length of slice.
+    /// `handle_results` - a closure, that takes the results from
+    /// busy worker threads and handles those results.
     ///
     /// # Returns
     ///
@@ -427,9 +410,9 @@ mod showcase {
     pub fn default_searcher(
         path: impl AsRef<Path>,
         needle: impl AsRef<str>,
-        sort_and_print: impl FnMut(Vec<MWP>),
+        handle_results: impl FnMut(Vec<MWP>),
     ) -> Result<(), ()> {
-        with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), sort_and_print)
+        with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), handle_results)
     }
 
     /// A function to use default fuzzy-search algorithm.
@@ -466,7 +449,7 @@ mod showcase {
         needle: impl AsRef<str>,
         max_line_len: usize,
 
-        sort_and_print: impl FnMut(Vec<MWP>),
+        handle_results: impl FnMut(Vec<MWP>),
     ) -> Result<(), ()> {
         let needle = needle.as_ref();
 
@@ -474,16 +457,7 @@ mod showcase {
             return Err(());
         }
 
-        let r = {
-            let mut r = Rules::new();
-            r.bonus_threads = if cfg!(target_pointer_width = "64") {
-                2
-            } else {
-                0
-            };
-
-            r
-        };
+        let r = Rules::new();
 
         let path = path.as_ref();
         let dir_iter = ignore::Walk::new(path);
@@ -517,7 +491,7 @@ mod showcase {
 
             let spec =
                 SpecializedAscii::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
-            spec.setter(dir_iter, r, sort_and_print);
+            spec.setter(dir_iter, r, handle_results);
         } else {
             // utf8
             let unspec = SpecializedAscii::new(
@@ -528,7 +502,7 @@ mod showcase {
                 utf8_algo,
                 utf8_algo,
             );
-            unspec.setter(dir_iter, r, sort_and_print);
+            unspec.setter(dir_iter, r, handle_results);
         }
 
         Ok(())
@@ -619,17 +593,17 @@ mod tests {
         let current_dir = std::env::current_dir().unwrap();
         let needle = "print";
         test_init! (
-            total, global_vec, sort_and_print;
+            total, global_vec, handle_results;
         {
-            default_searcher(current_dir.clone(), needle, sort_and_print).unwrap();
+            default_searcher(current_dir.clone(), needle, handle_results).unwrap();
             println!("Total: {}\nCapped results: {:?}", total, global_vec);
         });
 
         let needle = "sоме Uпiсоdе техт";
         test_init! (
-            total, global_vec, sort_and_print;
+            total, global_vec, handle_results;
         {
-            with_fzy_algo(current_dir, needle, 1024, sort_and_print).unwrap();
+            with_fzy_algo(current_dir, needle, 1024, handle_results).unwrap();
             println!("{:?}", global_vec);
         });
     }
