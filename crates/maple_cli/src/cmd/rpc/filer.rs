@@ -3,7 +3,7 @@ use anyhow::Result;
 use icon::prepend_filer_icon;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::PathBuf;
+use std::path::{self, PathBuf};
 use std::{fs, io};
 
 /// Display the inner path in a nicer way.
@@ -29,8 +29,11 @@ impl DisplayPath {
 impl Into<String> for DisplayPath {
     fn into(self) -> String {
         let path_str = if self.inner.is_dir() {
-            // TODO: windows compatible?
-            format!("{}/", self.to_file_name_str().unwrap())
+            format!(
+                "{}{}",
+                self.to_file_name_str().unwrap(),
+                path::MAIN_SEPARATOR
+            )
         } else {
             self.to_file_name_str().map(Into::into).unwrap()
         };

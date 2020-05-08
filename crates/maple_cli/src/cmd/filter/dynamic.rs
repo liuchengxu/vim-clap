@@ -30,31 +30,31 @@ impl<T: Copy> Insert<T> for [T; ITEMS_TO_SHOW] {
 
 /// This macro is a special thing for [`dyn_collect_all`] and [`dyn_collect_number`].
 macro_rules! insert_both {
-            // This macro pushes all things into buffer, pops one worst item from each top queue
-            // and then inserts all things into `top_` queues.
-            (pop; $index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
-                match $index {
-                    // If index is last possible, then the worst item is better than this we want to push in,
-                    // and we do nothing.
-                    Some(MAX_IDX) => $buffer.push(($text, $score, $indices)),
-                    // Else, one item gets popped from the queue
-                    // and other is inserted.
-                    Some(idx) => {
-                        insert_both!(idx + 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
-                    }
-                    None => {
-                        insert_both!(0, $score, $text, $indices => $buffer, $top_results, $top_scores);
-                    }
-                }
-            }};
+    // This macro pushes all things into buffer, pops one worst item from each top queue
+    // and then inserts all things into `top_` queues.
+    (pop; $index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+        match $index {
+            // If index is last possible, then the worst item is better than this we want to push in,
+            // and we do nothing.
+            Some(MAX_IDX) => $buffer.push(($text, $score, $indices)),
+            // Else, one item gets popped from the queue
+            // and other is inserted.
+            Some(idx) => {
+                insert_both!(idx + 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
+            }
+            None => {
+                insert_both!(0, $score, $text, $indices => $buffer, $top_results, $top_scores);
+            }
+        }
+    }};
 
-            // This macro pushes all things into buffer and inserts all things into
-            // `top_` queues.
-            ($index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
-                $buffer.push(($text, $score, $indices));
-                $top_results.pop_and_insert($index, $buffer.len() - 1);
-                $top_scores.pop_and_insert($index, $score);
-            }};
+    // This macro pushes all things into buffer and inserts all things into
+    // `top_` queues.
+    ($index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+        $buffer.push(($text, $score, $indices));
+        $top_results.pop_and_insert($index, $buffer.len() - 1);
+        $top_scores.pop_and_insert($index, $score);
+    }};
 }
 
 type SelectedTopItemsInfo = (usize, [i64; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
