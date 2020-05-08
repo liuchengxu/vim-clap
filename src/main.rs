@@ -24,7 +24,7 @@ fn run(maple: Maple) -> Result<()> {
         }
         Cmd::CheckRelease(check_release) => {
             let local_git_tag = built_info::GIT_VERSION.context("Failed to get git tag info")?;
-            check_release.check_new_release(local_git_tag)?;
+            check_release.run(local_git_tag)?;
         }
         _ => maple.run()?,
     }
