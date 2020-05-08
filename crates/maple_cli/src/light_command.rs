@@ -3,11 +3,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use icon::IconPainter;
 
 use crate::cmd::cache::CacheEntry;
-use crate::error::DummyError;
 use crate::utils::{get_cached_entry, read_first_lines, remove_dir_contents};
 
 /// Remove the last element if it's empty string.
@@ -185,7 +184,9 @@ impl<'a> LightCommand<'a> {
             println_json!(total, lines);
             return Ok(());
         }
-        Err(anyhow::Error::new(DummyError).context("No truncation"))
+        Err(anyhow!(
+            "--number is unspecified, no overhead minimalization"
+        ))
     }
 
     fn try_prepend_icon<'b>(&self, top_n: impl std::iter::Iterator<Item = &'b str>) -> Vec<String> {
