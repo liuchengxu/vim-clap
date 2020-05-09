@@ -41,7 +41,10 @@ function! clap#helper#complete(ArgLead, CmdLine, P) abort
   endif
   let registered = exists('g:clap') ? keys(g:clap.registrar) : []
   let registered += ['install-binary', 'install-binary!', 'debug', 'debug+']
-  return filter(uniq(sort(g:clap#builtin_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
+  if !exists('s:autoload_providers')
+    let s:autoload_providers = map(split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n"), 'fnamemodify(v:val, ":t:r")')
+  endif
+  return filter(uniq(sort(s:autoload_providers + keys(g:clap#provider_alias) + registered)), 'v:val =~# "^".a:ArgLead')
 endfunction
 
 function! clap#helper#echo_info(msg) abort
