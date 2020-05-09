@@ -4,6 +4,9 @@ pub mod utf8;
 
 use {scoring_utils::*, std::mem};
 
+/// Implementors could be scored by the algorithm.
+///
+/// Implemented for `char` and `&u8`.
 pub trait FzyItem: Copy {
     /// Virtual char: inserted before the first real char.
     ///
@@ -89,6 +92,7 @@ impl FzyItem for char {
 }
 
 /// The `IntoIterator` trait is not implemented for strings.
+/// But this trait is implemented for strings via `.chars()` method.
 pub trait FzyScorable: Copy {
     type FzyIter: Iterator;
 
@@ -111,6 +115,11 @@ impl<'a> FzyScorable for &'a str {
     }
 }
 
+/// The main function to score the things.
+///
+/// This function doesn't check the string for validity, only scores it.
+/// Probably, you wanted to use `match_and_score_with_positions()`
+/// from the utf8 or ascii modules?
 pub fn score_with_positions<A, S>(
     needle: A,
     needle_length: usize,
