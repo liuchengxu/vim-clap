@@ -42,7 +42,7 @@ pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
         "https://api.github.com/repos/{}/{}/releases/tags/{}",
         USER, REPO, tag
     ))?;
-    let v: serde_json::Value = serde_json::from_slice(&data).unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&data)?;
     if let serde_json::Value::Array(assets) = &v["assets"] {
         for asset in assets {
             if asset["name"] == asset_name {
@@ -55,7 +55,7 @@ pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
 
 pub fn latest_remote_release() -> Result<RemoteRelease> {
     let data = retrieve_latest_release()?;
-    let release: RemoteRelease = serde_json::from_slice(&data).unwrap();
+    let release: RemoteRelease = serde_json::from_slice(&data)?;
     Ok(release)
 }
 

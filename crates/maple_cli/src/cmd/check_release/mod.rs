@@ -20,7 +20,7 @@ pub struct CheckRelease {
 }
 
 impl CheckRelease {
-    pub fn check_new_release(&self, local_tag: &str) -> Result<()> {
+    pub fn run(&self, local_tag: &str) -> Result<()> {
         println!("Retrieving the latest remote release info...");
         let remote_release = github::latest_remote_release()?;
         let remote_tag = remote_release.tag_name;
