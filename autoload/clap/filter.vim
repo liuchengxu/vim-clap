@@ -19,7 +19,7 @@ endif
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
 elseif s:has_py_dynamic_module
-  let s:builtin_filter_capacity = 100000
+  let s:builtin_filter_capacity = 30000
 else
   let s:builtin_filter_capacity = 10000
 endif

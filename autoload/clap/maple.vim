@@ -220,7 +220,7 @@ function! clap#maple#ripgrep_forerunner_command() abort
     call add(global_opt, '--no-cache')
   endif
 
-  return [s:maple_bin] + global_opt + ['ripgrep-forerunner', '--cmd-dir', clap#rooter#working_dir()]
+  return [s:maple_bin] + global_opt + ['ripgrep-forerunner', '--cmd-dir', clap#rooter#working_dir(), '--output-threshold', clap#filter#capacity()]
 endfunction
 
 function! clap#maple#blines_command() abort
