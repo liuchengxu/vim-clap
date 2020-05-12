@@ -6,6 +6,7 @@ CHANGELOG
 ### Improved
 
 - Add cmdline completion for all the autoloaded providers. [#429](https://github.com/liuchengxu/vim-clap/issues/429)
+- Run the spinner for dyn filter. [#430](https://github.com/liuchengxu/vim-clap/issues/430)
 
 ## [0.15] 2020-05-02
 
