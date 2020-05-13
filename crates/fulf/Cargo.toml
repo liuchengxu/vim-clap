@@ -10,3 +10,4 @@ publish = false
 memchr = "^2.3.3"
 ignore = "^0.4.14"
 flume = "^0.7.1"
+inlinable_string = "^0.1.11"
