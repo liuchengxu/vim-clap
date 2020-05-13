@@ -151,10 +151,11 @@ impl<'a> LightCommand<'a> {
         dir: Option<PathBuf>,
         number: Option<usize>,
         icon_painter: Option<IconPainter>,
+        output_threshold: Option<usize>,
     ) -> Self {
         Self {
             cmd,
-            env: CommandEnv::new(dir, number, None, icon_painter, None),
+            env: CommandEnv::new(dir, number, None, icon_painter, output_threshold),
         }
     }
 
