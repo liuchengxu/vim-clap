@@ -44,7 +44,7 @@ if has('nvim')
       try
         call s:MessageHandler(trim(s:round_message))
       catch
-        call clap#helper#echo_error('Failed to handle message:'.v:exception)
+        call clap#helper#echo_error('Failed to handle message:'.v:exception.', throwpoint:'.v:throwpoint)
       finally
         let s:round_message = ''
       endtry
@@ -63,6 +63,8 @@ if has('nvim')
           return
         endif
         call clap#helper#echo_error('on_event:'.string(a:data))
+      else
+        call clap#spinner#set_idle()
       endif
     endif
   endfunction
@@ -74,6 +76,7 @@ if has('nvim')
           \ 'on_stdout': function('s:on_event'),
           \ 'on_stderr': function('s:on_event'),
           \ })
+    call clap#spinner#set_busy()
   endfunction
 
   function! clap#job#stdio#send_message(msg) abort
@@ -101,11 +104,17 @@ else
     endif
   endfunction
 
+  function! s:exit_cb(channel, exit_code) abort
+    call clap#spinner#set_idle()
+  endfunction
+
   function! s:start_service_job(cmd_list) abort
     call clap#job#stdio#stop_service()
+    call clap#spinner#set_busy()
     let s:job = job_start(a:cmd_list, {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
+          \ 'exit_cb': function('s:exit_cb'),
           \ 'noblock': 1,
           \ })
     let s:job_channel = job_getchannel(s:job)

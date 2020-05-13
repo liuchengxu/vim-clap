@@ -104,7 +104,7 @@ impl Grep {
 
         cmd.args(&args[1..]);
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter);
+        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter, None);
 
         light_cmd.execute(&args)?;
 
@@ -155,6 +155,9 @@ pub struct RipGrepForerunner {
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
+    /// Specify the threshold for writing the output of command to a tempfile.
+    #[structopt(long = "output-threshold", default_value = "30000")]
+    output_threshold: usize,
 }
 
 impl RipGrepForerunner {
@@ -204,7 +207,13 @@ impl RipGrepForerunner {
 
         set_current_dir(&mut cmd, self.cmd_dir.clone());
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, self.cmd_dir, number, icon_painter);
+        let mut light_cmd = LightCommand::new_grep(
+            &mut cmd,
+            self.cmd_dir,
+            number,
+            icon_painter,
+            Some(self.output_threshold),
+        );
 
         light_cmd.execute(&RG_ARGS)?;
 
