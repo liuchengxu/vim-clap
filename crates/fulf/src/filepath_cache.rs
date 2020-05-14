@@ -129,6 +129,7 @@ pub enum NotUtf8 {
     ReturnError,
 }
 
+/// Errors, that could occur during serialization.
 #[derive(Debug)]
 pub enum SerializeError {
     /// The inner error of the iterator.
@@ -137,7 +138,7 @@ pub enum SerializeError {
     /// Pretty much self-descriptive.
     NonUtf8Path,
     /// An error, that should never happen, actually.
-    /// For more info about it, read [this].
+    /// For more info about the case where this error could happen, read [this].
     ///
     /// [this]: https://docs.rs/ignore/0.4.15/ignore/struct.DirEntry.html#method.file_type
     StdinEntry,
@@ -558,6 +559,15 @@ mod iter {
         },
     };
 
+    /// An iterator that doesn't implement `Iterator` trait.
+    ///
+    /// How to use:
+    ///
+    /// ```
+    /// while let Ok(Some(x)) = stream_iter.read_next() {
+    ///     /* do thing with x */
+    /// }
+    /// ```
     #[derive(Debug)]
     pub struct StreamIter<'a> {
         cachebuf: &'a [u8],
@@ -691,16 +701,12 @@ mod iter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{self, Write};
 
     #[test]
-    fn im_just_bad_with_names() {
+    fn test_serialize_deserialize() {
         fn qwe(mut iter: StreamIter) -> Result<(), InvalidCache<()>> {
-            let stdout = io::stdout();
-            let mut stdout = stdout.lock();
-
             while let Some(pathstring) = iter.read_next()? {
-                writeln!(&mut stdout, "{}", pathstring).unwrap();
+                // println!("{}", pathstring);
                 let path: &std::path::Path = pathstring.as_ref();
                 assert!(path.exists());
             }
@@ -709,6 +715,7 @@ mod tests {
 
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.pop();
+
         let cache = serialize(
             current_dir.as_os_str().to_str().unwrap(),
             ignore::WalkBuilder::new(&current_dir),
@@ -729,32 +736,49 @@ mod tests {
     }
 
     #[test]
-    fn never_name_anything_this_way() {
-        assert_eq!(mem::size_of::<usize>() * 4, mem::size_of::<InString>());
+    fn test_multithread_access() {
+        fn asd(mut iter: StreamIter) -> Result<Vec<Box<str>>, InvalidCache<()>> {
+            let mut v = Vec::new();
+
+            while let Some(pathstring) = iter.read_next()? {
+                let path: &std::path::Path = pathstring.as_ref();
+                assert!(path.exists());
+                v.push(Box::from(pathstring));
+            }
+            Ok(v)
+        }
+
+        use std::{sync::Arc, thread};
 
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.pop();
-        let iter = ignore::WalkBuilder::new(current_dir)
-            .sort_by_file_path(|a_path, b_path| {
-                match (a_path.is_file(), b_path.is_file()) {
-                    (true, true) | (false, false) => a_path.cmp(b_path),
-                    // Files should always go before folders.
-                    (true, false) => CmpOrd::Less,
-                    (false, true) => CmpOrd::Greater,
-                }
+
+        let cache = serialize(
+            current_dir.as_os_str().to_str().unwrap(),
+            ignore::WalkBuilder::new(&current_dir),
+            NotUtf8::ReturnError,
+        )
+        .unwrap();
+
+        let cache = Arc::new(cache);
+
+        let handles = (0..15)
+            .map(|_| {
+                let cache = Arc::clone(&cache);
+                thread::spawn(move || {
+                    let q = asd(cache.stream_iter().unwrap());
+                    assert!(q.is_ok());
+                    q.unwrap()
+                })
             })
-            .build();
+            .collect::<Vec<_>>();
 
-        let stdout = io::stdout();
-        let mut stdout = stdout.lock();
-
-        iter.for_each(|path| {
-            writeln!(
-                &mut stdout,
-                "{}",
-                path.unwrap().path().as_os_str().to_str().unwrap()
-            )
-            .unwrap()
+        let mut collected = handles.into_iter().fold(Vec::new(), |mut acc, other_vec| {
+            acc.append(&mut other_vec.join().unwrap());
+            acc
         });
+        assert!(!collected.is_empty());
+        collected.sort_unstable();
+        collected.windows(2).for_each(|sl| assert_ne!(sl[0], sl[1]));
     }
 }
