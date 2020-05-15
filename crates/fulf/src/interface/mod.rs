@@ -1,15 +1,10 @@
 use {
     crate::{
         bytelines::{ByteLines, Line},
+        filepath_cache::{IndexedCache, InvalidCache},
         fzy_algo::scoring_utils::{MatchWithPositions, Score, MWP},
     },
-    ignore,
-    std::{
-        fs, io, mem,
-        path::{Path, MAIN_SEPARATOR},
-        sync::Arc,
-        thread,
-    },
+    std::{fs, io::Read, mem, path::MAIN_SEPARATOR, sync::Arc, thread},
 };
 
 /// A struct to define rules to run fuzzy-search.
@@ -41,7 +36,7 @@ impl Rules {
             bonus_threads: if cfg!(target_pointer_width = "64") {
                 2
             } else {
-                0
+                1
             },
         }
     }
@@ -97,103 +92,53 @@ where
         }
     }
 
-    /// A function that turns configured directory iterator
-    /// and a number of bonus threads into the iterator used by `spawner`.
-    ///
-    /// Collects all files from iterator into `Rules::bonus_threads + 1`
-    /// vectors and then passes them as iterators to `spawner` function.
-    /// `Rules::results_cap` is passed to `spawner` as `capnum`, and
-    /// all other things are passed as is.
-    pub fn setter(
+    /// Spawns threads, those threads filter files from the cache.
+    pub fn spawner(
         self,
-        mut iter: ignore::Walk,
+        cache: Arc<IndexedCache>,
         r: Rules,
         handle_results: impl FnMut(Vec<MWP>),
-    ) -> io::Result<()> {
-        let threadcount = r.bonus_threads as usize + 1;
-        let mut files_chunks = vec![Vec::with_capacity(1024); threadcount];
+    ) -> Result<(), InvalidCache<()>> {
+        let (sx, rx) = flume::bounded((r.bonus_threads as usize + 1) * 2);
+        let mut threads = Vec::with_capacity(r.bonus_threads as usize + 1);
 
-        let mut index = 0;
-        let mut errcount = 0;
-        iter.try_for_each(|res| {
-            match res {
-                Ok(dir_entry) => {
-                    let path = dir_entry.into_path().into_boxed_path();
+        let thread_local_results_cap = r.thread_local_results_cap;
 
-                    if path.is_file() {
-                        index += 1;
-                        if index == threadcount {
-                            index = 0;
-                        }
-
-                        files_chunks[index].push(path);
-                    }
-                }
-                Err(last_err) => {
-                    errcount += 1;
-                    if errcount > 16000 {
-                        // Most errors in `ignore` are bound to reading the configs;
-                        // the only error type that could get here is a symlink loop
-                        // (well, there could be IO too, but it's highly unlikely to get
-                        // that much IO errors).
-                        // I don't know if `ignore::Walk` can get out of the loop by itself,
-                        // so here's the exit, if no.
-                        return Err(io::Error::new(
-                            io::ErrorKind::Other,
-                            format!(
-                            "the directory tree is either endless or produce too many errors: {}",
-                            last_err
-                        ),
-                        ));
-                    }
-                }
-            }
-
-            Ok(())
-        })?;
-
-        let files_chunks = files_chunks.into_iter();
-
-        Self::spawner(
-            self,
-            files_chunks,
-            r.thread_local_results_cap,
-            handle_results,
-        );
-
-        Ok(())
-    }
-
-    /// The number of threads to spawn is defined by the number of items
-    /// in the iterator.
-    fn spawner(
-        self,
-        files_chunks: impl Iterator<Item = Vec<Box<Path>>>,
-
-        capnum: usize,
-
-        handle_results: impl FnMut(Vec<MWP>),
-    ) {
-        let (sx, rx) = flume::bounded(100);
-        let mut threads = Vec::with_capacity(16);
-
-        files_chunks.for_each(|files| {
+        for _ in 0..r.bonus_threads {
             let t;
             let sender = sx.clone();
             let self_ = self.clone();
-            t = thread::spawn(move || self_.spawn_me(files, sender, capnum));
+            let cache = Arc::clone(&cache);
+            t = thread::spawn(move || self_.spawn_me(cache, sender, thread_local_results_cap));
 
             threads.push(t);
-        });
-        drop(sx);
+        }
+        threads.push(thread::spawn(move || {
+            self.spawn_me(cache, sx, thread_local_results_cap)
+        }));
 
         rx.iter().for_each(handle_results);
 
-        threads.into_iter().for_each(|t| t.join().unwrap());
+        let res = threads.into_iter().fold(Ok(()), |res, t| {
+            let other = t.join().unwrap();
+
+            if res.is_ok() {
+                other
+            } else {
+                res
+            }
+        });
+
+        res
     }
 
     /// Reads the given files and filters them.
-    fn spawn_me(self, files: Vec<Box<Path>>, sender: flume::Sender<Vec<MWP>>, capnum: usize) {
+    fn spawn_me(
+        self,
+        files: Arc<IndexedCache>,
+        sender: flume::Sender<Vec<MWP>>,
+        capnum: usize,
+    ) -> Result<(), InvalidCache<()>> {
         let needle: &str = &self.needle;
         let root_folder: &str = &self.root_folder;
 
@@ -205,9 +150,23 @@ where
 
         let mut inner = Vec::with_capacity(capnum);
         let mut global_linecount: usize = 0;
+        let mut filebuf: Vec<u8> = Vec::new();
 
-        files.iter().for_each(|file| {
-            if let Ok(filebuf) = fs::read(file) {
+        let mut files = files.stream_iter()?;
+        'file_loop: while let Some(filepath) = files.read_next()? {
+            if let Some(_) = fs::File::open(filepath).ok().and_then(|mut file| {
+                //x XXX: is megabyte enough for any text file?
+                const MEGABYTE: usize = 1_048_576;
+
+                let filesize = initial_buffer_size(&file);
+                if filesize > MEGABYTE {
+                    return None;
+                }
+
+                filebuf.clear();
+                filebuf.reserve_exact(filesize);
+                file.read_to_end(&mut filebuf).ok()
+            }) {
                 for (line_idx, line) in ByteLines::new(&filebuf).enumerate() {
                     global_linecount += 1;
 
@@ -232,7 +191,7 @@ where
                                 inner.push(result);
                             };
 
-                            apply($encoding, algo, $line, file, root_folder, line_idx, f);
+                            apply($encoding, algo, $line, filepath, root_folder, line_idx, f);
                         };
                     }
 
@@ -244,18 +203,29 @@ where
                             apply!(fallback_utf8_algo, Encoding::Utf8, line);
                         }
                         // Skip the current file if not utf8-encoded.
-                        Line::NotUtf8Line => return,
+                        Line::NotUtf8Line => continue 'file_loop,
                     }
                 }
             }
-        });
+        }
 
         // The last vector could be empty or partially filled.
         if !inner.is_empty() {
             // Whatever is is, we will end this function's work right here anyway.
             let _any_result = sender.send(inner);
         }
+
+        Ok(())
     }
+}
+
+// Copypasted from stdlib.
+/// Indicates how large a buffer to pre-allocate before reading the entire file.
+fn initial_buffer_size(file: &fs::File) -> usize {
+    // Allocate one extra byte so the buffer doesn't need to grow before the
+    // final `read` call at the end of the file.  Don't worry about `usize`
+    // overflow because reading will fail regardless in that case.
+    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
 }
 
 enum Encoding {
@@ -268,14 +238,13 @@ fn apply(
     encoding: Encoding,
     mut takes_line: impl FnMut(&str) -> Option<MatchWithPositions>,
     line: &str,
-    filepath: &Path,
+    filepath: &str,
     root_folder: &str,
     line_idx: usize,
     mut f: impl FnMut(MWP),
 ) {
     if let Some((score, pos)) = takes_line(line) {
-        let path_with_root = filepath.as_os_str().to_string_lossy();
-        let path_with_root = path_with_root.as_ref();
+        let path_with_root = filepath;
 
         let path_without_root = path_with_root
             .get(root_folder.len()..)
@@ -373,9 +342,7 @@ fn trim_utf8_whitespace(line: &str) -> (&str, usize) {
     let mut trimmed_start: usize = 0;
     let line = line.trim_start_matches(|c: char| {
         let is_w = c.is_whitespace();
-        if is_w {
-            trimmed_start += 1;
-        }
+        trimmed_start += is_w as usize;
 
         is_w
     });
@@ -412,6 +379,8 @@ fn fmt_usize(u: usize, buf: &mut [u8]) -> &mut str {
 #[cfg(test)]
 mod showcase {
     use super::*;
+    use crate::filepath_cache::SerializeError;
+    use std::path::Path;
 
     /// The default search function, very simple to use.
     ///
@@ -446,7 +415,7 @@ mod showcase {
         path: impl AsRef<Path>,
         needle: impl AsRef<str>,
         handle_results: impl FnMut(Vec<MWP>),
-    ) -> Result<(), ()> {
+    ) -> Result<(), SetterError> {
         with_fzy_algo(path, needle, 1024_usize.next_power_of_two(), handle_results)
     }
 
@@ -485,21 +454,34 @@ mod showcase {
         max_line_len: usize,
 
         handle_results: impl FnMut(Vec<MWP>),
-    ) -> Result<(), ()> {
+    ) -> Result<(), SetterError> {
+        use crate::filepath_cache::{serialize, NotUtf8};
+
         let needle = needle.as_ref();
 
         if needle.is_empty() || needle.len() > max_line_len {
-            return Err(());
+            return Err(SetterError::WrongSizeNeedle(needle.len()));
         }
 
-        let r = Rules::new();
-
         let path = path.as_ref();
-        let dir_iter = ignore::Walk::new(path);
+        let root_folder = path
+            .to_str()
+            .ok_or(SetterError::Serialize(SerializeError::NonUtf8Path))?;
 
-        let root_folder = path.to_str().ok_or(())?;
+        let builder = ignore::WalkBuilder::new(path);
+        // Probably, those serialization errors should be handled right there,
+        // but for a test it's okay to simply return those errors to the caller.
+        let idx_cache = serialize(root_folder, builder, NotUtf8::ReturnError)?;
+        let idx_cache = Arc::new(idx_cache);
 
-        let is_ascii = needle.is_ascii();
+        // If you don't plan on spawning a new thread to write one
+        // little file, passing `Arc` is an overkill.
+        let write_cache = |cache: Arc<IndexedCache>| {
+            let _bytes_to_write: &[u8] = cache.show_cache();
+            /* Angry caching noises. */
+            ()
+        };
+        write_cache(Arc::clone(&idx_cache));
 
         let utf8_algo = move |line: &str, needle: &str, prealloc: &mut (Vec<Score>, Vec<Score>)| {
             if line.len() > max_line_len {
@@ -508,7 +490,9 @@ mod showcase {
                 crate::fzy_algo::utf8::match_and_score_with_positions(needle, line, prealloc)
             }
         };
+        let r = Rules::new();
 
+        let is_ascii = needle.is_ascii();
         if is_ascii {
             // ascii
             let ascii_algo =
@@ -526,7 +510,7 @@ mod showcase {
 
             let spec =
                 SpecializedAscii::new(root_folder.into(), needle.into(), ascii_algo, utf8_algo);
-            spec.setter(dir_iter, r, handle_results).unwrap();
+            spec.spawner(idx_cache, r, handle_results).unwrap();
         } else {
             // utf8
             let unspec = SpecializedAscii::new(
@@ -537,10 +521,27 @@ mod showcase {
                 utf8_algo,
                 utf8_algo,
             );
-            unspec.setter(dir_iter, r, handle_results).unwrap();
+            unspec.spawner(idx_cache, r, handle_results).unwrap();
         }
 
         Ok(())
+    }
+
+    #[derive(Debug)]
+    pub enum SetterError {
+        WrongSizeNeedle(usize),
+        Serialize(SerializeError),
+        InvalidCache,
+    }
+    impl From<InvalidCache<()>> for SetterError {
+        fn from(_: InvalidCache<()>) -> Self {
+            Self::InvalidCache
+        }
+    }
+    impl From<SerializeError> for SetterError {
+        fn from(e: SerializeError) -> Self {
+            Self::Serialize(e)
+        }
     }
 }
 

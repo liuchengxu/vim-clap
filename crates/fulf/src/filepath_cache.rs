@@ -563,7 +563,7 @@ mod iter {
     ///
     /// How to use:
     ///
-    /// ```
+    /// ```ignore
     /// while let Ok(Some(x)) = stream_iter.read_next() {
     ///     /* do thing with x */
     /// }
