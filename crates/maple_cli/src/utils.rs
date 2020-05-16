@@ -107,10 +107,10 @@ pub fn read_preview_lines<P: AsRef<Path>>(
     size: usize,
 ) -> io::Result<(impl Iterator<Item = String>, usize)> {
     let file = File::open(filename)?;
-    let (start, end, hl_line) = if target_line - size > 0 {
+    let (start, end, hl_line) = if target_line > size {
         (target_line - size, target_line + size, size)
     } else {
-        (0, target_line + size, target_line)
+        (0, size, target_line)
     };
     Ok((
         io::BufReader::new(file)
@@ -124,25 +124,6 @@ pub fn read_preview_lines<P: AsRef<Path>>(
 
 #[test]
 fn test_preview_lines() {
-    let file = File::open("/Users/xuliucheng/.spacevim").unwrap();
-    let number = 10;
-    let target_line = 20;
-    let presize_size = 5;
-    let (start, end, hl_line) = if target_line - presize_size > 0 {
-        (
-            target_line - presize_size,
-            target_line + presize_size,
-            presize_size,
-        )
-    } else {
-        (0, target_line + presize_size, target_line)
-    };
-    for line in io::BufReader::new(file)
-        .lines()
-        .skip(start)
-        .filter_map(|i| i.ok())
-        .take(end - start)
-    {
-        println!("line:{}", line);
-    }
+    let (line_iter, _) = read_preview_lines("/Users/xuliucheng/.spacevim", 3, 5).unwrap();
+    println!("lines:{:?}", line_iter.collect::<Vec<_>>());
 }

@@ -63,6 +63,11 @@ function! clap#init#() abort
   call s:init_submatches_hl_group()
   call s:init_fuzzy_match_hl_groups()
 
+  " Spawn the daemon process eagerly
+  if clap#maple#is_available()
+    call clap#job#daemon#start(function('clap#impl#on_move#daemon_handle'))
+  endif
+
   " This augroup should be retained after closing vim-clap for the benefit
   " of next run.
   if !exists('#ClapResize')
