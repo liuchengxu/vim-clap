@@ -85,7 +85,7 @@ fn test_grep_regex() {
     assert_eq!(
         e,
         GrepPreviewEntry {
-            fname: "install.sh".into(),
+            fpath: "install.sh".into(),
             lnum: 1,
             col: 5
         }
