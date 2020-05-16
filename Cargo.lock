@@ -758,7 +758,6 @@ name = "maple"
 version = "0.1.15"
 dependencies = [
  "built",
- "chrono",
  "maple_cli",
 ]
 

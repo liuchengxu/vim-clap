@@ -1,12 +1,11 @@
-use super::{write_response, Message};
+use super::Message;
 use anyhow::Context;
-use serde_json::json;
 use std::convert::{TryFrom, TryInto};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 pub struct GrepPreviewEntry {
-    pub fpath: std::path::PathBuf,
+    pub fpath: PathBuf,
     pub lnum: u64,
     pub col: u64,
 }
@@ -83,6 +82,12 @@ fn test_grep_regex() {
     let re = regex::Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
     let line = "install.sh:1:5:#!/usr/bin/env bash";
     let e: GrepPreviewEntry = String::from(line).try_into().unwrap();
-    println!("{:?}", e);
-    // println!("{:?}", re.captures(line).and_then(|cap|cap.get(1)).and_then(|line|));
+    assert_eq!(
+        e,
+        GrepPreviewEntry {
+            fname: "install.sh".into(),
+            lnum: 1,
+            col: 5
+        }
+    );
 }
