@@ -5,7 +5,13 @@ use std::convert::TryInto;
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
     let msg_id = msg.id;
-    let provider: Provider = msg.try_into()?;
+    let provider: Provider = match msg.try_into() {
+        Ok(p) => p,
+        Err(e) => {
+            write_response(json!({ "error": format!("{}",e), "id": msg_id }));
+            return Err(e);
+        }
+    };
 
     match provider {
         Provider::Grep(preview_entry) => {
@@ -35,9 +41,6 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                 write_response(json!({ "data": "Couldn't read_first_lines", "id": msg_id }));
             }
         }
-        _ => write_response(
-            json!({ "error": format!("Unknown provider_id: {}", "unknonw provider id"), "id": msg_id }),
-        ),
     }
 
     Ok(())
