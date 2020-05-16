@@ -64,7 +64,7 @@ fn fuzzy_match(
     enable_icon: bool,
     content_filtering: String,
 ) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
-    let fzy_scorer_fn = get_appropriate_scorer(Algo::Fzy, content_filtering.into());
+    let fzy_scorer_fn = get_appropriate_scorer(&Algo::Fzy, &content_filtering.into());
     let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {

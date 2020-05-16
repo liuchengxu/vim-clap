@@ -68,9 +68,9 @@ pub struct Maple {
     #[structopt(long = "no-cache")]
     pub no_cache: bool,
 
-    /// Do not use the cached file for exec subcommand.
-    #[structopt(long = "log")]
-    pub log: bool,
+    /// Enable the logging system.
+    #[structopt(long = "log", parse(from_os_str))]
+    pub log: Option<std::path::PathBuf>,
 
     #[structopt(subcommand)]
     pub command: Cmd,
@@ -78,6 +78,9 @@ pub struct Maple {
 
 impl Maple {
     pub fn run(self) -> Result<()> {
+        if let Some(ref log_path) = self.log {
+            crate::logger::init(log_path)?;
+        }
         match self.command {
             Cmd::Version => unreachable!(),
             Cmd::CheckRelease(_) => unreachable!(),
