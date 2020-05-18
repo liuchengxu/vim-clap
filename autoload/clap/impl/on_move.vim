@@ -1,3 +1,9 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
+" Description: CursorMoved handler
+
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 let s:on_move_timer = -1
 let s:req_id = get(s:, 'req_id', 0)
 let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
@@ -30,9 +36,6 @@ function! clap#impl#on_move#daemon_handle(msg) abort
 endfunction
 
 function! s:send_request() abort
-  " if !clap#job#daemon#is_running()
-    " call clap#job#daemon#start(function('s:daemon_handle'))
-  " endif
   let s:req_id += 1
   let curline = s:into_filename(g:clap.display.getcurline())
   let msg = json_encode({
@@ -66,3 +69,6 @@ function! clap#impl#on_move#invoke() abort
     call s:sync_run_with_delay()
   endif
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo

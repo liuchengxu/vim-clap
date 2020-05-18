@@ -3,7 +3,7 @@ use anyhow::Context;
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GrepPreviewEntry {
     pub fpath: PathBuf,
     pub lnum: u64,
