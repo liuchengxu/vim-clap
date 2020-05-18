@@ -23,7 +23,9 @@ function! clap#impl#on_move#daemon_handle(msg) abort
     if has_key(decoded, 'lines')
       let lines = decoded.lines
       call g:clap.preview.show(lines)
-      " call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
+      if has_key(decoded, 'fname')
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
+      endif
       call clap#preview#highlight_header()
 
       if has_key(decoded, 'hi_lnum')

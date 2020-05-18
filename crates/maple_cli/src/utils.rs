@@ -121,9 +121,3 @@ pub fn read_preview_lines<P: AsRef<Path>>(
         hl_line,
     ))
 }
-
-#[test]
-fn test_preview_lines() {
-    let (line_iter, _) = read_preview_lines("/Users/xuliucheng/.spacevim", 3, 5).unwrap();
-    println!("lines:{:?}", line_iter.collect::<Vec<_>>());
-}
