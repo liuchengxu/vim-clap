@@ -1,11 +1,11 @@
-use super::types::Provider;
+use super::types::{PreviewEnv, Provider};
 use super::*;
 use anyhow::Result;
 use std::convert::TryInto;
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
     let msg_id = msg.id;
-    let provider: Provider = match msg.try_into() {
+    let PreviewEnv { size, provider } = match msg.try_into() {
         Ok(p) => p,
         Err(e) => {
             write_response(json!({ "error": format!("{}",e), "id": msg_id }));
@@ -15,15 +15,16 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
 
     match provider {
         Provider::Grep(preview_entry) => {
-            if let Ok((line_iter, hl_line)) = crate::utils::read_preview_lines(
+            if let Ok((line_iter, hi_lnum)) = crate::utils::read_preview_lines(
                 &preview_entry.fpath,
                 preview_entry.lnum as usize,
-                5,
+                size as usize,
             ) {
                 let mut lines = line_iter.collect::<Vec<_>>();
-                lines.insert(0, format!("{}", preview_entry.fpath.display()));
+                let fname = format!("{}", preview_entry.fpath.display());
+                lines.insert(0, fname.clone());
                 write_response(
-                    json!({ "lines": lines, "id": msg_id, "fname": format!("{}", preview_entry.fpath.display()), "hi_lnum": hl_line }),
+                    json!({ "lines": lines, "id": msg_id, "fname": fname, "hi_lnum": hi_lnum }),
                 );
             }
         }

@@ -1,5 +1,7 @@
 use super::Message;
+use anyhow::anyhow;
 use anyhow::Context;
+use lazy_static::lazy_static;
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 
@@ -13,7 +15,7 @@ pub struct GrepPreviewEntry {
 impl TryFrom<String> for GrepPreviewEntry {
     type Error = anyhow::Error;
     fn try_from(line: String) -> std::result::Result<Self, Self::Error> {
-        lazy_static::lazy_static! {
+        lazy_static! {
             static ref GREP_RE: regex::Regex = regex::Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
         }
         let cap = GREP_RE.captures(&line).context("Couldn't get captures")?;
@@ -33,12 +35,17 @@ impl TryFrom<String> for GrepPreviewEntry {
     }
 }
 
+pub struct PreviewEnv {
+    pub size: u64,
+    pub provider: Provider,
+}
+
 pub enum Provider {
     Files(PathBuf),
     Grep(GrepPreviewEntry),
 }
 
-impl TryFrom<Message> for Provider {
+impl TryFrom<Message> for PreviewEnv {
     type Error = anyhow::Error;
     fn try_from(msg: Message) -> std::result::Result<Self, Self::Error> {
         let provider_id = msg
@@ -61,18 +68,26 @@ impl TryFrom<Message> for Provider {
                 .unwrap_or("Missing fname when deserializing into FilerParams"),
         );
 
-        match provider_id {
+        let size = msg
+            .params
+            .get("preview_size")
+            .and_then(|x| x.as_u64())
+            .unwrap_or(5);
+
+        let provider = match provider_id {
             "files" => {
                 let mut fpath: PathBuf = cwd.into();
                 fpath.push(&fname);
-                Ok(Self::Files(fpath))
+                Provider::Files(fpath)
             }
-            "grep" => {
+            "grep" | "grep2" => {
                 let preview_entry: GrepPreviewEntry = fname.try_into()?;
-                Ok(Self::Grep(preview_entry))
+                Provider::Grep(preview_entry)
             }
-            _ => Err(anyhow::anyhow!("Couldn't into Provider")),
-        }
+            _ => return Err(anyhow!("Unknown provider_id: {}", provider_id)),
+        };
+
+        Ok(Self { size, provider })
     }
 }
 
