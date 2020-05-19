@@ -7,6 +7,7 @@ set cpoptions&vim
 let s:on_move_timer = -1
 let s:req_id = get(s:, 'req_id', 0)
 let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
+let s:enable_icon = g:clap_enable_icon ? v:true : v:false
 
 function! s:into_filename(line) abort
   if g:clap_enable_icon
@@ -21,8 +22,7 @@ function! clap#impl#on_move#daemon_handle(msg) abort
 
   if s:req_id == decoded.id
     if has_key(decoded, 'lines')
-      let lines = decoded.lines
-      call g:clap.preview.show(lines)
+      call g:clap.preview.show(decoded.lines)
       if has_key(decoded, 'fname')
         call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
       endif
@@ -44,10 +44,11 @@ function! s:send_request() abort
       \ 'id': s:req_id,
       \ 'method': 'client.on_move',
       \ 'params': {
-      \   'curline': curline,
       \   'cwd': clap#rooter#working_dir(),
-      \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
-      \   'provider_id': g:clap.provider.id
+      \   'curline': curline,
+      \   'enable_icon': s:enable_icon,
+      \   'provider_id': g:clap.provider.id,
+      \   'preview_size': 5,
       \ },
       \ })
   call clap#job#daemon#send_message(msg)
@@ -65,7 +66,7 @@ function! clap#impl#on_move#invoke() abort
     return
   endif
   if has_key(g:clap.provider._(), 'on_move')
-    if g:clap.provider.id ==# 'files' || g:clap.provider.id ==# 'grep'
+    if index(['files', 'grep', 'grep2'], g:clap.provider.id) > -1
       return s:send_request()
     endif
     call s:sync_run_with_delay()
