@@ -79,6 +79,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
+        \ 'g:__clap_builtin_content_filtering_enum',
         \ ])
   call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')
