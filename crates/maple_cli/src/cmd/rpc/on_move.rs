@@ -1,6 +1,7 @@
 use super::types::{PreviewEnv, Provider};
 use super::*;
 use anyhow::Result;
+use log::debug;
 use std::convert::TryInto;
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
@@ -15,21 +16,30 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
 
     match provider {
         Provider::Grep(preview_entry) => {
-            if let Ok((line_iter, hi_lnum)) = crate::utils::read_preview_lines(
+            match crate::utils::read_preview_lines(
                 &preview_entry.fpath,
                 preview_entry.lnum as usize,
                 size as usize,
             ) {
-                let mut lines = line_iter.collect::<Vec<_>>();
-                let fname = format!("{}", preview_entry.fpath.display());
-                lines.insert(0, fname.clone());
-                write_response(
-                    json!({ "lines": lines, "id": msg_id, "fname": fname, "hi_lnum": hi_lnum }),
-                );
+                Ok((lines_iter, hi_lnum)) => {
+                    let mut lines = lines_iter.collect::<Vec<_>>();
+                    let fname = format!("{}", preview_entry.fpath.display());
+                    lines.insert(0, fname.clone());
+                    write_response(
+                        json!({ "lines": lines, "id": msg_id, "fname": fname, "hi_lnum": hi_lnum }),
+                    );
+                }
+                Err(err) => {
+                    debug!(
+                        "Couldn't read first lines of {}, error: {:?}",
+                        preview_entry.fpath.display(),
+                        err
+                    );
+                }
             }
         }
-        Provider::Files(fpath) => {
-            if let Ok(line_iter) = crate::utils::read_first_lines(&fpath, 10) {
+        Provider::Files(fpath) => match crate::utils::read_first_lines(&fpath, 10) {
+            Ok(line_iter) => {
                 let mut lines = line_iter.collect::<Vec<_>>();
                 let abs_path = std::fs::canonicalize(&fpath)
                     .unwrap()
@@ -38,10 +48,15 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     .unwrap();
                 lines.insert(0, abs_path.clone());
                 write_response(json!({ "lines": lines, "id": msg_id, "fname": abs_path }));
-            } else {
-                write_response(json!({ "data": "Couldn't read_first_lines", "id": msg_id }));
             }
-        }
+            Err(err) => {
+                debug!(
+                    "Couldn't read first lines of {}, error: {:?}",
+                    fpath.display(),
+                    err
+                );
+            }
+        },
     }
 
     Ok(())
