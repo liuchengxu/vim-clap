@@ -10,6 +10,7 @@ CHANGELOG
 ### Changed
 
 - Decrease the max number of candidates for running in sync from 100000 to 30000, which means once the total number of candidates is larger than 30000, the async filter will be used, otherwise use the builtin sync one.
+- `filer` uses the daemon job which requires the latest binary. Download the latest binary if you uses the prebuilt binary.
 
 ### Improved
 

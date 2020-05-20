@@ -84,6 +84,10 @@ function! s:send_message() abort
         \ })
 endfunction
 
+function! clap#provider#filer#current_dir() abort
+  return s:current_dir
+endfunction
+
 function! s:filter_or_send_message() abort
   call g:clap.preview.hide()
   if has_key(s:filer_cache, s:current_dir)

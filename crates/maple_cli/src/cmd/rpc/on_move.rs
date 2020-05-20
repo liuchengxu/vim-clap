@@ -1,7 +1,7 @@
 use super::types::{PreviewEnv, Provider};
 use super::*;
 use anyhow::Result;
-use log::debug;
+use log::error;
 use std::convert::TryInto;
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
@@ -30,11 +30,42 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     );
                 }
                 Err(err) => {
-                    debug!(
+                    error!(
                         "Couldn't read first lines of {}, error: {:?}",
                         preview_entry.fpath.display(),
                         err
                     );
+                }
+            }
+        }
+        Provider::Filer { path, enable_icon } => {
+            if path.is_dir() {
+                let lines =
+                    super::filer::read_dir_entries(&path, enable_icon, Some(2 * size as usize))?;
+                write_response(
+                    json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "is_dir": true }),
+                );
+            } else {
+                match crate::utils::read_first_lines(&path, 10) {
+                    Ok(line_iter) => {
+                        let mut lines = line_iter.take(2 * size as usize).collect::<Vec<_>>();
+                        let abs_path = std::fs::canonicalize(&path)
+                            .unwrap()
+                            .into_os_string()
+                            .into_string()
+                            .unwrap();
+                        lines.insert(0, abs_path.clone());
+                        write_response(
+                            json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "fname": abs_path }),
+                        );
+                    }
+                    Err(err) => {
+                        error!(
+                            "Couldn't read first lines of {}, error: {:?}",
+                            path.display(),
+                            err
+                        );
+                    }
                 }
             }
         }
@@ -52,7 +83,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                 );
             }
             Err(err) => {
-                debug!(
+                error!(
                     "Couldn't read first lines of {}, error: {:?}",
                     fpath.display(),
                     err

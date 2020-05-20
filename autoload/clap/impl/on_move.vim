@@ -19,6 +19,26 @@ function! s:into_filename(line) abort
   endif
 endfunction
 
+function! s:filer_handle(decoded) abort
+  if has_key(a:decoded, 'type') && a:decoded.type ==# 'preview'
+    if empty(a:decoded.lines)
+      call g:clap.preview.show(['Empty entries'])
+    else
+      call g:clap.preview.show(a:decoded.lines)
+      if has_key(a:decoded, 'is_dir')
+        call g:clap.preview.set_syntax('clap_filer')
+      else
+        if has_key(a:decoded, 'fname')
+          call g:clap.preview.set_syntax(clap#ext#into_filetype(a:decoded.fname))
+        endif
+        " call clap#preview#highlight_header()
+      endif
+    endif
+  else
+    call clap#provider#filer#daemon_handle(a:decoded)
+  endif
+endfunction
+
 function! clap#impl#on_move#daemon_handle(msg) abort
   let decoded = json_decode(a:msg)
 
@@ -28,7 +48,7 @@ function! clap#impl#on_move#daemon_handle(msg) abort
   endif
 
   if decoded.provider_id ==# 'filer'
-    call clap#provider#filer#daemon_handle(decoded)
+    call s:filer_handle(decoded)
     return
   endif
 
@@ -57,7 +77,7 @@ function! s:send_request() abort
       \ 'id': s:req_id,
       \ 'method': 'client.on_move',
       \ 'params': {
-      \   'cwd': clap#rooter#working_dir(),
+      \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
       \   'curline': curline,
       \   'enable_icon': s:enable_icon,
       \   'provider_id': g:clap.provider.id,
@@ -87,7 +107,7 @@ function! clap#impl#on_move#invoke() abort
     return
   endif
   if has_key(g:clap.provider._(), 'on_move')
-    if index(['files', 'grep', 'grep2'], g:clap.provider.id) > -1
+    if index(['filer', 'files', 'grep', 'grep2'], g:clap.provider.id) > -1
       return s:send_request()
     endif
     call s:sync_run_with_delay()

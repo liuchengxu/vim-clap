@@ -44,6 +44,7 @@ pub struct PreviewEnv {
 
 pub enum Provider {
     Files(PathBuf),
+    Filer { path: PathBuf, enable_icon: bool },
     Grep(GrepPreviewEntry),
 }
 
@@ -81,6 +82,16 @@ impl TryFrom<Message> for PreviewEnv {
                 let mut fpath: PathBuf = cwd.into();
                 fpath.push(&fname);
                 Provider::Files(fpath)
+            }
+            "filer" => {
+                let mut path: PathBuf = cwd.into();
+                path.push(&fname);
+                let enable_icon = msg
+                    .params
+                    .get("enable_icon")
+                    .and_then(|x| x.as_bool())
+                    .unwrap_or(false);
+                Provider::Filer { path, enable_icon }
             }
             "grep" | "grep2" => {
                 let preview_entry: GrepPreviewEntry = fname.try_into()?;
