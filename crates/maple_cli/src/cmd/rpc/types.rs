@@ -35,7 +35,9 @@ impl TryFrom<String> for GrepPreviewEntry {
     }
 }
 
+/// Preview environment on Vim CursorMoved event.
 pub struct PreviewEnv {
+    /// Number of lines to preview.
     pub size: u64,
     pub provider: Provider,
 }
@@ -84,7 +86,13 @@ impl TryFrom<Message> for PreviewEnv {
                 let preview_entry: GrepPreviewEntry = fname.try_into()?;
                 Provider::Grep(preview_entry)
             }
-            _ => return Err(anyhow!("Unknown provider_id: {}", provider_id)),
+            _ => {
+                return Err(anyhow!(
+                    "Couldn't into PreviewEnv from Message: {:?}, unknown provider_id: {}",
+                    msg,
+                    provider_id
+                ))
+            }
         };
 
         Ok(Self { size, provider })
