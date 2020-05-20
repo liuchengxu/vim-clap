@@ -81,6 +81,11 @@ impl From<serde_json::Map<String, serde_json::Value>> for FilerParams {
 
 pub(super) fn handle_message(msg: Message) {
     let FilerParams { cwd, enable_icon } = msg.params.into();
+    log::debug!(
+        "handling filer params: cwd:{}, enable_icon:{}",
+        cwd,
+        enable_icon
+    );
 
     let result = match read_dir_entries(&cwd, enable_icon) {
         Ok(entries) => {
@@ -89,11 +94,11 @@ pub(super) fn handle_message(msg: Message) {
             "dir": cwd,
             "total": entries.len(),
             });
-            json!({ "result": result, "id": msg.id })
+            json!({ "id": msg.id, "provider_id": "filer", "result": result })
         }
         Err(err) => {
             let error = json!({"message": format!("{}", err), "dir": cwd});
-            json!({ "error": error, "id": msg.id })
+            json!({ "id": msg.id, "provider_id": "filer", "error": error })
         }
     };
 

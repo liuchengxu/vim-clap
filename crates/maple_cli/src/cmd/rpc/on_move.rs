@@ -26,7 +26,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     let fname = format!("{}", preview_entry.fpath.display());
                     lines.insert(0, fname.clone());
                     write_response(
-                        json!({ "lines": lines, "id": msg_id, "fname": fname, "hi_lnum": hi_lnum }),
+                        json!({ "id": msg_id, "provider_id": "grep", "lines": lines, "fname": fname, "hi_lnum": hi_lnum }),
                     );
                 }
                 Err(err) => {
@@ -47,7 +47,9 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     .into_string()
                     .unwrap();
                 lines.insert(0, abs_path.clone());
-                write_response(json!({ "lines": lines, "id": msg_id, "fname": abs_path }));
+                write_response(
+                    json!({ "id": msg_id, "provider_id": "files", "lines": lines, "fname": abs_path }),
+                );
             }
             Err(err) => {
                 debug!(

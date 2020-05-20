@@ -7,7 +7,9 @@ set cpoptions&vim
 let s:on_move_timer = -1
 let s:req_id = get(s:, 'req_id', 0)
 let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
+" Note: must use v:true/v:false for json_encode
 let s:enable_icon = g:clap_enable_icon ? v:true : v:false
+let s:handle = {'filer': function('clap#provider#filer#daemon_handle')}
 
 function! s:into_filename(line) abort
   if g:clap_enable_icon
@@ -20,19 +22,30 @@ endfunction
 function! clap#impl#on_move#daemon_handle(msg) abort
   let decoded = json_decode(a:msg)
 
-  if s:req_id == decoded.id
-    if has_key(decoded, 'lines')
-      call g:clap.preview.show(decoded.lines)
-      if has_key(decoded, 'fname')
-        call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
-      endif
-      call clap#preview#highlight_header()
+  " Only process the latest request, drop the outdated responses.
+  if s:req_id != decoded.id
+    return
+  endif
 
-      if has_key(decoded, 'hi_lnum')
-        call g:clap.preview.add_highlight(decoded.hi_lnum+1)
-      endif
-    elseif has_key(decoded, 'error')
-      echoerr decoded.error
+  if decoded.provider_id ==# 'filer'
+    call clap#provider#filer#daemon_handle(decoded)
+    return
+  endif
+
+  if has_key(decoded, 'error')
+    echoerr decoded.error
+    return
+  endif
+
+  if has_key(decoded, 'lines')
+    call g:clap.preview.show(decoded.lines)
+    if has_key(decoded, 'fname')
+      call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
+    endif
+    call clap#preview#highlight_header()
+
+    if has_key(decoded, 'hi_lnum')
+      call g:clap.preview.add_highlight(decoded.hi_lnum+1)
     endif
   endif
 endfunction
@@ -51,6 +64,14 @@ function! s:send_request() abort
       \   'preview_size': 5,
       \ },
       \ })
+  call clap#job#daemon#send_message(msg)
+endfunction
+
+function! clap#impl#on_move#send_params(params) abort
+  let s:req_id += 1
+  let params = a:params
+  let params.id = s:req_id
+  let msg = json_encode(params)
   call clap#job#daemon#send_message(msg)
 endfunction
 

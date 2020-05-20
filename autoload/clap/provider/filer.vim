@@ -15,27 +15,17 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-function! s:handle_round_message(message) abort
-  try
-    let decoded = json_decode(a:message)
-  catch
-    call clap#helper#echo_error('Failed to decode message:'.a:message.', exception:'.v:exception)
-    return
-  endtry
-
-  " Only process the latest request, drop the outdated responses.
-  if s:last_request_id != decoded.id
-    return
-  endif
-
-  if has_key(decoded, 'error')
-    let error = decoded.error
+function! clap#provider#filer#daemon_handle(decoded) abort
+  if has_key(a:decoded, 'error')
+    let error = a:decoded.error
     let s:filer_error_cache[error.dir] = error.message
     call g:clap.display.set_lines([error.message])
     call clap#indicator#set('[??]')
+    return
+  endif
 
-  elseif has_key(decoded, 'result')
-    let result = decoded.result
+  if has_key(a:decoded, 'result')
+    let result = a:decoded.result
     if result.total == 0
       let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
       call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
@@ -46,7 +36,6 @@ function! s:handle_round_message(message) abort
     call clap#sign#reset_to_first_line()
     call clap#state#refresh_matches_count(string(result.total))
     call g:clap#display_win.shrink_if_undersize()
-
   else
     call clap#helper#echo_error('This should not happen, neither error nor result is found.')
   endif
@@ -89,14 +78,10 @@ function! s:goto_parent() abort
 endfunction
 
 function! s:send_message() abort
-  let s:last_request_id += 1
-  " Note: must use v:true/v:false for json_encode
-  let msg = json_encode({
+  call clap#impl#on_move#send_params({
         \ 'method': 'filer',
         \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ 'id': s:last_request_id
         \ })
-  call clap#job#stdio#send_message(msg)
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -254,7 +239,6 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   let s:enable_icon = g:clap_enable_icon ? v:true : v:false
   call s:set_prompt()
-  call clap#job#stdio#start_rpc_service(function('s:handle_round_message'))
   call s:send_message()
 endfunction
 

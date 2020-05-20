@@ -49,6 +49,7 @@ fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
         thread::spawn(move || {
             // Ignore the invalid message.
             if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
+                log::debug!("recv msg: {:?}", msg);
                 match &msg.method[..] {
                     REQUEST_FILER => filer::handle_message(msg),
                     "client.on_move" => {
