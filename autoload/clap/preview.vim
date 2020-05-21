@@ -117,7 +117,7 @@ else
     call win_execute(g:clap.preview.winid, 'noautocmd call s:highlight_header()')
   endfunction
 
-  function! clap#preview#clear_header_highlight()
+  function! clap#preview#clear_header_highlight() abort
     call win_execute(g:clap.preview.winid, 'noautocmd call s:clear_header_highlight()')
   endfunction
 endif
