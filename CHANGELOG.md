@@ -5,7 +5,7 @@ CHANGELOG
 
 ### Added
 
-- Async `on_move` impl for `files`, `grep` and `grep2` provider in Rust binary, no delay for the preview function. ([#437](https://github.com/liuchengxu/vim-clap/pull/437))
+- Async `on_move` impl for `filer`, `files`, `grep` and `grep2` provider in Rust binary, no delay for the preview function. ([#437](https://github.com/liuchengxu/vim-clap/pull/437))
 
 ### Changed
 

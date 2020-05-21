@@ -129,7 +129,7 @@ endfunction
 
 function! clap#job#daemon#start(MessageHandler) abort
   let s:MessageHandler = a:MessageHandler
-  call s:start_service_job(clap#maple#build_cmd('--log', '/Users/xuliucheng/clap.log', 'rpc'))
+  call s:start_service_job(clap#maple#build_cmd('rpc'))
   return
 endfunction
 
