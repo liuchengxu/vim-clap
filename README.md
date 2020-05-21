@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/liuchengxu/vim-clap/workflows/ci/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=ci)
 [![Gitter][G1]][G2]
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/liuchengxu)
 
 [G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
 [G2]: https://gitter.im/liuchengxu/vim-clap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
