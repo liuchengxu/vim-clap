@@ -86,7 +86,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
             }
             Err(err) => {
                 error!(
-                    "Couldn't read first lines of {}, error: {:?}",
+                    "[files]Couldn't read first lines of {}, error: {:?}",
                     fpath.display(),
                     err
                 );

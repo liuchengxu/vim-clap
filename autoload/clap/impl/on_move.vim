@@ -9,7 +9,6 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
 " Note: must use v:true/v:false for json_encode
 let s:enable_icon = g:clap_enable_icon ? v:true : v:false
-let s:handle = {'filer': function('clap#provider#filer#daemon_handle')}
 
 function! s:into_filename(line) abort
   if g:clap_enable_icon
@@ -71,7 +70,7 @@ function! clap#impl#on_move#daemon_handle(msg) abort
   endif
 endfunction
 
-function! s:send_request() abort
+function! s:send_preview_request() abort
   let s:req_id += 1
   let curline = s:into_filename(g:clap.display.getcurline())
   let msg = json_encode({
@@ -92,8 +91,7 @@ function! clap#impl#on_move#send_params(params) abort
   let s:req_id += 1
   let params = a:params
   let params.id = s:req_id
-  let msg = json_encode(params)
-  call clap#job#daemon#send_message(msg)
+  call clap#job#daemon#send_message(json_encode(params))
 endfunction
 
 function! s:sync_run_with_delay() abort
@@ -103,15 +101,25 @@ function! s:sync_run_with_delay() abort
   let s:on_move_timer = timer_start(s:on_move_delay, { -> g:clap.provider._().on_move() })
 endfunction
 
+if clap#maple#is_available()
+  function! s:dispatch_on_move_impl() abort
+    if index(['filer', 'files', 'grep', 'grep2'], g:clap.provider.id) > -1
+      return s:send_preview_request()
+    endif
+    call s:sync_run_with_delay()
+  endfunction
+else
+  function! s:dispatch_on_move_impl() abort
+    call s:sync_run_with_delay()
+  endfunction
+endif
+
 function! clap#impl#on_move#invoke() abort
   if get(g:, '__clap_has_no_matches', v:false)
     return
   endif
   if has_key(g:clap.provider._(), 'on_move')
-    if index(['filer', 'files', 'grep', 'grep2'], g:clap.provider.id) > -1
-      return s:send_request()
-    endif
-    call s:sync_run_with_delay()
+    call s:dispatch_on_move_impl()
   endif
 endfunction
 
