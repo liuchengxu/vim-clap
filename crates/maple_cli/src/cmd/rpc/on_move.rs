@@ -3,6 +3,16 @@ use super::*;
 use anyhow::Result;
 use log::error;
 use std::convert::TryInto;
+use std::path::Path;
+
+#[inline]
+fn canonicalize_and_as_str<P: AsRef<Path>>(path: P) -> String {
+    std::fs::canonicalize(path)
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
     let msg_id = msg.id;
@@ -31,7 +41,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                 }
                 Err(err) => {
                     error!(
-                        "Couldn't read first lines of {}, error: {:?}",
+                        "[grep]Couldn't read first lines of {}, error: {:?}",
                         preview_entry.fpath.display(),
                         err
                     );
@@ -49,11 +59,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                 match crate::utils::read_first_lines(&path, 10) {
                     Ok(line_iter) => {
                         let mut lines = line_iter.take(2 * size as usize).collect::<Vec<_>>();
-                        let abs_path = std::fs::canonicalize(&path)
-                            .unwrap()
-                            .into_os_string()
-                            .into_string()
-                            .unwrap();
+                        let abs_path = canonicalize_and_as_str(&path);
                         lines.insert(0, abs_path.clone());
                         write_response(
                             json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "fname": abs_path }),
@@ -61,7 +67,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     }
                     Err(err) => {
                         error!(
-                            "Couldn't read first lines of {}, error: {:?}",
+                            "[filer]Couldn't read first lines of {}, error: {:?}",
                             path.display(),
                             err
                         );
@@ -72,11 +78,7 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
         Provider::Files(fpath) => match crate::utils::read_first_lines(&fpath, 10) {
             Ok(line_iter) => {
                 let mut lines = line_iter.collect::<Vec<_>>();
-                let abs_path = std::fs::canonicalize(&fpath)
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap();
+                let abs_path = canonicalize_and_as_str(&fpath);
                 lines.insert(0, abs_path.clone());
                 write_response(
                     json!({ "id": msg_id, "provider_id": "files", "lines": lines, "fname": abs_path }),

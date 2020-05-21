@@ -124,6 +124,7 @@ fn test_dir() {
             .into_string()
             .unwrap(),
         false,
+        None,
     )
     .unwrap();
     println!("entry: {:?}", entries);

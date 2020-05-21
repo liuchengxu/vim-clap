@@ -27,11 +27,12 @@ function! s:filer_handle(decoded) abort
       call g:clap.preview.show(a:decoded.lines)
       if has_key(a:decoded, 'is_dir')
         call g:clap.preview.set_syntax('clap_filer')
+        call clap#preview#clear_header_highlight()
       else
         if has_key(a:decoded, 'fname')
           call g:clap.preview.set_syntax(clap#ext#into_filetype(a:decoded.fname))
         endif
-        " call clap#preview#highlight_header()
+        call clap#preview#highlight_header()
       endif
     endif
   else

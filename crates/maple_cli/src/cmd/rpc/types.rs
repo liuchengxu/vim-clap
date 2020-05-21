@@ -94,7 +94,10 @@ impl TryFrom<Message> for PreviewEnv {
                 Provider::Filer { path, enable_icon }
             }
             "grep" | "grep2" => {
-                let preview_entry: GrepPreviewEntry = fname.try_into()?;
+                let mut preview_entry: GrepPreviewEntry = fname.try_into()?;
+                let mut with_cwd: PathBuf = cwd.into();
+                with_cwd.push(&preview_entry.fpath);
+                preview_entry.fpath = with_cwd;
                 Provider::Grep(preview_entry)
             }
             _ => {
