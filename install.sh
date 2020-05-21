@@ -2,7 +2,7 @@
 
 set -u
 
-version=v0.15
+version=v0.16
 
 APP=maple
 
