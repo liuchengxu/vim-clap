@@ -99,3 +99,25 @@ pub fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
         cmd_dir
     ))
 }
+
+/// Returns the first number lines given the file path.
+pub fn read_preview_lines<P: AsRef<Path>>(
+    filename: P,
+    target_line: usize,
+    size: usize,
+) -> io::Result<(impl Iterator<Item = String>, usize)> {
+    let file = File::open(filename)?;
+    let (start, end, hl_line) = if target_line > size {
+        (target_line - size, target_line + size, size)
+    } else {
+        (0, size, target_line)
+    };
+    Ok((
+        io::BufReader::new(file)
+            .lines()
+            .skip(start)
+            .filter_map(|i| i.ok())
+            .take(end - start),
+        hl_line,
+    ))
+}

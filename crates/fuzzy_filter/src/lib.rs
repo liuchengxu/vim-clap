@@ -79,8 +79,8 @@ pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
 /// Returns the appropriate scorer given the algo and content_filtering strategy.
 #[inline]
 pub fn get_appropriate_scorer(
-    algo: Algo,
-    content_filtering: ContentFiltering,
+    algo: &Algo,
+    content_filtering: &ContentFiltering,
 ) -> impl Fn(&str, &str) -> ScorerOutput {
     match algo {
         Algo::Skim => match content_filtering {

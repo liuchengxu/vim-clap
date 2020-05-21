@@ -23,6 +23,7 @@ macro_rules! print_json_with_length {
 
 mod app;
 mod light_command;
+mod logger;
 mod utils;
 
 pub mod cmd;

@@ -3,7 +3,7 @@ use anyhow::Result;
 use icon::prepend_filer_icon;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::{self, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::{fs, io};
 
 /// Display the inner path in a nicer way.
@@ -46,10 +46,20 @@ impl Into<String> for DisplayPath {
     }
 }
 
-fn read_dir_entries(dir: &str, enable_icon: bool) -> Result<Vec<String>> {
-    let mut entries = fs::read_dir(dir)?
-        .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).into()))
-        .collect::<Result<Vec<_>, io::Error>>()?;
+pub(super) fn read_dir_entries<P: AsRef<Path>>(
+    dir: P,
+    enable_icon: bool,
+    max: Option<usize>,
+) -> Result<Vec<String>> {
+    let entries_iter =
+        fs::read_dir(dir)?.map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).into()));
+    let mut entries = if let Some(m) = max {
+        entries_iter
+            .take(m)
+            .collect::<Result<Vec<_>, io::Error>>()?
+    } else {
+        entries_iter.collect::<Result<Vec<_>, io::Error>>()?
+    };
 
     entries.sort();
 
@@ -81,19 +91,24 @@ impl From<serde_json::Map<String, serde_json::Value>> for FilerParams {
 
 pub(super) fn handle_message(msg: Message) {
     let FilerParams { cwd, enable_icon } = msg.params.into();
+    log::debug!(
+        "handling filer params: cwd:{}, enable_icon:{}",
+        cwd,
+        enable_icon
+    );
 
-    let result = match read_dir_entries(&cwd, enable_icon) {
+    let result = match read_dir_entries(&cwd, enable_icon, None) {
         Ok(entries) => {
             let result = json!({
             "entries": entries,
             "dir": cwd,
             "total": entries.len(),
             });
-            json!({ "result": result, "id": msg.id })
+            json!({ "id": msg.id, "provider_id": "filer", "result": result })
         }
         Err(err) => {
             let error = json!({"message": format!("{}", err), "dir": cwd});
-            json!({ "error": error, "id": msg.id })
+            json!({ "id": msg.id, "provider_id": "filer", "error": error })
         }
     };
 
@@ -109,6 +124,7 @@ fn test_dir() {
             .into_string()
             .unwrap(),
         false,
+        None,
     )
     .unwrap();
     println!("entry: {:?}", entries);
