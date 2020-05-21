@@ -7,8 +7,12 @@ set cpoptions&vim
 
 let s:min_len      = get(g:, 'clap_provider_yanks_min_len', 1)
 let s:max_yanks    = get(g:, 'clap_provider_yanks_max_entries', 20)
-let s:yank_history = []
 let s:yank_info_map = {}
+if exists('g:clap_provider_yanks_history') && filereadable(expand(g:clap_provider_yanks_history))
+  let s:yank_history = readfile(expand(g:clap_provider_yanks_history))
+else
+  let s:yank_history = []
+endif
 
 let s:yanks = {}
 
@@ -36,10 +40,20 @@ function! clap#provider#yanks#collect() abort
   endif
 endfunction
 
+function! s:save_history() abort
+  if !exists('g:clap_provider_yanks_history')
+    return
+  endif
+  if !empty(s:yank_history)
+    call writefile(s:yank_history, expand(g:clap_provider_yanks_history))
+  endif
+endfunction
+
 function! clap#provider#yanks#init() abort
   augroup ClapYanksCollect
     autocmd!
     autocmd TextYankPost * call clap#provider#yanks#collect()
+    autocmd VimLeavePre  * call s:save_history()
   augroup END
 
   " collect the data from default register
@@ -53,28 +67,26 @@ endfunction
 function! s:yanks.on_move() abort
   let curline = g:clap.display.getcurline()
   let lines = split(curline, "\n")[:10]
-  call g:clap.preview.show(lines)
-  if has_key(s:yank_info_map, curline)
-    call g:clap.preview.setbufvar('&syntax', s:yank_info_map[curline].syntax)
+  if !empty(lines)
+    call g:clap.preview.show(lines)
+    if has_key(s:yank_info_map, curline)
+      call g:clap.preview.setbufvar('&syntax', s:yank_info_map[curline].syntax)
+    endif
   endif
 endfunction
 
-function! s:yanks_sink(selected) abort
+function! s:yanks.sink(selected) abort
   call setreg('"', a:selected)
   normal! ""p
 endfunction
 
-let s:yanks.sink = function('s:yanks_sink')
-
-function! s:yanks_enter() abort
+function! s:yanks.on_enter() abort
   if !get(g:, 'clap_enable_yanks_provider', 1)
     call clap#helper#echo_error('Clap yanks provider is disabled, set g:clap_enable_yanks_provider to 1 to enable.')
     call clap#handler#exit()
     call feedkeys("\<Esc>", 'n')
   endif
 endfunction
-
-let s:yanks.on_enter = function('s:yanks_enter')
 
 let g:clap#provider#yanks# = s:yanks
 
