@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:proj_tags = {}
-let s:PATH_SEPERATOR = has('win32') ? '\' : '/'
 
 function! s:proj_tags.on_typed() abort
   if exists('g:__clap_forerunner_tempfile')

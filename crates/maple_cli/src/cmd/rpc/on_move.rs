@@ -16,21 +16,12 @@ fn canonicalize_and_as_str<P: AsRef<Path>>(path: P) -> String {
 
 pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
     let msg_id = msg.id;
-    let PreviewEnv { size, provider } = match msg.try_into() {
-        Ok(p) => p,
-        Err(e) => {
-            write_response(json!({ "error": format!("{}",e), "id": msg_id }));
-            return Err(e);
-        }
-    };
+
+    let PreviewEnv { size, provider } = msg.try_into()?;
 
     match provider {
         Provider::Grep(preview_entry) => {
-            match crate::utils::read_preview_lines(
-                &preview_entry.fpath,
-                preview_entry.lnum as usize,
-                size as usize,
-            ) {
+            match crate::utils::read_preview_lines(&preview_entry.fpath, preview_entry.lnum, size) {
                 Ok((lines_iter, hi_lnum)) => {
                     let mut lines = lines_iter.collect::<Vec<_>>();
                     let fname = format!("{}", preview_entry.fpath.display());
@@ -50,15 +41,14 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
         }
         Provider::Filer { path, enable_icon } => {
             if path.is_dir() {
-                let lines =
-                    super::filer::read_dir_entries(&path, enable_icon, Some(2 * size as usize))?;
+                let lines = super::filer::read_dir_entries(&path, enable_icon, Some(2 * size))?;
                 write_response(
                     json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "is_dir": true }),
                 );
             } else {
                 match crate::utils::read_first_lines(&path, 10) {
                     Ok(line_iter) => {
-                        let mut lines = line_iter.take(2 * size as usize).collect::<Vec<_>>();
+                        let mut lines = line_iter.take(2 * size).collect::<Vec<_>>();
                         let abs_path = canonicalize_and_as_str(&path);
                         lines.insert(0, abs_path.clone());
                         write_response(

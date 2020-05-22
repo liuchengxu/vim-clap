@@ -8,8 +8,8 @@ use std::path::PathBuf;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GrepPreviewEntry {
     pub fpath: PathBuf,
-    pub lnum: u64,
-    pub col: u64,
+    pub lnum: usize,
+    pub col: usize,
 }
 
 impl TryFrom<String> for GrepPreviewEntry {
@@ -26,7 +26,7 @@ impl TryFrom<String> for GrepPreviewEntry {
         let str2nr = |idx: usize| {
             cap.get(idx)
                 .map(|x| x.as_str())
-                .map(|x| x.parse::<u64>().expect("\\d+ matched"))
+                .map(|x| x.parse::<usize>().expect("\\d+ matched"))
                 .context("Couldn't parse u64")
         };
         let lnum = str2nr(2)?;
@@ -38,7 +38,7 @@ impl TryFrom<String> for GrepPreviewEntry {
 /// Preview environment on Vim CursorMoved event.
 pub struct PreviewEnv {
     /// Number of lines to preview.
-    pub size: u64,
+    pub size: usize,
     pub provider: Provider,
 }
 
@@ -74,7 +74,7 @@ impl TryFrom<Message> for PreviewEnv {
         let size = msg
             .params
             .get("preview_size")
-            .and_then(|x| x.as_u64())
+            .and_then(|x| x.as_u64().map(|x| x as usize))
             .unwrap_or(5);
 
         let provider = match provider_id {
