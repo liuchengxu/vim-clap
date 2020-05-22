@@ -111,8 +111,13 @@ function! clap#util#trim_leading(str) abort
   return substitute(a:str, '^\s*', '', '')
 endfunction
 
-function! clap#util#buflisted() abort
-  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+function! clap#util#buflisted(cur_tab_only) abort
+  if a:cur_tab_only
+    let buf_tab = tabpagebuflist(tabpagenr())
+    return filter(range(1, bufnr('$')), 'index(buf_tab, v:val) > -1 && buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+  else
+    return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+  endif
 endfunction
 
 " Borrowed from fzf.vim
@@ -122,8 +127,8 @@ function! s:sort_buffers(...) abort
   return b1 < b2 ? 1 : -1
 endfunction
 
-function! clap#util#buflisted_sorted() abort
-  return sort(clap#util#buflisted(), 's:sort_buffers')
+function! clap#util#buflisted_sorted(cur_tab_only) abort
+  return sort(clap#util#buflisted(a:cur_tab_only), 's:sort_buffers')
 endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48
