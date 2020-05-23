@@ -47,6 +47,14 @@ pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize)> {
     Some((fpath, lnum, col))
 }
 
+/// Returns fpath part in grep line.
+#[inline]
+pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
+    GREP_POS
+        .captures(line)
+        .and_then(|cap| cap.get(1).map(|x| x.as_str()))
+}
+
 /// Returns the file name of files entry.
 #[inline]
 pub fn file_name_only(line: &str) -> Option<(&str, usize)> {
