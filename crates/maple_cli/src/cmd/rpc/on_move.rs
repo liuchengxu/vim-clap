@@ -19,13 +19,26 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
 
     let PreviewEnv { size, provider } = msg.try_into()?;
 
+    let file_preview_impl = |path: &Path| {
+        crate::utils::read_first_lines(path, 2 * size).map(|lines_iter| {
+            let abs_path = canonicalize_and_as_str(path);
+            (
+                std::iter::once(abs_path.clone())
+                    .chain(lines_iter)
+                    .collect::<Vec<_>>(),
+                abs_path,
+            )
+        })
+    };
+
     match provider {
         Provider::Grep(preview_entry) => {
             match crate::utils::read_preview_lines(&preview_entry.fpath, preview_entry.lnum, size) {
                 Ok((lines_iter, hi_lnum)) => {
-                    let mut lines = lines_iter.collect::<Vec<_>>();
                     let fname = format!("{}", preview_entry.fpath.display());
-                    lines.insert(0, fname.clone());
+                    let lines = std::iter::once(fname.clone())
+                        .chain(lines_iter)
+                        .collect::<Vec<_>>();
                     write_response(
                         json!({ "id": msg_id, "provider_id": "grep", "lines": lines, "fname": fname, "hi_lnum": hi_lnum }),
                     );
@@ -46,11 +59,8 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                     json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "is_dir": true }),
                 );
             } else {
-                match crate::utils::read_first_lines(&path, 10) {
-                    Ok(line_iter) => {
-                        let mut lines = line_iter.take(2 * size).collect::<Vec<_>>();
-                        let abs_path = canonicalize_and_as_str(&path);
-                        lines.insert(0, abs_path.clone());
+                match file_preview_impl(&path) {
+                    Ok((lines, abs_path)) => {
                         write_response(
                             json!({ "id": msg_id, "provider_id": "filer", "type": "preview", "lines": lines, "fname": abs_path }),
                         );
@@ -65,11 +75,8 @@ pub(super) fn handle_message_on_move(msg: Message) -> Result<()> {
                 }
             }
         }
-        Provider::Files(fpath) => match crate::utils::read_first_lines(&fpath, 10) {
-            Ok(line_iter) => {
-                let mut lines = line_iter.collect::<Vec<_>>();
-                let abs_path = canonicalize_and_as_str(&fpath);
-                lines.insert(0, abs_path.clone());
+        Provider::Files(fpath) => match file_preview_impl(&fpath) {
+            Ok((lines, abs_path)) => {
                 write_response(
                     json!({ "id": msg_id, "provider_id": "files", "lines": lines, "fname": abs_path }),
                 );
