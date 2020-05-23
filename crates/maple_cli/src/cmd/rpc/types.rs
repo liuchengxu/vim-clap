@@ -101,7 +101,6 @@ impl TryFrom<Message> for PreviewEnv {
 #[test]
 fn test_grep_regex() {
     use std::convert::TryInto;
-    let re = regex::Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
     let line = "install.sh:1:5:#!/usr/bin/env bash";
     let e: GrepPreviewEntry = String::from(line).try_into().unwrap();
     assert_eq!(

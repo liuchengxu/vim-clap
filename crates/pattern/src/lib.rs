@@ -1,3 +1,5 @@
+//! Regex patterns and utilities used for manipulating the line.
+
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::PathBuf;
@@ -22,10 +24,10 @@ pub fn tag_name_only(line: &str) -> Option<&str> {
 ///
 /// Do not match the file path when using ripgrep.
 ///
-///                                  |<----      line content     ---->|
-/// crates/printer/src/lib.rs:199:26:        let query = "srlisrlisrsr";
-///                                 |
-///                              offset
+/// //                                <----       line content       ---->
+/// // crates/printer/src/lib.rs:199:26:        let query = "srlisrlisrsr";
+/// //                                |
+/// //                             offset
 #[inline]
 pub fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
     GREP_STRIP_FPATH
@@ -68,24 +70,6 @@ pub fn file_name_only(line: &str) -> Option<(&str, usize)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_exclude_grep_filepath() {
-        let query = "rules";
-        let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
-        let (_, indices) = apply_fzy_on_grep_line(line, query).unwrap();
-        assert_eq!(origin_indices, indices);
-    }
-
-    #[test]
-    fn test_file_name_only() {
-        let query = "lib";
-        let line = "crates/extracted_fzy/src/lib.rs";
-        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
-        let (_, indices) = apply_fzy_on_file_line(line, query).unwrap();
-        assert_eq!(origin_indices, indices);
-    }
 
     #[test]
     fn test_tag_name_only() {

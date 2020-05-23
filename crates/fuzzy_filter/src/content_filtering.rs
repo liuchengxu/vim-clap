@@ -70,3 +70,26 @@ pub(super) fn apply_fzy_on_tag_line(line: &str, query: &str) -> ScorerOutput {
 pub(super) fn apply_substr_on_tag_line(line: &str, query: &str) -> ScorerOutput {
     tag_name_only(line).and_then(|tag_name| substr_indices(tag_name, query))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exclude_grep_filepath() {
+        let query = "rules";
+        let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
+        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
+        let (_, indices) = apply_fzy_on_grep_line(line, query).unwrap();
+        assert_eq!(origin_indices, indices);
+    }
+
+    #[test]
+    fn test_file_name_only() {
+        let query = "lib";
+        let line = "crates/extracted_fzy/src/lib.rs";
+        let (_, origin_indices) = fuzzy_indices_fzy(line, query).unwrap();
+        let (_, indices) = apply_fzy_on_file_line(line, query).unwrap();
+        assert_eq!(origin_indices, indices);
+    }
+}
