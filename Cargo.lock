@@ -427,9 +427,8 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
- "lazy_static",
+ "pattern",
  "rayon",
- "regex",
  "structopt",
  "subprocess",
 ]
@@ -778,6 +777,7 @@ dependencies = [
  "lazy_static",
  "log",
  "log4rs",
+ "pattern",
  "printer",
  "rayon",
  "regex",
@@ -999,6 +999,14 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "pattern"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]
