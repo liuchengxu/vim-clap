@@ -57,6 +57,12 @@ impl TryFrom<Message> for PreviewEnv {
             .and_then(|x| x.as_str())
             .unwrap_or("Unknown provider id");
 
+        let enable_icon = msg
+            .params
+            .get("enable_icon")
+            .and_then(|x| x.as_bool())
+            .unwrap_or(false);
+
         let cwd = String::from(
             msg.params
                 .get("cwd")
@@ -64,12 +70,18 @@ impl TryFrom<Message> for PreviewEnv {
                 .unwrap_or("Missing cwd when deserializing into FilerParams"),
         );
 
-        let fname = String::from(
+        let fname_with_icon = String::from(
             msg.params
                 .get("curline")
                 .and_then(|x| x.as_str())
                 .unwrap_or("Missing fname when deserializing into FilerParams"),
         );
+
+        let fname = if enable_icon {
+            fname_with_icon.chars().skip(2).collect()
+        } else {
+            fname_with_icon
+        };
 
         let size = msg
             .params

@@ -10,14 +10,6 @@ let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
 " Note: must use v:true/v:false for json_encode
 let s:enable_icon = g:clap_enable_icon ? v:true : v:false
 
-function! s:into_filename(line) abort
-  if g:clap_enable_icon
-    return a:line[4:]
-  else
-    return a:line
-  endif
-endfunction
-
 function! s:filer_handle(decoded) abort
   if has_key(a:decoded, 'type') && a:decoded.type ==# 'preview'
     if empty(a:decoded.lines)
@@ -47,6 +39,11 @@ function! clap#impl#on_move#daemon_handle(msg) abort
     return
   endif
 
+  if has_key(decoded, 'error')
+    echoerr decoded.error
+    return
+  endif
+
   if decoded.provider_id ==# 'filer'
     call s:filer_handle(decoded)
     return
@@ -72,7 +69,7 @@ endfunction
 
 function! s:send_preview_request() abort
   let s:req_id += 1
-  let curline = s:into_filename(g:clap.display.getcurline())
+  let curline = g:clap.display.getcurline()
   let msg = json_encode({
       \ 'id': s:req_id,
       \ 'method': 'client.on_move',
