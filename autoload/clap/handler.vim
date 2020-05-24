@@ -74,7 +74,7 @@ function! clap#handler#sink() abort
   try
     call Sink(sink_args)
   catch
-    call clap#helper#echo_error('clap#handler#sink: '.v:exception)
+    call clap#helper#echo_error('clap#handler#sink: '.v:exception.', throwpoint:'.v:throwpoint)
   finally
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit

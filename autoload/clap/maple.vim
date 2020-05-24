@@ -64,8 +64,8 @@ function! s:on_complete() abort
     call g:clap.display.set_lines([
           \ 'The external job runs into some issue:',
           \ 'jobid: '.s:job_id,
-          \ 'executable: '.split(s:cmd)[0],
-          \ 'args: '.join(split(s:cmd)[1:], ' '),
+          \ 'executable: '.s:cmd[0],
+          \ 'args: '.join(s:cmd[1:], ' '),
           \ 'error:',
           \ ] + split(decoded.error, "\n"))
     call clap#indicator#set_matches_number(0)

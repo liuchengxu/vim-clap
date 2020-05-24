@@ -13,6 +13,9 @@ function! clap#selection#get_sink_or_sink_star_params() abort
   if s:multi_select_enabled && !empty(selected)
     let Sink = g:clap.provider.sink_star
     let sink_args = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+    if exists('g:__clap_lines_truncated_map')
+      let sink_args = map(sink_args, 'clap#api#into_origin_line(v:val)')
+    endif
   else
     let Sink = g:clap.provider.sink
     let sink_args = g:clap.display.getcurline()

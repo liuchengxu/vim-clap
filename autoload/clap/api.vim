@@ -34,6 +34,24 @@ function! clap#api#has_externalfilter() abort
         \ || has_key(g:clap.context, 'externalfilter')
 endfunction
 
+function! clap#api#into_origin_line(possible_truncated_line) abort
+  if has_key(g:__clap_lines_truncated_map, a:possible_truncated_line)
+    return g:__clap_lines_truncated_map[a:possible_truncated_line]
+  endif
+  " Rebuild the complete line info with icon
+  if g:clap_enable_icon
+    let icon = a:possible_truncated_line[:3]
+    let real_cur_line = a:possible_truncated_line[4:]
+  else
+    let real_cur_line = a:possible_truncated_line
+  endif
+  if has_key(g:__clap_lines_truncated_map, real_cur_line)
+    return icon.g:__clap_lines_truncated_map[real_cur_line]
+  else
+    return a:possible_truncated_line
+  endif
+endfunction
+
 function! s:_system(cmd) abort
   let lines = systemlist(a:cmd)
   if v:shell_error
@@ -203,21 +221,7 @@ function! s:init_display() abort
     let cur_line = get(getbufline(self.bufnr, g:__clap_display_curlnum), 0, '')
     " g:__clap_lines_truncated_map can't store the truncated item with icon as the json_decode can fail.
     if exists('g:__clap_lines_truncated_map')
-      if has_key(g:__clap_lines_truncated_map, cur_line)
-        return g:__clap_lines_truncated_map[cur_line]
-      endif
-      " Rebuild the complete line info with icon
-      if g:clap_enable_icon
-        let icon = cur_line[:3]
-        let real_cur_line = cur_line[4:]
-      else
-        let real_cur_line = cur_line
-      endif
-      if has_key(g:__clap_lines_truncated_map, real_cur_line)
-        return icon.g:__clap_lines_truncated_map[real_cur_line]
-      else
-        return cur_line
-      endif
+      return clap#api#into_origin_line(cur_line)
     else
       return cur_line
     endif
