@@ -36,7 +36,7 @@ endfunction
 
 " Returns the original full line with icon if g:clap_enable_icon is on given
 " the lnum of display buffer.
-function! clap#api#into_origin_line(lnum) abort
+function! clap#api#get_origin_line_at(lnum) abort
   if exists('g:__clap_lines_truncated_map') && has_key(g:__clap_lines_truncated_map, a:lnum)
     let t_line = g:__clap_lines_truncated_map[a:lnum]
     " NOTE: t_line[3] is not 100% right
@@ -216,7 +216,7 @@ function! s:init_display() abort
   endfunction
 
   function! display.getcurline() abort
-    return clap#api#into_origin_line(g:__clap_display_curlnum)
+    return clap#api#get_origin_line_at(g:__clap_display_curlnum)
   endfunction
 
   function! display.deletecurline() abort
