@@ -68,7 +68,7 @@ function! s:buffers_on_move() abort
     return
   endif
   let lnum = str2nr(matchstr(s:line_info[bufnr], '\d\+'))
-  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_range(lnum)
   let lines = getbufline(bufnr, start+1, end+1)
   call insert(lines, bufname(bufnr))
   call g:clap.preview.show(lines)

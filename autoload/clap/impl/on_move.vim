@@ -77,7 +77,7 @@ function! s:send_preview_request() abort
       \   'curline': curline,
       \   'enable_icon': s:enable_icon,
       \   'provider_id': g:clap.provider.id,
-      \   'preview_size': 5,
+      \   'preview_size': clap#preview#size_of(g:clap.provider.id),
       \ },
       \ })
   call clap#job#daemon#send_message(msg)

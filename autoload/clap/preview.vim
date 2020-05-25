@@ -5,9 +5,10 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:path_seperator = has('win32') ? '\' : '/'
+let s:default_size = 5
 
 function! s:peek_file(fname, fpath) abort
-  let lines = readfile(a:fpath, '', 10)
+  let lines = readfile(a:fpath, '', 2 * s:default_size)
   call insert(lines, a:fpath)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(a:fname))
@@ -17,6 +18,34 @@ endfunction
 function! s:show_file_props(entry) abort
   let props = strftime('%B %d/%m/%Y %H:%M:%S', getftime(a:entry)).'    '.getfperm(a:entry)
   call g:clap.preview.show([a:entry, props])
+  call clap#preview#highlight_header()
+endfunction
+
+if type(g:clap_preview_size) == v:t_number
+  function! clap#preview#size_of(provider_id) abort
+    return g:clap_preview_size
+  endfunction
+elseif type(g:clap_preview_size) == v:t_dict
+  function! clap#preview#size_of(provider_id) abort
+    if has_key(g:clap_preview_size, a:provider_id)
+      return g:clap_preview_size[a:provider_id]
+    elseif has_key(g:clap_preview_size, '*')
+      return g:clap_preview_size['*']
+    else
+      return s:default_size
+    endif
+  endfunction
+else
+  throw 'g:clap_preview_size has to be a Number or Dict'
+endif
+
+" For blines, tags provider
+function! clap#preview#buffer(lnum, origin_syntax) abort
+  let [start, end, hi_lnum] = clap#preview#get_range(a:lnum)
+  let lines = getbufline(g:clap.start.bufnr, start, end)
+  call insert(lines, bufname(g:clap.start.bufnr).':'.a:lnum)
+  let hi_lnum += 1
+  call clap#preview#show_with_line_highlight(lines, a:origin_syntax, hi_lnum+1)
   call clap#preview#highlight_header()
 endfunction
 
@@ -41,7 +70,7 @@ function! clap#preview#file(fname) abort
 endfunction
 
 function! clap#preview#file_at(fpath, lnum) abort
-  let [start, end, hi_lnum] = clap#preview#get_line_range(a:lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_range(a:lnum)
   if filereadable(a:fpath)
     let lines = readfile(a:fpath)[start : end]
   else
@@ -69,6 +98,11 @@ function! clap#preview#get_line_range(origin_lnum, range_size) abort
   else
     return [0, a:origin_lnum + a:range_size, a:origin_lnum]
   endif
+endfunction
+
+function! clap#preview#get_range(origin_lnum) abort
+  let size = clap#preview#size_of(g:clap.provider.id)
+  return clap#preview#get_line_range(a:origin_lnum, size)
 endfunction
 
 function! clap#preview#show_with_line_highlight(lines, syntax, hi_lnum) abort
