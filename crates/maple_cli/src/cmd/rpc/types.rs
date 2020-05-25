@@ -1,7 +1,6 @@
 use super::Message;
 use anyhow::anyhow;
 use anyhow::Context;
-use lazy_static::lazy_static;
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 
@@ -15,22 +14,8 @@ pub struct GrepPreviewEntry {
 impl TryFrom<String> for GrepPreviewEntry {
     type Error = anyhow::Error;
     fn try_from(line: String) -> std::result::Result<Self, Self::Error> {
-        lazy_static! {
-            static ref GREP_RE: regex::Regex = regex::Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
-        }
-        let cap = GREP_RE.captures(&line).context("Couldn't get captures")?;
-        let fpath = cap
-            .get(1)
-            .map(|x| x.as_str().into())
-            .context("Couldn't get fpath")?;
-        let str2nr = |idx: usize| {
-            cap.get(idx)
-                .map(|x| x.as_str())
-                .map(|x| x.parse::<usize>().expect("\\d+ matched"))
-                .context("Couldn't parse u64")
-        };
-        let lnum = str2nr(2)?;
-        let col = str2nr(3)?;
+        let (fpath, lnum, col) =
+            pattern::extract_grep_position(&line).context("Couldn't extract grep position")?;
         Ok(Self { fpath, lnum, col })
     }
 }
@@ -116,7 +101,6 @@ impl TryFrom<Message> for PreviewEnv {
 #[test]
 fn test_grep_regex() {
     use std::convert::TryInto;
-    let re = regex::Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
     let line = "install.sh:1:5:#!/usr/bin/env bash";
     let e: GrepPreviewEntry = String::from(line).try_into().unwrap();
     assert_eq!(
