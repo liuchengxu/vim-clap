@@ -753,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "maple"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "built",
  "maple_cli",

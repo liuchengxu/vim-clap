@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.17] 2020-05-25
+
 ### Fixed
 
 - Fix the `sink*` args in `selection.vim`, convert the truncated lines to the original full lines.
