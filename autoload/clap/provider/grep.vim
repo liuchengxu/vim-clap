@@ -163,7 +163,7 @@ function! s:grep_exit() abort
 endfunction
 
 function! s:matchlist(line, pattern) abort
-  if s:icon_appended
+  if s:icon_appended && a:line[3] ==# ' '
     return matchlist(a:line, '^.* '.a:pattern)
   else
     return matchlist(a:line, '^'.a:pattern)

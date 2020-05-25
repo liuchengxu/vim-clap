@@ -5,8 +5,7 @@ pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
 use anyhow::Result;
 use fuzzy_filter::{fuzzy_filter_and_rank, subprocess, Algo, ContentFiltering, Source};
 use icon::{IconPainter, ICON_LEN};
-use printer::truncate_long_matched_lines;
-use std::collections::HashMap;
+use printer::{truncate_long_matched_lines, LinesTruncatedMap};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -118,13 +117,13 @@ fn process_top_items<T>(
     top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
     winwidth: usize,
     icon_painter: Option<IconPainter>,
-) -> (Vec<String>, Vec<Vec<usize>>, HashMap<String, String>) {
+) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
     let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
     let mut lines = Vec::with_capacity(top_size);
     let mut indices = Vec::with_capacity(top_size);
     if let Some(painter) = icon_painter {
-        for (text, _, idxs) in truncated_lines {
-            let iconized = if let Some(origin_text) = truncated_map.get(&text) {
+        for (idx, (text, _, idxs)) in truncated_lines.iter().enumerate() {
+            let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
                 format!("{} {}", painter.get_icon(origin_text), text)
             } else {
                 painter.paint(&text)

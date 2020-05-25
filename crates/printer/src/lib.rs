@@ -2,8 +2,20 @@ use std::collections::HashMap;
 
 pub const DOTS: &str = "..";
 
-/// Map of truncated line to original line.
-pub type LinesTruncatedMap = HashMap<String, String>;
+/// Line number of Vim is 1-based.
+pub type VimLineNumber = usize;
+
+/// Map of truncated line number to original full line.
+///
+/// Can't use HashMap<String, String> since we can't tell the original lines in the following case:
+///
+/// //  ..{ version = "1.0", features = ["derive"] }
+/// //  ..{ version = "1.0", features = ["derive"] }
+/// //  ..{ version = "1.0", features = ["derive"] }
+/// //  ..{ version = "1.0", features = ["derive"] }
+///
+pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
+
 /// Tuple of (matched line text, filtering score, indices of matched elements)
 pub type FuzzyMatchedLineInfo = (String, i64, Vec<usize>);
 
@@ -39,9 +51,11 @@ pub fn truncate_long_matched_lines<T>(
     skipped: Option<usize>,
 ) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
+    let mut lnum = 0usize;
     let lines = lines
         .into_iter()
         .map(|(line, score, indices)| {
+            lnum += 1;
             if !indices.is_empty() {
                 let last_idx = indices.last().expect("indices are non-empty; qed");
                 if *last_idx > winwidth {
@@ -73,7 +87,7 @@ pub fn truncate_long_matched_lines<T>(
                     };
                     let offset = line_len - truncated.len();
                     let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
-                    truncated_map.insert(truncated.clone(), line);
+                    truncated_map.insert(lnum, line);
                     (truncated, score, truncated_indices)
                 } else {
                     (line, score, indices)
@@ -134,13 +148,14 @@ mod tests {
 
         let (truncated_lines, truncated_map) =
             truncate_long_matched_lines(ranked, winwidth, skipped);
-        for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
+        for (idx, (truncated_line, _score, truncated_indices)) in truncated_lines.iter().enumerate()
+        {
             println!("truncated: {}", "-".repeat(winwidth));
             println!(
                 "truncated: {}",
                 wrap_matches(&truncated_line, &truncated_indices)
             );
-            println!("raw_line: {}", truncated_map.get(truncated_line).unwrap());
+            println!("raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
         }
     }
 
