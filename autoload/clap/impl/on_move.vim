@@ -50,7 +50,11 @@ function! clap#impl#on_move#daemon_handle(msg) abort
   endif
 
   if has_key(decoded, 'lines')
-    call g:clap.preview.show(decoded.lines)
+    try
+      call g:clap.preview.show(decoded.lines)
+    catch
+      return
+    endtry
     if has_key(decoded, 'fname')
       call g:clap.preview.set_syntax(clap#ext#into_filetype(decoded.fname))
     endif
