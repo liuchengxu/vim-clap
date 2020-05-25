@@ -768,7 +768,6 @@ dependencies = [
  "crossbeam-channel",
  "curl",
  "extracted_fzy",
- "fuzzy-matcher",
  "fuzzy_filter",
  "icon",
  "indicatif",
