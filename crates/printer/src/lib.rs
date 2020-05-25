@@ -148,13 +148,14 @@ mod tests {
 
         let (truncated_lines, truncated_map) =
             truncate_long_matched_lines(ranked, winwidth, skipped);
-        for (truncated_line, _score, truncated_indices) in truncated_lines.iter() {
+        for (idx, (truncated_line, _score, truncated_indices)) in truncated_lines.iter().enumerate()
+        {
             println!("truncated: {}", "-".repeat(winwidth));
             println!(
                 "truncated: {}",
                 wrap_matches(&truncated_line, &truncated_indices)
             );
-            println!("raw_line: {}", truncated_map.get(truncated_line).unwrap());
+            println!("raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
         }
     }
 
