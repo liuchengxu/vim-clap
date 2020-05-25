@@ -40,17 +40,12 @@ function! clap#impl#on_move#daemon_handle(msg) abort
   endif
 
   if has_key(decoded, 'error')
-    echoerr decoded.error
+    call clap#helper#echo_error('[daemon_handle] '.decoded.error)
     return
   endif
 
   if decoded.provider_id ==# 'filer'
     call s:filer_handle(decoded)
-    return
-  endif
-
-  if has_key(decoded, 'error')
-    echoerr decoded.error
     return
   endif
 
