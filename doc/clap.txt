@@ -483,7 +483,7 @@ g:clap_preview_size                                         *g:clap_preview_size
   providers, use provider id as the key, `*` is a special key for the default size.
   >
   " 20 preview lines for files provider, 10 lines for the other providers.
-  let g:clap_preview_size = { '*': 5, 'files': 10}
+  let g:clap_preview_size = { '*': 5, 'files': 10 }
 <
 
 -------------------------------------------------------------------------------
