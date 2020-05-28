@@ -1,6 +1,7 @@
 use super::{write_response, Message};
 use anyhow::Result;
 use icon::prepend_filer_icon;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::path::{self, Path, PathBuf};
@@ -53,6 +54,7 @@ pub(super) fn read_dir_entries<P: AsRef<Path>>(
 ) -> Result<Vec<String>> {
     let entries_iter =
         fs::read_dir(dir)?.map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).into()));
+
     let mut entries = if let Some(m) = max {
         entries_iter
             .take(m)
@@ -91,10 +93,9 @@ impl From<serde_json::Map<String, serde_json::Value>> for FilerParams {
 
 pub(super) fn handle_message(msg: Message) {
     let FilerParams { cwd, enable_icon } = msg.params.into();
-    log::debug!(
-        "handling filer params: cwd:{}, enable_icon:{}",
-        cwd,
-        enable_icon
+    debug!(
+        "Recv filer params: cwd:{}, enable_icon:{}",
+        cwd, enable_icon
     );
 
     let result = match read_dir_entries(&cwd, enable_icon, None) {

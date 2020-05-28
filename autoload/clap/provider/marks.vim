@@ -6,8 +6,6 @@ set cpoptions&vim
 
 let s:marks = {}
 
-let s:preview_size = 5
-
 function! s:format_mark(line) abort
   return substitute(a:line, '\S', '\=submatch(0)', '')
 endfunction
@@ -29,7 +27,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
 
   let origin_line = getbufline(g:clap.start.bufnr, line)
 
-  let [start, end, hi_lnum] = clap#preview#get_line_range(line, s:preview_size)
+  let [start, end, hi_lnum] = clap#preview#get_range(line)
 
   let should_add_hi = v:true
 

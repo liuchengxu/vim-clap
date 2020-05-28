@@ -2,14 +2,12 @@ mod filer;
 mod on_move;
 mod types;
 
-use std::io::prelude::*;
-use std::thread;
-
 use crossbeam_channel::Sender;
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-
-const REQUEST_FILER: &str = "filer";
+use std::io::prelude::*;
+use std::thread;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -49,14 +47,21 @@ fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
         thread::spawn(move || {
             // Ignore the invalid message.
             if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
-                log::debug!("recv msg: {:?}", msg);
+                debug!("Recv: {:?}", msg);
                 match &msg.method[..] {
-                    REQUEST_FILER => filer::handle_message(msg),
+                    "filer" => filer::handle_message(msg),
                     "client.on_move" => {
-                        let _ = on_move::handle_message_on_move(msg);
+                        let msg_id = msg.id;
+                        if let Err(e) = on_move::handle_message_on_move(msg) {
+                            write_response(json!({ "error": format!("{}",e), "id": msg_id }));
+                        }
                     }
-                    _ => write_response(json!({ "error": "unknown method", "id": msg.id })),
+                    _ => write_response(
+                        json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
+                    ),
                 }
+            } else {
+                error!("Invalid message: {:?}", msg);
             }
         });
     }

@@ -469,6 +469,23 @@ g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold
   monster of candidates.
 
 
+g:clap_preview_size                                         *g:clap_preview_size*
+
+  Type: |Number| or |Dict|
+  Default: `5`
+
+  This variable controls the size of preview, normally the number of preview
+  lines is `2 * g:clap_preview_size` .
+
+  If |g:clap_preview_size| is a |Number|, all providers use the same size.
+
+  If |g:clap_preview_size| is a |Dict|, you can use different size for various
+  providers, use provider id as the key, `*` is a special key for the default size.
+  >
+  " 20 preview lines for files provider, 10 lines for the other providers.
+  let g:clap_preview_size = { '*': 5, 'files': 10 }
+<
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 

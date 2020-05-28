@@ -2,8 +2,6 @@ mod constants;
 
 pub use constants::{bsearch_icon_table, EXACTMATCH_ICON_TABLE, EXTENSION_ICON_TABLE};
 
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::path::Path;
 use structopt::clap::arg_enum;
 
@@ -66,12 +64,8 @@ pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
 
 #[inline]
 fn grep_icon_for(line: &str) -> Icon {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"^(.*):\d+:\d+:").unwrap();
-    }
-    RE.captures(line)
-        .and_then(|cap| cap.get(1))
-        .map(|m| icon_for(m.as_str()))
+    pattern::extract_fpath_from_grep_line(line)
+        .map(|fpath| icon_for(fpath))
         .unwrap_or(DEFAULT_ICON)
 }
 

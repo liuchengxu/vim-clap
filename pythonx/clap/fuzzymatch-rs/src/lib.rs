@@ -55,8 +55,12 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
     ))
 }
 
-#[pyfunction]
 /// Filter the candidates given query using the fzy algorithm
+///
+/// NOTE: TruncatedMap is ought to be HashMap<usize, String>,
+/// but there is an issue when converting to call result to Vim Dict in python dynamic call,
+/// therefore hereby has to use HashMap<String, String> instead.
+#[pyfunction]
 fn fuzzy_match(
     query: &str,
     candidates: Vec<String>,
@@ -98,7 +102,14 @@ fn fuzzy_match(
         filtered.push(text);
     }
 
-    Ok((indices, filtered, truncated_map))
+    Ok((
+        indices,
+        filtered,
+        truncated_map
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect(),
+    ))
 }
 
 /// This module is a python module implemented in Rust.

@@ -427,9 +427,8 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
- "lazy_static",
+ "pattern",
  "rayon",
- "regex",
  "structopt",
  "subprocess",
 ]
@@ -572,8 +571,7 @@ dependencies = [
 name = "icon"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
- "regex",
+ "pattern",
  "structopt",
 ]
 
@@ -755,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "maple"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "built",
  "maple_cli",
@@ -770,14 +768,13 @@ dependencies = [
  "crossbeam-channel",
  "curl",
  "extracted_fzy",
- "fuzzy-matcher",
  "fuzzy_filter",
  "icon",
  "indicatif",
  "itertools",
- "lazy_static",
  "log",
  "log4rs",
+ "pattern",
  "printer",
  "rayon",
  "regex",
@@ -999,6 +996,14 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "pattern"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]

@@ -160,9 +160,8 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
- "lazy_static",
+ "pattern",
  "rayon",
- "regex",
  "structopt",
 ]
 
@@ -209,8 +208,7 @@ dependencies = [
 name = "icon"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
- "regex",
+ "pattern",
  "structopt",
 ]
 
@@ -361,6 +359,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "pattern"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
 ]
 
 [[package]]

@@ -163,7 +163,7 @@ function! s:grep_exit() abort
 endfunction
 
 function! s:matchlist(line, pattern) abort
-  if s:icon_appended
+  if s:icon_appended && a:line[3] ==# ' '
     return matchlist(a:line, '^.* '.a:pattern)
   else
     return matchlist(a:line, '^'.a:pattern)
@@ -210,7 +210,7 @@ function! s:grep_on_move() abort
           \ 'filetype': clap#ext#into_filetype(fpath)
           \ }
   endif
-  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_range(lnum)
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call insert(preview_lines, fpath)
   let hi_lnum += 1

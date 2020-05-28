@@ -210,6 +210,9 @@ function! g:clap#floating_win#input.open() abort
 endfunction
 
 function! s:open_indicator_win() abort
+  if exists('s:indicator_winid') && nvim_win_is_valid(s:indicator_winid)
+    return
+  endif
   let opts = nvim_win_get_config(s:input_winid)
   let opts.col += opts.width
   let opts.width = g:__clap_indicator_winwidth
