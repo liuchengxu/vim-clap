@@ -29,9 +29,11 @@ function! s:OnBufDelete(bufnr) abort
   if has_key(g:__clap_buffers, a:bufnr)
     call remove(g:__clap_buffers, a:bufnr)
   endif
-  let idx = index(g:__clap_tab_buffers[tabpagenr()], a:bufnr)
-  if idx != -1
-    unlet g:__clap_tab_buffers[tabpagenr()][idx]
+  if has_key(g:__clap_tab_buffers, tabpagenr())
+    let idx = index(g:__clap_tab_buffers[tabpagenr()], a:bufnr)
+    if idx != -1
+      unlet g:__clap_tab_buffers[tabpagenr()][idx]
+    endif
   endif
 endfunction
 
