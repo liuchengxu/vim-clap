@@ -113,7 +113,7 @@ endfunction
 
 function! clap#util#buflisted(cur_tab_only) abort
   if a:cur_tab_only
-    let buf_tab = tabpagebuflist(tabpagenr())
+    let buf_tab = get(g:__clap_tab_buffers, tabpagenr(), [])
     return filter(range(1, bufnr('$')), 'index(buf_tab, v:val) > -1 && buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
   else
     return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
