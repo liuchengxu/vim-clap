@@ -6,6 +6,7 @@ CHANGELOG
 ### Added
 
 - Add `g:clap_preview_size` for configuring the number of preview lines. ([#444](https://github.com/liuchengxu/vim-clap/pull/444))
+- Add `g:clap_provider_buffers_cur_tab_only`. ([#439](https://github.com/liuchengxu/vim-clap/pull/439))
 
 ## [0.17] 2020-05-25
 

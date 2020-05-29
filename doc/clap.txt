@@ -668,6 +668,14 @@ g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
 6.3 Other Provider Options                          *clap-other-provider-options*
 
 
+g:clap_provider_buffers_cur_tab_only       *g:clap_provider_buffers_cur_tab_only*
+
+  Type: |bool|
+  Default: `undefined`
+
+  List the buffer list per tab instead of the global buffer list.
+
+
 ===============================================================================
 7. Commands                                                     *clap-commands*
 
