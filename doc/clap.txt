@@ -655,13 +655,25 @@ g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries
   Set this variable to limit maximum yanks entries.
 
 
-g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
+g:clap_provider_yanks_min_len                     *g:clap_provider_yanks_min_len*
 
   Type: |Number|
   Default: `1`
 
   Set minimum length of yanked text to be stored in yanks stack. Setting this
   variable to less than 2 has no effect.
+
+
+g:clap_provider_yanks_history                     *g:clap_provider_yanks_history*
+
+  Type: |String|
+  Default: `Undefined`
+
+  This variables controls the path of persist yanks history, e.g.,
+  >
+  let g:clap_provider_yanks_history = '~/.clap_yanks.history'
+<
+  The persist history feature is disabled by default.
 
 
 -------------------------------------------------------------------------------
