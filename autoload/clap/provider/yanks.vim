@@ -41,10 +41,7 @@ function! clap#provider#yanks#collect() abort
 endfunction
 
 function! s:save_history() abort
-  if !exists('g:clap_provider_yanks_history')
-    return
-  endif
-  if !empty(s:yank_history)
+  if g:clap_provider_yanks_history && !empty(s:yank_history)
     call writefile(s:yank_history, expand(g:clap_provider_yanks_history))
   endif
 endfunction
@@ -53,7 +50,9 @@ function! clap#provider#yanks#init() abort
   augroup ClapYanksCollect
     autocmd!
     autocmd TextYankPost * call clap#provider#yanks#collect()
-    autocmd VimLeavePre  * call s:save_history()
+    if exists('g:clap_provider_yanks_history')
+      autocmd VimLeavePre  * call s:save_history()
+    endif
   augroup END
 
   " collect the data from default register
