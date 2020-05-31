@@ -78,8 +78,7 @@ function! clap#util#nvim_buf_clear(bufnr) abort
 endfunction
 
 function! clap#util#nvim_buf_is_empty(bufnr) abort
-  let last_lnum = nvim_buf_line_count(a:bufnr)
-  return last_lnum == 1 && empty(getbufline(a:bufnr, 1)[0])
+  return nvim_buf_line_count(a:bufnr) == 1 && empty(getbufline(a:bufnr, 1)[0])
 endfunction
 
 function! clap#util#nvim_buf_append_lines(bufnr, lines) abort

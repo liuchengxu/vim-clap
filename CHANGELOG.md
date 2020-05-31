@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Improved
+
+- Try loading the clap theme having a same name with the current colorscheme when `g:clap_theme` does not exist.
+
 ### Added
 
 - Add `g:clap_preview_size` for configuring the number of preview lines. ([#444](https://github.com/liuchengxu/vim-clap/pull/444))
