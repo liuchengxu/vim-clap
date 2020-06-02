@@ -12,6 +12,10 @@ CHANGELOG
 - Add `g:clap_preview_size` for configuring the number of preview lines. ([#444](https://github.com/liuchengxu/vim-clap/pull/444))
 - Add `g:clap_provider_buffers_cur_tab_only`. ([#439](https://github.com/liuchengxu/vim-clap/pull/439))
 
+### Fixed
+
+- Fix the the command of `job_start` with vanila vim. [#449](https://github.com/liuchengxu/vim-clap/issues/449)
+
 ## [0.17] 2020-05-25
 
 ### Fixed
