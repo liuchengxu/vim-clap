@@ -21,16 +21,29 @@ function! s:show_file_props(entry) abort
   call clap#preview#highlight_header()
 endfunction
 
+function! s:preview_lines_calc(h) abort
+  let l:layout = clap#layout#calc()
+  let l:remain = ( &lines - l:layout.row - l:layout.height - 1 ) / 2
+  let l:size = a:h
+  if l:remain <= 0
+    return 0
+  endif
+  if l:size <= l:remain
+    return l:size
+  endif
+  return l:remain
+endfunction
+
 if type(g:clap_preview_size) == v:t_number
   function! clap#preview#size_of(provider_id) abort
-    return g:clap_preview_size
+    return s:preview_lines_calc(g:clap_preview_size)
   endfunction
 elseif type(g:clap_preview_size) == v:t_dict
   function! clap#preview#size_of(provider_id) abort
     if has_key(g:clap_preview_size, a:provider_id)
-      return g:clap_preview_size[a:provider_id]
+      return s:preview_lines_calc(g:clap_preview_size[a:provider_id])
     elseif has_key(g:clap_preview_size, '*')
-      return g:clap_preview_size['*']
+      return s:preview_lines_calc(g:clap_preview_size['*'])
     else
       return s:default_size
     endif
@@ -93,10 +106,10 @@ endfunction
 " the origin line should be positioned.
 " 0-based
 function! clap#preview#get_line_range(origin_lnum, range_size) abort
-  if a:origin_lnum - a:range_size > 0
+  if a:origin_lnum > a:range_size
     return [a:origin_lnum - a:range_size, a:origin_lnum + a:range_size, a:range_size]
   else
-    return [0, a:origin_lnum + a:range_size, a:origin_lnum]
+    return [0, a:range_size * 2, a:range_size]
   endif
 endfunction
 
