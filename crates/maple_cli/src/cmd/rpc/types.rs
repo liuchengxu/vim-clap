@@ -1,101 +1,128 @@
-use super::Message;
 use anyhow::anyhow;
 use anyhow::Context;
-use std::convert::{TryFrom, TryInto};
+use pattern::{
+    extract_blines_lnum, extract_buf_tags_lnum, extract_grep_position, extract_proj_tags,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::convert::TryFrom;
 use std::path::PathBuf;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct GrepPreviewEntry {
-    pub fpath: PathBuf,
-    pub lnum: usize,
-    pub col: usize,
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Message {
+    pub method: String,
+    pub params: serde_json::Map<String, Value>,
+    pub id: u64,
+    pub session_id: u64,
 }
 
-impl TryFrom<String> for GrepPreviewEntry {
-    type Error = anyhow::Error;
-    fn try_from(line: String) -> std::result::Result<Self, Self::Error> {
-        let (fpath, lnum, col) =
-            pattern::extract_grep_position(&line).context("Couldn't extract grep position")?;
-        Ok(Self { fpath, lnum, col })
+impl Message {
+    pub fn get_message_id(&self) -> u64 {
+        self.id
+    }
+
+    pub fn get_provider_id(&self) -> String {
+        self.params
+            .get("provider_id")
+            .and_then(|x| x.as_str())
+            .unwrap_or("Unknown provider id")
+            .into()
+    }
+
+    pub fn get_query(&self) -> String {
+        self.params
+            .get("query")
+            .and_then(|x| x.as_str())
+            .expect("Unknown provider id")
+            .into()
     }
 }
 
 /// Preview environment on Vim CursorMoved event.
-pub struct PreviewEnv {
-    /// Number of lines to preview.
-    pub size: usize,
-    pub provider: Provider,
-}
-
-pub enum Provider {
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub enum OnMove {
     Files(PathBuf),
-    Filer { path: PathBuf, enable_icon: bool },
-    Grep(GrepPreviewEntry),
+    Filer(PathBuf),
+    Grep { path: PathBuf, lnum: usize },
+    BLines { path: PathBuf, lnum: usize },
+    ProjTags { path: PathBuf, lnum: usize },
+    BufferTags { path: PathBuf, lnum: usize },
 }
 
-impl TryFrom<Message> for PreviewEnv {
+impl TryFrom<Message> for OnMove {
     type Error = anyhow::Error;
     fn try_from(msg: Message) -> std::result::Result<Self, Self::Error> {
         let provider_id = msg
             .params
             .get("provider_id")
             .and_then(|x| x.as_str())
-            .unwrap_or("Unknown provider id");
+            .context("Missing provider id")?;
 
-        let enable_icon = msg
+        let cwd = msg
             .params
-            .get("enable_icon")
-            .and_then(|x| x.as_bool())
-            .unwrap_or(false);
+            .get("cwd")
+            .and_then(|x| x.as_str())
+            .context("Missing cwd when deserializing into FilerParams")?;
 
-        let cwd = String::from(
-            msg.params
-                .get("cwd")
-                .and_then(|x| x.as_str())
-                .unwrap_or("Missing cwd when deserializing into FilerParams"),
-        );
-
-        let fname_with_icon = String::from(
+        let display_curline = String::from(
             msg.params
                 .get("curline")
                 .and_then(|x| x.as_str())
-                .unwrap_or("Missing fname when deserializing into FilerParams"),
+                .context("Missing fname when deserializing into FilerParams")?,
         );
 
-        let fname = if enable_icon {
-            fname_with_icon.chars().skip(2).collect()
+        // TODO:
+        // let curline = if super::env::should_skip_leading_icon(provider_id) {
+        let curline = if true {
+            display_curline.chars().skip(2).collect()
         } else {
-            fname_with_icon
+            display_curline
         };
 
-        let size = msg
-            .params
-            .get("preview_size")
-            .and_then(|x| x.as_u64().map(|x| x as usize))
-            .unwrap_or(5);
+        let get_source_fpath = || {
+            msg.params
+                .get("source_fpath")
+                .and_then(|x| x.as_str().map(Into::into))
+                .context("Missing source_fpath")
+        };
 
-        let provider = match provider_id {
-            "files" => {
-                let mut fpath: PathBuf = cwd.into();
-                fpath.push(&fname);
-                Provider::Files(fpath)
+        // Rebuild the absolute path using cwd and relative path.
+        let rebuild_abs_path = || {
+            let mut path: PathBuf = cwd.into();
+            path.push(&curline);
+            path
+        };
+
+        log::debug!("curline: {}", curline);
+        let context = match provider_id {
+            "files" => Self::Files(rebuild_abs_path()),
+            "filer" => Self::Filer(rebuild_abs_path()),
+            "blines" => {
+                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
+                let path = get_source_fpath()?;
+                Self::BLines { path, lnum }
             }
-            "filer" => {
+            "tags" => {
+                let lnum =
+                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
+                let path = get_source_fpath()?;
+                Self::BufferTags { path, lnum }
+            }
+            "proj_tags" => {
+                let (lnum, p) =
+                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = cwd.into();
-                path.push(&fname);
-                let enable_icon = msg
-                    .params
-                    .get("enable_icon")
-                    .and_then(|x| x.as_bool())
-                    .unwrap_or(false);
-                Provider::Filer { path, enable_icon }
+                path.push(&p);
+                Self::ProjTags { path, lnum }
             }
             "grep" | "grep2" => {
-                let mut preview_entry: GrepPreviewEntry = fname.try_into()?;
-                let mut with_cwd: PathBuf = cwd.into();
-                with_cwd.push(&preview_entry.fpath);
-                preview_entry.fpath = with_cwd;
-                Provider::Grep(preview_entry)
+                let (fpath, lnum, _col) =
+                    extract_grep_position(&curline).context("Couldn't extract grep position")?;
+                let mut path: PathBuf = cwd.into();
+                path.push(&fpath);
+                Self::Grep { path, lnum }
             }
             _ => {
                 return Err(anyhow!(
@@ -106,21 +133,6 @@ impl TryFrom<Message> for PreviewEnv {
             }
         };
 
-        Ok(Self { size, provider })
+        Ok(context)
     }
-}
-
-#[test]
-fn test_grep_regex() {
-    use std::convert::TryInto;
-    let line = "install.sh:1:5:#!/usr/bin/env bash";
-    let e: GrepPreviewEntry = String::from(line).try_into().unwrap();
-    assert_eq!(
-        e,
-        GrepPreviewEntry {
-            fpath: "install.sh".into(),
-            lnum: 1,
-            col: 5
-        }
-    );
 }

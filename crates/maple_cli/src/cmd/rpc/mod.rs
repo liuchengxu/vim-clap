@@ -4,18 +4,12 @@ mod types;
 
 use crossbeam_channel::Sender;
 use log::{debug, error};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde::Serialize;
+use serde_json::json;
+use std::convert::TryFrom;
 use std::io::prelude::*;
 use std::thread;
-
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Message {
-    pub method: String,
-    pub params: serde_json::Map<String, Value>,
-    pub id: u64,
-}
+use types::Message;
 
 fn write_response<T: Serialize>(msg: T) {
     if let Ok(s) = serde_json::to_string(&msg) {
@@ -52,7 +46,7 @@ fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
                     "filer" => filer::handle_message(msg),
                     "client.on_move" => {
                         let msg_id = msg.id;
-                        if let Err(e) = on_move::handle_message_on_move(msg) {
+                        if let Err(e) = on_move::OnMoveHandler::try_from(msg).map(|x| x.handle()) {
                             write_response(json!({ "error": format!("{}",e), "id": msg_id }));
                         }
                     }

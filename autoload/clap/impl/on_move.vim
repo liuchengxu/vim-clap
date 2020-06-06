@@ -8,17 +8,17 @@ let s:on_move_timer = -1
 let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
 
 function! clap#impl#on_move#filer_handle(decoded) abort
-  if has_key(a:decoded, 'type') && a:decoded.type ==# 'preview'
-    if empty(a:decoded.lines)
+  if has_key(a:decoded.result, 'event') && a:decoded.result.event ==# 'on_move'
+    if empty(a:decoded.result.lines)
       call g:clap.preview.show(['Empty entries'])
     else
-      call g:clap.preview.show(a:decoded.lines)
-      if has_key(a:decoded, 'is_dir')
+      call g:clap.preview.show(a:decoded.result.lines)
+      if has_key(a:decoded.result, 'is_dir')
         call g:clap.preview.set_syntax('clap_filer')
         call clap#preview#clear_header_highlight()
       else
-        if has_key(a:decoded, 'fname')
-          call g:clap.preview.set_syntax(clap#ext#into_filetype(a:decoded.fname))
+        if has_key(a:decoded.result, 'fname')
+          call g:clap.preview.set_syntax(clap#ext#into_filetype(a:decoded.result.fname))
         endif
         call clap#preview#highlight_header()
       endif
