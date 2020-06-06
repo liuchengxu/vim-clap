@@ -78,10 +78,7 @@ function! s:goto_parent() abort
 endfunction
 
 function! s:send_message() abort
-  call clap#impl#on_move#send_params({
-        \ 'method': 'filer',
-        \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ })
+  call clap#client#send_request_filer({'cwd': s:current_dir, 'enable_icon': s:enable_icon})
 endfunction
 
 function! clap#provider#filer#current_dir() abort
