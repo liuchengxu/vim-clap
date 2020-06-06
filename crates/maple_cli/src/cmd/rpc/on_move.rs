@@ -25,8 +25,7 @@ impl TryFrom<Message> for OnMoveHandler {
     fn try_from(msg: Message) -> std::result::Result<Self, Self::Error> {
         let msg_id = msg.get_message_id();
         let provider_id = msg.get_provider_id();
-        let size = 5;
-        // let size = super::env::preview_size_of(&provider_id);
+        let size = super::env::preview_size_of(&provider_id);
         let inner: OnMove = msg.try_into()?;
         Ok(Self {
             msg_id,
@@ -108,9 +107,7 @@ impl OnMoveHandler {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        // TODO:
-        // let enable_icon = super::env::global().enable_icon;
-        let enable_icon = true;
+        let enable_icon = super::env::global().enable_icon;
         let lines = super::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         write_response(json!({
         "id": self.msg_id,

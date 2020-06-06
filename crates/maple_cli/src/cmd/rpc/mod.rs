@@ -1,3 +1,4 @@
+mod env;
 mod filer;
 mod on_move;
 mod types;
@@ -43,6 +44,7 @@ fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
             if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
                 debug!("Recv: {:?}", msg);
                 match &msg.method[..] {
+                    "initialize_global_env" => env::initialize_global(msg),
                     "filer" => filer::handle_message(msg),
                     "client.on_move" => {
                         let msg_id = msg.id;

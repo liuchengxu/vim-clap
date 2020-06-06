@@ -8,6 +8,44 @@ use serde_json::Value;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone)]
+pub struct GlobalEnv {
+    pub is_nvim: bool,
+    pub enable_icon: bool,
+    pub preview_size: Value,
+}
+
+impl GlobalEnv {
+    pub fn new(is_nvim: bool, enable_icon: bool, preview_size: Value) -> Self {
+        Self {
+            is_nvim,
+            enable_icon,
+            preview_size,
+        }
+    }
+
+    pub fn preview_size_of(&self, provider_id: &str) -> usize {
+        match self.preview_size {
+            Value::Number(ref number) => number.as_u64().unwrap() as usize,
+            Value::Object(ref obj) => {
+                let get_size = |key: &str| {
+                    obj.get(key)
+                        .and_then(|x| x.as_u64().map(|i| i as usize))
+                        .unwrap()
+                };
+                if obj.contains_key(provider_id) {
+                    get_size(provider_id)
+                } else if obj.contains_key("*") {
+                    get_size("*")
+                } else {
+                    5usize
+                }
+            }
+            _ => unreachable!("clap_preview_size has to be either Number or Object"),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Message {
@@ -73,9 +111,7 @@ impl TryFrom<Message> for OnMove {
                 .context("Missing fname when deserializing into FilerParams")?,
         );
 
-        // TODO:
-        // let curline = if super::env::should_skip_leading_icon(provider_id) {
-        let curline = if true {
+        let curline = if super::env::should_skip_leading_icon(provider_id) {
             display_curline.chars().skip(2).collect()
         } else {
             display_curline

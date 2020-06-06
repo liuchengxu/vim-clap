@@ -66,6 +66,7 @@ function! clap#init#() abort
   " Spawn the daemon process eagerly
   if clap#maple#is_available()
     call clap#job#daemon#start(function('clap#client#handle'))
+    call clap#client#send_request_initialize_global_env()
   endif
 
   " This augroup should be retained after closing vim-clap for the benefit
