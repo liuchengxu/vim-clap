@@ -26,6 +26,7 @@ function! s:validate(layout) abort
   endfor
 endfunction
 
+" FIXME: this could return 0 which throws error in NeoVim.
 function! s:calc(origin, size) abort
   if type(a:size) == v:t_number
     return a:size
@@ -66,6 +67,10 @@ if s:is_nvim
           \ 'relative': 'win',
           \ }
   endfunction
+
+  function! clap#layout#on_resized() abort
+    call clap#floating_win#redo_layout()
+  endfunction
 else
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
@@ -96,6 +101,12 @@ else
           \ 'col': s:calc(width, s:default_layout.col) + col,
           \ }
   endfunction
+
+  function! clap#layout#on_resized() abort
+    " FIXME resize window if vim-clap is visible
+    " Vim's popup has a fixed option which makes the preview window tolerable.
+    " Ref #454
+  endfunction
 endif
 
 function! clap#layout#calc() abort
@@ -105,12 +116,6 @@ function! clap#layout#calc() abort
   else
     return s:calc_default()
   endif
-endfunction
-
-function! clap#layout#on_resized() abort
-  " FIXME resize window if vim-clap is visible
-  " The easiest way is to close and reopen vim-clap, so I'll leave this for
-  " now.
 endfunction
 
 let &cpoptions = s:save_cpo

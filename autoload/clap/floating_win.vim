@@ -79,6 +79,21 @@ function! g:clap#floating_win#display.open() abort
         \ })
 endfunction
 
+function! clap#floating_win#redo_layout() abort
+  let s:display_opts = clap#layout#calc()
+  echom string(s:display_opts)
+  call nvim_win_set_config(s:display_winid, s:display_opts)
+  call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
+  call nvim_win_set_config(s:input_winid, s:get_config_input())
+  call nvim_win_set_config(s:indicator_winid, s:get_config_indicator())
+  let max_size = s:max_preview_size()
+  if max_size <= 2
+    call g:clap#floating_win#preview.close()
+  else
+    call nvim_win_set_config(s:preview_winid, s:get_config_preview(max_size))
+  endif
+endfunction
+
 function! g:clap#floating_win#display.shrink_if_undersize() abort
   let opts = nvim_win_get_config(s:display_winid)
   if g:clap.display.line_count() < s:display_opts.height
@@ -125,22 +140,25 @@ function! s:open_win_border_left() abort
   endif
 endfunction
 
-function! g:clap#floating_win#spinner.open() abort
-  if exists('s:spinner_winid') && nvim_win_is_valid(s:spinner_winid)
-    return
-  endif
+function! s:get_config_spinner() abort
   let opts = nvim_win_get_config(s:display_winid)
   let opts.col += s:symbol_width
   let opts.row -= 1
   let opts.width = clap#spinner#width()
   let opts.height = 1
   let opts.focusable = v:false
+  return opts
+endfunction
 
+function! g:clap#floating_win#spinner.open() abort
+  if exists('s:spinner_winid') && nvim_win_is_valid(s:spinner_winid)
+    return
+  endif
   if !nvim_buf_is_valid(s:spinner_bufnr)
     let s:spinner_bufnr = nvim_create_buf(v:false, v:true)
     let g:clap.spinner.bufnr = s:spinner_bufnr
   endif
-  silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:false, opts)
+  silent let s:spinner_winid = nvim_open_win(s:spinner_bufnr, v:false, s:get_config_spinner())
 
   call setwinvar(s:spinner_winid, '&winhl', 'Normal:ClapSpinner')
   call s:set_minimal_buf_style(s:spinner_bufnr, 'clap_spinner')
@@ -169,10 +187,7 @@ function! g:clap#floating_win#spinner.shrink() abort
   endif
 endfunction
 
-function! g:clap#floating_win#input.open() abort
-  if exists('s:input_winid') && nvim_win_is_valid(s:input_winid)
-    return
-  endif
+function! s:get_config_input() abort
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
   let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth
@@ -182,7 +197,14 @@ function! g:clap#floating_win#input.open() abort
     let opts.width = 1
   endif
   let opts.focusable = v:true
+  return opts
+endfunction
 
+function! g:clap#floating_win#input.open() abort
+  if exists('s:input_winid') && nvim_win_is_valid(s:input_winid)
+    return
+  endif
+  let opts = s:get_config_input()
   let g:clap#floating_win#input.width = opts.width
 
   if !nvim_buf_is_valid(s:input_bufnr)
@@ -209,21 +231,24 @@ function! g:clap#floating_win#input.open() abort
   let g:clap.input.winid = s:input_winid
 endfunction
 
-function! s:open_indicator_win() abort
-  if exists('s:indicator_winid') && nvim_win_is_valid(s:indicator_winid)
-    return
-  endif
+function! s:get_config_indicator() abort
   let opts = nvim_win_get_config(s:input_winid)
   let opts.col += opts.width
   let opts.width = g:__clap_indicator_winwidth
   let opts.focusable = v:false
   let opts.style = 'minimal'
+  return opts
+endfunction
 
+function! s:open_indicator_win() abort
+  if exists('s:indicator_winid') && nvim_win_is_valid(s:indicator_winid)
+    return
+  endif
   if !nvim_buf_is_valid(s:indicator_bufnr)
     let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
     let g:__clap_indicator_bufnr = s:indicator_bufnr
   endif
-  silent let s:indicator_winid = nvim_open_win(s:indicator_bufnr, v:true, opts)
+  silent let s:indicator_winid = nvim_open_win(s:indicator_bufnr, v:true, s:get_config_indicator())
   call setwinvar(s:indicator_winid, '&winhl', 'Normal:ClapInput')
   call setbufvar(s:indicator_bufnr, '&signcolumn', 'no')
 endfunction
@@ -262,19 +287,23 @@ function! s:adjust_display_for_border_symbol() abort
   call nvim_win_set_config(s:display_winid, opts)
 endfunction
 
-function! s:create_preview_win(height) abort
-  if !exists('s:display_winid') || !nvim_win_is_valid(s:display_winid)
-    return
-  endif
+function! s:get_config_preview(height) abort
   let opts = nvim_win_get_config(s:display_winid)
   let opts.row += opts.height
   let opts.height = a:height
   let opts.style = 'minimal'
+  return opts
+endfunction
+
+function! s:create_preview_win(height) abort
+  if !exists('s:display_winid') || !nvim_win_is_valid(s:display_winid)
+    return
+  endif
 
   if !nvim_buf_is_valid(s:preview_bufnr)
     let s:preview_bufnr = nvim_create_buf(v:false, v:true)
   endif
-  silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, opts)
+  silent let s:preview_winid = nvim_open_win(s:preview_bufnr, v:false, s:get_config_preview(a:height))
 
   call setwinvar(s:preview_winid, '&spell', 0)
   call setwinvar(s:preview_winid, '&winhl', s:preview_winhl)
@@ -286,8 +315,18 @@ function! s:create_preview_win(height) abort
   let g:clap#floating_win#preview.bufnr = s:preview_bufnr
 endfunction
 
+function! s:max_preview_size() abort
+  let max_size = &lines - s:display_opts.row - s:display_opts.height - &cmdheight
+  return float2nr(max_size)
+endfunction
+
 function! clap#floating_win#preview.show(lines) abort
-  let height = len(a:lines)
+  let max_size = s:max_preview_size()
+  if max_size <= 0
+    return
+  endif
+  let lines = a:lines[:max_size]
+  let height = len(lines)
   if !exists('s:preview_winid')
     call s:create_preview_win(height)
   else
@@ -297,7 +336,7 @@ function! clap#floating_win#preview.show(lines) abort
       call nvim_win_set_config(s:preview_winid, opts)
     endif
   endif
-  call clap#util#nvim_buf_set_lines(s:preview_bufnr, a:lines)
+  call clap#util#nvim_buf_set_lines(s:preview_bufnr, lines)
 endfunction
 
 function! clap#floating_win#preview.close() abort
