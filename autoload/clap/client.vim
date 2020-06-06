@@ -61,10 +61,12 @@ function! clap#client#handle(msg) abort
   call s:handle_on_move_result(decoded.result)
 endfunction
 
+let s:should_send_source_fpath = ['tags', 'blines']
+
 function! clap#client#send_request_on_move() abort
   let s:req_id += 1
   let curline = g:clap.display.getcurline()
-  let msg = json_encode({
+  let msg = {
       \ 'id': s:req_id,
       \ 'session_id': s:session_id,
       \ 'method': 'client.on_move',
@@ -72,9 +74,11 @@ function! clap#client#send_request_on_move() abort
       \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
       \   'curline': curline,
       \   'provider_id': g:clap.provider.id,
-      \ },
-      \ })
-  call clap#job#daemon#send_message(msg)
+      \ }}
+  if index(s:should_send_source_fpath, g:clap.provider.id) > -1
+    let msg.params.source_fpath = expand('#'.g:clap.start.bufnr.':p')
+  endif
+  call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
 function! clap#client#send_request_filer(params) abort
