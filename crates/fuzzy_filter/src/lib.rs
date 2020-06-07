@@ -103,21 +103,21 @@ pub fn get_appropriate_scorer(
     match algo {
         Algo::Skim => match line_splitter {
             LineSplitter::Full => fuzzy_indices_skim,
-            LineSplitter::TagNameOnly => apply_skim_on_tag_line,
-            LineSplitter::FileNameOnly => apply_skim_on_file_line,
-            LineSplitter::GrepExcludeFilePath => apply_skim_on_grep_line,
+            LineSplitter::TagNameOnly => apply_on_tag_line_skim,
+            LineSplitter::FileNameOnly => apply_on_file_line_skim,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_skim,
         },
         Algo::Fzy => match line_splitter {
             LineSplitter::Full => fuzzy_indices_fzy,
-            LineSplitter::TagNameOnly => apply_fzy_on_tag_line,
-            LineSplitter::FileNameOnly => apply_fzy_on_file_line,
-            LineSplitter::GrepExcludeFilePath => apply_fzy_on_grep_line,
+            LineSplitter::TagNameOnly => apply_on_tag_line_fzy,
+            LineSplitter::FileNameOnly => apply_on_file_line_fzy,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_fzy,
         },
         Algo::SubString => match line_splitter {
             LineSplitter::Full => substr_indices,
-            LineSplitter::TagNameOnly => apply_substr_on_tag_line,
-            LineSplitter::FileNameOnly => apply_substr_on_file_line,
-            LineSplitter::GrepExcludeFilePath => apply_substr_on_grep_line,
+            LineSplitter::TagNameOnly => apply_on_tag_line_substr,
+            LineSplitter::FileNameOnly => apply_on_file_line_substr,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_substr,
         },
     }
 }
