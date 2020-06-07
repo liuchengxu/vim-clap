@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use structopt::clap::arg_enum;
 
 pub use content_filtering::fuzzy_indices_fzy;
+pub use extracted_fzy as fzy;
 pub use fuzzy_matcher::skim::fuzzy_indices as fuzzy_indices_skim;
 pub use source::Source;
 #[cfg(feature = "enable_dyn")]

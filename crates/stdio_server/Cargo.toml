@@ -24,4 +24,3 @@ pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 utility = { path = "../utility" }
 fuzzy_filter = { path = "../fuzzy_filter" }
-extracted_fzy = { path = "../extracted_fzy" }

@@ -26,4 +26,3 @@ upgrade = { path = "../upgrade" }
 utility = { path = "../utility" }
 stdio_server = { path = "../stdio_server" }
 fuzzy_filter = { path = "../fuzzy_filter" }
-extracted_fzy = { path = "../extracted_fzy" }

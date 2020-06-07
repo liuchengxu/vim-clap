@@ -765,7 +765,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytecount",
- "extracted_fzy",
  "fuzzy_filter",
  "icon",
  "itertools",
@@ -1408,7 +1407,6 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "curl",
- "extracted_fzy",
  "fuzzy_filter",
  "icon",
  "indicatif",
