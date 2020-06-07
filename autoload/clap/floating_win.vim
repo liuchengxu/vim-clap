@@ -81,7 +81,6 @@ endfunction
 
 function! clap#floating_win#redo_layout() abort
   let s:display_opts = clap#layout#calc()
-  echom string(s:display_opts)
   call nvim_win_set_config(s:display_winid, s:display_opts)
   call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
   call nvim_win_set_config(s:input_winid, s:get_config_input())
