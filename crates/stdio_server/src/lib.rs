@@ -3,7 +3,7 @@ mod filer;
 mod on_move;
 mod types;
 
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use serde::Serialize;
 use serde_json::json;
@@ -37,7 +37,7 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
-fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
+fn loop_handle_message(rx: &Receiver<String>) {
     for msg in rx.iter() {
         thread::spawn(move || {
             // Ignore the invalid message.
