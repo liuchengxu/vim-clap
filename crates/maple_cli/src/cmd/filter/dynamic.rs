@@ -338,14 +338,14 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     number: Option<usize>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
-    content_filtering: ContentFiltering,
+    line_splitter: LineSplitter,
 ) -> Result<()> {
     let algo = if query.contains(" ") {
         Algo::SubString
     } else {
         algo.unwrap_or(Algo::Fzy)
     };
-    let scorer_fn = get_appropriate_scorer(&algo, &content_filtering);
+    let scorer_fn = get_appropriate_scorer(&algo, &line_splitter);
     let scorer = |line: &str| scorer_fn(line, query);
     if let Some(number) = number {
         let (total, mut filtered) = match source {
@@ -456,7 +456,7 @@ mod tests {
             Some(100),
             None,
             None,
-            ContentFiltering::Full,
+            LineSplitter::Full,
         )
         .unwrap()
     }

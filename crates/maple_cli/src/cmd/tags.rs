@@ -1,5 +1,5 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
-use crate::ContentFiltering;
+use crate::LineSplitter;
 use anyhow::Result;
 use fuzzy_filter::{subprocess, Source};
 use itertools::Itertools;
@@ -123,7 +123,7 @@ impl Tags {
                 Some(30),
                 None,
                 None,
-                ContentFiltering::TagNameOnly,
+                LineSplitter::TagNameOnly,
             )?;
         }
 

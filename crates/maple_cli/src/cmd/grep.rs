@@ -1,6 +1,6 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
-use crate::ContentFiltering;
+use crate::LineSplitter;
 use anyhow::{Context, Result};
 use fuzzy_filter::{subprocess::Exec, Source};
 use icon::IconPainter;
@@ -129,7 +129,7 @@ impl Grep {
                 number,
                 winwidth,
                 icon_painter,
-                ContentFiltering::GrepExcludeFilePath,
+                LineSplitter::GrepExcludeFilePath,
             )
         };
 

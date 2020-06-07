@@ -1,4 +1,4 @@
-//! This module provides the features to upgrade maple executable.
+//! This crate provides the features to upgrade maple executable.
 
 mod download;
 mod github;
