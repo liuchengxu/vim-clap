@@ -46,7 +46,7 @@ fn loop_handle_message(rx: &crossbeam_channel::Receiver<String>) {
                 match &msg.method[..] {
                     "initialize_global_env" => env::initialize_global(msg),
                     "filer" => filer::handle_message(msg),
-                    "client.on_move" => {
+                    "on_move" => {
                         let msg_id = msg.id;
                         if let Err(e) = on_move::OnMoveHandler::try_from(msg).map(|x| x.handle()) {
                             write_response(json!({ "error": format!("{}",e), "id": msg_id }));

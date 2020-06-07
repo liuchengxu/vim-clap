@@ -69,7 +69,7 @@ function! clap#client#send_request_on_move() abort
   let msg = {
       \ 'id': s:req_id,
       \ 'session_id': s:session_id,
-      \ 'method': 'client.on_move',
+      \ 'method': 'on_move',
       \ 'params': {
       \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
       \   'curline': curline,
