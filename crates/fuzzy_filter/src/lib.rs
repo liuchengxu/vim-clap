@@ -2,17 +2,17 @@
 //!
 //! There two steps to filter a line:
 //!
-//!     raw_line
-//!        |
-//!        |  LineSplitter: split out the content to be filtered.
-//!        |
-//!       \|/
-//!   content to filter
-//!        |
-//!        |  Algo: apply the filter algo.
-//!        |
-//!       \|/
-//!   ScorerOutput
+//! //    raw_line
+//! //       |
+//! //       |  LineSplitter: split out the content to be filtered.
+//! //       |
+//! //      \|/
+//! //  content to filter
+//! //       |
+//! //       |  Algo: apply the filter algo.
+//! //       |
+//! //      \|/
+//! //  ScorerOutput
 //!
 
 mod line_splitter;
