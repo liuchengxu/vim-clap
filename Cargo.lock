@@ -766,11 +766,9 @@ dependencies = [
  "anyhow",
  "bytecount",
  "crossbeam-channel",
- "curl",
  "extracted_fzy",
  "fuzzy_filter",
  "icon",
- "indicatif",
  "itertools",
  "log",
  "log4rs",
@@ -778,13 +776,11 @@ dependencies = [
  "pattern",
  "printer",
  "rayon",
- "regex",
- "reqwest",
  "serde",
  "serde_json",
  "stdio_server",
  "structopt",
- "tokio",
+ "upgrade",
  "utility",
 ]
 
@@ -1699,6 +1695,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f30360d7979f5e9c6e6cea48af192ea8fab4afb3cf72597154b8f08935bc9c7f"
 dependencies = [
  "traitobject",
+]
+
+[[package]]
+name = "upgrade"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "curl",
+ "indicatif",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tokio",
 ]
 
 [[package]]

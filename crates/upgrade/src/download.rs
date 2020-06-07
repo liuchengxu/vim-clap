@@ -18,7 +18,7 @@ fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
 ///
 /// - `version`: "v0.13"
 pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
-    let target = crate::cmd::check_release::github::download_url_for(version)?;
+    let target = crate::github::download_url_for(version)?;
 
     let mut response = reqwest::blocking::get(&target)?;
 
@@ -44,7 +44,7 @@ pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> 
 }
 
 pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) -> Result<PathBuf> {
-    use crate::cmd::check_release::github::{get_asset_name, retrieve_asset_size};
+    use crate::github::{get_asset_name, retrieve_asset_size};
     use indicatif::{ProgressBar, ProgressStyle};
     use tokio::{fs, io::AsyncWriteExt};
 
@@ -52,7 +52,7 @@ pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) 
     let total_size = retrieve_asset_size(&asset_name, version)?;
 
     let client = reqwest::Client::new();
-    let target = crate::cmd::check_release::github::download_url_for(version)?;
+    let target = crate::github::download_url_for(version)?;
     let request = client.get(&target);
 
     let progress_bar = ProgressBar::new(total_size);

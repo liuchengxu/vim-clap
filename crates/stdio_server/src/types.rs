@@ -68,6 +68,7 @@ impl Message {
             .into()
     }
 
+    #[allow(dead_code)]
     pub fn get_query(&self) -> String {
         self.params
             .get("query")

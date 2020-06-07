@@ -9,4 +9,5 @@ members = [
     "printer",
     "stdio_server",
     "utility",
+    "upgrade",
 ]

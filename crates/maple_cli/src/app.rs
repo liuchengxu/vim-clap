@@ -36,8 +36,8 @@ pub enum Cmd {
     #[structopt(name = "ripgrep-forerunner")]
     RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
     /// Retrive the latest remote release info.
-    #[structopt(name = "check-release")]
-    CheckRelease(crate::cmd::check_release::CheckRelease),
+    #[structopt(name = "upgrade")]
+    Upgrade(upgrade::Upgrade),
 }
 
 #[derive(StructOpt, Debug)]
@@ -82,8 +82,7 @@ impl Maple {
             crate::logger::init(log_path)?;
         }
         match self.command {
-            Cmd::Version => unreachable!(),
-            Cmd::CheckRelease(_) => unreachable!(),
+            Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::Tags(tags) => tags.run(self.no_cache)?,
             Cmd::RPC => {
