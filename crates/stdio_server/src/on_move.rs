@@ -58,7 +58,7 @@ impl OnMoveHandler {
     }
 
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
-        match crate::utils::read_preview_lines(path.as_ref(), lnum, self.size) {
+        match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = format!("{}", path.as_ref().display());
                 let lines = std::iter::once(fname.clone())
@@ -91,7 +91,7 @@ impl OnMoveHandler {
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let abs_path = as_absolute_path(path.as_ref())?;
-        let lines_iter = crate::utils::read_first_lines(path.as_ref(), 2 * self.size)?;
+        let lines_iter = utility::read_first_lines(path.as_ref(), 2 * self.size)?;
         let lines = std::iter::once(abs_path.clone())
             .chain(lines_iter)
             .collect::<Vec<_>>();

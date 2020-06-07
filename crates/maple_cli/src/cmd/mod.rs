@@ -5,5 +5,4 @@ pub mod exec;
 pub mod filter;
 pub mod grep;
 pub mod helptags;
-pub mod rpc;
 pub mod tags;

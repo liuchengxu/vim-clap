@@ -1,8 +1,8 @@
-use crate::utils::read_lines;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use utility::read_lines;
 
 /// Parse and display Vim helptags.
 #[derive(StructOpt, Debug, Clone)]

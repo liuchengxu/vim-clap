@@ -87,7 +87,7 @@ impl Maple {
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::Tags(tags) => tags.run(self.no_cache)?,
             Cmd::RPC => {
-                crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
+                stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Blines(blines) => {
                 blines.run(self.number, self.winwidth)?;

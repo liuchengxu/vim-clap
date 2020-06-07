@@ -782,8 +782,10 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "stdio_server",
  "structopt",
  "tokio",
+ "utility",
 ]
 
 [[package]]
@@ -1406,6 +1408,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "stdio_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytecount",
+ "crossbeam-channel",
+ "curl",
+ "extracted_fzy",
+ "fuzzy_filter",
+ "icon",
+ "indicatif",
+ "itertools",
+ "log",
+ "log4rs",
+ "once_cell",
+ "pattern",
+ "printer",
+ "rayon",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tokio",
+ "utility",
+]
+
+[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1680,6 +1710,13 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "utility"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]

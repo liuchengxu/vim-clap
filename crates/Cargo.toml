@@ -7,4 +7,6 @@ members = [
     "maple_cli",
     "pattern",
     "printer",
+    "stdio_server",
+    "utility",
 ]
