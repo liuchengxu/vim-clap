@@ -331,6 +331,7 @@ endfunction
 function! clap#floating_win#preview.show(lines) abort
   let max_size = s:max_preview_size()
   if max_size <= 0
+    call g:clap#floating_win#preview.close()
     return
   endif
   let lines = a:lines[:max_size]
