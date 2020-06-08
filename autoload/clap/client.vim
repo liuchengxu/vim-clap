@@ -66,6 +66,9 @@ let s:should_send_source_fpath = ['tags', 'blines']
 function! clap#client#send_request_on_move() abort
   let s:req_id += 1
   let curline = g:clap.display.getcurline()
+  if empty(curline)
+    return
+  endif
   let msg = {
       \ 'id': s:req_id,
       \ 'session_id': s:session_id,
