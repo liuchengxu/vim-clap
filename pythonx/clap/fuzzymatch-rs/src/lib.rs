@@ -55,11 +55,18 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
     ))
 }
 
-/// Filter the candidates given query using the fzy algorithm
-///
+/// Use f64 here as substr_scorer returns f64;
+type ScorerResult = Option<(f64, Vec<usize>)>;
+/// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
+type LinesInBatch = Vec<String>;
+/// Each line's matched indices of LinesInBatch.
+type MatchedIndicesInBatch = Vec<Vec<usize>>;
 /// NOTE: TruncatedMap is ought to be HashMap<usize, String>,
 /// but there is an issue when converting to call result to Vim Dict in python dynamic call,
 /// therefore hereby has to use HashMap<String, String> instead.
+type TruncatedMapInfo = HashMap<String, String>;
+
+/// Filter the candidates given query using the fzy algorithm
 #[pyfunction]
 fn fuzzy_match(
     query: &str,
@@ -67,9 +74,9 @@ fn fuzzy_match(
     winwidth: usize,
     enable_icon: bool,
     line_splitter: String,
-) -> PyResult<(Vec<Vec<usize>>, Vec<String>, HashMap<String, String>)> {
+) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
     let fzy_scorer_fn = get_appropriate_scorer(&Algo::Fzy, &line_splitter.into());
-    let scorer: Box<dyn Fn(&str) -> Option<(f64, Vec<usize>)>> = if query.contains(" ") {
+    let scorer: Box<dyn Fn(&str) -> ScorerResult> = if query.contains(' ') {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
         Box::new(|line: &str| {

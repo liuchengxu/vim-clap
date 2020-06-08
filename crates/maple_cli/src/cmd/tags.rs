@@ -98,13 +98,19 @@ fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
 
 impl Tags {
     pub fn run(&self, no_cache: bool, icon_painter: Option<icon::IconPainter>) -> Result<()> {
+        // In case of passing an invalid icon-painter option.
+        let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
+
         let mut cmd_args = BASE_TAGS_ARGS.to_vec();
+
         let lang = if let Some(ref languages) = self.languages {
             format!("--languages={}", languages)
         } else {
             String::from("")
         };
+
         cmd_args.push(&lang);
+
         if self.forerunner {
             let (cache, total) = if no_cache {
                 create_tags_cache(&cmd_args, &self.dir)?
