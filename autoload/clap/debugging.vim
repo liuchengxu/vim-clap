@@ -21,7 +21,6 @@ function! s:get_global_variables() abort
   call filter(variable_list, 'v:val !~# ''^clap#icon#''')
   call filter(variable_list, 'v:val !~# ''clap#floating_win''')
   call filter(variable_list, 'v:val !~# ''clap#display_win''')
-  call filter(variable_list, 'v:val !~# ''clap#builtin_providers''')
   call filter(variable_list, 'v:val !~# ''clap#themes#''')
 
   call sort(variable_list)
@@ -31,7 +30,7 @@ endfunction
 
 function! s:get_third_party_providers() abort
   let all_providers = split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n")
-  let third_party_providers = filter(all_providers, 'index(g:clap#builtin_providers, v:val) != -1')
+  let third_party_providers = filter(all_providers, 'index(clap#builtin_providers(), v:val) != -1')
   return third_party_providers
 endfunction
 

@@ -29,8 +29,14 @@ endfunction
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   let s:last_query = g:clap.input.get()
 
-  if g:clap_enable_icon && index(['files', 'git_files'], g:clap.provider.id) > -1
-    let enable_icon_opt = ['--icon-painter=File']
+  if g:clap_enable_icon
+    if index(['files', 'git_files'], g:clap.provider.id) > -1
+      let enable_icon_opt = ['--icon-painter=File']
+    elseif 'proj_tags' ==# g:clap.provider.id
+      let enable_icon_opt = ['--icon-painter=ProjTags']
+    else
+      let enable_icon_opt = []
+    endif
   else
     let enable_icon_opt = []
   endif

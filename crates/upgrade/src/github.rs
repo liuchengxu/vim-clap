@@ -1,7 +1,9 @@
-use super::{REPO, USER};
 use anyhow::{anyhow, Result};
 use curl::easy::{Easy, List};
 use serde::{Deserialize, Serialize};
+
+const USER: &str = "liuchengxu";
+const REPO: &str = "vim-clap";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RemoteRelease {
