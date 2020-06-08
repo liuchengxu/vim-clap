@@ -21,7 +21,7 @@ function! s:proj_tags.on_typed() abort
 endfunction
 
 function! s:proj_tags.init() abort
-  let g:__clap_builtin_content_filtering_enum = 'TagNameOnly'
+  let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
     call clap#forerunner#start_command(clap#maple#tags_forerunner_command())
@@ -45,8 +45,8 @@ function! s:proj_tags.on_move() abort
 endfunction
 
 function! s:proj_tags.on_exit() abort
-  if exists('g:__clap_builtin_content_filtering_enum')
-    unlet g:__clap_builtin_content_filtering_enum
+  if exists('g:__clap_builtin_line_splitter_enum')
+    unlet g:__clap_builtin_line_splitter_enum
   endif
 endfunction
 

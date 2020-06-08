@@ -1,3 +1,5 @@
+//! Various utility functions for caching and file management.
+
 use anyhow::{anyhow, Result};
 use std::collections::hash_map::DefaultHasher;
 use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
@@ -5,7 +7,7 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 
-const CLAP_CACHE: &str = "vim.clap";
+pub const CLAP_CACHE: &str = "vim.clap";
 
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents(target_dir: &PathBuf) -> Result<()> {
@@ -60,7 +62,7 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 }
 
 #[inline]
-pub(crate) fn clap_cache_dir() -> PathBuf {
+pub fn clap_cache_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
     dir.push(CLAP_CACHE);
     dir

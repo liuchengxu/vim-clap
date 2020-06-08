@@ -129,7 +129,7 @@ function! clap#installer#install(try_download) abort
     endif
     " Since v0.14 maple itself is able to download the latest release binary.
     if executable(s:prebuilt_maple_binary) && s:current_version >= 14
-      let cmd = [s:prebuilt_maple_binary, 'check-release', '--download']
+      let cmd = [s:prebuilt_maple_binary, 'upgrade', '--download']
       call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully')
     else
       call clap#installer#download_binary()
