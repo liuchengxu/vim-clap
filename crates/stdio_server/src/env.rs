@@ -48,7 +48,7 @@ pub fn initialize_global(msg: Message) {
 }
 
 pub fn has_icon_support(provider_id: &str) -> bool {
-    provider_id != "proj_tags" && provider_id != "blines"
+    provider_id != "blines"
 }
 
 pub fn should_skip_leading_icon(provider_id: &str) -> bool {

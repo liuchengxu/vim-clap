@@ -81,6 +81,12 @@ pub fn extract_proj_tags(line: &str) -> Option<(usize, &str)> {
     Some((lnum, fpath))
 }
 
+pub fn extract_proj_tags_kind(line: &str) -> Option<&str> {
+    let cap = PROJ_TAGS.captures(line)?;
+    let kind = cap.get(3).map(|x| x.as_str())?;
+    Some(kind)
+}
+
 pub fn extract_buf_tags_lnum(line: &str) -> Option<usize> {
     let cap = BUFFER_TAGS.captures(line)?;
     cap.get(1)

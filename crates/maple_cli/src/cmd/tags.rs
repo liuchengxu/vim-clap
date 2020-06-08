@@ -97,7 +97,7 @@ fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
 }
 
 impl Tags {
-    pub fn run(&self, no_cache: bool) -> Result<()> {
+    pub fn run(&self, no_cache: bool, icon_painter: Option<icon::IconPainter>) -> Result<()> {
         let mut cmd_args = BASE_TAGS_ARGS.to_vec();
         let lang = if let Some(ref languages) = self.languages {
             format!("--languages={}", languages)
@@ -113,7 +113,7 @@ impl Tags {
             } else {
                 create_tags_cache(&cmd_args, &self.dir)?
             };
-            send_response_from_cache(&cache, total, SendResponse::Json, None);
+            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
             crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
@@ -122,7 +122,7 @@ impl Tags {
                 None,
                 Some(30),
                 None,
-                None,
+                icon_painter,
                 LineSplitter::TagNameOnly,
             )?;
         }
