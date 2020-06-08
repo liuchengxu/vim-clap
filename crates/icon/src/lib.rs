@@ -139,9 +139,6 @@ mod tests {
         let icon_for = |kind: &str| {
             bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
         };
-        assert_eq!(
-            icon_for("implementation").unwrap(),
-            get_tagkind_icon(line).unwrap()
-        );
+        assert_eq!(icon_for("implementation").unwrap(), get_tagkind_icon(line));
     }
 }
