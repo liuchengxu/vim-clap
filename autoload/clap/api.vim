@@ -341,6 +341,9 @@ function! s:init_provider() abort
 
   " After you have typed something
   function! provider.on_typed() abort
+    if get(g:, '__clap_open_win_pre', v:false)
+      return
+    endif
     try
       call self._().on_typed()
     catch

@@ -285,7 +285,16 @@ function! clap#for(provider_id_or_alias) abort
 
   call clap#selection#init()
 
+  " This flag is used to slience the autocmd events for NeoVim, e.g., on_typed.
+  "
+  " Without this flag, the on_typed hook can be triggered when relaunching
+  " some provider. To reproduce:
+  " 1. :Clap
+  " 2. Choose proj_tags
+  " 3. proj_tags ontyped hook will be triggered.
+  let g:__clap_open_win_pre = v:true
   call g:clap.open_win()
+  let g:__clap_open_win_pre = v:false
 endfunction
 
 if !exists('g:clap')
