@@ -286,6 +286,7 @@ function! clap#for(provider_id_or_alias) abort
   call clap#selection#init()
 
   " This flag is used to slience the autocmd events for NeoVim, e.g., on_typed.
+  " Vim doesn't have these issues as it uses noautocmd in most cases.
   "
   " Without this flag, the on_typed hook can be triggered when relaunching
   " some provider. To reproduce:
