@@ -34,7 +34,7 @@ function! clap#api#has_externalfilter() abort
         \ || has_key(g:clap.context, 'externalfilter')
 endfunction
 
-let s:has_no_icons = ['blines', 'proj_tags']
+let s:has_no_icons = ['blines']
 
 " Returns the original full line with icon if g:clap_enable_icon is on given
 " the lnum of display buffer.
@@ -341,6 +341,9 @@ function! s:init_provider() abort
 
   " After you have typed something
   function! provider.on_typed() abort
+    if get(g:, '__clap_open_win_pre', v:false)
+      return
+    endif
     try
       call self._().on_typed()
     catch

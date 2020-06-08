@@ -1,6 +1,6 @@
 mod constants;
 
-pub use constants::{bsearch_icon_table, EXACTMATCH_ICON_TABLE, EXTENSION_ICON_TABLE};
+pub use constants::*;
 
 use std::path::Path;
 use structopt::clap::arg_enum;
@@ -62,6 +62,14 @@ pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
     format!("{} {}", icon_for_filer(path), line)
 }
 
+fn get_tagkind_icon(line: &str) -> Icon {
+    pattern::extract_proj_tags_kind(line)
+        .and_then(|kind| {
+            bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        })
+        .unwrap_or(DEFAULT_ICON)
+}
+
 #[inline]
 fn grep_icon_for(line: &str) -> Icon {
     pattern::extract_fpath_from_grep_line(line)
@@ -80,6 +88,7 @@ arg_enum! {
   pub enum IconPainter {
       File,
       Grep,
+      ProjTags
   }
 }
 
@@ -89,6 +98,7 @@ impl IconPainter {
         match *self {
             Self::File => prepend_icon(raw_str),
             Self::Grep => prepend_grep_icon(raw_str),
+            Self::ProjTags => format!("{} {}", get_tagkind_icon(raw_str), raw_str),
         }
     }
 
@@ -97,6 +107,7 @@ impl IconPainter {
         match *self {
             Self::File => icon_for(text),
             Self::Grep => grep_icon_for(text),
+            Self::ProjTags => get_tagkind_icon(text),
         }
     }
 }
@@ -120,5 +131,14 @@ mod tests {
                 assert_eq!(icon.len(), 4);
             }
         }
+    }
+
+    #[test]
+    fn test_tagkind_icon() {
+        let line = r#"Blines:19                      [implementation@crates/maple_cli/src/cmd/blines.rs] impl Blines {"#;
+        let icon_for = |kind: &str| {
+            bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        };
+        assert_eq!(icon_for("implementation").unwrap(), get_tagkind_icon(line));
     }
 }

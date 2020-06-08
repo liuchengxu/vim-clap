@@ -1,7 +1,9 @@
-use super::{REPO, USER};
 use anyhow::{anyhow, Result};
 use curl::easy::{Easy, List};
 use serde::{Deserialize, Serialize};
+
+const USER: &str = "liuchengxu";
+const REPO: &str = "vim-clap";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RemoteRelease {
@@ -46,7 +48,9 @@ pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
     if let serde_json::Value::Array(assets) = &v["assets"] {
         for asset in assets {
             if asset["name"] == asset_name {
-                return asset["size"].as_u64().ok_or(anyhow!("Couldn't as u64"));
+                return asset["size"]
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("Couldn't as u64"));
             }
         }
     }

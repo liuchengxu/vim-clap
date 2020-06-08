@@ -3,7 +3,7 @@ pub mod dynamic;
 pub use dynamic::dyn_fuzzy_filter_and_rank as dyn_run;
 
 use anyhow::Result;
-use fuzzy_filter::{fuzzy_filter_and_rank, subprocess, Algo, ContentFiltering, Source};
+use fuzzy_filter::{fuzzy_filter_and_rank, subprocess, Algo, LineSplitter, Source};
 use icon::{IconPainter, ICON_LEN};
 use printer::{truncate_long_matched_lines, LinesTruncatedMap};
 use std::path::PathBuf;
@@ -33,8 +33,8 @@ pub struct Filter {
     input: Option<PathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[structopt(short, long, possible_values = &ContentFiltering::variants(), case_insensitive = true)]
-    content_filtering: Option<ContentFiltering>,
+    #[structopt(short, long, possible_values = &LineSplitter::variants(), case_insensitive = true)]
+    line_splitter: Option<LineSplitter>,
 
     /// Synchronous filtering, returns after the input stream is complete.
     #[structopt(short, long)]
@@ -90,9 +90,7 @@ impl Filter {
             number,
             winwidth,
             icon_painter,
-            self.content_filtering
-                .clone()
-                .unwrap_or(ContentFiltering::Full),
+            self.line_splitter.clone().unwrap_or(LineSplitter::Full),
         )
     }
 

@@ -1,16 +1,15 @@
+//! This crate provides the features to upgrade maple executable.
+
 mod download;
 mod github;
 
 use anyhow::{anyhow, Context, Result};
 use structopt::StructOpt;
 
-const USER: &str = "liuchengxu";
-const REPO: &str = "vim-clap";
-
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
 #[derive(StructOpt, Debug, Clone)]
-pub struct CheckRelease {
+pub struct Upgrade {
     /// Download if the local version mismatches the latest remote version.
     #[structopt(long)]
     pub download: bool,
@@ -19,7 +18,7 @@ pub struct CheckRelease {
     pub no_progress_bar: bool,
 }
 
-impl CheckRelease {
+impl Upgrade {
     pub fn run(&self, local_tag: &str) -> Result<()> {
         println!("Retrieving the latest remote release info...");
         let remote_release = github::latest_remote_release()?;

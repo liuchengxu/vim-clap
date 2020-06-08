@@ -1,14 +1,32 @@
-mod content_filtering;
+//! This crate provides various filter algorithms for linewise filtering.
+//!
+//! There two steps to filter a line:
+//!
+//! //    raw_line
+//! //       |
+//! //       |  LineSplitter: split out the content to be filtered.
+//! //       |
+//! //      \|/
+//! //  content to filter
+//! //       |
+//! //       |  Algo: apply the filter algo.
+//! //       |
+//! //      \|/
+//! //  ScorerOutput
+//!
+
+mod line_splitter;
 mod source;
 mod substr;
 
 use anyhow::Result;
-use content_filtering::*;
+use line_splitter::*;
 use rayon::prelude::*;
 use structopt::clap::arg_enum;
 
-pub use content_filtering::fuzzy_indices_fzy;
+pub use extracted_fzy as fzy;
 pub use fuzzy_matcher::skim::fuzzy_indices as fuzzy_indices_skim;
+pub use line_splitter::fuzzy_indices_fzy;
 pub use source::Source;
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
@@ -18,7 +36,7 @@ pub use substr::substr_indices;
 arg_enum! {
   /// Sometimes we hope to filter on the part of line.
   #[derive(Debug, Clone)]
-  pub enum ContentFiltering {
+  pub enum LineSplitter {
       Full,
       TagNameOnly,
       FileNameOnly,
@@ -26,7 +44,7 @@ arg_enum! {
   }
 }
 
-impl From<&str> for ContentFiltering {
+impl From<&str> for LineSplitter {
     fn from(filtering: &str) -> Self {
         match filtering {
             "Full" => Self::Full,
@@ -38,7 +56,7 @@ impl From<&str> for ContentFiltering {
     }
 }
 
-impl From<String> for ContentFiltering {
+impl From<String> for LineSplitter {
     fn from(filtering: String) -> Self {
         Self::from(filtering.as_str())
     }
@@ -76,30 +94,30 @@ pub fn fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     Ok(ranked)
 }
 
-/// Returns the appropriate scorer given the algo and content_filtering strategy.
+/// Returns the appropriate scorer given the algo and line_splitter strategy.
 #[inline]
 pub fn get_appropriate_scorer(
     algo: &Algo,
-    content_filtering: &ContentFiltering,
+    line_splitter: &LineSplitter,
 ) -> impl Fn(&str, &str) -> ScorerOutput {
     match algo {
-        Algo::Skim => match content_filtering {
-            ContentFiltering::Full => fuzzy_indices_skim,
-            ContentFiltering::TagNameOnly => apply_skim_on_tag_line,
-            ContentFiltering::FileNameOnly => apply_skim_on_file_line,
-            ContentFiltering::GrepExcludeFilePath => apply_skim_on_grep_line,
+        Algo::Skim => match line_splitter {
+            LineSplitter::Full => fuzzy_indices_skim,
+            LineSplitter::TagNameOnly => apply_on_tag_line_skim,
+            LineSplitter::FileNameOnly => apply_on_file_line_skim,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_skim,
         },
-        Algo::Fzy => match content_filtering {
-            ContentFiltering::Full => fuzzy_indices_fzy,
-            ContentFiltering::TagNameOnly => apply_fzy_on_tag_line,
-            ContentFiltering::FileNameOnly => apply_fzy_on_file_line,
-            ContentFiltering::GrepExcludeFilePath => apply_fzy_on_grep_line,
+        Algo::Fzy => match line_splitter {
+            LineSplitter::Full => fuzzy_indices_fzy,
+            LineSplitter::TagNameOnly => apply_on_tag_line_fzy,
+            LineSplitter::FileNameOnly => apply_on_file_line_fzy,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_fzy,
         },
-        Algo::SubString => match content_filtering {
-            ContentFiltering::Full => substr_indices,
-            ContentFiltering::TagNameOnly => apply_substr_on_tag_line,
-            ContentFiltering::FileNameOnly => apply_substr_on_file_line,
-            ContentFiltering::GrepExcludeFilePath => apply_substr_on_grep_line,
+        Algo::SubString => match line_splitter {
+            LineSplitter::Full => substr_indices,
+            LineSplitter::TagNameOnly => apply_on_tag_line_substr,
+            LineSplitter::FileNameOnly => apply_on_file_line_substr,
+            LineSplitter::GrepExcludeFilePath => apply_on_grep_line_substr,
         },
     }
 }

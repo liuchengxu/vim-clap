@@ -9,6 +9,8 @@ CHANGELOG
 
 ### Added
 
+- Implement async preview for `blines`, `tags` and `proj_tags` provider. ([#457](https://github.com/liuchengxu/vim-clap/pull/457))
+- Add icon support for `proj_tags` provider. ([#461](https://github.com/liuchengxu/vim-clap/pull/461))
 - Add `g:clap_preview_size` for configuring the number of preview lines. ([#444](https://github.com/liuchengxu/vim-clap/pull/444))
 - Add `g:clap_provider_buffers_cur_tab_only`. ([#439](https://github.com/liuchengxu/vim-clap/pull/439))
 

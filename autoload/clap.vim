@@ -15,13 +15,8 @@ if !s:has_features
 endif
 
 let s:cur_dir = fnamemodify(resolve(expand('<sfile>:p')), ':h')
-let s:builtin_providers = map(
-      \ split(globpath(s:cur_dir.'/clap/provider', '*'), '\n'),
-      \ 'fnamemodify(v:val, '':t:r'')'
-      \ )
 
 let g:clap#autoload_dir = s:cur_dir
-let g:clap#builtin_providers = s:builtin_providers
 
 let g:__t_func = 0
 let g:__t_string = 1
@@ -86,6 +81,16 @@ let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator',
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
 
 let g:clap_popup_border = get(g:, 'clap_popup_border', 'rounded')
+
+function! clap#builtin_providers() abort
+  if !exists('s:builtin_providers')
+    let s:builtin_providers = map(
+          \ split(globpath(s:cur_dir.'/clap/provider', '*'), '\n'),
+          \ 'fnamemodify(v:val, '':t:r'')'
+          \ )
+  endif
+  return s:builtin_providers
+endfunction
 
 function! s:inject_default_impl_is_ok(provider_info) abort
   let provider_info = a:provider_info
@@ -280,7 +285,17 @@ function! clap#for(provider_id_or_alias) abort
 
   call clap#selection#init()
 
+  " This flag is used to slience the autocmd events for NeoVim, e.g., on_typed.
+  " Vim doesn't have these issues as it uses noautocmd in most cases.
+  "
+  " Without this flag, the on_typed hook can be triggered when relaunching
+  " some provider. To reproduce:
+  " 1. :Clap
+  " 2. Choose proj_tags
+  " 3. proj_tags ontyped hook will be triggered.
+  let g:__clap_open_win_pre = v:true
   call g:clap.open_win()
+  let g:__clap_open_win_pre = v:false
 endfunction
 
 if !exists('g:clap')

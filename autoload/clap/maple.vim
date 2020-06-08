@@ -209,6 +209,11 @@ endfunction
 
 function! clap#maple#tags_forerunner_command() abort
   let global_opt = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+
+  if g:clap_enable_icon
+    call add(global_opt, '--icon-painter=ProjTags')
+  endif
+
   return [s:maple_bin] + global_opt + ['tags', '', clap#rooter#working_dir(), '--forerunner']
 endfunction
 
