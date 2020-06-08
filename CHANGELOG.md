@@ -17,6 +17,7 @@ CHANGELOG
 ### Fixed
 
 - Fix the the command of `job_start` with vanila vim. [#449](https://github.com/liuchengxu/vim-clap/issues/449)
+- Implement the `VimResized` hook. [#454](https://github.com/liuchengxu/vim-clap/issues/454)
 
 ## [0.17] 2020-05-25
 
