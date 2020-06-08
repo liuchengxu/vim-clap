@@ -136,6 +136,12 @@ mod tests {
     #[test]
     fn test_tagkind_icon() {
         let line = r#"Blines:19                      [implementation@crates/maple_cli/src/cmd/blines.rs] impl Blines {"#;
-        assert_eq!("implementation", get_tagkind_icon(line).unwrap());
+        let icon_for = |kind: &str| {
+            bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        };
+        assert_eq!(
+            icon_for("implementation").unwrap(),
+            get_tagkind_icon(line).unwrap()
+        );
     }
 }
