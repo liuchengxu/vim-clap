@@ -2,7 +2,7 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-new_tag=v0.17
+new_tag=v0.18
 # If the latest tag is v0.10, returns v0.9
 prev_tag=$(git describe --abbrev=0 --tags "$(git rev-list --tags --skip=1  --max-count=1)")
 changelog=$(../ci/get_changelog.sh "$new_tag" "$prev_tag")

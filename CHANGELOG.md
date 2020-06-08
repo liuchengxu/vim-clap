@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.18] 2020-06-09
+
 ### Improved
 
 - Try loading the clap theme having a same name with the current colorscheme when `g:clap_theme` does not exist.
