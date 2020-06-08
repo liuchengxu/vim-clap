@@ -136,6 +136,6 @@ mod tests {
     #[test]
     fn test_tagkind_icon() {
         let line = r#"Blines:19                      [implementation@crates/maple_cli/src/cmd/blines.rs] impl Blines {"#;
-        println!("{}", get_tagkind_icon(line));
+        assert_eq!("implementation", get_tagkind_icon(line).unwrap());
     }
 }
