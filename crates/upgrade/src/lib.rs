@@ -6,9 +6,6 @@ mod github;
 use anyhow::{anyhow, Context, Result};
 use structopt::StructOpt;
 
-const USER: &str = "liuchengxu";
-const REPO: &str = "vim-clap";
-
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
 #[derive(StructOpt, Debug, Clone)]
