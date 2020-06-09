@@ -16,4 +16,4 @@ icon = { path = "../icon" }
 [target.'cfg(not(windows))'.dev-dependencies]
 rayon = "1.2"
 termion = "1.5.1"
-fuzzy_filter = { path = "../fuzzy_filter" }
+filter = { path = "../filter" }
