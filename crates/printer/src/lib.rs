@@ -1,3 +1,4 @@
+use icon::{IconPainter, ICON_LEN};
 use std::collections::HashMap;
 
 pub const DOTS: &str = "..";
@@ -15,9 +16,6 @@ pub type VimLineNumber = usize;
 /// //  ..{ version = "1.0", features = ["derive"] }
 ///
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
-
-/// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FuzzyMatchedLineInfo = (String, i64, Vec<usize>);
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
@@ -100,10 +98,39 @@ pub fn truncate_long_matched_lines<T>(
     (lines, truncated_map)
 }
 
+/// Returns the info of the truncated top items ranked by the filtering score.
+pub fn process_top_items<T>(
+    top_size: usize,
+    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    winwidth: usize,
+    icon_painter: Option<IconPainter>,
+) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
+    let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
+    let mut lines = Vec::with_capacity(top_size);
+    let mut indices = Vec::with_capacity(top_size);
+    if let Some(painter) = icon_painter {
+        for (idx, (text, _, idxs)) in truncated_lines.iter().enumerate() {
+            let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
+                format!("{} {}", painter.get_icon(origin_text), text)
+            } else {
+                painter.paint(&text)
+            };
+            lines.push(iconized);
+            indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect());
+        }
+    } else {
+        for (text, _, idxs) in truncated_lines {
+            lines.push(text);
+            indices.push(idxs);
+        }
+    }
+    (lines, indices, truncated_map)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuzzy_filter::{Algo, Source};
+    use filter::{matcher::Algo, Source};
     use rayon::prelude::*;
 
     fn wrap_matches(line: &str, indices: &[usize]) -> String {

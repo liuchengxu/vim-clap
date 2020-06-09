@@ -366,7 +366,7 @@ pub fn dyn_run<I: Iterator<Item = String>>(
         };
 
         filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-        let (lines, indices, truncated_map) = process_top_items(
+        let (lines, indices, truncated_map) = printer::process_top_items(
             number,
             filtered.into_iter().take(number),
             winwidth.unwrap_or(62),
