@@ -1,3 +1,6 @@
+//! This crate provides the feature of diplaying the information of filtered lines
+//! by printing them to stdout in JSON format.
+
 use icon::{IconPainter, ICON_LEN};
 use std::collections::HashMap;
 use utility::{println_json, println_json_with_length};
@@ -132,6 +135,7 @@ pub fn process_top_items<T>(
     (lines, indices, truncated_map)
 }
 
+/// Prints the results of filter::sync_run() to stdout.
 pub fn print_sync_filter_results(
     ranked: Vec<FilterResult>,
     number: Option<usize>,
@@ -158,6 +162,7 @@ pub fn print_sync_filter_results(
     }
 }
 
+/// Prints the results of filter::dyn_run() to stdout.
 pub fn print_dyn_filter_results(
     ranked: Vec<FilterResult>,
     total: usize,
