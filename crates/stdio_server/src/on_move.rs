@@ -57,6 +57,14 @@ impl OnMoveHandler {
         Ok(())
     }
 
+    fn send_response(&self, result: serde_json::value::Value) {
+        write_response(json!({
+                "id": self.msg_id,
+                "provider_id": self.provider_id,
+                "result": result
+        }));
+    }
+
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
@@ -68,15 +76,12 @@ impl OnMoveHandler {
                     "sending msg_id:{}, provider_id:{}",
                     self.msg_id, self.provider_id
                 );
-                write_response(json!({
-                "id": self.msg_id,
-                "provider_id": self.provider_id,
-                "result": {
+                self.send_response(json!({
                   "event": "on_move",
                   "lines": lines,
                   "fname": fname,
                   "hi_lnum": hi_lnum
-                }}));
+                }));
             }
             Err(err) => {
                 error!(
@@ -95,28 +100,22 @@ impl OnMoveHandler {
         let lines = std::iter::once(abs_path.clone())
             .chain(lines_iter)
             .collect::<Vec<_>>();
-        write_response(json!({
-        "id": self.msg_id,
-        "provider_id": self.provider_id,
-        "result": {
+        self.send_response(json!({
           "event": "on_move",
           "lines": lines,
           "fname": abs_path
-        }}));
+        }));
         Ok(())
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let enable_icon = super::env::global().enable_icon;
         let lines = super::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        write_response(json!({
-        "id": self.msg_id,
-        "provider_id": self.provider_id,
-        "result": {
+        self.send_response(json!({
           "event": "on_move",
           "lines": lines,
           "is_dir": true
-        }}));
+        }));
         Ok(())
     }
 }

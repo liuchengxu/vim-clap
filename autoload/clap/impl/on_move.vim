@@ -35,7 +35,7 @@ function! s:sync_run_with_delay() abort
   let s:on_move_timer = timer_start(s:on_move_delay, { -> g:clap.provider._().on_move() })
 endfunction
 
-let s:async_preview_implemented = ['filer', 'files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines']
+let s:async_preview_implemented = ['filer', 'files', 'git_files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines']
 
 if clap#maple#is_available()
   function! s:dispatch_on_move_impl() abort

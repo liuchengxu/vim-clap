@@ -134,7 +134,7 @@ impl TryFrom<Message> for OnMove {
 
         log::debug!("curline: {}", curline);
         let context = match provider_id {
-            "files" => Self::Files(rebuild_abs_path()),
+            "files" | "git_files" => Self::Files(rebuild_abs_path()),
             "filer" => Self::Filer(rebuild_abs_path()),
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
