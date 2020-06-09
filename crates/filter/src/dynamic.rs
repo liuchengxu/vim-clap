@@ -6,6 +6,7 @@ use matcher::{get_appropriate_matcher, LineSplitter};
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
+use utility::{println_json, println_json_with_length};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 30;
@@ -139,10 +140,10 @@ fn try_notify_top_results(
             }
 
             if last_lines != lines.as_slice() {
-                print_json_with_length!(total, lines, indices);
+                println_json_with_length!(total, lines, indices);
                 return Ok((now, Some(lines)));
             } else {
-                print_json_with_length!(total);
+                println_json_with_length!(total);
                 return Ok((now, None));
             }
         }

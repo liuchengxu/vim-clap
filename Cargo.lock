@@ -327,6 +327,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subprocess",
+ "utility",
 ]
 
 [[package]]
@@ -1081,6 +1082,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "utility",
 ]
 
 [[package]]

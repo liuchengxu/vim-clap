@@ -155,6 +155,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "utility",
 ]
 
 [[package]]
@@ -387,6 +388,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "utility",
 ]
 
 [[package]]
@@ -707,6 +709,13 @@ name = "unindent"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63f18aa3b0e35fed5a0048f029558b1518095ffe2a0a31fb87c93dece93a4993"
+
+[[package]]
+name = "utility"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
 
 [[package]]
 name = "vec_map"

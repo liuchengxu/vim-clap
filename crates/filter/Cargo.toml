@@ -16,6 +16,7 @@ subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = tr
 icon = { path = "../icon" }
 matcher = { path = "../matcher" }
 printer = { path = "../printer" }
+utility = { path = "../utility" }
 
 [features]
 default = ["enable_dyn"]
