@@ -1,9 +1,9 @@
-use super::types::{OnMove, OnMove::*};
 use super::*;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
-use std::convert::{TryFrom, TryInto};
+use pattern::*;
 use std::path::Path;
+use std::path::PathBuf;
 
 #[inline]
 fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
@@ -13,6 +13,68 @@ fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
         .map_err(|e| anyhow!("{:?}, path:{}", e, path.as_ref().display()))
 }
 
+/// Preview environment on Vim CursorMoved event.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub enum OnMove {
+    Files(PathBuf),
+    Filer(PathBuf),
+    Grep { path: PathBuf, lnum: usize },
+    BLines { path: PathBuf, lnum: usize },
+    ProjTags { path: PathBuf, lnum: usize },
+    BufferTags { path: PathBuf, lnum: usize },
+}
+
+impl OnMove {
+    pub fn new(curline: String, context: &SessionContext) -> anyhow::Result<Self> {
+        // Rebuild the absolute path using cwd and relative path.
+        let rebuild_abs_path = || {
+            let mut path: PathBuf = context.cwd.clone().into();
+            path.push(&curline);
+            path
+        };
+
+        log::debug!("curline: {}", curline);
+        let context = match context.provider_id.as_str() {
+            "files" | "git_files" => Self::Files(rebuild_abs_path()),
+            "filer" => Self::Filer(rebuild_abs_path()),
+            "proj_tags" => {
+                let (lnum, p) =
+                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
+                let mut path: PathBuf = context.cwd.clone().into();
+                path.push(&p);
+                Self::ProjTags { path, lnum }
+            }
+            "grep" | "grep2" => {
+                let (fpath, lnum, _col) =
+                    extract_grep_position(&curline).context("Couldn't extract grep position")?;
+                let mut path: PathBuf = context.cwd.clone().into();
+                path.push(&fpath);
+                Self::Grep { path, lnum }
+            }
+            "blines" if context.start_buffer_path.is_some() => {
+                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
+                let path = context.start_buffer_path.clone().unwrap().into();
+                Self::BLines { path, lnum }
+            }
+            "tags" if context.start_buffer_path.is_some() => {
+                let lnum =
+                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
+                let path = context.start_buffer_path.clone().unwrap().into();
+                Self::BufferTags { path, lnum }
+            }
+            _ => {
+                return Err(anyhow!(
+                    "Couldn't constructs a OnMove instance, context: {:?}",
+                    context
+                ))
+            }
+        };
+
+        Ok(context)
+    }
+}
+
 pub struct OnMoveHandler {
     pub msg_id: u64,
     pub provider_id: String,
@@ -20,24 +82,22 @@ pub struct OnMoveHandler {
     pub inner: OnMove,
 }
 
-impl TryFrom<Message> for OnMoveHandler {
-    type Error = anyhow::Error;
-    fn try_from(msg: Message) -> std::result::Result<Self, Self::Error> {
-        let msg_id = msg.get_message_id();
-        let provider_id = msg.get_provider_id();
-        let size = super::env::preview_size_of(&provider_id);
-        let inner: OnMove = msg.try_into()?;
+impl OnMoveHandler {
+    pub fn try_new(msg: Message, context: &SessionContext) -> anyhow::Result<Self> {
+        let msg_id = msg.id;
+        let provider_id = context.provider_id.clone();
+        let curline = msg.get_curline(&provider_id)?;
+        let inner = OnMove::new(curline, context)?;
         Ok(Self {
             msg_id,
+            size: super::env::preview_size_of(&provider_id),
             provider_id,
-            size,
             inner,
         })
     }
-}
 
-impl OnMoveHandler {
     pub fn handle(&self) -> Result<()> {
+        use OnMove::*;
         match &self.inner {
             BLines { path, lnum }
             | Grep { path, lnum }

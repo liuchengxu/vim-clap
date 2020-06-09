@@ -566,6 +566,7 @@ function! s:init_provider() abort
     else
       call self.init_default_impl()
     endif
+    call clap#client#send_request_on_init()
   endfunction
 
   return provider

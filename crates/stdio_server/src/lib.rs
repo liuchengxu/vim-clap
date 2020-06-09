@@ -1,6 +1,5 @@
 mod env;
 mod filer;
-mod on_move;
 mod session;
 mod types;
 
@@ -8,7 +7,7 @@ use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use serde::Serialize;
 use serde_json::json;
-use std::convert::TryFrom;
+use session::{SessionEvent, SessionManager};
 use std::io::prelude::*;
 use std::thread;
 use types::Message;
@@ -38,29 +37,26 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
+// Runs in the main thread.
 fn loop_handle_message(rx: &Receiver<String>) {
+    let mut session_manager = SessionManager::new();
     for msg in rx.iter() {
-        thread::spawn(move || {
-            // Ignore the invalid message.
-            if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
-                debug!("Recv: {:?}", msg);
-                match &msg.method[..] {
-                    "initialize_global_env" => env::initialize_global(msg),
-                    "filer" => filer::handle_message(msg),
-                    "on_move" => {
-                        let msg_id = msg.id;
-                        if let Err(e) = on_move::OnMoveHandler::try_from(msg).map(|x| x.handle()) {
-                            write_response(json!({ "error": format!("{}",e), "id": msg_id }));
-                        }
-                    }
-                    _ => write_response(
-                        json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
-                    ),
-                }
-            } else {
-                error!("Invalid message: {:?}", msg);
+        if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
+            debug!("Recv: {:?}", msg);
+            match &msg.method[..] {
+                "filer" => filer::handle_message(msg),
+                "initialize_global_env" => env::initialize_global(msg),
+                "on_init" => session_manager.new_session(msg.session_id, msg),
+                "on_typed" => session_manager.send(msg.session_id, SessionEvent::OnTyped(msg)),
+                "on_move" => session_manager.send(msg.session_id, SessionEvent::OnMove(msg)),
+                "exit" => session_manager.send(msg.session_id, SessionEvent::Terminate),
+                _ => write_response(
+                    json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
+                ),
             }
-        });
+        } else {
+            error!("Invalid message: {:?}", msg);
+        }
     }
 }
 

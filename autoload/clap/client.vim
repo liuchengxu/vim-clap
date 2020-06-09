@@ -63,6 +63,21 @@ endfunction
 
 let s:should_send_source_fpath = ['tags', 'blines']
 
+function! clap#client#send_request_on_init() abort
+  let s:req_id += 1
+  let s:session_id += 1
+  call clap#job#daemon#send_message(json_encode({
+        \ 'id': s:req_id,
+        \ 'session_id': s:session_id,
+        \ 'method': 'on_init',
+        \ 'params': {
+        \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
+        \   'provider_id': g:clap.provider.id,
+        \   'winwidth': winwidth(g:clap.provider.id),
+        \ }
+        \ }))
+endfunction
+
 function! clap#client#send_request_on_move() abort
   let s:req_id += 1
   let curline = g:clap.display.getcurline()

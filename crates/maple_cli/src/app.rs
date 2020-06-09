@@ -80,6 +80,8 @@ impl Maple {
     pub fn run(self) -> Result<()> {
         if let Some(ref log_path) = self.log {
             crate::logger::init(log_path)?;
+        } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
+            crate::logger::init(log_path)?;
         }
         match self.command {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!(),

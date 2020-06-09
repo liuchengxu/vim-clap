@@ -240,6 +240,7 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   let s:enable_icon = g:clap_enable_icon ? v:true : v:false
   call s:set_prompt()
+  " TODO: fix filer
   call s:send_message()
 endfunction
 
