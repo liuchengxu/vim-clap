@@ -4,17 +4,17 @@
 //!
 //! There two steps to match a line:
 //!
-//! //    raw line
-//! //       |
-//! //       |  LineSplitter: split out the content to match.
-//! //       |
-//! //      \|/
+//! //     raw line
+//! //        |
+//! //        |  LineSplitter: split out the content to match.
+//! //        |
+//! //        ↓
 //! //  content to match
-//! //       |
-//! //       |          Algo: apply the match algorithm.
-//! //       |
-//! //      \|/
-//! //  MatcherResult
+//! //        |
+//! //        |          Algo: apply the match algorithm.
+//! //        |
+//! //        ↓
+//! //   MatcherResult
 //!
 
 mod algo;

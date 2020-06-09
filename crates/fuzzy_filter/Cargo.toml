@@ -11,13 +11,9 @@ categories = ["Fuzzy Filter Library"]
 [dependencies]
 rayon = "1.2"
 anyhow = "1.0"
-structopt = "0.3"
-fuzzy-matcher = "0.3.1"
-
 subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = true }
 
-extracted_fzy = { path = "../extracted_fzy" }
-pattern = { path = "../pattern" }
+matcher = { path = "../matcher" }
 
 [features]
 default = ["enable_dyn"]

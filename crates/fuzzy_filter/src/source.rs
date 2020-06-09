@@ -1,6 +1,9 @@
 use super::*;
-use crate::{fuzzy_indices_fzy, fuzzy_indices_skim};
 use anyhow::Result;
+use matcher::{
+    fzy::fuzzy_indices as fuzzy_indices_fzy, skim::fuzzy_indices as fuzzy_indices_skim,
+    substring::substr_indices,
+};
 use std::io::BufRead;
 use std::path::PathBuf;
 #[cfg(feature = "enable_dyn")]
@@ -73,9 +76,7 @@ impl<I: Iterator<Item = String>> Source<I> {
                 })
                 .collect::<Vec<_>>(),
             Self::List(list) => list
-                .filter_map(|line| {
-                    scorer(&line).map(|(score, indices)| (line.into(), score, indices))
-                })
+                .filter_map(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
                 .collect::<Vec<_>>(),
         };
 
