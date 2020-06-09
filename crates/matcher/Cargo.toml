@@ -1,0 +1,15 @@
+[package]
+name = "matcher"
+version = "0.1.0"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+structopt = "0.3"
+fuzzy-matcher = "0.3.1"
+
+pattern = { path = "../pattern" }
+extracted_fzy = { path = "extracted_fzy" }

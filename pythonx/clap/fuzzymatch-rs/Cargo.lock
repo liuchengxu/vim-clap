@@ -145,6 +145,20 @@ name = "extracted_fzy"
 version = "0.1.0"
 
 [[package]]
+name = "filter"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "icon",
+ "matcher",
+ "printer",
+ "rayon",
+ "serde",
+ "serde_json",
+ "utility",
+]
+
+[[package]]
 name = "fuzzy-matcher"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -154,23 +168,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuzzy_filter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "extracted_fzy",
- "fuzzy-matcher",
- "pattern",
- "rayon",
- "structopt",
-]
-
-[[package]]
 name = "fuzzymatch-rs"
 version = "0.1.0"
 dependencies = [
- "extracted_fzy",
- "fuzzy_filter",
+ "filter",
  "printer",
  "pyo3",
 ]
@@ -285,6 +286,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "matcher"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "extracted_fzy",
+ "fuzzy-matcher",
+ "pattern",
+ "structopt",
+]
+
+[[package]]
 name = "maybe-uninit"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -376,6 +388,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "utility",
 ]
 
 [[package]]
@@ -696,6 +709,13 @@ name = "unindent"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63f18aa3b0e35fed5a0048f029558b1518095ffe2a0a31fb87c93dece93a4993"
+
+[[package]]
+name = "utility"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
 
 [[package]]
 name = "vec_map"

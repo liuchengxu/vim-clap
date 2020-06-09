@@ -1,6 +1,6 @@
 #![feature(pattern)]
 
-use fuzzy_filter::{get_appropriate_scorer, Algo};
+use filter::matcher::{get_appropriate_matcher, Algo};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -56,7 +56,7 @@ fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
 }
 
 /// Use f64 here as substr_scorer returns f64;
-type ScorerResult = Option<(f64, Vec<usize>)>;
+type MatcherResult = Option<(f64, Vec<usize>)>;
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
 /// Each line's matched indices of LinesInBatch.
@@ -75,25 +75,25 @@ fn fuzzy_match(
     enable_icon: bool,
     line_splitter: String,
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
-    let fzy_scorer_fn = get_appropriate_scorer(&Algo::Fzy, &line_splitter.into());
-    let scorer: Box<dyn Fn(&str) -> ScorerResult> = if query.contains(' ') {
+    let fzy_matcher = get_appropriate_matcher(&Algo::Fzy, &line_splitter.into());
+    let matcher: Box<dyn Fn(&str) -> MatcherResult> = if query.contains(' ') {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {
         Box::new(|line: &str| {
             if enable_icon {
                 // " " is 4 bytes, but the offset of highlight is 2.
-                fzy_scorer_fn(&line[4..], query).map(|(score, indices)| {
+                fzy_matcher(&line[4..], query).map(|(score, indices)| {
                     (score as f64, indices.into_iter().map(|x| x + 4).collect())
                 })
             } else {
-                fzy_scorer_fn(line, query).map(|(score, indices)| (score as f64, indices))
+                fzy_matcher(line, query).map(|(score, indices)| (score as f64, indices))
             }
         })
     };
 
     let mut ranked = candidates
         .into_iter()
-        .filter_map(|line| scorer(&line).map(|(score, indices)| (line, score, indices)))
+        .filter_map(|line| matcher(&line).map(|(score, indices)| (line, score, indices)))
         .collect::<Vec<_>>();
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());

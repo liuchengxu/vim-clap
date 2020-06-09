@@ -1,4 +1,9 @@
+//! This crate provides the feature of diplaying the information of filtered lines
+//! by printing them to stdout in JSON format.
+
+use icon::{IconPainter, ICON_LEN};
 use std::collections::HashMap;
+use utility::{println_json, println_json_with_length};
 
 pub const DOTS: &str = "..";
 
@@ -17,7 +22,7 @@ pub type VimLineNumber = usize;
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
 /// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FuzzyMatchedLineInfo = (String, i64, Vec<usize>);
+pub type FilterResult = (String, i64, Vec<usize>);
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
@@ -100,10 +105,89 @@ pub fn truncate_long_matched_lines<T>(
     (lines, truncated_map)
 }
 
+/// Returns the info of the truncated top items ranked by the filtering score.
+pub fn process_top_items<T>(
+    top_size: usize,
+    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    winwidth: Option<usize>,
+    icon_painter: Option<IconPainter>,
+) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
+    let (truncated_lines, truncated_map) =
+        truncate_long_matched_lines(top_list, winwidth.unwrap_or(62), None);
+    let mut lines = Vec::with_capacity(top_size);
+    let mut indices = Vec::with_capacity(top_size);
+    if let Some(painter) = icon_painter {
+        for (idx, (text, _, idxs)) in truncated_lines.iter().enumerate() {
+            let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
+                format!("{} {}", painter.get_icon(origin_text), text)
+            } else {
+                painter.paint(&text)
+            };
+            lines.push(iconized);
+            indices.push(idxs.iter().map(|x| x + ICON_LEN).collect());
+        }
+    } else {
+        for (text, _, idxs) in truncated_lines {
+            lines.push(text);
+            indices.push(idxs);
+        }
+    }
+    (lines, indices, truncated_map)
+}
+
+/// Prints the results of filter::sync_run() to stdout.
+pub fn print_sync_filter_results(
+    ranked: Vec<FilterResult>,
+    number: Option<usize>,
+    winwidth: Option<usize>,
+    icon_painter: Option<IconPainter>,
+) {
+    if let Some(number) = number {
+        let total = ranked.len();
+        let (lines, indices, truncated_map) = process_top_items(
+            number,
+            ranked.into_iter().take(number),
+            winwidth,
+            icon_painter,
+        );
+        if truncated_map.is_empty() {
+            println_json!(total, lines, indices);
+        } else {
+            println_json!(total, lines, indices, truncated_map);
+        }
+    } else {
+        for (text, _, indices) in ranked.iter() {
+            println_json!(text, indices);
+        }
+    }
+}
+
+/// Prints the results of filter::dyn_run() to stdout.
+pub fn print_dyn_filter_results(
+    ranked: Vec<FilterResult>,
+    total: usize,
+    number: usize,
+    winwidth: Option<usize>,
+    icon_painter: Option<IconPainter>,
+) {
+    let (lines, indices, truncated_map) = process_top_items(
+        number,
+        ranked.into_iter().take(number),
+        winwidth,
+        icon_painter,
+    );
+
+    if truncated_map.is_empty() {
+        println_json_with_length!(total, lines, indices);
+    } else {
+        println_json_with_length!(total, lines, indices, truncated_map);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuzzy_filter::{Algo, Source};
+    use filter::{matcher::Algo, Source};
     use rayon::prelude::*;
 
     fn wrap_matches(line: &str, indices: &[usize]) -> String {
@@ -140,10 +224,10 @@ mod tests {
         skipped: Option<usize>,
         winwidth: usize,
     ) {
-        let mut ranked = source.fuzzy_filter(Algo::Fzy, query).unwrap();
+        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
-        println!("");
+        println!();
         println!("query: {:?}", query);
 
         let (truncated_lines, truncated_map) =

@@ -1,8 +1,6 @@
 [workspace]
 
 members = [
-    "extracted_fzy",
-    "fuzzy_filter",
     "icon",
     "maple_cli",
     "pattern",
@@ -10,4 +8,7 @@ members = [
     "stdio_server",
     "utility",
     "upgrade",
+    "matcher",
+    "matcher/extracted_fzy",
+    "filter",
 ]
