@@ -134,7 +134,7 @@ fn py_and_rs_subscore_should_work() {
 
     let cur_dir = std::env::current_dir().unwrap();
     let py_path = cur_dir.parent().unwrap().join("scorer.py");
-    let py_source_code = fs::rcad_to_string(py_path).unwrap();
+    let py_source_code = fs::read_to_string(py_path).unwrap();
 
     let gil = Python::acquire_gil();
     let py = gil.python();
