@@ -10,4 +10,5 @@ members = [
     "stdio_server",
     "utility",
     "upgrade",
+    "matcher",
 ]
