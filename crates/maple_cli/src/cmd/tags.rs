@@ -1,7 +1,6 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
-use crate::LineSplitter;
 use anyhow::Result;
-use fuzzy_filter::{subprocess, Source};
+use filter::{matcher::LineSplitter, subprocess, Source};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
@@ -122,7 +121,7 @@ impl Tags {
             send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
-            crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
+            filter::dyn_run(
                 &self.query,
                 Source::List(formatted_tags_stream(&cmd_args, &self.dir)?),
                 None,

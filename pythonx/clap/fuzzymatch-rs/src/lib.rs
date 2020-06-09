@@ -1,6 +1,6 @@
 #![feature(pattern)]
 
-use fuzzy_filter::{get_appropriate_scorer, Algo};
+use filter::matcher::{get_appropriate_matcher, Algo};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -75,7 +75,7 @@ fn fuzzy_match(
     enable_icon: bool,
     line_splitter: String,
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
-    let fzy_scorer_fn = get_appropriate_scorer(&Algo::Fzy, &line_splitter.into());
+    let fzy_scorer_fn = get_appropriate_matcher(&Algo::Fzy, &line_splitter.into());
     let scorer: Box<dyn Fn(&str) -> ScorerResult> = if query.contains(' ') {
         Box::new(|line: &str| substr_scorer(query, line))
     } else {

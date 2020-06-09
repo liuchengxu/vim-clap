@@ -2,7 +2,6 @@
 
 members = [
     "extracted_fzy",
-    "fuzzy_filter",
     "icon",
     "maple_cli",
     "pattern",
@@ -11,4 +10,5 @@ members = [
     "utility",
     "upgrade",
     "matcher",
+    "filter",
 ]

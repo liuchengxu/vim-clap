@@ -1,4 +1,5 @@
 use super::*;
+use crate::FilterResult;
 use anyhow::Result;
 use matcher::{
     fzy::fuzzy_indices as fuzzy_indices_fzy, skim::fuzzy_indices as fuzzy_indices_skim,
@@ -43,7 +44,7 @@ impl<I: Iterator<Item = String>> Source<I> {
     /// filter algo on each item in the input stream.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn fuzzy_filter(self, algo: Algo, query: &str) -> Result<Vec<FuzzyMatchedLineInfo>> {
+    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FilterResult>> {
         let scorer = |line: &str| match algo {
             Algo::Skim => fuzzy_indices_skim(line, &query),
             Algo::Fzy => fuzzy_indices_fzy(line, &query),

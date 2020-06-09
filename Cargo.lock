@@ -316,6 +316,20 @@ name = "extracted_fzy"
 version = "0.1.0"
 
 [[package]]
+name = "filter"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "icon",
+ "matcher",
+ "printer",
+ "rayon",
+ "serde",
+ "serde_json",
+ "subprocess",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -418,19 +432,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75a03d6d8629fcd151ece9d3a7f59a87fc38a620ab0290bf2888c2ad73821170"
 dependencies = [
  "thread_local",
-]
-
-[[package]]
-name = "fuzzy_filter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "extracted_fzy",
- "fuzzy-matcher",
- "pattern",
- "rayon",
- "structopt",
- "subprocess",
 ]
 
 [[package]]
@@ -765,7 +766,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytecount",
- "fuzzy_filter",
+ "filter",
  "icon",
  "itertools",
  "log",
@@ -779,6 +780,17 @@ dependencies = [
  "structopt",
  "upgrade",
  "utility",
+]
+
+[[package]]
+name = "matcher"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "extracted_fzy",
+ "fuzzy-matcher",
+ "pattern",
+ "structopt",
 ]
 
 [[package]]
@@ -1407,7 +1419,6 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "curl",
- "fuzzy_filter",
  "icon",
  "indicatif",
  "log",

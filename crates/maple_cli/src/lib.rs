@@ -29,7 +29,7 @@ pub mod cmd;
 pub use {
     anyhow::{Context, Result},
     app::{Cmd, Maple},
-    fuzzy_filter::{subprocess, LineSplitter, Source},
+    filter::{subprocess, Source},
     icon::IconPainter,
     structopt::StructOpt,
 };

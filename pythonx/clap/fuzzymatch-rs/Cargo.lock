@@ -145,6 +145,19 @@ name = "extracted_fzy"
 version = "0.1.0"
 
 [[package]]
+name = "filter"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "icon",
+ "matcher",
+ "printer",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fuzzy-matcher"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -154,23 +167,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuzzy_filter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "extracted_fzy",
- "fuzzy-matcher",
- "pattern",
- "rayon",
- "structopt",
-]
-
-[[package]]
 name = "fuzzymatch-rs"
 version = "0.1.0"
 dependencies = [
- "extracted_fzy",
- "fuzzy_filter",
+ "filter",
  "printer",
  "pyo3",
 ]
@@ -282,6 +282,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4da24a77a3d8a6d4862d95f72e6fdb9c09a643ecdb402d754004a557f2bec75"
 dependencies = [
  "scopeguard",
+]
+
+[[package]]
+name = "matcher"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "extracted_fzy",
+ "fuzzy-matcher",
+ "pattern",
+ "structopt",
 ]
 
 [[package]]

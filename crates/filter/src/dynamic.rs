@@ -1,6 +1,8 @@
 use super::*;
-use fuzzy_filter::{get_appropriate_scorer, FuzzyMatchedLineInfo};
+use crate::FilterResult;
+use icon::IconPainter;
 use icon::ICON_LEN;
+use matcher::{get_appropriate_matcher, LineSplitter};
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
 use std::time::{Duration, Instant};
@@ -63,8 +65,8 @@ type SelectedTopItemsInfo = (usize, [i64; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]
 ///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
 fn select_top_items_to_show(
-    buffer: &mut Vec<FuzzyMatchedLineInfo>,
-    iter: &mut impl Iterator<Item = FuzzyMatchedLineInfo>,
+    buffer: &mut Vec<FilterResult>,
+    iter: &mut impl Iterator<Item = FilterResult>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
     let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
@@ -116,7 +118,7 @@ fn try_notify_top_results(
     past: &Instant,
     top_results_len: usize,
     top_results: &[usize; ITEMS_TO_SHOW],
-    buffer: &[FuzzyMatchedLineInfo],
+    buffer: &[FilterResult],
     last_lines: &[String],
 ) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
     if total % 16 == 0 {
@@ -166,9 +168,9 @@ fn try_notify_top_results(
 ///
 /// So, this particular function won't work in parallel context at all.
 fn dyn_collect_all(
-    mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
+    mut iter: impl Iterator<Item = FilterResult>,
     icon_painter: &Option<IconPainter>,
-) -> Vec<FuzzyMatchedLineInfo> {
+) -> Vec<FilterResult> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -224,10 +226,10 @@ fn dyn_collect_all(
 // I think, it's just good enough. And should be more effective than full
 // `collect()` into Vec on big numbers of iterations.
 fn dyn_collect_number(
-    mut iter: impl Iterator<Item = FuzzyMatchedLineInfo>,
+    mut iter: impl Iterator<Item = FilterResult>,
     number: usize,
     icon_painter: &Option<IconPainter>,
-) -> (usize, Vec<FuzzyMatchedLineInfo>) {
+) -> (usize, Vec<FilterResult>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
@@ -296,6 +298,7 @@ macro_rules! source_iter_stdin {
 }
 
 // Generate an filtered iterator from Source::Exec(exec).
+#[cfg(feature = "enable_dyn")]
 macro_rules! source_iter_exec {
     ( $scorer:ident, $exec:ident ) => {
         std::io::BufReader::new($exec.stream_stdout()?)
@@ -331,7 +334,7 @@ macro_rules! source_iter_list {
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
+pub fn dyn_run<I: Iterator<Item = String>>(
     query: &str,
     source: Source<I>,
     algo: Option<Algo>,
@@ -345,11 +348,12 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     } else {
         algo.unwrap_or(Algo::Fzy)
     };
-    let scorer_fn = get_appropriate_scorer(&algo, &line_splitter);
+    let scorer_fn = get_appropriate_matcher(&algo, &line_splitter);
     let scorer = |line: &str| scorer_fn(line, query);
     if let Some(number) = number {
         let (total, mut filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
+            #[cfg(feature = "enable_dyn")]
             Source::Exec(exec) => {
                 dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter)
             }
@@ -360,6 +364,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
                 dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter)
             }
         };
+
         filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
         let (lines, indices, truncated_map) = process_top_items(
             number,
@@ -376,6 +381,7 @@ pub fn dyn_fuzzy_filter_and_rank<I: Iterator<Item = String>>(
     } else {
         let mut filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            #[cfg(feature = "enable_dyn")]
             Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
             Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
             Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
@@ -424,7 +430,7 @@ mod tests {
 
         let mut changing_text: [u8; 16] = [ALPHABET[31]; 16];
         let mut total_lines_created: usize = 0;
-        dyn_fuzzy_filter_and_rank(
+        dyn_run(
             "abc",
             Source::List(
                 std::iter::repeat_with(|| {
