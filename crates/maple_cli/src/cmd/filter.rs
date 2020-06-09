@@ -3,8 +3,7 @@ use filter::{
     matcher::{Algo, LineSplitter},
     subprocess, Source,
 };
-use icon::{IconPainter, ICON_LEN};
-use printer::{truncate_long_matched_lines, LinesTruncatedMap};
+use icon::IconPainter;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -71,24 +70,7 @@ impl Filter {
             self.algo.clone().unwrap_or(Algo::Fzy),
         )?;
 
-        if let Some(number) = number {
-            let total = ranked.len();
-            let (lines, indices, truncated_map) = process_top_items(
-                number,
-                ranked.into_iter().take(number),
-                winwidth.unwrap_or(62),
-                icon_painter,
-            );
-            if truncated_map.is_empty() {
-                println_json!(total, lines, indices);
-            } else {
-                println_json!(total, lines, indices, truncated_map);
-            }
-        } else {
-            for (text, _, indices) in ranked.iter() {
-                println_json!(text, indices);
-            }
-        }
+        printer::print_sync_filter_results(ranked, number, winwidth, icon_painter);
 
         Ok(())
     }
@@ -124,33 +106,4 @@ impl Filter {
         }
         Ok(())
     }
-}
-
-/// Returns the info of the truncated top items ranked by the filtering score.
-fn process_top_items<T>(
-    top_size: usize,
-    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
-    winwidth: usize,
-    icon_painter: Option<IconPainter>,
-) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
-    let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
-    let mut lines = Vec::with_capacity(top_size);
-    let mut indices = Vec::with_capacity(top_size);
-    if let Some(painter) = icon_painter {
-        for (idx, (text, _, idxs)) in truncated_lines.iter().enumerate() {
-            let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
-                format!("{} {}", painter.get_icon(origin_text), text)
-            } else {
-                painter.paint(&text)
-            };
-            lines.push(iconized);
-            indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect());
-        }
-    } else {
-        for (text, _, idxs) in truncated_lines {
-            lines.push(text);
-            indices.push(idxs);
-        }
-    }
-    (lines, indices, truncated_map)
 }

@@ -129,7 +129,7 @@ fn try_notify_top_results(
             for &idx in top_results.iter() {
                 let (text, _, idxs) = std::ops::Index::index(buffer, idx);
                 let text = if let Some(painter) = icon_painter {
-                    indices.push(idxs.into_iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
+                    indices.push(idxs.iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
                     painter.paint(&text)
                 } else {
                     indices.push(idxs.clone());
@@ -343,7 +343,7 @@ pub fn dyn_run<I: Iterator<Item = String>>(
     icon_painter: Option<IconPainter>,
     line_splitter: LineSplitter,
 ) -> Result<()> {
-    let algo = if query.contains(" ") {
+    let algo = if query.contains(' ') {
         Algo::SubString
     } else {
         algo.unwrap_or(Algo::Fzy)
@@ -366,18 +366,8 @@ pub fn dyn_run<I: Iterator<Item = String>>(
         };
 
         filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
-        let (lines, indices, truncated_map) = printer::process_top_items(
-            number,
-            filtered.into_iter().take(number),
-            winwidth.unwrap_or(62),
-            icon_painter,
-        );
 
-        if truncated_map.is_empty() {
-            print_json_with_length!(total, lines, indices);
-        } else {
-            print_json_with_length!(total, lines, indices, truncated_map);
-        }
+        printer::print_dyn_filter_results(filtered, total, number, winwidth, icon_painter);
     } else {
         let mut filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
