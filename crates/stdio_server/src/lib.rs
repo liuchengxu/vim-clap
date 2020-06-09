@@ -1,6 +1,7 @@
 mod env;
 mod filer;
 mod on_move;
+mod session;
 mod types;
 
 use crossbeam_channel::{Receiver, Sender};

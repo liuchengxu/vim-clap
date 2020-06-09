@@ -20,6 +20,7 @@ tokio = { version = "0.2.20", features = ["fs"] }
 indicatif = "0.14.0"
 
 icon = { path = "../icon" }
+filter = { path = "../filter" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 utility = { path = "../utility" }
