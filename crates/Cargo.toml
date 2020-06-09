@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-    "extracted_fzy",
     "icon",
     "maple_cli",
     "pattern",
@@ -10,5 +9,6 @@ members = [
     "utility",
     "upgrade",
     "matcher",
+    "matcher/extracted_fzy",
     "filter",
 ]
