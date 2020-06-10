@@ -4,6 +4,7 @@ mod on_move;
 
 use super::filer::read_dir_entries;
 use super::*;
+use anyhow::Result;
 use context::SessionContext;
 pub use manager::SessionManager;
 
@@ -24,7 +25,7 @@ pub enum SessionEvent {
     Terminate,
 }
 
-fn spawn_forerunner_impl(msg_id: u64, source_cmd: String, session: Session) -> anyhow::Result<()> {
+fn spawn_forerunner_impl(msg_id: u64, source_cmd: String, session: Session) -> Result<()> {
     let stdout_stream = filter::subprocess::Exec::shell(source_cmd)
         .cwd(&session.context.cwd)
         .stream_stdout()?;
@@ -59,7 +60,7 @@ fn spawn_forerunner_impl(msg_id: u64, source_cmd: String, session: Session) -> a
     Ok(())
 }
 
-fn spawn_forerunner(msg_id: u64, source_cmd: String, session: Session) -> anyhow::Result<()> {
+fn spawn_forerunner(msg_id: u64, source_cmd: String, session: Session) -> Result<()> {
     thread::Builder::new()
         .name(format!("session-forerunner-{}", session.session_id))
         .spawn(move || spawn_forerunner_impl(msg_id, source_cmd, session))?;
@@ -85,7 +86,7 @@ impl Session {
         &self.context.provider_id
     }
 
-    fn _handle_filer_impl(&self, msg: Message) -> anyhow::Result<()> {
+    fn _handle_filer_impl(&self, msg: Message) -> Result<()> {
         let enable_icon = super::env::global().enable_icon;
         let result = match read_dir_entries(&self.context.cwd, enable_icon, None) {
             Ok(entries) => json!({
@@ -145,27 +146,29 @@ impl Session {
                 lines.len()
             );
 
-            if truncated_map.is_empty() {
+            let send_response = |result: serde_json::value::Value| {
                 write_response(json!({
                 "id": msg_id,
                 "provider_id": self.context.provider_id,
-                "result": {
+                "result": result
+                }));
+            };
+
+            if truncated_map.is_empty() {
+                send_response(json!({
                   "event": "on_typed",
                   "total": total,
                   "lines": lines,
                   "indices": indices,
-                }}));
+                }));
             } else {
-                write_response(json!({
-                "id": msg_id,
-                "provider_id": self.context.provider_id,
-                "result": {
+                send_response(json!({
                   "event": "on_typed",
                   "total": total,
                   "lines": lines,
                   "indices": indices,
                   "truncated_map": truncated_map,
-                }}));
+                }));
             }
         }
     }
@@ -177,9 +180,13 @@ impl Session {
         }
     }
 
-    pub fn start_event_loop(mut self) -> anyhow::Result<()> {
+    pub fn start_event_loop(mut self) -> Result<()> {
         thread::Builder::new()
-            .name(format!("session-{}", self.session_id))
+            .name(format!(
+                "session-{}-{}",
+                self.session_id,
+                self.provider_id()
+            ))
             .spawn(move || loop {
                 match self.event_recv.recv() {
                     Ok(event) => {

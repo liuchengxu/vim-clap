@@ -50,10 +50,6 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn get_message_id(&self) -> u64 {
-        self.id
-    }
-
     pub fn get_provider_id(&self) -> String {
         self.params
             .get("provider_id")
