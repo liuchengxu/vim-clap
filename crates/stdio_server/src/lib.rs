@@ -39,7 +39,7 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 
 // Runs in the main thread.
 fn loop_handle_message(rx: &Receiver<String>) {
-    let mut session_manager = SessionManager::new();
+    let mut session_manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
             debug!("Recv: {:?}", msg);

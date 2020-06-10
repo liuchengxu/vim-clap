@@ -52,15 +52,15 @@ impl OnMove {
                 path.push(&fpath);
                 Self::Grep { path, lnum }
             }
-            "blines" if context.start_buffer_path.is_some() => {
+            "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
-                let path = context.start_buffer_path.clone().unwrap().into();
+                let path = context.start_buffer_path.clone().into();
                 Self::BLines { path, lnum }
             }
-            "tags" if context.start_buffer_path.is_some() => {
+            "tags" => {
                 let lnum =
                     extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
-                let path = context.start_buffer_path.clone().unwrap().into();
+                let path = context.start_buffer_path.clone().into();
                 Self::BufferTags { path, lnum }
             }
             _ => {

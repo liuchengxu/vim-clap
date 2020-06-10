@@ -61,8 +61,6 @@ function! clap#client#handle(msg) abort
   call s:handle_on_move_result(decoded.result)
 endfunction
 
-let s:should_send_source_fpath = ['tags', 'blines']
-
 function! clap#client#send_request_on_init() abort
   let s:req_id += 1
   let s:session_id += 1
@@ -72,8 +70,9 @@ function! clap#client#send_request_on_init() abort
         \ 'method': 'on_init',
         \ 'params': {
         \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
-        \   'provider_id': g:clap.provider.id,
         \   'winwidth': winwidth(g:clap.provider.id),
+        \   'provider_id': g:clap.provider.id,
+        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ }
         \ }))
 endfunction
@@ -89,13 +88,8 @@ function! clap#client#send_request_on_move() abort
       \ 'session_id': s:session_id,
       \ 'method': 'on_move',
       \ 'params': {
-      \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
       \   'curline': curline,
-      \   'provider_id': g:clap.provider.id,
       \ }}
-  if index(s:should_send_source_fpath, g:clap.provider.id) > -1
-    let msg.params.source_fpath = expand('#'.g:clap.start.bufnr.':p')
-  endif
   call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
