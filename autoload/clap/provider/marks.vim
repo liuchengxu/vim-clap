@@ -11,9 +11,7 @@ function! s:format_mark(line) abort
 endfunction
 
 function! s:marks.source() abort
-  call g:clap.start.goto_win()
-  let cout = execute('marks')
-  call g:clap.input.goto_win()
+  let cout = clap#api#win_execute(g:clap.start.winid, 'marks')
   let list = split(cout, "\n")
   return extend(list[0:0], map(list[1:], 's:format_mark(v:val)'))
 endfunction
@@ -98,6 +96,7 @@ function! s:marks.on_move() abort
 endfunction
 
 let s:marks.syntax = 'clap_marks'
+let s:marks.source_type = g:__t_func_list
 
 let g:clap#provider#marks# = s:marks
 
