@@ -49,7 +49,7 @@ fn loop_handle_message(rx: &Receiver<String>) {
                 "on_init" => session_manager.new_session(msg.session_id, msg),
                 "on_typed" => session_manager.send(msg.session_id, SessionEvent::OnTyped(msg)),
                 "on_move" => session_manager.send(msg.session_id, SessionEvent::OnMove(msg)),
-                "exit" => session_manager.send(msg.session_id, SessionEvent::Terminate),
+                "exit" => session_manager.terminate(msg.session_id),
                 _ => write_response(
                     json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
                 ),

@@ -31,10 +31,10 @@ fn spawn_new_session(msg: Message) -> anyhow::Result<Sender<SessionEvent>> {
         event_recv: session_receiver,
     };
 
-    if session.context.source_cmd.is_some() {
+    if let Some(source_cmd) = session.context.source_cmd.clone() {
         let session_cloned = session.clone();
         // TODO: choose different fitler strategy according to the time forerunner job spent.
-        spawn_forerunner(msg_id, session_cloned)?;
+        spawn_forerunner(msg_id, source_cmd, session_cloned)?;
     }
 
     session.start_event_loop()?;

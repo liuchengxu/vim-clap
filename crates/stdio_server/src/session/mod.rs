@@ -24,8 +24,8 @@ pub enum SessionEvent {
     Terminate,
 }
 
-fn spawn_forerunner_impl(msg_id: u64, session: Session) -> anyhow::Result<()> {
-    let stdout_stream = filter::subprocess::Exec::shell(session.context.source_cmd.unwrap())
+fn spawn_forerunner_impl(msg_id: u64, source_cmd: String, session: Session) -> anyhow::Result<()> {
+    let stdout_stream = filter::subprocess::Exec::shell(source_cmd)
         .cwd(&session.context.cwd)
         .stream_stdout()?;
 
@@ -34,9 +34,7 @@ fn spawn_forerunner_impl(msg_id: u64, session: Session) -> anyhow::Result<()> {
         .filter_map(|x| x.ok())
         .collect::<Vec<String>>();
 
-    let is_running = session.context.is_running.lock().unwrap();
-
-    if is_running.load(std::sync::atomic::Ordering::Relaxed) {
+    if session.is_running() {
         let initial_size = lines.len();
         let response_lines = lines
             .iter()
@@ -61,10 +59,10 @@ fn spawn_forerunner_impl(msg_id: u64, session: Session) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn spawn_forerunner(msg_id: u64, session: Session) -> anyhow::Result<()> {
+fn spawn_forerunner(msg_id: u64, source_cmd: String, session: Session) -> anyhow::Result<()> {
     thread::Builder::new()
         .name(format!("session-forerunner-{}", session.session_id))
-        .spawn(move || spawn_forerunner_impl(msg_id, session))?;
+        .spawn(move || spawn_forerunner_impl(msg_id, source_cmd, session))?;
     Ok(())
 }
 
