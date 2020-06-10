@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Fixed
+
+- Fixed the win contexted `execute()` for `jumps` and `marks` provider when clap window is not yet visible.
+
 ## [0.18] 2020-06-09
 
 ### Improved

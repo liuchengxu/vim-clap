@@ -72,6 +72,21 @@ if s:is_nvim
   function! s:_win_is_valid() dict abort
     return self.winid == -1 ? v:false : nvim_win_is_valid(self.winid)
   endfunction
+
+  function! clap#api#win_execute(winid, command) abort
+    let cur_winid = bufwinid('')
+    if cur_winid != a:winid
+      noautocmd call win_gotoid(a:winid)
+      try
+        return execute(a:command)
+      finally
+        noautocmd call win_gotoid(cur_winid)
+      endtry
+    else
+      return execute(a:command)
+    endif
+  endfunction
+
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
@@ -85,6 +100,10 @@ else
 
   function! s:_win_is_valid() dict abort
     return !empty(popup_getpos(self.winid))
+  endfunction
+
+  function! clap#api#win_execute(winid, command) abort
+    return win_execute(a:winid, a:command)
   endfunction
 endif
 
