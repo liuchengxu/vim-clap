@@ -310,7 +310,7 @@ function! s:init_input() abort
     endfunction
 
     function! input.clear() abort
-      call popup_settext(g:clap#popup#input.winid, '')
+      call popup_settext(self.winid, '')
     endfunction
   endif
 
