@@ -12,13 +12,10 @@ function! s:jump(t, w) abort
 endfunction
 
 function! s:get_clap_winids() abort
-  let clap_winids = []
-  for clap_win in ['display', 'input', 'spinner', 'preview']
-    let clap_win_var = 'g:clap.' . clap_win . '.winid'
-    if exists(clap_win_var)
-      call add(clap_winids, g:clap[clap_win].winid)
-    endif
-  endfor
+  let clap_winids = map(filter(
+          \ ['display', 'input', 'spinner', 'preview'],
+          \ 'exists("g:clap.".v:val.".winid")'),
+      \ 'g:clap[v:val].winid')
   if exists('g:__clap_indicator_bufnr')
     call extend(clap_winids, win_findbuf(g:__clap_indicator_bufnr))
   endif
