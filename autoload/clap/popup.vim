@@ -6,7 +6,6 @@ set cpoptions&vim
 
 let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
-let g:clap#popup#input = {}
 
 " TODO use a flexiable width
 let s:indicator_width = 18
@@ -251,7 +250,7 @@ function! s:create_input() abort
     if s:exists_deoplete
       call deoplete#custom#buffer_option('auto_complete', v:false)
     endif
-    let g:clap#popup#input.winid = s:input_winid
+    let g:clap.input.winid = s:input_winid
   endif
 endfunction
 
