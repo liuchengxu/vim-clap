@@ -77,7 +77,7 @@ impl OnMove {
 
 pub struct OnMoveHandler {
     pub msg_id: u64,
-    pub provider_id: String,
+    pub provider_id: ProviderId,
     pub size: usize,
     pub inner: OnMove,
 }
@@ -90,7 +90,7 @@ impl OnMoveHandler {
         let inner = OnMove::new(curline, context)?;
         Ok(Self {
             msg_id,
-            size: super::env::preview_size_of(&provider_id),
+            size: provider_id.get_preview_size(),
             provider_id,
             inner,
         })
@@ -118,9 +118,10 @@ impl OnMoveHandler {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
+        let provider_id: crate::types::ProviderId = self.provider_id.clone().into();
         write_response(json!({
                 "id": self.msg_id,
-                "provider_id": self.provider_id,
+                "provider_id": provider_id,
                 "result": result
         }));
     }

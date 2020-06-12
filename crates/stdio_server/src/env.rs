@@ -16,10 +16,6 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
     }
 }
 
-pub fn preview_size_of(provider_id: &str) -> usize {
-    global().preview_size_of(provider_id)
-}
-
 pub fn initialize_global(msg: Message) {
     let is_nvim = msg
         .params
@@ -45,12 +41,4 @@ pub fn initialize_global(msg: Message) {
     } else {
         debug!("GLOBAL_ENV initialized successfully");
     }
-}
-
-pub fn has_icon_support(provider_id: &str) -> bool {
-    provider_id != "blines"
-}
-
-pub fn should_skip_leading_icon(provider_id: &str) -> bool {
-    global().enable_icon && has_icon_support(provider_id)
 }

@@ -5,12 +5,14 @@ mod on_move;
 
 use super::filer::read_dir_entries;
 use super::*;
+use crate::types::ProviderId;
 use anyhow::Result;
 use context::SessionContext;
+
 pub use manager::SessionManager;
 
 pub type SessionId = u64;
-pub type ProviderId = String;
+// pub type ProviderId = String;
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -49,7 +51,7 @@ impl Session {
         *source_list = Some(lines);
     }
 
-    pub fn provider_id(&self) -> &str {
+    pub fn provider_id(&self) -> &ProviderId {
         &self.context.provider_id
     }
 
@@ -82,7 +84,7 @@ impl Session {
     pub fn handle_on_typed(&self, msg: Message) {
         debug!("recv OnTyped event: {:?}", msg);
 
-        if msg.get_provider_id() == "filer" {
+        if msg.get_provider_id().as_str() == "filer" {
             let _ = self._handle_filer_impl(msg);
             return;
         }

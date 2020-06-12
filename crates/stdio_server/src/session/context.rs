@@ -1,4 +1,5 @@
 use super::*;
+use crate::types::ProviderId;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
 #[derive(Debug, Clone)]

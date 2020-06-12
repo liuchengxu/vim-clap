@@ -50,7 +50,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn get_provider_id(&self) -> String {
+    pub fn get_provider_id(&self) -> ProviderId {
         self.params
             .get("provider_id")
             .and_then(|x| x.as_str())
@@ -68,7 +68,7 @@ impl Message {
     }
 
     /// Get the current line of display window without the leading icon.
-    pub fn get_curline(&self, provider_id: &str) -> anyhow::Result<String> {
+    pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
         let display_curline = String::from(
             self.params
                 .get("curline")
@@ -76,7 +76,7 @@ impl Message {
                 .context("Missing fname when deserializing into FilerParams")?,
         );
 
-        let curline = if super::env::should_skip_leading_icon(provider_id) {
+        let curline = if provider_id.should_skip_leading_icon() {
             display_curline.chars().skip(2).collect()
         } else {
             display_curline
@@ -84,4 +84,49 @@ impl Message {
 
         Ok(curline)
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProviderId(String);
+
+impl ProviderId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn should_skip_leading_icon(&self) -> bool {
+        super::env::global().enable_icon && self.has_icon_support()
+    }
+
+    pub fn get_preview_size(&self) -> usize {
+        super::env::global().preview_size_of(&self.0)
+    }
+
+    pub fn has_icon_support(&self) -> bool {
+        &self.0 != "blines"
+    }
+}
+
+impl From<String> for ProviderId {
+    fn from(p: String) -> Self {
+        Self(p)
+    }
+}
+
+impl From<&str> for ProviderId {
+    fn from(p: &str) -> Self {
+        Self(p.into())
+    }
+}
+
+impl std::fmt::Display for ProviderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[test]
+fn test_provider_id_serde() {
+    let id: ProviderId = "files".into();
+    println!("{:?}", serde_json::to_string(&id));
 }
