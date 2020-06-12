@@ -1,9 +1,11 @@
 use super::*;
 use crate::types::Message;
+use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
 use std::collections::HashMap;
 
+/// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]
 pub struct SessionEventSender(Sender<SessionEvent>);
 
@@ -21,7 +23,7 @@ impl SessionEventSender {
     }
 }
 
-fn spawn_new_session(msg: Message) -> anyhow::Result<Sender<SessionEvent>> {
+fn spawn_new_session(msg: Message) -> Result<Sender<SessionEvent>> {
     let (session_sender, session_receiver) = crossbeam_channel::unbounded();
     let msg_id = msg.id;
 
@@ -34,7 +36,9 @@ fn spawn_new_session(msg: Message) -> anyhow::Result<Sender<SessionEvent>> {
     if let Some(source_cmd) = session.context.source_cmd.clone() {
         let session_cloned = session.clone();
         // TODO: choose different fitler strategy according to the time forerunner job spent.
-        spawn_forerunner(msg_id, source_cmd, session_cloned)?;
+        thread::Builder::new()
+            .name(format!("session-forerunner-{}", session.session_id))
+            .spawn(move || crate::session::forerunner::run(msg_id, source_cmd, session_cloned))?;
     }
 
     session.start_event_loop()?;
@@ -47,8 +51,9 @@ pub struct SessionManager {
     sessions: HashMap<SessionId, SessionEventSender>,
 }
 
+/// Dispatches the raw RpcMessage to the right session instance according to the session_id.
 impl SessionManager {
-    /// Start a session in a new thread given the session id and init message.
+    /// Starts a session in a new thread given the session id and init message.
     pub fn new_session(&mut self, session_id: SessionId, msg: Message) {
         if self.has(session_id) {
             error!("Session {} already exists", msg.session_id);

@@ -18,7 +18,7 @@ fn write_response<T: Serialize>(msg: T) {
     }
 }
 
-fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
+fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
     let mut reader = reader;
     loop {
         let mut message = String::new();
@@ -38,7 +38,7 @@ fn loop_read(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 // Runs in the main thread.
-fn loop_handle_message(rx: &Receiver<String>) {
+fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut session_manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
@@ -68,8 +68,8 @@ where
     thread::Builder::new()
         .name("reader".into())
         .spawn(move || {
-            loop_read(reader, &tx);
+            loop_read_rpc_message(reader, &tx);
         })
         .expect("Failed to spawn rpc reader thread");
-    loop_handle_message(&rx);
+    loop_handle_rpc_message(&rx);
 }

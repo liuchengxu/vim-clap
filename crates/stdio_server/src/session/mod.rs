@@ -1,4 +1,5 @@
 mod context;
+mod forerunner;
 mod manager;
 mod on_move;
 
@@ -25,49 +26,8 @@ pub enum SessionEvent {
     Terminate,
 }
 
-fn spawn_forerunner_impl(msg_id: u64, source_cmd: String, session: Session) -> Result<()> {
-    let stdout_stream = filter::subprocess::Exec::shell(source_cmd)
-        .cwd(&session.context.cwd)
-        .stream_stdout()?;
-
-    let lines = std::io::BufReader::new(stdout_stream)
-        .lines()
-        .filter_map(|x| x.ok())
-        .collect::<Vec<String>>();
-
-    if session.is_running() {
-        let initial_size = lines.len();
-        let response_lines = lines
-            .iter()
-            .by_ref()
-            .take(30)
-            .map(|line| icon::IconPainter::File.paint(&line))
-            .collect::<Vec<_>>();
-
-        let mut source_list = session.context.source_list.lock().unwrap();
-        *source_list = Some(lines);
-
-        write_response(json!({
-        "id": msg_id,
-        "provider_id": session.context.provider_id,
-        "result": {
-          "event": "on_init",
-          "initial_size": initial_size,
-          "lines": response_lines,
-        }}));
-    }
-
-    Ok(())
-}
-
-fn spawn_forerunner(msg_id: u64, source_cmd: String, session: Session) -> Result<()> {
-    thread::Builder::new()
-        .name(format!("session-forerunner-{}", session.session_id))
-        .spawn(move || spawn_forerunner_impl(msg_id, source_cmd, session))?;
-    Ok(())
-}
-
 impl Session {
+    /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
         let mut val = self.context.is_running.lock().unwrap();
         *val.get_mut() = false;
@@ -80,6 +40,13 @@ impl Session {
             .lock()
             .unwrap()
             .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Saves the forerunner result.
+    /// TODO: Store full lines, or a cached file?
+    pub fn set_source_list(&mut self, lines: Vec<String>) {
+        let mut source_list = self.context.source_list.lock().unwrap();
+        *source_list = Some(lines);
     }
 
     pub fn provider_id(&self) -> &str {
@@ -194,7 +161,11 @@ impl Session {
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
-                                debug!("session {} terminated", self.session_id);
+                                debug!(
+                                    "session-{}-{} terminated",
+                                    self.session_id,
+                                    self.provider_id()
+                                );
                                 return;
                             }
                             SessionEvent::OnMove(msg) => self.handle_on_move(msg),
