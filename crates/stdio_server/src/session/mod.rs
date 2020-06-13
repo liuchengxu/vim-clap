@@ -1,18 +1,17 @@
 mod context;
 mod forerunner;
+mod handler;
 mod manager;
-mod on_move;
 
-use super::filer::read_dir_entries;
 use super::*;
 use crate::types::ProviderId;
 use anyhow::Result;
 use context::SessionContext;
+use handler::Handler;
 
 pub use manager::SessionManager;
 
 pub type SessionId = u64;
-// pub type ProviderId = String;
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -55,100 +54,6 @@ impl Session {
         &self.context.provider_id
     }
 
-    fn _handle_filer_impl(&self, msg: Message) -> Result<()> {
-        let enable_icon = super::env::global().enable_icon;
-        let result = match read_dir_entries(&self.context.cwd, enable_icon, None) {
-            Ok(entries) => json!({
-            "id": msg.id,
-            "provider_id": self.context.provider_id,
-            "result": {
-              "entries": entries,
-              "dir": self.context.cwd,
-              "total": entries.len(),
-              "event": "on_typed",
-            }}),
-            Err(err) => json!({
-            "id": msg.id,
-            "provider_id": self.context.provider_id,
-            "error": {
-              "message": format!("{}", err),
-              "dir": self.context.cwd
-            }}),
-        };
-
-        write_response(result);
-
-        Ok(())
-    }
-
-    pub fn handle_on_typed(&self, msg: Message) {
-        debug!("recv OnTyped event: {:?}", msg);
-
-        if msg.get_provider_id().as_str() == "filer" {
-            let _ = self._handle_filer_impl(msg);
-            return;
-        }
-
-        let msg_id = msg.id;
-        let query = msg.get_query();
-
-        let source_list = self.context.source_list.lock().unwrap();
-
-        // TODO: sync for 100000, dyn for 100000+
-        if let Some(ref source_list) = *source_list {
-            let source = filter::Source::List(source_list.iter().map(Into::into));
-
-            let lines_info = filter::sync_run(&query, source, filter::matcher::Algo::Fzy).unwrap();
-
-            let total = lines_info.len();
-
-            let (lines, indices, truncated_map) = printer::process_top_items(
-                30,
-                lines_info.into_iter().take(30),
-                self.context.winwidth.map(|x| x as usize),
-                Some(icon::IconPainter::File),
-            );
-
-            debug!(
-                "indices size: {:?}, lines size: {:?}",
-                indices.len(),
-                lines.len()
-            );
-
-            let send_response = |result: serde_json::value::Value| {
-                write_response(json!({
-                "id": msg_id,
-                "provider_id": self.context.provider_id,
-                "result": result
-                }));
-            };
-
-            if truncated_map.is_empty() {
-                send_response(json!({
-                  "event": "on_typed",
-                  "total": total,
-                  "lines": lines,
-                  "indices": indices,
-                }));
-            } else {
-                send_response(json!({
-                  "event": "on_typed",
-                  "total": total,
-                  "lines": lines,
-                  "indices": indices,
-                  "truncated_map": truncated_map,
-                }));
-            }
-        }
-    }
-
-    fn handle_on_move(&self, msg: Message) {
-        let msg_id = msg.id;
-        if let Err(e) = on_move::OnMoveHandler::try_new(msg, &self.context).map(|x| x.handle()) {
-            write_response(json!({ "error": format!("{}",e), "id": msg_id }));
-        }
-    }
-
     pub fn start_event_loop(mut self) -> Result<()> {
         thread::Builder::new()
             .name(format!(
@@ -170,8 +75,12 @@ impl Session {
                                 );
                                 return;
                             }
-                            SessionEvent::OnMove(msg) => self.handle_on_move(msg),
-                            SessionEvent::OnTyped(msg) => self.handle_on_typed(msg),
+                            SessionEvent::OnMove(msg) => {
+                                Handler::OnMove.execute(msg, &self.context)
+                            }
+                            SessionEvent::OnTyped(msg) => {
+                                Handler::OnTyped.execute(msg, &self.context)
+                            }
                         }
                     }
                     Err(err) => debug!("session recv error: {:?}", err),

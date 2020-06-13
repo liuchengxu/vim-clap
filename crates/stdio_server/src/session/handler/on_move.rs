@@ -1,7 +1,10 @@
-use super::*;
+use crate::session::SessionContext;
+use crate::types::{Message, ProviderId};
+use crate::write_response;
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
 use pattern::*;
+use serde_json::json;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -170,8 +173,8 @@ impl OnMoveHandler {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let enable_icon = super::env::global().enable_icon;
-        let lines = super::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let enable_icon = crate::env::global().enable_icon;
+        let lines = crate::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({
           "event": "on_move",
           "lines": lines,
