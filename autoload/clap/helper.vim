@@ -15,6 +15,9 @@ function! s:relativize(ArgLead, abs_dirs) abort
     endif
     if fnamemodify(a:abs_dirs[0], ':.') =~# '^\.'
       return map(a:abs_dirs, 'fnamemodify(v:val, ":.")')
+    " Don't prepend . if it's absolute path.
+    elseif a:abs_dirs[0][0] ==# s:path_sep
+      return a:abs_dirs
     else
       return map(a:abs_dirs, '".".s:path_sep.fnamemodify(v:val, ":.")')
     endif
