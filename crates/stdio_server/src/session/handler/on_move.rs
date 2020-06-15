@@ -28,19 +28,18 @@ pub enum OnMove {
     BufferTags { path: PathBuf, lnum: usize },
 }
 
-impl OnMove {
-    pub fn new(curline: String, context: &SessionContext) -> anyhow::Result<Self> {
-        // Rebuild the absolute path using cwd and relative path.
-        let rebuild_abs_path = || {
-            let mut path: PathBuf = context.cwd.clone().into();
-            path.push(&curline);
-            path
-        };
+/// Build the absolute path using cwd and relative path.
+fn build_abs_path(cwd: &str, curline: String) -> PathBuf {
+    let mut path: PathBuf = cwd.into();
+    path.push(&curline);
+    path
+}
 
-        log::debug!("curline: {}", curline);
+impl OnMove {
+    pub fn new(curline: String, context: &SessionContext) -> Result<Self> {
         let context = match context.provider_id.as_str() {
-            "files" | "git_files" => Self::Files(rebuild_abs_path()),
-            "filer" => Self::Filer(rebuild_abs_path()),
+            "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, curline)),
+            "filer" => unreachable!("filer has been handled ahead"),
             "proj_tags" => {
                 let (lnum, p) =
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
@@ -90,12 +89,24 @@ impl OnMoveHandler {
         let msg_id = msg.id;
         let provider_id = context.provider_id.clone();
         let curline = msg.get_curline(&provider_id)?;
-        let inner = OnMove::new(curline, context)?;
+        if provider_id.as_str() == "filer" {
+            let path = build_abs_path(
+                &msg.get_cwd()
+                    .ok_or(anyhow!("Missing cwd in message.params"))?,
+                curline,
+            );
+            return Ok(Self {
+                msg_id,
+                size: provider_id.get_preview_size(),
+                provider_id,
+                inner: OnMove::Filer(path),
+            });
+        }
         Ok(Self {
             msg_id,
             size: provider_id.get_preview_size(),
             provider_id,
-            inner,
+            inner: OnMove::new(curline, context)?,
         })
     }
 

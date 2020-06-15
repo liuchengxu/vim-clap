@@ -67,6 +67,14 @@ impl Message {
             .into()
     }
 
+    #[allow(dead_code)]
+    pub fn get_cwd(&self) -> Option<String> {
+        self.params
+            .get("cwd")
+            .and_then(|x| x.as_str())
+            .map(Into::into)
+    }
+
     /// Get the current line of display window without the leading icon.
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
         let display_curline = String::from(

@@ -208,13 +208,18 @@ function! s:filer_on_typed() abort
   return ''
 endfunction
 
-function! s:filer_on_move() abort
+function! s:sync_on_move_impl() abort
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
     call clap#preview#file(current_entry)
   else
     call g:clap.preview.hide()
   endif
+endfunction
+
+function! s:filer_on_move() abort
+  call clap#client#send_request_on_move({'cwd': s:current_dir})
+  " call s:sync_on_move_impl()
 endfunction
 
 function! s:filer_on_no_matches(input) abort
