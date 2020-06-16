@@ -61,20 +61,24 @@ function! clap#client#handle(msg) abort
   call s:handle_on_move_result(decoded.result)
 endfunction
 
-function! clap#client#send_request_on_init() abort
+function! clap#client#send_request_on_init(...) abort
   let s:req_id += 1
   let s:session_id += 1
-  call clap#job#daemon#send_message(json_encode({
+  let msg = {
         \ 'id': s:req_id,
         \ 'session_id': s:session_id,
         \ 'method': 'on_init',
         \ 'params': {
-        \   'cwd': g:clap.provider.id ==# 'filer' ? clap#provider#filer#current_dir() : clap#rooter#working_dir(),
+        \   'cwd': clap#rooter#working_dir(),
         \   'winwidth': winwidth(g:clap.provider.id),
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ }
-        \ }))
+        \ }
+  if a:0 > 0
+    call extend(msg.params, a:1)
+  endif
+  call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
 " Optional argument: Dict, extra params

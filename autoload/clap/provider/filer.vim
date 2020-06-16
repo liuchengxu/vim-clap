@@ -246,7 +246,7 @@ function! s:start_rpc_service() abort
   let s:enable_icon = g:clap_enable_icon ? v:true : v:false
   call s:set_prompt()
   " TODO: fix filer
-  call clap#client#send_request_on_init()
+  call clap#client#send_request_on_init({'cwd': clap#provider#filer#current_dir()})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

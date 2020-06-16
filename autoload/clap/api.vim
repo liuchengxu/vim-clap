@@ -584,8 +584,8 @@ function! s:init_provider() abort
       call self._().init()
     else
       call self.init_default_impl()
+      call clap#client#send_request_on_init()
     endif
-    call clap#client#send_request_on_init()
   endfunction
 
   return provider
