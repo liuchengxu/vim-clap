@@ -29,7 +29,7 @@ pub enum OnMove {
 }
 
 /// Build the absolute path using cwd and relative path.
-fn build_abs_path(cwd: &str, curline: String) -> PathBuf {
+pub fn build_abs_path(cwd: &str, curline: String) -> PathBuf {
     let mut path: PathBuf = cwd.into();
     path.push(&curline);
     path

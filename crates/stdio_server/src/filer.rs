@@ -47,7 +47,7 @@ impl Into<String> for DisplayPath {
     }
 }
 
-pub(super) fn read_dir_entries<P: AsRef<Path>>(
+pub fn read_dir_entries<P: AsRef<Path>>(
     dir: P,
     enable_icon: bool,
     max: Option<usize>,

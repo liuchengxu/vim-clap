@@ -29,11 +29,13 @@ fn spawn_new_session(msg: Message) -> Result<Sender<SessionEvent>> {
 
     let session = Session {
         session_id: msg.session_id,
-        context: msg.into(),
+        context: msg.clone().into(),
         event_recv: session_receiver,
     };
 
-    if let Some(source_cmd) = session.context.source_cmd.clone() {
+    if session.provider_id().as_str() == "filer" {
+        handler::on_init::OnInitHandler::try_new(msg.clone(), &session.context)?.handle();
+    } else if let Some(source_cmd) = session.context.source_cmd.clone() {
         let session_cloned = session.clone();
         // TODO: choose different fitler strategy according to the time forerunner job spent.
         thread::Builder::new()
