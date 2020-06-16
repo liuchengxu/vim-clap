@@ -24,23 +24,23 @@ endfunction
 function! s:git_diff_files_on_move() abort
   let diff = 'git --no-pager diff -U0'
   let filediff = g:clap.display.getcurline()
-  let command = systemlist(diff.' '.filediff)
+  let difflist = systemlist(diff.' '.filediff)
 
-  if !empty(command)
-    if command[0]=~#'^fatal'
-      let command = systemlist(diff.' -- '.filediff)
-      if empty(command)
-        let command = systemlist(diff.' --cached -- '.filediff)
+  if !empty(difflist)
+    if difflist[0]=~#'^fatal'
+      let difflist = systemlist(diff.' -- '.filediff)
+      if empty(difflist)
+        let difflist = systemlist(diff.' --cached -- '.filediff)
       endif
     endif
   else
-    let command = systemlist(diff.' --cached '.filediff)
+    let difflist = systemlist(diff.' --cached '.filediff)
   endif
 
-  if !empty(command)
-    call g:clap.preview.show(command[:15])
+  if !empty(difflist)
+    call g:clap.preview.show(difflist[:15])
   else
-    call g:clap.preview.show([''])
+    call g:clap.preview.show(['No preview contents'])
   endif
   call g:clap.preview.set_syntax('diff')
 endfunction
