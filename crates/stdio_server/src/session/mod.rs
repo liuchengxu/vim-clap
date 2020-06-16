@@ -32,6 +32,11 @@ impl Session {
     pub fn handle_terminate(&mut self) {
         let mut val = self.context.is_running.lock().unwrap();
         *val.get_mut() = false;
+        debug!(
+            "session-{}-{} terminated",
+            self.session_id,
+            self.provider_id()
+        );
     }
 
     /// This session is still running, hasn't received Terminate event.
@@ -68,11 +73,6 @@ impl Session {
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
-                                debug!(
-                                    "session-{}-{} terminated",
-                                    self.session_id,
-                                    self.provider_id()
-                                );
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {

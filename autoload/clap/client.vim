@@ -77,7 +77,8 @@ function! clap#client#send_request_on_init() abort
         \ }))
 endfunction
 
-function! clap#client#send_request_on_move() abort
+" Optional argument: Dict, extra params
+function! clap#client#send_request_on_move(...) abort
   let s:req_id += 1
   let curline = g:clap.display.getcurline()
   if empty(curline)
@@ -90,6 +91,9 @@ function! clap#client#send_request_on_move() abort
       \ 'params': {
       \   'curline': curline,
       \ }}
+  if a:0 > 0
+    call extend(msg.params, a:1)
+  endif
   call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
