@@ -151,6 +151,7 @@ function! clap#_exit() abort
   call g:clap.provider.jobstop()
   call clap#forerunner#stop()
   call clap#maple#stop()
+  call clap#client#send_request_exit()
 
   call g:clap.close_win()
 

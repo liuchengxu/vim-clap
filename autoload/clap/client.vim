@@ -101,6 +101,17 @@ function! clap#client#send_request_on_move(...) abort
   call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
+
+function! clap#client#send_request_exit() abort
+  let s:req_id += 1
+  call clap#job#daemon#send_message(json_encode({
+        \ 'id': s:req_id,
+        \ 'session_id': s:session_id,
+        \ 'method': 'exit',
+        \ 'params': {}
+        \ }))
+endfunction
+
 function! clap#client#send_request_filer(params) abort
   let s:req_id += 1
   call clap#job#daemon#send_message(json_encode({
