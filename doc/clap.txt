@@ -813,6 +813,20 @@ ClapOnExit                                               *ClapOnExit-autocmd*
   This |User| autocommand is triggered when you exit the clap windows.
 
 
+clap#run()                                                       *clap#run()*
+
+  Similar to `fzf#run()`, `clap#run(provider)` has an argument `provider`, which is
+  a Dict like `g:clap_provider_foo` with an optional extra field `id` specifying the
+  provider id.
+
+  Example:
+  >
+  :call clap#run({'id': 'quick_run', 'source': 'ls', 'sink': 'edit'})
+<
+  It can used for adhoc running with a small-scale `source`, don't use it with
+  a `source` that probably ha a fair mount of items as it's normally undeveloped
+  in performance.
+
 ===============================================================================
 10. Contact                                                       *clap-contact*
 
