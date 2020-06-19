@@ -375,5 +375,15 @@ function! clap#(bang, ...) abort
   call clap#for(provider_id_or_alias)
 endfunction
 
+function! clap#run(provider) abort
+  let id = has_key(a:provider, 'id') ? a:provider['id'] : 'run'
+  let g:clap_provider_{id} = a:provider
+  if s:inject_default_impl_is_ok(g:clap_provider_{id})
+        \ && s:validate_provider(g:clap_provider_{id})
+    let g:clap.registrar[id] = g:clap_provider_{id}
+    execute 'Clap' id
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

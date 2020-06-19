@@ -306,13 +306,13 @@ g:clap_project_root_markers                       *g:clap_project_root_markers*
 g:clap_current_selection_sign                   *g:clap_current_selection_sign*
 
   Type: |Dict|
-  Default: `{ 'text': '>>', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection" }`
+  Default: `{ 'text': '>>', 'texthl': 'ClapCurrentSelectionSign', 'linehl': 'ClapCurrentSelection' }`
 
 
 g:clap_selected_sign                                     *g:clap_selected_sign*
 
   Type: |Dict|
-  Default: `{ 'text': ' >', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected" }`
+  Default: `{ 'text': ' >', 'texthl': 'ClapSelectedSign', 'linehl': 'ClapSelected' }`
 
 
 g:clap_open_action                                         *g:clap_open_action*
@@ -778,10 +778,10 @@ g:clap.input                                                   *g:clap.input*
   `g:clap.input.goto_win()` - Go to input window with `noautocmd`.
 
   `g:clap.input.getbufvar({varname}[, {def}])` - Similar to |getbufvar()| with
-  the buffer number is specified to the input buffer.
+  the buffer number specified to the input buffer.
 
   `g:clap.input.setbufvar({varname}, {val})` - Similar to |setbufvar()| with
-  the buffer number is specified to the input buffer.
+  the buffer number specified to the input buffer.
 
   `g:clap.input.get()` - Get the current input.
 
@@ -793,10 +793,10 @@ g:clap.display                                               *g:clap.display*
   `g:clap.display.get_lines()` - Get the current lines in display window.
 
   `g:clap.display.getbufvar({varname}[, {def}])` - Similar to |getbufvar()| with
-  the buffer number is specified to the display buffer.
+  the buffer number specified to the display buffer.
 
   `g:clap.display.setbufvar({varname}, {val})` - Similar to |setbufvar()| with
-  the buffer number is specified to the display buffer.
+  the buffer number specified to the display buffer.
 
 
 ClapOnEnter                                             *ClapOnEnter-autocmd*
@@ -812,6 +812,20 @@ ClapOnExit                                               *ClapOnExit-autocmd*
 
   This |User| autocommand is triggered when you exit the clap windows.
 
+
+clap#run()                                                       *clap#run()*
+
+  Similar to `fzf#run()`, `clap#run(provider)` has an argument `provider`, which is
+  a Dict like `g:clap_provider_foo` with an optional extra field `id` specifying the
+  provider id(the default value is `run`).
+
+  Example:
+  >
+  :call clap#run({'id': 'quick_run', 'source': 'ls', 'sink': 'edit'})
+<
+  It can used for adhoc running with a small-scale `source`, don't use it with
+  a `source` that probably ha a fair amount of items as it's normally undeveloped
+  in performance.
 
 ===============================================================================
 10. Contact                                                       *clap-contact*
