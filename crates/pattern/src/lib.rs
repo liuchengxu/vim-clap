@@ -53,6 +53,11 @@ pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize)> {
     Some((fpath, lnum, col))
 }
 
+pub fn extract_grep_file_path(line: &str) -> Option<String> {
+    let cap = GREP_POS.captures(line)?;
+    cap.get(1).map(|x| x.as_str().into())
+}
+
 /// Returns fpath part in grep line.
 #[inline]
 pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
@@ -109,6 +114,9 @@ mod tests {
         let line = "install.sh:1:5:#!/usr/bin/env bash";
         let e = extract_grep_position(line).unwrap();
         assert_eq!(("install.sh".into(), 1, 5), e);
+
+        let path = extract_grep_file_path(line).unwrap();
+        assert_eq!(path, "install.sh");
     }
 
     #[test]
