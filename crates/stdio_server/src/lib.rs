@@ -7,7 +7,7 @@ use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use serde::Serialize;
 use serde_json::json;
-use session::{SessionEvent, SessionManager};
+use session::{Manager, SessionEvent};
 use std::io::prelude::*;
 use std::thread;
 use types::Message;
@@ -39,7 +39,7 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 
 // Runs in the main thread.
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
-    let mut session_manager = SessionManager::default();
+    let mut session_manager = Manager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
             debug!("Recv: {:?}", msg);

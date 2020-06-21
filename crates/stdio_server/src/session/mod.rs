@@ -9,7 +9,7 @@ use anyhow::Result;
 use context::SessionContext;
 use handler::Handler;
 
-pub use manager::SessionManager;
+pub use manager::Manager;
 
 pub type SessionId = u64;
 

@@ -49,12 +49,12 @@ fn spawn_new_session(msg: Message) -> Result<Sender<SessionEvent>> {
 }
 
 #[derive(Debug, Default)]
-pub struct SessionManager {
+pub struct Manager {
     sessions: HashMap<SessionId, SessionEventSender>,
 }
 
 /// Dispatches the raw RpcMessage to the right session instance according to the session_id.
-impl SessionManager {
+impl Manager {
     /// Starts a session in a new thread given the session id and init message.
     pub fn new_session(&mut self, session_id: SessionId, msg: Message) {
         if self.has(session_id) {
