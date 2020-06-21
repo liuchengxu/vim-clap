@@ -20,12 +20,11 @@ impl OnInitHandler {
         let msg_id = msg.id;
         let provider_id = context.provider_id.clone();
         if provider_id.as_str() == "filer" {
-            let path = msg.get_cwd();
             return Ok(Self {
                 msg_id,
                 size: provider_id.get_preview_size(),
                 provider_id,
-                inner: OnInit::Filer(path.into()),
+                inner: OnInit::Filer(msg.get_cwd().into()),
             });
         }
         // TODO: filer does not have curline, only filer is implemented for now.
