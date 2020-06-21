@@ -555,10 +555,10 @@ function! s:init_provider() abort
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
-      call clap#forerunner#start(self._().source)
+      call clap#job#regular#forerunner#start(self._().source)
       return
     elseif self.source_type == g:__t_func_string
-      call clap#forerunner#start(self._().source())
+      call clap#job#regular#forerunner#start(self._().source())
       return
     endif
 
