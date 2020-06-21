@@ -20,9 +20,7 @@ impl OnInitHandler {
         let msg_id = msg.id;
         let provider_id = context.provider_id.clone();
         if provider_id.as_str() == "filer" {
-            let path = &msg
-                .get_cwd()
-                .ok_or(anyhow!("Missing cwd in message.params"))?;
+            let path = msg.get_cwd();
             return Ok(Self {
                 msg_id,
                 size: provider_id.get_preview_size(),

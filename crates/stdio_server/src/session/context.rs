@@ -18,7 +18,7 @@ impl From<Message> for SessionContext {
         log::debug!("recv msg for SessionContext: {:?}", msg);
         let provider_id = msg.get_provider_id();
 
-        let cwd = msg.get_cwd().expect("Missing cwd in msg.params");
+        let cwd = msg.get_cwd();
 
         let source_cmd = msg
             .params

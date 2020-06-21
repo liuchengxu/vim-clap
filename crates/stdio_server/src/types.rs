@@ -1,4 +1,3 @@
-use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -18,6 +17,7 @@ impl GlobalEnv {
         }
     }
 
+    /// Each provider can have its preferred preview size.
     pub fn preview_size_of(&self, provider_id: &str) -> usize {
         match self.preview_size {
             Value::Number(ref number) => number.as_u64().unwrap() as usize,
@@ -51,37 +51,21 @@ pub struct Message {
 
 impl Message {
     pub fn get_provider_id(&self) -> ProviderId {
-        self.params
-            .get("provider_id")
-            .and_then(|x| x.as_str())
-            .unwrap_or("Unknown provider id")
-            .into()
+        self._get_string_unsafe("provider_id").into()
     }
 
     #[allow(dead_code)]
     pub fn get_query(&self) -> String {
-        self.params
-            .get("query")
-            .and_then(|x| x.as_str())
-            .expect("Unknown provider id")
-            .into()
+        self._get_string_unsafe("query")
     }
 
-    pub fn get_cwd(&self) -> Option<String> {
-        self.params
-            .get("cwd")
-            .and_then(|x| x.as_str())
-            .map(Into::into)
+    pub fn get_cwd(&self) -> String {
+        self._get_string_unsafe("cwd")
     }
 
     /// Get the current line of display window without the leading icon.
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
-        let display_curline = String::from(
-            self.params
-                .get("curline")
-                .and_then(|x| x.as_str())
-                .context("Missing curline in msg.params")?,
-        );
+        let display_curline = self._get_string("curline")?;
 
         let curline = if provider_id.should_skip_leading_icon() {
             display_curline.chars().skip(2).collect()
@@ -90,6 +74,22 @@ impl Message {
         };
 
         Ok(curline)
+    }
+
+    fn _get_string_unsafe(&self, key: &str) -> String {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_str())
+            .map(Into::into)
+            .expect(&format!("Missing {} in msg.params", key))
+    }
+
+    fn _get_string(&self, key: &str) -> anyhow::Result<String> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_str())
+            .map(Into::into)
+            .ok_or(anyhow::anyhow!("Missing {} in msg.params", key))
     }
 }
 
@@ -101,14 +101,22 @@ impl ProviderId {
         &self.0
     }
 
+    /// Returns true if the raw line has been decorated with an icon.
+    ///
+    /// We should skip that icon when hoping to get the origin cursorline content.
+    #[inline]
     pub fn should_skip_leading_icon(&self) -> bool {
         super::env::global().enable_icon && self.has_icon_support()
     }
 
+    /// Returns the preview size of current provider.
+    #[inline]
     pub fn get_preview_size(&self) -> usize {
         super::env::global().preview_size_of(&self.0)
     }
 
+    /// Returns true if the provider can have icon.
+    #[inline]
     pub fn has_icon_support(&self) -> bool {
         &self.0 != "blines"
     }
@@ -130,10 +138,4 @@ impl std::fmt::Display for ProviderId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-#[test]
-fn test_provider_id_serde() {
-    let id: ProviderId = "files".into();
-    println!("{:?}", serde_json::to_string(&id));
 }

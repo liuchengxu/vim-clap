@@ -41,7 +41,6 @@ impl OnMove {
         let context = match context.provider_id.as_str() {
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, curline)),
             "history" => {
-                log::debug!("-------- history: {:?}", curline);
                 if curline.starts_with('~') {
                     // I know std::env::home_dir() is incorrect in some rare cases[1], but dirs crate has been archived.
                     //
@@ -105,11 +104,7 @@ impl OnMoveHandler {
         let provider_id = context.provider_id.clone();
         let curline = msg.get_curline(&provider_id)?;
         if provider_id.as_str() == "filer" {
-            let path = build_abs_path(
-                &msg.get_cwd()
-                    .ok_or(anyhow!("Missing cwd in message.params"))?,
-                curline,
-            );
+            let path = build_abs_path(&msg.get_cwd(), curline);
             return Ok(Self {
                 msg_id,
                 size: provider_id.get_preview_size(),

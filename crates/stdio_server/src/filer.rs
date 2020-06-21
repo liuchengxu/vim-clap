@@ -68,7 +68,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 pub(super) fn handle_message(msg: Message) {
-    let cwd = msg.get_cwd().unwrap();
+    let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
     let result = match read_dir_entries(&cwd, crate::env::global().enable_icon, None) {
