@@ -22,6 +22,7 @@ fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
 pub enum OnMove {
     Files(PathBuf),
     Filer(PathBuf),
+    History(PathBuf),
     Grep { path: PathBuf, lnum: usize },
     BLines { path: PathBuf, lnum: usize },
     ProjTags { path: PathBuf, lnum: usize },
@@ -39,6 +40,20 @@ impl OnMove {
     pub fn new(curline: String, context: &SessionContext) -> Result<Self> {
         let context = match context.provider_id.as_str() {
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, curline)),
+            "history" => {
+                log::debug!("-------- history: {:?}", curline);
+                if curline.starts_with('~') {
+                    // I know std::env::home_dir() is incorrect in some rare cases[1], but dirs crate has been archived.
+                    //
+                    // [1] https://www.reddit.com/r/rust/comments/ga7f56/why_dirs_and_directories_repositories_have_been/fsjbsac/
+                    #[allow(deprecated)]
+                    let mut path = std::env::home_dir().expect("failed to get home_dir");
+                    path.push(&curline[2..]);
+                    Self::History(path)
+                } else {
+                    Self::History(build_abs_path(&context.cwd, curline))
+                }
+            }
             "filer" => unreachable!("filer has been handled ahead"),
             "proj_tags" => {
                 let (lnum, p) =
@@ -123,7 +138,7 @@ impl OnMoveHandler {
             Filer(path) if path.is_dir() => {
                 self.preview_directory(&path)?;
             }
-            Files(path) | Filer(path) => {
+            Files(path) | Filer(path) | History(path) => {
                 self.preview_file(&path)?;
             }
         }
