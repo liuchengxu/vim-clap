@@ -1,33 +1,5 @@
 use super::*;
-use crate::filer::read_dir_entries;
-use anyhow::Result;
 use log::debug;
-
-fn handle_filer_impl(msg: Message, context: &SessionContext) -> Result<()> {
-    let enable_icon = crate::env::global().enable_icon;
-    let result = match read_dir_entries(&context.cwd, enable_icon, None) {
-        Ok(entries) => json!({
-        "id": msg.id,
-        "provider_id": context.provider_id,
-        "result": {
-          "entries": entries,
-          "dir": context.cwd,
-          "total": entries.len(),
-          "event": "on_typed",
-        }}),
-        Err(err) => json!({
-        "id": msg.id,
-        "provider_id": context.provider_id,
-        "error": {
-          "message": format!("{}", err),
-          "dir": context.cwd
-        }}),
-    };
-
-    write_response(result);
-
-    Ok(())
-}
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
     debug!("recv OnTyped event: {:?}", msg);

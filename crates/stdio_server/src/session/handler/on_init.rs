@@ -30,8 +30,8 @@ impl OnInitHandler {
                 inner: OnInit::Filer(path.into()),
             });
         }
-        // TODO: filer does not have curline
-        let curline = msg.get_curline(&provider_id)?;
+        // TODO: filer does not have curline, only filer is implemented for now.
+        let _curline = msg.get_curline(&provider_id)?;
         Err(anyhow!("Currently only filer"))
     }
 
