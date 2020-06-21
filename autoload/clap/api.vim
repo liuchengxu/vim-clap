@@ -552,6 +552,10 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_default_impl() abort
+    " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
+    if clap#maple#is_available()
+      call clap#client#send_request_on_init()
+    endif
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
@@ -584,9 +588,6 @@ function! s:init_provider() abort
       call self._().init()
     else
       call self.init_default_impl()
-    endif
-    if g:clap.provider.id !=# 'filer'
-      call clap#client#send_request_on_init()
     endif
   endfunction
 
