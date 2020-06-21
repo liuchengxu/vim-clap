@@ -18,12 +18,7 @@ impl From<Message> for SessionContext {
         log::debug!("recv msg for SessionContext: {:?}", msg);
         let provider_id = msg.get_provider_id();
 
-        let cwd = String::from(
-            msg.params
-                .get("cwd")
-                .and_then(|x| x.as_str())
-                .unwrap_or("Missing cwd when deserializing into FilerParams"),
-        );
+        let cwd = msg.get_cwd().expect("Missing cwd in msg.params");
 
         let source_cmd = msg
             .params

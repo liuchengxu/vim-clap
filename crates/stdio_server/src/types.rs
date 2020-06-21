@@ -67,7 +67,6 @@ impl Message {
             .into()
     }
 
-    #[allow(dead_code)]
     pub fn get_cwd(&self) -> Option<String> {
         self.params
             .get("cwd")
@@ -81,7 +80,7 @@ impl Message {
             self.params
                 .get("curline")
                 .and_then(|x| x.as_str())
-                .context("Missing fname when deserializing into FilerParams")?,
+                .context("Missing curline in msg.params")?,
         );
 
         let curline = if provider_id.should_skip_leading_icon() {
