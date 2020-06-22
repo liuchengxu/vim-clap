@@ -29,7 +29,7 @@ function! clap#provider#yanks#collect() abort
 
   call filter(s:yank_history, 'v:val != last_yanked')
   call insert(s:yank_history, last_yanked)
-  let s:yank_info_map[last_yanked] = { 'syntax': getbufvar('', '&syntax'), 'bufname': bufname() }
+  let s:yank_info_map[last_yanked] = { 'syntax': getbufvar('', '&syntax'), 'bufname': bufname("%") }
 
   " Trim yank entries(purge old ones)
   if len(s:yank_history) > s:max_yanks
