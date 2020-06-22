@@ -81,10 +81,6 @@ function! s:send_message() abort
   call clap#client#send_request_filer({'cwd': s:current_dir})
 endfunction
 
-function! clap#provider#filer#current_dir() abort
-  return s:current_dir
-endfunction
-
 function! s:filter_or_send_message() abort
   call g:clap.preview.hide()
   if has_key(s:filer_cache, s:current_dir)
@@ -208,6 +204,7 @@ function! s:filer_on_typed() abort
   return ''
 endfunction
 
+" Deprecated now.
 function! s:sync_on_move_impl() abort
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
@@ -219,7 +216,6 @@ endfunction
 
 function! s:filer_on_move() abort
   call clap#client#send_request_on_move({'cwd': s:current_dir})
-  " call s:sync_on_move_impl()
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -230,7 +226,6 @@ function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:filer_error_cache = {}
   let s:filer_empty_cache = {}
-  let s:last_request_id = 0
   let s:last_input = ''
   if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
     let target_dir = g:clap.provider.args[0]
@@ -244,7 +239,7 @@ function! s:start_rpc_service() abort
   endif
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_prompt()
-  call clap#client#send_request_on_init({'cwd': clap#provider#filer#current_dir()})
+  call clap#client#send_request_on_init({'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
