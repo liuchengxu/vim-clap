@@ -121,6 +121,12 @@ else
   endfunction
 endif
 
+function! clap#sign#ensure_has_one() abort
+  if s:last_signed_id == -1
+    call clap#sign#reset_to_first_line()
+  endif
+endfunction
+
 function! clap#sign#reset() abort
   call s:unplace_all_signs()
   let s:signed = []
