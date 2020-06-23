@@ -30,7 +30,7 @@ function! clap#state#handle_message(msg) abort
 
   if has_key(decoded, 'indices')
     try
-      call clap#highlight#add_fuzzy_async(decoded.indices)
+      call clap#highlight#add_fuzzy_async_with_delay(decoded.indices)
     catch
       return
     endtry
