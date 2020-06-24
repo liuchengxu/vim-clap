@@ -113,7 +113,7 @@ function! clap#highlight#add_fuzzy_async_with_delay(hl_lines) abort
   if s:highlight_delay_timer > 0
     call timer_stop(s:highlight_delay_timer)
   endif
-  let s:highlight_delay_timer = timer_start(150, { -> clap#highlight#add_fuzzy_async(a:hl_lines)})
+  let s:highlight_delay_timer = timer_start(100, { -> clap#highlight#add_fuzzy_async(a:hl_lines)})
 endfunction
 
 " lnum and col are 0-based.
