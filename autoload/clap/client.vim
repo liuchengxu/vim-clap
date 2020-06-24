@@ -9,16 +9,6 @@ let s:session_id = get(s:, 'session_id', 0)
 
 let s:handlers = get(s:, 'handlers', {})
 
-function! clap#client#notify(method, params) abort
-  let s:req_id += 1
-  call clap#job#daemon#send_message(json_encode({
-        \ 'id': s:req_id,
-        \ 'session_id': s:session_id,
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ }))
-endfunction
-
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
@@ -69,12 +59,21 @@ function! clap#client#call_on_move(callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#notify('on_move', params)
-  let s:handlers[s:req_id] = a:callback
+  call clap#client#call('on_move', a:callback, params)
 endfunction
 
-function! clap#client#call_filer(callback, params) abort
-  call clap#client#notify('filer', a:params)
+function! clap#client#notify(method, params) abort
+  let s:req_id += 1
+  call clap#job#daemon#send_message(json_encode({
+        \ 'id': s:req_id,
+        \ 'session_id': s:session_id,
+        \ 'method': a:method,
+        \ 'params': a:params,
+        \ }))
+endfunction
+
+function! clap#client#call(method, callback, params) abort
+  call clap#client#notify(a:method, a:params)
   let s:handlers[s:req_id] = a:callback
 endfunction
 

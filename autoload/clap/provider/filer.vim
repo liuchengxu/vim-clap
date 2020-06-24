@@ -85,7 +85,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call_filer(function('s:handle_result'), {'cwd': s:current_dir})
+    call clap#client#call('filer', function('s:handle_result'), {'cwd': s:current_dir})
   endif
 endfunction
 
