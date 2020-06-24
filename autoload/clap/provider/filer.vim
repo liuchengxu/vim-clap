@@ -81,7 +81,7 @@ function! s:goto_parent() abort
 endfunction
 
 function! s:send_message() abort
-  call clap#client#send_request_filer(function('s:handle_result'), {'cwd': s:current_dir})
+  call clap#client#call_filer(function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -235,7 +235,7 @@ function! s:filer_handle_on_move_result(result) abort
 endfunction
 
 function! s:filer_on_move() abort
-  call clap#client#send_request_on_move_with_callback(function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_move(function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -259,7 +259,7 @@ function! s:start_rpc_service() abort
   endif
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_prompt()
-  call clap#client#send_request_on_init_with_callback(function('s:handle_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_init(function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

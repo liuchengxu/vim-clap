@@ -14,15 +14,34 @@ function! s:sync_run_with_delay() abort
   let s:on_move_timer = timer_start(s:on_move_delay, { -> g:clap.provider._().on_move() })
 endfunction
 
-let s:async_preview_implemented = ['files', 'git_files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines', 'history']
-
 if clap#maple#is_available()
+
+  let s:async_preview_implemented = ['files', 'git_files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines', 'history']
+
+  function! s:handle_on_move_result(result) abort
+    if has_key(a:result, 'lines')
+      try
+        call g:clap.preview.show(a:result.lines)
+      catch
+        return
+      endtry
+      if has_key(a:result, 'fname')
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+      endif
+      call clap#preview#highlight_header()
+
+      if has_key(a:result, 'hi_lnum')
+        call g:clap.preview.add_highlight(a:result.hi_lnum+1)
+      endif
+    endif
+  endfunction
+
   function! s:dispatch_on_move_impl() abort
     if g:clap.provider.id ==# 'filer'
       call g:clap.provider._().on_move()
       return
     elseif index(s:async_preview_implemented, g:clap.provider.id) > -1
-      return clap#client#send_request_on_move()
+      return clap#client#call_on_move(function('s:handle_on_move_result'))
     endif
     call s:sync_run_with_delay()
   endfunction
