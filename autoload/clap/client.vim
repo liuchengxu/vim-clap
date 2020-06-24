@@ -7,6 +7,8 @@ set cpoptions&vim
 let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 
+let s:handlers = get(s:, 'handlers', {})
+
 function! clap#client#send_request_initialize_global_env() abort
   let s:req_id += 1
   call clap#job#daemon#send_message(json_encode({
@@ -21,7 +23,7 @@ function! clap#client#send_request_initialize_global_env() abort
         \ }))
 endfunction
 
-function! s:handle_on_move_result(result) abort
+function! s:generic_handle_on_move_result(result) abort
   if has_key(a:result, 'lines')
     try
       call g:clap.preview.show(a:result.lines)
@@ -53,12 +55,11 @@ function! clap#client#handle(msg) abort
     return
   endif
 
-  if decoded.provider_id ==# 'filer'
-    call clap#impl#on_move#filer_handle(decoded)
+  if has_key(s:handlers, decoded.id)
+    call s:handlers[decoded.id](decoded.result)
+    call remove(s:handlers, decoded.id)
     return
   endif
-
-  call s:handle_on_move_result(decoded.result)
 endfunction
 
 function! clap#client#send_request_on_init(...) abort
@@ -81,13 +82,23 @@ function! clap#client#send_request_on_init(...) abort
   call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
+function! clap#client#send_request_on_init_with_callback(callback, ...) abort
+  call call(function('clap#client#send_request_on_init'), a:000)
+  let s:handlers[s:req_id] = a:callback
+endfunction
+
 " Optional argument: Dict, extra params
 function! clap#client#send_request_on_move(...) abort
-  let s:req_id += 1
+  call call(function('clap#client#send_request_on_move_with_callback'), [function('s:generic_handle_on_move_result')] + a:000)
+endfunction
+
+function! clap#client#send_request_on_move_with_callback(callback, ...) abort
   let curline = g:clap.display.getcurline()
   if empty(curline)
     return
   endif
+  let s:req_id += 1
+  let s:handlers[s:req_id] = a:callback
   let msg = {
       \ 'id': s:req_id,
       \ 'session_id': s:session_id,
@@ -101,7 +112,6 @@ function! clap#client#send_request_on_move(...) abort
   call clap#job#daemon#send_message(json_encode(msg))
 endfunction
 
-
 function! clap#client#send_request_exit() abort
   let s:req_id += 1
   call clap#job#daemon#send_message(json_encode({
@@ -112,8 +122,9 @@ function! clap#client#send_request_exit() abort
         \ }))
 endfunction
 
-function! clap#client#send_request_filer(params) abort
+function! clap#client#send_request_filer(callback, params) abort
   let s:req_id += 1
+  let s:handlers[s:req_id] = a:callback
   call clap#job#daemon#send_message(json_encode({
         \ 'id': s:req_id,
         \ 'session_id': s:session_id,

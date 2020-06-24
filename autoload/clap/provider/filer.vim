@@ -15,6 +15,19 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
+function! s:handle_result(result) abort
+  if a:result.total == 0
+    let s:filer_empty_cache[a:result.dir] = s:DIRECTORY_IS_EMPTY
+    call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
+  else
+    let s:filer_cache[a:result.dir] = a:result.entries
+    call g:clap.display.set_lines(a:result.entries)
+  endif
+  call clap#sign#reset_to_first_line()
+  call clap#state#refresh_matches_count(string(a:result.total))
+  call g:clap#display_win.shrink_if_undersize()
+endfunction
+
 function! clap#provider#filer#daemon_handle(decoded) abort
   if has_key(a:decoded, 'error')
     let error = a:decoded.error
@@ -25,17 +38,7 @@ function! clap#provider#filer#daemon_handle(decoded) abort
   endif
 
   if has_key(a:decoded, 'result')
-    let result = a:decoded.result
-    if result.total == 0
-      let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
-      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-    else
-      let s:filer_cache[result.dir] = result.entries
-      call g:clap.display.set_lines(result.entries)
-    endif
-    call clap#sign#reset_to_first_line()
-    call clap#state#refresh_matches_count(string(result.total))
-    call g:clap#display_win.shrink_if_undersize()
+    call s:handle_result(a:decoded.result)
   else
     call clap#helper#echo_error('This should not happen, neither error nor result is found.')
   endif
@@ -78,7 +81,7 @@ function! s:goto_parent() abort
 endfunction
 
 function! s:send_message() abort
-  call clap#client#send_request_filer({'cwd': s:current_dir})
+  call clap#client#send_request_filer(function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -214,8 +217,25 @@ function! s:sync_on_move_impl() abort
   endif
 endfunction
 
+function! s:filer_handle_on_move_result(result) abort
+  if empty(a:result.lines)
+    call g:clap.preview.show(['Empty entries'])
+  else
+    call g:clap.preview.show(a:result.lines)
+    if has_key(a:result, 'is_dir')
+      call g:clap.preview.set_syntax('clap_filer')
+      call clap#preview#clear_header_highlight()
+    else
+      if has_key(a:result, 'fname')
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+      endif
+      call clap#preview#highlight_header()
+    endif
+  endif
+endfunction
+
 function! s:filer_on_move() abort
-  call clap#client#send_request_on_move({'cwd': s:current_dir})
+  call clap#client#send_request_on_move_with_callback(function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -239,7 +259,7 @@ function! s:start_rpc_service() abort
   endif
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_prompt()
-  call clap#client#send_request_on_init({'cwd': s:current_dir})
+  call clap#client#send_request_on_init_with_callback(function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
