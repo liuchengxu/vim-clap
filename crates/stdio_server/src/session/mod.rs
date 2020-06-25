@@ -7,16 +7,17 @@ use super::*;
 use crate::types::ProviderId;
 use anyhow::Result;
 use context::SessionContext;
-use handler::Handler;
 
 pub use manager::Manager;
 
 pub type SessionId = u64;
 
 #[derive(Debug, Clone)]
-pub struct Session {
+pub struct Session<T> {
     pub session_id: u64,
     pub context: SessionContext,
+    /// Each Session can have its own message processing logic.
+    pub message_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
 }
 
@@ -27,7 +28,7 @@ pub enum SessionEvent {
     Terminate,
 }
 
-impl Session {
+impl<T: handler::HandleMessage> Session<T> {
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
         let mut val = self.context.is_running.lock().unwrap();
@@ -75,12 +76,12 @@ impl Session {
                                 self.handle_terminate();
                                 return;
                             }
-                            SessionEvent::OnMove(msg) => {
-                                Handler::OnMove.execute(msg, &self.context)
-                            }
-                            SessionEvent::OnTyped(msg) => {
-                                Handler::OnTyped.execute(msg, &self.context)
-                            }
+                            SessionEvent::OnMove(msg) => self
+                                .message_handler
+                                .handle(handler::RpcMessage::OnMove(msg), &self.context),
+                            SessionEvent::OnTyped(msg) => self
+                                .message_handler
+                                .handle(handler::RpcMessage::OnTyped(msg), &self.context),
                         }
                     }
                     Err(err) => debug!("session recv error: {:?}", err),

@@ -30,6 +30,7 @@ fn spawn_new_session(msg: Message) -> Result<Sender<SessionEvent>> {
     let session = Session {
         session_id: msg.session_id,
         context: msg.clone().into(),
+        message_handler: super::handler::MessageHandler,
         event_recv: session_receiver,
     };
 

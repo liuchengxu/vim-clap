@@ -1,6 +1,10 @@
 use super::*;
 
-pub(super) fn run(msg_id: u64, source_cmd: String, session: Session) -> Result<()> {
+pub(super) fn run<T: super::handler::HandleMessage>(
+    msg_id: u64,
+    source_cmd: String,
+    session: Session<T>,
+) -> Result<()> {
     let stdout_stream = filter::subprocess::Exec::shell(source_cmd)
         .cwd(&session.context.cwd)
         .stream_stdout()?;
