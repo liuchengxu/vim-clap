@@ -45,10 +45,15 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             debug!("Recv: {:?}", msg);
             match &msg.method[..] {
                 "filer" => filer::handle_message(msg),
+                "filer/on_init" => {
+                    session_manager.new_session(msg.session_id, msg, filer::FilerSession)
+                }
                 "initialize_global_env" => env::initialize_global(msg),
-                "on_init" => session_manager.new_session(msg.session_id, msg),
+                "on_init" => session_manager.new_opaque_session(msg.session_id, msg),
                 "on_typed" => session_manager.send(msg.session_id, SessionEvent::OnTyped(msg)),
-                "on_move" => session_manager.send(msg.session_id, SessionEvent::OnMove(msg)),
+                "on_move" | "filer/on_move" => {
+                    session_manager.send(msg.session_id, SessionEvent::OnMove(msg))
+                }
                 "exit" => session_manager.terminate(msg.session_id),
                 _ => write_response(
                     json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),

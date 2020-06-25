@@ -49,8 +49,24 @@ function! clap#client#call_on_init(callback, ...) abort
   let s:handlers[s:req_id] = a:callback
 endfunction
 
+function! clap#client#call_on_init_filer(callback, ...) abort
+  let s:session_id += 1
+  let params = {
+        \   'cwd': clap#rooter#working_dir(),
+        \   'winwidth': winwidth(g:clap.provider.id),
+        \   'provider_id': g:clap.provider.id,
+        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+        \ }
+  if a:0 > 0
+    call extend(params, a:1)
+  endif
+  call clap#client#notify('filer/on_init', params)
+  let s:handlers[s:req_id] = a:callback
+endfunction
+
+
 " One optional argument: Dict, extra params
-function! clap#client#call_on_move(callback, ...) abort
+function! clap#client#call_on_move(method, callback, ...) abort
   let curline = g:clap.display.getcurline()
   if empty(curline)
     return
@@ -59,7 +75,7 @@ function! clap#client#call_on_move(callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#call('on_move', a:callback, params)
+  call clap#client#call(a:method, a:callback, params)
 endfunction
 
 function! clap#client#notify(method, params) abort

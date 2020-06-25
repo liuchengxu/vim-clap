@@ -23,45 +23,58 @@ impl SessionEventSender {
     }
 }
 
-fn spawn_new_session(msg: Message) -> Result<Sender<SessionEvent>> {
-    let (session_sender, session_receiver) = crossbeam_channel::unbounded();
-    let msg_id = msg.id;
-
-    let session = Session {
-        session_id: msg.session_id,
-        context: msg.clone().into(),
-        message_handler: super::handler::MessageHandler,
-        event_recv: session_receiver,
-    };
-
-    if session.provider_id().as_str() == "filer" {
-        handler::on_init::OnInitHandler::try_new(msg.clone(), &session.context)?.handle();
-    } else if let Some(source_cmd) = session.context.source_cmd.clone() {
-        let session_cloned = session.clone();
-        // TODO: choose different fitler strategy according to the time forerunner job spent.
-        thread::Builder::new()
-            .name(format!("session-forerunner-{}", session.session_id))
-            .spawn(move || crate::session::forerunner::run(msg_id, source_cmd, session_cloned))?;
-    }
-
-    session.start_event_loop()?;
-
-    Ok(session_sender)
-}
-
 #[derive(Debug, Default)]
 pub struct Manager {
     sessions: HashMap<SessionId, SessionEventSender>,
 }
 
+pub trait NewSession {
+    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>>;
+}
+
+pub struct OpaqueSession;
+
+impl NewSession for OpaqueSession {
+    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
+        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
+        let msg_id = msg.id;
+
+        let session = Session {
+            session_id: msg.session_id,
+            context: msg.clone().into(),
+            message_handler: super::handler::MessageHandler,
+            event_recv: session_receiver,
+        };
+
+        if let Some(source_cmd) = session.context.source_cmd.clone() {
+            let session_cloned = session.clone();
+            // TODO: choose different fitler strategy according to the time forerunner job spent.
+            thread::Builder::new()
+                .name(format!("session-forerunner-{}", session.session_id))
+                .spawn(move || {
+                    crate::session::forerunner::run(msg_id, source_cmd, session_cloned)
+                })?;
+        }
+
+        session.start_event_loop()?;
+
+        Ok(session_sender)
+    }
+}
+
 /// Dispatches the raw RpcMessage to the right session instance according to the session_id.
 impl Manager {
     /// Starts a session in a new thread given the session id and init message.
-    pub fn new_session(&mut self, session_id: SessionId, msg: Message) {
+    pub fn new_session<T: NewSession>(
+        &mut self,
+        session_id: SessionId,
+        msg: Message,
+        new_session: T,
+    ) {
         if self.has(session_id) {
             error!("Session {} already exists", msg.session_id);
         } else {
-            match spawn_new_session(msg) {
+            match new_session.spawn(msg) {
                 Ok(sender) => {
                     self.sessions.insert(session_id, sender.into());
                 }
@@ -70,6 +83,10 @@ impl Manager {
                 }
             }
         }
+    }
+
+    pub fn new_opaque_session(&mut self, session_id: SessionId, msg: Message) {
+        self.new_session(session_id, msg, OpaqueSession)
     }
 
     /// Returns true if the sessoion exists given the session_id.

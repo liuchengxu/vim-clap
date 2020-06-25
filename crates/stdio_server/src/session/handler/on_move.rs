@@ -9,7 +9,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 #[inline]
-fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
+pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
     std::fs::canonicalize(path.as_ref())?
         .into_os_string()
         .into_string()

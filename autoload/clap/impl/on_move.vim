@@ -41,7 +41,7 @@ if clap#maple#is_available()
       call g:clap.provider._().on_move()
       return
     elseif index(s:async_preview_implemented, g:clap.provider.id) > -1
-      return clap#client#call_on_move(function('s:handle_on_move_result'))
+      return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
     endif
     call s:sync_run_with_delay()
   endfunction

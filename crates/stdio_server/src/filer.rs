@@ -1,5 +1,6 @@
 use super::{write_response, Message};
 use anyhow::Result;
+use crossbeam_channel::Sender;
 use icon::prepend_filer_icon;
 use log::debug;
 use serde_json::json;
@@ -65,6 +66,57 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     entries.sort();
 
     Ok(entries)
+}
+
+pub struct FilerSession;
+
+use crate::session::{
+    build_abs_path, HandleMessage, OnMove, OnMoveHandler, RpcMessage, Session, SessionContext,
+    SessionEvent,
+};
+
+#[derive(Clone)]
+pub struct FilerMessageHandler;
+
+impl HandleMessage for FilerMessageHandler {
+    fn handle(&self, msg: RpcMessage, context: &SessionContext) {
+        match msg {
+            RpcMessage::OnMove(msg) => {
+                let provider_id = context.provider_id.clone();
+                let curline = msg.get_curline(&provider_id).unwrap();
+                let path = build_abs_path(&msg.get_cwd(), curline);
+                let on_move_handler = OnMoveHandler {
+                    msg_id: msg.id,
+                    size: provider_id.get_preview_size(),
+                    provider_id,
+                    inner: OnMove::Filer(path),
+                };
+                on_move_handler.handle().unwrap();
+            }
+            // TODO: handle on_typed
+            RpcMessage::OnTyped(msg) => handle_message(msg),
+        }
+    }
+}
+
+impl crate::session::NewSession for FilerSession {
+    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
+        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
+
+        let session = Session {
+            session_id: msg.session_id,
+            context: msg.clone().into(),
+            message_handler: FilerMessageHandler,
+            event_recv: session_receiver,
+        };
+
+        // handle on_init
+        handle_message(msg);
+
+        session.start_event_loop()?;
+
+        Ok(session_sender)
+    }
 }
 
 pub(super) fn handle_message(msg: Message) {
