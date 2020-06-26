@@ -255,7 +255,7 @@ function! s:start_rpc_service() abort
   endif
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_prompt()
-  call clap#client#call_on_init_filer(function('s:handle_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_init('filer/on_init', function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

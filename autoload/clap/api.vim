@@ -587,7 +587,7 @@ function! s:init_provider() abort
     endif
     " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
     if clap#maple#is_available() && self.id !=# 'filer'
-      call clap#client#notify_on_init()
+      call clap#client#notify_on_init('on_init')
     endif
   endfunction
 

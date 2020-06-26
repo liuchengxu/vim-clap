@@ -30,7 +30,7 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! s:notify_on_init(method, ...) abort
+function! clap#client#notify_on_init(method,...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
@@ -44,20 +44,10 @@ function! s:notify_on_init(method, ...) abort
   call clap#client#notify(a:method, params)
 endfunction
 
-function! clap#client#notify_on_init(...) abort
-  call call(function('s:notify_on_init'), ['on_init'] + a:000)
-endfunction
-
-function! clap#client#call_on_init(callback, ...) abort
-  call call(function('clap#client#notify_on_init'), a:000)
+function! clap#client#call_on_init(method, callback, ...) abort
+  call call(function('clap#client#notify_on_init'), [a:method] + a:000)
   let s:handlers[s:req_id] = a:callback
 endfunction
-
-function! clap#client#call_on_init_filer(callback, ...) abort
-  call call(function('s:notify_on_init'), ['filer/on_init'] + a:000)
-  let s:handlers[s:req_id] = a:callback
-endfunction
-
 
 " One optional argument: Dict, extra params
 function! clap#client#call_on_move(method, callback, ...) abort
