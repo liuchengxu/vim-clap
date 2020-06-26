@@ -30,7 +30,7 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! clap#client#notify_on_init(...) abort
+function! s:notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
@@ -41,7 +41,11 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#notify('on_init', params)
+  call clap#client#notify(a:method, params)
+endfunction
+
+function! clap#client#notify_on_init(...) abort
+  call call(function('s:notify_on_init'), ['on_init'] + a:000)
 endfunction
 
 function! clap#client#call_on_init(callback, ...) abort
@@ -50,17 +54,7 @@ function! clap#client#call_on_init(callback, ...) abort
 endfunction
 
 function! clap#client#call_on_init_filer(callback, ...) abort
-  let s:session_id += 1
-  let params = {
-        \   'cwd': clap#rooter#working_dir(),
-        \   'winwidth': winwidth(g:clap.provider.id),
-        \   'provider_id': g:clap.provider.id,
-        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \ }
-  if a:0 > 0
-    call extend(params, a:1)
-  endif
-  call clap#client#notify('filer/on_init', params)
+  call call(function('s:notify_on_init'), ['filer/on_init'] + a:000)
   let s:handlers[s:req_id] = a:callback
 endfunction
 
