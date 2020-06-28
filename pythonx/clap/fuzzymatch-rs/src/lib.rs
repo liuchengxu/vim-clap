@@ -28,7 +28,7 @@ fn fuzzy_match(
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
     let fzy_matcher = get_appropriate_matcher(&Algo::Fzy, &line_splitter.into());
     let matcher: Box<dyn Fn(&str) -> MatcherResult> = if query.contains(' ') {
-        Box::new(|line: &str| substr_scorer(query, line))
+        Box::new(|line: &str| substr_scorer(line, query))
     } else {
         Box::new(|line: &str| {
             if enable_icon {
@@ -102,7 +102,7 @@ fn py_and_rs_subscore_should_work() {
             .unwrap()
             .extract()
             .unwrap();
-        let rs_result = substr_scorer(niddle, haystack).unwrap();
+        let rs_result = substr_scorer(haystack, niddle).unwrap();
         assert_eq!(py_result, rs_result);
     }
 }
