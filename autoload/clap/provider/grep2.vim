@@ -25,7 +25,7 @@ function! s:grep2.init() abort
   call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
   endif
 endfunction
 

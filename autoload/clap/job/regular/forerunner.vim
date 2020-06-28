@@ -45,6 +45,8 @@ function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
+    call clap#sign#ensure_exists()
+
     " Using the cached file
     if has_key(decoded, 'using_cache')
       let g:__clap_forerunner_tempfile = decoded.tempfile
@@ -126,15 +128,15 @@ if clap#maple#is_available()
     call s:start_maple(a:sub_cmd)
   endfunction
 
-  function! clap#forerunner#start_command(cmd) abort
+  function! clap#job#regular#forerunner#start_command(cmd) abort
     call s:run_maple_command(a:cmd)
   endfunction
 
-  function! clap#forerunner#start(cmd) abort
+  function! clap#job#regular#forerunner#start(cmd) abort
     call s:run_maple_command(clap#maple#forerunner_exec_command(a:cmd))
   endfunction
 else
-  function! clap#forerunner#start(cmd) abort
+  function! clap#job#regular#forerunner#start(cmd) abort
     let s:chunks = []
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
     call clap#spinner#refresh()
@@ -142,7 +144,7 @@ else
   endfunction
 endif
 
-function! clap#forerunner#stop() abort
+function! clap#job#regular#forerunner#stop() abort
   if s:job_id > 0
     call clap#job#stop(s:job_id)
     let s:job_id = -1

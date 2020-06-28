@@ -1,6 +1,7 @@
 //! Regex patterns and utilities used for manipulating the line.
 
 use lazy_static::lazy_static;
+use log::error;
 use regex::Regex;
 use std::path::PathBuf;
 
@@ -43,11 +44,7 @@ pub fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
 pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize)> {
     let cap = GREP_POS.captures(line)?;
     let fpath = cap.get(1).map(|x| x.as_str().into())?;
-    let str2nr = |idx: usize| {
-        cap.get(idx)
-            .map(|x| x.as_str())
-            .map(|x| x.parse::<usize>().expect("\\d+ matched"))
-    };
+    let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
     let lnum = str2nr(2)?;
     let col = str2nr(3)?;
     Some((fpath, lnum, col))
@@ -76,12 +73,19 @@ pub fn file_name_only(line: &str) -> Option<(&str, usize)> {
         .map(|fname| (&line[line.len() - fname.len()..], line.len() - fname.len()))
 }
 
+fn parse_lnum(lnum: &str) -> Option<usize> {
+    match lnum.parse::<usize>() {
+        Err(e) => {
+            error!("failed to extract lnum from {}, error:{:?}", lnum, e);
+            None
+        }
+        Ok(p) => Some(p),
+    }
+}
+
 pub fn extract_proj_tags(line: &str) -> Option<(usize, &str)> {
     let cap = PROJ_TAGS.captures(line)?;
-    let lnum = cap
-        .get(2)
-        .map(|x| x.as_str())
-        .map(|x| x.parse::<usize>().expect("\\d+ matched"))?;
+    let lnum = cap.get(2).map(|x| x.as_str()).and_then(parse_lnum)?;
     let fpath = cap.get(4).map(|x| x.as_str())?;
     Some((lnum, fpath))
 }
@@ -94,15 +98,11 @@ pub fn extract_proj_tags_kind(line: &str) -> Option<&str> {
 
 pub fn extract_buf_tags_lnum(line: &str) -> Option<usize> {
     let cap = BUFFER_TAGS.captures(line)?;
-    cap.get(1)
-        .map(|x| x.as_str())
-        .map(|x| x.parse::<usize>().expect("\\d+ matched"))
+    cap.get(1).map(|x| x.as_str()).and_then(parse_lnum)
 }
 
 pub fn extract_blines_lnum(line: &str) -> Option<usize> {
-    line.split_whitespace()
-        .next()
-        .map(|x| x.parse::<usize>().expect("\\d+ matched"))
+    line.split_whitespace().next().and_then(parse_lnum)
 }
 
 #[cfg(test)]

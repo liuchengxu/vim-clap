@@ -1,12 +1,5 @@
-use anyhow::anyhow;
-use anyhow::Context;
-use pattern::{
-    extract_blines_lnum, extract_buf_tags_lnum, extract_grep_position, extract_proj_tags,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::convert::TryFrom;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct GlobalEnv {
@@ -24,6 +17,7 @@ impl GlobalEnv {
         }
     }
 
+    /// Each provider can have its preferred preview size.
     pub fn preview_size_of(&self, provider_id: &str) -> usize {
         match self.preview_size {
             Value::Number(ref number) => number.as_u64().unwrap() as usize,
@@ -56,120 +50,92 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn get_message_id(&self) -> u64 {
-        self.id
-    }
-
-    pub fn get_provider_id(&self) -> String {
-        self.params
-            .get("provider_id")
-            .and_then(|x| x.as_str())
-            .unwrap_or("Unknown provider id")
-            .into()
+    pub fn get_provider_id(&self) -> ProviderId {
+        self._get_string_unsafe("provider_id").into()
     }
 
     #[allow(dead_code)]
     pub fn get_query(&self) -> String {
-        self.params
-            .get("query")
-            .and_then(|x| x.as_str())
-            .expect("Unknown provider id")
-            .into()
+        self._get_string_unsafe("query")
     }
-}
 
-/// Preview environment on Vim CursorMoved event.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub enum OnMove {
-    Files(PathBuf),
-    Filer(PathBuf),
-    Grep { path: PathBuf, lnum: usize },
-    BLines { path: PathBuf, lnum: usize },
-    ProjTags { path: PathBuf, lnum: usize },
-    BufferTags { path: PathBuf, lnum: usize },
-}
+    pub fn get_cwd(&self) -> String {
+        self._get_string_unsafe("cwd")
+    }
 
-impl TryFrom<Message> for OnMove {
-    type Error = anyhow::Error;
-    fn try_from(msg: Message) -> std::result::Result<Self, Self::Error> {
-        let provider_id = msg
-            .params
-            .get("provider_id")
-            .and_then(|x| x.as_str())
-            .context("Missing provider id")?;
+    /// Get the current line of display window without the leading icon.
+    pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
+        let display_curline = self._get_string("curline")?;
 
-        let cwd = msg
-            .params
-            .get("cwd")
-            .and_then(|x| x.as_str())
-            .context("Missing cwd when deserializing into FilerParams")?;
-
-        let display_curline = String::from(
-            msg.params
-                .get("curline")
-                .and_then(|x| x.as_str())
-                .context("Missing fname when deserializing into FilerParams")?,
-        );
-
-        let curline = if super::env::should_skip_leading_icon(provider_id) {
+        let curline = if provider_id.should_skip_leading_icon() {
             display_curline.chars().skip(2).collect()
         } else {
             display_curline
         };
 
-        let get_source_fpath = || {
-            msg.params
-                .get("source_fpath")
-                .and_then(|x| x.as_str().map(Into::into))
-                .context("Missing source_fpath")
-        };
+        Ok(curline)
+    }
 
-        // Rebuild the absolute path using cwd and relative path.
-        let rebuild_abs_path = || {
-            let mut path: PathBuf = cwd.into();
-            path.push(&curline);
-            path
-        };
+    fn _get_string_unsafe(&self, key: &str) -> String {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_str())
+            .map(Into::into)
+            .expect(&format!("Missing {} in msg.params", key))
+    }
 
-        log::debug!("curline: {}", curline);
-        let context = match provider_id {
-            "files" => Self::Files(rebuild_abs_path()),
-            "filer" => Self::Filer(rebuild_abs_path()),
-            "blines" => {
-                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
-                let path = get_source_fpath()?;
-                Self::BLines { path, lnum }
-            }
-            "tags" => {
-                let lnum =
-                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
-                let path = get_source_fpath()?;
-                Self::BufferTags { path, lnum }
-            }
-            "proj_tags" => {
-                let (lnum, p) =
-                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
-                let mut path: PathBuf = cwd.into();
-                path.push(&p);
-                Self::ProjTags { path, lnum }
-            }
-            "grep" | "grep2" => {
-                let (fpath, lnum, _col) =
-                    extract_grep_position(&curline).context("Couldn't extract grep position")?;
-                let mut path: PathBuf = cwd.into();
-                path.push(&fpath);
-                Self::Grep { path, lnum }
-            }
-            _ => {
-                return Err(anyhow!(
-                    "Couldn't into PreviewEnv from Message: {:?}, unknown provider_id: {}",
-                    msg,
-                    provider_id
-                ))
-            }
-        };
+    fn _get_string(&self, key: &str) -> anyhow::Result<String> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_str())
+            .map(Into::into)
+            .ok_or(anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+}
 
-        Ok(context)
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProviderId(String);
+
+impl ProviderId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Returns true if the raw line has been decorated with an icon.
+    ///
+    /// We should skip that icon when hoping to get the origin cursorline content.
+    #[inline]
+    pub fn should_skip_leading_icon(&self) -> bool {
+        super::env::global().enable_icon && self.has_icon_support()
+    }
+
+    /// Returns the preview size of current provider.
+    #[inline]
+    pub fn get_preview_size(&self) -> usize {
+        super::env::global().preview_size_of(&self.0)
+    }
+
+    /// Returns true if the provider can have icon.
+    #[inline]
+    pub fn has_icon_support(&self) -> bool {
+        &self.0 != "blines"
+    }
+}
+
+impl From<String> for ProviderId {
+    fn from(p: String) -> Self {
+        Self(p)
+    }
+}
+
+impl From<&str> for ProviderId {
+    fn from(p: &str) -> Self {
+        Self(p.into())
+    }
+}
+
+impl std::fmt::Display for ProviderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

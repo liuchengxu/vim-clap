@@ -1,8 +1,8 @@
 use super::{write_response, Message};
 use anyhow::Result;
+use crossbeam_channel::Sender;
 use icon::prepend_filer_icon;
 use log::debug;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::path::{self, Path, PathBuf};
 use std::{fs, io};
@@ -47,7 +47,7 @@ impl Into<String> for DisplayPath {
     }
 }
 
-pub(super) fn read_dir_entries<P: AsRef<Path>>(
+pub fn read_dir_entries<P: AsRef<Path>>(
     dir: P,
     enable_icon: bool,
     max: Option<usize>,
@@ -68,37 +68,62 @@ pub(super) fn read_dir_entries<P: AsRef<Path>>(
     Ok(entries)
 }
 
-#[derive(Serialize, Deserialize)]
-struct FilerParams {
-    cwd: String,
-    enable_icon: bool,
-}
+pub struct FilerSession;
 
-impl From<serde_json::Map<String, serde_json::Value>> for FilerParams {
-    fn from(serde_map: serde_json::Map<String, serde_json::Value>) -> Self {
-        Self {
-            cwd: String::from(
-                serde_map
-                    .get("cwd")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("Missing cwd when deserializing into FilerParams"),
-            ),
-            enable_icon: serde_map
-                .get("enable_icon")
-                .and_then(|x| x.as_bool())
-                .unwrap_or(false),
+use crate::session::{
+    build_abs_path, HandleMessage, OnMove, OnMoveHandler, RpcMessage, Session, SessionContext,
+    SessionEvent,
+};
+
+#[derive(Clone)]
+pub struct FilerMessageHandler;
+
+impl HandleMessage for FilerMessageHandler {
+    fn handle(&self, msg: RpcMessage, context: &SessionContext) {
+        match msg {
+            RpcMessage::OnMove(msg) => {
+                let provider_id = context.provider_id.clone();
+                let curline = msg.get_curline(&provider_id).unwrap();
+                let path = build_abs_path(&msg.get_cwd(), curline);
+                let on_move_handler = OnMoveHandler {
+                    msg_id: msg.id,
+                    size: provider_id.get_preview_size(),
+                    provider_id,
+                    inner: OnMove::Filer(path),
+                };
+                on_move_handler.handle().unwrap();
+            }
+            // TODO: handle on_typed
+            RpcMessage::OnTyped(msg) => handle_message(msg),
         }
     }
 }
 
-pub(super) fn handle_message(msg: Message) {
-    let FilerParams { cwd, enable_icon } = msg.params.into();
-    debug!(
-        "Recv filer params: cwd:{}, enable_icon:{}",
-        cwd, enable_icon
-    );
+impl crate::session::NewSession for FilerSession {
+    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
+        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
-    let result = match read_dir_entries(&cwd, enable_icon, None) {
+        let session = Session {
+            session_id: msg.session_id,
+            context: msg.clone().into(),
+            message_handler: FilerMessageHandler,
+            event_recv: session_receiver,
+        };
+
+        // handle on_init
+        handle_message(msg);
+
+        session.start_event_loop()?;
+
+        Ok(session_sender)
+    }
+}
+
+pub(super) fn handle_message(msg: Message) {
+    let cwd = msg.get_cwd();
+    debug!("Recv filer params: cwd:{}", cwd,);
+
+    let result = match read_dir_entries(&cwd, crate::env::global().enable_icon, None) {
         Ok(entries) => {
             let result = json!({
             "entries": entries,

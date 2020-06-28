@@ -13,6 +13,7 @@ target
 /bin
 testdata.txt
 publish.sh
+crates/Cargo.lock
 
 !.editorconfig
 !.travis.yml

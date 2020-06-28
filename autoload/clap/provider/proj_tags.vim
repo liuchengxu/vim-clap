@@ -24,7 +24,7 @@ function! s:proj_tags.init() abort
   let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#forerunner#start_command(clap#maple#tags_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#tags_forerunner_command())
   endif
 endfunction
 

@@ -308,7 +308,7 @@ endif
 function! s:grep.init() abort
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
   endif
 endfunction
 

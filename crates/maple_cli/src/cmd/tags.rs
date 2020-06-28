@@ -7,17 +7,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-const BASE_TAGS_ARGS: [&str; 9] = [
-    "ctags",
-    "-R",
-    "-x",
-    "--output-format=json",
-    "--fields=+n",
-    "--exclude=.git",
-    "--exclude=*.json",
-    "--exclude=node_modules",
-    "--exclude=target",
-];
+const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TagInfo {
@@ -83,6 +73,12 @@ pub struct Tags {
     /// Runs as the forerunner job, create the new cache entry.
     #[structopt(short, long)]
     forerunner: bool,
+
+    /// Exclude files and directories matching 'pattern'.
+    ///
+    /// Will be translated into ctags' option: --exclude=pattern.
+    #[structopt(long, default_value = ".git,*.json,node_modules,target")]
+    exclude: Vec<String>,
 }
 
 fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = String>> {
@@ -119,15 +115,26 @@ impl Tags {
         // In case of passing an invalid icon-painter option.
         let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
 
-        let mut cmd_args = BASE_TAGS_ARGS.to_vec();
+        let mut cmd_args = BASE_TAGS_CMD
+            .split_whitespace()
+            .map(Into::into)
+            .collect::<Vec<_>>();
 
-        let lang = if let Some(ref languages) = self.languages {
-            format!("--languages={}", languages)
-        } else {
-            String::from("")
+        let exclude = self
+            .exclude
+            .iter()
+            .map(|x| x.split(',').collect::<Vec<_>>())
+            .flatten()
+            .map(|x| format!("--exclude={}", x))
+            .collect::<Vec<_>>();
+
+        cmd_args.extend(exclude);
+
+        if let Some(ref languages) = self.languages {
+            cmd_args.push(format!("--languages={}", languages));
         };
 
-        cmd_args.push(&lang);
+        let cmd_args = cmd_args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
 
         if self.forerunner {
             let (cache, total) = if no_cache {

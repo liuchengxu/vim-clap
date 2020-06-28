@@ -115,7 +115,7 @@ function! s:on_typed_async_impl() abort
     endif
 
     let cmd = g:clap.provider.source_async_or_default()
-    call clap#rooter#run(function('clap#maple#job_start'), cmd)
+    call clap#rooter#run(function('clap#job#regular#maple#start'), cmd)
   else
     let cmd = g:clap.provider.source_async_or_default()
     call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)

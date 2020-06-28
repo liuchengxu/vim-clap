@@ -71,6 +71,7 @@ if has('nvim')
 
   function! s:start_service_job(cmd) abort
     call clap#job#stdio#stop_service()
+    let g:clap.display.cache = []
     let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
           \ 'on_stdout': function('s:on_event'),
@@ -111,6 +112,7 @@ else
   function! s:start_service_job(cmd_list) abort
     call clap#job#stdio#stop_service()
     call clap#spinner#set_busy()
+    let g:clap.display.cache = []
     let s:job = job_start(a:cmd_list, {
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
