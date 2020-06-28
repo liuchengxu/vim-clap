@@ -11,6 +11,7 @@ CHANGELOG
 ### Improved
 
 - Make the indicator winwidth a bit adpative when using the `relative` layout.
+- Ensure the sign always visiable when running maple via job.
 
 ### Fixed
 
