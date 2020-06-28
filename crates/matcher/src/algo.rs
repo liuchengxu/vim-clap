@@ -32,7 +32,7 @@ pub mod substring {
         slice[start_at..].find(pat).map(|i| start_at + i)
     }
 
-    pub fn substr_indices_impl(haystack: &str, niddle: &str) -> Option<(f64, Vec<usize>)> {
+    fn substr_indices_impl(haystack: &str, niddle: &str) -> Option<(f64, Vec<usize>)> {
         // unreasonably large haystack
         if haystack.len() > 1024 {
             return None;

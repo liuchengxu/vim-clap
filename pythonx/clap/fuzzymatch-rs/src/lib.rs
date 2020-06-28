@@ -1,13 +1,11 @@
-use filter::matcher::{
-    get_appropriate_matcher, substring::substr_indices_impl as substr_scorer, Algo,
-};
+use filter::matcher::{get_appropriate_matcher, substring::substr_indices as substr_scorer, Algo};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
 
 /// Use f64 here as substr_scorer returns f64;
-type MatcherResult = Option<(f64, Vec<usize>)>;
+type MatcherResult = Option<(i64, Vec<usize>)>;
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
 /// Each line's matched indices of LinesInBatch.
@@ -33,11 +31,10 @@ fn fuzzy_match(
         Box::new(|line: &str| {
             if enable_icon {
                 // " " is 4 bytes, but the offset of highlight is 2.
-                fzy_matcher(&line[4..], query).map(|(score, indices)| {
-                    (score as f64, indices.into_iter().map(|x| x + 4).collect())
-                })
+                fzy_matcher(&line[4..], query)
+                    .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
             } else {
-                fzy_matcher(line, query).map(|(score, indices)| (score as f64, indices))
+                fzy_matcher(line, query).map(|(score, indices)| (score, indices))
             }
         })
     };
