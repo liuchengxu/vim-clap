@@ -51,19 +51,6 @@ else
   let s:maple_cargo_toml = s:plugin_root_dir.'/Cargo.toml'
 endif
 
-function! s:has_rust_nightly(show_warning) abort
-  call system('cargo +nightly --help')
-  if v:shell_error
-    if a:show_warning
-      call clap#helper#echo_warn('Rust nightly is required, try running `rustup toolchain install nightly` in the command line and then rerun this function.')
-    else
-      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
-    endif
-    return v:false
-  endif
-  return v:true
-endfunction
-
 function! clap#installer#build_python_dynamic_module() abort
   if !has('python3')
     call clap#helper#echo_info('+python3 is required, skip building the Python dynamic module.')
@@ -71,10 +58,6 @@ function! clap#installer#build_python_dynamic_module() abort
   endif
 
   if executable('cargo')
-    if !s:has_rust_nightly(v:true)
-      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
-      return
-    endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
@@ -93,7 +76,7 @@ endfunction
 function! clap#installer#build_all(...) abort
   if executable('cargo')
     " If Rust nightly and +python3 is unavailable, build the maple only.
-    if has('python3') && s:has_rust_nightly(v:false)
+    if has('python3')
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
