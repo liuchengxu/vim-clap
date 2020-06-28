@@ -8,6 +8,10 @@ CHANGELOG
 - Add `clap#run(provider)` which is similar to `fzf#run()`. The argument `provider` is a Dict like `g:clap_provider_foo` with an optional extra field specifying the provider id. It can used for adhoc running, don't use it with a `source` that probably has a fair mount of items as it's normally undeveloped in performance. [#433](https://github.com/liuchengxu/vim-clap/issues/433)
 - Impl async preview for `git_files` and `history` provider.
 
+### Improved
+
+- Make the indicator winwidth a bit adpative when using the `relative` layout.
+
 ### Fixed
 
 - Fixed the win contexted `execute()` for `jumps` and `marks` provider when clap window is not yet visible.
@@ -17,7 +21,6 @@ CHANGELOG
 ### Improved
 
 - Try loading the clap theme having a same name with the current colorscheme when `g:clap_theme` does not exist.
-- Make the indicator winwidth a bit adpative when using the relative layout.
 
 ### Added
 
