@@ -32,7 +32,7 @@ pub mod substring {
         slice[start_at..].find(pat).map(|i| start_at + i)
     }
 
-    pub fn substr_indices(haystack: &str, niddle: &str) -> Option<(i64, Vec<usize>)> {
+    pub fn substr_indices_impl(haystack: &str, niddle: &str) -> Option<(f64, Vec<usize>)> {
         // unreasonably large haystack
         if haystack.len() > 1024 {
             return None;
@@ -67,16 +67,20 @@ pub mod substring {
         }
 
         if positions.is_empty() {
-            return Some((0i64, positions));
+            return Some((0f64, positions));
         }
 
         let last_pos = positions.last().unwrap();
         let match_len = (last_pos + 1 - positions[0]) as f64;
 
         Some((
-            ((2f64 / (positions[0] + 1) as f64) + 1f64 / (last_pos + 1) as f64 - match_len) as i64,
+            (2f64 / (positions[0] + 1) as f64) + 1f64 / (last_pos + 1) as f64 - match_len,
             positions,
         ))
+    }
+
+    pub fn substr_indices(haystack: &str, niddle: &str) -> Option<(i64, Vec<usize>)> {
+        substr_indices_impl(haystack, niddle).map(|(score, positions)| (score as i64, positions))
     }
 
     #[test]

@@ -1,59 +1,10 @@
-#![feature(pattern)]
-
-use filter::matcher::{get_appropriate_matcher, Algo};
+use filter::matcher::{
+    get_appropriate_matcher, substring::substr_indices_impl as substr_scorer, Algo,
+};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
-
-use std::str::pattern::Pattern;
-
-#[inline]
-fn find_start_at<'a, P: Pattern<'a>>(slice: &'a str, at: usize, pat: P) -> Option<usize> {
-    slice[at..].find(pat).map(|i| at + i)
-}
-
-fn substr_scorer(niddle: &str, haystack: &str) -> Option<(f64, Vec<usize>)> {
-    let haystack = haystack.to_lowercase();
-    let haystack = haystack.as_str();
-
-    let mut offset = 0;
-    let mut positions = Vec::new();
-    for sub_niddle in niddle.split_whitespace() {
-        let sub_niddle = sub_niddle.to_lowercase();
-
-        match find_start_at(haystack, offset, &sub_niddle) {
-            Some(idx) => {
-                offset = idx + sub_niddle.len();
-                // For build without overflow checks this could be written as
-                // `let mut pos = idx - 1;` with `|| { pos += 1; pos }` closure.
-                let mut pos = idx;
-                positions.resize_with(
-                    positions.len() + sub_niddle.len(),
-                    // Simple endless iterator for `idx..` range. Even though it's endless,
-                    // it will iterate only `sub_niddle.len()` times.
-                    || {
-                        pos += 1;
-                        pos - 1
-                    },
-                );
-            }
-            None => return None,
-        }
-    }
-
-    if positions.is_empty() {
-        return Some((0f64, positions));
-    }
-
-    let last_pos = positions.last().unwrap();
-    let match_len = (last_pos + 1 - positions[0]) as f64;
-
-    Some((
-        ((2f64 / (positions[0] + 1) as f64) + 1f64 / (last_pos + 1) as f64 - match_len),
-        positions,
-    ))
-}
 
 /// Use f64 here as substr_scorer returns f64;
 type MatcherResult = Option<(f64, Vec<usize>)>;
