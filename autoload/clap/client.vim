@@ -6,7 +6,6 @@ set cpoptions&vim
 
 let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
-
 let s:handlers = get(s:, 'handlers', {})
 
 function! clap#client#handle(msg) abort
@@ -30,7 +29,7 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! clap#client#notify_on_init(method,...) abort
+function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),

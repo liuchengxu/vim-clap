@@ -26,7 +26,7 @@ function! clap#state#handle_message(msg) abort
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
-  call clap#sign#ensure_has_one()
+  call clap#sign#ensure_exists()
 
   if has_key(decoded, 'indices')
     try

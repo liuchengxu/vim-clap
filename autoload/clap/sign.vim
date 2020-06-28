@@ -121,7 +121,7 @@ else
   endfunction
 endif
 
-function! clap#sign#ensure_has_one() abort
+function! clap#sign#ensure_exists() abort
   if s:last_signed_id == -1
     call clap#sign#reset_to_first_line()
   endif

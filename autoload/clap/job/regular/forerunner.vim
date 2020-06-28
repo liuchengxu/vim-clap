@@ -45,6 +45,8 @@ function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
+    call clap#sign#ensure_exists()
+
     " Using the cached file
     if has_key(decoded, 'using_cache')
       let g:__clap_forerunner_tempfile = decoded.tempfile
