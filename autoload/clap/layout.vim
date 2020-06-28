@@ -37,6 +37,15 @@ function! s:calc(origin, size) abort
   endif
 endfunction
 
+function! s:adjust_indicator_width() abort
+  let width = winwidth(g:clap.start.winid)
+  if width < 45
+    let g:__clap_indicator_winwidth = 5
+  else
+    let g:__clap_indicator_winwidth = min([width / 5, 18])
+  endif
+endfunction
+
 if s:is_nvim
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
@@ -46,6 +55,7 @@ if s:is_nvim
     else
       let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
+      call s:adjust_indicator_width()
     endif
 
     return extend(opts, {
@@ -82,6 +92,7 @@ else
       let [row, col] = win_screenpos(g:clap.start.winid)
       let width = winwidth(g:clap.start.winid)
       let height = winheight(g:clap.start.winid)
+      call s:adjust_indicator_width()
     endif
     return {
           \ 'width': s:calc(width, layout.width),
