@@ -24,6 +24,8 @@ else
   let s:builtin_filter_capacity = 10000
 endif
 
+let s:builtin_filter_capacity = 1000
+
 function! clap#filter#beyond_capacity(size) abort
   return a:size > s:builtin_filter_capacity
 endfunction
