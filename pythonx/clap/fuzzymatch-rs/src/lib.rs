@@ -94,10 +94,11 @@ fn py_and_rs_subscore_should_work() {
     ];
 
     for (niddle, haystack) in test_cases.into_iter() {
-        let py_result: (f64, Vec<usize>) = py_scorer
+        let py_result: (i64, Vec<usize>) = py_scorer
             .call1("substr_scorer", (niddle, haystack))
             .unwrap()
             .extract()
+            .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
             .unwrap();
         let rs_result = substr_scorer(haystack, niddle).unwrap();
         assert_eq!(py_result, rs_result);
