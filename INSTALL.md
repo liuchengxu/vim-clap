@@ -70,9 +70,7 @@ To install `maple` you can use the installer function and run `:call clap#instal
 
 If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed. This Python dynamic module is mainly for saving the async job when the data set is small.
 
-Now PyO3(v0.11+) supports stable Rust, therefore the nightly Rust is no longer required.
-
-Then use `:call clap#installer#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python one. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
+Now PyO3(v0.11+) supports stable Rust, therefore the nightly Rust is no longer required. Simply use `:call clap#installer#build_python_dynamic_module()` to install the Python dynamic module written in Rust for 10x faster fuzzy filter than the Python version. Refer to the post [Make Vim Python plugin 10x faster using Rust](http://liuchengxu.org/posts/speed-up-vim-python-plugin-using-rust/) for the whole story.
 
 ~~[Python dynamic module](https://github.com/liuchengxu/vim-clap#python-dynamic-module) needs to be compiled using Rust nightly, ensure you have installed it if you want to run the installer function successfully:~~
 
