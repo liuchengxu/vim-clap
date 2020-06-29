@@ -1,4 +1,8 @@
 use super::{write_response, Message};
+use crate::session::{
+    build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
+    SessionContext, SessionEvent,
+};
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use icon::prepend_filer_icon;
@@ -70,11 +74,6 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 
 pub struct FilerSession;
 
-use crate::session::{
-    build_abs_path, HandleMessage, OnMove, OnMoveHandler, RpcMessage, Session, SessionContext,
-    SessionEvent,
-};
-
 #[derive(Clone)]
 pub struct FilerMessageHandler;
 
@@ -99,7 +98,7 @@ impl HandleMessage for FilerMessageHandler {
     }
 }
 
-impl crate::session::NewSession for FilerSession {
+impl NewSession for FilerSession {
     fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
@@ -141,17 +140,22 @@ pub(super) fn handle_message(msg: Message) {
     write_response(result);
 }
 
-#[test]
-fn test_dir() {
-    let entries = read_dir_entries(
-        &std::env::current_dir()
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap(),
-        false,
-        None,
-    )
-    .unwrap();
-    println!("entry: {:?}", entries);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dir() {
+        let entries = read_dir_entries(
+            &std::env::current_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap(),
+            false,
+            None,
+        )
+        .unwrap();
+        println!("entry: {:?}", entries);
+    }
 }
