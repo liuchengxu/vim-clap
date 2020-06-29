@@ -3,6 +3,17 @@ name: ci
 on: [push, pull_request]
 
 jobs:
+  container:
+    runs-on: ubuntu-latest
+    container:
+      image:
+        image: ekidd/rust-musl-builder
+        options: -v /__w/vim-clap/vim-clap:/home/rust/src
+      steps:
+        - uses: actions/checkout@v2
+        - name: Build static binary
+          run: cargo build --release && ls target
+
   cpoptions_checker:
     strategy:
       fail-fast: false
