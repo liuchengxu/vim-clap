@@ -402,7 +402,9 @@ function! clap#floating_win#open() abort
 endfunction
 
 function! s:win_close(winid) abort
-  noautocmd call clap#util#nvim_win_close_safe(a:winid)
+  " Removed `noautocmd`, some user-defined autocmd might be interrupted. Ref #472
+  " The interesting thing is Vim's popup won't be affected.
+  call clap#util#nvim_win_close_safe(a:winid)
 endfunction
 
 function! clap#floating_win#close() abort
