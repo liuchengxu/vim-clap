@@ -6,9 +6,8 @@ jobs:
   container:
     runs-on: ubuntu-latest
     container:
-      image:
-        image: ekidd/rust-musl-builder
-        options: -v /__w/vim-clap/vim-clap:/home/rust/src
+      image: ekidd/rust-musl-builder
+      options: -v /__w/vim-clap/vim-clap:/home/rust/src
     steps:
       - uses: actions/checkout@v2
       - name: Build static binary
