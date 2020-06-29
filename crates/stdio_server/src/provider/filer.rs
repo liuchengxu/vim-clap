@@ -1,8 +1,9 @@
-use super::{write_response, Message};
 use crate::session::{
-    build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
-    SessionContext, SessionEvent,
+    HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session, SessionContext,
+    SessionEvent,
 };
+use crate::utils::build_abs_path;
+use crate::{write_response, Message};
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use icon::prepend_filer_icon;
@@ -118,7 +119,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub(super) fn handle_message(msg: Message) {
+pub fn handle_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 

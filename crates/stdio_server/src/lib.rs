@@ -1,7 +1,8 @@
 mod env;
-mod filer;
+mod provider;
 mod session;
 mod types;
+mod utils;
 
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
@@ -44,9 +45,9 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
             debug!("Recv: {:?}", msg);
             match &msg.method[..] {
-                "filer" => filer::handle_message(msg),
+                "filer" => provider::filer::handle_message(msg),
                 "filer/on_init" => {
-                    session_manager.new_session(msg.session_id, msg, filer::FilerSession)
+                    session_manager.new_session(msg.session_id, msg, provider::filer::FilerSession)
                 }
                 "initialize_global_env" => env::initialize_global(msg),
                 "on_init" => session_manager.new_opaque_session(msg.session_id, msg),
