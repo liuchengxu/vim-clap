@@ -28,7 +28,12 @@ function! s:history_sink(selected) abort
   else
     let fpath = a:selected
   endif
-  execute 'edit' fpath
+
+  if has_key(g:clap, 'open_action')
+    execute g:clap.open_action fpath
+  else
+    execute 'edit' fpath
+  endif
 endfunction
 
 let s:history.syntax = 'clap_files'
