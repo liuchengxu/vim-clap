@@ -54,6 +54,14 @@ function! s:windows.source() abort
   return lines
 endfunction
 
+function! s:windows.on_move() abort
+  let list = matchlist(g:clap.display.getcurline(), '^ *\([0-9]\+\) *\([0-9]\+\)')
+  let winid = win_getid(list[2], list[1])
+  let fpath = bufname(winbufnr(winid))
+  let lnum = has('nvim') ? nvim_win_get_cursor(winid)[0] : line('.', winid)
+  call clap#preview#file_at(fpath, lnum)
+endfunction
+
 function! s:windows.sink(line) abort
   let list = matchlist(a:line, '^ *\([0-9]\+\) *\([0-9]\+\)')
   call s:jump(list[1], list[2])

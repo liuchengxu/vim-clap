@@ -7,6 +7,10 @@ CHANGELOG
 
 - Python dynamic module now can be compiled using stable Rust. ([#471](https://github.com/liuchengxu/vim-clap/pull/471))
 
+### Changed
+
+- Remove `noautocmd` when closing neovim's floating win for clap. [#472](https://github.com/liuchengxu/vim-clap/issues/472)
+
 ## [0.19] 2020-06-28
 
 ### Added
