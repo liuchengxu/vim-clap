@@ -1,7 +1,7 @@
-scriptencoding utf-8
-
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Vim popup UI and interaction.
+
+scriptencoding utf-8
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim

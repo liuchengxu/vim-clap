@@ -6,6 +6,11 @@ CHANGELOG
 ### Added
 
 - Python dynamic module now can be compiled using stable Rust. ([#471](https://github.com/liuchengxu/vim-clap/pull/471))
+- Add `windows` preview support. ([#473](https://github.com/liuchengxu/vim-clap/pull/473))
+
+### Fixed
+
+- Fix `history` provider `open_action` support. ([#474](https://github.com/liuchengxu/vim-clap/pull/474))
 
 ### Changed
 
