@@ -1,3 +1,4 @@
+" Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: List the buffer commits.
 
 let s:save_cpo = &cpoptions
@@ -42,7 +43,7 @@ function! s:bcommits.on_move() abort
     let info = info[:60]
   endif
 
-  call clap#preview#show_with_line_highlight(info, 'diff', 0)
+  call clap#preview#show_with_line_highlight(info, 'diff', len(info)+1)
   call clap#preview#highlight_header()
 endfunction
 
