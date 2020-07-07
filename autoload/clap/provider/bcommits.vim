@@ -18,13 +18,7 @@ function! s:bcommits.source() abort
   endif
 
   let s:current = bufname(g:clap.start.bufnr)
-  let managed = 0
-  if !empty(s:current)
-    call system('git show '.s:current.' 2> '.(has('win32') ? 'nul' : '/dev/null'))
-    let managed = !v:shell_error
-  endif
-
-  if !managed
+  if empty(s:current)
     call clap#helper#echo_error('The current buffer is not in the working tree' . s:current)
   endif
   let s:source = 'git log ''--color=never'' ''--date=short'' ''--format=%cd %h%d %s (%an)'' ''--follow'' ''--'' '.s:current
@@ -36,7 +30,7 @@ function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
   let sha=matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
 
-  let l:prev = g:FindPrev(sha)
+  let l:prev = s:find_prev(sha)
   let gitdiff = 'git diff --color=never ' . l:sha . ' ' . l:prev . ' -- ' . ' '.s:current
   let info = split(system(l:gitdiff), '\n')
   if len(info) > 60
@@ -50,7 +44,7 @@ endfunction
 function! s:bcommits.sink(line) abort
   let s:current = bufname(g:clap.start.bufnr)
   let sha=matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
-  let prev = g:FindPrev(sha)
+  let prev = s:find_prev(sha)
 
   let gitdiff = '!git diff --color=never ' . ' ' . sha . ' ' . prev . ' -- ' . s:current
   vertical botright new
@@ -63,7 +57,7 @@ function! s:bcommits.sink(line) abort
   setlocal nomodifiable
 endfunction
 
-function! g:FindPrev(ver) abort
+function! s:find_prev(ver) abort
   let shas=split(system('git log --format=format:%h'), "\n")
   let idx=0
   let prev='master'
