@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:commits = {}
-let s:commits.syntax = 'clap_diff'
 function! s:commits.source() abort
   let s:git_root = clap#path#get_git_root()
   if empty(s:git_root)
@@ -66,7 +65,7 @@ function! s:commits.sink(line) abort
   setlocal nomodifiable
 endfunction
 
-let s:commits.syntax = 'clap_commits'
+let s:commits.syntax = 'clap_diff'
 
 let g:clap#provider#commits# = s:commits
 
