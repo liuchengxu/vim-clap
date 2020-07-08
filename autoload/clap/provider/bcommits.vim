@@ -7,10 +7,12 @@ set cpoptions&vim
 let s:bcommits = {}
 let s:bcommits.syntax = 'clap_diff'
 
-let s:current = bufname(g:clap.start.bufnr)
+let s:current = ''
 let s:begin = '^[^0-9]*[0-9]\{4}-[0-9]\{2}-[0-9]\{2}\s\+'
+let s:shas = []
 
 function! s:bcommits.source() abort
+  let s:shas = split(system('git log --format=format:%h'), "\n")
   let s:git_root = clap#path#get_git_root()
   if empty(s:git_root)
     call g:clap.abort('Not in git repository')
@@ -19,19 +21,21 @@ function! s:bcommits.source() abort
 
   let s:current = bufname(g:clap.start.bufnr)
   if empty(s:current)
-    call clap#helper#echo_error('The current buffer is not in the working tree' . s:current)
+    return ['The current buffer is not in the working tree' . s:current]
+  else
+    call system('git show '.s:current.' 2> '.(has('win32') ? 'nul' : '/dev/null'))
   endif
-  let s:source = 'git log ''--color=never'' ''--date=short'' ''--format=%cd %h%d %s (%an)'' ''--follow'' ''--'' '.s:current
+  let s:source = "git log '--color=never' '--date=short' '--format=%cd %h%d %s (%an)' '--follow' '--' ".s:current
   return split(system(s:source), "\n")
 endfunction
 
 
 function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
-  let sha=matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
+  let sha = matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
 
-  let l:prev = s:find_prev(sha)
-  let gitdiff = 'git diff --color=never ' . l:sha . ' ' . l:prev . ' -- ' . ' '.s:current
+  let prev = s:find_prev(sha)
+  let gitdiff = 'git diff --color=never ' . sha . ' ' . prev . ' -- ' . ' '.s:current
   let info = split(system(l:gitdiff), '\n')
   if len(info) > 60
     let info = info[:60]
@@ -43,7 +47,7 @@ endfunction
 
 function! s:bcommits.sink(line) abort
   let s:current = bufname(g:clap.start.bufnr)
-  let sha=matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
+  let sha = matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
   let prev = s:find_prev(sha)
 
   let gitdiff = '!git diff --color=never ' . ' ' . sha . ' ' . prev . ' -- ' . s:current
@@ -58,13 +62,15 @@ function! s:bcommits.sink(line) abort
 endfunction
 
 function! s:find_prev(ver) abort
-  let shas=split(system('git log --format=format:%h'), "\n")
-  let idx=0
-  let prev='master'
-  for commit in shas
+  if len(s:shas) <= 0
+    let s:shas = split(system('git log --format=format:%h'), "\n")
+  endif
+  let idx = 0
+  let prev = 'master'
+  for commit in s:shas
     if commit == a:ver
-      if idx + 1 < len(shas)
-        let prev = shas[idx+1]
+      if idx + 1 < len(s:shas)
+        let prev = s:shas[idx+1]
       endif
       return prev
     endif
