@@ -33,9 +33,6 @@ function! s:commits.source() abort
   return source
 endfunction
 
-function! s:commits.sink(line) abort
-endfunction
-
 let s:begin = '^[^0-9]*[0-9]\{4}-[0-9]\{2}-[0-9]\{2}\s\+'
 function! s:commits.on_move() abort
   let cur_line = g:clap.display.getcurline()
