@@ -26,7 +26,7 @@ function! s:bcommits.source() abort
     call system('git show '.s:current.' 2> '.(has('win32') ? 'nul' : '/dev/null'))
   endif
   let s:source = "git log '--color=never' '--date=short' '--format=%cd %h%d %s (%an)' '--follow' '--' ".s:current
-  return split(system(s:source), "\n")
+  return s:source
 endfunction
 
 

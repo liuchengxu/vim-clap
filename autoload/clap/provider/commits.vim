@@ -30,7 +30,7 @@ function! s:commits.source() abort
   else
     let source .= ' --graph'
   endif
-  return split(system(source), "\n")
+  return source
 endfunction
 
 function! s:commits.sink(line) abort
