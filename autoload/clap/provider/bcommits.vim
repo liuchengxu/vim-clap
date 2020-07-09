@@ -5,54 +5,42 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:bcommits = {}
-let s:bcommits.syntax = 'clap_diff'
-
-let s:current = ''
-let s:begin = '^[^0-9]*[0-9]\{4}-[0-9]\{2}-[0-9]\{2}\s\+'
-let s:shas = []
 
 function! s:bcommits.source() abort
-  let s:shas = split(system('git log --format=format:%h'), "\n")
-  let s:git_root = clap#path#get_git_root()
-  if empty(s:git_root)
-    call g:clap.abort('Not in git repository')
-    return
-  endif
-
-  let s:current = bufname(g:clap.start.bufnr)
-  if empty(s:current)
-    return ['The current buffer is not in the working tree' . s:current]
-  else
-    call system('git show '.s:current.' 2> '.(has('win32') ? 'nul' : '/dev/null'))
-  endif
-  let s:source = "git log '--color=never' '--date=short' '--format=%cd %h%d %s (%an)' '--follow' '--' ".s:current
-  return s:source
+  return clap#provider#commits#source_common(v:true)
 endfunction
 
 function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
-  let sha = matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
-  let prev = s:find_prev(sha)
-  let cmd = 'git diff --color=never ' . sha . ' ' . prev . ' -- '.s:current
+  let rev = clap#provider#commits#parse_rev(cur_line)
+  let prev = s:find_prev(rev)
+  let cmd = 'git diff --color=never ' . rev . ' ' . prev . ' -- '.bufname(g:clap.start.bufnr)
   call clap#provider#commits#on_move_common(cmd)
 endfunction
 
 function! s:bcommits.sink(line) abort
-  let sha = matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
-  let prev = s:find_prev(sha)
-  let cmd = '!git diff --color=never '.sha.' '.prev.' -- '.bufname(g:clap.start.bufnr)
+  let rev = clap#provider#commits#parse_rev(a:line)
+  let prev = s:find_prev(rev)
+  let cmd = printf('!git diff --color=never %s %s -- %s', rev, prev, bufname(g:clap.start.bufnr))
   call clap#provider#commits#sink_inner(cmd)
 endfunction
 
-function! s:find_prev(ver) abort
-  if len(s:shas) <= 0
+function! s:bcommits.on_exit() abort
+  if exists('s:shas')
+    unlet s:shas
+  endif
+endfunction
+
+function! s:find_prev(cur_rev) abort
+  if !exists('s:shas')
     let s:shas = split(system('git log --format=format:%h'), "\n")
+    let s:shas_len = len(s:shas)
   endif
   let idx = 0
   let prev = 'master'
   for commit in s:shas
-    if commit == a:ver
-      if idx + 1 < len(s:shas)
+    if commit == a:cur_rev
+      if idx + 1 < s:shas_len
         let prev = s:shas[idx+1]
       endif
       return prev
@@ -62,6 +50,7 @@ function! s:find_prev(ver) abort
   return prev
 endfunction
 
+let s:bcommits.syntax = 'clap_diff'
 let g:clap#provider#bcommits# = s:bcommits
 
 let &cpoptions = s:save_cpo
