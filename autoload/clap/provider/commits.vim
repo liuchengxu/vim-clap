@@ -48,18 +48,21 @@ function! s:commits.on_move() abort
   call clap#preview#highlight_header()
 endfunction
 
-function! s:commits.sink(line) abort
-  let s:current = bufname(g:clap.start.bufnr)
-  let sha=matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
-  let gitshow = '!git show ' .  sha
+function! clap#provider#commits#sink_inner(bang_cmd) abort
   vertical botright new
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodeline
 
   setlocal modifiable
-  silent execute 'read' escape(gitshow, '%')
+  silent execute 'read' escape(a:bang_cmd, '%')
   normal! gg"_dd
   setfiletype diff
   setlocal nomodifiable
+endfunction
+
+function! s:commits.sink(line) abort
+  let sha = matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
+  let cmd = '!git show '.sha
+  call clap#provider#commits#sink_inner(cmd)
 endfunction
 
 let s:commits.syntax = 'clap_diff'
