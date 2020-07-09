@@ -29,20 +29,12 @@ function! s:bcommits.source() abort
   return s:source
 endfunction
 
-
 function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
   let sha = matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
-
   let prev = s:find_prev(sha)
-  let gitdiff = 'git diff --color=never ' . sha . ' ' . prev . ' -- ' . ' '.s:current
-  let info = split(system(l:gitdiff), '\n')
-  if len(info) > 60
-    let info = info[:60]
-  endif
-
-  call clap#preview#show_with_line_highlight(info, 'diff', len(info)+1)
-  call clap#preview#highlight_header()
+  let cmd = 'git diff --color=never ' . sha . ' ' . prev . ' -- '.s:current
+  call clap#provider#commits#on_move_common(cmd)
 endfunction
 
 function! s:bcommits.sink(line) abort

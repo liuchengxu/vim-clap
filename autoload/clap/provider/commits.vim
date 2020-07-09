@@ -4,7 +4,10 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:begin = '^[^0-9]*[0-9]\{4}-[0-9]\{2}-[0-9]\{2}\s\+'
+
 let s:commits = {}
+
 function! s:commits.source() abort
   let s:git_root = clap#path#get_git_root()
   if empty(s:git_root)
@@ -33,19 +36,17 @@ function! s:commits.source() abort
   return source
 endfunction
 
-let s:begin = '^[^0-9]*[0-9]\{4}-[0-9]\{2}-[0-9]\{2}\s\+'
+function! clap#provider#commits#on_move_common(cmd) abort
+  let lines = split(system(a:cmd), '\n')
+  let lines = lines[:60]
+  call clap#preview#show_with_line_highlight(lines, 'diff', len(lines)+1)
+  call clap#preview#highlight_header()
+endfunction
+
 function! s:commits.on_move() abort
   let cur_line = g:clap.display.getcurline()
-  let sha=matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
-
-  let gitshow = 'git show ' . sha
-  let info = split(system(l:gitshow), '\n')
-  if len(info) > 60
-    let info = info[:60]
-  endif
-
-  call clap#preview#show_with_line_highlight(info, 'diff', len(info)+1)
-  call clap#preview#highlight_header()
+  let sha = matchstr(cur_line, s:begin.'\zs[a-f0-9]\+' )
+  call clap#provider#commits#on_move_common('git show '.sha)
 endfunction
 
 function! clap#provider#commits#sink_inner(bang_cmd) abort
