@@ -46,19 +46,10 @@ function! s:bcommits.on_move() abort
 endfunction
 
 function! s:bcommits.sink(line) abort
-  let s:current = bufname(g:clap.start.bufnr)
   let sha = matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
   let prev = s:find_prev(sha)
-
-  let gitdiff = '!git diff --color=never ' . ' ' . sha . ' ' . prev . ' -- ' . s:current
-  vertical botright new
-  setlocal buftype=nofile bufhidden=wipe noswapfile nomodeline
-
-  setlocal modifiable
-  silent execute 'read' escape(gitdiff, '%')
-  normal! gg"_dd
-  setfiletype diff
-  setlocal nomodifiable
+  let cmd = '!git diff --color=never '.sha.' '.prev.' -- '.bufname(g:clap.start.bufnr)
+  call clap#provider#commits#sink_inner(cmd)
 endfunction
 
 function! s:find_prev(ver) abort
