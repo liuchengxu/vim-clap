@@ -10,19 +10,19 @@ function! s:bcommits.source() abort
   return clap#provider#commits#source_common(v:true)
 endfunction
 
+function! s:into_git_diff_cmd(line) abort
+  let rev = clap#provider#commits#parse_rev(a:line)
+  let prev = s:find_prev(rev)
+  return printf('git diff --color=never %s %s -- %s', rev, prev, bufname(g:clap.start.bufnr))
+endfunction
+
 function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
-  let rev = clap#provider#commits#parse_rev(cur_line)
-  let prev = s:find_prev(rev)
-  let cmd = printf('git diff --color=never %s %s -- %s', rev, prev, bufname(g:clap.start.bufnr))
-  call clap#provider#commits#on_move_common(cmd)
+  call clap#provider#commits#on_move_common(s:into_git_diff_cmd(cur_line))
 endfunction
 
 function! s:bcommits.sink(line) abort
-  let rev = clap#provider#commits#parse_rev(a:line)
-  let prev = s:find_prev(rev)
-  let cmd = printf('!git diff --color=never %s %s -- %s', rev, prev, bufname(g:clap.start.bufnr))
-  call clap#provider#commits#sink_inner(cmd)
+  call clap#provider#commits#sink_inner('!'.s:into_git_diff_cmd(a:line))
 endfunction
 
 function! s:bcommits.on_exit() abort
@@ -45,7 +45,7 @@ function! s:find_prev(cur_rev) abort
       endif
       return prev
     endif
-    let idx = idx+1
+    let idx += 1
   endfor
   return prev
 endfunction
