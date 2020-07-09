@@ -33,7 +33,7 @@ endfunction
 
 function! s:find_prev(cur_rev) abort
   if !exists('s:shas')
-    let s:shas = split(system('git log --format=format:%h'), "\n")
+    let s:shas = systemlist('git log --format=format:%h')
     let s:shas_len = len(s:shas)
   endif
   let idx = 0
