@@ -14,7 +14,7 @@ function! s:bcommits.on_move() abort
   let cur_line = g:clap.display.getcurline()
   let rev = clap#provider#commits#parse_rev(cur_line)
   let prev = s:find_prev(rev)
-  let cmd = 'git diff --color=never ' . rev . ' ' . prev . ' -- '.bufname(g:clap.start.bufnr)
+  let cmd = printf('git diff --color=never %s %s -- %s', rev, prev, bufname(g:clap.start.bufnr))
   call clap#provider#commits#on_move_common(cmd)
 endfunction
 

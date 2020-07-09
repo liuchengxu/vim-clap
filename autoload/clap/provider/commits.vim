@@ -46,7 +46,7 @@ function! clap#provider#commits#on_move_common(cmd) abort
 endfunction
 
 function! clap#provider#commits#parse_rev(line) abort
-  return matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
+  return matchstr(a:line, s:begin.'\zs[a-f0-9]\+')
 endfunction
 
 function! s:commits.on_move() abort
@@ -67,9 +67,8 @@ function! clap#provider#commits#sink_inner(bang_cmd) abort
 endfunction
 
 function! s:commits.sink(line) abort
-  let sha = matchstr(a:line, s:begin.'\zs[a-f0-9]\+' )
-  let cmd = '!git show '.sha
-  call clap#provider#commits#sink_inner(cmd)
+  let rev = clap#provider#commits#parse_rev(a:line)
+  call clap#provider#commits#sink_inner('!git show '.rev)
 endfunction
 
 let s:commits.syntax = 'clap_diff'
