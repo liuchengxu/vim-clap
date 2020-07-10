@@ -41,7 +41,7 @@ endfunction
 function! clap#provider#commits#on_move_common(cmd) abort
   let lines = systemlist(a:cmd)
   let lines = lines[:60]
-  call clap#preview#show_with_line_highlight(lines, 'diff', len(lines)+1)
+  call clap#preview#show_lines(lines, 'diff', -1)
   call clap#preview#highlight_header()
 endfunction
 
