@@ -23,12 +23,8 @@ function! s:all_files() abort
 endfunction
 
 function! s:history_sink(selected) abort
-  if g:clap_enable_icon
-    let fpath = a:selected[4:]
-  else
-    let fpath = a:selected
-  endif
-  execute 'edit' fpath
+  let fpath = g:clap_enable_icon ? a:selected[4:] : a:selected
+  call clap#sink#edit_with_open_action(fpath)
 endfunction
 
 let s:history.syntax = 'clap_files'

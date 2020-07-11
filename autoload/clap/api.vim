@@ -576,6 +576,12 @@ function! s:init_provider() abort
       call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches_number(initial_size)
       call clap#sign#toggle_cursorline()
+
+      " For the providers that return a relatively huge List
+      if self.can_async() && clap#filter#beyond_capacity(initial_size)
+        let g:__clap_forerunner_tempfile = tempname()
+        call writefile(lines, g:__clap_forerunner_tempfile)
+      endif
     endif
   endfunction
 

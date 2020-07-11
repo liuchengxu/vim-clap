@@ -108,14 +108,14 @@ The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provid
 
 Command                                | List                                                | Requirement
 :----                                  | :----                                               | :----
-`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer                  | **[git][git]**
+`Clap bcommits`                        | Git commits for the current buffer                  | **[git][git]**
 `Clap blines`                          | Lines in the current buffer                         | _none_
 `Clap buffers`                         | Open buffers                                        | _none_
 `Clap colors`                          | Colorschemes                                        | _none_
 `Clap command`                         | Command                                             | _none_
 `Clap hist:` or `Clap command_history` | Command history                                     | _none_
 `Clap hist/` or `Clap search_history`  | Search history                                      | _none_
-`Clap commits` **<sup>!</sup>**        | Git commits                                         | **[git][git]**
+`Clap commits`                         | Git commits                                         | **[git][git]**
 `Clap files`                           | Files                                               | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
 `Clap filetypes`                       | File types                                          | _none_
 `Clap gfiles` or `Clap git_files`      | Files managed by git                                | **[git][git]**
@@ -136,7 +136,7 @@ Command                                | List                                   
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
 `Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
-`Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
+`Clap windows`                         | Windows                                             | _none_
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
