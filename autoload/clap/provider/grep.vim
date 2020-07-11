@@ -214,7 +214,7 @@ function! s:grep_on_move() abort
   let preview_lines = s:preview_cache[fpath]['lines'][start : end]
   call insert(preview_lines, fpath)
   let hi_lnum += 1
-  call clap#preview#show_with_line_highlight(preview_lines, s:preview_cache[fpath].filetype, hi_lnum)
+  call clap#preview#show_lines(preview_lines, s:preview_cache[fpath].filetype, hi_lnum)
   call clap#preview#highlight_header()
 endfunction
 

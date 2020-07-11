@@ -45,7 +45,7 @@ function! clap#preview#buffer(lnum, origin_syntax) abort
   let lines = getbufline(g:clap.start.bufnr, start, end)
   call insert(lines, bufname(g:clap.start.bufnr).':'.a:lnum)
   let hi_lnum += 1
-  call clap#preview#show_with_line_highlight(lines, a:origin_syntax, hi_lnum+1)
+  call clap#preview#show_lines(lines, a:origin_syntax, hi_lnum+1)
   call clap#preview#highlight_header()
 endfunction
 
@@ -105,7 +105,7 @@ function! clap#preview#get_range(origin_lnum) abort
   return clap#preview#get_line_range(a:origin_lnum, size)
 endfunction
 
-function! clap#preview#show_with_line_highlight(lines, syntax, hi_lnum) abort
+function! clap#preview#show_lines(lines, syntax, hi_lnum) abort
   call g:clap.preview.show(a:lines)
   call g:clap.preview.set_syntax(a:syntax)
   if a:hi_lnum > 0
