@@ -230,7 +230,7 @@ function! s:filer_handle_on_move_result(result) abort
   endif
 endfunction
 
-function! s:filer_on_move() abort
+function! s:filer.on_move_async() abort
   call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
 endfunction
 
@@ -261,7 +261,6 @@ endfunction
 let s:filer.init = function('s:start_rpc_service')
 let s:filer.sink = function('s:filer_sink')
 let s:filer.syntax = 'clap_filer'
-let s:filer.on_move = function('s:filer_on_move')
 let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.tab_action = function('s:tab_action')
