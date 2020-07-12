@@ -20,6 +20,7 @@ pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum OnMove {
+    Commit(String),
     Files(PathBuf),
     Filer(PathBuf),
     History(PathBuf),
@@ -55,8 +56,7 @@ impl OnMove {
             }
             "filer" => unreachable!("filer has been handled ahead"),
             "proj_tags" => {
-                let (lnum, p) =
-                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
+                let (lnum, p) = extract_proj_tags(&curline).context("can not extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone().into();
                 path.push(&p);
                 Self::ProjTags { path, lnum }
@@ -69,15 +69,19 @@ impl OnMove {
                 Self::Grep { path, lnum }
             }
             "blines" => {
-                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
+                let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
                 let path = context.start_buffer_path.clone().into();
                 Self::BLines { path, lnum }
             }
             "tags" => {
                 let lnum =
-                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
+                    extract_buf_tags_lnum(&curline).context("can not extract buffer tags")?;
                 let path = context.start_buffer_path.clone().into();
                 Self::BufferTags { path, lnum }
+            }
+            "commits" | "bcommits" => {
+                let rev = parse_rev(&curline).context("can not extract rev")?;
+                Self::Commit(rev.into())
             }
             _ => {
                 return Err(anyhow!(
@@ -91,15 +95,16 @@ impl OnMove {
     }
 }
 
-pub struct OnMoveHandler {
+pub struct OnMoveHandler<'a> {
     pub msg_id: u64,
     pub provider_id: ProviderId,
     pub size: usize,
     pub inner: OnMove,
+    pub context: &'a SessionContext,
 }
 
-impl OnMoveHandler {
-    pub fn try_new(msg: Message, context: &SessionContext) -> anyhow::Result<Self> {
+impl<'a> OnMoveHandler<'a> {
+    pub fn try_new(msg: Message, context: &'a SessionContext) -> anyhow::Result<Self> {
         let msg_id = msg.id;
         let provider_id = context.provider_id.clone();
         let curline = msg.get_curline(&provider_id)?;
@@ -109,6 +114,7 @@ impl OnMoveHandler {
                 msg_id,
                 size: provider_id.get_preview_size(),
                 provider_id,
+                context,
                 inner: OnMove::Filer(path),
             });
         }
@@ -116,6 +122,7 @@ impl OnMoveHandler {
             msg_id,
             size: provider_id.get_preview_size(),
             provider_id,
+            context,
             inner: OnMove::new(curline, context)?,
         })
     }
@@ -136,6 +143,9 @@ impl OnMoveHandler {
             Files(path) | Filer(path) | History(path) => {
                 self.preview_file(&path)?;
             }
+            Commit(rev) => {
+                self.show_commit(rev)?;
+            }
         }
 
         Ok(())
@@ -148,6 +158,20 @@ impl OnMoveHandler {
                 "provider_id": provider_id,
                 "result": result
         }));
+    }
+
+    fn show_commit(&self, rev: &str) -> Result<()> {
+        let stdout = self.context.execute(&format!("git show {}", rev))?;
+        let stdout_str = String::from_utf8_lossy(&stdout);
+        let lines = stdout_str
+            .split('\n')
+            .take(self.provider_id.get_preview_size() * 2)
+            .collect::<Vec<_>>();
+        self.send_response(json!({
+          "event": "on_move",
+          "lines": lines,
+        }));
+        Ok(())
     }
 
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {

@@ -2,10 +2,12 @@
 
 use anyhow::{anyhow, Result};
 use std::collections::hash_map::DefaultHasher;
+use std::ffi::OsStr;
 use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
 use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 
 pub const CLAP_CACHE: &str = "vim.clap";
 
@@ -122,6 +124,35 @@ pub fn read_preview_lines<P: AsRef<Path>>(
             .take(end - start),
         hl_line,
     ))
+}
+
+/// Converts `shell_cmd` to `Command` with optional working directory.
+pub fn as_std_command<P: AsRef<Path>>(shell_cmd: impl AsRef<OsStr>, dir: Option<P>) -> Command {
+    let mut cmd = if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg(shell_cmd.as_ref());
+        cmd
+    } else {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c").arg(shell_cmd.as_ref());
+        cmd
+    };
+
+    if let Some(d) = dir {
+        cmd.current_dir(d);
+    }
+
+    cmd
+}
+
+/// Executes the `shell_cmd` and returns the output.
+pub fn execute_at<S, P>(shell_cmd: S, dir: Option<P>) -> Result<Output>
+where
+    S: AsRef<OsStr>,
+    P: AsRef<Path>,
+{
+    let mut cmd = as_std_command(shell_cmd, dir);
+    Ok(cmd.output()?)
 }
 
 /// Combine json and println macro.

@@ -21,6 +21,10 @@ function! s:bcommits.on_move() abort
   call clap#provider#commits#on_move_common(s:into_git_diff_cmd(cur_line))
 endfunction
 
+function! s:bcommits.on_move_async() abort
+  call clap#client#call_on_move('on_move', function('clap#provider#commits#on_move_callback'))
+endfunction
+
 function! s:bcommits.sink(line) abort
   call clap#provider#commits#sink_inner('!'.s:into_git_diff_cmd(a:line))
 endfunction

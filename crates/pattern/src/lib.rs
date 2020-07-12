@@ -17,6 +17,8 @@ lazy_static! {
   static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
 
   static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*)\]").unwrap();
+
+  static ref COMMIT_RE: Regex = Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap();
 }
 
 /// Extract tag name from the line in tags provider.
@@ -83,6 +85,11 @@ fn parse_lnum(lnum: &str) -> Option<usize> {
     }
 }
 
+pub fn parse_rev(line: &str) -> Option<&str> {
+    let cap = COMMIT_RE.captures(line)?;
+    cap.get(1).map(|x| x.as_str())
+}
+
 pub fn extract_proj_tags(line: &str) -> Option<(usize, &str)> {
     let cap = PROJ_TAGS.captures(line)?;
     let lnum = cap.get(2).map(|x| x.as_str()).and_then(parse_lnum)?;
@@ -138,12 +145,23 @@ mod tests {
     #[test]
     fn test_buffer_tags_regexp() {
         let line = r#" extract_fpath_from_grep_line:58  [function]  pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {"#;
-        println!("{:?}", extract_buf_tags_lnum(line));
+        assert_eq!(Some(58), extract_buf_tags_lnum(line));
     }
 
     #[test]
     fn test_blines_lnum() {
         let line = r#" 103       call clap#helper#echo_error('Provider without source must specify on_moved, but only has: '.keys(provider_info))"#;
-        println!("{:?}", extract_blines_lnum(line));
+        assert_eq!(Some(103), extract_blines_lnum(line));
+    }
+
+    #[test]
+    fn test_parse_rev() {
+        let line =
+            "* 2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
+        assert_eq!(parse_rev(line), Some("8ed4391"));
+        let line = "2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
+        assert_eq!(parse_rev(line), Some("8ed4391"));
+        let line = "2019-12-29 3f0d00c Add forerunner job status sign and a delay timer for running maple (#184) (Liu-Cheng Xu)";
+        assert_eq!(parse_rev(line), Some("3f0d00c"));
     }
 }
