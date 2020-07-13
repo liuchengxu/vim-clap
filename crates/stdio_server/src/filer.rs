@@ -88,6 +88,7 @@ impl HandleMessage for FilerMessageHandler {
                     msg_id: msg.id,
                     size: provider_id.get_preview_size(),
                     provider_id,
+                    context,
                     inner: OnMove::Filer(path),
                 };
                 on_move_handler.handle().unwrap();

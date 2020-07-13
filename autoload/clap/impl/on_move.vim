@@ -37,10 +37,7 @@ if clap#maple#is_available()
   endfunction
 
   function! s:dispatch_on_move_impl() abort
-    if g:clap.provider.id ==# 'filer'
-      call g:clap.provider._().on_move()
-      return
-    elseif index(s:async_preview_implemented, g:clap.provider.id) > -1
+    if index(s:async_preview_implemented, g:clap.provider.id) > -1
       return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
     endif
     call s:sync_run_with_delay()
@@ -55,7 +52,9 @@ function! clap#impl#on_move#invoke() abort
   if get(g:, '__clap_has_no_matches', v:false)
     return
   endif
-  if has_key(g:clap.provider._(), 'on_move')
+  if has_key(g:clap.provider._(), 'on_move_async')
+    call g:clap.provider._().on_move_async()
+  elseif has_key(g:clap.provider._(), 'on_move')
     call s:dispatch_on_move_impl()
   endif
 endfunction
