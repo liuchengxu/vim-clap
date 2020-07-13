@@ -55,6 +55,16 @@ function! s:commits.on_move() abort
   call clap#provider#commits#on_move_common('git show '.rev)
 endfunction
 
+function! clap#provider#commits#on_move_callback(result) abort
+  let lines = a:result.lines
+  call clap#preview#show_lines(lines, 'diff', -1)
+  call clap#preview#highlight_header()
+endfunction
+
+function! s:commits.on_move_async() abort
+  call clap#client#call_on_move('on_move', function('clap#provider#commits#on_move_callback'))
+endfunction
+
 function! clap#provider#commits#sink_inner(bang_cmd) abort
   vertical botright new
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodeline

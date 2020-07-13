@@ -8,6 +8,7 @@ CHANGELOG
 - Python dynamic module now can be compiled using stable Rust. ([#471](https://github.com/liuchengxu/vim-clap/pull/471))
 - Add `windows` preview support. ([#473](https://github.com/liuchengxu/vim-clap/pull/473))
 - Impl `commits` and `bcommits` provider. ([#477](https://github.com/liuchengxu/vim-clap/pull/477)) @ray-x
+- Add new provider property `on_move_async`. ([#481](https://github.com/liuchengxu/vim-clap/pull/481))
 
 ### Fixed
 

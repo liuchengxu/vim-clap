@@ -13,6 +13,14 @@ pub struct SessionContext {
     pub source_list: Arc<Mutex<Option<Vec<String>>>>,
 }
 
+impl SessionContext {
+    // Executes the command `cmd` and returns the raw bytes of stdout.
+    pub fn execute(&self, cmd: &str) -> Result<Vec<u8>> {
+        let out = utility::execute_at(cmd, Some(&self.cwd))?;
+        Ok(out.stdout)
+    }
+}
+
 impl From<Message> for SessionContext {
     fn from(msg: Message) -> Self {
         log::debug!("recv msg for SessionContext: {:?}", msg);

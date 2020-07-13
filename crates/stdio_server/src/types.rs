@@ -96,6 +96,8 @@ impl Message {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProviderId(String);
 
+const NO_ICON_PROVIDERS: [&str; 3] = ["blines", "commits", "bcommits"];
+
 impl ProviderId {
     pub fn as_str(&self) -> &str {
         &self.0
@@ -118,7 +120,7 @@ impl ProviderId {
     /// Returns true if the provider can have icon.
     #[inline]
     pub fn has_icon_support(&self) -> bool {
-        &self.0 != "blines"
+        !NO_ICON_PROVIDERS.contains(&self.as_str())
     }
 }
 
