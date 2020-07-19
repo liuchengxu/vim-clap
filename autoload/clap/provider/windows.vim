@@ -48,7 +48,7 @@ function! s:windows.source() abort
 endfunction
 
 function! s:parse_win(line) abort
-  let tab_win = matchlist(g:clap.display.getcurline(), '^ *\([0-9]\+\) *\([0-9]\+\)')
+  let tab_win = matchlist(a:line, '^ *\([0-9]\+\) *\([0-9]\+\)')
   return [tab_win[2], tab_win[1]]
 endfunction
 
