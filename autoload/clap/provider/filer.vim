@@ -238,22 +238,38 @@ function! s:filer_on_no_matches(input) abort
   execute 'edit' a:input
 endfunction
 
+function! s:set_initial_current_dir() abort
+  if empty(g:clap.provider.args)
+    let s:current_dir = getcwd().'/'
+    return
+  endif
+
+  let maybe_dir = g:clap.provider.args[0]
+  " %:p:h, % is actually g:clap.start.bufnr
+  if maybe_dir =~# '^%.+'
+    let m = matchstr(maybe_dir, '^%\zs\(.*\)')
+    let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
+  elseif isdirectory(expand(maybe_dir))
+    let target_dir = maybe_dir
+  else
+    let s:current_dir = getcwd().'/'
+    return
+  endif
+
+  if target_dir[-1:] ==# '/'
+    let s:current_dir = expand(target_dir)
+  else
+    let s:current_dir = expand(target_dir).'/'
+  endif
+endfunction
+
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:filer_error_cache = {}
   let s:filer_empty_cache = {}
   let s:last_input = ''
-  if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
-    let target_dir = g:clap.provider.args[0]
-    if target_dir[-1:] ==# '/'
-      let s:current_dir = expand(target_dir)
-    else
-      let s:current_dir = expand(target_dir).'/'
-    endif
-  else
-    let s:current_dir = getcwd().'/'
-  endif
   let s:winwidth = winwidth(g:clap.display.winid)
+  call s:set_initial_current_dir()
   call s:set_prompt()
   call clap#client#call_on_init('filer/on_init', function('s:handle_result'), {'cwd': s:current_dir})
 endfunction
