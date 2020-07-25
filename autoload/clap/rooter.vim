@@ -20,21 +20,25 @@ endfunction
 " Skip if g:__clap_provider_cwd already exists as it only has be done once in
 " each provider context.
 function! clap#rooter#try_set_cwd() abort
-  if !exists('g:__clap_provider_cwd') && !empty(g:clap.provider.args)
-    let dir = g:clap.provider.args[-1]
+  if !exists('g:__clap_provider_cwd')
+    if !empty(g:clap.provider.args)
+      let dir = g:clap.provider.args[-1]
 
-    " %:p:h, % is actually g:clap.start.bufnr
-    if dir =~# '^%.+'
-      let m = matchstr(dir, '^%\zs\(.*\)')
-      let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
-      call s:set_provider_cwd(target_dir)
-      let g:clap.provider.args = g:clap.provider.args[:-2]
-      return
-    endif
+      " %:p:h, % is actually g:clap.start.bufnr
+      if dir =~# '^%.\+'
+        let m = matchstr(dir, '^%\zs\(.*\)')
+        let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
+        call s:set_provider_cwd(target_dir)
+        let g:clap.provider.args = g:clap.provider.args[:-2]
+        return
+      endif
 
-    if isdirectory(expand(dir))
-      call s:set_provider_cwd(dir)
-      let g:clap.provider.args = g:clap.provider.args[:-2]
+      if isdirectory(expand(dir))
+        call s:set_provider_cwd(dir)
+        let g:clap.provider.args = g:clap.provider.args[:-2]
+      endif
+    else
+      let g:__clap_provider_cwd = clap#path#project_root_or_default(g:clap.start.bufnr)
     endif
   endif
 endfunction
