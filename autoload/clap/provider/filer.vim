@@ -246,7 +246,7 @@ function! s:set_initial_current_dir() abort
 
   let maybe_dir = g:clap.provider.args[0]
   " %:p:h, % is actually g:clap.start.bufnr
-  if maybe_dir =~# '^%.+'
+  if maybe_dir =~# '^%.\+'
     let m = matchstr(maybe_dir, '^%\zs\(.*\)')
     let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
   elseif isdirectory(expand(maybe_dir))
