@@ -11,8 +11,7 @@ jobs:
     steps:
       - name: Build static binary
         run: |
-          sudo chown -R rust:rust /github/home/.rustup
-          cargo build --release
+          sudo cargo build --release
           ls target
 
   cpoptions_checker:
