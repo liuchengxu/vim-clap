@@ -49,7 +49,7 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: maple
-            asset_name: maple-x86_64-unknown-linux-gnu
+            asset_name: maple-x86_64-unknown-linux-musl
 
           - os: windows-latest
             artifact_name: maple.exe
@@ -66,8 +66,36 @@ jobs:
 
     - uses: actions/checkout@v1
 
+
+  build-static-maple:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Build static binary
+        run: |
+          ls -al
+          ./maple version
+
+
     - name: Build
+      if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
       run: cargo build --release --locked
+
+    - name: Build static binary
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        docker --version
+        docker build -t build-maple-static-binary-image .
+        docker run --name build-maple-static-binary build-maple-static-binary-image
+        mkdir -p target/release/
+        docker cp build-maple-static-binary:/home/rust/src/target/x86_64-unknown-linux-musl/release/maple ./target/release/maple
 
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v1-release

@@ -42,7 +42,7 @@ main() {
   arch=$(uname -sm)
   case "${arch}" in
       "Linux x86_64")
-        try_download "$APP"-x86_64-unknown-linux-gnu ;;
+        try_download "$APP"-x86_64-unknown-linux-musl ;;
       "Darwin x86_64")
         try_download "$APP"-x86_64-apple-darwin ;;
       *)
