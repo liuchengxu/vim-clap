@@ -22,7 +22,7 @@ jobs:
           ls -al
           docker cp build-maple-static:/home/rust/src/target/x86_64-unknown-linux-musl/release/maple ./
           ls -al
-          ./maple --version
+          ./maple version
 
   cpoptions_checker:
     strategy:
