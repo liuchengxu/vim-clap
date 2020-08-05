@@ -5,13 +5,17 @@ on: [push, pull_request]
 jobs:
   container:
     runs-on: ubuntu-latest
-    container:
-      image: ekidd/rust-musl-builder
-      options: -v /__w/vim-clap/vim-clap:/home/rust/src
     steps:
+      - name: Checkout
+        uses: actions/checkout@master
       - name: Build static binary
         run: |
-          sudo cargo build --release
+          sudo apt-get update
+          sudo apt-get remove docker docker-engine docker.io
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
+          docker --version
+          docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
           ls target
 
   cpoptions_checker:
