@@ -17,7 +17,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io
           docker --version
-          docker run --rm -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
+          sudo docker run --rm -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
           ls target
 
   cpoptions_checker:
