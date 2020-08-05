@@ -10,10 +10,8 @@ jobs:
         uses: actions/checkout@master
       - name: Build static binary
         run: |
-          sudo apt-get update
-          sudo apt-get remove docker docker-engine docker.io
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
           docker --version
           docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
           ls target
