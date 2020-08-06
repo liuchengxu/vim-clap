@@ -14,6 +14,7 @@ CHANGELOG
 
 - Make the indicator winwidth a bit adpative when using the `relative` layout.
 - Ensure the sign always visiable when running maple via job.
+- Build static Rust binary for Linux. [#469](https://github.com/liuchengxu/vim-clap/issues/469)
 
 ### Fixed
 
