@@ -67,7 +67,7 @@ pub(super) fn get_asset_name() -> Result<String> {
     let asset_name = if cfg!(target_os = "macos") {
         "maple-x86_64-apple-darwin"
     } else if cfg!(target_os = "linux") {
-        "maple-x86_64-unknown-linux-gnu"
+        "maple-x86_64-unknown-linux-musl"
     } else if cfg!(target_os = "windows") {
         "maple-x86_64-pc-windows-msvc"
     } else {
