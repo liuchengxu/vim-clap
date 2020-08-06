@@ -3,6 +3,8 @@ CHANGELOG
 
 ## [unreleased]
 
+## [0.20] 2020-08-06
+
 ### Added
 
 - Python dynamic module now can be compiled using stable Rust. ([#471](https://github.com/liuchengxu/vim-clap/pull/471))
