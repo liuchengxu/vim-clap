@@ -1,3 +1,5 @@
+# Dockerfile for building maple static binary
+
 # Our first FROM statement declares the build environment.
 FROM ekidd/rust-musl-builder AS builder
 

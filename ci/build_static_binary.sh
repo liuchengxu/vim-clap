@@ -16,4 +16,4 @@ docker run --name build-maple-static-binary build-maple-static-binary-image
 # Move the compiled binary to local fs.
 mkdir -p target/release/
 docker cp build-maple-static-binary:/home/rust/src/target/x86_64-unknown-linux-musl/release/maple ./target/release/maple
-
+./target/release/maple version
