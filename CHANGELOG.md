@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Fixed
+
+- Fix `:Clap install-binary` does not work correctly on Windows.
+
 ## [0.20] 2020-08-06
 
 ### Added
