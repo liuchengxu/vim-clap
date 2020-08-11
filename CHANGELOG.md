@@ -3,6 +3,10 @@ CHANGELOG
 
 ## [unreleased]
 
+### Improved
+
+- The open action `ctrl-t`, `ctrl-v`, `ctrl-t` now supports the multiple files. ([#496](https://github.com/liuchengxu/vim-clap/issues/496))
+
 ### Fixed
 
 - Fix `:Clap install-binary` does not work correctly on Windows.
@@ -16,6 +20,7 @@ CHANGELOG
 - Impl `commits` and `bcommits` provider. ([#477](https://github.com/liuchengxu/vim-clap/pull/477)) @ray-x
 - Add new provider property `on_move_async`. ([#481](https://github.com/liuchengxu/vim-clap/pull/481))
 - Support expanding `%` now, e.g., `:Clap files %:p:h`.
+- Build static Rust binary for Linux. [#469](https://github.com/liuchengxu/vim-clap/issues/469)
 
 ### Fixed
 
@@ -36,7 +41,6 @@ CHANGELOG
 
 - Make the indicator winwidth a bit adpative when using the `relative` layout.
 - Ensure the sign always visiable when running maple via job.
-- Build static Rust binary for Linux. [#469](https://github.com/liuchengxu/vim-clap/issues/469)
 
 ### Fixed
 
