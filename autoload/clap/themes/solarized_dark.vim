@@ -83,7 +83,7 @@ let g:clap_fuzzy_match_hl_groups = s:fuzzy
 let s:clap_file_style = 'ctermfg=' . s:base0.xterm . ' ctermbg=NONE guifg=' . s:base0.hex . ' guibg=NONE'
 execute 'highlight ClapFile '. s:clap_file_style
 
-let g:clap#themes#solarized_light#palette = s:palette
+let g:clap#themes#solarized_dark#palette = s:palette
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
