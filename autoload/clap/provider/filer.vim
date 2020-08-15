@@ -61,11 +61,11 @@ function! s:set_prompt() abort
 endfunction
 
 if has('win32')
-  function! s:is_root_directory(dir)
+  function! s:is_root_directory(dir) abort
     return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
   endfunction
 else
-  function! s:is_root_directory(dir)
+  function! s:is_root_directory(dir) abort
     return a:dir ==# s:PATH_SEPERATOR
   endfunction
 endif
@@ -250,11 +250,11 @@ function! s:filer_on_no_matches(input) abort
 endfunction
 
 if has('win32')
-  function! s:normalize_path_sep(path)
+  function! s:normalize_path_sep(path) abort
     return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'')
   endfunction
 else
-  function! s:normalize_path_sep(path)
+  function! s:normalize_path_sep(path) abort
     return a:path
   endfunction
 endif
