@@ -89,18 +89,31 @@ function! s:filter_or_send_message() abort
   endif
 endfunction
 
-function! s:bs_action() abort
-  call clap#highlight#clear()
+if has('nvim')
+  function! s:bs_action() abort
+    call clap#highlight#clear()
 
-  let input = g:clap.input.get()
-  if input ==# ''
-    call s:goto_parent()
-  else
-    call g:clap.input.set(input[:-2])
-    call s:filter_or_send_message()
-  endif
-  return ''
-endfunction
+    let input = g:clap.input.get()
+    if input ==# ''
+      call s:goto_parent()
+    else
+      call g:clap.input.set(input[:-2])
+      call s:filter_or_send_message()
+    endif
+    return ''
+  endfunction
+else
+  function! s:bs_action(before_bs) abort
+    call clap#highlight#clear()
+
+    if a:before_bs ==# ''
+      call s:goto_parent()
+    else
+      call s:filter_or_send_message()
+    endif
+    return ''
+  endfunction
+endif
 
 function! s:do_filter() abort
   let query = g:clap.input.get()

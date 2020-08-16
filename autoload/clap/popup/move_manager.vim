@@ -90,10 +90,11 @@ function! s:backspace() abort
 endfunction
 
 function! s:move_manager.bs(_winid) abort
+  let before_bs = s:strpart_input(0, s:cursor_idx).s:strpart_input(s:cursor_idx)
   call s:backspace()
   if has_key(g:clap.provider._(), 'bs_action')
     call s:mock_input()
-    call g:clap.provider._().bs_action()
+    call g:clap.provider._().bs_action(before_bs)
   else
     call s:apply_on_typed()
   endif
