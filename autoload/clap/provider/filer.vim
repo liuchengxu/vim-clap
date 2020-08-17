@@ -251,7 +251,7 @@ endfunction
 
 if has('win32')
   function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'')
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'g')
   endfunction
 else
   function! s:normalize_path_sep(path) abort
