@@ -17,11 +17,10 @@ endfunction
 
 function! s:handle_error(error) abort
   let s:filer_error_cache[a:error.dir] = a:error.message
-  call g:clap.display.set_lines([a:error.message])
-  call clap#indicator#set('[??]')
+  call g:clap.preview.show([a:error.message])
 endfunction
 
-function! s:handle_result(result, error) abort
+function! s:handle_response(result, error) abort
   if a:error isnot v:null
     call s:handle_error(a:error)
     return
@@ -36,19 +35,6 @@ function! s:handle_result(result, error) abort
   call clap#sign#reset_to_first_line()
   call clap#state#refresh_matches_count(string(a:result.total))
   call g:clap#display_win.shrink_if_undersize()
-endfunction
-
-function! clap#provider#filer#daemon_handle(decoded) abort
-  if has_key(a:decoded, 'error')
-    call s:handle_error(a:decoded.error)
-    return
-  endif
-
-  if has_key(a:decoded, 'result')
-    call s:handle_result(a:decoded.result)
-  else
-    call clap#helper#echo_error('This should not happen, neither error nor result is found.')
-  endif
 endfunction
 
 function! s:set_prompt() abort
@@ -92,7 +78,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call('filer', function('s:handle_result'), {'cwd': s:current_dir})
+    call clap#client#call('filer', function('s:handle_response'), {'cwd': s:current_dir})
   endif
 endfunction
 
@@ -296,7 +282,7 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
   call s:set_prompt()
-  call clap#client#call_on_init('filer/on_init', function('s:handle_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
