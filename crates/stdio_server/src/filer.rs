@@ -89,10 +89,10 @@ impl HandleMessage for FilerMessageHandler {
                     size: provider_id.get_preview_size(),
                     provider_id,
                     context,
-                    inner: OnMove::Filer(path),
+                    inner: OnMove::Filer(path.clone()),
                 };
                 if let Err(err) = on_move_handler.handle() {
-                    let error = json!({"message": format!("{}", err), "dir": msg.get_cwd()});
+                    let error = json!({"message": format!("{}", err), "dir": path});
                     let res = json!({ "id": msg.id, "provider_id": "filer", "error": error });
                     write_response(res);
                 }
