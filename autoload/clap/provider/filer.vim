@@ -15,7 +15,17 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-function! s:handle_result(result) abort
+function! s:handle_error(error) abort
+  let s:filer_error_cache[a:error.dir] = a:error.message
+  call g:clap.display.set_lines([a:error.message])
+  call clap#indicator#set('[??]')
+endfunction
+
+function! s:handle_result(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
   if a:result.total == 0
     let s:filer_empty_cache[a:result.dir] = s:DIRECTORY_IS_EMPTY
     call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
@@ -30,10 +40,7 @@ endfunction
 
 function! clap#provider#filer#daemon_handle(decoded) abort
   if has_key(a:decoded, 'error')
-    let error = a:decoded.error
-    let s:filer_error_cache[error.dir] = error.message
-    call g:clap.display.set_lines([error.message])
-    call clap#indicator#set('[??]')
+    call s:handle_error(a:decoded.error)
     return
   endif
 
@@ -226,7 +233,12 @@ function! s:sync_on_move_impl() abort
   endif
 endfunction
 
-function! s:filer_handle_on_move_result(result) abort
+function! s:filer_handle_on_move_result(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
+
   if empty(a:result.lines)
     call g:clap.preview.show(['Empty entries'])
   else

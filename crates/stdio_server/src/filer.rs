@@ -91,7 +91,11 @@ impl HandleMessage for FilerMessageHandler {
                     context,
                     inner: OnMove::Filer(path),
                 };
-                on_move_handler.handle().unwrap();
+                if let Err(err) = on_move_handler.handle() {
+                    let error = json!({"message": format!("{}", err), "dir": msg.get_cwd()});
+                    let res = json!({ "id": msg.id, "provider_id": "filer", "error": error });
+                    write_response(res);
+                }
             }
             // TODO: handle on_typed
             RpcMessage::OnTyped(msg) => handle_message(msg),

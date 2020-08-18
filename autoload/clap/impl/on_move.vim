@@ -18,7 +18,10 @@ if clap#maple#is_available()
 
   let s:async_preview_implemented = ['files', 'git_files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines', 'history']
 
-  function! s:handle_on_move_result(result) abort
+  function! s:handle_on_move_result(result, error) abort
+    if a:error isnot v:null
+      return
+    endif
     if has_key(a:result, 'lines')
       try
         call g:clap.preview.show(a:result.lines)
