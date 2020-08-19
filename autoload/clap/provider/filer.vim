@@ -230,7 +230,7 @@ function! s:sync_on_move_impl() abort
   endif
 endfunction
 
-function! s:filer_handle_on_move_result(result, error) abort
+function! s:filer_handle_on_move_response(result, error) abort
   if a:error isnot v:null
     call s:handle_error(a:error)
     return
@@ -253,7 +253,7 @@ function! s:filer_handle_on_move_result(result, error) abort
 endfunction
 
 function! s:filer.on_move_async() abort
-  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -294,9 +294,9 @@ function! s:set_initial_current_dir() abort
     return
   endif
 
-  let target_dir = s:normalize_path_sep(expand(target_dir)) 
+  let target_dir = s:normalize_path_sep(expand(target_dir))
   if target_dir[-1:] ==# s:PATH_SEPERATOR
-    let s:current_dir = target_dir 
+    let s:current_dir = target_dir
   else
     let s:current_dir = target_dir.s:PATH_SEPERATOR
   endif
