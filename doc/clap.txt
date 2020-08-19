@@ -341,8 +341,8 @@ g:clap_search_box_border_symbols              *g:clap_search_box_border_symbols*
 
 g:clap_search_box_border_style                  *g:clap_search_box_border_style*
 
-  Type: |Dict|
-  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil')`
+  Type: |String|
+  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil'`
 
   This variable controls the style of border symbol used for the search box
   window.
