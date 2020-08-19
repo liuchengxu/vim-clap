@@ -9,7 +9,9 @@ CHANGELOG
 
 ### Fixed
 
-- Fix `:Clap install-binary` does not work correctly on Windows.
+- Fix `:Clap install-binary` does not work correctly on Windows. ([#494](https://github.com/liuchengxu/vim-clap/pull/494)) @Bakudankun
+- Fix [#306](https://github.com/liuchengxu/vim-clap/issues/306), note the signature of `bs_action` are different between vim and neovim now. ([#503](https://github.com/liuchengxu/vim-clap/pull/503))
+- Fix filer issue on Windows [#370](https://github.com/liuchengxu/vim-clap/issues/370). @Grueslayer
 
 ## [0.20] 2020-08-06
 
