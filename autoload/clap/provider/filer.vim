@@ -8,6 +8,7 @@ set cpoptions&vim
 
 let s:filer = {}
 
+let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
 
 function! clap#provider#filer#hi_empty_dir() abort
@@ -50,7 +51,7 @@ function! s:set_prompt() abort
   else
     let parent = fnamemodify(s:current_dir, ':p:h')
     let last = fnamemodify(s:current_dir, ':p:t')
-    let short_dir = pathshorten(parent).'/'.last
+    let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
     if strlen(short_dir) < s:winwidth * 3 / 4
       call clap#spinner#set(short_dir)
     else
@@ -59,22 +60,32 @@ function! s:set_prompt() abort
   endif
 endfunction
 
+if has('win32')
+  function! s:is_root_directory(dir) abort
+    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
+  endfunction
+else
+  function! s:is_root_directory(dir) abort
+    return a:dir ==# s:PATH_SEPERATOR
+  endfunction
+endif
+
 function! s:goto_parent() abort
   " The root directory
-  if s:current_dir ==# '/'
+  if s:is_root_directory(s:current_dir)
     return
   endif
 
-  if s:current_dir[-1:] ==# '/'
+  if s:current_dir[-1:] ==# s:PATH_SEPERATOR
     let parent_dir = fnamemodify(s:current_dir, ':h:h')
   else
     let parent_dir = fnamemodify(s:current_dir, ':h')
   endif
 
-  if parent_dir ==# '/'
-    let s:current_dir = '/'
+  if s:is_root_directory(parent_dir)
+    let s:current_dir = parent_dir
   else
-    let s:current_dir = parent_dir.'/'
+    let s:current_dir = parent_dir.s:PATH_SEPERATOR
   endif
   call s:set_prompt()
   call s:filter_or_send_message()
@@ -144,7 +155,7 @@ endfunction
 
 function! s:try_go_to_dir_is_ok() abort
   let input = g:clap.input.get()
-  if input[-1:] ==# '/'
+  if input[-1:] ==# s:PATH_SEPERATOR
     if isdirectory(expand(input))
       call s:reset_to(expand(input))
       return v:true
@@ -188,10 +199,10 @@ function! s:tab_action() abort
 endfunction
 
 function! s:smart_concatenate(cur_dir, curline) abort
-  if a:cur_dir[-1:] ==# '/'
+  if a:cur_dir[-1:] ==# s:PATH_SEPERATOR
     return a:cur_dir.a:curline
   else
-    return a:cur_dir.'/'.a:curline
+    return a:cur_dir.s:PATH_SEPERATOR.a:curline
   endif
 endfunction
 
@@ -251,9 +262,22 @@ function! s:filer_on_no_matches(input) abort
   execute 'edit' a:input
 endfunction
 
+if has('win32')
+  function! s:normalize_path_sep(path) abort
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'g')
+  endfunction
+else
+  function! s:normalize_path_sep(path) abort
+    return a:path
+  endfunction
+endif
+
 function! s:set_initial_current_dir() abort
   if empty(g:clap.provider.args)
-    let s:current_dir = getcwd().'/'
+    let s:current_dir = getcwd()
+    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
+      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
+    endif
     return
   endif
 
@@ -265,14 +289,18 @@ function! s:set_initial_current_dir() abort
   elseif isdirectory(expand(maybe_dir))
     let target_dir = maybe_dir
   else
-    let s:current_dir = getcwd().'/'
+    let s:current_dir = getcwd()
+    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
+      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
+    endif
     return
   endif
 
-  if target_dir[-1:] ==# '/'
-    let s:current_dir = expand(target_dir)
+  let target_dir = s:normalize_path_sep(expand(target_dir)) 
+  if target_dir[-1:] ==# s:PATH_SEPERATOR
+    let s:current_dir = target_dir 
   else
-    let s:current_dir = expand(target_dir).'/'
+    let s:current_dir = target_dir.s:PATH_SEPERATOR
   endif
 endfunction
 
