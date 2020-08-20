@@ -187,6 +187,7 @@ function! s:tab_action() abort
   endif
 
   call s:reset_to(current_entry)
+  call clap#sign#reset_to_first_line()
 
   return ''
 endfunction
@@ -262,7 +263,7 @@ endfunction
 
 if has('win32')
   function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'g')
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
   endfunction
 else
   function! s:normalize_path_sep(path) abort
