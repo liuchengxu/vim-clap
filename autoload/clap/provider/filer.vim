@@ -16,7 +16,16 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-function! s:handle_result(result) abort
+function! s:handle_error(error) abort
+  let s:filer_error_cache[a:error.dir] = a:error.message
+  call g:clap.preview.show([a:error.message])
+endfunction
+
+function! s:handle_response(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
   if a:result.total == 0
     let s:filer_empty_cache[a:result.dir] = s:DIRECTORY_IS_EMPTY
     call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
@@ -27,22 +36,6 @@ function! s:handle_result(result) abort
   call clap#sign#reset_to_first_line()
   call clap#state#refresh_matches_count(string(a:result.total))
   call g:clap#display_win.shrink_if_undersize()
-endfunction
-
-function! clap#provider#filer#daemon_handle(decoded) abort
-  if has_key(a:decoded, 'error')
-    let error = a:decoded.error
-    let s:filer_error_cache[error.dir] = error.message
-    call g:clap.display.set_lines([error.message])
-    call clap#indicator#set('[??]')
-    return
-  endif
-
-  if has_key(a:decoded, 'result')
-    call s:handle_result(a:decoded.result)
-  else
-    call clap#helper#echo_error('This should not happen, neither error nor result is found.')
-  endif
 endfunction
 
 function! s:set_prompt() abort
@@ -96,7 +89,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call('filer', function('s:handle_result'), {'cwd': s:current_dir})
+    call clap#client#call('filer', function('s:handle_response'), {'cwd': s:current_dir})
   endif
 endfunction
 
@@ -194,6 +187,7 @@ function! s:tab_action() abort
   endif
 
   call s:reset_to(current_entry)
+  call clap#sign#ensure_exists()
 
   return ''
 endfunction
@@ -237,7 +231,12 @@ function! s:sync_on_move_impl() abort
   endif
 endfunction
 
-function! s:filer_handle_on_move_result(result) abort
+function! s:filer_handle_on_move_response(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
+
   if empty(a:result.lines)
     call g:clap.preview.show(['Empty entries'])
   else
@@ -255,7 +254,7 @@ function! s:filer_handle_on_move_result(result) abort
 endfunction
 
 function! s:filer.on_move_async() abort
-  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -264,7 +263,7 @@ endfunction
 
 if has('win32')
   function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR,'g')
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
   endfunction
 else
   function! s:normalize_path_sep(path) abort
@@ -296,9 +295,9 @@ function! s:set_initial_current_dir() abort
     return
   endif
 
-  let target_dir = s:normalize_path_sep(expand(target_dir)) 
+  let target_dir = s:normalize_path_sep(expand(target_dir))
   if target_dir[-1:] ==# s:PATH_SEPERATOR
-    let s:current_dir = target_dir 
+    let s:current_dir = target_dir
   else
     let s:current_dir = target_dir.s:PATH_SEPERATOR
   endif
@@ -312,7 +311,7 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
   call s:set_prompt()
-  call clap#client#call_on_init('filer/on_init', function('s:handle_result'), {'cwd': s:current_dir})
+  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

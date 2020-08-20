@@ -16,14 +16,8 @@ function! clap#client#handle(msg) abort
     return
   endif
 
-  if has_key(decoded, 'error')
-    " TODO: show the error message in preview window when it's on_move
-    call clap#helper#echo_error('[client_handle] '.string(decoded.error))
-    return
-  endif
-
   if has_key(s:handlers, decoded.id)
-    call s:handlers[decoded.id](decoded.result)
+    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     call remove(s:handlers, decoded.id)
     return
   endif
