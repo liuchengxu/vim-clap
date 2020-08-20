@@ -187,7 +187,7 @@ function! s:tab_action() abort
   endif
 
   call s:reset_to(current_entry)
-  call clap#sign#reset_to_first_line()
+  call clap#sign#ensure_exists()
 
   return ''
 endfunction
