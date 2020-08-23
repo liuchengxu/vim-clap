@@ -372,6 +372,11 @@ function! clap#(bang, ...) abort
     endif
   endif
 
+  if provider_id_or_alias =~# '!$'
+    let g:clap.context['no-cache'] = v:true
+    let provider_id_or_alias = provider_id_or_alias[:-2]
+  endif
+
   call clap#for(provider_id_or_alias)
 endfunction
 
