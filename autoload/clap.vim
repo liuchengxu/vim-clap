@@ -35,6 +35,7 @@ let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {
 let g:clap#provider_alias = s:provider_alias
 let g:clap_disable_run_rooter = get(g:, 'clap_disable_run_rooter', v:false)
 let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
+let g:clap_enable_debug = get(g:, 'clap_enable_debug', v:false)
 let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!', 'using_cache': '*'})
 
 " Backward compatible

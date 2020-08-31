@@ -37,6 +37,8 @@ function! clap#rooter#try_set_cwd() abort
         call s:set_provider_cwd(dir)
         let g:clap.provider.args = g:clap.provider.args[:-2]
       endif
+    elseif clap#should_use_raw_cwd()
+      let g:__clap_provider_cwd = getcwd()
     else
       let g:__clap_provider_cwd = clap#path#project_root_or_default(g:clap.start.bufnr)
     endif
