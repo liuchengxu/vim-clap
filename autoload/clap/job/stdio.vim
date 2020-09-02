@@ -62,7 +62,9 @@ if has('nvim')
         if a:data == ['']
           return
         endif
-        call clap#helper#echo_error('on_event:'.string(a:data))
+        if g:clap_enable_debug
+          call clap#helper#echo_error('on_stdio_event:'.string(a:data))
+        endif
       else
         call clap#spinner#set_idle()
       endif

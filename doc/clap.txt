@@ -294,6 +294,16 @@ g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
   This variable can be set to `v:true` to run from the origin `cwd`.
 
 
+g:clap_enable_debug                                       *g:clap_enable_debug*
+
+  Type: |Bool|
+  Default: `v:false`
+
+  This variable controls whether some errors which could be tangential will
+  be printed. You normally won't want to enable this until you find vim-clap
+  somehow does not work as expected and want to debug it.
+
+
 g:clap_project_root_markers                       *g:clap_project_root_markers*
 
   Type: |List|
