@@ -5,6 +5,7 @@ CHANGELOG
 
 ### Added
 
+- New shortcut for `+no-cache`, `:Clap files!` is equivalent to `:Clap!! files` and `:Clap files +no-cache`. ([#509](https://github.com/liuchengxu/vim-clap/pull/509))
 - Add `g:clap_enable_debug`, useful when you find vim-clap is problematic and want to debug vim-clap.
 
 ### Improved
