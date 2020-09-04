@@ -360,7 +360,8 @@ function! s:init_provider() abort
 
   " After you have typed something
   function! provider.on_typed() abort
-    if get(g:, '__clap_open_win_pre', v:false)
+    " If ++query is being used, we should do `on_typed`, ref #515.
+    if get(g:, '__clap_open_win_pre', v:false) && !has_key(g:clap.context, 'query')
       return
     endif
     try

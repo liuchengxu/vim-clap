@@ -19,6 +19,7 @@ CHANGELOG
 - Fix filer issue on Windows [#370](https://github.com/liuchengxu/vim-clap/issues/370). @Grueslayer
 - Handle the maple error in the filer provider, fix [#500](https://github.com/liuchengxu/vim-clap/issues/500), [#501](https://github.com/liuchengxu/vim-clap/issues/501).
 - Fix regression #513
+- Fix #515
 
 ## [0.20] 2020-08-06
 
