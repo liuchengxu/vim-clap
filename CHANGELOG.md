@@ -5,10 +5,32 @@ CHANGELOG
 
 ### Added
 
+- New shortcut for `+no-cache`, `:Clap files!` is equivalent to `:Clap!! files` and `:Clap files +no-cache`. ([#509](https://github.com/liuchengxu/vim-clap/pull/509))
+- Add `g:clap_enable_debug`, useful when you find vim-clap is problematic and want to debug vim-clap.
+
+### Improved
+
+- The open action `ctrl-t`, `ctrl-v`, `ctrl-t` now supports the multiple files. ([#496](https://github.com/liuchengxu/vim-clap/issues/496))
+
+### Fixed
+
+- Fix `:Clap install-binary` does not work correctly on Windows. ([#494](https://github.com/liuchengxu/vim-clap/pull/494)) @Bakudankun
+- Fix [#306](https://github.com/liuchengxu/vim-clap/issues/306), note the signature of `bs_action` are different between vim and neovim now. ([#503](https://github.com/liuchengxu/vim-clap/pull/503))
+- Fix filer issue on Windows [#370](https://github.com/liuchengxu/vim-clap/issues/370). @Grueslayer
+- Handle the maple error in the filer provider, fix [#500](https://github.com/liuchengxu/vim-clap/issues/500), [#501](https://github.com/liuchengxu/vim-clap/issues/501).
+- Fix regression #513
+- Fix #515
+
+## [0.20] 2020-08-06
+
+### Added
+
 - Python dynamic module now can be compiled using stable Rust. ([#471](https://github.com/liuchengxu/vim-clap/pull/471))
 - Add `windows` preview support. ([#473](https://github.com/liuchengxu/vim-clap/pull/473))
 - Impl `commits` and `bcommits` provider. ([#477](https://github.com/liuchengxu/vim-clap/pull/477)) @ray-x
 - Add new provider property `on_move_async`. ([#481](https://github.com/liuchengxu/vim-clap/pull/481))
+- Support expanding `%` now, e.g., `:Clap files %:p:h`.
+- Build static Rust binary for Linux. [#469](https://github.com/liuchengxu/vim-clap/issues/469)
 
 ### Fixed
 

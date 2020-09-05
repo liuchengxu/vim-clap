@@ -294,6 +294,16 @@ g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
   This variable can be set to `v:true` to run from the origin `cwd`.
 
 
+g:clap_enable_debug                                       *g:clap_enable_debug*
+
+  Type: |Bool|
+  Default: `v:false`
+
+  This variable controls whether some errors which could be tangential will
+  be printed. You normally won't want to enable this until you find vim-clap
+  somehow does not work as expected and want to debug it.
+
+
 g:clap_project_root_markers                       *g:clap_project_root_markers*
 
   Type: |List|
@@ -341,8 +351,8 @@ g:clap_search_box_border_symbols              *g:clap_search_box_border_symbols*
 
 g:clap_search_box_border_style                  *g:clap_search_box_border_style*
 
-  Type: |Dict|
-  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil')`
+  Type: |String|
+  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil'`
 
   This variable controls the style of border symbol used for the search box
   window.
@@ -757,6 +767,19 @@ Normal mode
 Cmdline mode
 
 - Use `:q` to exit.
+
+
+Change default keybindings                      *change-clap-default-keybindings*
+
+  Currently only neovim is able to change the default keybindings easily, e.g,
+  >
+  " For example, use <C-n>/<C-p> instead of <C-j>/<C-k> to navigate the result.
+  autocmd FileType clap_input inoremap <silent> <buffer> <C-n> <C-R>=clap#handler#navigate_result('down')<CR>
+  autocmd FileType clap_input inoremap <silent> <buffer> <C-p> <C-R>=clap#handler#navigate_result('up')<CR>
+<
+
+  It's not convenient for change the keybindings in Vim, see this comment
+  https://github.com/liuchengxu/vim-clap/issues/116#issuecomment-549816638 .
 
 ===============================================================================
 9. API                                                                *clap-api*

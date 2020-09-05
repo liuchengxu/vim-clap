@@ -55,7 +55,10 @@ function! s:commits.on_move() abort
   call clap#provider#commits#on_move_common('git show '.rev)
 endfunction
 
-function! clap#provider#commits#on_move_callback(result) abort
+function! clap#provider#commits#on_move_callback(result, error) abort
+  if a:error isnot v:null
+    return
+  endif
   let lines = a:result.lines
   call clap#preview#show_lines(lines, 'diff', -1)
   call clap#preview#highlight_header()

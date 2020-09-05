@@ -46,7 +46,7 @@ function! s:git_diff_files_on_move() abort
 endfunction
 
 let s:git_diff_files.sink = 'e'
-let s:git_diff_files.enable_rooter = v:true
+let s:git_diff_files.enable_rooter = v:false
 let s:git_diff_files.on_move = function('s:git_diff_files_on_move')
 
 let g:clap#provider#git_diff_files# = s:git_diff_files

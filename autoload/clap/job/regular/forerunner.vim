@@ -45,6 +45,13 @@ function! s:on_complete_maple() abort
   if !empty(s:chunks)
     let decoded = json_decode(s:chunks[0])
 
+    if has_key(decoded, 'error')
+      if g:clap_enable_debug
+        call clap#helper#echo_error('on_forerunner_error:', decoded.error)
+      endif
+      return
+    endif
+
     call clap#sign#ensure_exists()
 
     " Using the cached file
