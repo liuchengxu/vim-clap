@@ -1,15 +1,13 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Vim popup UI and interaction.
 
+scriptencoding utf-8
+
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let g:clap#popup#preview = {}
 let g:clap#popup#display = {}
-let g:clap#popup#input = {}
-
-" TODO use a flexiable width
-let s:indicator_width = 18
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
@@ -139,9 +137,9 @@ function! s:create_indicator() abort
   if !exists('s:indicator_winid') || empty(popup_getpos(s:indicator_winid))
     let pos = popup_getpos(s:display_winid)
     let pos.line = pos.line - 1
-    let pos.col = pos.col + pos.width - s:indicator_width - s:symbol_width
-    let pos.minwidth = s:indicator_width
-    let pos.maxwidth = s:indicator_width
+    let pos.col = pos.col + pos.width - g:__clap_indicator_winwidth - s:symbol_width
+    let pos.minwidth = g:__clap_indicator_winwidth
+    let pos.maxwidth = g:__clap_indicator_winwidth
     let pos.highlight = 'ClapInput'
     let pos.wrap = v:false
     let pos.zindex = 100
@@ -215,7 +213,7 @@ function! s:adjust_spinner() abort
     call popup_move(s:spinner_winid, pos)
     let input_pos = popup_getpos(s:input_winid)
     let input_pos.col = pos.col + spinner_width
-    let input_pos.minwidth = s:display_opts.width - s:indicator_width - spinner_width
+    let input_pos.minwidth = s:display_opts.width - g:__clap_indicator_winwidth - spinner_width
     let input_pos.maxwidth = input_pos.minwidth
     call popup_move(s:input_winid, input_pos)
   endif
@@ -239,7 +237,7 @@ function! s:create_input() abort
     let pos.line = pos.line - 1
     let spinner_width = clap#spinner#width()
     let pos.col += spinner_width + s:symbol_width
-    let pos.minwidth = s:display_opts.width - s:indicator_width - spinner_width - s:symbol_width
+    let pos.minwidth = s:display_opts.width - g:__clap_indicator_winwidth - spinner_width - s:symbol_width
     let pos.maxwidth = pos.minwidth
     let pos.highlight = 'ClapInput'
     let pos.wrap = v:false
@@ -251,7 +249,7 @@ function! s:create_input() abort
     if s:exists_deoplete
       call deoplete#custom#buffer_option('auto_complete', v:false)
     endif
-    let g:clap#popup#input.winid = s:input_winid
+    let g:clap.input.winid = s:input_winid
   endif
 endfunction
 

@@ -74,6 +74,27 @@ function! s:on_typed_sync_impl() abort
   call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
 endfunction
 
+function! s:dyn_run_is_ok() abort
+  if g:clap.provider.id ==# 'blines'
+    call clap#filter#async#dyn#start_directly(clap#maple#blines_command())
+    return v:true
+  endif
+
+  if exists('g:__clap_forerunner_tempfile')
+    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+    return v:true
+  endif
+  if g:clap.provider.source_type == g:__t_string
+    call clap#filter#async#dyn#start(g:clap.provider._().source)
+    return v:true
+  elseif g:clap.provider.source_type == g:__t_func_string
+    call clap#filter#async#dyn#start(g:clap.provider._().source())
+    return v:true
+  endif
+
+  return v:false
+endfunction
+
 " =======================================
 " async implementation
 " =======================================
@@ -97,25 +118,11 @@ function! s:on_typed_async_impl() abort
   " call g:clap.display.clear()
 
   if clap#filter#async#external#using_maple()
-    if g:clap.provider.id ==# 'blines'
-      call clap#filter#async#dyn#start_directly(clap#maple#blines_command())
+    if s:dyn_run_is_ok()
       return
     endif
-
-    if exists('g:__clap_forerunner_tempfile')
-      call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-      return
-    endif
-    if g:clap.provider.source_type == g:__t_string
-      call clap#filter#async#dyn#start(g:clap.provider._().source)
-      return
-    elseif g:clap.provider.source_type == g:__t_func_string
-      call clap#filter#async#dyn#start(g:clap.provider._().source())
-      return
-    endif
-
     let cmd = g:clap.provider.source_async_or_default()
-    call clap#rooter#run(function('clap#maple#job_start'), cmd)
+    call clap#rooter#run(function('clap#job#regular#maple#start'), cmd)
   else
     let cmd = g:clap.provider.source_async_or_default()
     call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
@@ -157,13 +164,13 @@ function! s:detect_should_switch_to_async() abort
 endfunction
 
 function! s:should_switch_to_async() abort
-  if has_key(g:clap.provider, 'should_switch_to_async')
-    return g:clap.provider.should_switch_to_async
-  else
-    let should_switch_to_async = s:detect_should_switch_to_async()
-    let g:clap.provider.should_switch_to_async = should_switch_to_async
-    return should_switch_to_async
+  if get(g:clap.context, 'async', v:false) is v:true
+    return v:true
   endif
+  if !has_key(g:clap.provider, 'should_switch_to_async')
+    let g:clap.provider.should_switch_to_async = s:detect_should_switch_to_async()
+  endif
+  return g:clap.provider.should_switch_to_async
 endfunction
 
 "                          filter
@@ -188,8 +195,7 @@ function! clap#impl#on_typed() abort
     return
   endif
 
-  if g:clap.provider.can_async() &&
-        \ (get(g:clap.context, 'async') is v:true || s:should_switch_to_async())
+  if g:clap.provider.can_async() && s:should_switch_to_async()
     call s:on_typed_async_impl()
   else
     call s:on_typed_sync_impl()

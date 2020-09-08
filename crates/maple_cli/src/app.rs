@@ -36,8 +36,8 @@ pub enum Cmd {
     #[structopt(name = "ripgrep-forerunner")]
     RipGrepForerunner(crate::cmd::grep::RipGrepForerunner),
     /// Retrive the latest remote release info.
-    #[structopt(name = "check-release")]
-    CheckRelease(crate::cmd::check_release::CheckRelease),
+    #[structopt(name = "upgrade")]
+    Upgrade(upgrade::Upgrade),
 }
 
 #[derive(StructOpt, Debug)]
@@ -68,9 +68,9 @@ pub struct Maple {
     #[structopt(long = "no-cache")]
     pub no_cache: bool,
 
-    /// Do not use the cached file for exec subcommand.
-    #[structopt(long = "log")]
-    pub log: bool,
+    /// Enable the logging system.
+    #[structopt(long = "log", parse(from_os_str))]
+    pub log: Option<std::path::PathBuf>,
 
     #[structopt(subcommand)]
     pub command: Cmd,
@@ -78,13 +78,17 @@ pub struct Maple {
 
 impl Maple {
     pub fn run(self) -> Result<()> {
+        if let Some(ref log_path) = self.log {
+            crate::logger::init(log_path)?;
+        } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
+            crate::logger::init(log_path)?;
+        }
         match self.command {
-            Cmd::Version => unreachable!(),
-            Cmd::CheckRelease(_) => unreachable!(),
+            Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
             Cmd::Helptags(helptags) => helptags.run()?,
-            Cmd::Tags(tags) => tags.run(self.no_cache)?,
+            Cmd::Tags(tags) => tags.run(self.no_cache, self.icon_painter)?,
             Cmd::RPC => {
-                crate::cmd::rpc::run_forever(std::io::BufReader::new(std::io::stdin()));
+                stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
             Cmd::Blines(blines) => {
                 blines.run(self.number, self.winwidth)?;

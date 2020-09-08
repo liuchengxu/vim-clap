@@ -201,6 +201,11 @@ function! clap#themes#init() abort
     else
       let s:palette = g:clap#themes#material_design_dark#palette
     endif
+  elseif exists('g:colors_name')
+    try
+      let s:palette = g:clap#themes#{g:colors_name}#palette
+    catch
+    endtry
   endif
 
   call s:init_theme()

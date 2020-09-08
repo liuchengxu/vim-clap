@@ -66,6 +66,7 @@ Field                 | Type                | Required      | Has default implem
 `filter`              | Funcref             | **mandatory** | **Yes**
 `on_typed`            | Funcref             | **mandatory** | **Yes**
 `on_move`             | Funcref             | optional      | No
+`on_move_async`       | Funcref             | optional      | No
 `on_enter`            | Funcref             | optional      | No
 `on_exit`             | Funcref             | optional      | No
 `support_open_action` | Bool                | optional      | **Yes** if the `sink` is `e`/`edit`/`edit!`
@@ -99,6 +100,8 @@ Field                 | Type                | Required      | Has default implem
 - `on_typed`: reference to function to filter the `source`.
 
 - `on_move`: when navigating the result list, can be used for the preview purpose, see [clap/provider/colors](autoload/clap/provider/colors.vim).
+
+- `on_move_async`: async preview implementation, normally done by the Rust binary maple, see [autoload/clap/provider/filer.vim](autoload/clap/provider/filer.vim).
 
 - `on_enter`: when entering the clap window, can be used for recording the current state.
 
@@ -162,6 +165,11 @@ Field           | Type    | Required      | Has default implementation
 `tab_action`    | funcref | optional      | No
 `bs_action`     | funcref | optional      | No
 `init`          | funcref | **mandatory** | No
+
+- `bs_action`: The signature is different between vim and neovim.
+
+  - neovim: `bs_action()`.
+  - vim: `bs_action(before_bs)`, the argument `before_bs` is the input before `BS` is pressed.
 
 
 This kind of provider requires you to be experienced in VimScript and Rust. Checkout the source code [autoload/clap/provider/filer.vim](autoload/clap/provider/filer.vim) and [src/rpc.rs](src/rpc.rs) directly.

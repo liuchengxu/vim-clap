@@ -25,7 +25,11 @@ function! s:run_term(cmd, cwd, success_info) abort
           \ 'on_exit': {job, status -> s:OnExit(status)},
           \})
   else
-    call term_start(a:cmd, {
+    let cmd = a:cmd
+    if has('win32')
+      let cmd = 'cmd.exe /c '.cmd
+    endif
+    call term_start(cmd, {
           \ 'curwin': 1,
           \ 'cwd': a:cwd,
           \ 'exit_cb': {job, status -> s:OnExit(status)},
@@ -38,9 +42,9 @@ function! s:run_term(cmd, cwd, success_info) abort
 endfunction
 
 if has('win32')
-  let s:from = '.\fuzzymatch-rs\target\release\libfuzzymatch_rs.dll'
-  let s:to = 'libfuzzymatch_rs.pyd'
-  let s:rust_ext_cmd = printf('cargo +nightly build --release && copy %s %s', s:from, s:to)
+  let s:from = '.\fuzzymatch-rs\target\release\fuzzymatch_rs.dll'
+  let s:to = 'fuzzymatch_rs.pyd'
+  let s:rust_ext_cmd = printf('pushd fuzzymatch-rs && cargo build --release && popd && copy %s %s', s:from, s:to)
   let s:rust_ext_cwd = s:plugin_root_dir.'\pythonx\clap'
   let s:prebuilt_maple_binary = s:plugin_root_dir.'\bin\maple.exe'
   let s:maple_cargo_toml = s:plugin_root_dir.'\Cargo.toml'
@@ -51,19 +55,6 @@ else
   let s:maple_cargo_toml = s:plugin_root_dir.'/Cargo.toml'
 endif
 
-function! s:has_rust_nightly(show_warning) abort
-  call system('cargo +nightly --help')
-  if v:shell_error
-    if a:show_warning
-      call clap#helper#echo_warn('Rust nightly is required, try running `rustup toolchain install nightly` in the command line and then rerun this function.')
-    else
-      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
-    endif
-    return v:false
-  endif
-  return v:true
-endfunction
-
 function! clap#installer#build_python_dynamic_module() abort
   if !has('python3')
     call clap#helper#echo_info('+python3 is required, skip building the Python dynamic module.')
@@ -71,10 +62,6 @@ function! clap#installer#build_python_dynamic_module() abort
   endif
 
   if executable('cargo')
-    if !s:has_rust_nightly(v:true)
-      call clap#helper#echo_info('Rust nightly is required, skip building the Python dynamic module.')
-      return
-    endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
@@ -93,7 +80,7 @@ endfunction
 function! clap#installer#build_all(...) abort
   if executable('cargo')
     " If Rust nightly and +python3 is unavailable, build the maple only.
-    if has('python3') && s:has_rust_nightly(v:false)
+    if has('python3')
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
@@ -129,7 +116,7 @@ function! clap#installer#install(try_download) abort
     endif
     " Since v0.14 maple itself is able to download the latest release binary.
     if executable(s:prebuilt_maple_binary) && s:current_version >= 14
-      let cmd = [s:prebuilt_maple_binary, 'check-release', '--download']
+      let cmd = s:prebuilt_maple_binary.' upgrade --download'
       call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully')
     else
       call clap#installer#download_binary()

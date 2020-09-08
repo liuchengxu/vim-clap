@@ -1,24 +1,13 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
-use crate::ContentFiltering;
-use anyhow::Result;
-use fuzzy_filter::{subprocess, Source};
+use anyhow::{anyhow, Result};
+use filter::{matcher::LineSplitter, subprocess, Source};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-const BASE_TAGS_ARGS: [&str; 9] = [
-    "ctags",
-    "-R",
-    "-x",
-    "--output-format=json",
-    "--fields=+n",
-    "--exclude=.git",
-    "--exclude=*.json",
-    "--exclude=node_modules",
-    "--exclude=target",
-];
+const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TagInfo {
@@ -27,6 +16,23 @@ struct TagInfo {
     pattern: String,
     line: usize,
     kind: String,
+}
+
+fn ensure_has_json_support() -> Result<()> {
+    let output = std::process::Command::new("ctags")
+        .arg("--list-features")
+        .stderr(std::process::Stdio::inherit())
+        .output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let lines = stdout
+        .split('\n')
+        .filter(|x| x.starts_with("json"))
+        .collect::<Vec<_>>();
+    if lines.is_empty() {
+        Err(anyhow!("ctags has no json support"))
+    } else {
+        Ok(())
+    }
 }
 
 impl TagInfo {
@@ -67,6 +73,12 @@ pub struct Tags {
     /// Runs as the forerunner job, create the new cache entry.
     #[structopt(short, long)]
     forerunner: bool,
+
+    /// Exclude files and directories matching 'pattern'.
+    ///
+    /// Will be translated into ctags' option: --exclude=pattern.
+    #[structopt(long, default_value = ".git,*.json,node_modules,target")]
+    exclude: Vec<String>,
 }
 
 fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = String>> {
@@ -97,14 +109,33 @@ fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
 }
 
 impl Tags {
-    pub fn run(&self, no_cache: bool) -> Result<()> {
-        let mut cmd_args = BASE_TAGS_ARGS.to_vec();
-        let lang = if let Some(ref languages) = self.languages {
-            format!("--languages={}", languages)
-        } else {
-            String::from("")
+    pub fn run(&self, no_cache: bool, icon_painter: Option<icon::IconPainter>) -> Result<()> {
+        ensure_has_json_support()?;
+
+        // In case of passing an invalid icon-painter option.
+        let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
+
+        let mut cmd_args = BASE_TAGS_CMD
+            .split_whitespace()
+            .map(Into::into)
+            .collect::<Vec<_>>();
+
+        let exclude = self
+            .exclude
+            .iter()
+            .map(|x| x.split(',').collect::<Vec<_>>())
+            .flatten()
+            .map(|x| format!("--exclude={}", x))
+            .collect::<Vec<_>>();
+
+        cmd_args.extend(exclude);
+
+        if let Some(ref languages) = self.languages {
+            cmd_args.push(format!("--languages={}", languages));
         };
-        cmd_args.push(&lang);
+
+        let cmd_args = cmd_args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+
         if self.forerunner {
             let (cache, total) = if no_cache {
                 create_tags_cache(&cmd_args, &self.dir)?
@@ -113,17 +144,17 @@ impl Tags {
             } else {
                 create_tags_cache(&cmd_args, &self.dir)?
             };
-            send_response_from_cache(&cache, total, SendResponse::Json, None);
+            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
-            crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
+            filter::dyn_run(
                 &self.query,
                 Source::List(formatted_tags_stream(&cmd_args, &self.dir)?),
                 None,
                 Some(30),
                 None,
-                None,
-                ContentFiltering::TagNameOnly,
+                icon_painter,
+                LineSplitter::TagNameOnly,
             )?;
         }
 

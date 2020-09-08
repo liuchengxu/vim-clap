@@ -8,6 +8,7 @@ set cpoptions&vim
 
 let s:filer = {}
 
+let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
 
 function! clap#provider#filer#hi_empty_dir() abort
@@ -15,41 +16,26 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-function! s:handle_round_message(message) abort
-  try
-    let decoded = json_decode(a:message)
-  catch
-    call clap#helper#echo_error('Failed to decode message:'.a:message.', exception:'.v:exception)
-    return
-  endtry
+function! s:handle_error(error) abort
+  let s:filer_error_cache[a:error.dir] = a:error.message
+  call g:clap.preview.show([a:error.message])
+endfunction
 
-  " Only process the latest request, drop the outdated responses.
-  if s:last_request_id != decoded.id
+function! s:handle_response(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
     return
   endif
-
-  if has_key(decoded, 'error')
-    let error = decoded.error
-    let s:filer_error_cache[error.dir] = error.message
-    call g:clap.display.set_lines([error.message])
-    call clap#indicator#set('[??]')
-
-  elseif has_key(decoded, 'result')
-    let result = decoded.result
-    if result.total == 0
-      let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
-      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-    else
-      let s:filer_cache[result.dir] = result.entries
-      call g:clap.display.set_lines(result.entries)
-    endif
-    call clap#sign#reset_to_first_line()
-    call clap#state#refresh_matches_count(string(result.total))
-    call g:clap#display_win.shrink_if_undersize()
-
+  if a:result.total == 0
+    let s:filer_empty_cache[a:result.dir] = s:DIRECTORY_IS_EMPTY
+    call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
   else
-    call clap#helper#echo_error('This should not happen, neither error nor result is found.')
+    let s:filer_cache[a:result.dir] = a:result.entries
+    call g:clap.display.set_lines(a:result.entries)
   endif
+  call clap#sign#reset_to_first_line()
+  call clap#state#refresh_matches_count(string(a:result.total))
+  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 function! s:set_prompt() abort
@@ -58,7 +44,7 @@ function! s:set_prompt() abort
   else
     let parent = fnamemodify(s:current_dir, ':p:h')
     let last = fnamemodify(s:current_dir, ':p:t')
-    let short_dir = pathshorten(parent).'/'.last
+    let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
     if strlen(short_dir) < s:winwidth * 3 / 4
       call clap#spinner#set(short_dir)
     else
@@ -67,36 +53,35 @@ function! s:set_prompt() abort
   endif
 endfunction
 
+if has('win32')
+  function! s:is_root_directory(dir) abort
+    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
+  endfunction
+else
+  function! s:is_root_directory(dir) abort
+    return a:dir ==# s:PATH_SEPERATOR
+  endfunction
+endif
+
 function! s:goto_parent() abort
   " The root directory
-  if s:current_dir ==# '/'
+  if s:is_root_directory(s:current_dir)
     return
   endif
 
-  if s:current_dir[-1:] ==# '/'
+  if s:current_dir[-1:] ==# s:PATH_SEPERATOR
     let parent_dir = fnamemodify(s:current_dir, ':h:h')
   else
     let parent_dir = fnamemodify(s:current_dir, ':h')
   endif
 
-  if parent_dir ==# '/'
-    let s:current_dir = '/'
+  if s:is_root_directory(parent_dir)
+    let s:current_dir = parent_dir
   else
-    let s:current_dir = parent_dir.'/'
+    let s:current_dir = parent_dir.s:PATH_SEPERATOR
   endif
   call s:set_prompt()
   call s:filter_or_send_message()
-endfunction
-
-function! s:send_message() abort
-  let s:last_request_id += 1
-  " Note: must use v:true/v:false for json_encode
-  let msg = json_encode({
-        \ 'method': 'filer',
-        \ 'params': {'cwd': s:current_dir, 'enable_icon': s:enable_icon},
-        \ 'id': s:last_request_id
-        \ })
-  call clap#job#stdio#send_message(msg)
 endfunction
 
 function! s:filter_or_send_message() abort
@@ -104,22 +89,35 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call s:send_message()
+    call clap#client#call('filer', function('s:handle_response'), {'cwd': s:current_dir})
   endif
 endfunction
 
-function! s:bs_action() abort
-  call clap#highlight#clear()
+if has('nvim')
+  function! s:bs_action() abort
+    call clap#highlight#clear()
 
-  let input = g:clap.input.get()
-  if input ==# ''
-    call s:goto_parent()
-  else
-    call g:clap.input.set(input[:-2])
-    call s:filter_or_send_message()
-  endif
-  return ''
-endfunction
+    let input = g:clap.input.get()
+    if input ==# ''
+      call s:goto_parent()
+    else
+      call g:clap.input.set(input[:-2])
+      call s:filter_or_send_message()
+    endif
+    return ''
+  endfunction
+else
+  function! s:bs_action(before_bs) abort
+    call clap#highlight#clear()
+
+    if a:before_bs ==# ''
+      call s:goto_parent()
+    else
+      call s:filter_or_send_message()
+    endif
+    return ''
+  endfunction
+endif
 
 function! s:do_filter() abort
   let query = g:clap.input.get()
@@ -150,7 +148,7 @@ endfunction
 
 function! s:try_go_to_dir_is_ok() abort
   let input = g:clap.input.get()
-  if input[-1:] ==# '/'
+  if input[-1:] ==# s:PATH_SEPERATOR
     if isdirectory(expand(input))
       call s:reset_to(expand(input))
       return v:true
@@ -189,15 +187,16 @@ function! s:tab_action() abort
   endif
 
   call s:reset_to(current_entry)
+  call clap#sign#ensure_exists()
 
   return ''
 endfunction
 
 function! s:smart_concatenate(cur_dir, curline) abort
-  if a:cur_dir[-1:] ==# '/'
+  if a:cur_dir[-1:] ==# s:PATH_SEPERATOR
     return a:cur_dir.a:curline
   else
-    return a:cur_dir.'/'.a:curline
+    return a:cur_dir.s:PATH_SEPERATOR.a:curline
   endif
 endfunction
 
@@ -222,7 +221,8 @@ function! s:filer_on_typed() abort
   return ''
 endfunction
 
-function! s:filer_on_move() abort
+" Deprecated now.
+function! s:sync_on_move_impl() abort
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
     call clap#preview#file(current_entry)
@@ -231,37 +231,92 @@ function! s:filer_on_move() abort
   endif
 endfunction
 
+function! s:filer_handle_on_move_response(result, error) abort
+  if a:error isnot v:null
+    call s:handle_error(a:error)
+    return
+  endif
+
+  if empty(a:result.lines)
+    call g:clap.preview.show(['Empty entries'])
+  else
+    call g:clap.preview.show(a:result.lines)
+    if has_key(a:result, 'is_dir')
+      call g:clap.preview.set_syntax('clap_filer')
+      call clap#preview#clear_header_highlight()
+    else
+      if has_key(a:result, 'fname')
+        call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+      endif
+      call clap#preview#highlight_header()
+    endif
+  endif
+endfunction
+
+function! s:filer.on_move_async() abort
+  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
+endfunction
+
 function! s:filer_on_no_matches(input) abort
   execute 'edit' a:input
+endfunction
+
+if has('win32')
+  function! s:normalize_path_sep(path) abort
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
+  endfunction
+else
+  function! s:normalize_path_sep(path) abort
+    return a:path
+  endfunction
+endif
+
+function! s:set_initial_current_dir() abort
+  if empty(g:clap.provider.args)
+    let s:current_dir = getcwd()
+    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
+      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
+    endif
+    return
+  endif
+
+  let maybe_dir = g:clap.provider.args[0]
+  " %:p:h, % is actually g:clap.start.bufnr
+  if maybe_dir =~# '^%.\+'
+    let m = matchstr(maybe_dir, '^%\zs\(.*\)')
+    let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
+  elseif isdirectory(expand(maybe_dir))
+    let target_dir = maybe_dir
+  else
+    let s:current_dir = getcwd()
+    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
+      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
+    endif
+    return
+  endif
+
+  let target_dir = s:normalize_path_sep(expand(target_dir))
+  if target_dir[-1:] ==# s:PATH_SEPERATOR
+    let s:current_dir = target_dir
+  else
+    let s:current_dir = target_dir.s:PATH_SEPERATOR
+  endif
 endfunction
 
 function! s:start_rpc_service() abort
   let s:filer_cache = {}
   let s:filer_error_cache = {}
   let s:filer_empty_cache = {}
-  let s:last_request_id = 0
   let s:last_input = ''
-  if !empty(g:clap.provider.args) && isdirectory(expand(g:clap.provider.args[0]))
-    let target_dir = g:clap.provider.args[0]
-    if target_dir[-1:] ==# '/'
-      let s:current_dir = expand(target_dir)
-    else
-      let s:current_dir = expand(target_dir).'/'
-    endif
-  else
-    let s:current_dir = getcwd().'/'
-  endif
   let s:winwidth = winwidth(g:clap.display.winid)
-  let s:enable_icon = g:clap_enable_icon ? v:true : v:false
+  call s:set_initial_current_dir()
   call s:set_prompt()
-  call clap#job#stdio#start_rpc_service(function('s:handle_round_message'))
-  call s:send_message()
+  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
 let s:filer.sink = function('s:filer_sink')
 let s:filer.syntax = 'clap_filer'
-let s:filer.on_move = function('s:filer_on_move')
 let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.tab_action = function('s:tab_action')

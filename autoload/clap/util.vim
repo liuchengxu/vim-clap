@@ -78,8 +78,7 @@ function! clap#util#nvim_buf_clear(bufnr) abort
 endfunction
 
 function! clap#util#nvim_buf_is_empty(bufnr) abort
-  let last_lnum = nvim_buf_line_count(a:bufnr)
-  return last_lnum == 1 && empty(getbufline(a:bufnr, 1)[0])
+  return nvim_buf_line_count(a:bufnr) == 1 && empty(getbufline(a:bufnr, 1)[0])
 endfunction
 
 function! clap#util#nvim_buf_append_lines(bufnr, lines) abort
@@ -111,8 +110,13 @@ function! clap#util#trim_leading(str) abort
   return substitute(a:str, '^\s*', '', '')
 endfunction
 
-function! clap#util#buflisted() abort
-  return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+function! clap#util#buflisted(cur_tab_only) abort
+  if a:cur_tab_only
+    let buf_tab = get(g:__clap_tab_buffers, tabpagenr(), [])
+    return filter(copy(buf_tab), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+  else
+    return filter(range(1, bufnr('$')), 'buflisted(v:val) && getbufvar(v:val, "&filetype") !=# "qf"')
+  endif
 endfunction
 
 " Borrowed from fzf.vim
@@ -122,8 +126,8 @@ function! s:sort_buffers(...) abort
   return b1 < b2 ? 1 : -1
 endfunction
 
-function! clap#util#buflisted_sorted() abort
-  return sort(clap#util#buflisted(), 's:sort_buffers')
+function! clap#util#buflisted_sorted(cur_tab_only) abort
+  return sort(clap#util#buflisted(a:cur_tab_only), 's:sort_buffers')
 endfunction
 
 " TODO: expandcmd() 8.1.1510 https://github.com/vim/vim/commit/80dad48

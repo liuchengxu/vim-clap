@@ -48,23 +48,18 @@ function! s:tags.on_move() abort
   catch
     return
   endtry
-  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
-  let lines = getbufline(g:clap.start.bufnr, start, end)
-  call insert(lines, bufname(g:clap.start.bufnr).':'.lnum)
-  let hi_lnum += 1
-  call clap#preview#show_with_line_highlight(lines, s:origin_syntax, hi_lnum+1)
-  call clap#preview#highlight_header()
+  call clap#preview#buffer(lnum, s:origin_syntax)
 endfunction
 
 function! s:tags.on_enter() abort
   let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
   call g:clap.display.setbufvar('&syntax', 'clap_tags')
-  let g:__clap_builtin_content_filtering_enum = 'TagNameOnly'
+  let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
 endfunction
 
 function! s:tags.on_exit() abort
-  if exists('g:__clap_builtin_content_filtering_enum')
-    unlet g:__clap_builtin_content_filtering_enum
+  if exists('g:__clap_builtin_line_splitter_enum')
+    unlet g:__clap_builtin_line_splitter_enum
   endif
 endfunction
 

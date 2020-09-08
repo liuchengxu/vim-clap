@@ -214,7 +214,7 @@ else
   endfunction
 
   function! s:job_start(cmd) abort
-    let job = job_start(a:cmd, {
+    let job = job_start(clap#job#wrap_cmd(a:cmd), {
           \ 'in_io': 'null',
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),

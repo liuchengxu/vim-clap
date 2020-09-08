@@ -7,9 +7,7 @@ set cpoptions&vim
 let s:jumps = {}
 
 function! s:jumps.source() abort
-  call g:clap.start.goto_win()
-  let cout = execute('jumps')
-  call g:clap.input.goto_win()
+  let cout = clap#api#win_execute(g:clap.start.winid, 'jumps')
   let s:jumplist = split(cout, '\n')
   return [s:jumplist[0]] + reverse(s:jumplist[1:])
 endfunction

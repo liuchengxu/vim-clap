@@ -12,19 +12,13 @@ let s:default_opts = {
       \ 'git': 'ls-tree -r --name-only HEAD',
       \ 'find': '. -type f',
       \ }
+let s:options = filter(['fd', 'rg', 'git', 'find'], 'executable(v:val)')
 
-let s:default_finder = v:null
-
-for exe in ['fd', 'rg', 'git', 'find']
-  if executable(exe)
-    let s:default_finder = exe
-    break
-  endif
-endfor
-
-if s:default_finder is v:null
+if empty(s:options)
+  let s:default_finder = v:null
   let s:default_source = ['No usable tools found for the files provider']
 else
+  let s:default_finder = s:options[0]
   let s:default_source = join([s:default_finder, s:default_opts[s:default_finder]], ' ')
 endif
 
@@ -32,7 +26,7 @@ function! s:files.source() abort
   call clap#rooter#try_set_cwd()
 
   if has_key(g:clap.context, 'name-only')
-    let g:__clap_builtin_content_filtering_enum = 'FileNameOnly'
+    let g:__clap_builtin_line_splitter_enum = 'FileNameOnly'
   endif
 
   if has_key(g:clap.context, 'finder')
@@ -41,12 +35,9 @@ function! s:files.source() abort
   elseif g:clap.provider.args == ['--hidden']
     if s:default_finder ==# 'fd' || s:default_finder ==# 'rg'
       return join([s:default_finder, s:default_opts[s:default_finder], '--hidden'], ' ')
-    else
-      return s:default_source
     endif
-  else
-    return s:default_source
   endif
+  return s:default_source
 endfunction
 
 function! s:into_filename(line) abort
@@ -59,12 +50,7 @@ endfunction
 
 function! clap#provider#files#sink_impl(selected) abort
   let fpath = s:into_filename(a:selected)
-
-  if has_key(g:clap, 'open_action')
-    execute g:clap.open_action fpath
-  else
-    execute 'edit' fpath
-  endif
+  call clap#sink#edit_with_open_action(fpath)
 endfunction
 
 function! clap#provider#files#sink_star_impl(lines) abort
@@ -80,8 +66,8 @@ function! clap#provider#files#on_move_impl() abort
 endfunction
 
 function! s:files.on_exit() abort
-  if exists('g:__clap_builtin_content_filtering_enum')
-    unlet g:__clap_builtin_content_filtering_enum
+  if exists('g:__clap_builtin_line_splitter_enum')
+    unlet g:__clap_builtin_line_splitter_enum
   endif
 endfunction
 

@@ -26,6 +26,7 @@ function! s:validate(layout) abort
   endfor
 endfunction
 
+" FIXME: this could return 0 which throws error in NeoVim.
 function! s:calc(origin, size) abort
   if type(a:size) == v:t_number
     return a:size
@@ -33,6 +34,15 @@ function! s:calc(origin, size) abort
     return eval(a:size[:-2].'*'.a:origin.'/100')
   else
     call g:clap.abort(printf('Invalid value %s for g:clap_layout, allowed: Number or "Number%"', a:size))
+  endif
+endfunction
+
+function! s:adjust_indicator_width() abort
+  let width = winwidth(g:clap.start.winid)
+  if width < 45
+    let g:__clap_indicator_winwidth = 5
+  else
+    let g:__clap_indicator_winwidth = min([width / 5, 18])
   endif
 endfunction
 
@@ -45,6 +55,7 @@ if s:is_nvim
     else
       let [width, height] = [winwidth(g:clap.start.winid), winheight(g:clap.start.winid)]
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
+      call s:adjust_indicator_width()
     endif
 
     return extend(opts, {
@@ -66,6 +77,10 @@ if s:is_nvim
           \ 'relative': 'win',
           \ }
   endfunction
+
+  function! clap#layout#on_resized() abort
+    call clap#floating_win#redo_layout()
+  endfunction
 else
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
@@ -77,6 +92,7 @@ else
       let [row, col] = win_screenpos(g:clap.start.winid)
       let width = winwidth(g:clap.start.winid)
       let height = winheight(g:clap.start.winid)
+      call s:adjust_indicator_width()
     endif
     return {
           \ 'width': s:calc(width, layout.width),
@@ -96,6 +112,12 @@ else
           \ 'col': s:calc(width, s:default_layout.col) + col,
           \ }
   endfunction
+
+  function! clap#layout#on_resized() abort
+    " FIXME resize window if vim-clap is visible
+    " Vim's popup has a fixed option which makes the preview window tolerable.
+    " Ref #454
+  endfunction
 endif
 
 function! clap#layout#calc() abort
@@ -105,12 +127,6 @@ function! clap#layout#calc() abort
   else
     return s:calc_default()
   endif
-endfunction
-
-function! clap#layout#on_resized() abort
-  " FIXME resize window if vim-clap is visible
-  " The easiest way is to close and reopen vim-clap, so I'll leave this for
-  " now.
 endfunction
 
 let &cpoptions = s:save_cpo

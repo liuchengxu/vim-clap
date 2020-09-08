@@ -1,0 +1,25 @@
+[package]
+name = "filter"
+version = "0.1.0"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rayon = "1.2"
+anyhow = "1.0"
+serde_json = "1.0"
+serde = { package = "serde", version = "1.0",  features = ["derive"] }
+subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = true }
+
+icon = { path = "../icon" }
+matcher = { path = "../matcher" }
+printer = { path = "../printer" }
+utility = { path = "../utility" }
+
+[features]
+default = ["enable_dyn"]
+# Allow dynamic filtering
+# Avoid introduce needless dependency in pythonx/clap/fuzzymatch-rs as it's sync only.
+enable_dyn = ["subprocess"]

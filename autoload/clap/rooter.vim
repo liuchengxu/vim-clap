@@ -4,25 +4,43 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+function! s:set_provider_cwd(dir) abort
+  " dir could be a relative directory, e.g., ..
+  " We must use the absolute directory for g:__clap_provider_cwd,
+  " otherwise s:run_from_target_dir could `lcd ..` multiple times.
+  let save_cwd = getcwd()
+  noautocmd execute 'lcd' a:dir
+  let g:__clap_provider_cwd = getcwd()
+  noautocmd execute 'lcd' save_cwd
+endfunction
+
 " Some providers may change the cwd via the passed option, e.g., Clap files
 " and Clap grep.
 "
 " Skip if g:__clap_provider_cwd already exists as it only has be done once in
 " each provider context.
 function! clap#rooter#try_set_cwd() abort
-  if !exists('g:__clap_provider_cwd') && !empty(g:clap.provider.args)
-    let dir = g:clap.provider.args[-1]
-    if isdirectory(expand(dir))
+  if !exists('g:__clap_provider_cwd')
+    if !empty(g:clap.provider.args)
+      let dir = g:clap.provider.args[-1]
 
-      " dir could be a relative directory, e.g., ..
-      " We must use the absolute directory for g:__clap_provider_cwd,
-      " otherwise s:run_from_target_dir could `lcd ..` multiple times.
-      let save_cwd = getcwd()
-      noautocmd execute 'lcd' dir
+      " %:p:h, % is actually g:clap.start.bufnr
+      if dir =~# '^%.\+'
+        let m = matchstr(dir, '^%\zs\(.*\)')
+        let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
+        call s:set_provider_cwd(target_dir)
+        let g:clap.provider.args = g:clap.provider.args[:-2]
+        return
+      endif
+
+      if isdirectory(expand(dir))
+        call s:set_provider_cwd(dir)
+        let g:clap.provider.args = g:clap.provider.args[:-2]
+      endif
+    elseif clap#should_use_raw_cwd()
       let g:__clap_provider_cwd = getcwd()
-      noautocmd execute 'lcd' save_cwd
-
-      let g:clap.provider.args = g:clap.provider.args[:-2]
+    else
+      let g:__clap_provider_cwd = clap#path#project_root_or_default(g:clap.start.bufnr)
     endif
   endif
 endfunction

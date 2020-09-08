@@ -294,6 +294,16 @@ g:clap_disable_run_rooter                           *g:clap_disable_run_rooter*
   This variable can be set to `v:true` to run from the origin `cwd`.
 
 
+g:clap_enable_debug                                       *g:clap_enable_debug*
+
+  Type: |Bool|
+  Default: `v:false`
+
+  This variable controls whether some errors which could be tangential will
+  be printed. You normally won't want to enable this until you find vim-clap
+  somehow does not work as expected and want to debug it.
+
+
 g:clap_project_root_markers                       *g:clap_project_root_markers*
 
   Type: |List|
@@ -306,13 +316,13 @@ g:clap_project_root_markers                       *g:clap_project_root_markers*
 g:clap_current_selection_sign                   *g:clap_current_selection_sign*
 
   Type: |Dict|
-  Default: `{ 'text': '>>', 'texthl': "ClapCurrentSelectionSign", "linehl": "ClapCurrentSelection" }`
+  Default: `{ 'text': '>>', 'texthl': 'ClapCurrentSelectionSign', 'linehl': 'ClapCurrentSelection' }`
 
 
 g:clap_selected_sign                                     *g:clap_selected_sign*
 
   Type: |Dict|
-  Default: `{ 'text': ' >', 'texthl': "ClapSelectedSign", "linehl": "ClapSelected" }`
+  Default: `{ 'text': ' >', 'texthl': 'ClapSelectedSign', 'linehl': 'ClapSelected' }`
 
 
 g:clap_open_action                                         *g:clap_open_action*
@@ -341,8 +351,8 @@ g:clap_search_box_border_symbols              *g:clap_search_box_border_symbols*
 
 g:clap_search_box_border_style                  *g:clap_search_box_border_style*
 
-  Type: |Dict|
-  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil')`
+  Type: |String|
+  Default: `exists('g:spacevim_nerd_fonts') || exists('g:airline_powerline_fonts') ? 'curve' : 'nil'`
 
   This variable controls the style of border symbol used for the search box
   window.
@@ -468,6 +478,23 @@ g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold
   the built-in filter is synchoronous that will block the UI if you have a
   monster of candidates.
 
+
+g:clap_preview_size                                         *g:clap_preview_size*
+
+  Type: |Number| or |Dict|
+  Default: `5`
+
+  This variable controls the size of preview, normally the number of preview
+  lines is `2 * g:clap_preview_size` .
+
+  If |g:clap_preview_size| is a |Number|, all providers use the same size.
+
+  If |g:clap_preview_size| is a |Dict|, you can use different size for various
+  providers, use provider id as the key, `*` is a special key for the default size.
+  >
+  " 20 preview lines for files provider, 10 lines for the other providers.
+  let g:clap_preview_size = { '*': 5, 'files': 10 }
+<
 
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
@@ -638,7 +665,7 @@ g:clap_provider_yanks_max_entries             *g:clap_provider_yanks_max_entries
   Set this variable to limit maximum yanks entries.
 
 
-g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
+g:clap_provider_yanks_min_len                     *g:clap_provider_yanks_min_len*
 
   Type: |Number|
   Default: `1`
@@ -647,8 +674,28 @@ g:clap_provider_yanks_min_len             *g:clap_provider_yanks_min_len*
   variable to less than 2 has no effect.
 
 
+g:clap_provider_yanks_history                     *g:clap_provider_yanks_history*
+
+  Type: |String|
+  Default: `Undefined`
+
+  This variables controls the path of persist yanks history, e.g.,
+  >
+  let g:clap_provider_yanks_history = '~/.clap_yanks.history'
+<
+  The persist history feature is disabled by default.
+
+
 -------------------------------------------------------------------------------
 6.3 Other Provider Options                          *clap-other-provider-options*
+
+
+g:clap_provider_buffers_cur_tab_only       *g:clap_provider_buffers_cur_tab_only*
+
+  Type: |bool|
+  Default: `undefined`
+
+  List the buffer list per tab instead of the global buffer list.
 
 
 ===============================================================================
@@ -721,6 +768,19 @@ Cmdline mode
 
 - Use `:q` to exit.
 
+
+Change default keybindings                      *change-clap-default-keybindings*
+
+  Currently only neovim is able to change the default keybindings easily, e.g,
+  >
+  " For example, use <C-n>/<C-p> instead of <C-j>/<C-k> to navigate the result.
+  autocmd FileType clap_input inoremap <silent> <buffer> <C-n> <C-R>=clap#handler#navigate_result('down')<CR>
+  autocmd FileType clap_input inoremap <silent> <buffer> <C-p> <C-R>=clap#handler#navigate_result('up')<CR>
+<
+
+  It's not convenient for change the keybindings in Vim, see this comment
+  https://github.com/liuchengxu/vim-clap/issues/116#issuecomment-549816638 .
+
 ===============================================================================
 9. API                                                                *clap-api*
 
@@ -741,10 +801,10 @@ g:clap.input                                                   *g:clap.input*
   `g:clap.input.goto_win()` - Go to input window with `noautocmd`.
 
   `g:clap.input.getbufvar({varname}[, {def}])` - Similar to |getbufvar()| with
-  the buffer number is specified to the input buffer.
+  the buffer number specified to the input buffer.
 
   `g:clap.input.setbufvar({varname}, {val})` - Similar to |setbufvar()| with
-  the buffer number is specified to the input buffer.
+  the buffer number specified to the input buffer.
 
   `g:clap.input.get()` - Get the current input.
 
@@ -756,10 +816,10 @@ g:clap.display                                               *g:clap.display*
   `g:clap.display.get_lines()` - Get the current lines in display window.
 
   `g:clap.display.getbufvar({varname}[, {def}])` - Similar to |getbufvar()| with
-  the buffer number is specified to the display buffer.
+  the buffer number specified to the display buffer.
 
   `g:clap.display.setbufvar({varname}, {val})` - Similar to |setbufvar()| with
-  the buffer number is specified to the display buffer.
+  the buffer number specified to the display buffer.
 
 
 ClapOnEnter                                             *ClapOnEnter-autocmd*
@@ -775,6 +835,20 @@ ClapOnExit                                               *ClapOnExit-autocmd*
 
   This |User| autocommand is triggered when you exit the clap windows.
 
+
+clap#run()                                                       *clap#run()*
+
+  Similar to `fzf#run()`, `clap#run(provider)` has an argument `provider`, which is
+  a Dict like `g:clap_provider_foo` with an optional extra field `id` specifying the
+  provider id(the default value is `run`).
+
+  Example:
+  >
+  :call clap#run({'id': 'quick_run', 'source': 'ls', 'sink': 'edit'})
+<
+  It can used for adhoc running with a small-scale `source`, don't use it with
+  a `source` that probably ha a fair amount of items as it's normally undeveloped
+  in performance.
 
 ===============================================================================
 10. Contact                                                       *clap-contact*

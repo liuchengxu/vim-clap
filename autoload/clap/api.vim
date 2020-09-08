@@ -7,9 +7,6 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
-let s:on_move_timer = -1
-let s:on_move_delay = get(g:, 'clap_on_move_delay', 300)
-
 function! s:_goto_win() dict abort
   noautocmd call win_gotoid(self.winid)
 endfunction
@@ -37,6 +34,24 @@ function! clap#api#has_externalfilter() abort
         \ || has_key(g:clap.context, 'externalfilter')
 endfunction
 
+let s:has_no_icons = ['blines']
+
+" Returns the original full line with icon if g:clap_enable_icon is on given
+" the lnum of display buffer.
+function! clap#api#get_origin_line_at(lnum) abort
+  if exists('g:__clap_lines_truncated_map') && has_key(g:__clap_lines_truncated_map, a:lnum)
+    let t_line = g:__clap_lines_truncated_map[a:lnum]
+    " NOTE: t_line[3] is not 100% right
+    if g:clap_enable_icon && index(s:has_no_icons, g:clap.provider.id) == -1 && t_line[3] !=# ' '
+      return getbufline(g:clap.display.bufnr, a:lnum)[0][:3] . t_line
+    else
+      return t_line
+    endif
+  else
+    return get(getbufline(g:clap.display.bufnr, a:lnum), 0, '')
+  endif
+endfunction
+
 function! s:_system(cmd) abort
   let lines = systemlist(a:cmd)
   if v:shell_error
@@ -57,6 +72,21 @@ if s:is_nvim
   function! s:_win_is_valid() dict abort
     return self.winid == -1 ? v:false : nvim_win_is_valid(self.winid)
   endfunction
+
+  function! clap#api#win_execute(winid, command) abort
+    let cur_winid = bufwinid('')
+    if cur_winid != a:winid
+      noautocmd call win_gotoid(a:winid)
+      try
+        return execute(a:command)
+      finally
+        noautocmd call win_gotoid(cur_winid)
+      endtry
+    else
+      return execute(a:command)
+    endif
+  endfunction
+
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
@@ -70,6 +100,10 @@ else
 
   function! s:_win_is_valid() dict abort
     return !empty(popup_getpos(self.winid))
+  endfunction
+
+  function! clap#api#win_execute(winid, command) abort
+    return win_execute(a:winid, a:command)
   endfunction
 endif
 
@@ -203,27 +237,7 @@ function! s:init_display() abort
   endfunction
 
   function! display.getcurline() abort
-    let cur_line = get(getbufline(self.bufnr, g:__clap_display_curlnum), 0, '')
-    " g:__clap_lines_truncated_map can't store the truncated item with icon as the json_decode can fail.
-    if exists('g:__clap_lines_truncated_map')
-      if has_key(g:__clap_lines_truncated_map, cur_line)
-        return g:__clap_lines_truncated_map[cur_line]
-      endif
-      " Rebuild the complete line info with icon
-      if g:clap_enable_icon
-        let icon = cur_line[:3]
-        let real_cur_line = cur_line[4:]
-      else
-        let real_cur_line = cur_line
-      endif
-      if has_key(g:__clap_lines_truncated_map, real_cur_line)
-        return icon.g:__clap_lines_truncated_map[real_cur_line]
-      else
-        return cur_line
-      endif
-    else
-      return cur_line
-    endif
+    return clap#api#get_origin_line_at(g:__clap_display_curlnum)
   endfunction
 
   function! display.deletecurline() abort
@@ -296,7 +310,7 @@ function! s:init_input() abort
     endfunction
 
     function! input.clear() abort
-      call popup_settext(g:clap#popup#input.winid, '')
+      call popup_settext(self.winid, '')
     endfunction
   endif
 
@@ -346,6 +360,10 @@ function! s:init_provider() abort
 
   " After you have typed something
   function! provider.on_typed() abort
+    " If ++query is being used, we should do `on_typed`, ref #515.
+    if get(g:, '__clap_open_win_pre', v:false) && !has_key(g:clap.context, 'query')
+      return
+    endif
     try
       call self._().on_typed()
     catch
@@ -358,15 +376,7 @@ function! s:init_provider() abort
 
   " When you press Ctrl-J/K
   function! provider.on_move() abort
-    if get(g:, '__clap_has_no_matches', v:false)
-      return
-    endif
-    if has_key(self._(), 'on_move')
-      if s:on_move_timer != -1
-        call timer_stop(s:on_move_timer)
-      endif
-      let s:on_move_timer = timer_start(s:on_move_delay, { -> self._().on_move() })
-    endif
+    call clap#impl#on_move#invoke()
   endfunction
 
   function! provider.on_exit() abort
@@ -546,10 +556,10 @@ function! s:init_provider() abort
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
-      call clap#forerunner#start(self._().source)
+      call clap#job#regular#forerunner#start(self._().source)
       return
     elseif self.source_type == g:__t_func_string
-      call clap#forerunner#start(self._().source())
+      call clap#job#regular#forerunner#start(self._().source())
       return
     endif
 
@@ -567,6 +577,12 @@ function! s:init_provider() abort
       call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches_number(initial_size)
       call clap#sign#toggle_cursorline()
+
+      " For the providers that return a relatively huge List
+      if self.can_async() && clap#filter#beyond_capacity(initial_size)
+        let g:__clap_forerunner_tempfile = tempname()
+        call writefile(lines, g:__clap_forerunner_tempfile)
+      endif
     endif
   endfunction
 
@@ -575,6 +591,10 @@ function! s:init_provider() abort
       call self._().init()
     else
       call self.init_default_impl()
+    endif
+    " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
+    if clap#maple#is_available() && self.id !=# 'filer'
+      call clap#client#notify_on_init('on_init')
     endif
   endfunction
 

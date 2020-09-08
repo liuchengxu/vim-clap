@@ -23,13 +23,13 @@ macro_rules! print_json_with_length {
 
 mod app;
 mod light_command;
-mod utils;
+mod logger;
 
 pub mod cmd;
 pub use {
     anyhow::{Context, Result},
     app::{Cmd, Maple},
-    fuzzy_filter::{subprocess, ContentFiltering, Source},
+    filter::{subprocess, Source},
     icon::IconPainter,
     structopt::StructOpt,
 };

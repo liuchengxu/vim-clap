@@ -4,6 +4,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:cur_tab_only = get(g:, 'clap_provider_buffers_cur_tab_only', v:false)
+
 function! s:padding(origin, target_width) abort
   let width = strdisplaywidth(a:origin)
   if width < a:target_width
@@ -37,7 +39,7 @@ function! s:buffers() abort
     let lnum = matchstr(line, '\s\+\zsline.*$')
     let s:line_info[bufnr] = lnum
   endfor
-  let bufs = map(clap#util#buflisted_sorted(), 's:format_buffer(str2nr(v:val))')
+  let bufs = map(clap#util#buflisted_sorted(s:cur_tab_only), 's:format_buffer(str2nr(v:val))')
   if empty(bufs)
     return []
   else
@@ -68,7 +70,7 @@ function! s:buffers_on_move() abort
     return
   endif
   let lnum = str2nr(matchstr(s:line_info[bufnr], '\d\+'))
-  let [start, end, hi_lnum] = clap#preview#get_line_range(lnum, 5)
+  let [start, end, hi_lnum] = clap#preview#get_range(lnum)
   let lines = getbufline(bufnr, start+1, end+1)
   call insert(lines, bufname(bufnr))
   call g:clap.preview.show(lines)

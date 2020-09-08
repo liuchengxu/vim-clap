@@ -1,6 +1,5 @@
-use crate::ContentFiltering;
 use anyhow::Result;
-use fuzzy_filter::Source;
+use filter::{matcher::LineSplitter, Source};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -19,7 +18,7 @@ pub struct Blines {
 impl Blines {
     /// Looks for matches of `query` in lines of the current vim buffer.
     pub fn run(&self, number: Option<usize>, winwidth: Option<usize>) -> Result<()> {
-        crate::cmd::filter::dynamic::dyn_fuzzy_filter_and_rank(
+        filter::dyn_run(
             &self.query,
             Source::List(
                 std::fs::read_to_string(&self.input)?
@@ -31,7 +30,7 @@ impl Blines {
             number,
             winwidth,
             None,
-            ContentFiltering::Full,
+            LineSplitter::Full,
         )
     }
 }

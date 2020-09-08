@@ -1,10 +1,15 @@
 [workspace]
 
 members = [
-    "maple_cli",
-    "extracted_fzy",
     "fulf",
-    "fuzzy_filter",
     "icon",
-    "printer"
+    "maple_cli",
+    "pattern",
+    "printer",
+    "stdio_server",
+    "utility",
+    "upgrade",
+    "matcher",
+    "matcher/extracted_fzy",
+    "filter",
 ]

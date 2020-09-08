@@ -26,9 +26,11 @@ function! clap#state#handle_message(msg) abort
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
+  call clap#sign#ensure_exists()
+
   if has_key(decoded, 'indices')
     try
-      call clap#highlight#add_fuzzy_async(decoded.indices)
+      call clap#highlight#add_fuzzy_async_with_delay(decoded.indices)
     catch
       return
     endtry
@@ -79,6 +81,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
+        \ 'g:__clap_builtin_line_splitter_enum',
         \ ])
   call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')

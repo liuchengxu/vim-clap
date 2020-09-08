@@ -1,13 +1,12 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
-use crate::utils::is_git_repo;
-use crate::ContentFiltering;
 use anyhow::{Context, Result};
-use fuzzy_filter::{subprocess::Exec, Source};
+use filter::{matcher::LineSplitter, subprocess::Exec, Source};
 use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
 use structopt::StructOpt;
+use utility::is_git_repo;
 
 const RG_ARGS: [&str; 7] = [
     "rg",
@@ -122,14 +121,14 @@ impl Grep {
         no_cache: bool,
     ) -> Result<()> {
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
-            crate::cmd::filter::dyn_run(
+            filter::dyn_run(
                 &self.grep_query,
                 source,
                 None,
                 number,
                 winwidth,
                 icon_painter,
-                ContentFiltering::GrepExcludeFilePath,
+                LineSplitter::GrepExcludeFilePath,
             )
         };
 

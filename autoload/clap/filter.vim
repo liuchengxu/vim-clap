@@ -45,15 +45,15 @@ if s:can_use_python
     endif
   endfunction
 
-  function! s:content_filtering() abort
-    return exists('g:__clap_builtin_content_filtering_enum') ? g:__clap_builtin_content_filtering_enum : 'Full'
+  function! s:line_splitter() abort
+    return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
   endfunction
 
   function! clap#filter#sync(query, candidates) abort
     try
-      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:content_filtering())
+      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:line_splitter())
     catch
-      call clap#helper#echo_error(v:exception)
+      call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
       return clap#filter#sync#viml#(a:query, a:candidates)
     endtry
   endfunction

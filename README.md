@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/liuchengxu/vim-clap/workflows/ci/badge.svg)](https://github.com/liuchengxu/vim-clap/actions?workflow=ci)
 [![Gitter][G1]][G2]
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/liuchengxu)
 
 [G1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
 [G2]: https://gitter.im/liuchengxu/vim-clap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
@@ -99,7 +100,12 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
-`:Clap!! [provider_id_or_alias] {provider_args}` means to disable/refresh the cache, a shortcut to add `+no-cache` option. For example, `:Clap!! files ~` equals to `:Clap files +no-cache ~`. Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
+You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files +no-cache ~` for searching files under the home directory without cache, the shortcut for `+no-cache` option:
+
+- `:Clap!! [provider_id_or_alias] {provider_args}`, e.g, `:Clap!! files ~`.
+- `:Clap [provider_id_or_alias][!] {provider_args}`, e.g, `:Clap files! ~`. (Recommended)
+
+Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
 
 <img width="561" alt="截屏2020-04-08 下午5 11 50" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
 
@@ -107,14 +113,14 @@ The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provid
 
 Command                                | List                                                | Requirement
 :----                                  | :----                                               | :----
-`Clap bcommits`**<sup>!</sup>**        | Git commits for the current buffer                  | **[git][git]**
+`Clap bcommits`                        | Git commits for the current buffer                  | **[git][git]**
 `Clap blines`                          | Lines in the current buffer                         | _none_
 `Clap buffers`                         | Open buffers                                        | _none_
 `Clap colors`                          | Colorschemes                                        | _none_
 `Clap command`                         | Command                                             | _none_
 `Clap hist:` or `Clap command_history` | Command history                                     | _none_
 `Clap hist/` or `Clap search_history`  | Search history                                      | _none_
-`Clap commits` **<sup>!</sup>**        | Git commits                                         | **[git][git]**
+`Clap commits`                         | Git commits                                         | **[git][git]**
 `Clap files`                           | Files                                               | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find
 `Clap filetypes`                       | File types                                          | _none_
 `Clap gfiles` or `Clap git_files`      | Files managed by git                                | **[git][git]**
@@ -135,7 +141,7 @@ Command                                | List                                   
 `Clap yanks`                           | Yank stack of the current vim session               | _none_
 `Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**
 `Clap providers`                       | List the vim-clap providers                         | _none_
-`Clap windows` **<sup>!</sup>**        | Windows                                             | _none_
+`Clap windows`                         | Windows                                             | _none_
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep

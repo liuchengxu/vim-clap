@@ -6,16 +6,12 @@ set cpoptions&vim
 
 let s:marks = {}
 
-let s:preview_size = 5
-
 function! s:format_mark(line) abort
   return substitute(a:line, '\S', '\=submatch(0)', '')
 endfunction
 
 function! s:marks.source() abort
-  call g:clap.start.goto_win()
-  let cout = execute('marks')
-  call g:clap.input.goto_win()
+  let cout = clap#api#win_execute(g:clap.start.winid, 'marks')
   let list = split(cout, "\n")
   return extend(list[0:0], map(list[1:], 's:format_mark(v:val)'))
 endfunction
@@ -29,7 +25,7 @@ function! clap#provider#marks#preview_impl(line, col, file_text) abort
 
   let origin_line = getbufline(g:clap.start.bufnr, line)
 
-  let [start, end, hi_lnum] = clap#preview#get_line_range(line, s:preview_size)
+  let [start, end, hi_lnum] = clap#preview#get_range(line)
 
   let should_add_hi = v:true
 
@@ -100,6 +96,7 @@ function! s:marks.on_move() abort
 endfunction
 
 let s:marks.syntax = 'clap_marks'
+let s:marks.source_type = g:__t_func_list
 
 let g:clap#provider#marks# = s:marks
 

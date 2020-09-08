@@ -29,21 +29,27 @@ endfunction
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   let s:last_query = g:clap.input.get()
 
-  if g:clap_enable_icon && index(['files', 'git_files'], g:clap.provider.id) > -1
-    let enable_icon_opt = ['--icon-painter=File']
+  if g:clap_enable_icon
+    if index(['files', 'git_files'], g:clap.provider.id) > -1
+      let enable_icon_opt = ['--icon-painter=File']
+    elseif 'proj_tags' ==# g:clap.provider.id
+      let enable_icon_opt = ['--icon-painter=ProjTags']
+    else
+      let enable_icon_opt = []
+    endif
   else
     let enable_icon_opt = []
   endif
 
   if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
-    let content_filtering = ['--content-filtering=FileNameOnly']
+    let line_splitter = ['--line-splitter=FileNameOnly']
   elseif g:clap.provider.id ==# 'proj_tags'
-    let content_filtering = ['--content-filtering=TagNameOnly']
+    let line_splitter = ['--line-splitter=TagNameOnly']
   else
-    let content_filtering = []
+    let line_splitter = []
   endif
 
-  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + content_filtering)
+  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + line_splitter)
   call clap#job#stdio#start_service(function('s:handle_message'), filter_cmd)
 endfunction
 

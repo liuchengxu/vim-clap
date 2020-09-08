@@ -21,16 +21,16 @@ function! s:grep2.on_typed()
 endfunction
 
 function! s:grep2.init() abort
-  let g:__clap_builtin_content_filtering_enum = 'GrepExcludeFilePath'
+  let g:__clap_builtin_line_splitter_enum = 'GrepExcludeFilePath'
   call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
   endif
 endfunction
 
 function! s:grep2.exit() abort
-  unlet g:__clap_builtin_content_filtering_enum
+  unlet g:__clap_builtin_line_splitter_enum
 endfunction
 
 let s:grep2.sink = g:clap#provider#grep#.sink

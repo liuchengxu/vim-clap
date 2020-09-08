@@ -12,7 +12,7 @@ function! clap#selection#get_sink_or_sink_star_params() abort
   let selected = clap#sign#get()
   if s:multi_select_enabled && !empty(selected)
     let Sink = g:clap.provider.sink_star
-    let sink_args = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+    let sink_args = map(selected, 'clap#api#get_origin_line_at(v:val)')
   else
     let Sink = g:clap.provider.sink
     let sink_args = g:clap.display.getcurline()
@@ -24,7 +24,7 @@ function! clap#selection#get_action_or_action_star_params() abort
   let selected = clap#sign#get()
   if len(selected) > 1
     let Action = g:clap.provider._()['action*']
-    let action_args = map(selected, 'getbufline(g:clap.display.bufnr, v:val)[0]')
+    let action_args = map(selected, 'clap#api#get_origin_line_at(v:val)')
   else
     let Action = g:clap.provider._().action
     let action_args = g:clap.display.getcurline()
@@ -57,9 +57,20 @@ function! clap#selection#toggle() abort
   return ''
 endfunction
 
+" Returns the lines that will be applied with sink action.
+function! s:get_opaque_lines() abort
+  let selected = clap#sign#get()
+  " User can already press the Tab or not.
+  if s:multi_select_enabled && !empty(selected)
+    return map(copy(selected), 'clap#api#get_origin_line_at(v:val)')
+  else
+    return [g:clap.display.getcurline()]
+  endif
+endfunction
+
+" Apply the open action specified by `g:clap_open_action` given the (selected) lines.
 function! clap#selection#try_open(action) abort
-  if s:multi_select_enabled
-        \ || !has_key(g:clap_open_action, a:action)
+  if !has_key(g:clap_open_action, a:action)
         \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
     return
   endif
@@ -70,21 +81,22 @@ function! clap#selection#try_open(action) abort
         \ && index(['e', 'edit', 'edit!'], Sink) != -1
 
     call g:clap.start.goto_win()
-    let curline = g:clap.display.getcurline()
-    let open = g:clap_open_action[a:action]
-    execute open curline
-
+    let open_cmd = g:clap_open_action[a:action]
+    for line in g:get_opaque_lines()
+      execute open_cmd line
+    endfor
     call clap#_exit()
 
   elseif g:clap.provider.support_open_action()
 
-    let g:clap.open_action = g:clap_open_action[a:action]
-    let curline = g:clap.display.getcurline()
     call g:clap.start.goto_win()
-    call g:clap.provider.sink(curline)
-
+    let g:clap.open_action = g:clap_open_action[a:action]
+    for line in s:get_opaque_lines()
+      call g:clap.provider.sink(line)
+    endfor
     call remove(g:clap, 'open_action')
     call clap#_exit()
+
   endif
 endfunction
 

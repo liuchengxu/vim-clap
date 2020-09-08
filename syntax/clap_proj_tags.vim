@@ -9,7 +9,7 @@ syntax match ClapProjTagPattern /^.*$/ contains=ClapTagName,ClapProjTagKind,Clap
 hi default link ClapProjTagName Type
 hi default link ClapProjTagKind Function
 hi default link ClapProjTagPath Directory
-hi default link ClapProjTagPattern SpecialKey
+hi default link ClapProjTagPattern Identifier
 hi default link ClapProjTagKindPathSeperator String
 hi default link ClapProjTagLnum Number
 hi default link ClapProjTagBrackets Comment

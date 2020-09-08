@@ -15,13 +15,8 @@ if !s:has_features
 endif
 
 let s:cur_dir = fnamemodify(resolve(expand('<sfile>:p')), ':h')
-let s:builtin_providers = map(
-      \ split(globpath(s:cur_dir.'/clap/provider', '*'), '\n'),
-      \ 'fnamemodify(v:val, '':t:r'')'
-      \ )
 
 let g:clap#autoload_dir = s:cur_dir
-let g:clap#builtin_providers = s:builtin_providers
 
 let g:__t_func = 0
 let g:__t_string = 1
@@ -40,6 +35,7 @@ let s:provider_alias = extend(s:provider_alias, get(g:, 'clap_provider_alias', {
 let g:clap#provider_alias = s:provider_alias
 let g:clap_disable_run_rooter = get(g:, 'clap_disable_run_rooter', v:false)
 let g:clap_disable_bottom_top = get(g:, 'clap_disable_bottom_top', 0)
+let g:clap_enable_debug = get(g:, 'clap_enable_debug', v:false)
 let g:clap_forerunner_status_sign = get(g:, 'clap_forerunner_status_sign', {'done': '•', 'running': '!', 'using_cache': '*'})
 
 " Backward compatible
@@ -79,13 +75,23 @@ let s:default_action = {
 
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
-
+let g:clap_preview_size = get(g:, 'clap_preview_size', 5)
 let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
 let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@')
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
 
 let g:clap_popup_border = get(g:, 'clap_popup_border', 'rounded')
+
+function! clap#builtin_providers() abort
+  if !exists('s:builtin_providers')
+    let s:builtin_providers = map(
+          \ split(globpath(s:cur_dir.'/clap/provider', '*'), '\n'),
+          \ 'fnamemodify(v:val, '':t:r'')'
+          \ )
+  endif
+  return s:builtin_providers
+endfunction
 
 function! s:inject_default_impl_is_ok(provider_info) abort
   let provider_info = a:provider_info
@@ -144,8 +150,8 @@ endfunction
 
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
-  call clap#forerunner#stop()
-  call clap#maple#stop()
+  call clap#job#regular#forerunner#stop()
+  call clap#maple#clean_up()
 
   call g:clap.close_win()
 
@@ -280,7 +286,17 @@ function! clap#for(provider_id_or_alias) abort
 
   call clap#selection#init()
 
+  " This flag is used to slience the autocmd events for NeoVim, e.g., on_typed.
+  " Vim doesn't have these issues as it uses noautocmd in most cases.
+  "
+  " Without this flag, the on_typed hook can be triggered when relaunching
+  " some provider. To reproduce:
+  " 1. :Clap
+  " 2. Choose proj_tags
+  " 3. proj_tags ontyped hook will be triggered.
+  let g:__clap_open_win_pre = v:true
   call g:clap.open_win()
+  let g:__clap_open_win_pre = v:false
 endfunction
 
 if !exists('g:clap')
@@ -357,7 +373,22 @@ function! clap#(bang, ...) abort
     endif
   endif
 
+  if provider_id_or_alias =~# '!$'
+    let g:clap.context['no-cache'] = v:true
+    let provider_id_or_alias = provider_id_or_alias[:-2]
+  endif
+
   call clap#for(provider_id_or_alias)
+endfunction
+
+function! clap#run(provider) abort
+  let id = has_key(a:provider, 'id') ? a:provider['id'] : 'run'
+  let g:clap_provider_{id} = a:provider
+  if s:inject_default_impl_is_ok(g:clap_provider_{id})
+        \ && s:validate_provider(g:clap_provider_{id})
+    let g:clap.registrar[id] = g:clap_provider_{id}
+    execute 'Clap' id
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo
