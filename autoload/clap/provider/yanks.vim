@@ -41,7 +41,7 @@ function! clap#provider#yanks#collect() abort
 endfunction
 
 function! s:save_history() abort
-  if g:clap_provider_yanks_history && !empty(s:yank_history)
+  if !empty(s:yank_history)
     call writefile(s:yank_history, expand(g:clap_provider_yanks_history))
   endif
 endfunction
@@ -51,7 +51,8 @@ function! clap#provider#yanks#init() abort
     autocmd!
     autocmd TextYankPost * call clap#provider#yanks#collect()
     if exists('g:clap_provider_yanks_history')
-      autocmd VimLeavePre  * call s:save_history()
+          \ && filewritable(expand(g:clap_provider_yanks_history))
+      autocmd VimLeavePre * call s:save_history()
     endif
   augroup END
 

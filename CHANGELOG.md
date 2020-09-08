@@ -1,5 +1,4 @@
-CHANGELOG
-=========
+# CHANGELOG
 
 ## [unreleased]
 
@@ -20,6 +19,7 @@ CHANGELOG
 - Handle the maple error in the filer provider, fix [#500](https://github.com/liuchengxu/vim-clap/issues/500), [#501](https://github.com/liuchengxu/vim-clap/issues/501).
 - Fix regression #513
 - Fix #515
+- Fix #517
 
 ## [0.20] 2020-08-06
 
@@ -239,7 +239,7 @@ CHANGELOG
 - Add `g:clap_project_root_markers` for specifing how vim-clap intentify a project root. Previously only the git-based project is supported, i.e., `g:clap_project_root_markers = ['.git', '.git/']`. The default value of `g:clap_project_root_markers` is `['.root', '.git', '.git/']` you can add `.root` file under the directory you want to the project root.([#290](https://github.com/liuchengxu/vim-clap/pull/290))
 - Add preview support for `yanks`, `buffers`, `files`, `git_files` and `history` provider.
 - Add new highlight group `ClapSelectedSign` and `ClapCurrentSelectionSign` for the sign `texthl`, they are linked to `WarningMsg` by default.
--  Add multi-selection support for `:Clap blines`.
+- Add multi-selection support for `:Clap blines`.
 - [neovim] normal mappings: j/k, gg/G, `<C-d>`/`<C-u>` and see `ftplugin/clap_input.vim`.
 
 ### Improved
@@ -255,7 +255,7 @@ CHANGELOG
 ### Changed
 
 - Add `<nowait>` to neovim's open action mappinngs.
-- Change the default icon for `filer` to   .
+- Change the default icon for `filer` to  .
 - Set `&foldcoloumn` to 0 for neovim by default.
 - Decrease the default `g:clap_popup_input_delay` from 200ms to 100ms, use the Rust binary.
 - Update `clap_tags` syntax due to https://github.com/liuchengxu/vista.vim/pull/231.
@@ -281,7 +281,7 @@ CHANGELOG
 
 ### Changed
 
-- Use    as the icon of markdown.
+- Use  as the icon of markdown.
 - Change the default spinner frames to `['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓']`.
 - Change the default prompt format to `' %spinner%%forerunner_status%%provider_id%:'`.
 - Disable `coc_pairs`.
