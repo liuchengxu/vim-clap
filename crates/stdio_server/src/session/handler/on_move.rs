@@ -138,7 +138,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::types::ProviderId = self.provider_id.clone().into();
+        let provider_id: crate::types::ProviderId = self.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
