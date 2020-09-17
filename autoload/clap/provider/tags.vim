@@ -63,7 +63,9 @@ function! s:tags.on_exit() abort
   endif
 endfunction
 
-let s:tags.sink = function('vista#finder#fzf#sink')
+function! s:tags.sink(selected) abort
+  call vista#finder#fzf#sink(a:selected, g:clap.start.winid)
+endfunction
 
 let g:clap#provider#tags# = s:tags
 
