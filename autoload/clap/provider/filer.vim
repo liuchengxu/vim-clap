@@ -258,7 +258,7 @@ function! s:filer.on_move_async() abort
 endfunction
 
 function! s:filer_on_no_matches(input) abort
-  execute 'edit' a:input
+  execute 'edit' s:smart_concatenate(s:current_dir, a:input)
 endfunction
 
 if has('win32')
