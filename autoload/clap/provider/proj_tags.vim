@@ -6,6 +6,18 @@ set cpoptions&vim
 
 let s:proj_tags = {}
 
+let s:support_json_format =
+      \ len(filter(systemlist('ctags --list-features'), 'v:val =~# ''^json''')) > 0
+
+function! clap#provider#proj_tags#support_json_format() abort
+  return s:support_json_format
+endfunction
+
+if !s:support_json_format
+  call clap#helper#echo_error('Ensure ctags executable is in your PATH and has the JSON output feature')
+  finish
+endif
+
 function! s:proj_tags.on_typed() abort
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)

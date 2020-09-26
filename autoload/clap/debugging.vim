@@ -61,12 +61,22 @@ function! clap#debugging#info() abort
   echohl Type   | echo 'has py dynamic module: '                | echohl NONE
   echohl Normal | echon clap#filter#sync#python#has_dynamic_module() | echohl NONE
 
+  echohl Type   | echo '            has ctags: '                | echohl NONE
+  if executable('ctags')
+    if clap#provider#proj_tags#support_json_format()
+      echohl Normal | echon 'ctags with JSON output support'    | echohl NONE
+    else
+      echohl Normal | echon 'ctags without JSON output support' | echohl NONE
+    endif
+  else
+    echohl Normal | echon 'ctags not found'    | echohl NONE
+  endif
+
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE
 
   echohl Type   | echo 'Third Party Providers: ' | echohl NONE
   echohl Normal | echon third_party_providers    | echohl NONE
-
 
   echohl Type   | echo '       Global Options:'  | echohl NONE
   let provider_var = []
