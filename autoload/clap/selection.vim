@@ -82,7 +82,7 @@ function! clap#selection#try_open(action) abort
 
     call g:clap.start.goto_win()
     let open_cmd = g:clap_open_action[a:action]
-    for line in g:get_opaque_lines()
+    for line in s:get_opaque_lines()
       execute open_cmd line
     endfor
     call clap#_exit()
