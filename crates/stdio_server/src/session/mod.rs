@@ -9,7 +9,7 @@ use anyhow::Result;
 
 pub use context::SessionContext;
 pub use handler::{
-    on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler},
+    on_move::{OnMove, OnMoveHandler},
     HandleMessage, RpcMessage,
 };
 pub use manager::{Manager, NewSession, OpaqueSession};

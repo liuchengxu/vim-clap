@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn run<T: super::handler::HandleMessage>(
+pub(super) fn run_forerunner<T: super::handler::HandleMessage>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,
@@ -14,8 +14,8 @@ pub(super) fn run<T: super::handler::HandleMessage>(
         .filter_map(|x| x.ok())
         .collect::<Vec<String>>();
 
+    // Send the forerunner results to the client if the session is still running.
     if session.is_running() {
-        // Send the forerunner result to client.
         let initial_size = lines.len();
         let response_lines = lines
             .iter()

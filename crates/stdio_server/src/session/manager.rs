@@ -41,7 +41,7 @@ impl NewSession for OpaqueSession {
 
         let session = Session {
             session_id: msg.session_id,
-            context: msg.clone().into(),
+            context: msg.into(),
             message_handler: super::handler::MessageHandler,
             event_recv: session_receiver,
         };
@@ -52,7 +52,7 @@ impl NewSession for OpaqueSession {
             thread::Builder::new()
                 .name(format!("session-forerunner-{}", session.session_id))
                 .spawn(move || {
-                    crate::session::forerunner::run(msg_id, source_cmd, session_cloned)
+                    crate::session::forerunner::run_forerunner(msg_id, source_cmd, session_cloned)
                 })?;
         }
 
@@ -94,7 +94,7 @@ impl Manager {
         self.sessions.contains_key(&session_id)
     }
 
-    /// Send Terminate event to stop the thread of session.
+    /// Send `Terminate` event to stop the thread of given `session_id`.
     pub fn terminate(&mut self, session_id: SessionId) {
         if let Some(sender) = self.sessions.remove(&session_id) {
             sender.send(SessionEvent::Terminate);

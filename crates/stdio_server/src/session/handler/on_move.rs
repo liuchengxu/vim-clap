@@ -1,5 +1,6 @@
 use crate::session::SessionContext;
 use crate::types::{Message, ProviderId};
+use crate::utils::{as_absolute_path, build_abs_path};
 use crate::write_response;
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
@@ -7,14 +8,6 @@ use pattern::*;
 use serde_json::json;
 use std::path::Path;
 use std::path::PathBuf;
-
-#[inline]
-pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
-    std::fs::canonicalize(path.as_ref())?
-        .into_os_string()
-        .into_string()
-        .map_err(|e| anyhow!("{:?}, path:{}", e, path.as_ref().display()))
-}
 
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]
@@ -28,13 +21,6 @@ pub enum OnMove {
     BLines { path: PathBuf, lnum: usize },
     ProjTags { path: PathBuf, lnum: usize },
     BufferTags { path: PathBuf, lnum: usize },
-}
-
-/// Build the absolute path using cwd and relative path.
-pub fn build_abs_path(cwd: &str, curline: String) -> PathBuf {
-    let mut path: PathBuf = cwd.into();
-    path.push(&curline);
-    path
 }
 
 impl OnMove {
@@ -152,7 +138,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::types::ProviderId = self.provider_id.clone().into();
+        let provider_id: crate::types::ProviderId = self.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -219,7 +205,8 @@ impl<'a> OnMoveHandler<'a> {
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let enable_icon = crate::env::global().enable_icon;
-        let lines = crate::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let lines =
+            crate::provider::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({
           "event": "on_move",
           "lines": lines,
