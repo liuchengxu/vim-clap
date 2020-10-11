@@ -156,6 +156,12 @@ endfunction
 
 call s:define_open_action_filter()
 
+if exists('g:clap_popup_move_manager')
+  for [key, value] in items(g:clap_popup_move_manager)
+    execute printf('let s:move_manager["%s"] = s:move_manager["%s"]', key, value)
+  endfor
+endif
+
 function! s:move_manager.printable(key) abort
   let s:input = s:strpart_input(0, s:cursor_idx).a:key.s:strpart_input(s:cursor_idx)
   let s:cursor_idx = strchars(s:strpart_input(0, s:cursor_idx) . a:key, 1)

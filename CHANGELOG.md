@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add `g:clap_popup_move_manager` so that Vim users can override the default mappings easily. #536
 - Allow user to always download the prebuilt binary. #531
 
 ## [0.21] 2020-09-27
