@@ -17,6 +17,9 @@ function! s:run_term(cmd, cwd, success_info) abort
       execute 'silent! bd! '.bufnr
       call clap#helper#echo_info(a:success_info)
     endif
+    if clap#maple#is_available()
+      call clap#job#daemon#start(function('clap#client#handle'))
+    endif
   endfunction
 
   if has('nvim')
@@ -106,11 +109,16 @@ endfunction
 
 function! s:do_download() abort
   if !exists('s:current_version')
-    let version_line = readfile(s:maple_cargo_toml)[:5][-1]
-    let s:current_version = str2nr(matchstr(version_line, '0.1.\zs\d\+'))
+    if executable(s:prebuilt_maple_binary)
+      "Since v0.7
+      let version_line = system(s:prebuilt_maple_binary.' version')
+      let s:current_version = str2nr(matchstr(version_line, '0.1.\zs\d\+'))
+    else
+      let s:current_version = -1
+    endif
   endif
   " Since v0.14 maple itself is able to download the latest release binary.
-  if executable(s:prebuilt_maple_binary) && s:current_version >= 14
+  if s:current_version >= 14
     let cmd = s:prebuilt_maple_binary.' upgrade --download'
     call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully')
   else
@@ -123,6 +131,10 @@ function! clap#installer#force_download() abort
 endfunction
 
 function! clap#installer#install(try_download) abort
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#stop()
+  endif
+
   " Always prefer to compile it locally.
   if executable('cargo')
     call clap#installer#build_all()
