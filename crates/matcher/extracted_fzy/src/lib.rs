@@ -19,11 +19,11 @@ pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<Ma
     } else {
         Some(haystack.to_lowercase())
     };
-    let haystack_str = haystack_opt.as_deref().unwrap_or(haystack);
+    let haystack = haystack_opt.as_deref().unwrap_or(haystack);
 
-    match matches(needle, haystack_str) {
+    match matches(needle, haystack) {
         Some(needle_length) => {
-            let (score, positions) = score_with_positions(needle, needle_length, haystack_str);
+            let (score, positions) = score_with_positions(needle, needle_length, haystack);
             Some((score, positions))
         }
         None => None,
