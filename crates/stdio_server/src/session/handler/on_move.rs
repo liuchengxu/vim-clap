@@ -213,7 +213,10 @@ impl<'a> OnMoveHandler<'a> {
         let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
         lines.map(move |line| {
             if line.len() > max_width {
-                format!("{}......", &line[..max_width])
+                let mut line = line;
+                line.truncate(max_width);
+                line.push_str("……");
+                line
             } else {
                 line
             }
