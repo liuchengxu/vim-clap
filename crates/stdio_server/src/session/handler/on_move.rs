@@ -178,16 +178,8 @@ impl<'a> OnMoveHandler<'a> {
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = format!("{}", path.as_ref().display());
-                let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
-                let lines_iter = lines_iter.map(|line| {
-                    if line.len() > max_width {
-                        format!("{}......", &line[..max_width])
-                    } else {
-                        line
-                    }
-                });
                 let lines = std::iter::once(fname.clone())
-                    .chain(lines_iter)
+                    .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
                 debug!(
                     "sending msg_id:{}, provider_id:{}",
@@ -211,19 +203,28 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let abs_path = as_absolute_path(path.as_ref())?;
-        let lines_iter = utility::read_first_lines(path.as_ref(), 2 * self.size)?;
+    /// Truncates the lines that are awfully long as vim can not handle them properly.
+    ///
+    /// Ref https://github.com/liuchengxu/vim-clap/issues/543
+    fn truncate_preview_lines(
+        &self,
+        lines: impl Iterator<Item = String>,
+    ) -> impl Iterator<Item = String> {
         let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
-        let lines_iter = lines_iter.map(|line| {
+        lines.map(move |line| {
             if line.len() > max_width {
                 format!("{}......", &line[..max_width])
             } else {
                 line
             }
-        });
+        })
+    }
+
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let abs_path = as_absolute_path(path.as_ref())?;
+        let lines_iter = utility::read_first_lines(path.as_ref(), 2 * self.size)?;
         let lines = std::iter::once(abs_path.clone())
-            .chain(lines_iter)
+            .chain(self.truncate_preview_lines(lines_iter))
             .collect::<Vec<_>>();
         self.send_response(json!({
           "event": "on_move",
