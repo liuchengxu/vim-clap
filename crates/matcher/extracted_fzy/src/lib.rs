@@ -10,20 +10,15 @@ use crate::scoring_utils::*;
 pub type MatchWithPositions = (Score, Vec<usize>);
 
 pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
-    let is_case_sensitive = match needle.chars().find(|c| c.is_uppercase()) {
-        Some(_) => true,
-        None => false,
-    };
-    let haystack_opt = if is_case_sensitive {
-        None
+    let haystack = if needle.chars().any(|c| c.is_uppercase()) {
+        haystack.into()
     } else {
-        Some(haystack.to_lowercase())
+        haystack.to_lowercase()
     };
-    let haystack = haystack_opt.as_deref().unwrap_or(haystack);
 
-    match matches(needle, haystack) {
+    match matches(needle, &haystack) {
         Some(needle_length) => {
-            let (score, positions) = score_with_positions(needle, needle_length, haystack);
+            let (score, positions) = score_with_positions(needle, needle_length, &haystack);
             Some((score, positions))
         }
         None => None,
