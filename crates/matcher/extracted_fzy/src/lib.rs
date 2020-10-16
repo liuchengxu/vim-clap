@@ -232,3 +232,29 @@ impl Matrix {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn case_insensitive() {
+        let result = match_and_score_with_positions("def", "abc DEF ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("def", "abc def ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("xyz", "abc def ghi");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn smart_case() {
+        let result = match_and_score_with_positions("Def", "abc Def ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("Def", "abc def ghi");
+        assert_eq!(result, None);
+    }
+}
