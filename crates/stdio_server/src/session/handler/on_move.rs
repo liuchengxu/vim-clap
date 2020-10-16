@@ -214,7 +214,13 @@ impl<'a> OnMoveHandler<'a> {
         lines.map(move |line| {
             if line.len() > max_width {
                 let mut line = line;
-                line.truncate(max_width);
+                // https://github.com/liuchengxu/vim-clap/pull/544#discussion_r506281014
+                line.truncate(
+                    (0..max_width + 1)
+                        .rev()
+                        .find(|idx| line.is_char_boundary(*idx))
+                        .unwrap(),
+                );
                 line.push_str("……");
                 line
             } else {
