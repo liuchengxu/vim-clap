@@ -505,6 +505,18 @@ g:clap_preview_size                                         *g:clap_preview_size
   let g:clap_preview_size = { '*': 5, 'files': 10 }
 <
 
+g:clap_background_shadow                               *g:clap_background_shadow*
+
+  Type: |Bool|
+  Default: `v:true`
+
+  This variable controls if the background shadow is rendered.
+
+  >
+  " Deactivates the background shadow
+  let g:clap_background_shadow = v:false
+<
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 

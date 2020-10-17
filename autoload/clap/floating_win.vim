@@ -12,7 +12,6 @@ let g:clap#floating_win#spinner = {}
 let g:clap#floating_win#preview = {}
 
 let s:shadow_bufnr = nvim_create_buf(v:false, v:true)
-let g:__clap_shadow_bufnr = s:shadow_bufnr
 
 let s:spinner_bufnr = nvim_create_buf(v:false, v:true)
 let g:clap.spinner.bufnr = s:spinner_bufnr
@@ -254,12 +253,14 @@ function! s:get_config_shadow() abort
 endfunction
 
 function! s:open_shadow_win() abort
+  if !g:clap_background_shadow
+    return
+  end
   if exists('s:shadow_winid') && nvim_win_is_valid(s:shadow_winid)
     return
   endif
   if !nvim_buf_is_valid(s:shadow_bufnr)
     let s:shadow_bufnr = nvim_create_buf(v:false, v:true)
-    let g:__clap_shadow_bufnr = s:shadow_bufnr
   endif
   silent let s:shadow_winid = nvim_open_win(s:shadow_bufnr, v:true, s:get_config_shadow())
   call setwinvar(s:shadow_winid, '&winhl', s:shadow_winhl)
