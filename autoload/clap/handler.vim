@@ -107,7 +107,9 @@ function! clap#handler#cr_action() abort
     call g:clap.provider._().cr_action()
     return ''
   endif
-  return clap#handler#sink()
+  stopinsert
+  call clap#handler#sink()
+  return ''
 endfunction
 
 function! clap#handler#tab_action() abort
