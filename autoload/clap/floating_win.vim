@@ -11,6 +11,9 @@ let g:clap#floating_win#display = {}
 let g:clap#floating_win#spinner = {}
 let g:clap#floating_win#preview = {}
 
+let s:shadow_bufnr = nvim_create_buf(v:false, v:true)
+let g:__clap_shadow_bufnr = s:shadow_bufnr
+
 let s:spinner_bufnr = nvim_create_buf(v:false, v:true)
 let g:clap.spinner.bufnr = s:spinner_bufnr
 
@@ -34,9 +37,11 @@ let s:symbol_left = g:__clap_search_box_border_symbol.left
 let s:symbol_right = g:__clap_search_box_border_symbol.right
 let s:symbol_width = strdisplaywidth(s:symbol_right)
 
+let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShadow'
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
+" shadow
 "  -----------------------------
 " | spinner | input             |
 " |-----------------------------|
@@ -236,6 +241,31 @@ function! g:clap#floating_win#input.open() abort
   let g:clap.input.winid = s:input_winid
 endfunction
 
+function! s:get_config_shadow() abort
+  let opts =  {
+  \ 'relative': 'editor',
+  \ 'style': 'minimal',
+  \ 'width': &columns,
+  \ 'height': &lines,
+  \ 'row': 0,
+  \ 'col': 0,
+  \ }
+  return opts
+endfunction
+
+function! s:open_shadow_win() abort
+  if exists('s:shadow_winid') && nvim_win_is_valid(s:shadow_winid)
+    return
+  endif
+  if !nvim_buf_is_valid(s:shadow_bufnr)
+    let s:shadow_bufnr = nvim_create_buf(v:false, v:true)
+    let g:__clap_shadow_bufnr = s:shadow_bufnr
+  endif
+  silent let s:shadow_winid = nvim_open_win(s:shadow_bufnr, v:true, s:get_config_shadow())
+  call setwinvar(s:shadow_winid, '&winhl', s:shadow_winhl)
+  call setwinvar(s:shadow_winid, '&winblend', 50)
+endfunction
+
 function! s:get_config_indicator() abort
   let opts = nvim_win_get_config(s:input_winid)
   let opts.col += opts.width
@@ -374,6 +404,7 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
+  call s:open_shadow_win()
   call s:open_indicator_win()
   call s:open_win_border_right()
 
@@ -416,6 +447,7 @@ function! clap#floating_win#close() abort
     call s:win_close(s:symbol_right_winid)
   endif
 
+  call s:win_close(s:shadow_winid)
   noautocmd call g:clap#floating_win#preview.close()
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
