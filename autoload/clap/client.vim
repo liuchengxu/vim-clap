@@ -27,7 +27,7 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
-        \   'winwidth': winwidth(g:clap.provider.id),
+        \   'winwidth': winwidth(g:clap.display.winid),
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ }

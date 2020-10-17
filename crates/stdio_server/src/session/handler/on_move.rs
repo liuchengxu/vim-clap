@@ -179,7 +179,7 @@ impl<'a> OnMoveHandler<'a> {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = format!("{}", path.as_ref().display());
                 let lines = std::iter::once(fname.clone())
-                    .chain(lines_iter)
+                    .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
                 debug!(
                     "sending msg_id:{}, provider_id:{}",
@@ -203,11 +203,37 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
+    /// Truncates the lines that are awfully long as vim can not handle them properly.
+    ///
+    /// Ref https://github.com/liuchengxu/vim-clap/issues/543
+    fn truncate_preview_lines(
+        &self,
+        lines: impl Iterator<Item = String>,
+    ) -> impl Iterator<Item = String> {
+        let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
+        lines.map(move |line| {
+            if line.len() > max_width {
+                let mut line = line;
+                // https://github.com/liuchengxu/vim-clap/pull/544#discussion_r506281014
+                line.truncate(
+                    (0..max_width + 1)
+                        .rev()
+                        .find(|idx| line.is_char_boundary(*idx))
+                        .unwrap(),
+                );
+                line.push_str("……");
+                line
+            } else {
+                line
+            }
+        })
+    }
+
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let abs_path = as_absolute_path(path.as_ref())?;
         let lines_iter = utility::read_first_lines(path.as_ref(), 2 * self.size)?;
         let lines = std::iter::once(abs_path.clone())
-            .chain(lines_iter)
+            .chain(self.truncate_preview_lines(lines_iter))
             .collect::<Vec<_>>();
         self.send_response(json!({
           "event": "on_move",
