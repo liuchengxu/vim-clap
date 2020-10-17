@@ -162,7 +162,8 @@ function! s:reverse_PopupCursor() abort
 endfunction
 
 function! s:init_theme() abort
-  hi ClapShadow guibg=#000000
++  hi ClapDefaultShadow guibg=#000000
++  hi default link ClapShadow ClapDefaultShadow
 
   if &background ==# 'dark'
     hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
