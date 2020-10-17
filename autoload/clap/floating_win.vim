@@ -253,9 +253,6 @@ function! s:get_config_shadow() abort
 endfunction
 
 function! s:open_shadow_win() abort
-  if !g:clap_background_shadow
-    return
-  end
   if exists('s:shadow_winid') && nvim_win_is_valid(s:shadow_winid)
     return
   endif
@@ -405,7 +402,9 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  call s:open_shadow_win()
+  if g:clap_enable_background_shadow
+    call s:open_shadow_win()
+  end
   call s:open_indicator_win()
   call s:open_win_border_right()
 
@@ -448,7 +447,9 @@ function! clap#floating_win#close() abort
     call s:win_close(s:symbol_right_winid)
   endif
 
-  call s:win_close(s:shadow_winid)
+  if exists('s:shadow_winid')
+    call s:win_close(s:shadow_winid)
+  endif
   noautocmd call g:clap#floating_win#preview.close()
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
