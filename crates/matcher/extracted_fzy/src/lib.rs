@@ -1,7 +1,13 @@
+//! # Why the fork?
+//!
 //! Okay, the one and only reason for this lib is my OS.
 //!
 //! Original "rff" crate has `terminal` module which utilizes `std::os::unix`
 //! thus it doesn't compile on non-unix OS.
+//!
+//! # Fork differences
+//!
+//! * Support "smart case" searching. Ref https://github.com/liuchengxu/vim-clap/pull/541
 
 mod scoring_utils;
 
@@ -167,6 +173,18 @@ fn calculate_score(
 #[inline(always)]
 fn eq(a: char, b: char) -> bool {
     a == b
+}
+
+/// Compares two characters case-insensitively
+///
+/// The origin fzy algo uses `eq_ignore_case`, but we just use `eq` now.
+#[allow(unused)]
+fn eq_ignore_case(a: char, b: char) -> bool {
+    match a {
+        _ if a == b => true,
+        _ if a.is_ascii() || b.is_ascii() => a.eq_ignore_ascii_case(&b),
+        _ => a.to_lowercase().eq(b.to_lowercase()),
+    }
 }
 
 fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<Score> {
