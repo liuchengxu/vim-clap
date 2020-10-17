@@ -10,9 +10,15 @@ use crate::scoring_utils::*;
 pub type MatchWithPositions = (Score, Vec<usize>);
 
 pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
-    match matches(needle, haystack) {
+    let haystack = if needle.chars().any(|c| c.is_uppercase()) {
+        haystack.into()
+    } else {
+        haystack.to_lowercase()
+    };
+
+    match matches(needle, &haystack) {
         Some(needle_length) => {
-            let (score, positions) = score_with_positions(needle, needle_length, haystack);
+            let (score, positions) = score_with_positions(needle, needle_length, &haystack);
             Some((score, positions))
         }
         None => None,
@@ -157,14 +163,10 @@ fn calculate_score(
     (D, M)
 }
 
-/// Compares two characters case-insensitively
+/// Compares two characters
 #[inline(always)]
 fn eq(a: char, b: char) -> bool {
-    match a {
-        _ if a == b => true,
-        _ if a.is_ascii() || b.is_ascii() => a.eq_ignore_ascii_case(&b),
-        _ => a.to_lowercase().eq(b.to_lowercase()),
-    }
+    a == b
 }
 
 fn compute_bonus(haystack: &str, haystack_length: usize) -> Vec<Score> {
@@ -228,5 +230,31 @@ impl Matrix {
         unsafe {
             *self.contents.get_unchecked_mut(row * self.cols + col) = val;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn case_insensitive() {
+        let result = match_and_score_with_positions("def", "abc DEF ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("def", "abc def ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("xyz", "abc def ghi");
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn smart_case() {
+        let result = match_and_score_with_positions("Def", "abc Def ghi");
+        assert_eq!(result, Some((552, vec![4, 5, 6])));
+
+        let result = match_and_score_with_positions("Def", "abc def ghi");
+        assert_eq!(result, None);
     }
 }
