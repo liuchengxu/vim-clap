@@ -74,7 +74,9 @@ def compute(niddle, haystack):
     """
     n, m = len(niddle), len(haystack)
     bonus_score = bonus(haystack)
-    niddle, haystack = niddle.lower(), haystack.lower()
+
+    if niddle.islower():
+        haystack = haystack.lower()
 
     if n == 0 or n == m:
         return SCORE_MAX, list(range(n))
@@ -147,7 +149,9 @@ def score(niddle, haystack):
     """
     n, m = len(niddle), len(haystack)
     bonus_score = bonus(haystack)
-    niddle, haystack = niddle.lower(), haystack.lower()
+
+    if niddle.islower():
+        haystack = haystack.lower()
 
     if n == 0 or n == m:
         return SCORE_MAX, list(range(n))
