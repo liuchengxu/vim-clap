@@ -264,7 +264,7 @@ function! s:open_shadow_win() abort
   endif
   silent let s:shadow_winid = nvim_open_win(s:shadow_bufnr, v:true, s:get_config_shadow())
   call setwinvar(s:shadow_winid, '&winhl', s:shadow_winhl)
-  call setwinvar(s:shadow_winid, '&winblend', 50)
+  call setwinvar(s:shadow_winid, '&winblend', g:clap_background_shadow_blend)
 endfunction
 
 function! s:get_config_indicator() abort
