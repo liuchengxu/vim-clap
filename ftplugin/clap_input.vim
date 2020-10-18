@@ -59,6 +59,9 @@ inoremap <silent> <buffer> <Up>   <C-R>=clap#navigation#linewise('up')<CR>
 inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
+inoremap <silent> <buffer> <kPageDown> <C-R>=clap#navigation#scroll('down')<CR>
+inoremap <silent> <buffer> <kPageUp>   <C-R>=clap#navigation#scroll('up')<CR>
+
 inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#tab_action()<CR>
 inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>
 
@@ -85,6 +88,9 @@ nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise('up')<CR>
 
 nnoremap <silent> <buffer> <PageDown> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <PageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
+
+nnoremap <silent> <buffer> <kPageDown> :<c-u>call clap#navigation#scroll('down')<CR>
+nnoremap <silent> <buffer> <kPageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
 
 nnoremap <silent> <buffer> <C-d> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <C-u> :<c-u>call clap#navigation#scroll('up')<CR>
