@@ -4,22 +4,25 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:bin_prefix = fnamemodify(g:clap#autoload_dir, ':h')
 let s:bin_suffix = has('win32') ? '.exe' : ''
 
-let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
-let s:maple_bin_prebuilt = fnamemodify(g:clap#autoload_dir, ':h').'/bin/maple'.s:bin_suffix
+" Locate maple binary
+let s:bin_locations = [
+\ s:bin_prefix.'/target/debug/maple'.s:bin_suffix,
+\ s:bin_prefix.'/target/release/maple'.s:bin_suffix,
+\ s:bin_prefix.'/bin/maple'.s:bin_suffix,
+\ 'maple'.s:bin_suffix,
+\ v:null,
+\]
 
-" Check the local built.
-if executable(s:maple_bin_localbuilt)
-  let s:maple_bin = s:maple_bin_localbuilt
-" Check the prebuilt binary.
-elseif executable(s:maple_bin_prebuilt)
-  let s:maple_bin = s:maple_bin_prebuilt
-elseif executable('maple')
-  let s:maple_bin = 'maple'
-else
-  let s:maple_bin = v:null
-endif
+for location in s:bin_locations
+  let s:maple_bin = location
+  if executable(s:maple_bin)
+    break
+  end
+endfor
+
 
 if s:maple_bin isnot v:null
   function! clap#maple#clean_up() abort
@@ -79,6 +82,18 @@ function! clap#maple#tags_forerunner_command() abort
   endif
 
   return [s:maple_bin] + global_opt + ['tags', '', clap#rooter#working_dir(), '--forerunner']
+endfunction
+
+function! clap#maple#tagfiles_forerunner_command() abort
+  let global_opt = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+  let global_opt += ['--winwidth', winwidth(g:clap.display.winid)]
+
+  if g:clap_enable_icon
+    call add(global_opt, '--icon-painter=ProjTags')
+  endif
+
+  let files = map(tagfiles(), {_, f -> '--files=' . f})
+  return [s:maple_bin] + global_opt + ['tagfiles', ''] + files
 endfunction
 
 function! clap#maple#ripgrep_forerunner_command() abort
