@@ -17,6 +17,10 @@
 
 - Fix the installer on Windows. #529 @Grueslayer
 
+### Improved
+
+- Keybindings for `filer`: `<CR>` now expands directory instead of editing it
+
 ## [0.21] 2020-09-27
 
 ### Added

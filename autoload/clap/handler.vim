@@ -94,6 +94,24 @@ function! clap#handler#internal_exit() abort
   call clap#exit()
 endfunction
 
+function! clap#handler#back_action() abort
+  if has_key(g:clap.provider._(), 'back_action')
+    call g:clap.provider._().back_action()
+    return ''
+  endif
+  return ''
+endfunction
+
+function! clap#handler#cr_action() abort
+  if has_key(g:clap.provider._(), 'cr_action')
+    call g:clap.provider._().cr_action()
+    return ''
+  endif
+  stopinsert
+  call clap#handler#sink()
+  return ''
+endfunction
+
 function! clap#handler#tab_action() abort
   if has_key(g:clap.provider._(), 'tab_action')
     call g:clap.provider._().tab_action()

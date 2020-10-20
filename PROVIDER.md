@@ -164,6 +164,8 @@ Field           | Type    | Required      | Has default implementation
 `on_no_matches` | funcref | optional      | No
 `tab_action`    | funcref | optional      | No
 `bs_action`     | funcref | optional      | No
+`cr_action`     | funcref | optional      | No
+`back_action`   | funcref | optional      | No
 `init`          | funcref | **mandatory** | No
 
 - `bs_action`: The signature is different between vim and neovim.
