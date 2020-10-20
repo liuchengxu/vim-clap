@@ -21,7 +21,6 @@ function! s:provider.on_typed() abort
     let args += ['tagfiles', g:clap.input.get()]
     let args += map(tagfiles(), {_, f -> '--files=' . f})
     let cmd = call(function('clap#maple#build_cmd'), args)
-    echom cmd
     call clap#filter#async#dyn#start_directly(cmd)
   endif
 endfunction
