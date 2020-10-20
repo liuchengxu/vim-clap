@@ -39,10 +39,12 @@ impl TagInfo {
         let path_len = path.len();
 
         format!(
-            "{text:<width1$}{path}",
+            "{text:<width1$}{path_label}:::{path}:::{pattern}",
             text = name,
             width1 = if path_len < winwidth { winwidth - path_len } else { winwidth } + adjustment,
-            path = path,
+            path_label = path,
+            path = self.path,
+            pattern = self.pattern,
         )
     }
 }
