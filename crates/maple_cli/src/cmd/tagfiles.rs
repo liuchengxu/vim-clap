@@ -196,7 +196,7 @@ impl TagFiles {
                 &self.query,
                 Source::List(read_tag_files(winwidth, &self.files)?),
                 None,
-                None,
+                Some(30),
                 None,
                 icon_painter,
                 LineSplitter::TagNameOnly,
