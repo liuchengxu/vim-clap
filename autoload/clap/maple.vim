@@ -45,6 +45,14 @@ endfunction
 
 let s:can_enable_icon = ['files', 'git_files']
 
+function! clap#maple#global_opts ()
+  let opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+  let opts += ['--cwd', getcwd()]
+  let opts += ['--winwidth', winwidth(g:clap.display.winid) - 2]
+  let opts += ['--number', g:clap.display.preload_capacity]
+  return opts
+endfunc
+
 function! clap#maple#forerunner_exec_command(cmd) abort
   " No global --number option.
   if g:clap_enable_icon
@@ -85,8 +93,7 @@ function! clap#maple#tags_forerunner_command() abort
 endfunction
 
 function! clap#maple#tagfiles_forerunner_command() abort
-  let global_opt = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
-  let global_opt += ['--winwidth', winwidth(g:clap.display.winid)]
+  let global_opt = clap#maple#global_opts()
 
   if g:clap_enable_icon
     call add(global_opt, '--icon-painter=ProjTags')

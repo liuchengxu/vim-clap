@@ -21,18 +21,27 @@ struct TagInfo {
 impl TagInfo {
     pub fn format(&self, winwidth: usize) -> String {
         let name = format!("{} ", self.name);
-        let available_width = winwidth - name.len() - 1;
+        let taken_width = name.len() + 1;
         let path_len = self.path.len() + 2;
-        let path = if path_len > available_width && available_width > 3 {
-            let diff = path_len - available_width;
-            format!("[…{}]", self.path.chars().skip(diff + 2).collect::<String>())
-        } else {
+        let mut adjustment = 0;
+        let path = if taken_width > winwidth {
             format!("[{}]", self.path)
+        } else {
+            let available_width = winwidth - taken_width;
+            if path_len > available_width && available_width > 3 {
+                let diff = path_len - available_width;
+                adjustment = 2;
+                format!("[…{}]", self.path.chars().skip(diff + 2).collect::<String>())
+            } else {
+                format!("[{}]", self.path)
+            }
         };
+        let path_len = path.len();
+
         format!(
             "{text:<width1$}{path}",
             text = name,
-            width1 = winwidth - path.len() - 2,
+            width1 = if path_len < winwidth { winwidth - path_len } else { winwidth } + adjustment,
             path = path,
         )
     }
@@ -146,10 +155,10 @@ fn create_tags_cache(
 impl TagFiles {
     pub fn run(&self, options: &crate::Maple) -> Result<()> {
         // In case of passing an invalid icon-painter option.
-        let icon_painter = options
-            .icon_painter
-            .clone()
-            .map(|_| icon::IconPainter::ProjTags);
+        /* let icon_painter = options
+         *     .icon_painter
+         *     .clone()
+         *     .map(|_| icon::IconPainter::ProjTags); */
 
         let files = &self
             .files
@@ -168,7 +177,7 @@ impl TagFiles {
             } else {
                 create_tags_cache(winwidth, &args, &self.files)?
             };
-            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
+            send_response_from_cache(&cache, total, SendResponse::Json, None);
             return Ok(());
         } else {
             filter::dyn_run(
@@ -177,7 +186,7 @@ impl TagFiles {
                 None,
                 Some(30),
                 None,
-                icon_painter,
+                None,
                 LineSplitter::TagNameOnly,
             )?;
         }

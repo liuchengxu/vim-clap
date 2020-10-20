@@ -17,7 +17,7 @@ function! s:provider.on_typed() abort
     endif
     call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
-    let args = ['--winwidth', winwidth(g:clap.display.winid)]
+    let args = clap#maple#global_opts()
     let args += ['tagfiles', g:clap.input.get()]
     let args += map(tagfiles(), {_, f -> '--files=' . f})
     let cmd = call(function('clap#maple#build_cmd'), args)
