@@ -217,6 +217,9 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
+  -  Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
+- [x] By default <kbd>Alt-u</kbd> does nothing.
+  - Use <kbd>Alt-u</kbd> to go up one directory in `:Clap filer`.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
   - Use <kbd>Tab</kbd> to expand the directory for `:Clap filer`.
 - [x] Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
