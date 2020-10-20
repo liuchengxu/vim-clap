@@ -12,7 +12,7 @@ lazy_static! {
   static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
 
   // match the tag_name:lnum of tag line.
-  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
+  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+|\S+)").unwrap();
 
   static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
 
