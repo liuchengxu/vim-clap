@@ -222,8 +222,6 @@ See `:help clap-options` for more information.
   - Use <kbd>Alt-u</kbd> to go up one directory in `:Clap filer`.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
   - Use <kbd>Tab</kbd> to expand the directory for `:Clap filer`.
-- [x] Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
-- [x] Use <kbd>Alt-u</kbd> to go up one directory in `:Clap filer`.
 - [x] Use <kbd>Ctrl-t</kbd> or <kbd>Ctrl-x</kbd>, <kbd>Ctrl-v</kbd> to open the selected entry in a new tab or a new split.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
