@@ -23,7 +23,7 @@ const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     grep_query: String,
 
     /// Specify the grep command to run, normally rg will be used.
@@ -31,7 +31,7 @@ pub struct Grep {
     /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
     ///                                                       |-----------------|
     ///                                                   this can be seen as an option by mistake.
-    #[structopt(short, long, required_if("sync", "true"))]
+    #[structopt(long, required_if("sync", "true"))]
     grep_cmd: Option<String>,
 
     /// Delegate to -g option of rg

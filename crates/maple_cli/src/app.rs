@@ -20,6 +20,9 @@ pub enum Cmd {
     /// Generate the project-wide tags using ctags.
     #[structopt(name = "tags")]
     Tags(crate::cmd::tags::Tags),
+    /// Use existing tag files.
+    #[structopt(name = "tagfiles")]
+    TagFiles(crate::cmd::tagfiles::TagFiles),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
     Cache(crate::cmd::cache::Cache),
@@ -87,6 +90,9 @@ impl Maple {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::Tags(tags) => tags.run(self.no_cache, self.icon_painter)?,
+            Cmd::TagFiles(tagfiles) => {
+              tagfiles.run(self.winwidth, self.no_cache, self.icon_painter)?;
+            },
             Cmd::RPC => {
                 stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }

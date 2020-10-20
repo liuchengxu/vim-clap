@@ -19,11 +19,11 @@ pub struct Filter {
     algo: Option<Algo>,
 
     /// Shell command to produce the whole dataset that query is applied on.
-    #[structopt(short, long)]
+    #[structopt(long)]
     cmd: Option<String>,
 
     /// Working directory of shell command.
-    #[structopt(short, long)]
+    #[structopt(long)]
     cmd_dir: Option<String>,
 
     /// Read input from a file instead of stdin, only absolute file path is supported.
