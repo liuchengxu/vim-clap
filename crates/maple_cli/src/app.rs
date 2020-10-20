@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use anyhow::Result;
 use icon::IconPainter;
 use structopt::clap::AppSettings;
@@ -59,6 +60,10 @@ pub struct Maple {
     #[structopt(short = "n", long = "number", name = "NUM")]
     pub number: Option<usize>,
 
+    /// Current directory
+    #[structopt(short = "c", long = "cwd", parse(from_os_str))]
+    pub cwd: Option<PathBuf>,
+
     /// Width of clap window.
     #[structopt(short = "w", long = "winwidth")]
     pub winwidth: Option<usize>,
@@ -73,7 +78,7 @@ pub struct Maple {
 
     /// Enable the logging system.
     #[structopt(long = "log", parse(from_os_str))]
-    pub log: Option<std::path::PathBuf>,
+    pub log: Option<PathBuf>,
 
     #[structopt(subcommand)]
     pub command: Cmd,
@@ -90,9 +95,7 @@ impl Maple {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::Tags(tags) => tags.run(self.no_cache, self.icon_painter)?,
-            Cmd::TagFiles(tagfiles) => {
-              tagfiles.run(self.winwidth, self.no_cache, self.icon_painter)?;
-            },
+            Cmd::TagFiles(ref tagfiles) => tagfiles.run(&self)?,
             Cmd::RPC => {
                 stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }

@@ -6,7 +6,7 @@ use std::path::{self, PathBuf};
 use std::time::SystemTime;
 use structopt::StructOpt;
 use utility::{
-    calculate_hash, clap_cache_dir, get_cached_entry, read_first_lines, remove_dir_contents,
+    clap_cache_dir, get_cache_dir, get_cached_entry, read_first_lines, remove_dir_contents,
 };
 
 /// List and remove all the cached contents.
@@ -72,13 +72,9 @@ impl CacheEntry {
     /// Construct the cache entry given command arguments and its working directory, the `total`
     /// info is cached in the file name.
     pub fn new(cmd_args: &[&str], cmd_dir: Option<PathBuf>, total: usize) -> Result<PathBuf> {
-        let mut dir = clap_cache_dir();
-        dir.push(cmd_args.join("_"));
-        if let Some(mut cmd_dir) = cmd_dir {
-            dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
-        } else {
-            dir.push("no_cmd_dir");
-        }
+        let cmd_dir = cmd_dir.unwrap_or(PathBuf::from("no_cmd_dir"));
+        let mut dir = get_cache_dir(cmd_args, &cmd_dir);
+
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }

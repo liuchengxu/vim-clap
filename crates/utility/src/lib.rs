@@ -77,8 +77,11 @@ pub fn clap_cache_dir() -> PathBuf {
 ///
 /// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
 pub fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
+    let args = args.join("_");
+    let hash = calculate_hash(&args).to_string();
+
     let mut dir = clap_cache_dir();
-    dir.push(args.join("_"));
+    dir.push::<String>(hash);
     // TODO: use a readable cache cmd_dir name?
     dir.push(format!("{}", calculate_hash(&cmd_dir)));
     dir

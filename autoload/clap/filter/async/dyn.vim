@@ -43,7 +43,7 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
 
   if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
     let line_splitter = ['--line-splitter=FileNameOnly']
-  elseif g:clap.provider.id ==# 'proj_tags'
+  elseif g:clap.provider.id ==# 'proj_tags' || g:clap.provider.id ==# 'tagfiles'
     let line_splitter = ['--line-splitter=TagNameOnly']
   else
     let line_splitter = []

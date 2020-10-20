@@ -11,8 +11,8 @@ lazy_static! {
   // match the file path and line number of grep line.
   static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
 
-  // match the tag_name:lnum of tag line.
-  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+|\S+)").unwrap();
+  // match the tag_name:lnum or tag_name of tag line.
+  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)|^(.*?)\s+\[(.+)\]").unwrap();
 
   static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
 
@@ -24,7 +24,8 @@ lazy_static! {
 /// Extract tag name from the line in tags provider.
 #[inline]
 pub fn tag_name_only(line: &str) -> Option<&str> {
-    TAG_RE.find(line).map(|x| x.as_str())
+    TAG_RE.captures(line)
+        .map(|m| m.get(1).unwrap_or(m.get(2).unwrap()).as_str())
 }
 
 /// Returns the line content only and offset in the raw line.
