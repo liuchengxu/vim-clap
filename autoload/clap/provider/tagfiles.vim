@@ -35,14 +35,21 @@ function! s:provider.init() abort
 endfunction
 
 function! s:extract(tag_row) abort
-  let name = trim(matchstr(a:tag_row, '\v^\zs(.*)\ze\s+\[\f+\]$'))
-  let file = trim(matchstr(a:tag_row, '\v^.*\[\zs\f+\ze\]$'))
-  return [name, file]
+  let parts = split(a:tag_row, ':::')
+  let file    = parts[1]
+  let pattern = parts[2][2:-5]
+  return [file, pattern]
 endfunction
 
 function! s:provider.sink(selected) abort
-  let [name, file] = s:extract(a:selected)
-  execute 'tag' name
+  let [file, pattern] = s:extract(a:selected)
+  execute 'edit' file
+  let lnum = search('\V' . escape(pattern, '\'))
+  execute 'normal! ^zvzz'
+  try
+    call vista#util#Blink(2, 200)
+  catch *
+  endtry
 endfunction
 
 function! s:provider.on_move() abort

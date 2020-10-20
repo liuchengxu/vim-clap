@@ -1,3 +1,7 @@
+setlocal conceallevel=3
+
+
+syntax match ClapTagfilesInfo     /\v:::.*$/            conceal
 
 syntax match ClapTagfilesName     /\v^.*\ze\s+\[.*\]/   contains=ClapTagfilesLnum
 syntax match ClapTagfilesBrackets /\[\|\]/              contained
