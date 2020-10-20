@@ -93,7 +93,7 @@ function! clap#maple#tagfiles_forerunner_command() abort
   endif
 
   let files = map(tagfiles(), {_, f -> '--files=' . f})
-  return [s:maple_bin] + global_opt + ['tagfiles', ''] + files
+  return [s:maple_bin] + global_opt + ['tagfiles', '', '--forerunner'] + files
 endfunction
 
 function! clap#maple#ripgrep_forerunner_command() abort

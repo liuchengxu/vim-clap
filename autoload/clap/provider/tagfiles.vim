@@ -30,7 +30,8 @@ function! s:provider.init() abort
   let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#tagfiles_forerunner_command())
+    call clap#job#regular#forerunner#start_command(
+            \ clap#maple#tagfiles_forerunner_command())
   endif
 endfunction
 
