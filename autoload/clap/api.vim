@@ -121,6 +121,7 @@ function! s:init_display() abort
 
     function! display.set_lines(lines) abort
       call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
+      call g:clap#display_win.shrink_if_undersize()
     endfunction
 
     function! display.clear() abort
@@ -174,6 +175,8 @@ function! s:init_display() abort
       if empty(getbufline(self.bufnr, '$')[0])
         silent call deletebufline(self.bufnr, '$')
       endif
+
+      call g:clap#display_win.shrink_if_undersize()
     endfunction
 
     function! display.clear() abort
@@ -234,6 +237,7 @@ function! s:init_display() abort
       " we should not use the cache next time.
       let g:__clap_do_not_use_cache = v:true
     endif
+    call g:clap#display_win.shrink_if_undersize()
   endfunction
 
   function! display.getcurline() abort

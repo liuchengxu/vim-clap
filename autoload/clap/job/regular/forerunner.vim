@@ -9,7 +9,6 @@ let s:job_id = -1
 function! s:on_complete_common(lines, initial_size) abort
   if empty(g:clap.input.get())
     call g:clap.display.set_lines_lazy(a:lines)
-    call g:clap#display_win.shrink_if_undersize()
   endif
 
   let g:clap.display.initial_size = a:initial_size
