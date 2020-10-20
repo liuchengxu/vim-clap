@@ -118,6 +118,11 @@ else
   endfunction
 endif
 
+function! s:back_action() abort
+  call s:goto_parent()
+  return ''
+endfunction
+
 function! s:do_filter() abort
   let query = g:clap.input.get()
   let candidates = s:filer_cache[s:current_dir]
@@ -179,6 +184,42 @@ function! s:tab_action() abort
   let current_entry = s:get_current_entry()
   if filereadable(current_entry)
     call clap#preview#file(current_entry)
+    return ''
+  else
+    call g:clap.preview.hide()
+  endif
+
+  call s:reset_to(current_entry)
+  call clap#sign#ensure_exists()
+
+  return ''
+endfunction
+
+function! s:cr_action() abort
+  if s:try_go_to_dir_is_ok()
+    return
+  endif
+
+  if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
+    return
+  endif
+
+  if has_key(s:filer_error_cache, s:current_dir)
+    call g:clap.display.set_lines([s:filer_error_cache[s:current_dir]])
+    return
+  endif
+
+  if has_key(s:filer_empty_cache, s:current_dir)
+    if g:clap.display.get_lines() != [s:DIRECTORY_IS_EMPTY]
+      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
+    endif
+    return
+  endif
+
+  let current_entry = s:get_current_entry()
+  if filereadable(current_entry)
+    stopinsert
+    call clap#handler#sink()
     return ''
   else
     call g:clap.preview.hide()
@@ -317,7 +358,9 @@ let s:filer.sink = function('s:filer_sink')
 let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = function('s:filer_on_typed')
 let s:filer.bs_action = function('s:bs_action')
+let s:filer.back_action = function('s:back_action')
 let s:filer.tab_action = function('s:tab_action')
+let s:filer.cr_action = function('s:cr_action')
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
 let g:clap#provider#filer# = s:filer

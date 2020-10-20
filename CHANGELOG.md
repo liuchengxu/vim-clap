@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add `g:clap_enable_background_shadow` to render a transparent shadow (neovim-only) #546, #550
 - Add `g:clap_popup_move_manager` so that Vim users can override the default mappings easily. #536
 - Allow user to always download the prebuilt binary. #531
 - Support smartcase fitlering for fzy algo and it's the default behavior. #541 @romgrk
@@ -15,6 +16,10 @@
 ### Fixed
 
 - Fix the installer on Windows. #529 @Grueslayer
+
+### Improved
+
+- Keybindings for `filer`: `<CR>` now expands directory instead of editing it
 
 ## [0.21] 2020-09-27
 

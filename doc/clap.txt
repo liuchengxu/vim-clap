@@ -505,6 +505,30 @@ g:clap_preview_size                                         *g:clap_preview_size
   let g:clap_preview_size = { '*': 5, 'files': 10 }
 <
 
+g:clap_enable_background_shadow                 *g:clap_enable_background_shadow*
+
+  Type: |Bool|
+  Default: `v:true`
+  (neovim only)
+
+  This variable controls if the background shadow is rendered.
+  >
+  " Deactivates the background shadow
+  let g:clap_enable_background_shadow = v:false
+<
+
+g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
+
+  Type: |Number|
+  Default: `50`
+  (neovim only)
+
+  This variable controls the opacity of the shadow. 100 is fully transparent.
+  >
+  " Lighter shadow
+  let g:clap_background_shadow_blend = 75
+<
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
