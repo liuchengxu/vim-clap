@@ -25,7 +25,13 @@ lazy_static! {
 #[inline]
 pub fn tag_name_only(line: &str) -> Option<&str> {
     TAG_RE.captures(line)
-        .map(|m| m.get(1).unwrap_or(m.get(2).unwrap()).as_str())
+      .map(|m| match m.get(1) {
+        Some(g) => g.as_str(),
+        None => match m.get(2) {
+          Some(g) => g.as_str(),
+          None => line,
+        }
+      })
 }
 
 /// Returns the line content only and offset in the raw line.
