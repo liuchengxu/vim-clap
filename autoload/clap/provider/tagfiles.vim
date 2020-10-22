@@ -51,6 +51,7 @@ function! s:provider.on_exit() abort
   if exists('g:__clap_builtin_line_splitter_enum')
     unlet g:__clap_builtin_line_splitter_enum
   endif
+  call clap#job#stdio#stop_service()
 endfunction
 
 let s:provider.enable_rooter = v:true
