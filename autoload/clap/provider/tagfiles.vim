@@ -34,21 +34,11 @@ function! s:provider.init() abort
   endif
 endfunction
 
-function! s:extract(tag_row) abort
-  let parts = split(a:tag_row, ':::')
-  let file    = parts[1]
-  let pattern = parts[2][2:-5]
-  return [file, pattern]
-endfunction
-
 function! s:provider.sink(selected) abort
-  let [file, pattern] = s:extract(a:selected)
-  execute 'edit' file
-  let lnum = search('\V' . escape(pattern, '\'))
-  execute 'normal! ^zvzz'
+  call s:jump_to(s:extract(a:selected))
   try
-    call vista#util#Blink(2, 200)
-  catch *
+    silent! call vista#util#Blink(2, 200)
+  catch '*'
   endtry
 endfunction
 
@@ -68,6 +58,38 @@ let s:provider.support_open_action = v:true
 let s:provider.syntax = 'clap_tagfiles'
 
 let g:clap#provider#tagfiles# = s:provider
+
+
+" Helpers
+
+function! s:extract(tag_row) abort
+  let parts = split(a:tag_row, ':::')
+  let file    = parts[1]
+  let address = parts[2]
+  if address[0:1] == '/^'
+    let address = address[2:-5]
+  else
+    let address = 0 + matchstr(address, '\v\d+')
+  end
+  return [file, address]
+endfunction
+
+function! s:jump_to(position)
+  let [file, address] = a:position
+
+  execute 'edit' file
+
+  if type(address) == v:t_number
+    let lnum = address
+    execute 'normal! ' lnum 'gg'
+  else
+    let g:cp = address
+    let lnum = search('\V' . address)
+  end
+
+  execute 'normal! ^zvzz'
+endfunc
+
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
