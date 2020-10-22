@@ -45,7 +45,7 @@ endfunction
 
 let s:can_enable_icon = ['files', 'git_files']
 
-function! clap#maple#global_opts ()
+function! clap#maple#global_opts()
   let opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
   let opts += ['--cwd', getcwd()]
   let opts += ['--winwidth', winwidth(g:clap.display.winid) - 2]
