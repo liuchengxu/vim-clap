@@ -60,7 +60,7 @@ pub struct Maple {
     #[structopt(short = "n", long = "number", name = "NUM")]
     pub number: Option<usize>,
 
-    /// Current directory
+    /// Current directory (absolute path)
     #[structopt(short = "c", long = "cwd", parse(from_os_str))]
     pub cwd: Option<PathBuf>,
 
