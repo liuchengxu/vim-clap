@@ -40,6 +40,10 @@ let s:shadow_winhl = 'Normal:ClapShadow,NormalNC:ClapShadow,EndOfBuffer:ClapShad
 let s:display_winhl = 'Normal:ClapDisplay,EndOfBuffer:ClapDisplayInvisibleEndOfBuffer,SignColumn:ClapDisplay,ColorColumn:ClapDisplay'
 let s:preview_winhl = 'Normal:ClapPreview,EndOfBuffer:ClapPreviewInvisibleEndOfBuffer,SignColumn:ClapPreview,ColorColumn:ClapPreview'
 
+let g:clap_show_delay = 500
+
+let s:animation = v:null
+
 " shadow
 "  -----------------------------
 " | spinner | input             |
@@ -59,6 +63,8 @@ function! g:clap#floating_win#display.open() abort
   endif
 
   let s:display_opts = clap#layout#calc()
+  let s:display_height = s:display_opts.height
+  let s:display_opts.height = 1
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
@@ -85,7 +91,9 @@ endfunction
 
 function! clap#floating_win#redo_layout() abort
   let s:display_opts = clap#layout#calc()
-  call nvim_win_set_config(s:display_winid, s:display_opts)
+  let display_opts = copy(s:display_opts)
+  let display_opts.height = 1
+  call nvim_win_set_config(s:display_winid, display_opts)
   call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
   call nvim_win_set_config(s:input_winid, s:get_config_input())
   call nvim_win_set_config(s:indicator_winid, s:get_config_indicator())
@@ -102,25 +110,41 @@ function! clap#floating_win#redo_layout() abort
 endfunction
 
 function! g:clap#floating_win#display.shrink_if_undersize() abort
-  let opts = nvim_win_get_config(s:display_winid)
-  if g:clap.display.line_count() < s:display_opts.height
-    let opts.height = g:clap.display.line_count()
-  else
-    let opts.height = s:display_opts.height
-  endif
-  call nvim_win_set_config(s:display_winid, opts)
-  call s:try_adjust_preview()
+  " let opts = nvim_win_get_config(s:display_winid)
+  " if g:clap.display.line_count() < s:display_opts.height
+    " let opts.height = g:clap.display.line_count()
+  " else
+    " let opts.height = s:display_opts.height
+  " endif
+  " call nvim_win_set_config(s:display_winid, opts)
+  " call s:try_adjust_preview()
 endfunction
 
 function! g:clap#floating_win#display.shrink() abort
-  let height = g:clap.display.line_count()
-  let opts = nvim_win_get_config(s:display_winid)
-  if opts.height != height
-    let opts.height = height
-    call nvim_win_set_config(s:display_winid, opts)
-    call s:try_adjust_preview()
-  endif
+  " let height = g:clap.display.line_count()
+  " let opts = nvim_win_get_config(s:display_winid)
+  " if opts.height != height
+    " let opts.height = height
+    " call nvim_win_set_config(s:display_winid, opts)
+    " call s:try_adjust_preview()
+  " endif
 endfunction
+
+function! s:display_set_config(display_opts)
+  let display_opts = copy(a:display_opts)
+  let display_opts.height = get(display_opts, 'animate_height',)
+  if has_key(display_opts, 'animate_height')
+
+    call remove(display_opts, 'animate_height')
+  end
+
+  if type(s:animation) != v:t_dict || s:animation.running == v:false
+    call nvim_win_set_config(s:display_winid, a:display_opts)
+    return
+  end
+
+  call nvim_win_set_config(s:display_winid, opts)
+endfunc
 
 function! s:set_minimal_buf_style(bufnr, filetype) abort
   call setbufvar(a:bufnr, '&filetype', a:filetype)
@@ -408,6 +432,10 @@ function! clap#floating_win#open() abort
   call s:open_indicator_win()
   call s:open_win_border_right()
 
+  let s:animation =
+    \ clap#animate#start(g:clap_show_delay, 0.0, 1.0, v:t_float,
+      \ {timer, ratio -> s:open_window_animation_tick(timer, ratio)})
+
   " This seemingly does not look good.
   " call s:adjust_display_for_border_symbol()
 
@@ -431,6 +459,43 @@ function! clap#floating_win#open() abort
 
   call g:clap.provider.apply_query()
 endfunction
+
+function! s:open_window_animation_tick(timer, ratio)
+  "call nvim_win_set_config(s:display_winid, s:display_opts)
+  "call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
+  "call nvim_win_set_config(s:input_winid, s:get_config_input())
+  "call nvim_win_set_config(s:indicator_winid, s:get_config_indicator())
+  "if s:symbol_width > 0
+  "  call nvim_win_set_config(s:symbol_left_winid, s:get_config_border_left())
+  "  call nvim_win_set_config(s:symbol_right_winid, s:get_config_border_right())
+  "endif
+
+
+  let blend  = max([
+    \ clap#animate#lerp(a:ratio, 100, 0), 0])
+  let height = min([
+    \ clap#animate#lerp(a:ratio * 3, 1, s:display_height), s:display_height])
+
+  " echom #{ calculated_height: height, current_height: winheight(s:display_winid) }
+
+  let display_opts = copy(s:display_opts)
+  let display_opts.height = height
+
+  call nvim_win_set_config(s:display_winid, display_opts)
+  call setwinvar(s:display_winid,      '&winblend', blend)
+
+  " call setwinvar(s:spinner_winid,      '&winblend', blend)
+  " call setwinvar(s:input_winid,        '&winblend', blend)
+  " call setwinvar(s:indicator_winid,    '&winblend', blend)
+  " if s:symbol_width > 0
+  " call setwinvar(s:symbol_left_winid,  '&winblend', blend)
+  " call setwinvar(s:symbol_right_winid, '&winblend', blend)
+  " end
+
+  call setwinvar(s:shadow_winid,  '&winblend',
+        \ clap#animate#lerp(a:ratio, 100, g:clap_background_shadow_blend))
+endfunc
+
 
 function! s:win_close(winid) abort
   " Removed `noautocmd`, some user-defined autocmd might be interrupted. Ref #472
