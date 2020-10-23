@@ -18,6 +18,8 @@ structopt = "0.3"
 bytecount = "0.6"
 itertools = "0.9"
 serde_json = "1.0"
+dirs = "3.0"
+lazy_static = "1.4.0"
 
 icon = { path = "../icon" }
 filter = { path = "../filter" }
