@@ -31,7 +31,6 @@ impl TagInfo {
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or(
-            // FIXME: is there a way to avoid cloning HOME?
             HOME.get_or_init(|| dirs::home_dir())
                 .as_deref()
                 .map(|home| {
