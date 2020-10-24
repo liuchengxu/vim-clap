@@ -165,7 +165,12 @@ fn read_tag_file<'a>(
     cwd: &'a PathBuf,
     winwidth: usize,
 ) -> Result<impl Iterator<Item = String> + 'a> {
-    let file = File::open(&paths[0]).unwrap();
+    let file = File::open(&paths[0]);
+    let file = if let Ok(file) = file {
+        file
+    } else {
+        return Err(anyhow!{"File does not exists"});
+    };
 
     Ok(BufReader::new(file).lines().filter_map(move |line| {
         line.ok().and_then(|input| {
