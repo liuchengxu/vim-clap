@@ -84,10 +84,10 @@ impl TagInfo {
         let mut index = 0;
         let mut index_last = 0;
 
-        let mut name = String::from("");
-        let mut path = String::from("");
-        let mut pattern = String::from("");
-        let mut kind = String::from("");
+        let mut name = String::new();
+        let mut path = String::new();
+        let mut pattern = String::new();
+        let mut kind = String::new();
 
         for c in input.chars() {
             if c == '\t' {
