@@ -5,6 +5,10 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 if has('nvim')
+  function! clap#job#exists(job_id) abort
+    return a:job_id > 0
+  endfunction
+
   function! clap#job#stop(job_id) abort
     silent! call jobstop(a:job_id)
   endfunction
@@ -20,6 +24,10 @@ if has('nvim')
   endfunction
 else
   let s:job_id_map = {}
+
+  function! clap#job#exists(job_id) abort
+    return a:job_id > -1
+  endfunction
 
   function! clap#job#stop(job_id) abort
     " Ignore the invalid job_id

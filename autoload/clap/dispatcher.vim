@@ -11,7 +11,7 @@ let s:job_id = -1
 let s:drop_cache = get(g:, 'clap_dispatcher_drop_cache', v:true)
 
 function! s:jobstop() abort
-  if s:job_exists()
+  if clap#job#exists(s:job_id)
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif
@@ -125,10 +125,6 @@ if has('nvim')
           \ 'on_stderr': function('s:on_event'),
           \ })
   endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > 0
-  endfunction
 else
 
   if s:drop_cache
@@ -179,7 +175,7 @@ else
   endfunction
 
   function! s:out_cb(channel, message) abort
-    if s:job_exists() && a:channel == s:job_channel
+    if clap#job#exists(s:job_id) && a:channel == s:job_channel
       if s:preload_is_complete
         call s:handle_cache(a:message)
       else
@@ -192,7 +188,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_exists() && clap#job#vim8_job_id_of(a:channel) == s:job_id
+    if clap#job#exists(s:job_id) && clap#job#vim8_job_id_of(a:channel) == s:job_id
       let error_info = [
             \ 'Error occurs when dispatching the command',
             \ 'working directory: '.(exists('g:__clap_provider_cwd') ? g:__clap_provider_cwd : getcwd()),
@@ -205,13 +201,13 @@ else
   endfunction
 
   function! s:close_cb(channel) abort
-    if s:job_exists() && clap#job#vim8_job_id_of(a:channel) == s:job_id
+    if clap#job#exists(s:job_id) && clap#job#vim8_job_id_of(a:channel) == s:job_id
       call s:post_check()
     endif
   endfunction
 
   function! s:exit_cb(job, _exit_code) abort
-    if s:job_exists() && clap#job#get_vim8_job_id(a:job) == s:job_id
+    if clap#job#exists(s:job_id) && clap#job#get_vim8_job_id(a:job) == s:job_id
       call s:post_check()
     endif
   endfunction
@@ -228,10 +224,6 @@ else
     let s:job_channel = job_getchannel(job)
     let s:job_id = clap#job#get_vim8_job_id(job)
     call clap#job#track(s:job_id, job)
-  endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > -1
   endfunction
 endif
 

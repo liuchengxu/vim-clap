@@ -77,14 +77,10 @@ if has('nvim')
   function! clap#job#daemon#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > 0
-  endfunction
 else
 
   function! s:out_cb(channel, message) abort
-    if s:job_exists() && a:channel == s:job_channel
+    if clap#job#exists(s:job_id) && a:channel == s:job_channel
       if a:message =~# '^Content-length:' || a:message ==# ''
         return
       endif
@@ -97,7 +93,7 @@ else
   endfunction
 
   function! s:err_cb(channel, message) abort
-    if s:job_exists() && clap#job#vim8_job_id_of(a:channel) == s:job_id
+    if clap#job#exists(s:job_id) && clap#job#vim8_job_id_of(a:channel) == s:job_id
       call clap#helper#echo_error(a:message)
     endif
   endfunction
@@ -117,14 +113,10 @@ else
   function! clap#job#daemon#send_message(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
   endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > -1
-  endfunction
 endif
 
 function! clap#job#daemon#stop() abort
-  if s:job_exists()
+  if clap#job#exists(s:job_id)
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif

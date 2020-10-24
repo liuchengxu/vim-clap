@@ -85,10 +85,6 @@ if has('nvim')
   function! clap#job#stdio#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > 0
-  endfunction
 else
 
   function! s:out_cb(channel, message) abort
@@ -132,14 +128,10 @@ else
   function! clap#job#stdio#send_message(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
   endfunction
-
-  function! s:job_exists() abort
-    return s:job_id > -1
-  endfunction
 endif
 
 function! clap#job#stdio#stop_service() abort
-  if s:job_exists()
+  if clap#job#exists(s:job_id)
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif
