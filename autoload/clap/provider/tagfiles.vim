@@ -27,11 +27,11 @@ endfunction
 
 function! s:provider.init() abort
   let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
-  if clap#maple#is_available()
-    call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(
-            \ clap#maple#tagfiles_forerunner_command())
-  endif
+  " XXX remove this if not used
+  " if clap#maple#is_available()
+  "   call clap#rooter#try_set_cwd()
+  "   call clap#job#regular#forerunner#start_command(clap#maple#tagfiles_forerunner_command())
+  " endif
 endfunction
 
 function! s:provider.sink(selected) abort
@@ -43,11 +43,13 @@ function! s:provider.sink(selected) abort
 endfunction
 
 function! s:provider.on_move() abort
+  " XXX make this work
   let [lnum, path] = s:extract(g:clap.display.getcurline())
   call clap#preview#file_at(path, lnum)
 endfunction
 
 function! s:provider.on_exit() abort
+  " XXX shouldn't the line_splitter cleanup be done somewhere central?
   if exists('g:__clap_builtin_line_splitter_enum')
     unlet g:__clap_builtin_line_splitter_enum
   endif
