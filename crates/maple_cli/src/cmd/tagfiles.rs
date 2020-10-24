@@ -44,7 +44,7 @@ impl TagInfo {
                 })
                 .unwrap_or(path),
         );
-        let path = path.display().to_string();
+        let path = path.display();
 
         let path_label = if taken_width > winwidth {
             format!("[{}]", path)
@@ -53,7 +53,10 @@ impl TagInfo {
             if path_len > available_width && available_width > 3 {
                 let diff = path_len - available_width;
                 adjustment = 2;
-                format!("[…{}]", path.chars().skip(diff + 2).collect::<String>())
+                let path = path.to_string();
+                let start = path.char_indices().nth(diff + 2).map(|x| x.0).unwrap_or(path.len());
+                let path = path[start..].to_string();
+                format!("[…{}]", &path)
             } else {
                 format!("[{}]", path)
             }
