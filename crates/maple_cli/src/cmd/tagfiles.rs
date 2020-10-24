@@ -4,6 +4,7 @@ use filter::{matcher::LineSplitter, Source};
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -81,7 +82,6 @@ impl TagInfo {
 
     pub fn parse(base: &PathBuf, input: &str) -> Result<Self, std::string::ParseError> {
         let mut field = 0;
-        let mut index = 0;
         let mut index_last = 0;
 
         let mut name = String::new();
@@ -89,22 +89,31 @@ impl TagInfo {
         let mut pattern = String::new();
         let mut kind = String::new();
 
-        for c in input.chars() {
+        for (i, c) in input.char_indices() {
             if c == '\t' {
                 match field {
-                    0 => name = String::from(&input[index_last..index]),
+                    0 => name.push_str(&input[index_last..i]),
                     1 => {
-                        let path_buf = base.join(String::from(&input[index_last..index]));
-                        path = path_buf.as_path().display().to_string();
+                        let path_buf = base.join(String::from(&input[index_last..i]));
+                        write!(&mut path, "{}", path_buf.display()).unwrap();
                     }
-                    2 => pattern = String::from(&input[index_last..index]),
-                    3 => kind = String::from(&input[index_last..index]),
+                    2 => pattern.push_str(&input[index_last..i]),
+                    3 => kind.push_str(&input[index_last..i]),
                     _ => {}
                 }
                 field += 1;
-                index_last = index + c.len_utf8();
+                index_last = i + c.len_utf8();
             }
-            index += c.len_utf8();
+        }
+        match field {
+            0 => name.push_str(&input[index_last..]),
+            1 => {
+                let path_buf = base.join(String::from(&input[index_last..]));
+                write!(&mut path, "{}", path_buf.display()).unwrap();
+            }
+            2 => pattern.push_str(&input[index_last..]),
+            3 => kind.push_str(&input[index_last..]),
+            _ => {}
         }
 
         // NOTE: we're not handling incorrectly formed tags because I don't feel
@@ -147,19 +156,12 @@ pub struct TagFiles {
 fn read_tag_files<'a>(
     cwd: &'a PathBuf,
     winwidth: usize,
-    files: &'a Vec<[PathBuf; 2]>,
+    files: &'a [[PathBuf; 2]],
 ) -> Result<impl Iterator<Item = String> + 'a> {
-    let streams = files
+    Ok(files
         .into_iter()
-        .map(move |path| read_tag_file(path, &cwd, winwidth))
-        .flatten();
-
-    let stream = Box::new(std::iter::empty()) as Box<dyn Iterator<Item = String>>;
-    let stream = streams.fold(stream, |acc, f| {
-        Box::new(acc.chain(f)) as Box<dyn Iterator<Item = String>>
-    });
-
-    Ok(stream)
+        .filter_map(move |path| read_tag_file(path, &cwd, winwidth).ok())
+        .flatten())
 }
 
 fn read_tag_file<'a>(
@@ -191,7 +193,7 @@ fn create_tags_cache(
     cwd: &PathBuf,
     winwidth: usize,
     args: &[&str],
-    files: &Vec<[PathBuf; 2]>,
+    files: &[[PathBuf; 2]],
 ) -> Result<(PathBuf, usize)> {
     let tags_stream = read_tag_files(cwd, winwidth, files)?;
     let mut total = 0usize;
