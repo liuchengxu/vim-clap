@@ -2,17 +2,14 @@ use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, Send
 use anyhow::Result;
 use filter::{matcher::LineSplitter, Source};
 use itertools::Itertools;
-use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use utility::clap_cache_dir;
-
-lazy_static! {
-    static ref HOME: Option<PathBuf> = dirs::home_dir();
-}
+use anyhow::anyhow;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TagInfo {
@@ -24,6 +21,8 @@ struct TagInfo {
 
 impl TagInfo {
     pub fn format(&self, cwd: &PathBuf, winwidth: usize) -> String {
+        static HOME: OnceCell<Option<PathBuf>> = OnceCell::new();
+
         let name = format!("{} ", self.name);
         let taken_width = name.len() + 1;
         let path_len = self.path.len() + 2;
@@ -33,7 +32,8 @@ impl TagInfo {
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or(
             // FIXME: is there a way to avoid cloning HOME?
-            HOME.clone()
+            HOME.get_or_init(|| dirs::home_dir())
+                .as_deref()
                 .map(|home| {
                     path.strip_prefix(home)
                         .map(|path| {
