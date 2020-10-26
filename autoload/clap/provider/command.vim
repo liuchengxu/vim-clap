@@ -12,9 +12,13 @@ function! s:right_pad(s, n)
     return a:s . repeat(' ', a:n - len(a:s))
 endfunction
 
+function! s:left_pad(s, n)
+    return repeat(' ', a:n - len(a:s)) . a:s
+endfunction
+
 function! s:sink(selected) abort
   " :h command, note the characters in the first two columns
-  let cmd = matchstr(a:selected, '^[!"|b ]*\zs\(\w*\)\ze ')
+  let cmd = matchstr(a:selected, '\v^\s*\S+\s+\zs\S+')
   let list = split(execute('command ' . cmd), "\n")
   let command = s:parse_command(list[1])
   if command.args ==# '0'
@@ -25,12 +29,15 @@ function! s:sink(selected) abort
 endfunction
 
 function! s:source() abort
+  let margin = 9
   let list = split(execute('command'), "\n")
   let s:command_header = list[0]
   let s:command_list = list[1:]
   call map(s:command_list, {key, val -> s:parse_command(val)})
   return map(copy(s:command_list), {key, val ->
-    \ s:right_pad(val.name, 30) . ' ' . printf('[%s] %s', val.args, val.rest)})
+        \ s:left_pad(printf('[%s] ', val.args), margin)
+        \ . s:right_pad(val.name, 30)
+        \ . ' ' . val.rest})
 endfunction
 
 
@@ -38,7 +45,6 @@ let s:command = {}
 let s:command.syntax = 'clap_command'
 let s:command.source = function('s:source')
 let s:command.sink = function('s:sink')
-let s:command.on_enter = function('s:on_enter')
 
 let g:clap#provider#command# = s:command
 
