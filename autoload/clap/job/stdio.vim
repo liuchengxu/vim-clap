@@ -85,7 +85,6 @@ if has('nvim')
   function! clap#job#stdio#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
-
 else
 
   function! s:out_cb(channel, message) abort
@@ -132,7 +131,7 @@ else
 endif
 
 function! clap#job#stdio#stop_service() abort
-  if s:job_id > 0
+  if clap#job#exists(s:job_id)
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif

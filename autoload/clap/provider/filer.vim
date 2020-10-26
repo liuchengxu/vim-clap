@@ -201,6 +201,9 @@ function! s:cr_action() abort
   endif
 
   if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
+    " Create file if it doesn't exist
+    stopinsert
+    call clap#handler#sink()
     return
   endif
 

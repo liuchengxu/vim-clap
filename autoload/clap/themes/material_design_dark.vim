@@ -8,7 +8,7 @@ let s:palette = {}
 
 let s:palette.display = { 'ctermbg': '235', 'guibg': '#272d3D' }
 
-" Let ClapInput, ClapSpinner and ClapSearchText use the same backgound.
+" Let ClapInput, ClapSpinner and ClapSearchText use the same background.
 let s:bg0 = { 'ctermbg': '60', 'guibg': '#3e4461' }
 let s:palette.input = s:bg0
 let s:palette.spinner = extend({ 'ctermfg': '11', 'guifg':'#ffe500', 'cterm': 'bold', 'gui': 'bold'}, s:bg0)

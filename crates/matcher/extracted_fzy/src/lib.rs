@@ -16,19 +16,30 @@ use crate::scoring_utils::*;
 pub type MatchWithPositions = (Score, Vec<usize>);
 
 pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
+    let lowercased;
     let haystack = if needle.chars().any(|c| c.is_uppercase()) {
-        haystack.into()
+        haystack
     } else {
-        haystack.to_lowercase()
+        lowercased = haystack.to_lowercase();
+        &lowercased
     };
 
-    match matches(needle, &haystack) {
-        Some(needle_length) => {
-            let (score, positions) = score_with_positions(needle, needle_length, &haystack);
-            Some((score, positions))
-        }
-        None => None,
-    }
+    // The another approach to avoid the unnecessary allocation in the case of `needle` contains
+    // any uppercase char is using `Option`.
+    //
+    // Ref https://github.com/liuchengxu/vim-clap/pull/541#discussion_r507020114
+
+    /*
+      let lowercase_haystack = if needle.chars().any(|c| c.is_uppercase()) {
+          None
+      } else {
+          Some(haystack.to_lowercase())
+      };
+      let haystack = lowercase_haystack.as_deref().unwrap_or(haystack);
+    */
+
+    matches(needle, haystack)
+        .map(|needle_length| score_with_positions(needle, needle_length, haystack))
 }
 
 /// Searches for needle's chars in the haystack.

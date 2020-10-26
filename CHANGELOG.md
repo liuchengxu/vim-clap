@@ -16,6 +16,7 @@
 ### Fixed
 
 - Fix the installer on Windows. #529 @Grueslayer
+- Fix the condition of vim8 job exists or not. #566
 
 ### Improved
 
