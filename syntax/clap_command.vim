@@ -1,5 +1,7 @@
-syntax match ClapCommand /^[!"|b ]*\zs\u\w* /
-syntax match ClapCommandHeader /Name        Args       Address   Complete  Definition/
+syntax match ClapCommand           /^[!"|b ]*\zs\u\w* / nextgroup=ClapCommandArgs skipwhite
+syntax match ClapCommandArgs       /\[[1?*+]\]/
+syntax match ClapCommandArgsNone   /\[0\]/
 
-hi default link ClapCommand Function
-hi default link ClapCommandHeader Title
+hi default link ClapCommand         Function
+hi default link ClapCommandArgs     Keyword
+hi default link ClapCommandArgsNone WarningMsg
