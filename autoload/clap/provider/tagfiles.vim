@@ -52,13 +52,25 @@ function! s:update_query()
 endfunc
 
 function! s:extract(tag_row) abort
-  let parts = split(a:tag_row, ':::')
+  let parts = split(a:tag_row, '::::')
+  " let line = parts[0]
   let file    = parts[1]
   let address = parts[2]
-  if address[0:1] == '/^'
-    let address = address[2:-5]
+  if address[0] == '/'
+    " Format: `/^function example()$/`
+    " inside the `/^` and `$/` is like nomagic, but some ctags program
+    " put the ^ and $ anyway.
+    let address = address[1:-2]
+    if address[0] == '^'
+      let address = '\v^\V' . address[1:]
+    else
+      let address = '\V' . address
+    end
+    if address[-1:] == '$'
+      let address = address[:-2] . '\v$'
+    end
   else
-    let address = 0 + matchstr(address, '\v\d+')
+    let address = str2nr(matchstr(address, '\v\d+'))
   end
   return [file, address]
 endfunction
