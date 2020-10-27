@@ -51,15 +51,6 @@ function! s:on_complete_maple() abort
       return
     endif
 
-    " XXX handle this in rust
-    if has_key(decoded, 'text')
-      let items = map(copy(s:chunks), {_, c -> json_decode(c)})
-      let lines = map(copy(items), {_, i -> i.text})
-      let indices = map(copy(items), {_, i -> i.indices})
-      let total = len(lines)
-      let decoded = {'lines': lines, 'indices': indices, 'total': total}
-    endif
-
     call clap#sign#ensure_exists()
 
     " Using the cached file
