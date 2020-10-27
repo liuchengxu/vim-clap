@@ -85,7 +85,7 @@ function! s:jump_to(position)
     execute 'normal! ' lnum 'gg'
   else
     let g:cp = address
-    let lnum = search('\V' . address)
+    let lnum = search(address)
   end
 
   execute 'normal! ^zvzz'
