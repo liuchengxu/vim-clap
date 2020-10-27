@@ -120,6 +120,9 @@ function! s:init_display() abort
     endfunction
 
     function! display.set_lines(lines) abort
+      if has_key(g:clap.provider._(), 'preprocess')
+        call g:clap.provider._().preprocess(a:lines)
+      end
       call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
       call g:clap#display_win.shrink_if_undersize()
     endfunction
@@ -166,6 +169,10 @@ function! s:init_display() abort
     endfunction
 
     function! display.set_lines(lines) abort
+      if has_key(g:clap.provider._(), 'preprocess')
+        call g:clap.provider._().preprocess(a:lines)
+      end
+
       " silent is required to avoid the annoying --No lines in buffer--.
       silent call deletebufline(self.bufnr, 1, '$')
 
