@@ -69,9 +69,30 @@ function! clap#preview#file(fname) abort
   call s:show_file_props(a:fname)
 endfunction
 
-function! clap#preview#file_at(fpath, lnum) abort
-  let [start, end, hi_lnum] = clap#preview#get_range(a:lnum)
-  if filereadable(a:fpath)
+" {address} is a string pattern or a number lnum
+function! clap#preview#file_at(fpath, address) abort
+  let lines = v:null
+  let lnum = 1
+
+  " if {address} is a pattern, let's find the lnum
+  if type(a:address) == v:t_string
+    let lines = readfile(a:fpath)
+    for z_lnum in range(len(lines))
+      if lines[z_lnum] == a:address || lines[z_lnum] =~ a:address
+        let lnum = z_lnum + 1
+        break
+      end
+    endfor
+  else
+    let lnum = a:address
+  end
+
+  let [start, end, hi_lnum] = clap#preview#get_range(lnum)
+
+  if !empty(lines)
+    " We have already read the file to find the lnum
+    let lines = lines[start : end]
+  elseif filereadable(a:fpath)
     let lines = readfile(a:fpath)[start : end]
   else
     let cwd = clap#rooter#working_dir()
@@ -81,6 +102,7 @@ function! clap#preview#file_at(fpath, lnum) abort
       return
     endif
   endif
+
   call insert(lines, a:fpath)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(a:fpath))
