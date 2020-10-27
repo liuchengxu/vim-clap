@@ -8,14 +8,6 @@ set cpoptions&vim
 let s:command_header   = v:null
 let s:command_list = []
 
-function! s:right_pad(s, n)
-    return a:s . repeat(' ', a:n - len(a:s))
-endfunction
-
-function! s:left_pad(s, n)
-    return repeat(' ', a:n - len(a:s)) . a:s
-endfunction
-
 function! s:sink(selected) abort
   " :h command, note the characters in the first two columns
   let cmd = matchstr(a:selected, '\v^\s*\S+\s+\zs\S+')
@@ -50,7 +42,7 @@ let g:clap#provider#command# = s:command
 
 " Helpers
 
-function! s:parse_command (input)
+function! s:parse_command(input) abort
   let bang = stridx(a:input[0:3], '!') != -1
   let input = a:input[4:]
   let name = matchstr(input, '\v^\S+')
@@ -72,6 +64,14 @@ endfunc
 "   \ 'function', 'help', 'highlight', 'history', 'locale', 'mapclear', 'mapping',
 "   \ 'menu', 'messages', 'option', 'packadd', 'shellcmd', 'sign', 'syntax', 'syntime',
 "   \ 'tag', 'tag_listfiles', 'user', 'var', 'custom,\S+', 'customlist,\S+' ]
+
+function! s:right_pad(s, n) abort
+    return a:s . repeat(' ', a:n - len(a:s))
+endfunction
+
+function! s:left_pad(s, n) abort
+    return repeat(' ', a:n - len(a:s)) . a:s
+endfunction
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
