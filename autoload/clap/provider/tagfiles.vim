@@ -7,49 +7,27 @@ set cpoptions&vim
 let s:provider = {}
 
 function! s:provider.on_typed() abort
-  if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-  elseif exists('g:__clap_forerunner_result')
-    let query = g:clap.input.get()
-    if query ==# ''
-      call g:clap.display.set_lines([])
-      return
-    endif
-    call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
-  else
-    let args = clap#maple#global_opts()
-    let args += ['tagfiles', g:clap.input.get()]
-    let args += map(tagfiles(), {_, f -> '--files=' . f})
-    let cmd = call(function('clap#maple#build_cmd'), args)
-    call clap#filter#async#dyn#start_directly(cmd)
-  endif
+  call s:update_query()
 endfunction
 
 function! s:provider.init() abort
   let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
-  " XXX remove this if not used
-  " if clap#maple#is_available()
-  "   call clap#rooter#try_set_cwd()
-  "   call clap#job#regular#forerunner#start_command(clap#maple#tagfiles_forerunner_command())
-  " endif
+  call s:update_query()
 endfunction
 
 function! s:provider.sink(selected) abort
   call s:jump_to(s:extract(a:selected))
   try
     silent! call vista#util#Blink(2, 200)
-  catch '*'
-  endtry
+  catch '*' | endtry
 endfunction
 
 function! s:provider.on_move() abort
-  " XXX make this work
-  let [lnum, path] = s:extract(g:clap.display.getcurline())
-  call clap#preview#file_at(path, lnum)
+  let [path, address] = s:extract(g:clap.display.getcurline())
+  call clap#preview#file_at(path, address)
 endfunction
 
 function! s:provider.on_exit() abort
-  " XXX shouldn't the line_splitter cleanup be done somewhere central?
   if exists('g:__clap_builtin_line_splitter_enum')
     unlet g:__clap_builtin_line_splitter_enum
   endif
@@ -64,6 +42,14 @@ let g:clap#provider#tagfiles# = s:provider
 
 
 " Helpers
+
+function! s:update_query()
+  let args = clap#maple#global_opts()
+  let args += ['tagfiles', g:clap.input.get()]
+  let args += map(tagfiles(), {_, f -> '--files=' . f})
+  let cmd = call(function('clap#maple#build_cmd'), args)
+  call clap#filter#async#dyn#start_directly(cmd)
+endfunc
 
 function! s:extract(tag_row) abort
   let parts = split(a:tag_row, ':::')
