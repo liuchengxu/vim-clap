@@ -28,20 +28,9 @@ function! s:get_global_variables() abort
   return variable_list
 endfunction
 
-function! s:get_builtin_providers() abort
-  if !exists('s:builtin_providers')
-    let s:builtin_providers = map(
-          \ split(globpath(g:clap#autoload_dir.'/clap/provider', '*'), '\n'),
-          \ 'fnamemodify(v:val, '':t:r'')'
-          \ )
-  endif
-  return s:builtin_providers
-endfunction
-
 function! s:get_third_party_providers() abort
   let all_providers = split(globpath(&runtimepath, 'autoload/clap/provider/*.vim'), "\n")
-  let builtin_providers = s:get_builtin_providers()
-  let third_party_providers = filter(all_providers, 'index(builtin_providers, v:val) != -1')
+  let third_party_providers = filter(all_providers, 'index(clap#builtin_providers(), v:val) != -1')
   return third_party_providers
 endfunction
 
