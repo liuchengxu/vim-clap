@@ -78,30 +78,117 @@ impl TagInfo {
         )
     }
 
-    pub fn parse(base: &PathBuf, input: &str) -> Result<Self, std::string::ParseError> {
+    pub fn parse(base: &PathBuf, input: &str) -> anyhow::Result<Self> {
         let mut field = 0;
         let mut index_last = 0;
 
         let mut name = String::new();
         let mut path = String::new();
-        let mut pattern = String::new();
+        let mut address = String::new();
         let mut kind = String::new();
 
-        for (i, c) in input.char_indices() {
+        let mut is_parsing_address = false;
+
+        let mut i = 0;
+        let mut iter = input.chars();
+        'outer: while let Some(mut c) = iter.next() {
+            /* Address parse */
+            if is_parsing_address {
+                /* Parse a pattern-address */
+                if c == '/' {
+                    address.push(c);
+                    let mut escape = false;
+                    loop {
+                        i += c.len_utf8();
+                        c = iter.next().unwrap();
+                        address.push(c);
+                        if c == '\\' && escape == false {
+                            escape = true;
+                            continue
+                        }
+                        if c == '\\' && escape == true {
+                            escape = false;
+                            continue
+                        }
+                        if c == '/' && escape == true {
+                            escape = false;
+                            continue
+                        }
+                        if c == '/' && escape == false {
+                            /* Unescaped slash is end-of-pattern */
+                            break
+                        }
+                        /* case: escaped non-special character */
+                        if escape {
+                            // Let's just let it pass
+                            escape = false;
+                        }
+                    }
+                }
+                /* Parse a line-number-address */
+                else if c.is_digit(10) {
+                    address.push(c);
+                    loop {
+                        i += c.len_utf8();
+                        if let Some(c_) = iter.next() {
+                            c = c_;
+                            if !c.is_digit(10) {
+                                break
+                            }
+                            address.push(c);
+                        }
+                        else {
+                            /* case: end of string */
+                            break 'outer;
+                        }
+                    }
+                }
+                /* Nothing else is accepted */
+                else {
+                    return Err(anyhow::anyhow!("Invalid tag line: invalid address"));
+                }
+
+                /* Cleanup end-of-tagaddress chars: `;` and `"` usually */
+                loop {
+                    i += c.len_utf8();
+                    if let Some(c_) = iter.next() {
+                        c = c_;
+                        if c == '\t' {
+                            field += 1;
+                            index_last = i + c.len_utf8();
+                            break
+                        }
+                    }
+                    else {
+                        /* case: end of string */
+                        break 'outer;
+                    }
+                }
+                is_parsing_address = false;
+                i += c.len_utf8();
+                continue 'outer;
+            }
+
+            /* Fields other than address are parsed here, because they are easier to match */
             if c == '\t' {
                 match field {
                     0 => name.push_str(&input[index_last..i]),
                     1 => {
                         let path_buf = base.join(String::from(&input[index_last..i]));
                         write!(&mut path, "{}", path_buf.display()).unwrap();
+                        is_parsing_address = true;
                     }
-                    2 => pattern.push_str(&input[index_last..i]),
-                    3 => kind.push_str(&input[index_last..i]),
+                    2 => { /* skip: already parsed above */ },
+                    3 => {
+                        kind.push_str(&input[index_last..i])
+                    },
                     _ => {}
                 }
                 field += 1;
                 index_last = i + c.len_utf8();
             }
+
+            i += c.len_utf8();
         }
         match field {
             0 => name.push_str(&input[index_last..]),
@@ -109,21 +196,23 @@ impl TagInfo {
                 let path_buf = base.join(String::from(&input[index_last..]));
                 write!(&mut path, "{}", path_buf.display()).unwrap();
             }
-            2 => pattern.push_str(&input[index_last..]),
+            2 => { /* skip: already parsed above */ },
             3 => kind.push_str(&input[index_last..]),
             _ => {}
         }
 
-        // NOTE: we're not handling incorrectly formed tags because I don't feel
-        // it's worth it. This might be revised if tagfile validation is someday
-        // a concern.
-
-        Ok(TagInfo {
-            name,
-            path,
-            pattern,
-            kind,
-        })
+        /* Not enough fields for us */
+        if field <= 1 {
+            Err(anyhow::anyhow!{"Invalid tag line: not enough fields"})
+        }
+        else {
+            Ok(TagInfo {
+                name,
+                path,
+                address,
+                kind,
+            })
+        }
     }
 }
 
@@ -220,3 +309,58 @@ impl TagFiles {
         Ok(())
     }
 }
+
+#[test]
+fn test_parse_ctags_line() {
+    let empty_path = PathBuf::new();
+
+    // With escaped characters
+    let data =
+        r#"run	crates/maple_cli/src/app.rs	/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/;"	P	implementation:Maple"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.name, "run");
+    assert_eq!(tag.path, "crates/maple_cli/src/app.rs");
+    assert_eq!(tag.address, r#"/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/"#);
+    assert_eq!(tag.kind, "P");
+
+    // With invalid escaped characters
+    let data =
+        r#"tag_name	filepath_here.py	/def ta\g_name/	f	"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.name, "tag_name");
+    assert_eq!(tag.path, "filepath_here.py");
+    assert_eq!(tag.address, r#"/def ta\g_name/"#);
+    assert_eq!(tag.kind, "f");
+
+    // Without kind
+    let data =
+        r#"tag_with_no_kind	filepath_here.py	/tag_with_no_kind/"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.name, "tag_with_no_kind");
+    assert_eq!(tag.path, "filepath_here.py");
+    assert_eq!(tag.address, r#"/tag_with_no_kind/"#);
+    assert_eq!(tag.kind, "");
+
+    // Invalid: pattern
+    let data =
+        r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
+    let failed = TagInfo::parse(&empty_path, data).is_err();
+    assert_eq!(failed, true);
+
+    // With line-number address
+    let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.name, ".Button.--icon .Button__icon");
+    assert_eq!(tag.path, "client/src/styles/Button.scss");
+    assert_eq!(tag.address, r#"86"#);
+    assert_eq!(tag.kind, "r");
+
+    // With line-number address (hasktags style)
+    let data = r#"EndlessList	example.hs	3"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.name, "EndlessList");
+    assert_eq!(tag.path, "example.hs");
+    assert_eq!(tag.address, r#"3"#);
+    assert_eq!(tag.kind, "");
+}
+
