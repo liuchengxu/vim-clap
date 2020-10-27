@@ -11,6 +11,7 @@
 
 ### Improved
 
+- Command provider has a better rendering and let's the user add arguments #570
 - Fix the sluggish of vim when the preview lines are awfully long. #543
 
 ### Fixed
