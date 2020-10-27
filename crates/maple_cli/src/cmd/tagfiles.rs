@@ -242,7 +242,7 @@ fn read_tag_files<'a>(
     files: &'a [[PathBuf; 2]],
 ) -> Result<impl Iterator<Item = String> + 'a> {
     Ok(files
-        .into_iter()
+        .iter()
         .filter_map(move |path| read_tag_file(path, &cwd, winwidth).ok())
         .flatten())
 }
