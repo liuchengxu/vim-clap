@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add `Clap tagfiles` provider for existing tag files. #557
 - Add `g:clap_enable_background_shadow` to render a transparent shadow (neovim-only) #546, #550
 - Add `g:clap_popup_move_manager` so that Vim users can override the default mappings easily. #536
 - Allow user to always download the prebuilt binary. #531
