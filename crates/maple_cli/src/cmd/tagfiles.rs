@@ -1,4 +1,3 @@
-use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use anyhow::Result;
 use filter::{matcher::LineSplitter, Source};
 use once_cell::sync::OnceCell;
@@ -14,7 +13,7 @@ use anyhow::anyhow;
 struct TagInfo {
     name: String,
     path: String,
-    pattern: String,
+    address: String,
     kind: String,
 }
 
@@ -69,12 +68,12 @@ impl TagInfo {
         } + adjustment;
 
         format!(
-            "{text:<text_width$}{path_label}:::{path}:::{pattern}",
+            "{text:<text_width$}::::{path_label}::::{path}::::{address}",
             text = name,
             text_width = text_width,
             path_label = path_label,
             path = self.path,
-            pattern = self.pattern,
+            address = self.address,
         )
     }
 

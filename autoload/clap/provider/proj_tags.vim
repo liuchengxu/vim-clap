@@ -62,6 +62,10 @@ function! s:proj_tags.on_exit() abort
   endif
 endfunction
 
+function! s:proj_tags.preprocess(lines) abort
+  call map(a:lines, {_, line-> substitute(line, '::::', '', '')})
+endfunction
+
 let s:proj_tags.enable_rooter = v:true
 let s:proj_tags.support_open_action = v:true
 let s:proj_tags.syntax = 'clap_proj_tags'
