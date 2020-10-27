@@ -1,7 +1,6 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use anyhow::Result;
 use filter::{matcher::LineSplitter, Source};
-use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
@@ -9,7 +8,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use utility::clap_cache_dir;
 use anyhow::anyhow;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -147,10 +145,6 @@ pub struct TagFiles {
     /// Read input from a cached grep tempfile, only absolute file path is supported.
     #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
-
-    /// Runs as the forerunner job, create the new cache entry.
-    #[structopt(short, long)]
-    forerunner: bool,
 }
 
 fn read_tag_files<'a>(
@@ -189,30 +183,6 @@ fn read_tag_file<'a>(
     }))
 }
 
-fn create_tags_cache(
-    cwd: &PathBuf,
-    winwidth: usize,
-    args: &[&str],
-    files: &[[PathBuf; 2]],
-) -> Result<(PathBuf, usize)> {
-    let tags_stream = read_tag_files(cwd, winwidth, files)?;
-    let mut total = 0usize;
-    let mut read_tag_files = tags_stream.map(|x| {
-        total += 1;
-        x
-    });
-    let lines = read_tag_files.join("\n");
-    let cache = CacheEntry::create(args, None, total, lines)?;
-    Ok((cache, total))
-}
-
-fn get_args_from_files(files: &Vec<PathBuf>) -> Vec<String> {
-    files
-        .iter()
-        .map(|f| f.as_path().display().to_string())
-        .collect::<Vec<_>>()
-}
-
 fn get_paths_from_files<'a>(files: &'a Vec<PathBuf>) -> Vec<[PathBuf; 2]> {
     files
         .iter()
@@ -226,7 +196,6 @@ fn get_paths_from_files<'a>(files: &'a Vec<PathBuf>) -> Vec<[PathBuf; 2]> {
 
 impl TagFiles {
     pub fn run(&self, options: &crate::Maple) -> Result<()> {
-        // In case of passing an invalid icon-painter option.
         /* let icon_painter = options
          *     .icon_painter
          *     .clone()
@@ -234,35 +203,19 @@ impl TagFiles {
 
         let cwd = options.cwd.clone().unwrap();
         let winwidth = options.winwidth.unwrap_or(120);
-        let cache_dir = clap_cache_dir();
 
         let files = &self.files.clone();
         let tag_paths = get_paths_from_files(files);
 
-        if self.forerunner {
-            let arg_files = get_args_from_files(&files);
-            let args = arg_files.iter().map(String::as_str).collect::<Vec<_>>();
-
-            let (cache, total) = if options.no_cache {
-                create_tags_cache(&cwd, winwidth, &args, &tag_paths)?
-            } else if let Ok(cached_info) = cache_exists(&args, &cache_dir) {
-                cached_info
-            } else {
-                create_tags_cache(&cwd, winwidth, &args, &tag_paths)?
-            };
-            send_response_from_cache(&cache, total, SendResponse::Json, None);
-            return Ok(());
-        } else {
-            filter::dyn_run(
-                &self.query,
-                Source::List(read_tag_files(&cwd, winwidth, &tag_paths)?),
-                None,
-                Some(30),
-                None,
-                None,
-                LineSplitter::TagNameOnly,
-            )?;
-        }
+        filter::dyn_run(
+            &self.query,
+            Source::List(read_tag_files(&cwd, winwidth, &tag_paths)?),
+            None,
+            Some(30),
+            None,
+            None,
+            LineSplitter::TagNameOnly,
+        )?;
 
         Ok(())
     }
