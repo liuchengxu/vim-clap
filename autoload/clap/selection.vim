@@ -98,6 +98,7 @@ function! clap#selection#try_open(action) abort
     call clap#_exit()
 
   endif
+  silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
 let &cpoptions = s:save_cpo

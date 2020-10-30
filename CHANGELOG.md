@@ -18,6 +18,7 @@
 
 - Fix the installer on Windows. #529 @Grueslayer
 - Fix the condition of vim8 job exists or not. #566
+- Add the missing `ClapOnExit` for `g:clap_open_action` operation. #576
 
 ### Improved
 
