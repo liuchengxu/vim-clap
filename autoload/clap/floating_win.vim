@@ -402,12 +402,19 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  " Indicator win must be opened before shadow win.
-  " ref 567
-  call s:open_indicator_win()
-  if g:clap_enable_background_shadow
-    call s:open_shadow_win()
-  end
+  if g:clap_search_box_border_style ==# 'curve'
+    " Indicator win must be opened before shadow win.
+    " ref 567
+    call s:open_indicator_win()
+    if g:clap_enable_background_shadow
+      call s:open_shadow_win()
+    end
+  else
+    if g:clap_enable_background_shadow
+      call s:open_shadow_win()
+    end
+    call s:open_indicator_win()
+  endif
   call s:open_win_border_right()
 
   " This seemingly does not look good.
