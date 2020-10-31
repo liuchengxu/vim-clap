@@ -49,8 +49,10 @@ inoremap <silent> <buffer> <expr> <C-E> col('.')>strlen(getline('.'))<bar><bar>p
 
 inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR>
 
+" Use this way when we need stopinsert inside the handler.
 inoremap <silent> <buffer> <C-c> <Esc>:<c-u>call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-g> <Esc>:<c-u>call clap#handler#exit()<CR>
+inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#cr_action()<CR>
 
 inoremap <silent> <buffer> <Down> <C-R>=clap#navigation#linewise('down')<CR>
 inoremap <silent> <buffer> <Up>   <C-R>=clap#navigation#linewise('up')<CR>
@@ -58,7 +60,6 @@ inoremap <silent> <buffer> <Up>   <C-R>=clap#navigation#linewise('up')<CR>
 inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
-inoremap <silent> <buffer> <CR>        <C-R>=clap#handler#cr_action()<CR>
 inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#tab_action()<CR>
 inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>
 inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#back_action()<CR>
