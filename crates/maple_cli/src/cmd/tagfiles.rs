@@ -331,9 +331,13 @@ fn test_parse_ctags_line() {
     assert_eq!(tag.address, r#"/def ta\g_name/"#);
     assert_eq!(tag.kind, "f");
 
+    // with different characters after pattern
+    let data = r#"tagname	filename	/pattern/[;"	f	"#;
+    let tag = TagInfo::parse(&empty_path, data).unwrap();
+    assert_eq!(tag.address, "/pattern/");
+
     // Without kind
-    let data =
-        r#"tag_with_no_kind	filepath_here.py	/tag_with_no_kind/"#;
+    let data = r#"tag_with_no_kind	filepath_here.py	/tag_with_no_kind/"#;
     let tag = TagInfo::parse(&empty_path, data).unwrap();
     assert_eq!(tag.name, "tag_with_no_kind");
     assert_eq!(tag.path, "filepath_here.py");
@@ -341,10 +345,8 @@ fn test_parse_ctags_line() {
     assert_eq!(tag.kind, "");
 
     // Invalid: pattern
-    let data =
-        r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
-    let failed = TagInfo::parse(&empty_path, data).is_err();
-    assert_eq!(failed, true);
+    let data = r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
+    assert_eq!(TagInfo::parse(&empty_path, data).is_err(), true);
 
     // With line-number address
     let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
@@ -360,6 +362,5 @@ fn test_parse_ctags_line() {
     assert_eq!(tag.name, "EndlessList");
     assert_eq!(tag.path, "example.hs");
     assert_eq!(tag.address, r#"3"#);
-    assert_eq!(tag.kind, "");
 }
 
