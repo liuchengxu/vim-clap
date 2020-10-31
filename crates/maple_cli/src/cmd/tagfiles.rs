@@ -1,5 +1,6 @@
 use anyhow::Result;
 use filter::{matcher::LineSplitter, Source};
+use types::SourceItem;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
@@ -68,7 +69,7 @@ impl TagInfo {
         } + adjustment;
 
         format!(
-            "{text:<text_width$}::::{path_label}::::{path}::::{address}",
+            "{text:<text_width$}{path_label}::::{path}::::{address}",
             text = name,
             text_width = text_width,
             path_label = path_label,
@@ -239,7 +240,7 @@ fn read_tag_files<'a>(
     cwd: &'a PathBuf,
     winwidth: usize,
     files: &'a [[PathBuf; 2]],
-) -> Result<impl Iterator<Item = String> + 'a> {
+) -> Result<impl Iterator<Item = SourceItem> + 'a> {
     Ok(files
         .iter()
         .filter_map(move |path| read_tag_file(path, &cwd, winwidth).ok())
@@ -250,7 +251,7 @@ fn read_tag_file<'a>(
     paths: &'a [PathBuf; 2],
     cwd: &'a PathBuf,
     winwidth: usize,
-) -> Result<impl Iterator<Item = String> + 'a> {
+) -> Result<impl Iterator<Item = SourceItem> + 'a> {
     let file = File::open(&paths[0]);
     let file = if let Ok(file) = file {
         file
@@ -263,7 +264,7 @@ fn read_tag_file<'a>(
             if input.starts_with("!_TAG") {
                 None
             } else if let Ok(tag) = TagInfo::parse(&paths[1], &input) {
-                Some(tag.format(&cwd, winwidth))
+                Some(SourceItem { display: tag.format(&cwd, winwidth), filter: Some(tag.name) })
             } else {
                 None
             }

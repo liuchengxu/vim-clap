@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::Message;
+use crate::server_types::Message;
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;

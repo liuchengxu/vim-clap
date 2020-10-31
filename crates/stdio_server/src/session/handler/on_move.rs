@@ -1,5 +1,5 @@
 use crate::session::SessionContext;
-use crate::types::{Message, ProviderId};
+use crate::server_types::{Message, ProviderId};
 use crate::write_response;
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
@@ -152,7 +152,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::types::ProviderId = self.provider_id.clone().into();
+        let provider_id: ProviderId = self.provider_id.clone().into();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,

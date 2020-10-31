@@ -1,0 +1,5 @@
+[package]
+name = "types"
+version = "0.1.0"
+authors = ["Rom Grk <romgrk.cc@gmail.com>"]
+edition = "2018"

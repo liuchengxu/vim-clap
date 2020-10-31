@@ -11,47 +11,11 @@ lazy_static! {
   // match the file path and line number of grep line.
   static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
 
-  // match the tag_name:lnum or tag_name of tag line.
-  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
-
   static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
 
   static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*)\]").unwrap();
 
   static ref COMMIT_RE: Regex = Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap();
-}
-
-/// Extract tag name from the line in tags provider.
-#[inline]
-pub fn tag_name_only(line: &str) -> Option<&str> {
-    let mut last_index = 0;
-    let mut colons = 0;
-    let mut last_noncolon_index = None;
-    for (i, ch) in line.char_indices().skip_while(|e| e.1.is_ascii_whitespace()) {
-        if let Some(_) = last_noncolon_index {
-            if ch == ':' {
-                colons += 1;
-            }
-            else {
-                last_noncolon_index = None;
-                colons = 0;
-            }
-            if colons == 4 {
-                break
-            }
-        }
-        else if ch == ':' {
-            last_noncolon_index = Some(last_index);
-            colons += 1;
-        }
-        last_index = i;
-    }
-
-    if let Some(end) = last_noncolon_index {
-        return Some(&line[0..end])
-    }
-
-    TAG_RE.find(line).map(|x| x.as_str())	
 }
 
 /// Returns the line content only and offset in the raw line.
@@ -151,13 +115,6 @@ mod tests {
 
         let path = extract_grep_file_path(line).unwrap();
         assert_eq!(path, "install.sh");
-    }
-
-    #[test]
-    fn test_tag_name_only() {
-        let line = "<Backspace>:60::::    [map]           inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>  ftplugin/clap_input.vim";
-        let mat = TAG_RE.find(line);
-        assert_eq!(mat.unwrap().as_str(), "<Backspace>:60");
     }
 
     #[test]
