@@ -34,10 +34,6 @@ function! s:provider.on_exit() abort
   call clap#job#stdio#stop_service()
 endfunction
 
-function! s:provider.preprocess(lines) abort
-  call map(a:lines, {_, line-> substitute(line, '::::', '', '')})
-endfunction
-
 
 let s:provider.enable_rooter = v:true
 let s:provider.support_open_action = v:true

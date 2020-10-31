@@ -13,6 +13,7 @@ serde_json = "1.0"
 
 icon = { path = "../icon" }
 utility = { path = "../utility" }
+types = { path = "../types" }
 
 [target.'cfg(not(windows))'.dev-dependencies]
 rayon = "1.2"

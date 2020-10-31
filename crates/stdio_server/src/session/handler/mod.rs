@@ -1,5 +1,5 @@
 use crate::session::SessionContext;
-use crate::types::Message;
+use crate::server_types::Message;
 use crate::write_response;
 use serde_json::json;
 

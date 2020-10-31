@@ -4,7 +4,7 @@ mod handler;
 mod manager;
 
 use super::*;
-use crate::types::ProviderId;
+use crate::server_types::ProviderId;
 use anyhow::Result;
 
 pub use context::SessionContext;

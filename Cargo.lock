@@ -376,6 +376,7 @@ dependencies = [
  "serde",
  "serde_json",
  "subprocess",
+ "types",
  "utility",
 ]
 
@@ -834,6 +835,7 @@ dependencies = [
  "serde_json",
  "stdio_server",
  "structopt",
+ "types",
  "upgrade",
  "utility",
 ]
@@ -847,6 +849,7 @@ dependencies = [
  "fuzzy-matcher",
  "pattern",
  "structopt",
+ "types",
 ]
 
 [[package]]
@@ -1075,6 +1078,7 @@ dependencies = [
  "lazy_static",
  "log",
  "regex",
+ "types",
 ]
 
 [[package]]
@@ -1134,6 +1138,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "types",
  "utility",
 ]
 
@@ -1511,6 +1516,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "tokio",
+ "types",
  "utility",
 ]
 
@@ -1724,6 +1730,10 @@ checksum = "653be63c80a3296da5551e1bfd2cca35227e13cdd08c6668903ae2f4f77aa1f6"
 dependencies = [
  "unsafe-any",
 ]
+
+[[package]]
+name = "types"
+version = "0.1.0"
 
 [[package]]
 name = "unicase"

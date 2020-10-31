@@ -1,5 +1,6 @@
 use super::*;
 use log::debug;
+use types::SourceItem;
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
     debug!("recv OnTyped event: {:?}", msg);
@@ -16,7 +17,7 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
 
     // TODO: sync for 100000, dyn for 100000+
     if let Some(ref source_list) = *source_list {
-        let source = filter::Source::List(source_list.iter().map(Into::into));
+        let source = filter::Source::List(source_list.iter().map(Into::into).map(SourceItem::new));
 
         let lines_info = filter::sync_run(&query, source, filter::matcher::Algo::Fzy).unwrap();
 

@@ -1,7 +1,8 @@
 use super::*;
-use crate::FilterResult;
+use crate::{FilterResult};
 use icon::IconPainter;
 use icon::ICON_LEN;
+use types::SourceItem;
 use matcher::{get_appropriate_matcher, LineSplitter};
 use rayon::slice::ParallelSliceMut;
 use std::io::{self, BufRead};
@@ -128,13 +129,13 @@ fn try_notify_top_results(
             let mut indices = Vec::with_capacity(top_results_len);
             let mut lines = Vec::with_capacity(top_results_len);
             for &idx in top_results.iter() {
-                let (text, _, idxs) = std::ops::Index::index(buffer, idx);
+                let (item, _, idxs) = std::ops::Index::index(buffer, idx);
                 let text = if let Some(painter) = icon_painter {
                     indices.push(idxs.iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
-                    painter.paint(&text)
+                    painter.paint(&item.display)
                 } else {
                     indices.push(idxs.clone());
-                    text.clone()
+                    item.display.clone()
                 };
                 lines.push(text);
             }
@@ -293,7 +294,8 @@ macro_rules! source_iter_stdin {
         io::stdin().lock().lines().filter_map(|lines_iter| {
             lines_iter
                 .ok()
-                .and_then(|line| $scorer(&line).map(|(score, indices)| (line, score, indices)))
+                .map(SourceItem::new)
+                .and_then(|item| $scorer(item))
         })
     };
 }
@@ -307,7 +309,8 @@ macro_rules! source_iter_exec {
             .filter_map(|lines_iter| {
                 lines_iter
                     .ok()
-                    .and_then(|line| $scorer(&line).map(|(score, indices)| (line, score, indices)))
+                .map(SourceItem::new)
+                    .and_then(|item| $scorer(item))
             })
     };
 }
@@ -320,8 +323,10 @@ macro_rules! source_iter_file {
         std::io::BufReader::new(std::fs::File::open($fpath)?)
             .lines()
             .filter_map(|x| {
-                x.ok().and_then(|line| {
-                    $scorer(&line).map(|(score, indices)| (line.into(), score, indices))
+                x.ok()
+                .map(SourceItem::new)
+                .and_then(|item| {
+                    $scorer(item)
                 })
             })
     };
@@ -330,12 +335,16 @@ macro_rules! source_iter_file {
 // Generate an filtered iterator from Source::List(list).
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
-        $list.filter_map(|line| $scorer(&line).map(|(score, indices)| (line, score, indices)))
+        $list.filter_map(|item| {
+            // XXX: How do I avoid cloning here?
+            // let line = item.filter.clone().unwrap_or(item.display.clone());
+            $scorer(item)
+        })
     };
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn dyn_run<I: Iterator<Item = String>>(
+pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     algo: Option<Algo>,
@@ -350,7 +359,7 @@ pub fn dyn_run<I: Iterator<Item = String>>(
         algo.unwrap_or(Algo::Fzy)
     };
     let scorer_fn = get_appropriate_matcher(&algo, &line_splitter);
-    let scorer = |line: &str| scorer_fn(line, query);
+    let scorer = |item: SourceItem| scorer_fn(item, query);
     if let Some(number) = number {
         let (total, mut filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
@@ -382,8 +391,8 @@ pub fn dyn_run<I: Iterator<Item = String>>(
 
         let ranked = filtered;
 
-        for (text, _, indices) in ranked.iter() {
-            println_json!(text, indices);
+        for (item, _, indices) in ranked.iter() {
+            println_json!(item.display, indices);
         }
     }
 

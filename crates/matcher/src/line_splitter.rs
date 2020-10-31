@@ -1,7 +1,8 @@
 use crate::{
-    fzy, skim::fuzzy_indices as fuzzy_indices_skim, substring::substr_indices, MatcherResult,
+    fzy, skim::fuzzy_indices as fuzzy_indices_skim, substring::substr_indices,
 };
-use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
+use types::{FilterResult, SourceItem};
+use pattern::{file_name_only, strip_grep_filepath};
 use structopt::clap::arg_enum;
 
 // Implement arg_enum so that we could control it from the command line.
@@ -34,67 +35,90 @@ impl From<String> for LineSplitter {
     }
 }
 
+// XXX: avoid cloning everywhere below. Cloning is bad.
+
 #[inline]
-pub(super) fn apply_on_grep_line_skim(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_grep_line_skim(item: SourceItem, query: &str) -> Option<FilterResult> {
+    strip_grep_filepath(&item.display.clone()).and_then(|(truncated_line, offset)| {
         fuzzy_indices_skim(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_grep_line_fzy(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_grep_line_fzy(item: SourceItem, query: &str) -> Option<FilterResult> {
+    strip_grep_filepath(&item.display.clone()).and_then(|(truncated_line, offset)| {
         fzy::fuzzy_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_grep_line_substr(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_grep_line_substr(item: SourceItem, query: &str) -> Option<FilterResult> {
+    strip_grep_filepath(&item.display.clone()).and_then(|(truncated_line, offset)| {
         substr_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_file_line_skim(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_file_line_skim(item: SourceItem, query: &str) -> Option<FilterResult> {
+    file_name_only(&item.display.clone()).and_then(|(truncated_line, offset)| {
         fuzzy_indices_skim(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_file_line_fzy(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_file_line_fzy(item: SourceItem, query: &str) -> Option<FilterResult> {
+    file_name_only(&item.display.clone()).and_then(|(truncated_line, offset)| {
         fzy::fuzzy_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_file_line_substr(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
+pub(super) fn apply_on_file_line_substr(item: SourceItem, query: &str) -> Option<FilterResult> {
+    file_name_only(&item.display.clone()).and_then(|(truncated_line, offset)| {
         substr_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            .map(|(score, indices)| (item, score, indices.into_iter().map(|x| x + offset).collect()))
     })
 }
 
 #[inline]
-pub(super) fn apply_on_tag_line_skim(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| fuzzy_indices_skim(tag_name, query))
+pub(super) fn apply_on_tag_line_skim(item: SourceItem, query: &str) -> Option<FilterResult> {
+    fuzzy_indices_skim(&item.filter.clone().unwrap(), query)
+      .map(|(score, indices)| (item, score, indices))
 }
 
 #[inline]
-pub(super) fn apply_on_tag_line_fzy(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| fzy::fuzzy_indices(tag_name, query))
+pub(super) fn apply_on_tag_line_fzy(item: SourceItem, query: &str) -> Option<FilterResult> {
+    fzy::fuzzy_indices(&item.filter.clone().unwrap(), query)
+      .map(|(score, indices)| (item, score, indices))
 }
 
 #[inline]
-pub(super) fn apply_on_tag_line_substr(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| substr_indices(tag_name, query))
+pub(super) fn apply_on_tag_line_substr(item: SourceItem, query: &str) -> Option<FilterResult> {
+    substr_indices(&item.filter.clone().unwrap(), query)
+      .map(|(score, indices)| (item, score, indices)) 
+}
+
+#[inline]
+pub(super) fn apply_direct_skim(item: SourceItem, query: &str) -> Option<FilterResult> {
+    fuzzy_indices_skim(&item.display, query)
+      .map(|(score, indices)| (item, score, indices))
+}
+
+#[inline]
+pub(super) fn apply_direct_fzy(item: SourceItem, query: &str) -> Option<FilterResult> {
+    fzy::fuzzy_indices(&item.display, query)
+      .map(|(score, indices)| (item, score, indices))
+}
+
+#[inline]
+pub(super) fn apply_direct_substr(item: SourceItem, query: &str) -> Option<FilterResult> {
+    substr_indices(&item.display, query)
+      .map(|(score, indices)| (item, score, indices))
 }
 
 #[cfg(test)]

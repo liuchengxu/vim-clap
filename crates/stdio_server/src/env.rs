@@ -1,4 +1,4 @@
-use super::types::{GlobalEnv, Message};
+use super::server_types::{GlobalEnv, Message};
 use log::debug;
 use once_cell::sync::OnceCell;
 use std::ops::Deref;

@@ -1,6 +1,7 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use anyhow::{anyhow, Result};
 use filter::{matcher::LineSplitter, subprocess, Source};
+use types::SourceItem;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
@@ -81,14 +82,14 @@ pub struct Tags {
     exclude: Vec<String>,
 }
 
-fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = String>> {
+fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = SourceItem>> {
     let stdout_stream = subprocess::Exec::shell(args.join(" "))
         .cwd(dir)
         .stream_stdout()?;
     Ok(BufReader::new(stdout_stream).lines().filter_map(|line| {
         line.ok().and_then(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.format())
+                Some(SourceItem { display: tag.format(), filter: Some(tag.name) })
             } else {
                 None
             }
@@ -101,7 +102,7 @@ fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
     let mut total = 0usize;
     let mut formatted_tags_stream = tags_stream.map(|x| {
         total += 1;
-        x
+        x.display
     });
     let lines = formatted_tags_stream.join("\n");
     let cache = CacheEntry::create(args, Some(dir.clone()), total, lines)?;

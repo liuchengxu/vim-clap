@@ -3,6 +3,7 @@ use filter::{
     matcher::{Algo, LineSplitter},
     subprocess, Source,
 };
+use types::SourceItem;
 use icon::IconPainter;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -41,7 +42,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = String>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 subprocess::Exec::shell(cmd_str).cwd(dir).into()

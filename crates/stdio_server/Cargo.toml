@@ -23,4 +23,5 @@ icon = { path = "../icon" }
 filter = { path = "../filter" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
+types = { path = "../types" }
 utility = { path = "../utility" }

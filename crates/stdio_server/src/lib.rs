@@ -1,7 +1,7 @@
 mod env;
 mod filer;
 mod session;
-mod types;
+mod server_types;
 
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
@@ -10,7 +10,7 @@ use serde_json::json;
 use session::{Manager, SessionEvent};
 use std::io::prelude::*;
 use std::thread;
-use types::Message;
+use server_types::Message;
 
 fn write_response<T: Serialize>(msg: T) {
     if let Ok(s) = serde_json::to_string(&msg) {

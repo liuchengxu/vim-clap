@@ -20,6 +20,7 @@
 mod algo;
 mod line_splitter;
 
+use types::{FilterResult, SourceItem};
 pub use algo::*;
 pub use line_splitter::*;
 
@@ -32,22 +33,22 @@ pub type MatcherResult = Option<(i64, Vec<usize>)>;
 pub fn get_appropriate_matcher(
     algo: &Algo,
     line_splitter: &LineSplitter,
-) -> impl Fn(&str, &str) -> MatcherResult {
+) -> impl Fn(SourceItem, &str) -> Option<FilterResult> {
     match algo {
         Algo::Skim => match line_splitter {
-            LineSplitter::Full => skim::fuzzy_indices,
+            LineSplitter::Full => apply_direct_skim,
             LineSplitter::TagNameOnly => apply_on_tag_line_skim,
             LineSplitter::FileNameOnly => apply_on_file_line_skim,
             LineSplitter::GrepExcludeFilePath => apply_on_grep_line_skim,
         },
         Algo::Fzy => match line_splitter {
-            LineSplitter::Full => fzy::fuzzy_indices,
+            LineSplitter::Full => apply_direct_fzy,
             LineSplitter::TagNameOnly => apply_on_tag_line_fzy,
             LineSplitter::FileNameOnly => apply_on_file_line_fzy,
             LineSplitter::GrepExcludeFilePath => apply_on_grep_line_fzy,
         },
         Algo::SubString => match line_splitter {
-            LineSplitter::Full => substring::substr_indices,
+            LineSplitter::Full => apply_direct_substr,
             LineSplitter::TagNameOnly => apply_on_tag_line_substr,
             LineSplitter::FileNameOnly => apply_on_file_line_substr,
             LineSplitter::GrepExcludeFilePath => apply_on_grep_line_substr,
