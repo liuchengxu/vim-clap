@@ -182,12 +182,13 @@ endfunction
 
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
 function! clap#exit() abort
-  call clap#_exit()
+  noautocmd call clap#_exit()
 
   " NOTE: Need to go back to the start window
   if win_getid() != g:clap.start.winid
     call g:clap.start.goto_win()
   endif
+  doautocmd WinEnter
 endfunction
 
 function! clap#should_use_raw_cwd() abort
