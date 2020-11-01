@@ -39,16 +39,22 @@ function! s:handle_response(result, error) abort
 endfunction
 
 function! s:set_prompt() abort
-  if strlen(s:current_dir) < s:winwidth * 3 / 4
-    call clap#spinner#set(s:current_dir)
+  let current_dir = s:current_dir
+  if stridx(current_dir, getcwd()) == 0
+    let current_dir = '.' . current_dir[len(getcwd()):]
   else
-    let parent = fnamemodify(s:current_dir, ':p:h')
-    let last = fnamemodify(s:current_dir, ':p:t')
+    let current_dir = fnamemodify(current_dir, ':~')
+  end
+  if strlen(current_dir) < s:winwidth * 3 / 4
+    call clap#spinner#set(current_dir)
+  else
+    let parent = fnamemodify(current_dir, ':p:h')
+    let last = fnamemodify(current_dir, ':p:t')
     let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
     if strlen(short_dir) < s:winwidth * 3 / 4
       call clap#spinner#set(short_dir)
     else
-      call clap#spinner#set(pathshorten(s:current_dir))
+      call clap#spinner#set(pathshorten(current_dir))
     endif
   endif
 endfunction
