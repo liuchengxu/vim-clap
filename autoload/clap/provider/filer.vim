@@ -10,6 +10,7 @@ let s:filer = {}
 
 let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
+let s:CREATE_FILE = ' [Create new file]'
 
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/
@@ -138,6 +139,8 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
+    let candidates = candidates +
+        \ [(g:clap_enable_icon ? ' ' : '') . query . s:CREATE_FILE]
     call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
@@ -155,6 +158,7 @@ function! s:get_current_entry() abort
   if g:clap_enable_icon
     let curline = curline[4:]
   endif
+  let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
   return s:smart_concatenate(s:current_dir, curline)
 endfunction
 
@@ -252,8 +256,7 @@ function! s:smart_concatenate(cur_dir, curline) abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  let curline = g:clap_enable_icon ? a:selected[4:] : a:selected
-  execute 'edit' s:smart_concatenate(s:current_dir, curline)
+  execute 'edit' s:get_current_entry()
 endfunction
 
 function! s:filer_on_typed() abort
