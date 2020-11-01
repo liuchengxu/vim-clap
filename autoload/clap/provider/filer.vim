@@ -126,6 +126,7 @@ else
 endif
 
 function! s:back_action() abort
+  call g:clap.input.set('')
   call s:goto_parent()
   return ''
 endfunction
