@@ -896,7 +896,7 @@ clap#run()                                                       *clap#run()*
 10. Contact                                                       *clap-contact*
 
 If you like this plugin, and wish to get in touch, check out the GitHub
-for more at https://github.com/liuchengxu/clap
+for more at https://github.com/liuchengxu/vim-clap
 
 
 ===============================================================================
