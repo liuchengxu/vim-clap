@@ -155,7 +155,7 @@ function! clap#_exit() abort
   call clap#job#regular#forerunner#stop()
   call clap#maple#clean_up()
 
-  call g:clap.close_win()
+  noautocmd call g:clap.close_win()
 
   let g:clap.is_busy = 0
   let g:clap.display.cache = []
@@ -182,12 +182,8 @@ endfunction
 
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
 function! clap#exit() abort
+  call g:clap.start.goto_win()
   call clap#_exit()
-
-  " NOTE: Need to go back to the start window
-  if win_getid() != g:clap.start.winid
-    call g:clap.start.goto_win()
-  endif
 endfunction
 
 function! clap#should_use_raw_cwd() abort

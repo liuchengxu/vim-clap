@@ -52,7 +52,6 @@ function! s:extract_bufnr(line) abort
 endfunction
 
 function! s:buffers_sink(selected) abort
-  call g:clap.start.goto_win()
   let b = s:extract_bufnr(a:selected)
   if has_key(g:clap, 'open_action')
     execute g:clap.open_action
