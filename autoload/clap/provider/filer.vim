@@ -10,6 +10,7 @@ let s:filer = {}
 
 let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
+let s:CREATE_FILE = ' [Create new file]'
 
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/
@@ -39,16 +40,23 @@ function! s:handle_response(result, error) abort
 endfunction
 
 function! s:set_prompt() abort
-  if strlen(s:current_dir) < s:winwidth * 3 / 4
-    call clap#spinner#set(s:current_dir)
+  let current_dir = s:current_dir
+  let cwd = getcwd()
+  if stridx(current_dir, cwd) == 0
+    let current_dir = '.' . current_dir[len(cwd):]
   else
-    let parent = fnamemodify(s:current_dir, ':p:h')
-    let last = fnamemodify(s:current_dir, ':p:t')
+    let current_dir = fnamemodify(current_dir, ':~')
+  end
+  if strlen(current_dir) < s:winwidth * 3 / 4
+    call clap#spinner#set(current_dir)
+  else
+    let parent = fnamemodify(current_dir, ':p:h')
+    let last = fnamemodify(current_dir, ':p:t')
     let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
     if strlen(short_dir) < s:winwidth * 3 / 4
       call clap#spinner#set(short_dir)
     else
-      call clap#spinner#set(pathshorten(s:current_dir))
+      call clap#spinner#set(pathshorten(current_dir))
     endif
   endif
 endfunction
@@ -120,6 +128,7 @@ else
 endif
 
 function! s:back_action() abort
+  call g:clap.input.set('')
   call s:goto_parent()
   return ''
 endfunction
@@ -131,6 +140,8 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
+    let candidates = candidates +
+        \ [(g:clap_enable_icon ? ' ' : '') . query . s:CREATE_FILE]
     call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
@@ -148,6 +159,7 @@ function! s:get_current_entry() abort
   if g:clap_enable_icon
     let curline = curline[4:]
   endif
+  let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
   return s:smart_concatenate(s:current_dir, curline)
 endfunction
 
@@ -245,8 +257,7 @@ function! s:smart_concatenate(cur_dir, curline) abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  let curline = g:clap_enable_icon ? a:selected[4:] : a:selected
-  execute 'edit' s:smart_concatenate(s:current_dir, curline)
+  execute 'edit' s:get_current_entry()
 endfunction
 
 function! s:filer_on_typed() abort
@@ -298,7 +309,12 @@ function! s:filer_handle_on_move_response(result, error) abort
 endfunction
 
 function! s:filer.on_move_async() abort
-  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
+  if g:clap.display.getcurline() =~# s:CREATE_FILE
+    call g:clap.preview.hide()
+    return
+  endif
+  call clap#client#call_on_move('filer/on_move',
+    \ function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
