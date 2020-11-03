@@ -8,7 +8,7 @@ let s:is_nvim = has('nvim')
 let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
 function! s:_goto_win() dict abort
-  noautocmd call win_gotoid(self.winid)
+  call win_gotoid(self.winid)
 endfunction
 
 function! s:_getbufvar(varname) dict abort
