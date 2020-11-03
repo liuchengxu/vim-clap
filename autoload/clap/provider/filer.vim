@@ -41,8 +41,9 @@ endfunction
 
 function! s:set_prompt() abort
   let current_dir = s:current_dir
-  if stridx(current_dir, getcwd()) == 0
-    let current_dir = '.' . current_dir[len(getcwd()):]
+  let cwd = getcwd()
+  if stridx(current_dir, cwd) == 0
+    let current_dir = '.' . current_dir[len(cwd):]
   else
     let current_dir = fnamemodify(current_dir, ':~')
   end
