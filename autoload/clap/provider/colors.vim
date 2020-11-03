@@ -23,10 +23,10 @@ endfunction
 " Preview the colorscheme on move
 function! s:colors.on_move() abort
   " This is neccessary
-  call g:clap.start.goto_win()
+  noautocmd call g:clap.start.goto_win()
   execute 'color' g:clap.display.getcurline()
   do Syntax
-  call g:clap.input.goto_win()
+  noautocmd call g:clap.input.goto_win()
 endfunction
 
 function! s:colors.sink(selected) abort
@@ -39,7 +39,7 @@ endfunction
 
 function! s:colors.on_exit() abort
   if get(s:, 'should_restore_color', v:true)
-    call g:clap.start.goto_win()
+    noautocmd call g:clap.start.goto_win()
     execute 'color' trim(s:old_color)
     let &background = s:old_bg
     let s:should_restore_color = v:true
