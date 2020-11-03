@@ -308,7 +308,12 @@ function! s:filer_handle_on_move_response(result, error) abort
 endfunction
 
 function! s:filer.on_move_async() abort
-  call clap#client#call_on_move('filer/on_move', function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
+  if g:clap.display.getcurline() =~# s:CREATE_FILE
+    call g:clap.preview.hide()
+    return
+  endif
+  call clap#client#call_on_move('filer/on_move',
+    \ function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
 endfunction
 
 function! s:filer_on_no_matches(input) abort
