@@ -42,7 +42,7 @@ impl TagInfo {
         let name_lnum = format!("{}:{}", self.name, self.line);
         let kind = format!("[{}@{}]", self.kind, self.path);
         format!(
-            "{text:<width1$}::::{kind:<width2$} {pattern}",
+            "{text:<width1$}{kind:<width2$} {pattern}",
             text = name_lnum,
             width1 = 30,
             kind = kind,
