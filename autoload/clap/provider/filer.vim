@@ -154,13 +154,17 @@ function! s:reset_to(new_dir) abort
   call s:filter_or_send_message()
 endfunction
 
-function! s:get_current_entry() abort
-  let curline = g:clap.display.getcurline()
+function! s:get_entry_by_line(line) abort
+  let curline = a:line
   if g:clap_enable_icon
     let curline = curline[4:]
   endif
   let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
   return s:smart_concatenate(s:current_dir, curline)
+endfunction
+
+function! s:get_current_entry() abort
+  return s:get_entry_by_line(g:clap.display.getcurline())
 endfunction
 
 function! s:try_go_to_dir_is_ok() abort
@@ -257,7 +261,7 @@ function! s:smart_concatenate(cur_dir, curline) abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  execute 'edit' s:get_current_entry()
+  execute 'edit' s:get_entry_by_line(a:selected)
 endfunction
 
 function! s:filer_on_typed() abort
