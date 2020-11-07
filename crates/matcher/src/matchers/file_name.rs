@@ -5,7 +5,7 @@ use pattern::file_name_only;
 pub struct FileNameMatcher<'a>(&'a str);
 
 impl<'a> MatchItem<'a> for FileNameMatcher<'a> {
-    fn display(&self) -> &'a str {
+    fn display_text(&self) -> &'a str {
         self.0
     }
 

@@ -5,7 +5,7 @@ use pattern::tag_name_only;
 pub struct TagNameMatcher<'a>(&'a str);
 
 impl<'a> MatchItem<'a> for TagNameMatcher<'a> {
-    fn display(&self) -> &'a str {
+    fn display_text(&self) -> &'a str {
         self.0
     }
 
