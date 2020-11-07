@@ -81,6 +81,7 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
     call clap#state#refresh_matches_count(len(l:lines))
   endif
 
+  call g:clap#display_win.shrink_if_undersize()
   call clap#spinner#set_idle()
 
   if !g:__clap_has_no_matches

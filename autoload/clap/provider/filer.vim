@@ -36,6 +36,7 @@ function! s:handle_response(result, error) abort
   endif
   call clap#sign#reset_to_first_line()
   call clap#state#refresh_matches_count(string(a:result.total))
+  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 function! s:set_prompt() abort
@@ -137,6 +138,7 @@ function! s:do_filter() abort
   let candidates = s:filer_cache[s:current_dir]
   if query ==# ''
     call g:clap.display.set_lines(candidates)
+    call g:clap#display_win.shrink_if_undersize()
   else
     let candidates = candidates +
         \ [(g:clap_enable_icon ? ' ' : '') . query . s:CREATE_FILE]

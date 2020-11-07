@@ -52,6 +52,7 @@ function! s:on_complete() abort
     call g:clap.display.set_lines([g:clap_no_matches_msg])
     call clap#indicator#set_matches_number(0)
     call clap#sign#disable_cursorline()
+    call g:clap#display_win.shrink_if_undersize()
     call g:clap.preview.hide()
     return
   endif
@@ -69,6 +70,7 @@ function! s:on_complete() abort
   endif
 
   call clap#sign#reset_to_first_line()
+  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 if has('nvim')
