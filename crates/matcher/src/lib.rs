@@ -19,6 +19,7 @@
 
 mod algo;
 mod line_splitter;
+mod matchers;
 
 pub use algo::*;
 pub use line_splitter::*;

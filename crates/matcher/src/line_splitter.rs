@@ -1,8 +1,9 @@
 use crate::{
     fzy, skim::fuzzy_indices as fuzzy_indices_skim, substring::substr_indices, MatcherResult,
 };
-use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
 use structopt::clap::arg_enum;
+
+use crate::matchers::{FileNameMatcher, GrepMatcher, MatchItem, TagNameMatcher};
 
 // Implement arg_enum so that we could control it from the command line.
 arg_enum! {
@@ -34,67 +35,63 @@ impl From<String> for LineSplitter {
     }
 }
 
+fn do_match<'a, M: MatchItem<'a>>(
+    matcher: M,
+    query: &str,
+    fuzzy_algo: impl FnOnce(&str, &str) -> MatcherResult,
+) -> MatcherResult {
+    matcher
+        .match_text()
+        .and_then(|match_info| match match_info {
+            (text, 0) => fuzzy_algo(text, query),
+            (text, offset) => fuzzy_algo(text, query)
+                .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect())),
+        })
+}
+
 #[inline]
 pub(super) fn apply_on_grep_line_skim(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
-        fuzzy_indices_skim(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(GrepMatcher::from(line), query, fuzzy_indices_skim)
 }
 
 #[inline]
 pub(super) fn apply_on_grep_line_fzy(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
-        fzy::fuzzy_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(GrepMatcher::from(line), query, fzy::fuzzy_indices)
 }
 
 #[inline]
 pub(super) fn apply_on_grep_line_substr(line: &str, query: &str) -> MatcherResult {
-    strip_grep_filepath(line).and_then(|(truncated_line, offset)| {
-        substr_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(GrepMatcher::from(line), query, substr_indices)
 }
 
 #[inline]
 pub(super) fn apply_on_file_line_skim(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
-        fuzzy_indices_skim(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(FileNameMatcher::from(line), query, fuzzy_indices_skim)
 }
 
 #[inline]
 pub(super) fn apply_on_file_line_fzy(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
-        fzy::fuzzy_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(FileNameMatcher::from(line), query, fzy::fuzzy_indices)
 }
 
 #[inline]
 pub(super) fn apply_on_file_line_substr(line: &str, query: &str) -> MatcherResult {
-    file_name_only(line).and_then(|(truncated_line, offset)| {
-        substr_indices(truncated_line, query)
-            .map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
-    })
+    do_match(FileNameMatcher::from(line), query, substr_indices)
 }
 
 #[inline]
 pub(super) fn apply_on_tag_line_skim(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| fuzzy_indices_skim(tag_name, query))
+    do_match(TagNameMatcher::from(line), query, fuzzy_indices_skim)
 }
 
 #[inline]
 pub(super) fn apply_on_tag_line_fzy(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| fzy::fuzzy_indices(tag_name, query))
+    do_match(TagNameMatcher::from(line), query, fzy::fuzzy_indices)
 }
 
 #[inline]
 pub(super) fn apply_on_tag_line_substr(line: &str, query: &str) -> MatcherResult {
-    tag_name_only(line).and_then(|tag_name| substr_indices(tag_name, query))
+    do_match(TagNameMatcher::from(line), query, substr_indices)
 }
 
 #[cfg(test)]
