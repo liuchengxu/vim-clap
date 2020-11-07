@@ -140,7 +140,7 @@ function! s:create_indicator() abort
     let pos.col = pos.col + pos.width - g:__clap_indicator_winwidth - s:symbol_width
     let pos.minwidth = g:__clap_indicator_winwidth
     let pos.maxwidth = g:__clap_indicator_winwidth
-    let pos.highlight = 'ClapInput'
+    let pos.highlight = 'ClapIndicator'
     let pos.wrap = v:false
     let pos.zindex = 100
     let s:indicator_winid = popup_create([], pos)

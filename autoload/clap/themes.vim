@@ -59,7 +59,7 @@ function! s:highlight_for(group_name, type) abort
   else
     return
   endif
-  execute 'hi' a:group_name join(values(map(copy(props), 'v:key."=".v:val')), ' ')
+  execute 'hi default' a:group_name join(values(map(copy(props), 'v:key."=".v:val')), ' ')
 endfunction
 
 function! s:paint_is_ok() abort
@@ -73,6 +73,7 @@ function! s:paint_is_ok() abort
     endif
     call s:highlight_for('ClapInput', 'input')
     call s:highlight_for('ClapDisplay', 'display')
+    call s:highlight_for('ClapIndicator', 'indicator')
     call s:highlight_for('ClapSelected', 'selected')
     call s:highlight_for('ClapCurrentSelection', 'current_selection')
     call s:highlight_for('ClapSelectedSign', 'selected_sign')
