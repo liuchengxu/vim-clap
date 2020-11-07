@@ -36,6 +36,10 @@ let s:bg0 = {
   \'ctermbg': s:base2.xterm,
 \}
 let s:palette.input = s:bg0
+let s:palette.indicator = extend({
+  \'guifg': s:base1.hex,
+  \'ctermfg': s:base1.xterm,
+\}, s:bg0)
 let s:palette.spinner = extend({
   \'guifg': s:base01.hex,
   \'ctermfg': s:base01.xterm,

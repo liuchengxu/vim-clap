@@ -282,7 +282,7 @@ function! s:open_indicator_win() abort
     let g:__clap_indicator_bufnr = s:indicator_bufnr
   endif
   silent let s:indicator_winid = nvim_open_win(s:indicator_bufnr, v:true, s:get_config_indicator())
-  call setwinvar(s:indicator_winid, '&winhl', 'Normal:ClapInput')
+  call setwinvar(s:indicator_winid, '&winhl', 'Normal:ClapIndicator')
   call setbufvar(s:indicator_bufnr, '&signcolumn', 'no')
 endfunction
 
