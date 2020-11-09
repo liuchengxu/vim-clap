@@ -70,11 +70,11 @@ function! clap#util#nvim_buf_get_lines(bufnr) abort
 endfunction
 
 function! clap#util#nvim_buf_set_lines(bufnr, lines) abort
-  call nvim_buf_set_lines(a:bufnr, 0, -1, 0, a:lines)
+  noautocmd call nvim_buf_set_lines(a:bufnr, 0, -1, 0, a:lines)
 endfunction
 
 function! clap#util#nvim_buf_clear(bufnr) abort
-  call nvim_buf_set_lines(a:bufnr, 0, -1, 0, [])
+  noautocmd call nvim_buf_set_lines(a:bufnr, 0, -1, 0, [])
 endfunction
 
 function! clap#util#nvim_buf_is_empty(bufnr) abort
@@ -83,9 +83,9 @@ endfunction
 
 function! clap#util#nvim_buf_append_lines(bufnr, lines) abort
   if clap#util#nvim_buf_is_empty(a:bufnr)
-    call nvim_buf_set_lines(a:bufnr, 0, -1, v:true, a:lines)
+    noautocmd call nvim_buf_set_lines(a:bufnr, 0, -1, v:true, a:lines)
   else
-    call nvim_buf_set_lines(a:bufnr, -1, -1, v:true, a:lines)
+    noautocmd call nvim_buf_set_lines(a:bufnr, -1, -1, v:true, a:lines)
   endif
 endfunction
 

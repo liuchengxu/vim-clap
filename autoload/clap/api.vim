@@ -8,7 +8,7 @@ let s:is_nvim = has('nvim')
 let s:cat_or_type = has('win32') ? 'type' : 'cat'
 
 function! s:_goto_win() dict abort
-  call win_gotoid(self.winid)
+  noautocmd call win_gotoid(self.winid)
 endfunction
 
 function! s:_getbufvar(varname) dict abort
@@ -116,23 +116,23 @@ function! s:init_display() abort
   if s:is_nvim
 
     function! display.set_cursor(lnum, col) abort
-      call nvim_win_set_cursor(self.winid, [a:lnum, a:col])
+      noautocmd call nvim_win_set_cursor(self.winid, [a:lnum, a:col])
     endfunction
 
     function! display.set_lines(lines) abort
-      call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
+      noautocmd call clap#util#nvim_buf_set_lines(self.bufnr, a:lines)
     endfunction
 
     function! display.clear() abort
-      call clap#util#nvim_buf_clear(self.bufnr)
+      noautocmd call clap#util#nvim_buf_clear(self.bufnr)
     endfunction
 
     function! display.append_lines(lines) abort
-      call clap#util#nvim_buf_append_lines(self.bufnr, a:lines)
+      noautocmd call clap#util#nvim_buf_append_lines(self.bufnr, a:lines)
     endfunction
 
     function! display.append_lines_uncheck(lines) abort
-      call self.append_lines(a:lines)
+      noautocmd call self.append_lines(a:lines)
     endfunction
 
     function! display.first_line() abort
