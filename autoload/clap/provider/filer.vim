@@ -218,7 +218,8 @@ function! s:cr_action() abort
     return
   endif
 
-  if exists('g:__clap_has_no_matches') && g:__clap_has_no_matches
+  if g:clap.display.getcurline() =~# s:CREATE_FILE
+        \ || (g:clap.display.line_count() == 1 && g:clap.display.get_lines()[0] =~# s:CREATE_FILE)
     " Create file if it doesn't exist
     stopinsert
     call clap#handler#sink()
