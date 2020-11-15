@@ -81,6 +81,20 @@ function! clap#handler#sink() abort
   endtry
 endfunction
 
+" Similiar to clap#handler#sink() but using a custom Sink function and without
+" handling the no matches case.
+function! clap#handler#sink_with(Fn) abort
+  call clap#handler#internal_exit()
+  try
+    call a:Fn()
+  catch
+    call clap#helper#echo_error('clap#handler#sink: '.v:exception.', throwpoint:'.v:throwpoint)
+  finally
+    call g:clap.provider.on_exit()
+    silent doautocmd <nomodeline> User ClapOnExit
+  endtry
+endfunction
+
 " clap#handler#exit() = clap#handler#internal_exit() + external on_exit hook
 function! clap#handler#exit() abort
   call clap#handler#internal_exit()

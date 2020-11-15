@@ -218,7 +218,15 @@ function! s:cr_action() abort
     return
   endif
 
-  if g:clap.display.getcurline() =~# s:CREATE_FILE
+  let curline = g:clap.display.getcurline()
+
+  if curline =~# s:DIRECTORY_IS_EMPTY
+    let input = g:clap.input.get()
+    call clap#handler#sink_with({-> execute('edit '.s:smart_concatenate(s:current_dir, input))})
+    return
+  endif
+
+  if curline =~# s:CREATE_FILE
         \ || (g:clap.display.line_count() == 1 && g:clap.display.get_lines()[0] =~# s:CREATE_FILE)
     " Create file if it doesn't exist
     stopinsert
