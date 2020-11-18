@@ -11,6 +11,8 @@ let g:clap#floating_win#display = {}
 let g:clap#floating_win#spinner = {}
 let g:clap#floating_win#preview = {}
 
+let s:is_open = v:false
+
 let s:shadow_bufnr = nvim_create_buf(v:false, v:true)
 
 let s:spinner_bufnr = nvim_create_buf(v:false, v:true)
@@ -84,6 +86,9 @@ function! g:clap#floating_win#display.open() abort
 endfunction
 
 function! clap#floating_win#redo_layout() abort
+  if !s:is_open
+    return
+  end
   let s:display_opts = clap#layout#calc()
   call nvim_win_set_config(s:display_winid, s:display_opts)
   call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
@@ -432,6 +437,8 @@ function! clap#floating_win#open() abort
   call g:clap.provider.try_set_syntax()
   call g:clap.provider.on_enter()
 
+  let s:is_open = v:true
+
   silent doautocmd <nomodeline> User ClapOnEnter
 
   startinsert
@@ -450,6 +457,8 @@ endfunction
 function! clap#floating_win#close() abort
   let &winheight = s:save_winheight
   silent! autocmd! ClapEnsureAllClosed
+
+  let s:is_open = v:false
 
   if s:symbol_width > 0
     call s:win_close(s:symbol_left_winid)
