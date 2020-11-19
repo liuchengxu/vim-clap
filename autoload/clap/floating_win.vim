@@ -83,24 +83,6 @@ function! g:clap#floating_win#display.open() abort
         \ })
 endfunction
 
-function! clap#floating_win#redo_layout() abort
-  let s:display_opts = clap#layout#calc()
-  call nvim_win_set_config(s:display_winid, s:display_opts)
-  call nvim_win_set_config(s:spinner_winid, s:get_config_spinner())
-  call nvim_win_set_config(s:input_winid, s:get_config_input())
-  call nvim_win_set_config(s:indicator_winid, s:get_config_indicator())
-  if s:symbol_width > 0
-    call nvim_win_set_config(s:symbol_left_winid, s:get_config_border_left())
-    call nvim_win_set_config(s:symbol_right_winid, s:get_config_border_right())
-  endif
-  let max_size = s:max_preview_size()
-  if max_size <= 2
-    call g:clap#floating_win#preview.close()
-  else
-    call nvim_win_set_config(s:preview_winid, s:get_config_preview(max_size))
-  endif
-endfunction
-
 function! g:clap#floating_win#display.shrink_if_undersize() abort
   let opts = nvim_win_get_config(s:display_winid)
   if g:clap.display.line_count() < s:display_opts.height

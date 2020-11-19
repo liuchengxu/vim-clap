@@ -77,10 +77,6 @@ if s:is_nvim
           \ 'relative': 'win',
           \ }
   endfunction
-
-  function! clap#layout#on_resized() abort
-    call clap#floating_win#redo_layout()
-  endfunction
 else
   function! s:user_layout() abort
     let layout = extend(copy(s:default_layout), g:clap_layout)
@@ -111,12 +107,6 @@ else
           \ 'row': s:calc(height, s:default_layout.row) + row,
           \ 'col': s:calc(width, s:default_layout.col) + col,
           \ }
-  endfunction
-
-  function! clap#layout#on_resized() abort
-    " FIXME resize window if vim-clap is visible
-    " Vim's popup has a fixed option which makes the preview window tolerable.
-    " Ref #454
   endfunction
 endif
 
