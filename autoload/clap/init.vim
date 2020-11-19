@@ -67,15 +67,6 @@ function! clap#init#() abort
   if clap#maple#is_available()
     call clap#job#daemon#start(function('clap#client#handle'))
   endif
-
-  " This augroup should be retained after closing vim-clap for the benefit
-  " of next run.
-  if !exists('#ClapResize')
-    augroup ClapResize
-      autocmd!
-      autocmd VimResized * call clap#layout#on_resized()
-    augroup END
-  endif
 endfunction
 
 let &cpoptions = s:save_cpo
