@@ -140,7 +140,7 @@ function! s:init_display() abort
     endfunction
 
     function! display.clear_highlight() abort
-      call self.goto_win()
+      noautocmd call self.goto_win()
       " Clear all matches added in the display window
       "
       " We should not use clearmatches() as it will clear the
@@ -148,7 +148,7 @@ function! s:init_display() abort
       "
       " call clearmatches()
       call self.matchdelete()
-      call g:clap.input.goto_win()
+      noautocmd call g:clap.input.goto_win()
     endfunction
 
     " Argument: list, multiple pattern to be highlighed
