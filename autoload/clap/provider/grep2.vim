@@ -6,6 +6,11 @@ set cpoptions&vim
 
 let s:grep2 = {}
 
+if !executable('rg')
+  call clap#helper#echo_error('grep2 provider can not work without the executable rg.')
+  finish
+endif
+
 function! s:grep2.on_typed()
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#grep_from_cache(g:__clap_forerunner_tempfile)
