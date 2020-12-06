@@ -16,6 +16,8 @@ if has('python3') || has('python')
   endtry
 endif
 
+let s:can_use_lua = has('nvim') || has('lua') ? v:true : v:false
+
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
 elseif s:has_py_dynamic_module
@@ -32,19 +34,22 @@ function! clap#filter#capacity() abort
   return s:builtin_filter_capacity
 endfunction
 
-if s:can_use_python
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
-  let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
+function! s:enable_icon() abort
+  if g:clap_enable_icon
+        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+    return v:true
+  else
+    return v:false
+  endif
+endfunction
 
-  function! s:enable_icon() abort
-    if g:clap_enable_icon
-          \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
-      return v:true
-    else
-      return v:false
-    endif
+if s:can_use_lua
+  function! clap#filter#sync(query, candidates) abort
+    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
   endfunction
-
+elseif s:can_use_python
   function! s:line_splitter() abort
     return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
   endfunction
