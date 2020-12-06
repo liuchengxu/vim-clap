@@ -46,10 +46,12 @@ function! s:enable_icon() abort
 endfunction
 
 if s:can_use_lua
+  let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
   endfunction
 elseif s:can_use_python
+  let s:current_filter_impl = 'Python'
   function! s:line_splitter() abort
     return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
   endfunction
@@ -63,6 +65,7 @@ elseif s:can_use_python
     endtry
   endfunction
 else
+  let s:current_filter_impl = 'VimL'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#viml#(a:query, a:candidates)
   endfunction
@@ -96,6 +99,10 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
       call g:clap.display.add_highlight()
     endif
   endif
+endfunction
+
+function! clap#filter#current_impl() abort
+  return s:current_filter_impl
 endfunction
 
 let &cpoptions = s:save_cpo
