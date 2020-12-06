@@ -1,6 +1,9 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Lua implementation of fzy filter algorithm.
 
+let s:save_cpo = &cpoptions
+set cpoptions&vim
+
 function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _line_splitter) abort
   let g:_clap_lua_query = a:query
   let g:_clap_lua_candidates = a:candidates
@@ -14,3 +17,6 @@ EOF
 
   return g:_clap_lua_filtered
 endfunction
+
+let &cpoptions = s:save_cpo
+unlet s:save_cpo
