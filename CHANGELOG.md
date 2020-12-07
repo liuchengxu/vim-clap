@@ -23,6 +23,7 @@
 ### Improved
 
 - Keybindings for `filer`: `<CR>` now expands directory instead of editing it
+- Make the grep opts work as normal in the command line. #595
 
 ## [0.21] 2020-09-27
 

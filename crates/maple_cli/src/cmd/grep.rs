@@ -52,7 +52,23 @@ pub struct Grep {
 }
 
 fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
-    let args = cmd_str.split_whitespace().collect::<Vec<&str>>();
+    let args = cmd_str
+        .split_whitespace()
+        // If cmd_str contains a quoted option, that's problematic.
+        //
+        // Ref https://github.com/liuchengxu/vim-clap/issues/595
+        .map(|s| {
+            if s.len() > 2 {
+                if s.chars().nth(0).unwrap() == '"' && s.chars().nth_back(0).unwrap() == '"' {
+                    &s[1..s.len() - 1]
+                } else {
+                    s
+                }
+            } else {
+                s
+            }
+        })
+        .collect::<Vec<&str>>();
 
     let mut cmd = Command::new(args[0]);
 
