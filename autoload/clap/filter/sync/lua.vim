@@ -4,6 +4,7 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+" TODO: Older neovim & Vim support?
 function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _line_splitter) abort
   let g:_clap_lua_query = a:query
   let g:_clap_lua_candidates = a:candidates
