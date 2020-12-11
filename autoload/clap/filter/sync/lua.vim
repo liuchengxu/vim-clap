@@ -34,11 +34,11 @@ for i = #candidates-1, 0, -1 do
   table.insert(lines, candidates[i])
 end
 
-_clap_fuzzy_matched_indices, _clap_lua_filtered =
+matched_indices, _clap_lua_filtered =
     fzy_filter.do_fuzzy_match(vim.eval('a:query'), lines, vim.eval('a:enable_icon'))
 
 __clap_fuzzy_matched_indices = {}
-for i, v1 in ipairs(_clap_fuzzy_matched_indices) do
+for i, v1 in ipairs(matched_indices) do
   local joint_indices = ''
   for _, v2 in ipairs(v1) do
     joint_indices = joint_indices .. v2 .. ','
