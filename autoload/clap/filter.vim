@@ -16,8 +16,7 @@ if has('python3') || has('python')
   endtry
 endif
 
-" TODO: require nvim 0.5?
-let s:can_use_lua = has('nvim') || has('lua') ? v:true : v:false
+let s:can_use_lua = has('nvim-0.5') || has('lua') ? v:true : v:false
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold

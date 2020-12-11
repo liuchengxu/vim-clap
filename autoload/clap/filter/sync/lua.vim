@@ -4,8 +4,7 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" TODO: Older neovim & Vim support?
-if has('nvim')
+if has('nvim-0.5')
 
   function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _line_splitter) abort
     let g:_clap_lua_query = a:query
