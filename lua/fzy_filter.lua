@@ -18,6 +18,11 @@ local function dump(o)
 end
 
 local function apply_fzy(query, candidates, enable_icon)
+    if string.match(query, '%u') then
+        case_sensitive = true
+    else
+        case_sensitive = false
+    end
     matches = {}
 
     for _, c in pairs(candidates) do
@@ -32,7 +37,7 @@ local function apply_fzy(query, candidates, enable_icon)
         end
 
         -- Enable case_sensitive
-        if fzy.has_match(query, c, true) then
+        if fzy.has_match(query, c, case_sensitive) then
             positions, score = fzy.positions(query, c)
             if score ~= fzy.get_score_min() then
                 adjusted_positions = {}
