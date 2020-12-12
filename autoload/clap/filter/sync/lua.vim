@@ -22,6 +22,10 @@ EOF
 
 else
 
+  function! s:deconstrcut(joint_indices) abort
+    return map(split(a:joint_indices, ','), 'str2nr(v:val)')
+  endfunction
+
   function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _line_splitter) abort
 lua << EOF
 local fzy_filter = require('fzy_filter')
@@ -49,10 +53,7 @@ EOF
     " TODO: vim.list() can not work with a List of List.
     " echom string(luaeval('vim.list(__clap_fuzzy_matched_indices)'))
 
-    let g:__clap_fuzzy_matched_indices = []
-    for joint_indices in luaeval('vim.list(__clap_fuzzy_matched_indices)')
-      call add(g:__clap_fuzzy_matched_indices, map(split(joint_indices, ','), 'str2nr(v:val)'))
-    endfor
+    let g:__clap_fuzzy_matched_indices = map(luaeval('vim.list(__clap_fuzzy_matched_indices)'), 's:deconstrcut(v:val)')
 
     return luaeval('vim.list(_clap_lua_filtered)')
   endfunction
