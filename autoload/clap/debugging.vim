@@ -59,7 +59,11 @@ function! clap#debugging#info() abort
   echohl Normal | echon has('python3')           | echohl NONE
 
   echohl Type   | echo 'has py dynamic module: '                | echohl NONE
-  echohl Normal | echon clap#filter#sync#python#has_dynamic_module() | echohl NONE
+  try
+    echohl Normal | echon clap#filter#sync#python#has_dynamic_module() | echohl NONE
+  catch
+    echohl Normal | echon 'ERROR: '.v:exception | echohl NONE
+  endtry
 
   echohl Type   | echo '            has ctags: '                | echohl NONE
   if executable('ctags')
@@ -71,6 +75,9 @@ function! clap#debugging#info() abort
   else
     echohl Normal | echon 'ctags not found'    | echohl NONE
   endif
+
+  echohl Type   | echo '    Current sync impl: '   | echohl NONE
+  echohl Normal | echon clap#filter#current_impl() | echohl NONE
 
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE

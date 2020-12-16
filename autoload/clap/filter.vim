@@ -16,9 +16,11 @@ if has('python3') || has('python')
   endtry
 endif
 
+let s:can_use_lua = has('nvim-0.5') || has('lua') ? v:true : v:false
+
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
-elseif s:has_py_dynamic_module
+elseif s:can_use_lua || s:has_py_dynamic_module
   let s:builtin_filter_capacity = 30000
 else
   let s:builtin_filter_capacity = 10000
@@ -32,19 +34,24 @@ function! clap#filter#capacity() abort
   return s:builtin_filter_capacity
 endfunction
 
-if s:can_use_python
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
-  let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
+function! s:enable_icon() abort
+  if g:clap_enable_icon
+        \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
+    return v:true
+  else
+    return v:false
+  endif
+endfunction
 
-  function! s:enable_icon() abort
-    if g:clap_enable_icon
-          \ && index(s:related_builtin_providers, g:clap.provider.id) > -1
-      return v:true
-    else
-      return v:false
-    endif
+if s:can_use_lua
+  let s:current_filter_impl = 'Lua'
+  function! clap#filter#sync(query, candidates) abort
+    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
   endfunction
-
+elseif s:can_use_python
+  let s:current_filter_impl = 'Python'
   function! s:line_splitter() abort
     return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
   endfunction
@@ -58,6 +65,7 @@ if s:can_use_python
     endtry
   endfunction
 else
+  let s:current_filter_impl = 'VimL'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#viml#(a:query, a:candidates)
   endfunction
@@ -91,6 +99,10 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
       call g:clap.display.add_highlight()
     endif
   endif
+endfunction
+
+function! clap#filter#current_impl() abort
+  return s:current_filter_impl
 endfunction
 
 let &cpoptions = s:save_cpo

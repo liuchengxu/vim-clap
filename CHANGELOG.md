@@ -8,6 +8,7 @@
 - Add `g:clap_popup_move_manager` so that Vim users can override the default mappings easily. #536
 - Allow user to always download the prebuilt binary. #531
 - Support smartcase fitlering for fzy algo and it's the default behavior. #541 @romgrk
+- Add initial support for fzy lua, neovim-nightly or vim compiled with lua is required. #599
 
 ### Improved
 
