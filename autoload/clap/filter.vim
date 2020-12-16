@@ -20,7 +20,7 @@ let s:can_use_lua = has('nvim-0.5') || has('lua') ? v:true : v:false
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
-elseif s:has_py_dynamic_module
+elseif s:can_use_lua || s:has_py_dynamic_module
   let s:builtin_filter_capacity = 30000
 else
   let s:builtin_filter_capacity = 10000
