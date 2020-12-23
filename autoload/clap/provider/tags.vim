@@ -54,12 +54,12 @@ endfunction
 function! s:tags.on_enter() abort
   let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
   call g:clap.display.setbufvar('&syntax', 'clap_tags')
-  let g:__clap_builtin_line_splitter_enum = 'TagNameOnly'
+  let g:__clap_match_type_enum = 'TagName'
 endfunction
 
 function! s:tags.on_exit() abort
-  if exists('g:__clap_builtin_line_splitter_enum')
-    unlet g:__clap_builtin_line_splitter_enum
+  if exists('g:__clap_match_type_enum')
+    unlet g:__clap_match_type_enum
   endif
 endfunction
 

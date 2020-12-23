@@ -155,6 +155,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "source_item",
  "utility",
 ]
 
@@ -308,6 +309,7 @@ dependencies = [
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",
+ "source_item",
  "structopt",
 ]
 
@@ -406,6 +408,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "source_item",
  "utility",
 ]
 
@@ -633,6 +636,14 @@ name = "smallvec"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3757cb9d89161a2f24e1cf78efa0c1fcff485d18e3f55e0aa3480824ddaa0f3f"
+
+[[package]]
+name = "source_item"
+version = "0.1.0"
+dependencies = [
+ "pattern",
+ "structopt",
+]
 
 [[package]]
 name = "strsim"

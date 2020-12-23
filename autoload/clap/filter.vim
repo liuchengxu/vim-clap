@@ -45,20 +45,46 @@ function! s:enable_icon() abort
   endif
 endfunction
 
-if s:can_use_lua
+function! clap#filter#matchfuzzy(query, candidates) abort
+  " `result` could be a list of two lists, or a list of three
+  " lists(newer vim).
+  let result = matchfuzzypos(a:candidates, a:query)
+  let filtered = result[0]
+  let matched_indices = result[1]
+  if s:enable_icon()
+    let g:__clap_fuzzy_matched_indices = []
+    for indices in matched_indices
+      call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
+    endfor
+  else
+    let g:__clap_fuzzy_matched_indices = matched_indices
+  endif
+  return filtered
+endfunction
+
+if get(g:, 'clap_force_matchfuzzy', v:false)
+  let s:current_filter_impl = 'VimL'
+  if !exists('*matchfuzzypos')
+    call clap#helper#echo_error('matchfuzzypos not found, please upgrade your Vim')
+    finish
+  endif
+  function! clap#filter#sync(query, candidates) abort
+    return clap#filter#matchfuzzy(a:query, a:candidates)
+  endfunction
+elseif s:can_use_lua
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
   endfunction
 elseif s:can_use_python
   let s:current_filter_impl = 'Python'
-  function! s:line_splitter() abort
-    return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
+  function! s:match_type() abort
+    return exists('g:__clap_match_type_enum') ? g:__clap_match_type_enum : 'Full'
   endfunction
 
   function! clap#filter#sync(query, candidates) abort
     try
-      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:line_splitter())
+      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type())
     catch
       call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
       return clap#filter#sync#viml#(a:query, a:candidates)
@@ -66,9 +92,15 @@ elseif s:can_use_python
   endfunction
 else
   let s:current_filter_impl = 'VimL'
-  function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#viml#(a:query, a:candidates)
-  endfunction
+  if exists('*matchfuzzypos')
+    function! clap#filter#sync(query, candidates) abort
+      return clap#filter#matchfuzzy(a:query, a:candidates)
+    endfunction
+  else
+    function! clap#filter#sync(query, candidates) abort
+      return clap#filter#sync#viml#(a:query, a:candidates)
+    endfunction
+  endif
 endif
 
 function! clap#filter#on_typed(FilterFn, query, candidates) abort

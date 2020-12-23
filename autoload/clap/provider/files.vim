@@ -26,7 +26,7 @@ function! s:files.source() abort
   call clap#rooter#try_set_cwd()
 
   if has_key(g:clap.context, 'name-only')
-    let g:__clap_builtin_line_splitter_enum = 'FileNameOnly'
+    let g:__clap_match_type_enum = 'FileName'
   endif
 
   if has_key(g:clap.context, 'finder')
@@ -66,8 +66,8 @@ function! clap#provider#files#on_move_impl() abort
 endfunction
 
 function! s:files.on_exit() abort
-  if exists('g:__clap_builtin_line_splitter_enum')
-    unlet g:__clap_builtin_line_splitter_enum
+  if exists('g:__clap_match_type_enum')
+    unlet g:__clap_match_type_enum
   endif
 endfunction
 

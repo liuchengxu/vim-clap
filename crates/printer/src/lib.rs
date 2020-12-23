@@ -2,6 +2,7 @@
 //! by printing them to stdout in JSON format.
 
 use icon::{IconPainter, ICON_LEN};
+use source_item::SourceItem;
 use std::collections::HashMap;
 use utility::{println_json, println_json_with_length};
 
@@ -22,7 +23,7 @@ pub type VimLineNumber = usize;
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
 /// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FilterResult = (String, i64, Vec<usize>);
+pub type FilterResult = (SourceItem, i64, Vec<usize>);
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
@@ -51,7 +52,7 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 /// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
 ///
 pub fn truncate_long_matched_lines<T>(
-    lines: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    lines: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
@@ -59,7 +60,8 @@ pub fn truncate_long_matched_lines<T>(
     let mut lnum = 0usize;
     let lines = lines
         .into_iter()
-        .map(|(line, score, indices)| {
+        .map(|(item, score, indices)| {
+            let line = item.display_text.unwrap_or(item.raw);
             lnum += 1;
             if !indices.is_empty() {
                 let last_idx = indices.last().expect("indices are non-empty; qed");
@@ -95,10 +97,10 @@ pub fn truncate_long_matched_lines<T>(
                     truncated_map.insert(lnum, line);
                     (truncated, score, truncated_indices)
                 } else {
-                    (line, score, indices)
+                    (line.into(), score, indices)
                 }
             } else {
-                (line, score, indices)
+                (line.into(), score, indices)
             }
         })
         .collect::<Vec<_>>();
@@ -108,7 +110,7 @@ pub fn truncate_long_matched_lines<T>(
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn process_top_items<T>(
     top_size: usize,
-    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    top_list: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
@@ -156,7 +158,8 @@ pub fn print_sync_filter_results(
             println_json!(total, lines, indices, truncated_map);
         }
     } else {
-        for (text, _, indices) in ranked.iter() {
+        for (item, _, indices) in ranked.into_iter() {
+            let text = item.display_text.unwrap_or(item.raw);
             println_json!(text, indices);
         }
     }

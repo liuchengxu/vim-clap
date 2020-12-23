@@ -62,6 +62,6 @@ try:
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
                               int(vim.eval("a:winwidth")),
                               str2bool(vim.eval("a:enable_icon")),
-                              vim.eval("a:line_splitter"))
+                              vim.eval("a:match_type"))
 except Exception:
     pass

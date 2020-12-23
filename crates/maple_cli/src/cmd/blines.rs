@@ -1,5 +1,5 @@
 use anyhow::Result;
-use filter::{matcher::LineSplitter, Source};
+use filter::{matcher::MatchType, Source};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -24,13 +24,14 @@ impl Blines {
                 std::fs::read_to_string(&self.input)?
                     .lines()
                     .enumerate()
-                    .map(|(idx, item)| format!("{} {}", idx + 1, item)),
+                    .map(|(idx, item)| format!("{} {}", idx + 1, item))
+                    .map(Into::into),
             ),
             None,
             number,
             winwidth,
             None,
-            LineSplitter::Full,
+            MatchType::Full,
         )
     }
 }
