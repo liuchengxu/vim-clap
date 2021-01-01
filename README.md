@@ -283,9 +283,11 @@ See `:help clap-highlights` for more information.
 
 ```vim
 " `:Clap quick_open` to open some dotfiles quickly.
+" If you want to show this provider when you call `:Clap`, `description` is neccessary.
 let g:clap_provider_quick_open = {
       \ 'source': ['~/.vimrc', '~/.spacevim', '~/.bashrc', '~/.tmux.conf'],
       \ 'sink': 'e',
+      \ 'description': 'Quick open some dotfiles',
       \ }
 ```
 
