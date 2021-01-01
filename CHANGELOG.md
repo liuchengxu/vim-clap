@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.22] 2021-01-01
 ### Added
 
 - Add `g:clap_enable_background_shadow` to render a transparent shadow (neovim-only) #546, #550
