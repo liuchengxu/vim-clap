@@ -9,6 +9,14 @@
 - Allow user to always download the prebuilt binary. #531
 - Support smartcase fitlering for fzy algo and it's the default behavior. #541 @romgrk
 - Add initial support for fzy lua, neovim-nightly or vim compiled with lua is required. #599
+- Add the providers defined via global variable into the `providers` provider, which means you can see the global variable type providers when you call `:Clap` now. But you have to define `description` explicitly otherwise they won't be found. #605
+    ```vim
+    let g:clap_provider_tasks = {
+              \ 'source': function('TaskListSource'),
+              \ 'sink': function('TaskListSink'),
+              \ 'description': 'List various tasks',
+              \ }
+    ```
 
 ### Improved
 
