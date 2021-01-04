@@ -45,6 +45,9 @@ function! s:enable_icon() abort
   endif
 endfunction
 
+let s:can_use_lua = v:false
+let s:can_use_python = v:false
+
 if s:can_use_lua
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
@@ -66,9 +69,24 @@ elseif s:can_use_python
   endfunction
 else
   let s:current_filter_impl = 'VimL'
-  function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#viml#(a:query, a:candidates)
-  endfunction
+  if exists('*matchfuzzypos')
+    function! clap#filter#sync(query, candidates) abort
+      if s:enable_icon()
+        let [filtered, matched_indices] = matchfuzzypos(map(a:candidates, 'v:val'), a:query)
+        let g:__clap_fuzzy_matched_indices = []
+        for indices in matched_indices
+          call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
+        endfor
+      else
+        let [filtered, g:__clap_fuzzy_matched_indices] = matchfuzzypos(a:candidates, a:query)
+      endif
+      return filtered
+    endfunction
+  else
+    function! clap#filter#sync(query, candidates) abort
+      return clap#filter#sync#viml#(a:query, a:candidates)
+    endfunction
+  endif
 endif
 
 function! clap#filter#on_typed(FilterFn, query, candidates) abort
