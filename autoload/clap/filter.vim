@@ -45,10 +45,29 @@ function! s:enable_icon() abort
   endif
 endfunction
 
-let s:can_use_lua = v:false
-let s:can_use_python = v:false
+function! clap#filter#matchfuzzy(query, candidates) abort
+  if s:enable_icon()
+    let [filtered, matched_indices] = matchfuzzypos(map(a:candidates, 'v:val'), a:query)
+    let g:__clap_fuzzy_matched_indices = []
+    for indices in matched_indices
+      call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
+    endfor
+  else
+    let [filtered, g:__clap_fuzzy_matched_indices] = matchfuzzypos(a:candidates, a:query)
+  endif
+  return filtered
+endfunction
 
-if s:can_use_lua
+if exists('g:clap_force_matchfuzzy')
+  let s:current_filter_impl = 'VimL'
+  if !exists('*matchfuzzypos')
+    call clap#helper#echo_error('matchfuzzypos not found, please upgrade your Vim')
+    finish
+  endif
+  function! clap#filter#sync(query, candidates) abort
+    return clap#filter#matchfuzzy(a:query, a:candidates)
+  endfunction
+elseif s:can_use_lua
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
@@ -71,16 +90,7 @@ else
   let s:current_filter_impl = 'VimL'
   if exists('*matchfuzzypos')
     function! clap#filter#sync(query, candidates) abort
-      if s:enable_icon()
-        let [filtered, matched_indices] = matchfuzzypos(map(a:candidates, 'v:val'), a:query)
-        let g:__clap_fuzzy_matched_indices = []
-        for indices in matched_indices
-          call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
-        endfor
-      else
-        let [filtered, g:__clap_fuzzy_matched_indices] = matchfuzzypos(a:candidates, a:query)
-      endif
-      return filtered
+      return clap#filter#matchfuzzy(a:query, a:candidates)
     endfunction
   else
     function! clap#filter#sync(query, candidates) abort

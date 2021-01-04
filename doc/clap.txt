@@ -529,6 +529,14 @@ g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
   let g:clap_background_shadow_blend = 75
 <
 
+g:clap_force_matchfuzzy                                *g:clap_force_matchfuzzy*
+
+  Type: |Number|
+  Default: `Undefined`
+
+  Force use |matchfuzzypos()| as the sync filter engine, otherwise vim-clap
+  will try to use the other sync implementation in the order of Lua>Python>VimL.
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
