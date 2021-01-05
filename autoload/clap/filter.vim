@@ -46,14 +46,18 @@ function! s:enable_icon() abort
 endfunction
 
 function! clap#filter#matchfuzzy(query, candidates) abort
+  " `result` could be a list of two lists, or a list of three
+  " lists(newer vim).
+  let result = matchfuzzypos(a:candidates, a:query)
+  let filtered = result[0]
+  let matched_indices = result[1]
   if s:enable_icon()
-    let [filtered, matched_indices] = matchfuzzypos(map(a:candidates, 'v:val'), a:query)
     let g:__clap_fuzzy_matched_indices = []
     for indices in matched_indices
       call add(g:__clap_fuzzy_matched_indices, map(indices, 'v:val + 2'))
     endfor
   else
-    let [filtered, g:__clap_fuzzy_matched_indices] = matchfuzzypos(a:candidates, a:query)
+    let g:__clap_fuzzy_matched_indices = matched_indices
   endif
   return filtered
 endfunction
