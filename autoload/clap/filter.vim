@@ -62,7 +62,7 @@ function! clap#filter#matchfuzzy(query, candidates) abort
   return filtered
 endfunction
 
-if exists('g:clap_force_matchfuzzy')
+if get(g:, 'clap_force_matchfuzzy', v:false)
   let s:current_filter_impl = 'VimL'
   if !exists('*matchfuzzypos')
     call clap#helper#echo_error('matchfuzzypos not found, please upgrade your Vim')
