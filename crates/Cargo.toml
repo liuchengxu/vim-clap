@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "fulf",
     "icon",
     "maple_cli",
     "pattern",
