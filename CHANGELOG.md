@@ -6,7 +6,12 @@
 
 - Add `g:clap_force_matchfuzzy` to use the builtin `matchfuzzy()` when filtering in sync way. #607
 
+### Fixed
+
+- Add `--color=never` to the default grep option. #609
+
 ## [0.22] 2021-01-01
+
 ### Added
 
 - Add `g:clap_enable_background_shadow` to render a transparent shadow (neovim-only) #546, #550
@@ -15,13 +20,13 @@
 - Support smartcase fitlering for fzy algo and it's the default behavior. #541 @romgrk
 - Add initial support for fzy lua, neovim-nightly or vim compiled with lua is required. #599
 - Add the providers defined via global variable into the `providers` provider, which means you can see the global variable type providers when you call `:Clap` now. But you have to define `description` explicitly otherwise they won't be found. #605
-    ```vim
-    let g:clap_provider_tasks = {
-              \ 'source': function('TaskListSource'),
-              \ 'sink': function('TaskListSink'),
-              \ 'description': 'List various tasks',
-              \ }
-    ```
+  ```vim
+  let g:clap_provider_tasks = {
+            \ 'source': function('TaskListSource'),
+            \ 'sink': function('TaskListSink'),
+            \ 'description': 'List various tasks',
+            \ }
+  ```
 
 ### Improved
 
