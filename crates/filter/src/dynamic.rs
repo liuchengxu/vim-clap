@@ -232,7 +232,6 @@ fn dyn_collect_number(
     mut iter: impl Iterator<Item = FilterResult>,
     number: usize,
     icon_painter: &Option<IconPainter>,
-    // ) -> (usize, Vec<FilterResult>) {
 ) -> (usize, Vec<(SourceItem, i64, Vec<usize>)>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
