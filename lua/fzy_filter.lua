@@ -73,7 +73,7 @@ local function apply_fzy(query, candidates, enable_icon, match_type)
         else
             match_info = match_text_for(c, match_type)
             c = match_info['match_text']
-            offset = match_info['offset'] -1
+            offset = match_info['offset'] - 1
         end
 
         -- Enable case_sensitive
