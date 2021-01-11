@@ -62,6 +62,10 @@ function! clap#filter#matchfuzzy(query, candidates) abort
   return filtered
 endfunction
 
+function! s:line_splitter() abort
+  return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
+endfunction
+
 if get(g:, 'clap_force_matchfuzzy', v:false)
   let s:current_filter_impl = 'VimL'
   if !exists('*matchfuzzypos')
@@ -74,14 +78,10 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
 elseif s:can_use_lua
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), -1)
+    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:line_splitter())
   endfunction
 elseif s:can_use_python
   let s:current_filter_impl = 'Python'
-  function! s:line_splitter() abort
-    return exists('g:__clap_builtin_line_splitter_enum') ? g:__clap_builtin_line_splitter_enum : 'Full'
-  endfunction
-
   function! clap#filter#sync(query, candidates) abort
     try
       return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:line_splitter())
