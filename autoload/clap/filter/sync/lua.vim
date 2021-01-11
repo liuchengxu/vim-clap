@@ -6,15 +6,16 @@ set cpoptions&vim
 
 if has('nvim-0.5')
 
-  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _match_type) abort
+  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_type) abort
     let g:_clap_lua_query = a:query
     let g:_clap_lua_candidates = a:candidates
     let g:_clap_lua_enable_icon = a:enable_icon
+    let g:_clap_lua_match_type = a:match_type
 
 lua << EOF
 local fzy_filter = require('fzy_filter')
 vim.g.__clap_fuzzy_matched_indices, vim.g._clap_lua_filtered =
-    fzy_filter.do_fuzzy_match(vim.g._clap_lua_query, vim.g._clap_lua_candidates, vim.g._clap_lua_enable_icon)
+    fzy_filter.do_fuzzy_match(vim.g._clap_lua_query, vim.g._clap_lua_candidates, vim.g._clap_lua_enable_icon, vim.g._clap_lua_match_type)
 EOF
 
     return g:_clap_lua_filtered
@@ -26,7 +27,7 @@ else
     return map(split(a:joint_indices, ','), 'str2nr(v:val)')
   endfunction
 
-  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, _match_type) abort
+  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_type) abort
 lua << EOF
 local fzy_filter = require('fzy_filter')
 
@@ -38,7 +39,7 @@ for i = #candidates-1, 0, -1 do
 end
 
 matched_indices, _clap_lua_filtered =
-    fzy_filter.do_fuzzy_match(vim.eval('a:query'), lines, vim.eval('a:enable_icon'))
+    fzy_filter.do_fuzzy_match(vim.eval('a:query'), lines, vim.eval('a:enable_icon'), vim.eval('a:match_type'))
 
 __clap_fuzzy_matched_indices = {}
 for i, v1 in ipairs(matched_indices) do
