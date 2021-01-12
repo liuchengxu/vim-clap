@@ -13,7 +13,7 @@ name = "fuzzymatch_rs"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
-version = "0.12"
+version = "0.13"
 
 [dependencies.printer]
 path = "../../../crates/printer"
