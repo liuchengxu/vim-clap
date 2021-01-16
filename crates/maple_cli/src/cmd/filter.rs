@@ -73,6 +73,8 @@ impl Filter {
             &self.query,
             self.generate_source(),
             self.algo.clone().unwrap_or(Algo::Fzy),
+            self.match_type.clone().unwrap_or(MatchType::Full),
+            self.bonus.clone().unwrap_or_default(),
         )?;
 
         printer::print_sync_filter_results(ranked, number, winwidth, icon_painter);

@@ -1,5 +1,7 @@
 use log::debug;
 
+use filter::matcher::{Algo, Bonus, MatchType};
+
 use super::*;
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
@@ -19,7 +21,12 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
     if let Some(ref source_list) = *source_list {
         let source = filter::Source::List(source_list.iter().map(|s| s.to_string().into()));
 
-        let lines_info = filter::sync_run(&query, source, filter::matcher::Algo::Fzy).unwrap();
+        let match_type = MatchType::Full;
+        let bonus = match msg.get_provider_id().as_str() {
+            "files" | "git_files" => Bonus::FileName,
+            _ => Bonus::None,
+        };
+        let lines_info = filter::sync_run(&query, source, Algo::Fzy, match_type, bonus).unwrap();
 
         let total = lines_info.len();
 
