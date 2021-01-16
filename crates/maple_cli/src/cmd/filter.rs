@@ -1,9 +1,10 @@
 use anyhow::Result;
 use filter::{
-    matcher::{Algo, LineSplitter},
+    matcher::{Algo, MatchType},
     subprocess, Source,
 };
 use icon::IconPainter;
+use source_item::SourceItem;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -31,8 +32,8 @@ pub struct Filter {
     input: Option<PathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[structopt(short, long, possible_values = &LineSplitter::variants(), case_insensitive = true)]
-    line_splitter: Option<LineSplitter>,
+    #[structopt(short, long, possible_values = &MatchType::variants(), case_insensitive = true)]
+    match_type: Option<MatchType>,
 
     /// Synchronous filtering, returns after the input stream is complete.
     #[structopt(short, long)]
@@ -41,7 +42,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = String>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 subprocess::Exec::shell(cmd_str).cwd(dir).into()
@@ -89,7 +90,7 @@ impl Filter {
             number,
             winwidth,
             icon_painter,
-            self.line_splitter.clone().unwrap_or(LineSplitter::Full),
+            self.match_type.clone().unwrap_or(MatchType::Full),
         )
     }
 

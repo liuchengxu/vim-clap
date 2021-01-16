@@ -1,5 +1,9 @@
 use structopt::clap::arg_enum;
 
+use source_item::{MatchTextFor, MatchType};
+
+use crate::MatchResult;
+
 // Implement arg_enum for using it in the command line arguments.
 arg_enum! {
   /// Supported line oriented String match algorithm.
@@ -11,9 +15,31 @@ arg_enum! {
   }
 }
 
+impl Algo {
+    pub fn apply_match<'a, T: MatchTextFor<'a>>(
+        &self,
+        query: &str,
+        item: &T,
+        match_type: &MatchType,
+    ) -> MatchResult {
+        item.match_text_for(match_type).and_then(|(text, offset)| {
+            let res = match self {
+                Self::Fzy => fzy::fuzzy_indices(text, query),
+                Self::Skim => skim::fuzzy_indices(text, query),
+                Self::SubString => substring::substr_indices(text, query),
+            };
+            res.map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+        })
+    }
+}
+
 pub mod skim {
-    // Reexport the skim algorithm, mainly `fuzzy_indices()`.
-    pub use fuzzy_matcher::skim::*;
+    use crate::MatchResult;
+    use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+
+    pub fn fuzzy_indices(text: &str, query: &str) -> MatchResult {
+        SkimMatcherV2::default().fuzzy_indices(text, query)
+    }
 }
 
 pub mod fzy {
@@ -22,7 +48,7 @@ pub mod fzy {
 
     /// Make the arguments order same to Skim's `fuzzy_indices()`.
     #[inline]
-    pub fn fuzzy_indices(line: &str, query: &str) -> crate::MatcherResult {
+    pub fn fuzzy_indices(line: &str, query: &str) -> crate::MatchResult {
         match_and_score_with_positions(query, line).map(|(score, indices)| (score as i64, indices))
     }
 }

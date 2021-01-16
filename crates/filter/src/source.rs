@@ -7,7 +7,7 @@ use subprocess::Exec;
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
-pub enum Source<I: Iterator<Item = String>> {
+pub enum Source<I: Iterator<Item = SourceItem>> {
     Stdin,
     #[cfg(feature = "enable_dyn")]
     Exec(Exec),
@@ -15,26 +15,20 @@ pub enum Source<I: Iterator<Item = String>> {
     List(I),
 }
 
-impl From<Vec<String>> for Source<std::vec::IntoIter<String>> {
-    fn from(source_list: Vec<String>) -> Self {
-        Self::List(source_list.into_iter())
-    }
-}
-
-impl<I: Iterator<Item = String>> From<PathBuf> for Source<I> {
+impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {
     fn from(fpath: PathBuf) -> Self {
         Self::File(fpath)
     }
 }
 
 #[cfg(feature = "enable_dyn")]
-impl<I: Iterator<Item = String>> From<Exec> for Source<I> {
+impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(exec)
     }
 }
 
-impl<I: Iterator<Item = String>> Source<I> {
+impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// Returns the complete filtered results after applying the specified
     /// matcher algo on each item in the input stream.
     ///
@@ -52,7 +46,7 @@ impl<I: Iterator<Item = String>> Source<I> {
                 .lines()
                 .filter_map(|lines_iter| {
                     lines_iter.ok().and_then(|line| {
-                        matcher(&line).map(|(score, indices)| (line, score, indices))
+                        matcher(&line).map(|(score, indices)| (line.into(), score, indices))
                     })
                 })
                 .collect::<Vec<_>>(),
@@ -61,18 +55,21 @@ impl<I: Iterator<Item = String>> Source<I> {
                 .lines()
                 .filter_map(|lines_iter| {
                     lines_iter.ok().and_then(|line| {
-                        matcher(&line).map(|(score, indices)| (line, score, indices))
+                        matcher(&line).map(|(score, indices)| (line.into(), score, indices))
                     })
                 })
                 .collect::<Vec<_>>(),
             Self::File(fpath) => std::fs::read_to_string(fpath)?
                 .par_lines()
                 .filter_map(|line| {
-                    matcher(&line).map(|(score, indices)| (line.into(), score, indices))
+                    matcher(&line).map(|(score, indices)| (line.to_string().into(), score, indices))
                 })
                 .collect::<Vec<_>>(),
             Self::List(list) => list
-                .filter_map(|line| matcher(&line).map(|(score, indices)| (line, score, indices)))
+                .filter_map(|item| {
+                    let line = item.match_text();
+                    matcher(line).map(|(score, indices)| (line.into(), score, indices))
+                })
                 .collect::<Vec<_>>(),
         };
 

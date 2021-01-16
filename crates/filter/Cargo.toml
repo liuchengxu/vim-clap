@@ -16,6 +16,7 @@ subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = tr
 icon = { path = "../icon" }
 matcher = { path = "../matcher" }
 printer = { path = "../printer" }
+source_item = { path = "../source_item" }
 utility = { path = "../utility" }
 
 [features]

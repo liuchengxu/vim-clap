@@ -12,6 +12,7 @@ mod source;
 use anyhow::Result;
 use matcher::Algo;
 use rayon::prelude::*;
+use source_item::SourceItem;
 
 pub use dynamic::dyn_run;
 pub use matcher;
@@ -20,11 +21,11 @@ pub use source::Source;
 pub use subprocess;
 
 /// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FilterResult = (String, i64, Vec<usize>);
+pub type FilterResult = (SourceItem, i64, Vec<usize>);
 
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = String>>(
+pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     algo: Algo,

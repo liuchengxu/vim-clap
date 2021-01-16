@@ -25,4 +25,5 @@ pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 upgrade = { path = "../upgrade" }
 utility = { path = "../utility" }
+source_item = { path = "../source_item" }
 stdio_server = { path = "../stdio_server" }

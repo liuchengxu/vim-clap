@@ -2,6 +2,7 @@
 //! by printing them to stdout in JSON format.
 
 use icon::{IconPainter, ICON_LEN};
+use source_item::SourceItem;
 use std::collections::HashMap;
 use utility::{println_json, println_json_with_length};
 
@@ -22,7 +23,7 @@ pub type VimLineNumber = usize;
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
 /// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FilterResult = (String, i64, Vec<usize>);
+pub type FilterResult = (SourceItem, i64, Vec<usize>);
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
@@ -51,7 +52,7 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 /// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
 ///
 pub fn truncate_long_matched_lines<T>(
-    lines: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    lines: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
@@ -59,7 +60,8 @@ pub fn truncate_long_matched_lines<T>(
     let mut lnum = 0usize;
     let lines = lines
         .into_iter()
-        .map(|(line, score, indices)| {
+        .map(|(item, score, indices)| {
+            let line = item.display_text.unwrap_or(item.raw);
             lnum += 1;
             if !indices.is_empty() {
                 let last_idx = indices.last().expect("indices are non-empty; qed");
@@ -95,10 +97,10 @@ pub fn truncate_long_matched_lines<T>(
                     truncated_map.insert(lnum, line);
                     (truncated, score, truncated_indices)
                 } else {
-                    (line, score, indices)
+                    (line.into(), score, indices)
                 }
             } else {
-                (line, score, indices)
+                (line.into(), score, indices)
             }
         })
         .collect::<Vec<_>>();
@@ -108,7 +110,7 @@ pub fn truncate_long_matched_lines<T>(
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn process_top_items<T>(
     top_size: usize,
-    top_list: impl IntoIterator<Item = (String, T, Vec<usize>)>,
+    top_list: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
@@ -156,7 +158,8 @@ pub fn print_sync_filter_results(
             println_json!(total, lines, indices, truncated_map);
         }
     } else {
-        for (text, _, indices) in ranked.iter() {
+        for (item, _, indices) in ranked.into_iter() {
+            let text = item.display_text.unwrap_or(item.raw);
             println_json!(text, indices);
         }
     }
@@ -218,7 +221,7 @@ mod tests {
         ret
     }
 
-    fn run_test<I: Iterator<Item = String>>(
+    fn run_test<I: Iterator<Item = SourceItem>>(
         source: Source<I>,
         query: &str,
         skipped: Option<usize>,
@@ -243,65 +246,71 @@ mod tests {
         }
     }
 
+    fn into_source(lines: Vec<&str>) -> Source<std::vec::IntoIter<SourceItem>> {
+        Source::List(
+            lines
+                .into_iter()
+                .map(|s| s.to_string().into())
+                .collect::<Vec<SourceItem>>()
+                .into_iter(),
+        )
+    }
+
     #[test]
     fn case1() {
-        let source: Source<_> = vec![
-        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss".into(),
-        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss"
-            .into(),
-        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js".into(),
-        "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js"
-            .into(),
-    ]
-        .into();
+        let source = into_source(vec![
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
+          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js"
+        ]);
         let query = "files";
         run_test(source, query, None, 50usize);
     }
 
     #[test]
     fn case2() {
-        let source: Source<_> = vec![
-        "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib".into(),
-        "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
-        "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
-        "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib".into(),
-        ].into();
+        let source = into_source(vec![
+          "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
+          "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
+          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
+        ]);
         let query = "srlisresource";
         run_test(source, query, None, 50usize);
     }
 
     #[test]
     fn case3() {
-        let source: Source<_> = vec![
-        "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r".into()
-        ].into();
+        let source = into_source(vec![
+          "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r"
+        ]);
         let query = "srcggithub";
         run_test(source, query, None, 50usize);
     }
 
     #[test]
     fn case4() {
-        let source: Source<_> = vec![
-            "        // Wait until propagation delay period after block we plan to mine on".into(),
-        ]
-        .into();
+        let source = into_source(vec![
+            "        // Wait until propagation delay period after block we plan to mine on",
+        ]);
         let query = "bmine";
         run_test(source, query, None, 58usize);
     }
 
     #[test]
     fn starting_point_should_work() {
-        let source: Source<_> = vec![
-          " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
-          " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
-        ].into();
+        let source = into_source(vec![
+          " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+          " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
+        ]);
         let query = "srlisrlisrsr";
         run_test(source, query, Some(2), 50usize);
 
-        let source: Source<_> = vec![
-          "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib".into(),
-          "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib".into()
-        ].into();
+        let source  = into_source(vec![
+          "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+          "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
+        ]);
         let query = "srlisrlisrsr";
         run_test(source, query, None, 50usize);
     }
@@ -311,7 +320,6 @@ mod tests {
         let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
         let start = 33;
         let end = 300;
-        // println!("{}", &multibyte_str[33..300]);
         println!("{}", utf8_str_slice(multibyte_str, start, end));
     }
 }

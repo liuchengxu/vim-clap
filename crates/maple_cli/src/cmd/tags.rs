@@ -1,6 +1,6 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use anyhow::{anyhow, Result};
-use filter::{matcher::LineSplitter, subprocess, Source};
+use filter::{matcher::MatchType, subprocess, Source};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
@@ -149,12 +149,12 @@ impl Tags {
         } else {
             filter::dyn_run(
                 &self.query,
-                Source::List(formatted_tags_stream(&cmd_args, &self.dir)?),
+                Source::List(formatted_tags_stream(&cmd_args, &self.dir)?.map(Into::into)),
                 None,
                 Some(30),
                 None,
                 icon_painter,
-                LineSplitter::TagNameOnly,
+                MatchType::TagName,
             )?;
         }
 

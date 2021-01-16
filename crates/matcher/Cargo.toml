@@ -11,5 +11,6 @@ anyhow = "1.0"
 structopt = "0.3"
 fuzzy-matcher = "0.3.1"
 
-pattern = { path = "../pattern" }
 extracted_fzy = { path = "extracted_fzy" }
+pattern = { path = "../pattern" }
+source_item = { path = "../source_item" }

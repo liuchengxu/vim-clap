@@ -1,0 +1,10 @@
+[package]
+name = "source_item"
+version = "0.1.0"
+authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.3"
+
+pattern = { path = "../pattern" }

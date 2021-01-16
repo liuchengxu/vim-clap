@@ -326,6 +326,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "source_item",
  "subprocess",
  "utility",
 ]
@@ -781,6 +782,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "source_item",
  "stdio_server",
  "structopt",
  "upgrade",
@@ -795,6 +797,7 @@ dependencies = [
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",
+ "source_item",
  "structopt",
 ]
 
@@ -1083,6 +1086,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
+ "source_item",
  "utility",
 ]
 
@@ -1416,6 +1420,14 @@ dependencies = [
  "libc",
  "redox_syscall",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "source_item"
+version = "0.1.0"
+dependencies = [
+ "pattern",
+ "structopt",
 ]
 
 [[package]]

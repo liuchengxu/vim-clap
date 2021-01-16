@@ -42,14 +42,14 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   endif
 
   if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
-    let line_splitter = ['--line-splitter=FileNameOnly']
+    let match_type = ['--match-type=FileName']
   elseif g:clap.provider.id ==# 'proj_tags'
-    let line_splitter = ['--line-splitter=TagNameOnly']
+    let match_type = ['--match-type=TagName']
   else
-    let line_splitter = []
+    let match_type = []
   endif
 
-  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + line_splitter)
+  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + match_type)
   call clap#job#stdio#start_service(function('s:handle_message'), filter_cmd)
 endfunction
 
