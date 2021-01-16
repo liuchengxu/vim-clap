@@ -1,6 +1,9 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use anyhow::{anyhow, Result};
-use filter::{matcher::MatchType, subprocess, Source};
+use filter::{
+    matcher::{Bonus, MatchType},
+    subprocess, Source,
+};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
@@ -155,6 +158,7 @@ impl Tags {
                 None,
                 icon_painter,
                 MatchType::TagName,
+                Bonus::None,
             )?;
         }
 

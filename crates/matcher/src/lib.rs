@@ -20,31 +20,95 @@
 mod algo;
 
 use source_item::SourceItem;
+use structopt::clap::arg_enum;
 
 pub use algo::*;
 pub use source_item::MatchType;
 
+pub type Score = i64;
+
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
-pub type MatchResult = Option<(i64, Vec<usize>)>;
+pub type MatchResult = Option<(Score, Vec<usize>)>;
+
+pub fn calculate_bonus(bonus: &Bonus, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
+    match bonus {
+        Bonus::FileName => {
+            if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
+                let hits = indices.iter().filter(|x| **x >= idx).collect::<Vec<_>>();
+                let bonus = score as u64 * hits.len() as u64 / (item.raw.len() - idx) as u64;
+                bonus as Score
+            } else {
+                0
+            }
+        }
+        Bonus::None => 0,
+    }
+}
+
+arg_enum! {
+  #[derive(Debug, Clone)]
+  pub enum Bonus {
+      // Give a bonus if the needle matches in the basename of the haystack.
+      //
+      // Ref https://github.com/liuchengxu/vim-clap/issues/561
+      FileName,
+
+      // No bonus.
+      None,
+  }
+}
+
+impl Default for Bonus {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+impl From<String> for Bonus {
+    fn from(b: String) -> Self {
+        b.as_str().into()
+    }
+}
+
+impl From<&str> for Bonus {
+    fn from(b: &str) -> Self {
+        match b.to_uppercase().as_str() {
+            "NONE" => Self::None,
+            "FILENAME" => Self::FileName,
+            _ => Self::None,
+        }
+    }
+}
 
 /// `Matcher` is composed of two components:
 ///
-///   * `algo`: algorithm used for matching the text.
 ///   * `match_type`: represents the way of extracting the matching piece from the raw line.
+///   * `algo`: algorithm used for matching the text.
+///   * `bouns`: add a bonus to the result of base `algo`.
 pub struct Matcher {
-    algo: Algo,
     match_type: MatchType,
+    algo: Algo,
+    bonus: Bonus,
 }
 
 impl Matcher {
     /// Constructs a `Matcher`.
-    pub fn new(algo: Algo, match_type: MatchType) -> Self {
-        Self { algo, match_type }
+    pub fn new(algo: Algo, match_type: MatchType, bonus: Bonus) -> Self {
+        Self {
+            algo,
+            match_type,
+            bonus,
+        }
     }
 
     /// Actually performs the matching algorithm.
     pub fn do_match(&self, item: &SourceItem, query: &str) -> MatchResult {
-        self.algo.apply_match(query, item, &self.match_type)
+        let base_result = self.algo.apply_match(query, item, &self.match_type);
+
+        base_result.map(|(score, indices)| {
+            let bonus_score = calculate_bonus(&self.bonus, item, score, &indices);
+            (score + bonus_score, indices)
+        })
     }
 }
 
@@ -78,5 +142,28 @@ mod tests {
         let (_, origin_indices) = fzy::fuzzy_indices(line, query).unwrap();
         let (_, indices) = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
         assert_eq!(origin_indices, indices);
+    }
+
+    #[test]
+    fn test_bonus_filename() {
+        let lines = vec![
+            "crates/filter/Cargo.toml",
+            "autoload/clap/filter.vim",
+            "crates/filter/src/dynamic.rs",
+            "crates/stdio_server/src/filer.rs",
+            "autoload/clap/provider/files.vim",
+            "autoload/clap/provider/filer.vim",
+            "autoload/clap/filter/sync/lua.vim",
+            "crates/maple_cli/src/cmd/filter.rs",
+            "autoload/clap/filter/sync/python.vim",
+            "autoload/clap/provider/filetypes.vim",
+            "lua/fzy_filter.lua",
+            "autoload/clap/filter/async/external.vim",
+        ];
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full);
+        for line in lines {
+            println!("{}", line);
+            matcher.do_match(&line.into(), "fil");
+        }
     }
 }

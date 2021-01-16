@@ -1,6 +1,6 @@
 use anyhow::Result;
 use filter::{
-    matcher::{Algo, MatchType},
+    matcher::{Algo, Bonus, MatchType},
     subprocess, Source,
 };
 use icon::IconPainter;
@@ -34,6 +34,10 @@ pub struct Filter {
     /// Apply the filter on the full line content or parial of it.
     #[structopt(short, long, possible_values = &MatchType::variants(), case_insensitive = true)]
     match_type: Option<MatchType>,
+
+    /// Add a bonus to the score of base matching algorithm.
+    #[structopt(short, long, possible_values = &Bonus::variants(), case_insensitive = true)]
+    bonus: Option<Bonus>,
 
     /// Synchronous filtering, returns after the input stream is complete.
     #[structopt(short, long)]
@@ -91,6 +95,7 @@ impl Filter {
             winwidth,
             icon_painter,
             self.match_type.clone().unwrap_or(MatchType::Full),
+            self.bonus.clone().unwrap_or_default(),
         )
     }
 
