@@ -115,6 +115,6 @@ fn test_skip_icon() {
     let query = "con";
     println!(
         "ret: {:#?}",
-        fuzzy_match(query, lines, 62, true, "Full".to_string())
+        fuzzy_match(query, lines, 62, true, "Full".into(), "FileName".into())
     );
 }

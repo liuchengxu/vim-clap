@@ -30,13 +30,14 @@ pub type Score = i64;
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
 pub type MatchResult = Option<(Score, Vec<usize>)>;
 
+/// Calculates the bonus score given the match result of base algorithm.
 pub fn calculate_bonus(bonus: &Bonus, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
     match bonus {
         Bonus::FileName => {
             if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
                 let hits = indices.iter().filter(|x| **x >= idx).collect::<Vec<_>>();
-                let bonus = score as u64 * hits.len() as u64 / (item.raw.len() - idx) as u64;
-                bonus as Score
+                let bonus = score * hits.len() as i64 / (item.raw.len() - idx) as i64;
+                bonus
             } else {
                 0
             }
@@ -53,7 +54,7 @@ arg_enum! {
       // Ref https://github.com/liuchengxu/vim-clap/issues/561
       FileName,
 
-      // No bonus.
+      // No additional bonus.
       None,
   }
 }
@@ -84,7 +85,7 @@ impl From<&str> for Bonus {
 ///
 ///   * `match_type`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
-///   * `bouns`: add a bonus to the result of base `algo`.
+///   * `bonus`: add a bonus to the result of base `algo`.
 pub struct Matcher {
     match_type: MatchType,
     algo: Algo,
@@ -101,11 +102,15 @@ impl Matcher {
         }
     }
 
+    /// Match the item without considering the bonus.
+    #[inline]
+    pub fn base_match(&self, item: &SourceItem, query: &str) -> MatchResult {
+        self.algo.apply_match(query, item, &self.match_type)
+    }
+
     /// Actually performs the matching algorithm.
     pub fn do_match(&self, item: &SourceItem, query: &str) -> MatchResult {
-        let base_result = self.algo.apply_match(query, item, &self.match_type);
-
-        base_result.map(|(score, indices)| {
+        self.base_match(item, query).map(|(score, indices)| {
             let bonus_score = calculate_bonus(&self.bonus, item, score, &indices);
             (score + bonus_score, indices)
         })
@@ -115,8 +120,7 @@ impl Matcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{fzy, skim::fuzzy_indices as fuzzy_indices_skim, substring::substr_indices};
-    use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
+    use crate::fzy;
 
     #[test]
     fn test_exclude_grep_filepath() {
@@ -145,25 +149,19 @@ mod tests {
     }
 
     #[test]
-    fn test_bonus_filename() {
+    fn test_filename_bonus() {
         let lines = vec![
-            "crates/filter/Cargo.toml",
             "autoload/clap/filter.vim",
-            "crates/filter/src/dynamic.rs",
-            "crates/stdio_server/src/filer.rs",
             "autoload/clap/provider/files.vim",
-            "autoload/clap/provider/filer.vim",
-            "autoload/clap/filter/sync/lua.vim",
-            "crates/maple_cli/src/cmd/filter.rs",
-            "autoload/clap/filter/sync/python.vim",
-            "autoload/clap/provider/filetypes.vim",
             "lua/fzy_filter.lua",
-            "autoload/clap/filter/async/external.vim",
         ];
-        let matcher = Matcher::new(Algo::Fzy, MatchType::Full);
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
+        let query = "fil";
         for line in lines {
-            println!("{}", line);
-            matcher.do_match(&line.into(), "fil");
+            let (base_score, indices1) = matcher.base_match(&line.into(), query).unwrap();
+            let (score_with_bonus, indices2) = matcher.do_match(&line.into(), query).unwrap();
+            assert!(indices1 == indices2);
+            assert!(score_with_bonus > base_score);
         }
     }
 }
