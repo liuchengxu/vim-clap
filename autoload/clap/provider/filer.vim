@@ -322,7 +322,7 @@ function! s:filer_handle_on_move_response(result, error) abort
 endfunction
 
 function! s:filer.on_move_async() abort
-  if g:clap.display.getcurline() =~# s:CREATE_FILE
+  if stridx(g:clap.display.getcurline(), s:CREATE_FILE) > -1
     call g:clap.preview.hide()
     return
   endif
