@@ -36,8 +36,13 @@ pub fn calculate_bonus(bonus: &Bonus, item: &SourceItem, score: Score, indices: 
         Bonus::FileName => {
             if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
                 let hits = indices.iter().filter(|x| **x >= idx).collect::<Vec<_>>();
-                let bonus = score * hits.len() as i64 / (item.raw.len() - idx) as i64;
-                bonus
+                if item.raw.len() > idx {
+                    // bonus = base_score * len(matched elements in filename) / len(filename)
+                    let bonus = score * hits.len() as i64 / (item.raw.len() - idx) as i64;
+                    bonus
+                } else {
+                    0
+                }
             } else {
                 0
             }
