@@ -6,6 +6,7 @@
 
 - Add `g:clap_force_matchfuzzy` to use the builtin `matchfuzzy()` when filtering in sync way. #607
 - Support `+name-only` for Lua sync filter. #612
+- Add `g:ClapProviderHistoryCustomFilter` for customizing the source of `history` provider. #615
 
 ### Fixed
 
