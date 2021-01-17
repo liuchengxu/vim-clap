@@ -78,9 +78,9 @@ impl From<String> for Bonus {
 
 impl From<&str> for Bonus {
     fn from(b: &str) -> Self {
-        match b.to_uppercase().as_str() {
-            "NONE" => Self::None,
-            "FILENAME" => Self::FileName,
+        match b.to_lowercase().as_str() {
+            "none" => Self::None,
+            "filename" => Self::FileName,
             _ => Self::None,
         }
     }
