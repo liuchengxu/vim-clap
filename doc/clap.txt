@@ -752,6 +752,27 @@ g:clap_provider_buffers_cur_tab_only       *g:clap_provider_buffers_cur_tab_only
   List the buffer list per tab instead of the global buffer list.
 
 
+-------------------------------------------------------------------------------
+6.2. Clap History Options                                  *clap-history-options*
+
+
+g:ClapProviderHistoryCustomFilter             *g:ClapProviderHistoryCustomFilter*
+
+  Type: |function|
+  Default: `undefined`
+
+  `return filter(raw_history_source, 'g:ClapProviderHistoryCustomFilter(v:val)')`
+
+  If this variable exists, the history provider only returns the items
+  filtered by this function.
+
+  If you want to ignore some files in history provider:
+  >
+  function! g:ClapProviderHistoryCustomFilter(line) abort
+    return a:line !~? '.so$\|.dat$\|.DS_Store$'
+  endfunction
+
+
 ===============================================================================
 7. Commands                                                     *clap-commands*
 
