@@ -5,6 +5,7 @@
 ### Added
 
 - Add `g:clap_force_matchfuzzy` to use the builtin `matchfuzzy()` when filtering in sync way. #607
+- Add `g:clap_force_python` to always use the Python sync filter as some improvements are only implemented on the Rust side and you need the Python dynamic module to use that. #614
 - Support `+name-only` for Lua sync filter. #612
 - Add a bonus for the match in the filename when the source item is a path, but you can only have this when you are using Python dynamic module or the Rust backend. #614.
 

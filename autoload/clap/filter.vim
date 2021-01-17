@@ -85,7 +85,7 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#matchfuzzy(a:query, a:candidates)
   endfunction
-elseif s:can_use_lua
+elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_type())

@@ -537,6 +537,19 @@ g:clap_force_matchfuzzy                                *g:clap_force_matchfuzzy*
   Force use |matchfuzzypos()| as the sync filter engine, otherwise vim-clap
   will try to use the other sync implementation in the order of Lua>Python>VimL.
 
+
+g:clap_force_python                                        *g:clap_force_python*
+
+  Type: |Bool|
+  Default: `Undefined`
+
+  Force use Python as the sync filter engine. Some matching improvements are
+  only implemented on the Rust end, you also need to compile the Python dynamic
+  module to use that.
+
+  Ref https://github.com/liuchengxu/vim-clap/pull/614
+
+
 -------------------------------------------------------------------------------
 5.1. Highlights                                                *clap-highlights*
 
