@@ -4,35 +4,17 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:can_use_python = v:false
-let s:has_py_dynamic_module = v:false
-
-if has('python3') || has('python')
-  try
-    let s:has_py_dynamic_module = clap#filter#sync#python#has_dynamic_module()
-    let s:can_use_python = v:true
-  catch
-    call clap#helper#echo_error(v:exception)
-  endtry
-endif
-
 let s:can_use_lua = has('nvim-0.5') || has('lua') ? v:true : v:false
+
+let s:MIDIUM_CAPACITY = 30000
 
 if exists('g:clap_builtin_fuzzy_filter_threshold')
   let s:builtin_filter_capacity = g:clap_builtin_fuzzy_filter_threshold
-elseif s:can_use_lua || s:has_py_dynamic_module
-  let s:builtin_filter_capacity = 30000
+elseif s:can_use_lua
+  let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
 else
   let s:builtin_filter_capacity = 10000
 endif
-
-function! clap#filter#beyond_capacity(size) abort
-  return a:size > s:builtin_filter_capacity
-endfunction
-
-function! clap#filter#capacity() abort
-  return s:builtin_filter_capacity
-endfunction
 
 let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
 
@@ -82,6 +64,7 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
     call clap#helper#echo_error('matchfuzzypos not found, please upgrade your Vim')
     finish
   endif
+  let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#matchfuzzy(a:query, a:candidates)
   endfunction
@@ -90,27 +73,47 @@ elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_type())
   endfunction
-elseif s:can_use_python
-  let s:current_filter_impl = 'Python'
-  function! clap#filter#sync(query, candidates) abort
-    try
-      return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type(), clap#filter#get_bonus_type())
-    catch
-      call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
-      return clap#filter#sync#viml#(a:query, a:candidates)
-    endtry
-  endfunction
 else
-  let s:current_filter_impl = 'VimL'
-  if exists('*matchfuzzypos')
+  let s:can_use_python = v:false
+  let s:has_py_dynamic_module = v:false
+
+  if has('python3') || has('python')
+    try
+      let s:has_py_dynamic_module = clap#filter#sync#python#has_dynamic_module()
+      let s:can_use_python = v:true
+    catch
+      call clap#helper#echo_error(v:exception)
+    endtry
+  endif
+
+  if s:has_py_dynamic_module
+    let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
+  endif
+
+  if s:can_use_python
+    let s:current_filter_impl = 'Python'
     function! clap#filter#sync(query, candidates) abort
-      return clap#filter#matchfuzzy(a:query, a:candidates)
+      try
+        return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type(), clap#filter#get_bonus_type())
+      catch
+        call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
+        return clap#filter#sync#viml#(a:query, a:candidates)
+      endtry
     endfunction
   else
-    function! clap#filter#sync(query, candidates) abort
-      return clap#filter#sync#viml#(a:query, a:candidates)
-    endfunction
+    let s:current_filter_impl = 'VimL'
+    if exists('*matchfuzzypos')
+      let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
+      function! clap#filter#sync(query, candidates) abort
+        return clap#filter#matchfuzzy(a:query, a:candidates)
+      endfunction
+    else
+      function! clap#filter#sync(query, candidates) abort
+        return clap#filter#sync#viml#(a:query, a:candidates)
+      endfunction
+    endif
   endif
+
 endif
 
 function! clap#filter#on_typed(FilterFn, query, candidates) abort
@@ -141,6 +144,14 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
       call g:clap.display.add_highlight()
     endif
   endif
+endfunction
+
+function! clap#filter#beyond_capacity(size) abort
+  return a:size > s:builtin_filter_capacity
+endfunction
+
+function! clap#filter#capacity() abort
+  return s:builtin_filter_capacity
 endfunction
 
 function! clap#filter#current_impl() abort
