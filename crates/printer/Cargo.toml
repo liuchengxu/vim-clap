@@ -16,6 +16,6 @@ source_item = { path = "../source_item" }
 utility = { path = "../utility" }
 
 [target.'cfg(not(windows))'.dev-dependencies]
-rayon = "1.2"
+rayon = "1.5"
 termion = "1.5.1"
 filter = { path = "../filter" }
