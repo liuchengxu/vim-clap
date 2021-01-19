@@ -64,8 +64,11 @@ endfunction
 function! clap#maple#sync_filter_command(query) abort
   let global_opt = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
-  if g:clap.provider.id ==# 'files' && g:clap_enable_icon
-    call add(global_opt, '--icon-painter=File')
+  if g:clap.provider.id ==# 'files'
+    call add(global_opt, printf('--bonus=%s', clap#filter#get_bonus_type()))
+    if g:clap_enable_icon
+      call add(global_opt, '--icon-painter=File')
+    endif
   endif
 
   return [s:maple_bin] + global_opt + ['filter', a:query, '--sync']

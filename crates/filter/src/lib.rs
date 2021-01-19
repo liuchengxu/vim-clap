@@ -10,7 +10,7 @@ mod dynamic;
 mod source;
 
 use anyhow::Result;
-use matcher::Algo;
+use matcher::{Algo, Bonus, MatchType, Matcher};
 use rayon::prelude::*;
 use source_item::SourceItem;
 
@@ -29,8 +29,11 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     algo: Algo,
+    match_type: MatchType,
+    bonus: Bonus,
 ) -> Result<Vec<FilterResult>> {
-    let mut ranked = source.filter(algo, query)?;
+    let matcher = Matcher::new(algo, match_type, bonus);
+    let mut ranked = source.filter(matcher, query)?;
 
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 

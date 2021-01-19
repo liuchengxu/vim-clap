@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use rayon::slice::ParallelSliceMut;
 
 use icon::{IconPainter, ICON_LEN};
-use matcher::MatchType;
+use matcher::{Bonus, MatchType};
 use utility::{println_json, println_json_with_length};
 
 use super::*;
@@ -347,13 +347,14 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
     match_type: MatchType,
+    bonus: Bonus,
 ) -> Result<()> {
     let algo = if query.contains(' ') {
         Algo::SubString
     } else {
         algo.unwrap_or(Algo::Fzy)
     };
-    let scoring_matcher = matcher::Matcher::new(algo, match_type);
+    let scoring_matcher = matcher::Matcher::new(algo, match_type, bonus);
     let scorer = |item: &SourceItem| scoring_matcher.do_match(item, query);
     if let Some(number) = number {
         let (total, mut filtered) = match source {
@@ -461,6 +462,7 @@ mod tests {
             None,
             None,
             MatchType::Full,
+            Bonus::None,
         )
         .unwrap()
     }

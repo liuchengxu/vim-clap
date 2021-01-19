@@ -1,7 +1,11 @@
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
 use anyhow::{Context, Result};
-use filter::{matcher::MatchType, subprocess::Exec, Source};
+use filter::{
+    matcher::{Bonus, MatchType},
+    subprocess::Exec,
+    Source,
+};
 use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
@@ -149,6 +153,7 @@ impl Grep {
                 winwidth,
                 icon_painter,
                 MatchType::IgnoreFilePath,
+                Bonus::None,
             )
         };
 

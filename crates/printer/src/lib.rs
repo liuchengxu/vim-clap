@@ -190,7 +190,10 @@ pub fn print_dyn_filter_results(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filter::{matcher::Algo, Source};
+    use filter::{
+        matcher::{Algo, Bonus, MatchType, Matcher},
+        Source,
+    };
     use rayon::prelude::*;
 
     fn wrap_matches(line: &str, indices: &[usize]) -> String {
@@ -227,7 +230,8 @@ mod tests {
         skipped: Option<usize>,
         winwidth: usize,
     ) {
-        let mut ranked = source.filter(Algo::Fzy, query).unwrap();
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
+        let mut ranked = source.filter(matcher, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
         println!();

@@ -27,6 +27,14 @@ function! s:enable_icon() abort
   endif
 endfunction
 
+function! clap#filter#get_bonus_type() abort
+  if index(['files', 'git_files', 'filer'], g:clap.provider.id) > -1
+    return 'FileName'
+  else
+    return 'None'
+  endif
+endfunction
+
 function! clap#filter#matchfuzzy(query, candidates) abort
   " `result` could be a list of two lists, or a list of three
   " lists(newer vim).
@@ -48,6 +56,8 @@ function! s:match_type() abort
   return exists('g:__clap_match_type_enum') ? g:__clap_match_type_enum : 'Full'
 endfunction
 
+let s:can_use_lua = v:false
+
 if get(g:, 'clap_force_matchfuzzy', v:false)
   let s:current_filter_impl = 'VimL'
   if !exists('*matchfuzzypos')
@@ -58,7 +68,7 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#matchfuzzy(a:query, a:candidates)
   endfunction
-elseif s:can_use_lua
+elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
     return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_type())
@@ -84,7 +94,7 @@ else
     let s:current_filter_impl = 'Python'
     function! clap#filter#sync(query, candidates) abort
       try
-        return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type())
+        return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type(), clap#filter#get_bonus_type())
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
         return clap#filter#sync#viml#(a:query, a:candidates)

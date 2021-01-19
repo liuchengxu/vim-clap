@@ -1,11 +1,9 @@
-use filter::matcher::{substring::substr_indices as substr_scorer, Algo, Matcher};
+use filter::matcher::{Algo, Matcher};
 use printer::truncate_long_matched_lines;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
 
-/// Use f64 here as substr_scorer returns f64;
-type MatchResult = Option<(i64, Vec<usize>)>;
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
 /// Each line's matched indices of LinesInBatch.
@@ -23,26 +21,31 @@ fn fuzzy_match(
     winwidth: usize,
     enable_icon: bool,
     match_type: String,
+    bonus: String,
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
-    let fzy_matcher = Matcher::new(Algo::Fzy, match_type.into());
-    let matcher: Box<dyn Fn(&str) -> MatchResult> = if query.contains(' ') {
-        Box::new(|line: &str| substr_scorer(line, query))
-    } else {
-        Box::new(|line: &str| {
-            if enable_icon {
-                // " " is 4 bytes, but the offset of highlight is 2.
-                fzy_matcher
-                    .do_match(&line[4..].into(), query)
-                    .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
-            } else {
-                fzy_matcher.do_match(&line.into(), query)
-            }
-        })
+    let matcher = Matcher::new(
+        if query.contains(' ') {
+            Algo::SubString
+        } else {
+            Algo::Fzy
+        },
+        match_type.into(),
+        bonus.into(),
+    );
+    let do_match = |line: &str| {
+        if enable_icon {
+            // " " is 4 bytes, but the offset of highlight is 2.
+            matcher
+                .do_match(&line[4..].into(), query)
+                .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
+        } else {
+            matcher.do_match(&line.into(), query)
+        }
     };
 
     let mut ranked = candidates
         .into_iter()
-        .filter_map(|line| matcher(&line).map(|(score, indices)| (line.into(), score, indices)))
+        .filter_map(|line| do_match(&line).map(|(score, indices)| (line.into(), score, indices)))
         .collect::<Vec<_>>();
 
     ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
@@ -78,6 +81,7 @@ fn fuzzymatch_rs(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[test]
 fn py_and_rs_subscore_should_work() {
+    use filter::matcher::substring::substr_indices as substr_scorer;
     use pyo3::{prelude::*, types::PyModule};
     use std::fs;
 
@@ -112,6 +116,6 @@ fn test_skip_icon() {
     let query = "con";
     println!(
         "ret: {:#?}",
-        fuzzy_match(query, lines, 62, true, "Full".to_string())
+        fuzzy_match(query, lines, 62, true, "Full".into(), "FileName".into())
     );
 }

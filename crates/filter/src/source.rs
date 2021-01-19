@@ -1,5 +1,4 @@
 use super::*;
-use matcher::{fzy, skim, substring};
 use std::io::BufRead;
 use std::path::PathBuf;
 #[cfg(feature = "enable_dyn")]
@@ -33,12 +32,8 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// matcher algo on each item in the input stream.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter(self, algo: Algo, query: &str) -> Result<Vec<FilterResult>> {
-        let matcher = |line: &str| match algo {
-            Algo::Skim => skim::fuzzy_indices(line, &query),
-            Algo::Fzy => fzy::fuzzy_indices(line, &query),
-            Algo::SubString => substring::substr_indices(line, &query),
-        };
+    pub fn filter(self, matcher: Matcher, query: &str) -> Result<Vec<FilterResult>> {
+        let do_match = |line: &str| matcher.do_match(&line.into(), query);
 
         let filtered = match self {
             Self::Stdin => std::io::stdin()
@@ -46,7 +41,7 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
                 .lines()
                 .filter_map(|lines_iter| {
                     lines_iter.ok().and_then(|line| {
-                        matcher(&line).map(|(score, indices)| (line.into(), score, indices))
+                        do_match(&line).map(|(score, indices)| (line.into(), score, indices))
                     })
                 })
                 .collect::<Vec<_>>(),
@@ -55,20 +50,21 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
                 .lines()
                 .filter_map(|lines_iter| {
                     lines_iter.ok().and_then(|line| {
-                        matcher(&line).map(|(score, indices)| (line.into(), score, indices))
+                        do_match(&line).map(|(score, indices)| (line.into(), score, indices))
                     })
                 })
                 .collect::<Vec<_>>(),
             Self::File(fpath) => std::fs::read_to_string(fpath)?
                 .par_lines()
                 .filter_map(|line| {
-                    matcher(&line).map(|(score, indices)| (line.to_string().into(), score, indices))
+                    do_match(&line)
+                        .map(|(score, indices)| (line.to_string().into(), score, indices))
                 })
                 .collect::<Vec<_>>(),
             Self::List(list) => list
                 .filter_map(|item| {
                     let line = item.match_text();
-                    matcher(line).map(|(score, indices)| (line.into(), score, indices))
+                    do_match(line).map(|(score, indices)| (line.into(), score, indices))
                 })
                 .collect::<Vec<_>>(),
         };

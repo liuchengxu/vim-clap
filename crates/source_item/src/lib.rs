@@ -23,11 +23,11 @@ impl From<String> for MatchType {
 
 impl From<&str> for MatchType {
     fn from(match_type: &str) -> Self {
-        match match_type.to_uppercase().as_str() {
-            "FULL" => Self::Full,
-            "TAGNAME" => Self::TagName,
-            "FILENAME" => Self::FileName,
-            "IGNOREFILEPATH" => Self::IgnoreFilePath,
+        match match_type.to_lowercase().as_str() {
+            "full" => Self::Full,
+            "tagname" => Self::TagName,
+            "filename" => Self::FileName,
+            "ignorefilepath" => Self::IgnoreFilePath,
             _ => Self::Full,
         }
     }

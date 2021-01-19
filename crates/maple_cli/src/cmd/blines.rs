@@ -1,5 +1,8 @@
 use anyhow::Result;
-use filter::{matcher::MatchType, Source};
+use filter::{
+    matcher::{Bonus, MatchType},
+    Source,
+};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -32,6 +35,7 @@ impl Blines {
             winwidth,
             None,
             MatchType::Full,
+            Bonus::None,
         )
     }
 }
