@@ -60,7 +60,7 @@ impl Upgrade {
         if self.no_progress_bar {
             download::download_prebuilt_binary_to_a_tempfile(version)
         } else {
-            let mut rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(download::download_prebuilt_binary_to_a_tempfile_async(
                 version,
             ))
