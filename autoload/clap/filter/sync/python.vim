@@ -44,7 +44,15 @@ endfunction
 
 if s:using_dynamic_module
   " Rust dynamic module has the feature of truncating the long lines to make fuzzy matched items visible.
-  function! clap#filter#sync#python#(query, candidates, winwidth, enable_icon, match_type, bonus) abort
+  function! clap#filter#sync#python#(
+        \ query,
+        \ candidates,
+        \ winwidth,
+        \ enable_icon,
+        \ match_type,
+        \ bonus,
+        \ recent_files,
+        \ ) abort
     " If the query is empty, neovim and vim's python client might crash.
     if a:query ==# ''
       return a:candidates
@@ -53,7 +61,15 @@ if s:using_dynamic_module
     return filtered
   endfunction
 else
-  function! clap#filter#sync#python#(query, candidates, _winwidth, enable_icon, _match_type, _bonus) abort
+  function! clap#filter#sync#python#(
+        \ query,
+        \ candidates,
+        \ _winwidth,
+        \ enable_icon,
+        \ _match_type,
+        \ _bonus,
+        \ _recent_files,
+        \ ) abort
     let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
     return filtered
   endfunction

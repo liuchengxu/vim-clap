@@ -76,7 +76,7 @@ endfunction
 
 function! s:dyn_run_is_ok() abort
   if g:clap.provider.id ==# 'blines'
-    call clap#filter#async#dyn#start_directly(clap#maple#blines_command())
+    call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
     return v:true
   endif
 

@@ -36,7 +36,7 @@ function! s:proj_tags.init() abort
   let g:__clap_match_type_enum = 'TagName'
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#tags_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
   endif
 endfunction
 

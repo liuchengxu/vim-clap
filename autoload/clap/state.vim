@@ -82,6 +82,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
         \ 'g:__clap_match_type_enum',
+        \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
   call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')

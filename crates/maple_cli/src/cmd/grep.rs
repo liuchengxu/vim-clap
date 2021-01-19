@@ -153,7 +153,7 @@ impl Grep {
                 winwidth,
                 icon_painter,
                 MatchType::IgnoreFilePath,
-                Bonus::None,
+                vec![Bonus::None],
             )
         };
 

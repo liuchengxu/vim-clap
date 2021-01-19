@@ -1,13 +1,16 @@
-use filter::matcher::{Algo, Matcher};
-use printer::truncate_long_matched_lines;
-use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use std::collections::HashMap;
+
+use pyo3::{prelude::*, wrap_pyfunction};
+
+use filter::matcher::{Algo, Bonus, Matcher};
+use printer::truncate_long_matched_lines;
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
+
 /// Each line's matched indices of LinesInBatch.
 type MatchedIndicesInBatch = Vec<Vec<usize>>;
+
 /// NOTE: TruncatedMap is ought to be HashMap<usize, String>,
 /// but there is an issue when converting to call result to Vim Dict in python dynamic call,
 /// therefore hereby has to use HashMap<String, String> instead.
@@ -22,15 +25,16 @@ fn fuzzy_match(
     enable_icon: bool,
     match_type: String,
     bonus: String,
+    recent_files: Vec<String>,
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
-    let matcher = Matcher::new(
+    let matcher = Matcher::new_with_bonuses(
         if query.contains(' ') {
             Algo::SubString
         } else {
             Algo::Fzy
         },
         match_type.into(),
-        bonus.into(),
+        vec![bonus.into(), Bonus::RecentFiles(recent_files)],
     );
     let do_match = |line: &str| {
         if enable_icon {
@@ -116,6 +120,14 @@ fn test_skip_icon() {
     let query = "con";
     println!(
         "ret: {:#?}",
-        fuzzy_match(query, lines, 62, true, "Full".into(), "FileName".into())
+        fuzzy_match(
+            query,
+            lines,
+            62,
+            true,
+            "Full".into(),
+            "FileName".into(),
+            vec![]
+        )
     );
 }

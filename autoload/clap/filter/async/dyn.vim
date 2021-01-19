@@ -41,15 +41,33 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
     let enable_icon_opt = []
   endif
 
-  if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
-    let match_type = ['--match-type=FileName']
-  elseif g:clap.provider.id ==# 'proj_tags'
-    let match_type = ['--match-type=TagName']
+  if g:clap.provider.id ==# 'files'
+    if has_key(g:clap.context, 'name-only')
+      let match_type = ['--match-type=FileName']
+    else
+      let match_type = []
+    endif
+    if !exists('g:__clap_recent_files_dyn_tmp')
+      let g:__clap_recent_files_dyn_tmp = tempname()
+      call writefile(clap#util#get_mru_list(), g:__clap_recent_files_dyn_tmp)
+    endif
+    let recent_files_opt = [printf('--recent-files=%s', g:__clap_recent_files_dyn_tmp)]
   else
-    let match_type = []
+    if g:clap.provider.id ==# 'proj_tags'
+      let match_type = ['--match-type=TagName']
+    else
+      let match_type = []
+    endif
+    let recent_files_opt = []
   endif
 
-  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + match_type)
+  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + [
+        \ '--number', s:DYN_ITEMS_TO_SHOW,
+        \ '--winwidth', winwidth(g:clap.display.winid),
+        \ 'filter', g:clap.input.get(),
+        \ '--input', a:tempfile
+        \ ] + match_type + recent_files_opt)
+
   call clap#job#stdio#start_service(function('s:handle_message'), filter_cmd)
 endfunction
 

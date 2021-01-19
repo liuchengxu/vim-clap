@@ -30,9 +30,9 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     source: Source<I>,
     algo: Algo,
     match_type: MatchType,
-    bonus: Bonus,
+    bonuses: Vec<Bonus>,
 ) -> Result<Vec<FilterResult>> {
-    let matcher = Matcher::new(algo, match_type, bonus);
+    let matcher = Matcher::new_with_bonuses(algo, match_type, bonuses);
     let mut ranked = source.filter(matcher, query)?;
 
     ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());

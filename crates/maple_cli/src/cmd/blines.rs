@@ -35,7 +35,7 @@ impl Blines {
             winwidth,
             None,
             MatchType::Full,
-            Bonus::None,
+            vec![Bonus::None],
         )
     }
 }

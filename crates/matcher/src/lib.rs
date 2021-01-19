@@ -20,7 +20,6 @@
 mod algo;
 
 use source_item::SourceItem;
-use structopt::clap::arg_enum;
 
 pub use algo::*;
 pub use source_item::MatchType;
@@ -47,22 +46,39 @@ pub fn calculate_bonus(bonus: &Bonus, item: &SourceItem, score: Score, indices: 
                 0
             }
         }
+        Bonus::RecentFiles(recent_files) => {
+            if let Err(bonus) = recent_files.iter().try_for_each(|s| {
+                if s.contains(&item.raw) {
+                    let bonus = score * 13 / 10;
+                    Err(bonus)
+                } else {
+                    Ok(())
+                }
+            }) {
+                bonus
+            } else {
+                0
+            }
+        }
         Bonus::None => 0,
     }
 }
 
-arg_enum! {
-  #[derive(Debug, Clone)]
-  pub enum Bonus {
-      // Give a bonus if the needle matches in the basename of the haystack.
-      //
-      // Ref https://github.com/liuchengxu/vim-clap/issues/561
-      FileName,
+// arg_enum! {
+#[derive(Debug, Clone)]
+pub enum Bonus {
+    // Give a bonus if the needle matches in the basename of the haystack.
+    //
+    // Ref https://github.com/liuchengxu/vim-clap/issues/561
+    FileName,
 
-      // No additional bonus.
-      None,
-  }
+    // Give a bonus if the item is in the list of recently opened files.
+    RecentFiles(Vec<String>),
+
+    // No additional bonus.
+    None,
 }
+// }
 
 impl Default for Bonus {
     fn default() -> Self {
@@ -94,7 +110,7 @@ impl From<&str> for Bonus {
 pub struct Matcher {
     match_type: MatchType,
     algo: Algo,
-    bonus: Bonus,
+    bonuses: Vec<Bonus>,
 }
 
 impl Matcher {
@@ -103,7 +119,15 @@ impl Matcher {
         Self {
             algo,
             match_type,
-            bonus,
+            bonuses: vec![bonus],
+        }
+    }
+
+    pub fn new_with_bonuses(algo: Algo, match_type: MatchType, bonuses: Vec<Bonus>) -> Self {
+        Self {
+            algo,
+            match_type,
+            bonuses,
         }
     }
 
@@ -116,8 +140,12 @@ impl Matcher {
     /// Actually performs the matching algorithm.
     pub fn do_match(&self, item: &SourceItem, query: &str) -> MatchResult {
         self.base_match(item, query).map(|(score, indices)| {
-            let bonus_score = calculate_bonus(&self.bonus, item, score, &indices);
-            (score + bonus_score, indices)
+            let total_bonus_score: Score = self
+                .bonuses
+                .iter()
+                .map(|bonus| calculate_bonus(bonus, item, score, &indices))
+                .sum();
+            (score + total_bonus_score, indices)
         })
     }
 }

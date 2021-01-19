@@ -158,7 +158,7 @@ impl Tags {
                 None,
                 icon_painter,
                 MatchType::TagName,
-                Bonus::None,
+                vec![Bonus::None],
             )?;
         }
 

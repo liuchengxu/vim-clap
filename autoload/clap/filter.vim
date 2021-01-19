@@ -56,8 +56,6 @@ function! s:match_type() abort
   return exists('g:__clap_match_type_enum') ? g:__clap_match_type_enum : 'Full'
 endfunction
 
-let s:can_use_lua = v:false
-
 if get(g:, 'clap_force_matchfuzzy', v:false)
   let s:current_filter_impl = 'VimL'
   if !exists('*matchfuzzypos')
@@ -92,9 +90,24 @@ else
 
   if s:can_use_python
     let s:current_filter_impl = 'Python'
+
+    function! s:recent_files() abort
+      return map(
+            \ filter(map(keys(g:__clap_buffers), 'bufname(str2nr(v:val))'), '!empty(v:val)'),
+            \ 'fnamemodify(v:val, ":p")')
+    endfunction
+
     function! clap#filter#sync(query, candidates) abort
       try
-        return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type(), clap#filter#get_bonus_type())
+        return clap#filter#sync#python#(
+              \ a:query,
+              \ a:candidates,
+              \ winwidth(g:clap.display.winid),
+              \ s:enable_icon(),
+              \ s:match_type(),
+              \ clap#filter#get_bonus_type(),
+              \ s:recent_files(),
+              \ )
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
         return clap#filter#sync#viml#(a:query, a:candidates)

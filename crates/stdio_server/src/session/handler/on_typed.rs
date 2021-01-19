@@ -26,7 +26,8 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
             "files" | "git_files" => Bonus::FileName,
             _ => Bonus::None,
         };
-        let lines_info = filter::sync_run(&query, source, Algo::Fzy, match_type, bonus).unwrap();
+        let lines_info =
+            filter::sync_run(&query, source, Algo::Fzy, match_type, vec![bonus]).unwrap();
 
         let total = lines_info.len();
 

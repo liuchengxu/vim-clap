@@ -140,7 +140,7 @@ if clap#maple#is_available()
   endfunction
 
   function! clap#job#regular#forerunner#start(cmd) abort
-    call s:run_maple_command(clap#maple#forerunner_exec_command(a:cmd))
+    call s:run_maple_command(clap#maple#command#exec_forerunner(a:cmd))
   endfunction
 else
   function! clap#job#regular#forerunner#start(cmd) abort
