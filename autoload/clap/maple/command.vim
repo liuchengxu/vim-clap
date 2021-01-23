@@ -8,7 +8,7 @@ let s:maple_bin = clap#maple#binary()
 
 let s:can_enable_icon = ['files', 'git_files']
 
-function! clap#maple#command#grep_sync(cmd, query, enable_icon, glob) abort
+function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
   let global_opt = ['--number', g:clap.display.preload_capacity]
 
   if a:enable_icon
@@ -74,7 +74,7 @@ function! clap#maple#command#filter_sync(query) abort
 
   if g:clap.provider.id ==# 'files'
     let tmp = tempname()
-    call writefile(clap#util#get_mru_list(), tmp)
+    call writefile(clap#util#recent_files(), tmp)
     call add(global_opt, printf('--recent-files=%s', tmp))
 
     call add(global_opt, printf('--bonus=%s', clap#filter#get_bonus_type()))
@@ -93,10 +93,9 @@ function! clap#maple#command#tags(is_forerunner) abort
     call add(global_opt, '--icon-painter=ProjTags')
   endif
 
+  let subcommand = ['tags', '', clap#rooter#working_dir()]
   if a:is_forerunner
-    let subcommand = ['tags', '', clap#rooter#working_dir(), '--forerunner']
-  else
-    let subcommand = ['tags', '', clap#rooter#working_dir()]
+    call add(subcommand, '--forerunner')
   endif
 
   return [s:maple_bin] + global_opt + subcommand

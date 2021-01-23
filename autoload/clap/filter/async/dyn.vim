@@ -49,7 +49,7 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
     endif
     if !exists('g:__clap_recent_files_dyn_tmp')
       let g:__clap_recent_files_dyn_tmp = tempname()
-      call writefile(clap#util#get_mru_list(), g:__clap_recent_files_dyn_tmp)
+      call writefile(clap#util#recent_files(), g:__clap_recent_files_dyn_tmp)
     endif
     let recent_files_opt = [printf('--recent-files=%s', g:__clap_recent_files_dyn_tmp)]
   else

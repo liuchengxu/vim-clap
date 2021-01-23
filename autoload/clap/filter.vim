@@ -91,12 +91,6 @@ else
   if s:can_use_python
     let s:current_filter_impl = 'Python'
 
-    function! s:recent_files() abort
-      return map(
-            \ filter(map(keys(g:__clap_buffers), 'bufname(str2nr(v:val))'), '!empty(v:val)'),
-            \ 'fnamemodify(v:val, ":p")')
-    endfunction
-
     function! clap#filter#sync(query, candidates) abort
       try
         return clap#filter#sync#python#(
@@ -106,7 +100,7 @@ else
               \ s:enable_icon(),
               \ s:match_type(),
               \ clap#filter#get_bonus_type(),
-              \ s:recent_files(),
+              \ clap#util#recent_files(),
               \ )
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
