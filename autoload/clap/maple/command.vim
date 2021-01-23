@@ -9,10 +9,10 @@ let s:maple_bin = clap#maple#binary()
 let s:can_enable_icon = ['files', 'git_files']
 
 function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
-  let global_opt = ['--number', g:clap.display.preload_capacity]
+  let global_opts = ['--number', g:clap.display.preload_capacity]
 
   if a:enable_icon
-    call add(global_opt, '--icon-painter=Grep')
+    call add(global_opts, '--icon-painter=Grep')
   endif
 
   let subcommand = [
@@ -26,15 +26,15 @@ function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abor
     let subcommand += ['--glob', a:glob]
   endif
 
-  call clap#job#regular#maple#start([s:maple_bin] + global_opt + subcommand)
+  call clap#job#regular#maple#start([s:maple_bin] + global_opts + subcommand)
 endfunction
 
 function! clap#maple#command#ripgrep_forerunner() abort
   " TODO: add max_output
-  let global_opt = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
+  let global_opts = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
 
   if has_key(g:clap.context, 'no-cache')
-    call add(global_opt, '--no-cache')
+    call add(global_opts, '--no-cache')
   endif
 
   let subcommand = [
@@ -43,7 +43,7 @@ function! clap#maple#command#ripgrep_forerunner() abort
         \ '--output-threshold', clap#filter#capacity(),
         \ ]
 
-  return [s:maple_bin] + global_opt + subcommand
+  return [s:maple_bin] + global_opts + subcommand
 endfunction
 
 function! s:inject_icon_painter_opt(opts) abort
@@ -60,10 +60,10 @@ endfunction
 
 function! clap#maple#command#exec_forerunner(cmd) abort
   " No global --number option.
-  let global_opt = s:inject_icon_painter_opt([])
+  let global_opts = s:inject_icon_painter_opt([])
 
   if has_key(g:clap.context, 'no-cache')
-    call add(global_opt, '--no-cache')
+    call add(global_opts, '--no-cache')
   endif
 
   let subcommand = [
@@ -72,7 +72,7 @@ function! clap#maple#command#exec_forerunner(cmd) abort
         \ '--output-threshold', clap#filter#capacity(),
         \ ]
 
-  return [s:maple_bin] + global_opt + subcommand
+  return [s:maple_bin] + global_opts + subcommand
 endfunction
 
 " Returns the filtered results after the input stream is complete.
@@ -122,7 +122,7 @@ endfunction
 
 function! clap#maple#command#tags(is_forerunner) abort
   let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
-  let global_opts = s:inject_icon_painter_opt(global_opt)
+  let global_opts = s:inject_icon_painter_opt(global_opts)
 
   let subcommand = ['tags', '', clap#rooter#working_dir()]
   if a:is_forerunner
