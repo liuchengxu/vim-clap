@@ -56,8 +56,6 @@ function! s:match_type() abort
   return exists('g:__clap_match_type_enum') ? g:__clap_match_type_enum : 'Full'
 endfunction
 
-let s:can_use_lua = v:false
-
 if get(g:, 'clap_force_matchfuzzy', v:false)
   let s:current_filter_impl = 'VimL'
   if !exists('*matchfuzzypos')
