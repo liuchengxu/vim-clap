@@ -1,7 +1,9 @@
-use super::types::{GlobalEnv, Message};
+use std::ops::Deref;
+
 use log::debug;
 use once_cell::sync::OnceCell;
-use std::ops::Deref;
+
+use super::types::{GlobalEnv, Message};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 

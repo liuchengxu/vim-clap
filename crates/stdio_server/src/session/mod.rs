@@ -3,16 +3,17 @@ mod forerunner;
 mod handler;
 mod manager;
 
-use super::*;
-use crate::types::ProviderId;
 use anyhow::Result;
 
-pub use context::SessionContext;
-pub use handler::{
+use super::*;
+use crate::types::ProviderId;
+
+pub use self::context::SessionContext;
+pub use self::handler::{
     on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler},
     HandleMessage, RpcMessage,
 };
-pub use manager::{Manager, NewSession, OpaqueSession};
+pub use self::manager::{Manager, NewSession, OpaqueSession};
 
 pub type SessionId = u64;
 

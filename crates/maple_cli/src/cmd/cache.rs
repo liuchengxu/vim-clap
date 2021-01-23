@@ -1,10 +1,12 @@
-use anyhow::{anyhow, Result};
-use icon::IconPainter;
 use std::fs::{read_dir, DirEntry, File};
 use std::io::Write;
 use std::path::{self, PathBuf};
 use std::time::SystemTime;
+
+use anyhow::{anyhow, Result};
 use structopt::StructOpt;
+
+use icon::IconPainter;
 use utility::{
     calculate_hash, clap_cache_dir, get_cached_entry, read_first_lines, remove_dir_contents,
 };

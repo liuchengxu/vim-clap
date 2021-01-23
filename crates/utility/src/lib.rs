@@ -1,6 +1,5 @@
 //! Various utility functions for caching and file management.
 
-use anyhow::{anyhow, Result};
 use std::collections::hash_map::DefaultHasher;
 use std::ffi::OsStr;
 use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
@@ -8,6 +7,8 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+
+use anyhow::{anyhow, Result};
 
 pub const CLAP_CACHE: &str = "vim.clap";
 

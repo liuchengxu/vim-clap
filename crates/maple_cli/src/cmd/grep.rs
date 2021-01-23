@@ -1,16 +1,19 @@
-use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
-use crate::light_command::{set_current_dir, LightCommand};
+use std::path::PathBuf;
+use std::process::Command;
+
 use anyhow::{Context, Result};
+use structopt::StructOpt;
+
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess::Exec,
     Source,
 };
 use icon::IconPainter;
-use std::path::PathBuf;
-use std::process::Command;
-use structopt::StructOpt;
 use utility::is_git_repo;
+
+use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
+use crate::light_command::{set_current_dir, LightCommand};
 
 const RG_ARGS: [&str; 7] = [
     "rg",

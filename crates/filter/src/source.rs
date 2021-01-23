@@ -1,8 +1,10 @@
-use super::*;
 use std::io::BufRead;
 use std::path::PathBuf;
+
 #[cfg(feature = "enable_dyn")]
 use subprocess::Exec;
+
+use super::*;
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]

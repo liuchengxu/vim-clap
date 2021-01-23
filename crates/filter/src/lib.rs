@@ -10,13 +10,14 @@ mod dynamic;
 mod source;
 
 use anyhow::Result;
-use matcher::{Algo, Bonus, MatchType, Matcher};
 use rayon::prelude::*;
+
+use matcher::{Algo, Bonus, MatchType, Matcher};
 use source_item::SourceItem;
 
-pub use dynamic::dyn_run;
+pub use self::dynamic::dyn_run;
+pub use self::source::Source;
 pub use matcher;
-pub use source::Source;
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
 

@@ -3,13 +3,15 @@ mod filer;
 mod session;
 mod types;
 
+use std::io::prelude::*;
+use std::thread;
+
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use serde::Serialize;
 use serde_json::json;
+
 use session::{Manager, SessionEvent};
-use std::io::prelude::*;
-use std::thread;
 use types::Message;
 
 fn write_response<T: Serialize>(msg: T) {

@@ -1,12 +1,14 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
+use structopt::StructOpt;
+
 use filter::{
     matcher::{Algo, Bonus, MatchType},
     subprocess, Source,
 };
 use icon::IconPainter;
 use source_item::SourceItem;
-use std::path::PathBuf;
-use structopt::StructOpt;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {

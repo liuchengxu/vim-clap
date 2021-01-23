@@ -3,6 +3,7 @@ mod constants;
 pub use constants::*;
 
 use std::path::Path;
+
 use structopt::clap::arg_enum;
 
 pub const DEFAULT_ICON: char = '';

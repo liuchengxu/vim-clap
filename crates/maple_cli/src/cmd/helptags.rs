@@ -1,7 +1,9 @@
-use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use anyhow::Result;
 use structopt::StructOpt;
+
 use utility::read_lines;
 
 /// Parse and display Vim helptags.

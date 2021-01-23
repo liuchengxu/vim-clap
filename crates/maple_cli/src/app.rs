@@ -1,7 +1,7 @@
 use anyhow::Result;
+use structopt::{clap::AppSettings, StructOpt};
+
 use icon::IconPainter;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {

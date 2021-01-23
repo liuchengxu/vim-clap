@@ -1,9 +1,10 @@
 //! Regex patterns and utilities used for manipulating the line.
 
+use std::path::PathBuf;
+
 use lazy_static::lazy_static;
 use log::error;
 use regex::Regex;
-use std::path::PathBuf;
 
 lazy_static! {
   static ref GREP_POS: Regex = Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
