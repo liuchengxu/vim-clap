@@ -17,9 +17,9 @@ function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abor
 
   let subcommand = [
         \ 'grep', a:query,
-        \ '--sync',
         \ '--grep-cmd', a:cmd,
         \ '--cmd-dir', clap#rooter#working_dir(),
+        \ '--sync',
         \ ]
 
   if a:glob isnot v:null
@@ -46,14 +46,21 @@ function! clap#maple#command#ripgrep_forerunner() abort
   return [s:maple_bin] + global_opt + subcommand
 endfunction
 
+function! s:inject_icon_painter_opt(opts) abort
+  let global_opts = a:opts
+  if g:clap_enable_icon
+    if index(['files', 'git_files'], g:clap.provider.id) > -1
+      call add(global_opts, '--icon-painter=File')
+    elseif 'proj_tags' ==# g:clap.provider.id
+      call add(global_opts, '--icon-painter=ProjTags')
+    endif
+  endif
+  return global_opts
+endfunction
+
 function! clap#maple#command#exec_forerunner(cmd) abort
   " No global --number option.
-  if g:clap_enable_icon
-        \ && index(s:can_enable_icon, g:clap.provider.id) > -1
-    let global_opt = ['--icon-painter=File']
-  else
-    let global_opt = []
-  endif
+  let global_opt = s:inject_icon_painter_opt([])
 
   if has_key(g:clap.context, 'no-cache')
     call add(global_opt, '--no-cache')
@@ -70,35 +77,59 @@ endfunction
 
 " Returns the filtered results after the input stream is complete.
 function! clap#maple#command#filter_sync(query) abort
-  let global_opt = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
+  let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
   if g:clap.provider.id ==# 'files'
     let tmp = tempname()
     call writefile(clap#util#recent_files(), tmp)
-    call add(global_opt, printf('--recent-files=%s', tmp))
+    call add(global_opts, printf('--recent-files=%s', tmp))
 
-    call add(global_opt, printf('--bonus=%s', clap#filter#get_bonus_type()))
+    call add(global_opts, printf('--bonus=%s', clap#filter#get_bonus_type()))
     if g:clap_enable_icon
-      call add(global_opt, '--icon-painter=File')
+      call add(global_opts, '--icon-painter=File')
     endif
   endif
 
-  return [s:maple_bin] + global_opt + ['filter', a:query, '--sync']
+  return [s:maple_bin] + global_opts + ['filter', a:query, '--sync']
+endfunction
+
+function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
+  let global_opts = ['--number', a:dyn_size, '--winwidth', winwidth(g:clap.display.winid)]
+  let global_opts = s:inject_icon_painter_opt(global_opts)
+
+  let subcommand = [
+        \ 'filter', g:.clap.input.get(),
+        \ '--input', a:tempfile,
+        \ ]
+
+  if g:clap.provider.id ==# 'files'
+    if has_key(g:clap.context, 'name-only')
+      call add(subcommand, '--match-type=FileName')
+    endif
+    if !exists('g:__clap_recent_files_dyn_tmp')
+      let g:__clap_recent_files_dyn_tmp = tempname()
+      call writefile(clap#util#recent_files(), g:__clap_recent_files_dyn_tmp)
+    endif
+    call add(subcommand, printf('--recent-files=%s', g:__clap_recent_files_dyn_tmp))
+  else
+    if g:clap.provider.id ==# 'proj_tags'
+      call add(subcommand, '--match-type=TagName')
+    endif
+  endif
+
+  return [s:maple_bin] + global_opts + subcommand
 endfunction
 
 function! clap#maple#command#tags(is_forerunner) abort
-  let global_opt = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
-
-  if g:clap_enable_icon
-    call add(global_opt, '--icon-painter=ProjTags')
-  endif
+  let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+  let global_opts = s:inject_icon_painter_opt(global_opt)
 
   let subcommand = ['tags', '', clap#rooter#working_dir()]
   if a:is_forerunner
     call add(subcommand, '--forerunner')
   endif
 
-  return [s:maple_bin] + global_opt + subcommand
+  return [s:maple_bin] + global_opts + subcommand
 endfunction
 
 function! clap#maple#command#blines() abort
