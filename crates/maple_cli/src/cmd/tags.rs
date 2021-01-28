@@ -1,14 +1,17 @@
-use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
+
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use structopt::StructOpt;
+
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess, Source,
 };
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use structopt::StructOpt;
+
+use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
@@ -158,7 +161,7 @@ impl Tags {
                 None,
                 icon_painter,
                 MatchType::TagName,
-                Bonus::None,
+                vec![Bonus::None],
             )?;
         }
 

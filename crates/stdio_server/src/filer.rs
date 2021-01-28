@@ -1,15 +1,18 @@
+use std::path::{self, Path, PathBuf};
+use std::{fs, io};
+
+use anyhow::Result;
+use crossbeam_channel::Sender;
+use log::debug;
+use serde_json::json;
+
+use icon::prepend_filer_icon;
+
 use super::{write_response, Message};
 use crate::session::{
     build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
     SessionContext, SessionEvent,
 };
-use anyhow::Result;
-use crossbeam_channel::Sender;
-use icon::prepend_filer_icon;
-use log::debug;
-use serde_json::json;
-use std::path::{self, Path, PathBuf};
-use std::{fs, io};
 
 /// Display the inner path in a nicer way.
 struct DisplayPath {

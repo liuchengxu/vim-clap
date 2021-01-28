@@ -1,9 +1,12 @@
-use crate::light_command::{set_current_dir, LightCommand};
-use anyhow::Result;
-use icon::IconPainter;
 use std::path::PathBuf;
 use std::process::Command;
+
+use anyhow::Result;
 use structopt::StructOpt;
+
+use icon::IconPainter;
+
+use crate::light_command::{set_current_dir, LightCommand};
 
 /// Execute the shell command
 #[derive(StructOpt, Debug, Clone)]

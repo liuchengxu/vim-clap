@@ -1,11 +1,14 @@
-use crate::cmd::cache::CacheEntry;
-use anyhow::{anyhow, Result};
-use icon::IconPainter;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
+
+use anyhow::{anyhow, Result};
+
+use icon::IconPainter;
 use utility::{get_cached_entry, read_first_lines, remove_dir_contents};
+
+use crate::cmd::cache::CacheEntry;
 
 /// Remove the last element if it's empty string.
 #[inline]

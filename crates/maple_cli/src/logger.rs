@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Result;
 use log::{debug, LevelFilter};
 use log4rs::{
@@ -5,7 +7,6 @@ use log4rs::{
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
-use std::path::Path;
 
 pub fn init<P: AsRef<Path>>(log_path: P) -> Result<()> {
     let encoder = PatternEncoder::new(

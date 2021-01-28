@@ -1,12 +1,22 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
+use structopt::StructOpt;
+
 use filter::{
     matcher::{Algo, Bonus, MatchType},
     subprocess, Source,
 };
 use icon::IconPainter;
 use source_item::SourceItem;
-use std::path::PathBuf;
-use structopt::StructOpt;
+
+fn parse_bonus(s: &str) -> Bonus {
+    if s.to_lowercase().as_str() == "filename" {
+        Bonus::FileName
+    } else {
+        Bonus::None
+    }
+}
 
 /// Execute the shell command
 #[derive(StructOpt, Debug, Clone)]
@@ -27,8 +37,12 @@ pub struct Filter {
     #[structopt(short, long)]
     cmd_dir: Option<String>,
 
+    /// Recently opened file list for adding a bonus to the initial score.
+    #[structopt(long, parse(from_os_str))]
+    recent_files: Option<PathBuf>,
+
     /// Read input from a file instead of stdin, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
@@ -36,7 +50,7 @@ pub struct Filter {
     match_type: Option<MatchType>,
 
     /// Add a bonus to the score of base matching algorithm.
-    #[structopt(short, long, possible_values = &Bonus::variants(), case_insensitive = true)]
+    #[structopt(short, long, parse(from_str = parse_bonus))]
     bonus: Option<Bonus>,
 
     /// Synchronous filtering, returns after the input stream is complete.
@@ -61,6 +75,24 @@ impl Filter {
         }
     }
 
+    fn get_bonuses(&self) -> Vec<Bonus> {
+        use std::io::BufRead;
+
+        let mut bonuses = vec![self.bonus.clone().unwrap_or_default()];
+        if let Some(ref recent_files) = self.recent_files {
+            // Ignore the error cases.
+            if let Ok(file) = std::fs::File::open(recent_files) {
+                let lines = std::io::BufReader::new(file)
+                    .lines()
+                    .filter_map(|x| x.ok())
+                    .collect();
+                bonuses.push(Bonus::RecentFiles(lines));
+            }
+        }
+
+        bonuses
+    }
+
     /// Returns the results until the input stream is complete.
     #[inline]
     fn sync_run(
@@ -74,7 +106,7 @@ impl Filter {
             self.generate_source(),
             self.algo.clone().unwrap_or(Algo::Fzy),
             self.match_type.clone().unwrap_or(MatchType::Full),
-            self.bonus.clone().unwrap_or_default(),
+            self.get_bonuses(),
         )?;
 
         printer::print_sync_filter_results(ranked, number, winwidth, icon_painter);
@@ -97,7 +129,7 @@ impl Filter {
             winwidth,
             icon_painter,
             self.match_type.clone().unwrap_or(MatchType::Full),
-            self.bonus.clone().unwrap_or_default(),
+            self.get_bonuses(),
         )
     }
 

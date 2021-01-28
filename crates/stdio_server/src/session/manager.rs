@@ -1,9 +1,11 @@
-use super::*;
-use crate::types::Message;
+use std::collections::HashMap;
+
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
-use std::collections::HashMap;
+
+use super::*;
+use crate::types::Message;
 
 /// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]

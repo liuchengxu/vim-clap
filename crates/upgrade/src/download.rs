@@ -1,7 +1,8 @@
-use anyhow::Result;
 use std::fs::File;
 use std::io::copy;
 use std::path::{Path, PathBuf};
+
+use anyhow::Result;
 
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {

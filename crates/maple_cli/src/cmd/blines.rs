@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
+use structopt::StructOpt;
+
 use filter::{
     matcher::{Bonus, MatchType},
     Source,
 };
-use std::path::PathBuf;
-use structopt::StructOpt;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(StructOpt, Debug, Clone)]
@@ -35,7 +37,7 @@ impl Blines {
             winwidth,
             None,
             MatchType::Full,
-            Bonus::None,
+            vec![Bonus::None],
         )
     }
 }

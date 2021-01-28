@@ -16,7 +16,7 @@ else
   let s:builtin_filter_capacity = 10000
 endif
 
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer']
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer', 'grep', 'grep2']
 
 function! s:enable_icon() abort
   if g:clap_enable_icon
@@ -90,9 +90,18 @@ else
 
   if s:can_use_python
     let s:current_filter_impl = 'Python'
+
     function! clap#filter#sync(query, candidates) abort
       try
-        return clap#filter#sync#python#(a:query, a:candidates, winwidth(g:clap.display.winid), s:enable_icon(), s:match_type(), clap#filter#get_bonus_type())
+        return clap#filter#sync#python#(
+              \ a:query,
+              \ a:candidates,
+              \ winwidth(g:clap.display.winid),
+              \ s:enable_icon(),
+              \ s:match_type(),
+              \ clap#filter#get_bonus_type(),
+              \ clap#util#recent_files(),
+              \ )
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
         return clap#filter#sync#viml#(a:query, a:candidates)

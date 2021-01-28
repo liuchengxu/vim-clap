@@ -1,9 +1,10 @@
 //! This crate provides the feature of diplaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
+use std::collections::HashMap;
+
 use icon::{IconPainter, ICON_LEN};
 use source_item::SourceItem;
-use std::collections::HashMap;
 use utility::{println_json, println_json_with_length};
 
 pub const DOTS: &str = "..";

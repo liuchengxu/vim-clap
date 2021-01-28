@@ -347,14 +347,14 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
     match_type: MatchType,
-    bonus: Bonus,
+    bonuses: Vec<Bonus>,
 ) -> Result<()> {
     let algo = if query.contains(' ') {
         Algo::SubString
     } else {
         algo.unwrap_or(Algo::Fzy)
     };
-    let scoring_matcher = matcher::Matcher::new(algo, match_type, bonus);
+    let scoring_matcher = matcher::Matcher::new_with_bonuses(algo, match_type, bonuses);
     let scorer = |item: &SourceItem| scoring_matcher.do_match(item, query);
     if let Some(number) = number {
         let (total, mut filtered) = match source {
@@ -462,7 +462,7 @@ mod tests {
             None,
             None,
             MatchType::Full,
-            Bonus::None,
+            vec![Bonus::None],
         )
         .unwrap()
     }

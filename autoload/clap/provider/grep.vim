@@ -138,7 +138,7 @@ function! s:spawn(query) abort
   if clap#maple#is_available()
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#run_sync_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
+    call clap#maple#command#start_grep_sync(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
     if s:grep_enable_icon
       let s:icon_appended = v:true
     endif
@@ -308,7 +308,7 @@ endif
 function! s:grep.init() abort
   if clap#maple#is_available()
     call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#ripgrep_forerunner_command())
+    call clap#job#regular#forerunner#start_command(clap#maple#command#ripgrep_forerunner())
   endif
 endfunction
 

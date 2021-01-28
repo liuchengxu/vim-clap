@@ -29,28 +29,10 @@ endfunction
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   let s:last_query = g:clap.input.get()
 
-  if g:clap_enable_icon
-    if index(['files', 'git_files'], g:clap.provider.id) > -1
-      let enable_icon_opt = ['--icon-painter=File']
-    elseif 'proj_tags' ==# g:clap.provider.id
-      let enable_icon_opt = ['--icon-painter=ProjTags']
-    else
-      let enable_icon_opt = []
-    endif
-  else
-    let enable_icon_opt = []
-  endif
-
-  if g:clap.provider.id ==# 'files' && has_key(g:clap.context, 'name-only')
-    let match_type = ['--match-type=FileName']
-  elseif g:clap.provider.id ==# 'proj_tags'
-    let match_type = ['--match-type=TagName']
-  else
-    let match_type = []
-  endif
-
-  let filter_cmd = clap#maple#build_cmd_list(enable_icon_opt + ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--input', a:tempfile] + match_type)
-  call clap#job#stdio#start_service(function('s:handle_message'), filter_cmd)
+  call clap#job#stdio#start_service(
+        \ function('s:handle_message'),
+        \ clap#maple#command#filter_dyn(s:DYN_ITEMS_TO_SHOW, a:tempfile),
+        \ )
 endfunction
 
 function! s:grep_cmd_common() abort

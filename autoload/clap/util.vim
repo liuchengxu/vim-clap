@@ -138,6 +138,10 @@ function! clap#util#expand(args) abort
   return a:args
 endfunction
 
+function! clap#util#recent_files() abort
+  return map(filter(map(keys(g:__clap_buffers), 'bufname(str2nr(v:val))'), '!empty(v:val)'), 'fnamemodify(v:val, ":p")')
+endfunction
+
 function! clap#util#getfsize(fname) abort
   let l:size = getfsize(expand(a:fname))
   if l:size == 0 || l:size == -1 || l:size == -2
