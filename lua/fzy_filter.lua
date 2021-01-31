@@ -97,6 +97,11 @@ local function compare(a, b)
 end
 
 function fzy_filter.do_fuzzy_match(query, candidates, enable_icon, match_type)
+    -- https://cesarbs.org/blog/2009/10/23/why-luas-0-zero-as-a-true-value-makes-sense/
+    if enable_icon == 0 then
+      enable_icon = false
+    end
+
     scored = apply_fzy(query, candidates, enable_icon, match_type)
 
     ranked = {}
