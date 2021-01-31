@@ -152,7 +152,7 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    call add(candidates, s:build_create_file_line(query))
+    let candidates = candidates + [s:build_create_file_line(query)]
     call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
