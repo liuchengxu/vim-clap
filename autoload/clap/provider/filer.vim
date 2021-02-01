@@ -110,8 +110,12 @@ if has('nvim')
       call s:goto_parent()
     else
       call g:clap.input.set(input[:-2])
-      call s:filter_or_send_message()
+      if !s:is_in_empty_dir()
+        call s:filter_or_send_message()
+      endif
     endif
+
+    call s:try_set_create_file_prompt()
     return ''
   endfunction
 else
@@ -121,8 +125,12 @@ else
     if a:before_bs ==# ''
       call s:goto_parent()
     else
-      call s:filter_or_send_message()
+      if !s:is_in_empty_dir()
+        call s:filter_or_send_message()
+      endif
     endif
+
+    call s:try_set_create_file_prompt()
     return ''
   endfunction
 endif
@@ -133,6 +141,10 @@ function! s:back_action() abort
   return ''
 endfunction
 
+function! s:build_create_file_line(input) abort
+  return (g:clap_enable_icon ? ' ' : '') . a:input . s:CREATE_FILE
+endfunction
+
 function! s:do_filter() abort
   let query = g:clap.input.get()
   let candidates = s:filer_cache[s:current_dir]
@@ -140,8 +152,7 @@ function! s:do_filter() abort
     call g:clap.display.set_lines(candidates)
     call g:clap#display_win.shrink_if_undersize()
   else
-    let candidates = candidates +
-        \ [(g:clap_enable_icon ? ' ' : '') . query . s:CREATE_FILE]
+    let candidates = candidates + [s:build_create_file_line(query)]
     call clap#filter#on_typed(function('clap#filter#sync'), query, candidates)
   endif
 endfunction
@@ -273,7 +284,24 @@ function! s:filer_sink(selected) abort
   execute 'edit' s:get_entry_by_line(a:selected)
 endfunction
 
+function! s:is_in_empty_dir() abort
+  return g:clap.display.get_lines() == [s:DIRECTORY_IS_EMPTY]
+        \ || has_key(s:filer_empty_cache, s:current_dir)
+endfunction
+
+function! s:try_set_create_file_prompt() abort
+  if s:is_in_empty_dir()
+    call g:clap.display.set_lines([s:build_create_file_line(g:clap.input.get())])
+    return v:true
+  endif
+  return v:false
+endfunction
+
 function! s:filer_on_typed() abort
+  if s:try_set_create_file_prompt()
+    return ''
+  endif
+
   " <Tab> and <Backspace> also trigger the CursorMoved event.
   " s:filter_or_send_message() is already handled in tab and bs action,
   " on_typed handler only needs to take care of the filtering.
