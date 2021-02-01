@@ -14,6 +14,7 @@
 ### Fixed
 
 - Add `--color=never` to the default grep option. #609
+- Show create new file entry when in empty directory. #624
 
 ## [0.22] 2021-01-01
 
