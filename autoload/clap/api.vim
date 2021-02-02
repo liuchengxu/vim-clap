@@ -358,6 +358,14 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  let s:preview_timer = -1
+  function! s:preview_with_delay() abort
+    if s:preview_timer != -1
+      call timer_stop(s:preview_timer)
+    endif
+    let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke()})
+  endfunction
+
   " After you have typed something
   function! provider.on_typed() abort
     " If ++query is being used, we should do `on_typed`, ref #515.
@@ -366,6 +374,7 @@ function! s:init_provider() abort
     endif
     try
       call self._().on_typed()
+      call s:preview_with_delay()
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)
