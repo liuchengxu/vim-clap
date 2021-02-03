@@ -45,9 +45,16 @@ if clap#maple#is_available()
     endif
     call s:sync_run_with_delay()
   endfunction
+
+  function! clap#impl#on_move#async() abort
+    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
+  endfunction
 else
   function! s:dispatch_on_move_impl() abort
     call s:sync_run_with_delay()
+  endfunction
+
+  function! clap#impl#on_move#async() abort
   endfunction
 endif
 
@@ -59,6 +66,15 @@ function! clap#impl#on_move#invoke() abort
     call g:clap.provider._().on_move_async()
   elseif has_key(g:clap.provider._(), 'on_move')
     call s:dispatch_on_move_impl()
+  endif
+endfunction
+
+function! clap#impl#on_move#invoke_async() abort
+  if get(g:, '__clap_has_no_matches', v:false)
+    return
+  endif
+  if has_key(g:clap.provider._(), 'on_move_async')
+    call g:clap.provider._().on_move_async()
   endif
 endfunction
 

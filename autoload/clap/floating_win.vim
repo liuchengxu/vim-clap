@@ -365,7 +365,13 @@ function! clap#floating_win#preview.close() abort
 endfunction
 
 function! clap#floating_win#preview.hide() abort
-  call g:clap#floating_win#preview.close()
+  if !get(g:, 'clap_always_open_preview', 0)
+    call g:clap#floating_win#preview.close()
+  endif
+endfunction
+
+function! clap#floating_win#preview.clear() abort
+  call clap#util#nvim_buf_set_lines(s:preview_bufnr, [''])
 endfunction
 
 function! s:ensure_closed() abort

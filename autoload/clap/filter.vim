@@ -130,6 +130,7 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
     let l:lines = [g:clap_no_matches_msg]
     let g:__clap_has_no_matches = v:true
     call g:clap.display.set_lines_lazy(lines)
+    call g:clap.preview.clear()
     " In clap#state#refresh_matches_count() we reset the sign to the first line,
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.

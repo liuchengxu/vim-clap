@@ -359,11 +359,16 @@ function! s:init_provider() abort
   endfunction
 
   let s:preview_timer = -1
+  let s:preview_item = ''
   function! s:preview_with_delay() abort
     if s:preview_timer != -1
       call timer_stop(s:preview_timer)
     endif
-    let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke()})
+    if s:preview_item ==# g:clap.display.getcurline()
+      return
+    endif
+    let s:preview_item = g:clap.display.getcurline()
+    let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke_async()})
   endfunction
 
   " After you have typed something
