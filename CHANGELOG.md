@@ -16,6 +16,10 @@
 - Add `--color=never` to the default grep option. #609
 - Show create new file entry when in empty directory. #624
 
+### Internal
+
+- Introduce `MatchText` for passing more match context easier later. #626
+
 ## [0.22] 2021-01-01
 
 ### Added
