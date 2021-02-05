@@ -39,6 +39,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@master
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests under crates
       run: bash ci/run_test.sh
 
@@ -51,6 +58,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@master
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build maple
       run: cargo build --release
 
@@ -66,7 +80,7 @@ jobs:
     - name: Run Cargo test
       run: |
         cd pythonx/clap/fuzzymatch-rs
-        cargo test -- --no-default-features --nocapture
+        cargo test --no-default-features
     - name: Install Rustfmt
       run: rustup component add rustfmt
     - name: Check formatting
