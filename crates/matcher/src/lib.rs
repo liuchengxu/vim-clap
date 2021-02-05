@@ -66,6 +66,12 @@ impl From<&str> for Bonus {
     }
 }
 
+impl From<&String> for Bonus {
+    fn from(b: &String) -> Self {
+        b.as_str().into()
+    }
+}
+
 impl Bonus {
     /// Calculates the bonus score given the match result of base algorithm.
     pub fn bonus_for(&self, item: &SourceItem, score: Score, indices: &[usize]) -> Score {

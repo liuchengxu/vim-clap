@@ -92,16 +92,14 @@ else
     let s:current_filter_impl = 'Python'
 
     function! clap#filter#sync(query, candidates) abort
+      let context = {
+            \ 'winwidth': winwidth(g:clap.display.winid),
+            \ 'enable_icon': s:enable_icon(),
+            \ 'match_type': s:match_type(),
+            \ 'bonus_type': clap#filter#get_bonus_type(),
+            \ }
       try
-        return clap#filter#sync#python#(
-              \ a:query,
-              \ a:candidates,
-              \ winwidth(g:clap.display.winid),
-              \ s:enable_icon(),
-              \ s:match_type(),
-              \ clap#filter#get_bonus_type(),
-              \ clap#util#recent_files(),
-              \ )
+        return clap#filter#sync#python#(a:query, a:candidates, clap#util#recent_files(), context)
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
         return clap#filter#sync#viml#(a:query, a:candidates)

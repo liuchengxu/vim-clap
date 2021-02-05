@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use filter::matcher::{Algo, Bonus, Matcher};
+use filter::matcher::{Algo, Bonus, MatchType, Matcher};
 use printer::truncate_long_matched_lines;
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
@@ -16,26 +16,69 @@ type MatchedIndicesInBatch = Vec<Vec<usize>>;
 /// therefore hereby has to use HashMap<String, String> instead.
 type TruncatedMapInfo = HashMap<String, String>;
 
+#[derive(Debug, Clone)]
+struct MatchContext {
+    winwidth: usize,
+    enable_icon: bool,
+    match_type: MatchType,
+    bonus_type: Bonus,
+}
+
+const DEFAULT_WINWIDTH: usize = 80;
+
+impl From<HashMap<String, String>> for MatchContext {
+    fn from(ctx: HashMap<String, String>) -> Self {
+        let winwidth = ctx
+            .get("winwidth")
+            .map(|x| x.parse::<usize>().unwrap_or(DEFAULT_WINWIDTH))
+            .unwrap_or(DEFAULT_WINWIDTH);
+
+        let enable_icon = ctx
+            .get("enable_icon")
+            .map(|x| x.to_lowercase() == "true")
+            .unwrap_or(false);
+
+        let match_type = ctx
+            .get("match_type")
+            .map(Into::into)
+            .unwrap_or(MatchType::Full);
+
+        let bonus_type = ctx.get("bonus_type").map(Into::into).unwrap_or(Bonus::None);
+
+        Self {
+            winwidth,
+            enable_icon,
+            match_type,
+            bonus_type,
+        }
+    }
+}
+
 /// Filter the candidates given query using the fzy algorithm
 #[pyfunction]
 fn fuzzy_match(
     query: &str,
     candidates: Vec<String>,
-    winwidth: usize,
-    enable_icon: bool,
-    match_type: String,
-    bonus: String,
     recent_files: Vec<String>,
+    context: HashMap<String, String>,
 ) -> PyResult<(MatchedIndicesInBatch, LinesInBatch, TruncatedMapInfo)> {
+    let MatchContext {
+        winwidth,
+        enable_icon,
+        match_type,
+        bonus_type,
+    } = context.into();
+
     let matcher = Matcher::new_with_bonuses(
         if query.contains(' ') {
             Algo::SubString
         } else {
             Algo::Fzy
         },
-        match_type.into(),
-        vec![bonus.into(), Bonus::RecentFiles(recent_files)],
+        match_type,
+        vec![bonus_type, Bonus::RecentFiles(recent_files)],
     );
+
     let do_match = |line: &str| {
         if enable_icon {
             // " " is 4 bytes, but the offset of highlight is 2.
