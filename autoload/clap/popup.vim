@@ -293,9 +293,15 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! g:clap#popup#preview.hide() abort
-  if exists('s:preview_winid')
-    call popup_hide(s:preview_winid)
+  if !get(g:, 'clap_always_open_preview', 0)
+    if exists('s:preview_winid')
+      call popup_hide(s:preview_winid)
+    endif
   endif
+endfunction
+
+function! g:clap#popup#preview.clear() abort
+  silent call deletebufline(winbufnr(s:preview_winid), 1, '$')
 endfunction
 
 function! s:open_popup() abort
