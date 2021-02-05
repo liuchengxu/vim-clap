@@ -172,5 +172,5 @@ fn test_skip_icon() {
     .map(|(x, y)| (x.into(), y.into()))
     .collect();
 
-    println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context,));
+    println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context));
 }
