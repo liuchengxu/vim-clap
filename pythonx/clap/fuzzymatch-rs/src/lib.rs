@@ -169,7 +169,7 @@ fn test_skip_icon() {
         ("bonus_type", "FileName"),
     ]
     .into_iter()
-    .map((x, y)(x.into(), y.into()))
+    .map(|(x, y)| (x.into(), y.into()))
     .collect();
 
     println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context,));
