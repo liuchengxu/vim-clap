@@ -64,7 +64,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
     - name: Run Cargo test
-      run: cd pythonx/clap/fuzzymatch-rs && cargo test --no-default-features
+      run: |
+        cd pythonx/clap/fuzzymatch-rs
+        cargo test --no-default-features --nocapture
     - name: Install Rustfmt
       run: rustup component add rustfmt
     - name: Check formatting
