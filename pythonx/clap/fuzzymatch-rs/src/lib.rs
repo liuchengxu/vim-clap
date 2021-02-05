@@ -161,16 +161,15 @@ fn py_and_rs_subscore_should_work() {
 fn test_skip_icon() {
     let lines = vec![" .dependabot/config.yml".into(), " .editorconfig".into()];
     let query = "con";
-    println!(
-        "ret: {:#?}",
-        fuzzy_match(
-            query,
-            lines,
-            62,
-            true,
-            "Full".into(),
-            "FileName".into(),
-            vec![]
-        )
-    );
+
+    let context: HashMap<String, String> = vec![
+        ("winwidth", "62"),
+        ("enable_icon", "True"),
+        ("match_type", "Full"),
+        ("bonus_type", "FileName"),
+    ]
+    .into_iter()
+    .collect();
+
+    println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context,));
 }
