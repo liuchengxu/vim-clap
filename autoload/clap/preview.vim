@@ -113,6 +113,21 @@ function! clap#preview#show_lines(lines, syntax, hi_lnum) abort
   endif
 endfunction
 
+let s:preview_timer = -1
+let s:last_preview_line = ''
+
+function! clap#preview#open_with_delay() abort
+  if s:preview_timer != -1
+    call timer_stop(s:preview_timer)
+  endif
+  let curline = g:clap.display.getcurline()
+  if s:last_preview_line ==# curline
+    return
+  endif
+  let s:last_preview_line = curline
+  let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke_async()})
+endfunction
+
 if has('nvim')
   let s:header_ns_id = nvim_create_namespace('clap_preview_header')
   " Sometimes the first line of preview window is used for the header.
