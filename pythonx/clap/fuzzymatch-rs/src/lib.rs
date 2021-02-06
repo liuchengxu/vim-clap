@@ -16,6 +16,8 @@ type MatchedIndicesInBatch = Vec<Vec<usize>>;
 /// therefore hereby has to use HashMap<String, String> instead.
 type TruncatedMapInfo = HashMap<String, String>;
 
+const DEFAULT_WINWIDTH: usize = 80;
+
 #[derive(Debug, Clone)]
 struct MatchContext {
     winwidth: usize,
@@ -23,8 +25,6 @@ struct MatchContext {
     match_type: MatchType,
     bonus_type: Bonus,
 }
-
-const DEFAULT_WINWIDTH: usize = 80;
 
 impl From<HashMap<String, String>> for MatchContext {
     fn from(ctx: HashMap<String, String>) -> Self {
@@ -54,7 +54,9 @@ impl From<HashMap<String, String>> for MatchContext {
     }
 }
 
-/// Filter the candidates given query using the fzy algorithm
+/// Filter the candidates synchorously given `query` and `candidates`.
+///
+/// `recent_files` and `context` are the full context for matching each item.
 #[pyfunction]
 fn fuzzy_match(
     query: &str,
@@ -101,12 +103,8 @@ fn fuzzy_match(
     let skipped = if enable_icon { Some(2) } else { None };
     let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, skipped);
 
-    let mut indices = Vec::with_capacity(lines.len());
-    let mut filtered = Vec::with_capacity(lines.len());
-    for (text, _, ids) in lines.into_iter() {
-        indices.push(ids);
-        filtered.push(text);
-    }
+    let (filtered, indices): (Vec<_>, Vec<_>) =
+        lines.into_iter().map(|(text, _, ids)| (text, ids)).unzip();
 
     Ok((
         indices,
