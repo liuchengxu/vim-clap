@@ -30,7 +30,7 @@ impl From<HashMap<String, String>> for MatchContext {
     fn from(ctx: HashMap<String, String>) -> Self {
         let winwidth = ctx
             .get("winwidth")
-            .map(|x| x.parse::<usize>().unwrap_or(DEFAULT_WINWIDTH))
+            .and_then(|x| x.parse::<usize>().ok())
             .unwrap_or(DEFAULT_WINWIDTH);
 
         let enable_icon = ctx
