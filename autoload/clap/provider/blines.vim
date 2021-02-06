@@ -71,6 +71,7 @@ endfunction
 " `blines` provider, so we did a hard code for blines provider here.
 let s:blines.source_type = g:__t_func_list
 let s:blines['sink*'] = function('s:blines_sink_star')
+let s:blines.on_move_async = function('clap#impl#on_move#async')
 let g:clap#provider#blines# = s:blines
 
 let &cpoptions = s:save_cpo
