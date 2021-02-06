@@ -14,6 +14,7 @@ function! s:handle_message(msg) abort
   endif
 
   call clap#state#handle_message(a:msg)
+  call clap#preview#open_with_delay()
 endfunction
 
 function! clap#filter#async#dyn#start_directly(maple_cmd) abort
