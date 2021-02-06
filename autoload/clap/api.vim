@@ -359,15 +359,16 @@ function! s:init_provider() abort
   endfunction
 
   let s:preview_timer = -1
-  let s:preview_item = ''
-  function! s:preview_with_delay() abort
+  let s:last_preview_line = ''
+  function! s:open_preview_with_delay() abort
     if s:preview_timer != -1
       call timer_stop(s:preview_timer)
     endif
-    if s:preview_item ==# g:clap.display.getcurline()
+    let curline = g:clap.display.getcurline()
+    if s:last_preview_line ==# curline
       return
     endif
-    let s:preview_item = g:clap.display.getcurline()
+    let s:last_preview_line = curline
     let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke_async()})
   endfunction
 
@@ -379,7 +380,7 @@ function! s:init_provider() abort
     endif
     try
       call self._().on_typed()
-      call s:preview_with_delay()
+      call s:open_preview_with_delay()
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)
