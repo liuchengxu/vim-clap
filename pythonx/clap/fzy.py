@@ -52,7 +52,7 @@ def fuzzy_match_py(query, candidates, enable_icon):
 
 def clap_fzy_py():
     return fuzzy_match_py(vim.eval("a:query"), vim.eval("a:candidates"),
-                          str2bool(vim.eval("a:enable_icon")))
+                          str2bool(vim.eval("a:context")['enable_icon']))
 
 
 try:
@@ -60,9 +60,7 @@ try:
 
     def clap_fzy_rs():
         return fuzzy_match_rs(vim.eval("a:query"), vim.eval("a:candidates"),
-                              int(vim.eval("a:winwidth")),
-                              str2bool(vim.eval("a:enable_icon")),
-                              vim.eval("a:match_type"), vim.eval("a:bonus"),
-                              vim.eval("a:recent_files"))
+                              vim.eval("a:recent_files"),
+                              vim.eval("a:context"))
 except Exception:
     pass

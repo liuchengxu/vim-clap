@@ -21,6 +21,12 @@ impl From<String> for MatchType {
     }
 }
 
+impl From<&String> for MatchType {
+    fn from(match_type: &String) -> Self {
+        match_type.as_str().into()
+    }
+}
+
 impl From<&str> for MatchType {
     fn from(match_type: &str) -> Self {
         match match_type.to_lowercase().as_str() {
