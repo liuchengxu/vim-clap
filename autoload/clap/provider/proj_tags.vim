@@ -19,17 +19,7 @@ if !s:support_json_format
 endif
 
 function! s:proj_tags.on_typed() abort
-  if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-  elseif exists('g:__clap_forerunner_result')
-    let query = g:clap.input.get()
-    if query ==# ''
-      return
-    endif
-    call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
-  else
-    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
-  endif
+  call clap#impl#on_typed#async_with_cmd(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
 endfunction
 
 function! s:proj_tags.init() abort

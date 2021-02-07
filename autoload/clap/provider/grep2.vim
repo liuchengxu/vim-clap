@@ -11,20 +11,6 @@ if !executable('rg')
   finish
 endif
 
-function! s:grep2.on_typed()
-  if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#grep_from_cache(g:__clap_forerunner_tempfile)
-  elseif exists('g:__clap_forerunner_result')
-    let query = g:clap.input.get()
-    if query ==# ''
-      return
-    endif
-    call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
-  else
-    call clap#filter#async#dyn#start_grep()
-  endif
-endfunction
-
 function! s:grep2.init() abort
   let g:__clap_match_type_enum = 'IgnoreFilePath'
   call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
@@ -38,6 +24,7 @@ function! s:grep2.exit() abort
   unlet g:__clap_match_type_enum
 endfunction
 
+let s:grep2.on_typed = function('clap#impl#on_typed#async_grep')
 let s:grep2.sink = g:clap#provider#grep#.sink
 let s:grep2['sink*'] = g:clap#provider#grep#['sink*']
 let s:grep2.on_move = g:clap#provider#grep#.on_move
