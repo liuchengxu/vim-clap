@@ -110,32 +110,35 @@ pub fn truncate_long_matched_lines<T>(
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn process_top_items<T>(
-    top_size: usize,
     top_list: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
     let (truncated_lines, truncated_map) =
         truncate_long_matched_lines(top_list, winwidth.unwrap_or(62), None);
-    let mut lines = Vec::with_capacity(top_size);
-    let mut indices = Vec::with_capacity(top_size);
     if let Some(painter) = icon_painter {
-        for (idx, (text, _, idxs)) in truncated_lines.iter().enumerate() {
-            let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
-                format!("{} {}", painter.get_icon(origin_text), text)
-            } else {
-                painter.paint(&text)
-            };
-            lines.push(iconized);
-            indices.push(idxs.iter().map(|x| x + ICON_LEN).collect());
-        }
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = truncated_lines
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (text, _, idxs))| {
+                let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
+                    format!("{} {}", painter.get_icon(origin_text), text)
+                } else {
+                    painter.paint(&text)
+                };
+                (iconized, idxs.iter().map(|x| x + ICON_LEN).collect())
+            })
+            .unzip();
+
+        (lines, indices, truncated_map)
     } else {
-        for (text, _, idxs) in truncated_lines {
-            lines.push(text);
-            indices.push(idxs);
-        }
+        let (lines, indices): (Vec<_>, Vec<_>) = truncated_lines
+            .into_iter()
+            .map(|(text, _, idxs)| (text, idxs))
+            .unzip();
+
+        (lines, indices, truncated_map)
     }
-    (lines, indices, truncated_map)
 }
 
 /// Prints the results of filter::sync_run() to stdout.
@@ -147,12 +150,8 @@ pub fn print_sync_filter_results(
 ) {
     if let Some(number) = number {
         let total = ranked.len();
-        let (lines, indices, truncated_map) = process_top_items(
-            number,
-            ranked.into_iter().take(number),
-            winwidth,
-            icon_painter,
-        );
+        let (lines, indices, truncated_map) =
+            process_top_items(ranked.into_iter().take(number), winwidth, icon_painter);
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);
         } else {
@@ -174,12 +173,8 @@ pub fn print_dyn_filter_results(
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
 ) {
-    let (lines, indices, truncated_map) = process_top_items(
-        number,
-        ranked.into_iter().take(number),
-        winwidth,
-        icon_painter,
-    );
+    let (lines, indices, truncated_map) =
+        process_top_items(ranked.into_iter().take(number), winwidth, icon_painter);
 
     if truncated_map.is_empty() {
         println_json_with_length!(total, lines, indices);
