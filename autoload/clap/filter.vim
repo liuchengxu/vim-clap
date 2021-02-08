@@ -133,7 +133,9 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.
     call clap#state#refresh_matches_count(0)
-    call g:clap.preview.hide()
+    if !get(g:, 'clap_always_open_preview', 0)
+      call g:clap.preview.hide()
+    endif
   else
     let g:__clap_has_no_matches = v:false
     call g:clap.display.set_lines_lazy(lines)

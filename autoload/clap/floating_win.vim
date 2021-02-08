@@ -84,23 +84,27 @@ function! g:clap#floating_win#display.open() abort
 endfunction
 
 function! g:clap#floating_win#display.shrink_if_undersize() abort
-  let opts = nvim_win_get_config(s:display_winid)
-  if g:clap.display.line_count() < s:display_opts.height
-    let opts.height = g:clap.display.line_count()
-  else
-    let opts.height = s:display_opts.height
+  if 0
+    let opts = nvim_win_get_config(s:display_winid)
+    if g:clap.display.line_count() < s:display_opts.height
+      let opts.height = g:clap.display.line_count()
+    else
+      let opts.height = s:display_opts.height
+    endif
+    call nvim_win_set_config(s:display_winid, opts)
+    call s:try_adjust_preview()
   endif
-  call nvim_win_set_config(s:display_winid, opts)
-  call s:try_adjust_preview()
 endfunction
 
 function! g:clap#floating_win#display.shrink() abort
-  let height = g:clap.display.line_count()
-  let opts = nvim_win_get_config(s:display_winid)
-  if opts.height != height
-    let opts.height = height
-    call nvim_win_set_config(s:display_winid, opts)
-    call s:try_adjust_preview()
+  if 0
+    let height = g:clap.display.line_count()
+    let opts = nvim_win_get_config(s:display_winid)
+    if opts.height != height
+      let opts.height = height
+      call nvim_win_set_config(s:display_winid, opts)
+      call s:try_adjust_preview()
+    endif
   endif
 endfunction
 

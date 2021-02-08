@@ -7,12 +7,12 @@ set cpoptions&vim
 function! s:try_cache_and_then_run_dyn(DynRun) abort
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-  elseif exists('g:__clap_forerunner_result')
-    let query = g:clap.input.get()
-    if query ==# ''
-      return
-    endif
-    call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
+  " elseif exists('g:__clap_forerunner_result')
+    " let query = g:clap.input.get()
+    " if query ==# ''
+      " return
+    " endif
+    " call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
     call a:DynRun()
   endif
