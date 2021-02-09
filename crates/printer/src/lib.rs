@@ -7,8 +7,8 @@ use icon::{IconPainter, ICON_LEN};
 use source_item::SourceItem;
 use utility::{println_json, println_json_with_length};
 
-pub const DOTS: &str = "..";
-pub const DOTS_LEN: usize = DOTS.len();
+const DOTS: &str = "..";
+const DOTS_LEN: usize = DOTS.len();
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
@@ -90,8 +90,8 @@ impl Printer {
             let last_idx = indices.last().expect("indices is not empty; qed");
             let span = last_idx - first_idx;
 
+            // All matched items are visible.
             if span <= winwidth {
-                // All matched items are visible.
                 let n = if origin_line.len() - first_idx < winwidth {
                     first_idx.saturating_sub(winwidth - (origin_line.len() - first_idx))
                 } else {
@@ -101,8 +101,7 @@ impl Printer {
                 Some((truncated, indices.iter().map(|x| x - n).collect()))
             } else {
                 // the matched items are partially visible.
-                // display the line from the first item.
-                // ..
+                // prepend `..` at the beginning and display the line from the first item.
                 let n = first_idx - DOTS_LEN;
 
                 let initial: String = origin_line
@@ -111,11 +110,9 @@ impl Printer {
                     .take(winwidth - DOTS_LEN * 2) //TODO: precise end
                     .collect();
 
-                let indices: Vec<_> = indices.iter().map(|x| x - n).collect();
-
                 Some((
                     format!("{}{}{}", DOTS, initial, DOTS),
-                    indices.iter().map(|x| x + DOTS_LEN).collect(),
+                    indices.iter().map(|x| x - n + DOTS_LEN).collect(),
                 ))
             }
         }
