@@ -139,6 +139,7 @@ endfunction
 
 function! clap#job#stdio#start_service(MessageHandler, maple_cmd) abort
   let s:MessageHandler = a:MessageHandler
+  let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
   call s:start_service_job(a:maple_cmd)
   return
 endfunction
