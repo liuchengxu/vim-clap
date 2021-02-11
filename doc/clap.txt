@@ -334,6 +334,24 @@ g:clap_selected_sign                                     *g:clap_selected_sign*
   Default: `{ 'text': ' >', 'texthl': 'ClapSelectedSign', 'linehl': 'ClapSelected' }`
 
 
+g:clap_always_open_preview                         *g:clap_always_open_preview*
+
+  Type: |Number|
+  Default: `0`
+
+  Set this variable to `1` to always open the preview on your type instead of
+  on you move the cursor in the result list.
+
+
+g:clap_preview_delay                                     *g:clap_preview_delay*
+
+  Type: |Number|
+  Default: `100`
+
+  This variable controls the milliseconds delay after which the async preview
+  request will be sent to the backend.
+
+
 g:clap_open_action                                         *g:clap_open_action*
 
   Type: |Dict|

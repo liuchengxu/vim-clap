@@ -368,8 +368,7 @@ function! s:init_provider() abort
     endif
     try
       call self._().on_typed()
-      " TODO: handle the pure async provider
-      call clap#preview#open_with_delay()
+      call clap#preview#async_open_with_delay()
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)

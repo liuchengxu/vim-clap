@@ -369,7 +369,7 @@ function! clap#floating_win#preview.close() abort
 endfunction
 
 function! clap#floating_win#preview.hide() abort
-  if !get(g:, 'clap_always_open_preview', 0)
+  if !g:clap_always_open_preview
     call g:clap#floating_win#preview.close()
   endif
 endfunction

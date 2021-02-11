@@ -293,7 +293,7 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! g:clap#popup#preview.hide() abort
-  if !get(g:, 'clap_always_open_preview', 0)
+  if !g:clap_always_open_preview
     if exists('s:preview_winid')
       call popup_hide(s:preview_winid)
     endif

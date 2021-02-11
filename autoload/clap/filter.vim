@@ -133,7 +133,7 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
     " But the signs are seemingly removed when setting the lines, so we should
     " postpone the sign update.
     call clap#state#refresh_matches_count(0)
-    if !get(g:, 'clap_always_open_preview', 0)
+    if !g:clap_always_open_preview
       call g:clap.preview.hide()
     endif
   else

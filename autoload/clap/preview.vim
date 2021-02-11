@@ -115,8 +115,9 @@ endfunction
 
 let s:preview_timer = -1
 let s:last_preview_line = ''
+let s:preview_delay = get(g:, 'clap_preview_delay', 100)
 
-function! clap#preview#open_with_delay() abort
+function! clap#preview#async_open_with_delay() abort
   if s:preview_timer != -1
     call timer_stop(s:preview_timer)
   endif
@@ -125,7 +126,7 @@ function! clap#preview#open_with_delay() abort
     return
   endif
   let s:last_preview_line = curline
-  let s:preview_timer = timer_start(100, { -> clap#impl#on_move#invoke_async()})
+  let s:preview_timer = timer_start(s:preview_delay, { -> clap#impl#on_move#invoke_async()})
 endfunction
 
 if has('nvim')
