@@ -325,9 +325,15 @@ mod tests {
 
             let printer = Printer::new(winwidth, skipped);
             let (_, indices) = matcher.base_match(&origin_line.into(), query).unwrap();
-            let (display_line, _adjusted_indices) = printer.display(origin_line, &indices).unwrap();
+            let (display_line, adjusted_indices) = printer.display(origin_line, &indices).unwrap();
+            let highlighted = adjusted_indices
+                .iter()
+                .filter_map(|i| display_line.chars().nth(*i))
+                .collect::<String>();
+            println!("query: {}, highlighted: {}", query, highlighted);
             assert_eq!(display_line.len() - skipped, winwidth);
             assert_eq!(display_line, expected_display_line);
+            assert!(query.starts_with(&highlighted));
         }
 
         // span < winwidth
