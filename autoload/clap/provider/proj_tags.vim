@@ -19,7 +19,11 @@ if !s:support_json_format
 endif
 
 function! s:proj_tags.on_typed() abort
-  call clap#impl#on_typed#async_with_cmd(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
+  if exists('g:__clap_forerunner_tempfile')
+    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+  else
+    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
+  endif
 endfunction
 
 function! s:proj_tags.init() abort
