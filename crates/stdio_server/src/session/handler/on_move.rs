@@ -48,13 +48,13 @@ impl PreviewTag {
         }
     }
 
-    pub fn get_help_lines(&self) -> Option<(String, Vec<String>)> {
+    pub fn get_help_lines(&self, size: usize) -> Option<(String, Vec<String>)> {
         let runtimepath = self.runtimepath.split(',').collect::<Vec<_>>();
         for r in runtimepath.iter() {
             let p = Path::new(r).join("doc").join(&self.doc_filename);
             if p.exists() {
                 if let Some(line_number) = find_tag_line(&p, &self.subject) {
-                    if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, 10) {
+                    if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, size) {
                         return Some((format!("{}", p.display()), lines_iter.collect()));
                     }
                 }
@@ -227,10 +227,14 @@ impl<'a> OnMoveHandler<'a> {
             } => {
                 let preview_tag =
                     PreviewTag::new(subject.clone(), doc_filename.clone(), runtimepath.clone());
-                if let Some((fname, lines)) = preview_tag.get_help_lines() {
+                if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
+                    let lines = std::iter::once(fname.clone())
+                        .chain(lines.into_iter())
+                        .collect::<Vec<_>>();
                     self.send_response(json!({
                       "event": "on_move",
                       "lines": lines,
+                      "hi_lnum": 1,
                       "fname": fname
                     }));
                 } else {
