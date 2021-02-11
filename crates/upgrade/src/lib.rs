@@ -92,7 +92,8 @@ fn get_binary_path() -> Result<impl AsRef<std::path::Path>> {
 #[inline]
 fn extract_remote_version_number(remote_tag: &str) -> u32 {
     let v = remote_tag.split('.').collect::<Vec<_>>();
-    v[1].parse().expect("Couldn't extract remote version")
+    v[1].parse()
+        .unwrap_or_else(|_| panic!("Couldn't extract remote version"))
 }
 
 /// local: "v0.13-4-g58738c0"

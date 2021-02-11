@@ -46,7 +46,7 @@ impl From<Message> for SessionContext {
             msg.params
                 .get("source_fpath")
                 .and_then(|x| x.as_str())
-                .expect("Missing source_fpath"),
+                .unwrap_or_else(|| panic!("Missing source_fpath")),
         );
 
         Self {

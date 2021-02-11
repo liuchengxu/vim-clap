@@ -99,7 +99,7 @@ impl CommandEnv {
         if let Some(ref output) = self.output {
             Ok(output.into())
         } else {
-            CacheEntry::new(args, self.dir.clone(), self.total)
+            CacheEntry::try_new(args, self.dir.clone(), self.total)
         }
     }
 

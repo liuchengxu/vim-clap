@@ -65,7 +65,9 @@ pub fn truncate_long_matched_lines<T>(
             let line = item.display_text.unwrap_or(item.raw);
             lnum += 1;
             if !indices.is_empty() {
-                let last_idx = indices.last().expect("indices are non-empty; qed");
+                let last_idx = indices
+                    .last()
+                    .unwrap_or_else(|| panic!("indices are non-empty; qed"));
                 if *last_idx > winwidth {
                     let mut start = *last_idx - winwidth;
                     if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
@@ -98,10 +100,10 @@ pub fn truncate_long_matched_lines<T>(
                     truncated_map.insert(lnum, line);
                     (truncated, score, truncated_indices)
                 } else {
-                    (line.into(), score, indices)
+                    (line, score, indices)
                 }
             } else {
-                (line.into(), score, indices)
+                (line, score, indices)
             }
         })
         .collect::<Vec<_>>();
