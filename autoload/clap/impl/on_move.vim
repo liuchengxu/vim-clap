@@ -28,7 +28,9 @@ if clap#maple#is_available()
       catch
         return
       endtry
-      if has_key(a:result, 'fname')
+      if has_key(a:result, 'syntax')
+        call g:clap.preview.set_syntax(a:result.syntax)
+      elseif has_key(a:result, 'fname')
         call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
       endif
       call clap#preview#highlight_header()

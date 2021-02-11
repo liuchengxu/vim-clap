@@ -224,23 +224,7 @@ impl<'a> OnMoveHandler<'a> {
                 subject,
                 doc_filename,
                 runtimepath,
-            } => {
-                let preview_tag =
-                    PreviewTag::new(subject.clone(), doc_filename.clone(), runtimepath.clone());
-                if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
-                    let lines = std::iter::once(fname.clone())
-                        .chain(lines.into_iter())
-                        .collect::<Vec<_>>();
-                    self.send_response(json!({
-                      "event": "on_move",
-                      "lines": lines,
-                      "hi_lnum": 1,
-                      "fname": fname
-                    }));
-                } else {
-                    debug!("Can not find the preview help lines for {:?}", preview_tag);
-                }
-            }
+            } => self.preview_help_subject(subject, doc_filename, runtimepath),
             Filer(path) if path.is_dir() => {
                 self.preview_directory(&path)?;
             }
@@ -276,6 +260,24 @@ impl<'a> OnMoveHandler<'a> {
           "lines": lines,
         }));
         Ok(())
+    }
+
+    fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) {
+        let preview_tag = PreviewTag::new(subject.into(), doc_filename.into(), runtimepath.into());
+        if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
+            let lines = std::iter::once(fname.clone())
+                .chain(lines.into_iter())
+                .collect::<Vec<_>>();
+            self.send_response(json!({
+              "event": "on_move",
+              "syntax": "help",
+              "lines": lines,
+              "hi_lnum": 1,
+              "fname": fname
+            }));
+        } else {
+            debug!("Can not find the preview help lines for {:?}", preview_tag);
+        }
     }
 
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
