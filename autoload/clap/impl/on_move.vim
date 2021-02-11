@@ -45,9 +45,16 @@ if clap#maple#is_available()
     endif
     call s:sync_run_with_delay()
   endfunction
+
+  function! clap#impl#on_move#async() abort
+    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
+  endfunction
 else
   function! s:dispatch_on_move_impl() abort
     call s:sync_run_with_delay()
+  endfunction
+
+  function! clap#impl#on_move#async() abort
   endfunction
 endif
 
