@@ -19,6 +19,52 @@ pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
         .map_err(|e| anyhow!("{:?}, path:{}", e, path.as_ref().display()))
 }
 
+#[derive(Debug, Clone)]
+struct PreviewTag {
+    subject: String,
+    doc_filename: String,
+    runtimepath: String,
+}
+
+fn find_tag_line(p: &PathBuf, subject: &str) -> Option<usize> {
+    if let Ok(doc_lines) = utility::read_lines(p) {
+        for (idx, doc_line) in doc_lines.enumerate() {
+            if let Ok(d_line) = doc_line {
+                if d_line.trim().contains(&format!("*{}*", subject)) {
+                    return Some(idx);
+                }
+            }
+        }
+    }
+    None
+}
+
+impl PreviewTag {
+    pub fn new(subject: String, doc_filename: String, runtimepath: String) -> Self {
+        Self {
+            subject,
+            doc_filename,
+            runtimepath,
+        }
+    }
+
+    pub fn get_help_lines(&self) -> Option<(String, Vec<String>)> {
+        let runtimepath = self.runtimepath.split(',').collect::<Vec<_>>();
+        for r in runtimepath.iter() {
+            let p = Path::new(r).join("doc").join(&self.doc_filename);
+            if p.exists() {
+                if let Some(line_number) = find_tag_line(&p, &self.subject) {
+                    if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, 10) {
+                        return Some((format!("{}", p.display()), lines_iter.collect()));
+                    }
+                }
+            }
+        }
+
+        None
+    }
+}
+
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -27,10 +73,27 @@ pub enum OnMove {
     Files(PathBuf),
     Filer(PathBuf),
     History(PathBuf),
-    Grep { path: PathBuf, lnum: usize },
-    BLines { path: PathBuf, lnum: usize },
-    ProjTags { path: PathBuf, lnum: usize },
-    BufferTags { path: PathBuf, lnum: usize },
+    Grep {
+        path: PathBuf,
+        lnum: usize,
+    },
+    BLines {
+        path: PathBuf,
+        lnum: usize,
+    },
+    ProjTags {
+        path: PathBuf,
+        lnum: usize,
+    },
+    BufferTags {
+        path: PathBuf,
+        lnum: usize,
+    },
+    HelpTags {
+        subject: String,
+        doc_filename: String,
+        runtimepath: String,
+    },
 }
 
 /// Build the absolute path using cwd and relative path.
@@ -82,6 +145,23 @@ impl OnMove {
                 let path = context.start_buffer_path.clone().into();
                 Self::BufferTags { path, lnum }
             }
+            "help_tags" => {
+                let runtimepath = context
+                    .runtimepath
+                    .clone()
+                    .context("no runtimepath in the context")?;
+                let items = curline.split('\t').collect::<Vec<_>>();
+                if items.len() < 2 {
+                    return Err(anyhow!(
+                        "Can not extract subject and doc_filename from the line"
+                    ));
+                }
+                Self::HelpTags {
+                    subject: items[0].trim().to_string(),
+                    doc_filename: items[1].trim().to_string(),
+                    runtimepath,
+                }
+            }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).context("can not extract rev")?;
                 Self::Commit(rev.into())
@@ -107,7 +187,7 @@ pub struct OnMoveHandler<'a> {
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn try_new(msg: Message, context: &'a SessionContext) -> anyhow::Result<Self> {
+    pub fn try_new(msg: &Message, context: &'a SessionContext) -> anyhow::Result<Self> {
         let msg_id = msg.id;
         let provider_id = context.provider_id.clone();
         let curline = msg.get_curline(&provider_id)?;
@@ -140,6 +220,23 @@ impl<'a> OnMoveHandler<'a> {
                 debug!("path:{}, lnum:{}", path.display(), lnum);
                 self.preview_file_at(&path, *lnum);
             }
+            HelpTags {
+                subject,
+                doc_filename,
+                runtimepath,
+            } => {
+                let preview_tag =
+                    PreviewTag::new(subject.clone(), doc_filename.clone(), runtimepath.clone());
+                if let Some((fname, lines)) = preview_tag.get_help_lines() {
+                    self.send_response(json!({
+                      "event": "on_move",
+                      "lines": lines,
+                      "fname": fname
+                    }));
+                } else {
+                    debug!("Can not find the preview help lines for {:?}", preview_tag);
+                }
+            }
             Filer(path) if path.is_dir() => {
                 self.preview_directory(&path)?;
             }
@@ -155,7 +252,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::types::ProviderId = self.provider_id.clone().into();
+        let provider_id: crate::types::ProviderId = self.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,

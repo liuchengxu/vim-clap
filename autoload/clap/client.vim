@@ -31,6 +31,9 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ }
+  if g:clap.provider.id ==# 'help_tags'
+    let params['runtimepath'] = &runtimepath
+  endif
   if a:0 > 0
     call extend(params, a:1)
   endif

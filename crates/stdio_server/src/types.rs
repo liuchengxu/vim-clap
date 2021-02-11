@@ -81,7 +81,7 @@ impl Message {
             .get(key)
             .and_then(|x| x.as_str())
             .map(Into::into)
-            .expect(&format!("Missing {} in msg.params", key))
+            .unwrap_or_else(|| panic!("Missing {} in msg.params", key))
     }
 
     fn _get_string(&self, key: &str) -> anyhow::Result<String> {
@@ -89,14 +89,14 @@ impl Message {
             .get(key)
             .and_then(|x| x.as_str())
             .map(Into::into)
-            .ok_or(anyhow::anyhow!("Missing {} in msg.params", key))
+            .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProviderId(String);
 
-const NO_ICON_PROVIDERS: [&str; 3] = ["blines", "commits", "bcommits"];
+const NO_ICON_PROVIDERS: [&str; 4] = ["blines", "commits", "bcommits", "help_tags"];
 
 impl ProviderId {
     pub fn as_str(&self) -> &str {
