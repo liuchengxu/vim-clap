@@ -49,8 +49,7 @@ impl PreviewTag {
     }
 
     pub fn get_help_lines(&self, size: usize) -> Option<(String, Vec<String>)> {
-        let runtimepath = self.runtimepath.split(',').collect::<Vec<_>>();
-        for r in runtimepath.iter() {
+        for r in self.runtimepath.split(',') {
             let p = Path::new(r).join("doc").join(&self.doc_filename);
             if p.exists() {
                 if let Some(line_number) = find_tag_line(&p, &self.subject) {
