@@ -31,8 +31,7 @@ function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let s:display_opts = clap#layout#calc()
 
-    let s:preview_direction = 'LR'
-    if s:preview_direction ==# 'LR'
+    if g:clap_preview_direction ==# 'LR'
       let s:display_opts.width /= 2
       let s:display_opts.height *= 2
     endif
@@ -70,7 +69,7 @@ let g:clap#popup#display.open = function('s:create_display')
 
 function! g:clap#popup#display.shrink_if_undersize() abort
   if !g:clap_always_open_preview
-    if s:preview_direction !=# 'LR'
+    if g:clap_preview_direction !=# 'LR'
       let pos = popup_getpos(s:display_winid)
       let line_count = g:clap.display.line_count()
       if line_count < s:display_opts.height
@@ -121,7 +120,7 @@ function! s:create_preview() abort
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
-    if s:preview_direction ==# 'LR'
+    if g:clap_preview_direction ==# 'LR'
       let preview_opts['line'] = pos.line - 1
       let preview_opts['height'] = pos.height
       let preview_opts['col'] = pos.col + pos.width
@@ -302,7 +301,7 @@ function! s:callback(_id, _result) abort
 endfunction
 
 function! g:clap#popup#preview.show(lines) abort
-  if s:preview_direction !=# 'LR'
+  if g:clap_preview_direction !=# 'LR'
     let display_pos = popup_getpos(s:display_winid)
     let col = display_pos.col
     let line = display_pos.line + display_pos.height
