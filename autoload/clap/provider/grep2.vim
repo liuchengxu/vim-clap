@@ -14,12 +14,6 @@ endif
 function! s:grep2.on_typed()
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#grep_from_cache(g:__clap_forerunner_tempfile)
-  " elseif exists('g:__clap_forerunner_result')
-    " let query = g:clap.input.get()
-    " if query ==# ''
-      " return
-    " endif
-    " call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
     call clap#filter#async#dyn#start_grep()
   endif
