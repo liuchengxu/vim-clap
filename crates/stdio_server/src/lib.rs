@@ -37,7 +37,6 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
-// Runs in the main thread.
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut session_manager = Manager::default();
     for msg in rx.iter() {
