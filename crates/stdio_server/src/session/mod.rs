@@ -1,7 +1,6 @@
 mod context;
-mod forerunner;
 mod handler;
-mod impls;
+pub mod impls;
 mod manager;
 mod providers;
 
@@ -75,13 +74,13 @@ impl<T: HandleMessage> Session<T> {
     }
 
     pub fn start_event_loop(mut self) -> Result<()> {
-        thread::Builder::new()
-            .name(format!(
-                "session-{}-{}",
+        tokio::spawn(async move {
+            debug!(
+                "spawn a new task for session-{}-{}",
                 self.session_id,
                 self.provider_id()
-            ))
-            .spawn(move || loop {
+            );
+            loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
                         debug!("session recv: {:?}", event);
@@ -100,7 +99,9 @@ impl<T: HandleMessage> Session<T> {
                     }
                     Err(err) => debug!("session recv error: {:?}", err),
                 }
-            })?;
+            }
+        });
+
         Ok(())
     }
 }

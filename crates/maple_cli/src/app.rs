@@ -78,18 +78,10 @@ pub struct Maple {
 
 impl Maple {
     pub fn run(self) -> Result<()> {
-        if let Some(ref log_path) = self.log {
-            crate::logger::init(log_path)?;
-        } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
-            crate::logger::init(log_path)?;
-        }
         match self.command {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::Tags(tags) => tags.run(self.no_cache, self.icon_painter)?,
-            Cmd::RPC => {
-                stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
-            }
             Cmd::Blines(blines) => {
                 blines.run(self.number, self.winwidth)?;
             }
@@ -105,6 +97,15 @@ impl Maple {
             }
             Cmd::Grep(grep) => {
                 grep.run(self.number, self.winwidth, self.icon_painter, self.no_cache)?;
+            }
+            Cmd::RPC => {
+                if let Some(ref log_path) = self.log {
+                    crate::logger::init(log_path)?;
+                } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
+                    crate::logger::init(log_path)?;
+                }
+
+                stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
         }
         Ok(())

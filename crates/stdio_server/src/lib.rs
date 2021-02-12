@@ -3,7 +3,6 @@ mod session;
 mod types;
 
 use std::io::prelude::*;
-use std::thread;
 
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
@@ -38,7 +37,6 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
-// Runs in the main thread.
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut session_manager = Manager::default();
     for msg in rx.iter() {
@@ -71,11 +69,12 @@ where
     R: BufRead + Send + 'static,
 {
     let (tx, rx) = crossbeam_channel::unbounded();
-    thread::Builder::new()
-        .name("reader".into())
-        .spawn(move || {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(async {
+        tokio::spawn(async move {
             loop_read_rpc_message(reader, &tx);
-        })
-        .unwrap_or_else(|_| panic!("Failed to spawn rpc reader thread"));
-    loop_handle_rpc_message(&rx);
+        });
+
+        loop_handle_rpc_message(&rx);
+    });
 }
