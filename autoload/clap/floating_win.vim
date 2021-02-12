@@ -376,7 +376,7 @@ function! clap#floating_win#preview.hide() abort
 endfunction
 
 function! clap#floating_win#preview.clear() abort
-  call clap#util#nvim_buf_set_lines(s:preview_bufnr, [''])
+  call clap#util#nvim_buf_clear(s:preview_bufnr)
 endfunction
 
 function! s:ensure_closed() abort
