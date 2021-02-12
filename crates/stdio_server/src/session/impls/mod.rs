@@ -1,20 +1,11 @@
 use serde_json::json;
 
-use crate::session::SessionContext;
+use crate::session::{HandleMessage, RpcMessage, SessionContext};
 use crate::types::Message;
 use crate::write_response;
 
 pub mod on_move;
 pub mod on_typed;
-
-pub enum RpcMessage {
-    OnMove(Message),
-    OnTyped(Message),
-}
-
-pub trait HandleMessage: Send + 'static {
-    fn handle(&self, msg: RpcMessage, context: &SessionContext);
-}
 
 #[derive(Clone)]
 pub struct MessageHandler;
@@ -25,7 +16,7 @@ impl HandleMessage for MessageHandler {
             RpcMessage::OnMove(msg) => {
                 let msg_id = msg.id;
                 if let Err(e) = on_move::OnMoveHandler::try_new(&msg, context).map(|x| x.handle()) {
-                    log::debug!("Handle RpcMessage::OnMove {:?}, error: {:?}", msg, e);
+                    log::error!("Handle RpcMessage::OnMove {:?}, error: {:?}", msg, e);
                     write_response(json!({"error": format!("{}",e), "id": msg_id }));
                 }
             }
