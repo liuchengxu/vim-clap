@@ -95,8 +95,8 @@ pub enum OnMove {
 }
 
 /// Build the absolute path using cwd and relative path.
-pub fn build_abs_path(cwd: &str, curline: String) -> PathBuf {
-    let mut path: PathBuf = cwd.into();
+pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: String) -> PathBuf {
+    let mut path: PathBuf = cwd.as_ref().into();
     path.push(&curline);
     path
 }
@@ -121,7 +121,7 @@ impl OnMove {
             "filer" => unreachable!("filer has been handled ahead"),
             "proj_tags" => {
                 let (lnum, p) = extract_proj_tags(&curline).context("can not extract proj tags")?;
-                let mut path: PathBuf = context.cwd.clone().into();
+                let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
                 Self::ProjTags { path, lnum }
             }
@@ -129,7 +129,7 @@ impl OnMove {
                 let try_extract_file_path = |line: &str| {
                     let (fpath, lnum, _col) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
-                    let mut path: PathBuf = context.cwd.clone().into();
+                    let mut path: PathBuf = context.cwd.clone();
                     path.push(&fpath);
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
                 };
@@ -140,13 +140,13 @@ impl OnMove {
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
-                let path = context.start_buffer_path.clone().into();
+                let path = context.start_buffer_path.clone();
                 Self::BLines { path, lnum }
             }
             "tags" => {
                 let lnum =
                     extract_buf_tags_lnum(&curline).context("can not extract buffer tags")?;
-                let path = context.start_buffer_path.clone().into();
+                let path = context.start_buffer_path.clone();
                 Self::BufferTags { path, lnum }
             }
             "help_tags" => {
@@ -294,7 +294,7 @@ impl<'a> OnMoveHandler<'a> {
 
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
-                let fname = format!("{}", path.as_ref().display());
+                let fname = format!("{}:{}", path.as_ref().display(), lnum);
                 let lines = std::iter::once(fname.clone())
                     .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
