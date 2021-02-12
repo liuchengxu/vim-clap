@@ -8,10 +8,12 @@ use serde_json::json;
 
 use icon::prepend_filer_icon;
 
-use super::{write_response, Message};
-use crate::session::{
-    build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
-    SessionContext, SessionEvent,
+use crate::{
+    session::{
+        build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
+        SessionContext, SessionEvent,
+    },
+    write_response, Message,
 };
 
 /// Display the inner path in a nicer way.
@@ -126,7 +128,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub(super) fn handle_message(msg: Message) {
+pub fn handle_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
@@ -154,6 +156,7 @@ mod tests {
 
     #[test]
     fn test_dir() {
+        // /home/xlc/.vim/plugged/vim-clap/crates/stdio_server
         let entries = read_dir_entries(
             &std::env::current_dir()
                 .unwrap()
@@ -164,6 +167,7 @@ mod tests {
             None,
         )
         .unwrap();
-        println!("entry: {:?}", entries);
+
+        assert_eq!(entries, vec!["Cargo.toml", "src/"]);
     }
 }

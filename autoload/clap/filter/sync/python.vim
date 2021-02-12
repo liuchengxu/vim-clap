@@ -49,6 +49,7 @@ if s:using_dynamic_module
     if a:query ==# ''
       return a:candidates
     endif
+    " Possibly a bug of Neovim's Python provider, the result from Python can be null once passed to the vim side.
     let [g:__clap_fuzzy_matched_indices, filtered, g:__clap_lines_truncated_map] = pyxeval(s:py_fn.'()')
     return filtered
   endfunction

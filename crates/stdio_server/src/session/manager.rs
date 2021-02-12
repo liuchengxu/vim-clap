@@ -43,7 +43,7 @@ impl NewSession for OpaqueSession {
 
         let session = Session {
             session_id: msg.session_id,
-            context: msg.clone().into(),
+            context: msg.into(),
             message_handler: super::handler::MessageHandler,
             event_recv: session_receiver,
         };

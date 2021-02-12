@@ -1,5 +1,4 @@
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
@@ -127,11 +126,30 @@ impl OnMove {
                 Self::ProjTags { path, lnum }
             }
             "grep" | "grep2" => {
-                let (fpath, lnum, _col) =
-                    extract_grep_position(&curline).context("Couldn't extract grep position")?;
-                let mut path: PathBuf = context.cwd.clone().into();
-                path.push(&fpath);
-                Self::Grep { path, lnum }
+                let try_extract_file_path = |line: &str| {
+                    let (fpath, lnum, _col) =
+                        extract_grep_position(line).context("Couldn't extract grep position")?;
+                    let mut path: PathBuf = context.cwd.clone().into();
+                    path.push(&fpath);
+                    Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
+                };
+
+                let (path, lnum) = try_extract_file_path(&curline)?;
+
+                // Try again as somehow the extracted path could be the one like this:
+                // /home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs:36:1:/// // crates/printer/src/lib.rs
+                //
+                // Source: https://github.com/liuchengxu/vim-clap/blob/ba6f54678f/crates/pattern/src/lib.rs#L36
+                if !path.exists() {
+                    let (path, lnum) =
+                        try_extract_file_path(path.to_str().ok_or_else(|| {
+                            anyhow!("Failed to convert {} to str", path.display())
+                        })?)?;
+
+                    Self::Grep { path, lnum }
+                } else {
+                    Self::Grep { path, lnum }
+                }
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
@@ -280,6 +298,12 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
+        debug!(
+            "try to preview the file, path: {}, lnum: {}",
+            path.as_ref().display(),
+            lnum
+        );
+
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = format!("{}", path.as_ref().display());

@@ -21,12 +21,6 @@ endif
 function! s:proj_tags.on_typed() abort
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-  elseif exists('g:__clap_forerunner_result')
-    let query = g:clap.input.get()
-    if query ==# ''
-      return
-    endif
-    call clap#filter#on_typed(function('clap#filter#sync'), query, g:__clap_forerunner_result)
   else
     call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('tags', g:clap.input.get(), clap#rooter#working_dir()))
   endif
@@ -62,6 +56,7 @@ function! s:proj_tags.on_exit() abort
   endif
 endfunction
 
+let s:proj_tags.on_move_async = function('clap#impl#on_move#async')
 let s:proj_tags.enable_rooter = v:true
 let s:proj_tags.support_open_action = v:true
 let s:proj_tags.syntax = 'clap_proj_tags'

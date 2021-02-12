@@ -67,6 +67,8 @@ function! s:tags.sink(selected) abort
   call vista#finder#fzf#sink(a:selected, g:clap.start.winid)
 endfunction
 
+let s:tags.on_move_async = function('clap#impl#on_move#async')
+
 let g:clap#provider#tags# = s:tags
 
 let &cpoptions = s:save_cpo

@@ -39,7 +39,9 @@ let s:has_no_icons = ['blines']
 " Returns the original full line with icon if g:clap_enable_icon is on given
 " the lnum of display buffer.
 function! clap#api#get_origin_line_at(lnum) abort
-  if exists('g:__clap_lines_truncated_map') && has_key(g:__clap_lines_truncated_map, a:lnum)
+  if exists('g:__clap_lines_truncated_map')
+        \ && !empty(g:__clap_lines_truncated_map)
+        \ && has_key(g:__clap_lines_truncated_map, a:lnum)
     let t_line = g:__clap_lines_truncated_map[a:lnum]
     " NOTE: t_line[3] is not 100% right
     if g:clap_enable_icon && index(s:has_no_icons, g:clap.provider.id) == -1 && t_line[3] !=# ' '
@@ -366,6 +368,7 @@ function! s:init_provider() abort
     endif
     try
       call self._().on_typed()
+      call clap#preview#async_open_with_delay()
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)

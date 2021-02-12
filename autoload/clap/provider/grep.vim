@@ -299,6 +299,7 @@ let s:grep.sink = function('s:grep_sink')
 let s:grep['sink*'] = function('s:grep_sink_star')
 let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_move = function('s:grep_on_move')
+let s:grep.on_move_async = function('clap#impl#on_move#async')
 let s:grep.on_exit = function('s:grep_exit')
 
 if !clap#maple#is_available() && s:grep_enable_icon

@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn run<T: super::handler::HandleMessage>(
+pub(super) fn run<T: super::HandleMessage>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,

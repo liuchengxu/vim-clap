@@ -15,9 +15,6 @@ function! s:sync_run_with_delay() abort
 endfunction
 
 if clap#maple#is_available()
-
-  let s:async_preview_implemented = ['files', 'git_files', 'grep', 'grep2', 'proj_tags', 'tags', 'blines', 'history']
-
   function! s:handle_on_move_result(result, error) abort
     if a:error isnot v:null
       return
@@ -42,10 +39,15 @@ if clap#maple#is_available()
   endfunction
 
   function! s:dispatch_on_move_impl() abort
-    if index(s:async_preview_implemented, g:clap.provider.id) > -1
-      return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
+    if has_key(g:clap.provider._(), 'on_move_async')
+      call g:clap.provider._().on_move_async()
+    else
+      call s:sync_run_with_delay()
     endif
-    call s:sync_run_with_delay()
+  endfunction
+
+  function! clap#impl#on_move#async() abort
+    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
   endfunction
 
   function! clap#impl#on_move#async() abort
@@ -68,6 +70,15 @@ function! clap#impl#on_move#invoke() abort
     call g:clap.provider._().on_move_async()
   elseif has_key(g:clap.provider._(), 'on_move')
     call s:dispatch_on_move_impl()
+  endif
+endfunction
+
+function! clap#impl#on_move#invoke_async() abort
+  if get(g:, '__clap_has_no_matches', v:false)
+    return
+  endif
+  if has_key(g:clap.provider._(), 'on_move_async')
+    call g:clap.provider._().on_move_async()
   endif
 endfunction
 

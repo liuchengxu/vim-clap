@@ -63,28 +63,32 @@ endfunction
 let g:clap#popup#display.open = function('s:create_display')
 
 function! g:clap#popup#display.shrink_if_undersize() abort
-  let pos = popup_getpos(s:display_winid)
-  let line_count = g:clap.display.line_count()
-  if line_count < s:display_opts.height
-    let pos.maxheight = line_count
-    let pos.minheight = line_count
-  else
-    let pos.minheight = s:display_opts.height
-    let pos.maxheight = s:display_opts.height
-  endif
-  call popup_move(s:display_winid, pos)
+  if !g:clap_always_open_preview
+    let pos = popup_getpos(s:display_winid)
+    let line_count = g:clap.display.line_count()
+    if line_count < s:display_opts.height
+      let pos.maxheight = line_count
+      let pos.minheight = line_count
+    else
+      let pos.minheight = s:display_opts.height
+      let pos.maxheight = s:display_opts.height
+    endif
+    call popup_move(s:display_winid, pos)
 
-  call s:try_adjust_preview()
+    call s:try_adjust_preview()
+  endif
 endfunction
 
 function! g:clap#popup#display.shrink() abort
-  let pos = popup_getpos(s:display_winid)
-  let line_count = g:clap.display.line_count()
-  if pos.height != line_count
-    let pos.minheight = line_count
-    let pos.maxheight = line_count
-    call popup_move(s:display_winid, pos)
-    call s:try_adjust_preview()
+  if !g:clap_always_open_preview
+    let pos = popup_getpos(s:display_winid)
+    let line_count = g:clap.display.line_count()
+    if pos.height != line_count
+      let pos.minheight = line_count
+      let pos.maxheight = line_count
+      call popup_move(s:display_winid, pos)
+      call s:try_adjust_preview()
+    endif
   endif
 endfunction
 
@@ -293,9 +297,15 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! g:clap#popup#preview.hide() abort
-  if exists('s:preview_winid')
-    call popup_hide(s:preview_winid)
+  if !g:clap_always_open_preview
+    if exists('s:preview_winid')
+      call popup_hide(s:preview_winid)
+    endif
   endif
+endfunction
+
+function! g:clap#popup#preview.clear() abort
+  silent call deletebufline(winbufnr(s:preview_winid), 1, '$')
 endfunction
 
 function! s:open_popup() abort
