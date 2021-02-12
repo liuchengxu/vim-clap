@@ -205,9 +205,13 @@ impl<'a> OnMoveHandler<'a> {
                 inner: OnMove::Filer(path),
             });
         }
+        let size = std::cmp::max(
+            provider_id.get_preview_size(),
+            (context.preview_winheight / 2) as usize,
+        );
         Ok(Self {
             msg_id,
-            size: provider_id.get_preview_size(),
+            size,
             provider_id,
             context,
             inner: OnMove::new(curline, context)?,
