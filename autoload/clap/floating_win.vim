@@ -412,6 +412,7 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
+  call s:create_preview_win(s:display_opts.height)
   if g:clap_search_box_border_style ==# 'curve'
     " Indicator win must be opened before shadow win.
     " ref 567

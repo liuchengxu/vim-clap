@@ -109,7 +109,7 @@ impl Filter {
             self.get_bonuses(),
         )?;
 
-        printer::print_sync_filter_results(ranked, number, winwidth, icon_painter);
+        printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon_painter);
 
         Ok(())
     }

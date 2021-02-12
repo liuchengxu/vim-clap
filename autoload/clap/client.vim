@@ -27,9 +27,10 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
-        \   'winwidth': winwidth(g:clap.display.winid),
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+        \   'display_winwidth': winwidth(g:clap.display.winid),
+        \   'preview_winheight': winheight(g:clap.preview.winid),
         \ }
   if g:clap.provider.id ==# 'help_tags'
     let params['runtimepath'] = &runtimepath

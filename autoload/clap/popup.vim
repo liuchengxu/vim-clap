@@ -145,7 +145,9 @@ function! s:create_preview() abort
     endif
     let s:preview_winid = popup_create([], preview_opts)
     call setwinvar(s:preview_winid, '&spell', 0)
-    call popup_hide(s:preview_winid)
+    if g:clap_preview_direction !=# 'LR'
+      call popup_hide(s:preview_winid)
+    endif
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
     let g:clap#popup#preview.bufnr = winbufnr(s:preview_winid)

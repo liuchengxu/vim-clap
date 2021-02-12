@@ -327,7 +327,7 @@ impl<'a> OnMoveHandler<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
+        let max_width = 2 * self.context.display_winwidth as usize;
         lines.map(move |line| {
             if line.len() > max_width {
                 let mut line = line;

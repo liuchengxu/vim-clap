@@ -1,8 +1,9 @@
 use log::debug;
+use serde_json::json;
 
 use filter::matcher::{Algo, Bonus, MatchType};
 
-use super::*;
+use crate::{session::SessionContext, write_response, Message};
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
     debug!("recv OnTyped event: {:?}", msg);
@@ -33,7 +34,7 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
 
         let (lines, indices, truncated_map) = printer::process_top_items(
             lines_info.into_iter().take(30),
-            context.winwidth.map(|x| x as usize),
+            context.display_winwidth as usize,
             Some(icon::IconPainter::File),
         );
 
