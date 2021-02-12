@@ -136,20 +136,7 @@ impl OnMove {
 
                 let (path, lnum) = try_extract_file_path(&curline)?;
 
-                // Try again as somehow the extracted path could be the one like this:
-                // /home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs:36:1:/// // crates/printer/src/lib.rs
-                //
-                // Source: https://github.com/liuchengxu/vim-clap/blob/ba6f54678f/crates/pattern/src/lib.rs#L36
-                if !path.exists() {
-                    let (path, lnum) =
-                        try_extract_file_path(path.to_str().ok_or_else(|| {
-                            anyhow!("Failed to convert {} to str", path.display())
-                        })?)?;
-
-                    Self::Grep { path, lnum }
-                } else {
-                    Self::Grep { path, lnum }
-                }
+                Self::Grep { path, lnum }
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
@@ -258,6 +245,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn send_response(&self, result: serde_json::value::Value) {
         let provider_id: crate::types::ProviderId = self.provider_id.clone();
+        debug!("sending on_move response, result: {:?}", result);
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,

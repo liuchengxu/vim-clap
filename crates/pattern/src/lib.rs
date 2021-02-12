@@ -7,7 +7,7 @@ use log::error;
 use regex::Regex;
 
 lazy_static! {
-  static ref GREP_POS: Regex = Regex::new(r"^(.*):(\d+):(\d+):").unwrap();
+  static ref GREP_POS: Regex = Regex::new(r"^(.*?):(\d+):(\d+):").unwrap();
 
   // match the file path and line number of grep line.
   static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
@@ -17,7 +17,7 @@ lazy_static! {
 
   static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
 
-  static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*)\]").unwrap();
+  static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap();
 
   static ref COMMIT_RE: Regex = Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap();
 }
@@ -125,6 +125,12 @@ mod tests {
 
         let path = extract_grep_file_path(line).unwrap();
         assert_eq!(path, "install.sh");
+
+        let line = r#"/home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs:36:1:/// // crates/printer/src/lib.rs:199:26:        let query = "srlisrlisrsr"#;
+        assert_eq!(
+            "/home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs",
+            extract_grep_file_path(line).unwrap()
+        );
     }
 
     #[test]
@@ -139,6 +145,12 @@ mod tests {
         let line = r#"<C-D>:42                       [map@ftplugin/clap_input.vim]  inoremap <silent> <buffer> <expr> <C-D> col('.')>strlen(getline('.'))?"\\<Lt>C-D>":"\\<Lt>Del"#;
         assert_eq!(
             (42, "ftplugin/clap_input.vim"),
+            extract_proj_tags(line).unwrap()
+        );
+
+        let line = r#"sorted_dict:18                 [variable@crates/icon/update_constants.py] sorted_dict = {k: disordered[k] for k in sorted(disordered)}"#;
+        assert_eq!(
+            (18, "crates/icon/update_constants.py"),
             extract_proj_tags(line).unwrap()
         );
     }

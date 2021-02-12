@@ -59,6 +59,8 @@ function! g:clap#floating_win#display.open() abort
   endif
 
   let s:display_opts = clap#layout#calc()
+  let s:display_opts.width = float2nr(str2nr(s:display_opts.width) / 2)
+  let s:display_opts.height = float2nr(str2nr(s:display_opts.height) * 2)
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)
@@ -310,9 +312,16 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:get_config_preview(height) abort
-  let opts = nvim_win_get_config(s:display_winid)
-  let opts.row += opts.height
-  let opts.height = a:height
+  let preview_direction = 'LR'
+  if preview_direction ==# 'LR'
+    let opts = nvim_win_get_config(s:display_winid)
+    let opts.row -= 1
+    let opts.col += opts.width
+  else
+    let opts = nvim_win_get_config(s:display_winid)
+    let opts.row += opts.height
+    let opts.height = a:height
+  endif
   let opts.style = 'minimal'
   return opts
 endfunction
