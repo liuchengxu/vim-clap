@@ -77,6 +77,6 @@ where
         .spawn(move || {
             loop_read_rpc_message(reader, &tx);
         })
-        .expect("Failed to spawn rpc reader thread");
+        .unwrap_or_else(|_| panic!("Failed to spawn rpc reader thread"));
     loop_handle_rpc_message(&rx);
 }

@@ -127,6 +127,20 @@ pub fn read_preview_lines<P: AsRef<Path>>(
     ))
 }
 
+/// Returns an iterator of limited lines of `filename` from the line number `start_line`.
+pub fn read_lines_from<P: AsRef<Path>>(
+    filename: P,
+    start_line: usize,
+    size: usize,
+) -> io::Result<impl Iterator<Item = String>> {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file)
+        .lines()
+        .skip(start_line)
+        .filter_map(|i| i.ok())
+        .take(size))
+}
+
 /// Converts `shell_cmd` to `Command` with optional working directory.
 pub fn as_std_command<P: AsRef<Path>>(shell_cmd: impl AsRef<OsStr>, dir: Option<P>) -> Command {
     let mut cmd = if cfg!(target_os = "windows") {

@@ -92,9 +92,10 @@ else
     let s:current_filter_impl = 'Python'
 
     function! clap#filter#sync(query, candidates) abort
+      " All the values of context will be treated as PyString in PyO3.
       let context = {
             \ 'winwidth': winwidth(g:clap.display.winid),
-            \ 'enable_icon': s:enable_icon(),
+            \ 'enable_icon': s:enable_icon() == v:true ? 'True' : 'False',
             \ 'match_type': s:match_type(),
             \ 'bonus_type': clap#filter#get_bonus_type(),
             \ }

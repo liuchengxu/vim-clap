@@ -53,7 +53,7 @@ impl Cache {
                             .file_name()
                             .and_then(std::ffi::OsStr::to_str)
                             .map(Into::into)
-                            .expect("Couldn't get file name")
+                            .unwrap_or_else(|| panic!("Couldn't get file name"))
                     })
                 })
                 .collect::<Result<Vec<String>, std::io::Error>>()?;
@@ -73,11 +73,11 @@ pub struct CacheEntry;
 impl CacheEntry {
     /// Construct the cache entry given command arguments and its working directory, the `total`
     /// info is cached in the file name.
-    pub fn new(cmd_args: &[&str], cmd_dir: Option<PathBuf>, total: usize) -> Result<PathBuf> {
+    pub fn try_new(cmd_args: &[&str], cmd_dir: Option<PathBuf>, total: usize) -> Result<PathBuf> {
         let mut dir = clap_cache_dir();
         dir.push(cmd_args.join("_"));
-        if let Some(mut cmd_dir) = cmd_dir {
-            dir.push(format!("{}", calculate_hash(&mut cmd_dir)));
+        if let Some(cmd_dir) = cmd_dir {
+            dir.push(format!("{}", calculate_hash(&cmd_dir)));
         } else {
             dir.push("no_cmd_dir");
         }
@@ -117,7 +117,7 @@ impl CacheEntry {
         total: usize,
         contents: T,
     ) -> Result<PathBuf> {
-        let entry = Self::new(cmd_args, cmd_dir, total)?;
+        let entry = Self::try_new(cmd_args, cmd_dir, total)?;
         Self::write(&entry, contents)?;
         Ok(entry)
     }

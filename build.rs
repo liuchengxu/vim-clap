@@ -1,3 +1,4 @@
 fn main() {
-    built::write_built_file().expect("Failed to acquire build-time information");
+    built::write_built_file()
+        .unwrap_or_else(|e| panic!("Failed to acquire build-time information: {:?}", e));
 }
