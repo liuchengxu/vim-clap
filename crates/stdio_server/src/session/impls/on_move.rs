@@ -306,7 +306,7 @@ impl<'a> OnMoveHandler<'a> {
 
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
-                let fname = format!("{}", path.as_ref().display());
+                let fname = format!("{}:{}", path.as_ref().display(), lnum);
                 let lines = std::iter::once(fname.clone())
                     .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
