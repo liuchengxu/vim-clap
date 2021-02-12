@@ -28,7 +28,9 @@ if clap#maple#is_available()
       catch
         return
       endtry
-      if has_key(a:result, 'fname')
+      if has_key(a:result, 'syntax')
+        call g:clap.preview.set_syntax(a:result.syntax)
+      elseif has_key(a:result, 'fname')
         call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
       endif
       call clap#preview#highlight_header()
@@ -45,9 +47,16 @@ if clap#maple#is_available()
     endif
     call s:sync_run_with_delay()
   endfunction
+
+  function! clap#impl#on_move#async() abort
+    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
+  endfunction
 else
   function! s:dispatch_on_move_impl() abort
     call s:sync_run_with_delay()
+  endfunction
+
+  function! clap#impl#on_move#async() abort
   endfunction
 endif
 

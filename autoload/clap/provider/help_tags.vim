@@ -4,6 +4,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:help_tags = {}
+
 function! s:get_doc_tags() abort
   return ['/doc/tags'] + map(filter(split(&helplang, ','), 'v:val !=? "en"'), '"/doc/tags-".v:val')
 endfunction
@@ -27,6 +29,7 @@ if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
     endif
   endfunction
 
+  let s:help_tags.on_move_async = function('clap#impl#on_move#async')
 else
 
   let s:help_tags_memory_cache = []
@@ -78,7 +81,6 @@ else
   endfunction
 endif
 
-let s:help_tags = {}
 let s:help_tags.sink = function('s:help_tags_sink')
 let s:help_tags.source = function('s:help_tags_source')
 

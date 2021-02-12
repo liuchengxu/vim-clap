@@ -34,7 +34,7 @@ pub fn initialize_global(msg: Message) {
     let preview_size = msg
         .params
         .get("clap_preview_size")
-        .expect("Missing clap_preview_size on initialize_global_env");
+        .unwrap_or_else(|| panic!("Missing clap_preview_size on initialize_global_env"));
 
     let global_env = GlobalEnv::new(is_nvim, enable_icon, preview_size.clone());
 

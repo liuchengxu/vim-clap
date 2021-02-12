@@ -9,6 +9,7 @@ pub struct SessionContext {
     pub source_cmd: Option<String>,
     pub winwidth: Option<u64>,
     pub provider_id: ProviderId,
+    pub runtimepath: Option<String>,
     pub start_buffer_path: String,
     pub is_running: Arc<Mutex<AtomicBool>>,
     pub source_list: Arc<Mutex<Option<Vec<String>>>>,
@@ -29,6 +30,11 @@ impl From<Message> for SessionContext {
 
         let cwd = msg.get_cwd();
 
+        let runtimepath = msg
+            .params
+            .get("runtimepath")
+            .and_then(|x| x.as_str().map(Into::into));
+
         let source_cmd = msg
             .params
             .get("source_cmd")
@@ -40,13 +46,14 @@ impl From<Message> for SessionContext {
             msg.params
                 .get("source_fpath")
                 .and_then(|x| x.as_str())
-                .expect("Missing source_fpath"),
+                .unwrap_or_else(|| panic!("Missing source_fpath")),
         );
 
         Self {
             provider_id,
             cwd,
             source_cmd,
+            runtimepath,
             winwidth,
             start_buffer_path,
             is_running: Arc::new(Mutex::new(true.into())),

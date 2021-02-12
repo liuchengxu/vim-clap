@@ -10,6 +10,7 @@
 - Add `g:ClapProviderHistoryCustomFilter` for customizing the source of `history` provider. #615
 - Add a bonus for the match in the filename when the source item is a path, but you can only have this when you are using Python dynamic module or the Rust backend. #614.
 - Add a bonus for the files you opened since you enter vim. #622
+- Add async preview support for `help_tags` provider, the Rust binary is required. #630
 
 ### Fixed
 
