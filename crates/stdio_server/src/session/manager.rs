@@ -48,12 +48,15 @@ impl NewSession for OpaqueSession {
             event_recv: session_receiver,
         };
 
+        debug!("new session context: {:?}", session.context);
+
+        // FIXME: Actually unused for now
         if let Some(source_cmd) = session.context.source_cmd.clone() {
             let session_cloned = session.clone();
             // TODO: choose different fitler strategy according to the time forerunner job spent.
             tokio::spawn(async move {
                 if let Err(e) =
-                    crate::session::forerunner::run(msg_id, source_cmd, session_cloned).await
+                    crate::session::impls::on_init::run(msg_id, source_cmd, session_cloned).await
                 {
                     log::error!(
                         "error occurred when running the forerunner job, msg_id: {}, error: {:?}",

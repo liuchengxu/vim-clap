@@ -4,6 +4,7 @@ use crate::session::{HandleMessage, RpcMessage, SessionContext};
 use crate::types::Message;
 use crate::write_response;
 
+pub mod on_init;
 pub mod on_move;
 pub mod on_typed;
 

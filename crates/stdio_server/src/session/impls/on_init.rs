@@ -1,13 +1,26 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use super::*;
+use anyhow::Result;
+use serde_json::json;
+
+use crate::{session::Session, write_response};
 
 /// Collect the output of `source_cmd` asynchronously.
 async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
     source_cmd: S,
     cwd: P,
 ) -> Result<Vec<String>> {
+    // FIXME: can not use `rg --column --line-number --no-heading --color=never --smart-case ''`
+    //    let output: std::process::Output = tokio::process::Command::new("rg")
+    // .args(&[
+    // "--column",
+    // "--line-number",
+    // "--no-heading",
+    // "--color=never",
+    // "--smart-case",
+    // "''",
+    // ])
     let output: std::process::Output = tokio::process::Command::new(source_cmd.as_ref())
         .current_dir(cwd)
         .output()
@@ -30,7 +43,7 @@ async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
     Ok(lines)
 }
 
-pub(super) async fn run<T: super::HandleMessage>(
+pub async fn run<T: super::HandleMessage>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,
