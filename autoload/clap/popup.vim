@@ -31,6 +31,12 @@ function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let s:display_opts = clap#layout#calc()
 
+    let s:preview_direction = 'LR'
+    if s:preview_direction ==# 'LR'
+      let s:display_opts.width /= 2
+      let s:display_opts.height *= 2
+    endif
+
     let s:display_winid = popup_create([], {
           \ 'wrap': v:false,
           \ 'filter': function('clap#popup#move_manager#filter'),
@@ -64,18 +70,20 @@ let g:clap#popup#display.open = function('s:create_display')
 
 function! g:clap#popup#display.shrink_if_undersize() abort
   if !g:clap_always_open_preview
-    let pos = popup_getpos(s:display_winid)
-    let line_count = g:clap.display.line_count()
-    if line_count < s:display_opts.height
-      let pos.maxheight = line_count
-      let pos.minheight = line_count
-    else
-      let pos.minheight = s:display_opts.height
-      let pos.maxheight = s:display_opts.height
-    endif
-    call popup_move(s:display_winid, pos)
+    if s:preview_direction !=# 'LR'
+      let pos = popup_getpos(s:display_winid)
+      let line_count = g:clap.display.line_count()
+      if line_count < s:display_opts.height
+        let pos.maxheight = line_count
+        let pos.minheight = line_count
+      else
+        let pos.minheight = s:display_opts.height
+        let pos.maxheight = s:display_opts.height
+      endif
+      call popup_move(s:display_winid, pos)
 
-    call s:try_adjust_preview()
+      call s:try_adjust_preview()
+    endif
   endif
 endfunction
 
@@ -104,18 +112,26 @@ endfunction
 function! s:create_preview() abort
   if !exists('s:preview_winid') || empty(popup_getpos(s:preview_winid))
     let pos = popup_getpos(s:display_winid)
-    let line = pos.line + pos.height
     let preview_opts = {
           \ 'wrap': v:true,
           \ 'zindex': 100,
           \ 'scrollbar': 0,
           \ 'highlight': 'ClapPreview',
-          \ 'col': pos.col,
-          \ 'line': line,
           \ 'minwidth': pos.width,
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
+    if s:preview_direction ==# 'LR'
+      let preview_opts['line'] = pos.line - 1
+      let preview_opts['height'] = pos.height
+      let preview_opts['col'] = pos.col + pos.width
+      let preview_opts['minheight'] = s:display_opts.height - 1
+      let preview_opts['maxheight'] = s:display_opts.height - 1
+    else
+      let preview_opts['line'] = pos.line + pos.height
+      let preview_opts['height'] = pos.height
+      let preview_opts['col'] = pos.col
+    endif
     if g:clap_popup_border !=? 'nil'
       let borderchars = ['─', '│', '─', '│']
       if g:clap_popup_border ==? 'rounded'
@@ -286,11 +302,13 @@ function! s:callback(_id, _result) abort
 endfunction
 
 function! g:clap#popup#preview.show(lines) abort
-  let display_pos = popup_getpos(s:display_winid)
-  let col = display_pos.col
-  let line = display_pos.line + display_pos.height
-  let minwidth = display_pos.width
-  call popup_move(s:preview_winid, {'col': col, 'line': line})
+  if s:preview_direction !=# 'LR'
+    let display_pos = popup_getpos(s:display_winid)
+    let col = display_pos.col
+    let line = display_pos.line + display_pos.height
+    let minwidth = display_pos.width
+    call popup_move(s:preview_winid, {'col': col, 'line': line})
+  endif
 
   call popup_show(s:preview_winid)
   call popup_settext(s:preview_winid, a:lines)
