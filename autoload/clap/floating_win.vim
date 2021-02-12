@@ -59,10 +59,6 @@ function! g:clap#floating_win#display.open() abort
   endif
 
   let s:display_opts = clap#layout#calc()
-  if g:clap_preview_direction ==# 'LR'
-    let s:display_opts.width = float2nr(str2nr(s:display_opts.width) / 2)
-    let s:display_opts.height = float2nr(str2nr(s:display_opts.height) * 2)
-  endif
   silent let s:display_winid = nvim_open_win(s:display_bufnr, v:true, s:display_opts)
 
   call setwinvar(s:display_winid, '&winhl', s:display_winhl)

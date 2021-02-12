@@ -31,11 +31,6 @@ function! s:create_display() abort
   if !exists('s:display_winid') || empty(popup_getpos(s:display_winid))
     let s:display_opts = clap#layout#calc()
 
-    if g:clap_preview_direction ==# 'LR'
-      let s:display_opts.width /= 2
-      let s:display_opts.height *= 2
-    endif
-
     let s:display_winid = popup_create([], {
           \ 'wrap': v:false,
           \ 'filter': function('clap#popup#move_manager#filter'),
