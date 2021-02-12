@@ -317,6 +317,7 @@ function! s:get_config_preview(height) abort
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row -= 1
     let opts.col += opts.width
+    let opts.height += 1
   else
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row += opts.height
@@ -347,8 +348,13 @@ function! s:create_preview_win(height) abort
 endfunction
 
 function! s:max_preview_size() abort
-  let max_size = &lines - s:display_opts.row - s:display_opts.height - &cmdheight
-  return float2nr(max_size)
+  let s:preview_direction = 'LR'
+  if s:preview_direction ==# 'LR'
+    return s:display_opts.height
+  else
+    let max_size = &lines - s:display_opts.row - s:display_opts.height - &cmdheight
+    return float2nr(max_size)
+  endif
 endfunction
 
 function! clap#floating_win#preview.show(lines) abort
@@ -362,10 +368,12 @@ function! clap#floating_win#preview.show(lines) abort
   if !exists('s:preview_winid')
     call s:create_preview_win(height)
   else
-    let opts = nvim_win_get_config(s:preview_winid)
-    if opts.height != height
-      let opts.height = height
-      call nvim_win_set_config(s:preview_winid, opts)
+    if s:preview_direction !=# 'LR'
+      let opts = nvim_win_get_config(s:preview_winid)
+      if opts.height != height
+        let opts.height = height
+        call nvim_win_set_config(s:preview_winid, opts)
+      endif
     endif
   endif
   call clap#util#nvim_buf_set_lines(s:preview_bufnr, lines)
