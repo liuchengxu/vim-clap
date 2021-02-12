@@ -128,7 +128,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub(super) fn handle_message(msg: Message) {
+pub fn handle_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
@@ -156,6 +156,7 @@ mod tests {
 
     #[test]
     fn test_dir() {
+        // /home/xlc/.vim/plugged/vim-clap/crates/stdio_server
         let entries = read_dir_entries(
             &std::env::current_dir()
                 .unwrap()
@@ -166,6 +167,7 @@ mod tests {
             None,
         )
         .unwrap();
-        println!("entry: {:?}", entries);
+
+        assert_eq!(entries, vec!["Cargo.toml", "src/"]);
     }
 }
