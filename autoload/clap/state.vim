@@ -20,6 +20,10 @@ function! clap#state#handle_message(msg) abort
 
   if has_key(decoded, 'lines')
     call g:clap.display.set_lines(decoded.lines)
+    if empty(decoded.lines)
+      call g:clap.preview.clear()
+      return
+    endif
   endif
 
   if has_key(decoded, 'truncated_map')
