@@ -1,18 +1,41 @@
+use std::ffi::OsStr;
+use std::path::Path;
+
 use super::*;
 
-pub(super) fn run<T: super::HandleMessage>(
+/// Collect the output of `source_cmd` asynchronously.
+async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
+    source_cmd: S,
+    cwd: P,
+) -> Result<Vec<String>> {
+    let output: std::process::Output = tokio::process::Command::new(source_cmd.as_ref())
+        .current_dir(cwd)
+        .output()
+        .await?;
+    if !output.status.success() && !output.stderr.is_empty() {
+        return Err(anyhow::anyhow!(
+            "an error occured for command {:?}: {:?}",
+            source_cmd.as_ref(),
+            output.stderr
+        ));
+    }
+    let stdout_string = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout_string
+        .split('\n')
+        .map(Into::into)
+        .collect::<Vec<String>>();
+    if lines.last().map(|s| s.is_empty()).unwrap_or(false) {
+        lines.pop();
+    }
+    Ok(lines)
+}
+
+pub(super) async fn run<T: super::HandleMessage>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,
 ) -> Result<()> {
-    let stdout_stream = filter::subprocess::Exec::shell(source_cmd)
-        .cwd(&session.context.cwd)
-        .stream_stdout()?;
-
-    let lines = std::io::BufReader::new(stdout_stream)
-        .lines()
-        .filter_map(|x| x.ok())
-        .collect::<Vec<String>>();
+    let lines = gather_source(source_cmd, &session.context.cwd).await?;
 
     if session.is_running() {
         // Send the forerunner result to client.
@@ -37,4 +60,19 @@ pub(super) fn run<T: super::HandleMessage>(
     }
 
     Ok(())
+}
+
+#[tokio::test]
+async fn test_tokio_command() {
+    let lines = gather_source(
+        "ls",
+        std::env::current_dir()
+            .unwrap()
+            .into_os_string()
+            .into_string()
+            .unwrap(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(vec!["Cargo.toml", "src"], lines);
 }
