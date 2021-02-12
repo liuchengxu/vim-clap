@@ -128,8 +128,8 @@ impl OnMove {
             }
             "grep" | "grep2" => {
                 let try_extract_file_path = |line: &str| {
-                    let (fpath, lnum, _col) = extract_grep_position(line)
-                        .context("Couldn't extract grep position")?;
+                    let (fpath, lnum, _col) =
+                        extract_grep_position(line).context("Couldn't extract grep position")?;
                     let mut path: PathBuf = context.cwd.clone().into();
                     path.push(&fpath);
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
