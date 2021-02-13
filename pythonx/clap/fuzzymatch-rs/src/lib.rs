@@ -23,7 +23,7 @@ struct MatchContext {
     winwidth: usize,
     enable_icon: bool,
     match_type: MatchType,
-    bonus_type: Bonus,
+    bonuses: Vec<Bonus>,
 }
 
 impl From<HashMap<String, String>> for MatchContext {
@@ -45,11 +45,16 @@ impl From<HashMap<String, String>> for MatchContext {
 
         let bonus_type = ctx.get("bonus_type").map(Into::into).unwrap_or(Bonus::None);
 
+        let mut bonuses = vec![bonus_type];
+        if let Some(filetype) = ctx.get("filetype") {
+            bonuses.push(Bonus::Language(filetype.into()));
+        }
+
         Self {
             winwidth,
             enable_icon,
             match_type,
-            bonus_type,
+            bonuses,
         }
     }
 }
@@ -68,8 +73,10 @@ fn fuzzy_match(
         winwidth,
         enable_icon,
         match_type,
-        bonus_type,
+        mut bonuses,
     } = context.into();
+
+    bonuses.push(Bonus::RecentFiles(recent_files));
 
     let matcher = Matcher::new_with_bonuses(
         if query.contains(' ') {
@@ -78,7 +85,7 @@ fn fuzzy_match(
             Algo::Fzy
         },
         match_type,
-        vec![bonus_type, Bonus::RecentFiles(recent_files)],
+        bonuses,
     );
 
     let do_match = |line: &str| {

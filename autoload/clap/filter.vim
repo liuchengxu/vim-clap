@@ -99,6 +99,9 @@ else
             \ 'match_type': s:match_type(),
             \ 'bonus_type': clap#filter#get_bonus_type(),
             \ }
+      if g:clap.provider.id ==# 'blines'
+        let context['filetype'] = expand('#'.g:clap.start.bufnr.':e')
+      endif
       try
         return clap#filter#sync#python#(a:query, a:candidates, clap#util#recent_files(), context)
       catch
