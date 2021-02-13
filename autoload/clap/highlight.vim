@@ -15,7 +15,7 @@ if has('nvim')
     " Once the default highlight priority of nvim_buf_add_highlight() is
     " higher, we could use the same impl with vim's s:apply_highlight().
 
-    call g:clap.display.goto_win()
+    noautocmd call g:clap.display.goto_win()
     " We should not use clearmatches() here.
     call g:clap.display.matchdelete()
 
@@ -35,14 +35,14 @@ if has('nvim')
       let lnum += 1
     endfor
 
-    call g:clap.input.goto_win()
+    noautocmd call g:clap.input.goto_win()
   endfunction
 
   " This is same with g:clap.display.clear_highlight()
   function! clap#highlight#clear() abort
-    call g:clap.display.goto_win()
+    noautocmd call g:clap.display.goto_win()
     call g:clap.display.matchdelete()
-    call g:clap.input.goto_win()
+    noautocmd call g:clap.input.goto_win()
   endfunction
 
   function! clap#highlight#add_highlight_at(lnum, col, hl_group) abort
