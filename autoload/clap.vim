@@ -158,6 +158,7 @@ function! clap#_exit() abort
   call clap#maple#clean_up()
 
   noautocmd call g:clap.close_win()
+  call g:clap.preview.clear()
 
   let g:clap.is_busy = 0
   let g:clap.display.cache = []
