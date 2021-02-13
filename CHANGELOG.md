@@ -12,6 +12,7 @@
 - Add a bonus for the files you opened since you enter vim. #622
 - Add async preview support for `help_tags` provider, the Rust binary is required. #630
 - Add `g:clap_always_open_preview` to open the preview always if the provider impls `on_move_async`, it's on by the default which changes the behavior before. #625
+- Add `g:clap_preview_direction` for opening the preview window on the right of the display window, and the default behavior has been changed to `LR` if your screen's `columns` is less than 80. #634
 
 ### Fixed
 
