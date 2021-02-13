@@ -36,8 +36,8 @@ impl DisplayPath {
     }
 }
 
-impl Into<String> for DisplayPath {
-    fn into(self) -> String {
+impl std::fmt::Display for DisplayPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let path_str = if self.inner.is_dir() {
             format!(
                 "{}{}",
@@ -49,9 +49,9 @@ impl Into<String> for DisplayPath {
         };
 
         if self.enable_icon {
-            prepend_filer_icon(&self.inner, &path_str)
+            write!(f, "{}", prepend_filer_icon(&self.inner, &path_str))
         } else {
-            path_str
+            write!(f, "{}", path_str)
         }
     }
 }
@@ -61,8 +61,8 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     enable_icon: bool,
     max: Option<usize>,
 ) -> Result<Vec<String>> {
-    let entries_iter =
-        fs::read_dir(dir)?.map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).into()));
+    let entries_iter = fs::read_dir(dir)?
+        .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
 
     let mut entries = if let Some(m) = max {
         entries_iter
