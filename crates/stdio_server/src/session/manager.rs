@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use log::error;
+use log::{debug, error};
 
-use super::*;
+use crate::session::{handlers::MessageHandler, Session, SessionId};
 use crate::types::Message;
+use crate::SessionEvent;
 
 /// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]
@@ -44,7 +45,7 @@ impl NewSession for OpaqueSession {
         let session = Session {
             session_id: msg.session_id,
             context: msg.into(),
-            message_handler: super::handler::MessageHandler,
+            message_handler: MessageHandler,
             event_recv: session_receiver,
         };
 
@@ -56,7 +57,7 @@ impl NewSession for OpaqueSession {
             // TODO: choose different fitler strategy according to the time forerunner job spent.
             tokio::spawn(async move {
                 if let Err(e) =
-                    crate::session::impls::on_init::run(msg_id, source_cmd, session_cloned).await
+                    crate::session::handlers::on_init::run(msg_id, source_cmd, session_cloned).await
                 {
                     log::error!(
                         "error occurred when running the forerunner job, msg_id: {}, error: {:?}",
