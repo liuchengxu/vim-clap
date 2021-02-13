@@ -71,6 +71,7 @@ function! s:on_complete_maple() abort
     endif
 
     call s:on_complete_common(decoded.lines, decoded.total)
+    call clap#preview#async_open_with_delay()
 
     if has_key(decoded, 'tempfile')
       let g:__clap_forerunner_tempfile = decoded.tempfile

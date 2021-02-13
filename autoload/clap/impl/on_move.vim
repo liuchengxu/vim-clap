@@ -47,11 +47,7 @@ if clap#maple#is_available()
   endfunction
 
   function! clap#impl#on_move#async() abort
-    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
-  endfunction
-
-  function! clap#impl#on_move#async() abort
-    return clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
+    call clap#client#call_on_move('on_move', function('s:handle_on_move_result'))
   endfunction
 else
   function! s:dispatch_on_move_impl() abort
