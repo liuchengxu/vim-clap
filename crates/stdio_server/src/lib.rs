@@ -9,7 +9,10 @@ use log::{debug, error};
 use serde::Serialize;
 use serde_json::json;
 
-use session::{filer, Manager, SessionEvent};
+use session::{
+    filer::{self, FilerSession},
+    GeneralSession, Manager, SessionEvent,
+};
 use types::Message;
 
 fn write_response<T: Serialize>(msg: T) {
@@ -38,21 +41,20 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
+    use SessionEvent::*;
+
     let mut session_manager = Manager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
             debug!("Recv: {:?}", msg);
             match &msg.method[..] {
-                "filer" => filer::handle_message(msg),
-                "filer/on_init" => {
-                    session_manager.new_session(msg.session_id, msg, filer::FilerSession)
-                }
-                "initialize_global_env" => env::initialize_global(msg),
-                "on_init" => session_manager.new_opaque_session(msg.session_id, msg),
-                "on_typed" => session_manager.send(msg.session_id, SessionEvent::OnTyped(msg)),
-                "on_move" | "filer/on_move" => {
-                    session_manager.send(msg.session_id, SessionEvent::OnMove(msg))
-                }
+                "initialize_global_env" => env::initialize_global(msg), // should be called only once.
+                "filer" => filer::handle_custom_message(msg),
+                "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
+                "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
+                "on_init" => session_manager.new_session(msg.session_id, msg, GeneralSession),
+                "on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
+                "on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "exit" => session_manager.terminate(msg.session_id),
                 _ => write_response(
                     json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),

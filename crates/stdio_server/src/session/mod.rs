@@ -10,7 +10,7 @@ use crate::types::ProviderId;
 
 pub use self::context::SessionContext;
 pub use self::handlers::on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler};
-pub use self::manager::{Manager, NewSession, OpaqueSession};
+pub use self::manager::{Manager, NewSession};
 pub use self::providers::*;
 
 pub type SessionId = u64;
