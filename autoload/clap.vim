@@ -77,6 +77,7 @@ let g:clap_always_open_preview = get(g:, 'clap_always_open_preview', 1)
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
 let g:clap_preview_size = get(g:, 'clap_preview_size', 5)
+let g:clap_preview_direction = get(g:, 'clap_preview_direction', &columns < 80 ? 'UD' : 'LR')
 let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v:true)
 let g:clap_background_shadow_blend = get(g:, 'clap_background_shadow_blend', 50)
 let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
@@ -157,6 +158,7 @@ function! clap#_exit() abort
   call clap#maple#clean_up()
 
   noautocmd call g:clap.close_win()
+  call g:clap.preview.clear()
 
   let g:clap.is_busy = 0
   let g:clap.display.cache = []

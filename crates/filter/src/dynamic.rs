@@ -373,7 +373,13 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-        printer::print_dyn_filter_results(filtered, total, number, winwidth, icon_painter);
+        printer::print_dyn_filter_results(
+            filtered,
+            total,
+            number,
+            winwidth.unwrap_or(100),
+            icon_painter,
+        );
     } else {
         let mut filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),

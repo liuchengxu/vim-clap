@@ -50,25 +50,25 @@ function! s:navigate(direction) abort
           \ || get(g:, '__clap_do_not_use_cache', v:false)
 
       if !g:clap_disable_bottom_top
-        normal! 1gg
+        noautocmd normal! 1gg
       endif
     else
       call s:load_cache()
-      normal! j
+      noautocmd normal! j
     endif
 
   elseif curlnum == 1 && a:direction ==# 'up'
 
     if !g:clap_disable_bottom_top
-      normal! G
+      noautocmd normal! G
     endif
 
   else
 
     if a:direction ==# 'down'
-      normal! j
+      noautocmd normal! j
     else
-      normal! k
+      noautocmd normal! k
     endif
 
   endif
@@ -118,6 +118,7 @@ else
   function! clap#navigation#linewise(direction) abort
     call s:navigate(a:direction)
     " redraw is neccessary!
+    " FIXME: redraw is too slow!
     redraw
     call s:on_move_safe()
   endfunction

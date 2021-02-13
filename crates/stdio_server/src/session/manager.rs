@@ -4,8 +4,9 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
 
-use super::*;
+use crate::session::SessionId;
 use crate::types::Message;
+use crate::SessionEvent;
 
 /// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]
@@ -25,52 +26,15 @@ impl SessionEventSender {
     }
 }
 
+/// This structs manages all the created sessions tracked by the session id.
 #[derive(Debug, Default)]
 pub struct Manager {
     sessions: HashMap<SessionId, SessionEventSender>,
 }
 
+/// Creates a new session with a context built from the message `msg`.
 pub trait NewSession {
     fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>>;
-}
-
-pub struct OpaqueSession;
-
-impl NewSession for OpaqueSession {
-    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
-        let msg_id = msg.id;
-
-        let session = Session {
-            session_id: msg.session_id,
-            context: msg.into(),
-            message_handler: super::handler::MessageHandler,
-            event_recv: session_receiver,
-        };
-
-        debug!("new session context: {:?}", session.context);
-
-        // FIXME: Actually unused for now
-        if let Some(source_cmd) = session.context.source_cmd.clone() {
-            let session_cloned = session.clone();
-            // TODO: choose different fitler strategy according to the time forerunner job spent.
-            tokio::spawn(async move {
-                if let Err(e) =
-                    crate::session::impls::on_init::run(msg_id, source_cmd, session_cloned).await
-                {
-                    log::error!(
-                        "error occurred when running the forerunner job, msg_id: {}, error: {:?}",
-                        msg_id,
-                        e
-                    );
-                }
-            });
-        }
-
-        session.start_event_loop()?;
-
-        Ok(session_sender)
-    }
 }
 
 /// Dispatches the raw RpcMessage to the right session instance according to the session_id.
@@ -94,10 +58,6 @@ impl Manager {
                 }
             }
         }
-    }
-
-    pub fn new_opaque_session(&mut self, session_id: SessionId, msg: Message) {
-        self.new_session(session_id, msg, OpaqueSession)
     }
 
     /// Returns true if the sessoion exists given the session_id.

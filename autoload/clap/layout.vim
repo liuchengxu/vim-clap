@@ -6,12 +6,22 @@ set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
-let s:default_layout = {
-          \ 'width': '67%',
-          \ 'height': '33%',
-          \ 'row': '33%',
-          \ 'col': '17%',
-          \ }
+
+if g:clap_preview_direction ==# 'LR'
+  let s:default_layout = {
+            \ 'width': '40%',
+            \ 'height': '67%',
+            \ 'row': '20%',
+            \ 'col': '10%',
+            \ }
+else
+  let s:default_layout = {
+            \ 'width': '67%',
+            \ 'height': '33%',
+            \ 'row': '33%',
+            \ 'col': '17%',
+            \ }
+endif
 
 if s:is_nvim
   call add(s:layout_keys, 'win')

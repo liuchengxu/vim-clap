@@ -36,8 +36,8 @@ impl DisplayPath {
     }
 }
 
-impl Into<String> for DisplayPath {
-    fn into(self) -> String {
+impl std::fmt::Display for DisplayPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let path_str = if self.inner.is_dir() {
             format!(
                 "{}{}",
@@ -49,9 +49,9 @@ impl Into<String> for DisplayPath {
         };
 
         if self.enable_icon {
-            prepend_filer_icon(&self.inner, &path_str)
+            write!(f, "{}", prepend_filer_icon(&self.inner, &path_str))
         } else {
-            path_str
+            write!(f, "{}", path_str)
         }
     }
 }
@@ -61,8 +61,8 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     enable_icon: bool,
     max: Option<usize>,
 ) -> Result<Vec<String>> {
-    let entries_iter =
-        fs::read_dir(dir)?.map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).into()));
+    let entries_iter = fs::read_dir(dir)?
+        .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
 
     let mut entries = if let Some(m) = max {
         entries_iter
@@ -76,8 +76,6 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 
     Ok(entries)
 }
-
-pub struct FilerSession;
 
 #[derive(Clone)]
 pub struct FilerMessageHandler;
@@ -103,10 +101,12 @@ impl HandleMessage for FilerMessageHandler {
                 }
             }
             // TODO: handle on_typed
-            RpcMessage::OnTyped(msg) => handle_message(msg),
+            RpcMessage::OnTyped(msg) => handle_filer_message(msg),
         }
     }
 }
+
+pub struct FilerSession;
 
 impl NewSession for FilerSession {
     fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
@@ -119,8 +119,8 @@ impl NewSession for FilerSession {
             event_recv: session_receiver,
         };
 
-        // handle on_init
-        handle_message(msg);
+        // Handle the on_init message.
+        handle_filer_message(msg);
 
         session.start_event_loop()?;
 
@@ -128,7 +128,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub fn handle_message(msg: Message) {
+pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 

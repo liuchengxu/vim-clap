@@ -4,7 +4,10 @@ use std::path::Path;
 use anyhow::Result;
 use serde_json::json;
 
-use crate::{session::Session, write_response};
+use crate::{
+    session::{HandleMessage, Session},
+    write_response,
+};
 
 /// Collect the output of `source_cmd` asynchronously.
 async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
@@ -43,7 +46,7 @@ async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
     Ok(lines)
 }
 
-pub async fn run<T: super::HandleMessage>(
+pub async fn run<T: HandleMessage>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,

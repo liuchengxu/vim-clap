@@ -136,20 +136,7 @@ impl OnMove {
 
                 let (path, lnum) = try_extract_file_path(&curline)?;
 
-                // Try again as somehow the extracted path could be the one like this:
-                // /home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs:36:1:/// // crates/printer/src/lib.rs
-                //
-                // Source: https://github.com/liuchengxu/vim-clap/blob/ba6f54678f/crates/pattern/src/lib.rs#L36
-                if !path.exists() {
-                    let (path, lnum) =
-                        try_extract_file_path(path.to_str().ok_or_else(|| {
-                            anyhow!("Failed to convert {} to str", path.display())
-                        })?)?;
-
-                    Self::Grep { path, lnum }
-                } else {
-                    Self::Grep { path, lnum }
-                }
+                Self::Grep { path, lnum }
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
@@ -218,9 +205,13 @@ impl<'a> OnMoveHandler<'a> {
                 inner: OnMove::Filer(path),
             });
         }
+        let size = std::cmp::max(
+            provider_id.get_preview_size(),
+            (context.preview_winheight / 2) as usize,
+        );
         Ok(Self {
             msg_id,
-            size: provider_id.get_preview_size(),
+            size,
             provider_id,
             context,
             inner: OnMove::new(curline, context)?,
@@ -258,6 +249,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn send_response(&self, result: serde_json::value::Value) {
         let provider_id: crate::types::ProviderId = self.provider_id.clone();
+        debug!("sending on_move response, result: {:?}", result);
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -306,8 +298,8 @@ impl<'a> OnMoveHandler<'a> {
 
         match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
-                let fname = format!("{}:{}", path.as_ref().display(), lnum);
-                let lines = std::iter::once(fname.clone())
+                let fname = format!("{}", path.as_ref().display());
+                let lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
                 debug!(
@@ -339,7 +331,7 @@ impl<'a> OnMoveHandler<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        let max_width = 2 * self.context.winwidth.unwrap_or(100) as usize;
+        let max_width = 2 * self.context.display_winwidth as usize;
         lines.map(move |line| {
             if line.len() > max_width {
                 let mut line = line;

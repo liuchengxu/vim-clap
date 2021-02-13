@@ -36,24 +36,29 @@ function! clap#filter#async#dyn#from_tempfile(tempfile) abort
         \ )
 endfunction
 
-function! s:grep_cmd_common() abort
-  return ['--number', s:DYN_ITEMS_TO_SHOW, '--winwidth', winwidth(g:clap.display.winid), 'grep', g:clap.input.get()]
-endfunction
-
-function! clap#filter#async#dyn#start_grep() abort
-  let s:last_query = g:clap.input.get()
-  let subcmd = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
-  let grep_cmd = clap#maple#build_cmd_list(subcmd + s:grep_cmd_common() + ['--cmd-dir', clap#rooter#working_dir()])
-  call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
-endfunction
-
-function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
+function! s:prepare_grep_cmd() abort
   let s:last_query = g:clap.input.get()
   let subcmd = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
   if has_key(g:clap.context, 'no-cache')
     call add(subcmd, '--no-cache')
   endif
-  let grep_cmd = clap#maple#build_cmd_list(subcmd + s:grep_cmd_common() + ['--input', a:tempfile])
+  let opts = [
+        \ '--number', s:DYN_ITEMS_TO_SHOW,
+        \ '--winwidth', winwidth(g:clap.display.winid),
+        \ 'grep', g:clap.input.get(),
+        \ ]
+  return subcmd + opts
+endfunction
+
+function! clap#filter#async#dyn#start_grep() abort
+  let grep_cmd = s:prepare_grep_cmd()
+  let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--cmd-dir', clap#rooter#working_dir()])
+  call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
+endfunction
+
+function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
+  let grep_cmd = s:prepare_grep_cmd()
+  let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--input', a:tempfile])
   call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
 endfunction
 

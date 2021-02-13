@@ -89,11 +89,14 @@ else
 
   function! s:out_cb(channel, message) abort
     if s:job_id > 0 && a:channel == s:job_channel
-      if a:message =~# '^Content-length:' || a:message ==# ''
+      if empty(a:message)
         return
       endif
       try
-        call s:MessageHandler(a:message)
+        " Not sure if a change of vim itself, the message now is no longer
+        " seperated by new line, hereby we try to split and take the last
+        " item.
+        call s:MessageHandler(split(a:message, "\n")[-1])
       catch
         call clap#helper#echo_error('Failed to handle message:'.a:message.', exception:'.v:exception)
       endtry
@@ -115,6 +118,8 @@ else
     call clap#spinner#set_busy()
     let g:clap.display.cache = []
     let s:job = job_start(a:cmd_list, {
+          \ 'in_io': 'null',
+          \ 'mode': 'raw',
           \ 'err_cb': function('s:err_cb'),
           \ 'out_cb': function('s:out_cb'),
           \ 'exit_cb': function('s:exit_cb'),

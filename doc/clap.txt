@@ -352,6 +352,19 @@ g:clap_preview_delay                                     *g:clap_preview_delay*
   request will be sent to the backend.
 
 
+g:clap_preview_direction                             *g:clap_preview_direction*
+
+  Type: |String|
+  Default: `'LR'`
+
+  This variable controls the direction of the display window to the preview
+  window, currently there are only `LR` and `UD` options:
+
+  - `LR` means the display window is on the left and the preview window
+  is on th right.
+
+  - `UD` means the display window is up and the preview window is down.
+
 g:clap_open_action                                         *g:clap_open_action*
 
   Type: |Dict|

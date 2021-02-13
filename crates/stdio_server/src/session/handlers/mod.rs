@@ -1,12 +1,11 @@
-use serde_json::json;
-
-use crate::session::{HandleMessage, RpcMessage, SessionContext};
-use crate::types::Message;
-use crate::write_response;
-
 pub mod on_init;
 pub mod on_move;
 pub mod on_typed;
+
+use serde_json::json;
+
+use crate::session::{HandleMessage, RpcMessage, SessionContext};
+use crate::write_response;
 
 #[derive(Clone)]
 pub struct MessageHandler;
