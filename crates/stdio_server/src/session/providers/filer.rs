@@ -101,7 +101,7 @@ impl HandleMessage for FilerMessageHandler {
                 }
             }
             // TODO: handle on_typed
-            RpcMessage::OnTyped(msg) => handle_custom_message(msg),
+            RpcMessage::OnTyped(msg) => handle_filer_message(msg),
         }
     }
 }
@@ -119,8 +119,8 @@ impl NewSession for FilerSession {
             event_recv: session_receiver,
         };
 
-        // handle on_init
-        handle_custom_message(msg);
+        // Handle the on_init message.
+        handle_filer_message(msg);
 
         session.start_event_loop()?;
 
@@ -128,7 +128,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub fn handle_custom_message(msg: Message) {
+pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 

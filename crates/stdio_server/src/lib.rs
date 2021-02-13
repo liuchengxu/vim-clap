@@ -49,7 +49,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             debug!("Recv: {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => env::initialize_global(msg), // should be called only once.
-                "filer" => filer::handle_custom_message(msg),
+                "filer" => filer::handle_filer_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "on_init" => session_manager.new_session(msg.session_id, msg, GeneralSession),
