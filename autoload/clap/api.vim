@@ -606,6 +606,8 @@ function! s:init_provider() abort
     if clap#maple#is_available() && self.id !=# 'filer'
       call clap#client#notify_on_init('on_init')
     endif
+    " Try to fill the preview window.
+    call timer_start(30, { -> clap#impl#on_move#invoke_async() })
   endfunction
 
   return provider
