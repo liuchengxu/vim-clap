@@ -30,8 +30,10 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
-        \   'preview_winheight': winheight(g:clap.preview.winid),
         \ }
+  if has_key(g:clap.preview, 'winid')
+    let params['preview_winheight'] = winheight(g:clap.preview.winid),
+  endif
   if g:clap.provider.id ==# 'help_tags'
     let params['runtimepath'] = &runtimepath
   endif
