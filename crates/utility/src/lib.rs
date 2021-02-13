@@ -115,7 +115,7 @@ pub fn read_preview_lines<P: AsRef<Path>>(
     let (start, end, hl_line) = if target_line > size {
         (target_line - size, target_line + size, size)
     } else {
-        (0, size, target_line)
+        (0, 2 * size, target_line)
     };
     Ok((
         io::BufReader::new(file)
