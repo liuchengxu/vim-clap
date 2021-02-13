@@ -17,7 +17,7 @@ impl HandleMessage for MessageHandler {
                 let msg_id = msg.id;
                 if let Err(e) = on_move::OnMoveHandler::try_new(&msg, context).map(|x| x.handle()) {
                     log::error!("Handle RpcMessage::OnMove {:?}, error: {:?}", msg, e);
-                    write_response(json!({"error": format!("{}",e), "id": msg_id }));
+                    write_response(json!({"error": e.to_string(), "id": msg_id }));
                 }
             }
             RpcMessage::OnTyped(msg) => on_typed::handle_on_typed(msg, context),
