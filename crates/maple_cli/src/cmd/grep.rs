@@ -70,7 +70,7 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
         // Ref https://github.com/liuchengxu/vim-clap/issues/595
         .map(|s| {
             if s.len() > 2 {
-                if s.chars().nth(0).unwrap() == '"' && s.chars().nth_back(0).unwrap() == '"' {
+                if s.starts_with('"') && s.chars().nth_back(0).unwrap() == '"' {
                     &s[1..s.len() - 1]
                 } else {
                     s
