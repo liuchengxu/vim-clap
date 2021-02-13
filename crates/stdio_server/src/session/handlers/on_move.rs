@@ -225,7 +225,6 @@ impl<'a> OnMoveHandler<'a> {
             | Grep { path, lnum }
             | ProjTags { path, lnum }
             | BufferTags { path, lnum } => {
-                debug!("path:{}, lnum:{}", path.display(), lnum);
                 self.preview_file_at(&path, *lnum);
             }
             HelpTags {
@@ -249,7 +248,6 @@ impl<'a> OnMoveHandler<'a> {
 
     fn send_response(&self, result: serde_json::value::Value) {
         let provider_id: crate::types::ProviderId = self.provider_id.clone();
-        debug!("sending on_move response, result: {:?}", result);
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -303,8 +301,8 @@ impl<'a> OnMoveHandler<'a> {
                     .chain(self.truncate_preview_lines(lines_iter))
                     .collect::<Vec<_>>();
                 debug!(
-                    "sending msg_id:{}, provider_id:{}",
-                    self.msg_id, self.provider_id
+                    "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines: {:?}",
+                    self.msg_id, self.provider_id, lines
                 );
                 self.send_response(json!({
                   "event": "on_move",

@@ -46,7 +46,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut session_manager = Manager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
-            debug!("Recv: {:?}", msg);
+            debug!("==> message(in): {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => env::initialize_global(msg), // should be called only once.
                 "filer" => filer::handle_filer_message(msg),
