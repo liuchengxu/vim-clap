@@ -89,6 +89,9 @@ if s:is_nvim
     endif
   endfunction
 
+  function! clap#api#floating_win_is_valid(winid) abort
+    return nvim_win_is_valid(a:winid)
+  endfunction
 else
   function! s:_get_lines() dict abort
     let lines = getbufline(self.bufnr, 0, '$')
@@ -106,6 +109,10 @@ else
 
   function! clap#api#win_execute(winid, command) abort
     return win_execute(a:winid, a:command)
+  endfunction
+
+  function! clap#api#floating_win_is_valid(winid) abort
+    return !empty(popup_getpos(a:winid))
   endfunction
 endif
 
