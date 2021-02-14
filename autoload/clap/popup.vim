@@ -63,7 +63,7 @@ endfunction
 let g:clap#popup#display.open = function('s:create_display')
 
 function! g:clap#popup#display.shrink_if_undersize() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     if g:clap_preview_direction !=# 'LR'
       let pos = popup_getpos(s:display_winid)
       let line_count = g:clap.display.line_count()
@@ -82,7 +82,7 @@ function! g:clap#popup#display.shrink_if_undersize() abort
 endfunction
 
 function! g:clap#popup#display.shrink() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     let pos = popup_getpos(s:display_winid)
     let line_count = g:clap.display.line_count()
     if pos.height != line_count
@@ -273,14 +273,18 @@ endfunction
 " for it could be very problematic.
 function! s:hide_all() abort
   call popup_hide(s:display_winid)
-  call popup_hide(s:preview_winid)
+  if exists('s:preview_winid')
+    call popup_hide(s:preview_winid)
+  endif
   call popup_hide(s:indicator_winid)
   call popup_hide(s:input_winid)
   call popup_hide(s:spinner_winid)
 endfunction
 
 function! s:close_others() abort
-  noautocmd call popup_close(s:preview_winid)
+  if exists('s:preview_winid')
+    noautocmd call popup_close(s:preview_winid)
+  endif
   noautocmd call popup_close(s:indicator_winid)
   noautocmd call popup_close(s:input_winid)
   noautocmd call popup_close(s:spinner_winid)
@@ -311,7 +315,7 @@ function! g:clap#popup#preview.show(lines) abort
 endfunction
 
 function! g:clap#popup#preview.hide() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     if exists('s:preview_winid')
       call popup_hide(s:preview_winid)
     endif
@@ -319,7 +323,9 @@ function! g:clap#popup#preview.hide() abort
 endfunction
 
 function! g:clap#popup#preview.clear() abort
-  silent call deletebufline(winbufnr(s:preview_winid), 1, '$')
+  if exists('s:preview_winid')
+    silent call deletebufline(winbufnr(s:preview_winid), 1, '$')
+  endif
 endfunction
 
 function! s:open_popup() abort
@@ -329,7 +335,9 @@ function! s:open_popup() abort
     call s:create_symbol_left()
     call s:create_symbol_right()
   endif
-  call s:create_preview()
+  if clap#preview#is_enabled()
+    call s:create_preview()
+  endif
   call s:create_indicator()
   call s:create_input()
   call s:create_spinner()

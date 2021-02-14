@@ -84,7 +84,7 @@ function! g:clap#floating_win#display.open() abort
 endfunction
 
 function! g:clap#floating_win#display.shrink_if_undersize() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     let opts = nvim_win_get_config(s:display_winid)
     if g:clap.display.line_count() < s:display_opts.height
       let opts.height = g:clap.display.line_count()
@@ -97,7 +97,7 @@ function! g:clap#floating_win#display.shrink_if_undersize() abort
 endfunction
 
 function! g:clap#floating_win#display.shrink() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     let height = g:clap.display.line_count()
     let opts = nvim_win_get_config(s:display_winid)
     if opts.height != height
@@ -383,7 +383,7 @@ function! clap#floating_win#preview.close() abort
 endfunction
 
 function! clap#floating_win#preview.hide() abort
-  if !g:clap_always_open_preview
+  if !clap#preview#is_always_open()
     call g:clap#floating_win#preview.close()
   endif
 endfunction
@@ -408,7 +408,7 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  if g:clap_preview_direction ==# 'LR'
+  if clap#preview#is_enabled() && g:clap_preview_direction ==# 'LR'
     call s:create_preview_win(s:display_opts.height)
   endif
   if g:clap_search_box_border_style ==# 'curve'
