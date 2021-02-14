@@ -354,6 +354,10 @@ function! s:max_preview_size() abort
 endfunction
 
 function! clap#floating_win#preview.show(lines) abort
+  if !clap#preview#is_enabled()
+    return
+  endif
+
   let max_size = s:max_preview_size()
   if max_size <= 0
     call g:clap#floating_win#preview.close()

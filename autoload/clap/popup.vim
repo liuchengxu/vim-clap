@@ -302,6 +302,10 @@ function! s:callback(_id, _result) abort
 endfunction
 
 function! g:clap#popup#preview.show(lines) abort
+  if !g:clap#preview#is_enabled()
+    return
+  endif
+
   if g:clap_preview_direction !=# 'LR'
     let display_pos = popup_getpos(s:display_winid)
     let col = display_pos.col
