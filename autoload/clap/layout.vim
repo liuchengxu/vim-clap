@@ -7,7 +7,14 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:layout_keys = ['width', 'height', 'row', 'col', 'relative']
 
-if g:clap_preview_direction ==# 'LR'
+if !clap#preview#is_enabled()
+  let s:default_layout = {
+            \ 'width': '70%',
+            \ 'height': '67%',
+            \ 'row': '25%',
+            \ 'col': '15%',
+            \ }
+elseif g:clap_preview_direction ==# 'LR'
   let s:default_layout = {
             \ 'width': '40%',
             \ 'height': '67%',

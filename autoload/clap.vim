@@ -73,7 +73,7 @@ let s:default_action = {
   \ 'ctrl-v': 'vsplit',
   \ }
 
-let g:clap_always_open_preview = get(g:, 'clap_always_open_preview', 1)
+let g:clap_open_preview = get(g:, 'clap_open_preview', 'always')
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
 let g:clap_preview_size = get(g:, 'clap_preview_size', 5)

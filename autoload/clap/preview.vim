@@ -117,7 +117,22 @@ let s:preview_timer = -1
 let s:last_preview_line = ''
 let s:preview_delay = get(g:, 'clap_preview_delay', 100)
 
+let s:PREVIEW_DISABLED = tolower(g:clap_open_preview) ==# 'never'
+let s:ALWAYS_OPEN_PREVIEW = tolower(g:clap_open_preview) ==# 'always'
+
+function! clap#preview#is_enabled() abort
+  return !s:PREVIEW_DISABLED
+endfunction
+
+function! clap#preview#is_always_open() abort
+  return s:ALWAYS_OPEN_PREVIEW
+endfunction
+
 function! clap#preview#async_open_with_delay() abort
+  if s:PREVIEW_DISABLED
+    return
+  endif
+
   if s:preview_timer != -1
     call timer_stop(s:preview_timer)
   endif
