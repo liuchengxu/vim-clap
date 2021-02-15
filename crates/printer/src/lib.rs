@@ -98,7 +98,6 @@ pub fn truncate_long_matched_lines<T>(
                     let end = line.len();
                     let left_truncated = if let Some(n) = skipped {
                         let icon: String = line.chars().take(n).collect();
-                        // start += n;
                         format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
                     } else {
                         format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
