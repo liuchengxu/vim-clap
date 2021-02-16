@@ -7,6 +7,7 @@ use crate::Score;
 use language::Language;
 use recent_files::RecentFiles;
 
+/// Tweak the matching score calculated by the base match algorithm.
 #[derive(Debug, Clone)]
 pub enum Bonus {
     /// Give a bonus if the needle matches in the basename of the haystack.
@@ -54,8 +55,8 @@ impl From<&String> for Bonus {
 
 fn bonus_for_filename(item: &SourceItem, score: Score, indices: &[usize]) -> Score {
     if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
-        let hits_filename = indices.iter().filter(|x| **x >= idx).count();
         if item.raw.len() > idx {
+            let hits_filename = indices.iter().filter(|x| **x >= idx).count();
             // bonus = base_score * len(matched elements in filename) / len(filename)
             score * hits_filename as i64 / (item.raw.len() - idx) as i64
         } else {

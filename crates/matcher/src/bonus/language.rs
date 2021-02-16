@@ -66,9 +66,10 @@ impl Language {
                 let calc_bonus = |item: Option<&str>| {
                     item.and_then(|s| {
                         // pub(crate) fn
+                        // FIXME find a proper strategy.
                         if s.starts_with("pub") || s == "fn" {
                             Some(base_score / 3)
-                        } else if s == "let" {
+                        } else if ["let", "const", "static"].contains(&s) {
                             Some(base_score / 6)
                         } else if s.starts_with("//") {
                             Some(-(base_score / 5))
