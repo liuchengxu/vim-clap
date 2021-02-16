@@ -27,6 +27,7 @@ impl From<&str> for Language {
 
 // declaration
 // comment
+// https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el
 
 impl Language {
     pub fn calc_bonus(&self, item: &SourceItem, base_score: Score) -> Score {
@@ -63,14 +64,21 @@ impl Language {
                 }
             }
             "rs" => {
+                const TYPE: [&str; 3] = ["type", "mod", "impl"];
+                const FUNCTION: [&str; 2] = ["fn", "macro_rules"];
+                const VARIABLE: [&str; 6] = ["let", "const", "static", "enum", "struct", "trait"];
+
                 let calc_bonus = |item: Option<&str>| {
                     item.and_then(|s| {
-                        // pub(crate) fn
                         // FIXME find a proper strategy.
-                        if s.starts_with("pub") || s == "fn" {
-                            Some(base_score / 3)
-                        } else if ["let", "const", "static"].contains(&s) {
+                        if s.starts_with("pub") || s.starts_with("[cfg(feature") {
                             Some(base_score / 6)
+                        } else if TYPE.contains(&s) {
+                            Some(base_score / 5)
+                        } else if FUNCTION.contains(&s) {
+                            Some(base_score / 4)
+                        } else if VARIABLE.contains(&s) {
+                            Some(base_score / 3)
                         } else if s.starts_with("//") {
                             Some(-(base_score / 5))
                         } else {

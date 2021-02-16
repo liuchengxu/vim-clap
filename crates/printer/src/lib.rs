@@ -39,26 +39,82 @@ fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
     line.chars().take(end).skip(start).collect()
 }
 
+fn truncate_line_impl(
+    winwidth: usize,
+    line: &str,
+    indices: &[usize],
+    skipped: Option<usize>,
+) -> Option<(String, Vec<usize>)> {
+    let last_idx = indices.last()?;
+    if *last_idx > winwidth {
+        let mut start = *last_idx - winwidth;
+        if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
+            start = indices[0];
+        }
+        let line_len = line.len();
+        // [--------------------------]
+        // [-----------------------------------------------------------------xx--x--]
+        for _ in 0..3 {
+            if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
+                start += DOTS.len();
+            } else {
+                break;
+            }
+        }
+        let trailing_dist = line_len - last_idx;
+        if trailing_dist < indices[0] - start {
+            start += trailing_dist;
+        }
+        let end = line.len();
+        let left_truncated = if let Some(n) = skipped {
+            let icon: String = line.chars().take(n).collect();
+            format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
+        } else {
+            format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
+        };
+
+        let offset = line_len.saturating_sub(left_truncated.len());
+
+        let left_truncated_len = left_truncated.len();
+
+        let (truncated, max_index) = if left_truncated_len > winwidth {
+            if left_truncated_len == winwidth + 1 {
+                (
+                    format!("{}.", utf8_str_slice(&left_truncated, 0, winwidth - 1)),
+                    winwidth - 1,
+                )
+            } else {
+                (
+                    format!(
+                        "{}{}",
+                        utf8_str_slice(&left_truncated, 0, winwidth - 2),
+                        DOTS
+                    ),
+                    winwidth - 2,
+                )
+            }
+        } else {
+            (left_truncated, winwidth)
+        };
+
+        let truncated_indices = indices
+            .iter()
+            .map(|x| x - offset)
+            .take_while(|x| *x < max_index)
+            .collect::<Vec<_>>();
+
+        Some((truncated, truncated_indices))
+    } else {
+        None
+    }
+}
+
 /// Long matched lines can cause the matched items invisible.
 ///
 /// # Arguments
 ///
 /// - winwidth: width of the display window.
 /// - skipped: number of skipped chars, used when need to skip the leading icons.
-///
-/// [--------------------------]
-///                                              end
-/// [-------------------------------------xx--x---]
-///                     start    winwidth
-/// |~~~~~~~~~~~~~~~~~~[------------------xx--x---]
-///
-///  `start >= indices[0]`
-/// |----------[x-------------------------xx--x---]
-///
-/// |~~~~~~~~~~~~~~~~~~[----------xx--x------------------------------x-----]
-///  `last_idx - start >= winwidth`
-/// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~[xx--x------------------------------x-----]
-///
 pub fn truncate_long_matched_lines<T>(
     lines: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
     winwidth: usize,
@@ -72,73 +128,12 @@ pub fn truncate_long_matched_lines<T>(
         .map(|(item, score, indices)| {
             let line = item.display_text.unwrap_or(item.raw);
             lnum += 1;
-            if !indices.is_empty() {
-                let last_idx = indices
-                    .last()
-                    .unwrap_or_else(|| panic!("indices are non-empty; qed"));
-                if *last_idx > winwidth {
-                    let mut start = *last_idx - winwidth;
-                    if start >= indices[0] || (indices.len() > 1 && *last_idx - start > winwidth) {
-                        start = indices[0];
-                    }
-                    let line_len = line.len();
-                    // [--------------------------]
-                    // [-----------------------------------------------------------------xx--x--]
-                    for _ in 0..3 {
-                        if indices[0] - start >= DOTS.len() && line_len - start >= winwidth {
-                            start += DOTS.len();
-                        } else {
-                            break;
-                        }
-                    }
-                    let trailing_dist = line_len - last_idx;
-                    if trailing_dist < indices[0] - start {
-                        start += trailing_dist;
-                    }
-                    let end = line.len();
-                    let left_truncated = if let Some(n) = skipped {
-                        let icon: String = line.chars().take(n).collect();
-                        format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
-                    } else {
-                        format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
-                    };
 
-                    let offset = line_len - left_truncated.len();
-
-                    let left_truncated_len = left_truncated.len();
-
-                    let (truncated, max_index) = if left_truncated_len > winwidth {
-                        if left_truncated_len == winwidth + 1 {
-                            (
-                                format!("{}.", utf8_str_slice(&left_truncated, 0, winwidth - 1)),
-                                winwidth - 1,
-                            )
-                        } else {
-                            (
-                                format!(
-                                    "{}{}",
-                                    utf8_str_slice(&left_truncated, 0, winwidth - 2),
-                                    DOTS
-                                ),
-                                winwidth - 2,
-                            )
-                        }
-                    } else {
-                        (left_truncated, winwidth)
-                    };
-
-                    let truncated_indices = indices
-                        .iter()
-                        .map(|x| x - offset)
-                        .take_while(|x| *x < max_index)
-                        .collect::<Vec<_>>();
-
-                    truncated_map.insert(lnum, line);
-
-                    (truncated, score, truncated_indices)
-                } else {
-                    (line, score, indices)
-                }
+            if let Some((truncated, truncated_indices)) =
+                truncate_line_impl(winwidth, &line, &indices, skipped)
+            {
+                truncated_map.insert(lnum, line);
+                (truncated, score, truncated_indices)
             } else {
                 (line, score, indices)
             }
