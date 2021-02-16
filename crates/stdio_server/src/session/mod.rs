@@ -82,7 +82,7 @@ impl<T: HandleMessage> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!("session recv: {:?}", event);
+                        debug!("event(in) receive a session event: {:?}", event);
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();

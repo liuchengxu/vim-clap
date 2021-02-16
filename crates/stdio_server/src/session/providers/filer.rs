@@ -142,7 +142,7 @@ pub fn handle_filer_message(msg: Message) {
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
         }
         Err(err) => {
-            let error = json!({"message": format!("{}", err), "dir": cwd});
+            let error = json!({"message": err.to_string(), "dir": cwd});
             json!({ "id": msg.id, "provider_id": "filer", "error": error })
         }
     };

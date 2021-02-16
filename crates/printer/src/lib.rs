@@ -26,6 +26,13 @@ pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 /// Tuple of (matched line text, filtering score, indices of matched elements)
 pub type FilterResult = (SourceItem, i64, Vec<usize>);
 
+/// sign column width 2
+#[cfg(not(test))]
+const WINWIDTH_OFFSET: usize = 4;
+
+#[cfg(test)]
+const WINWIDTH_OFFSET: usize = 0;
+
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
 fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
@@ -59,6 +66,7 @@ pub fn truncate_long_matched_lines<T>(
 ) -> (Vec<(String, T, Vec<usize>)>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
     let mut lnum = 0usize;
+    let winwidth = winwidth - WINWIDTH_OFFSET;
     let lines = lines
         .into_iter()
         .map(|(item, score, indices)| {
@@ -88,16 +96,45 @@ pub fn truncate_long_matched_lines<T>(
                         start += trailing_dist;
                     }
                     let end = line.len();
-                    let truncated = if let Some(n) = skipped {
+                    let left_truncated = if let Some(n) = skipped {
                         let icon: String = line.chars().take(n).collect();
-                        start += n;
                         format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
                     } else {
                         format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
                     };
-                    let offset = line_len - truncated.len();
-                    let truncated_indices = indices.iter().map(|x| x - offset).collect::<Vec<_>>();
+
+                    let offset = line_len - left_truncated.len();
+
+                    let left_truncated_len = left_truncated.len();
+
+                    let (truncated, max_index) = if left_truncated_len > winwidth {
+                        if left_truncated_len == winwidth + 1 {
+                            (
+                                format!("{}.", utf8_str_slice(&left_truncated, 0, winwidth - 1)),
+                                winwidth - 1,
+                            )
+                        } else {
+                            (
+                                format!(
+                                    "{}{}",
+                                    utf8_str_slice(&left_truncated, 0, winwidth - 2),
+                                    DOTS
+                                ),
+                                winwidth - 2,
+                            )
+                        }
+                    } else {
+                        (left_truncated, winwidth)
+                    };
+
+                    let truncated_indices = indices
+                        .iter()
+                        .map(|x| x - offset)
+                        .take_while(|x| *x < max_index)
+                        .collect::<Vec<_>>();
+
                     truncated_map.insert(lnum, line);
+
                     (truncated, score, truncated_indices)
                 } else {
                     (line, score, indices)
@@ -231,19 +268,25 @@ mod tests {
         let mut ranked = source.filter(matcher, query).unwrap();
         ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
 
-        println!();
-        println!("query: {:?}", query);
-
         let (truncated_lines, truncated_map) =
             truncate_long_matched_lines(ranked, winwidth, skipped);
         for (idx, (truncated_line, _score, truncated_indices)) in truncated_lines.iter().enumerate()
         {
-            println!("truncated: {}", "-".repeat(winwidth));
+            let highlighted = truncated_indices
+                .iter()
+                .filter_map(|i| truncated_line.chars().nth(*i))
+                .collect::<String>();
+            println!("\n   winwidth: {}", "─".repeat(winwidth));
             println!(
-                "truncated: {}",
+                "    display: {}",
                 wrap_matches(&truncated_line, &truncated_indices)
             );
-            println!("raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
+            println!("   raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
+            println!("highlighted: {}", highlighted);
+            // The highlighted result can be case insensitive.
+            assert!(query
+                .to_lowercase()
+                .starts_with(&highlighted.to_lowercase()));
         }
     }
 
@@ -321,6 +364,7 @@ mod tests {
         let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
         let start = 33;
         let end = 300;
-        println!("{}", utf8_str_slice(multibyte_str, start, end));
+        let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
+        assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
     }
 }

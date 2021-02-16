@@ -334,13 +334,17 @@ g:clap_selected_sign                                     *g:clap_selected_sign*
   Default: `{ 'text': ' >', 'texthl': 'ClapSelectedSign', 'linehl': 'ClapSelected' }`
 
 
-g:clap_always_open_preview                         *g:clap_always_open_preview*
+g:clap_open_preview                                       *g:clap_open_preview*
 
-  Type: |Number|
-  Default: `1`
+  Type: |String|
+  Default: `always`
 
-  Set this variable to `0` to show the preview when you move the cursor in
-  the result list which also shrinks the display window.
+  The options for controlling the preview opening are as follows:
+
+  - `always`: Open the preview whenever possible.
+  - `never`: Disable the preview window completely.
+  - `on_move`: show the preview when you move the cursor in the result list,
+    this option also shrinks the display window.
 
 
 g:clap_preview_delay                                     *g:clap_preview_delay*
