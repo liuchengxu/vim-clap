@@ -2,8 +2,10 @@ use source_item::SourceItem;
 
 use crate::Score;
 
+pub type FileExtension = String;
+
 #[derive(Debug, Clone)]
-pub struct Language(String);
+pub struct Language(FileExtension);
 
 impl From<String> for Language {
     fn from(inner: String) -> Self {
@@ -31,12 +33,7 @@ impl Language {
         let trimmed = item.raw.trim_start();
         match self.0.as_str() {
             "vim" => {
-                let mut iter = trimmed.split_whitespace();
-                // Try the first two items because blines provider prepends the line number to the
-                // original line and the language bonus is mostly used in the blines provider.
-                let first_item = iter.next();
-
-                let try_calc_bonus = |item: Option<&str>| {
+                let calc_bonus = |item: Option<&str>| {
                     item.and_then(|s| {
                         // function[!]
                         if s.starts_with("function") {
@@ -49,11 +46,17 @@ impl Language {
                     })
                 };
 
-                match try_calc_bonus(first_item) {
+                let mut iter = trimmed.split_whitespace();
+
+                // Try the first two items because blines provider prepends the line number to the
+                // original line and the language bonus is mostly used in the blines provider.
+                let first_item = iter.next();
+
+                match calc_bonus(first_item) {
                     Some(bonus) => bonus,
                     None => {
                         let second_item = iter.next();
-                        try_calc_bonus(second_item).unwrap_or_default()
+                        calc_bonus(second_item).unwrap_or_default()
                     }
                 }
             }
