@@ -38,6 +38,8 @@ impl Language {
                         // function[!]
                         if s.starts_with("function") {
                             Some(base_score / 3)
+                        } else if s == "let" {
+                            Some(base_score / 6)
                         } else if s == "\"" {
                             Some(-(base_score / 5))
                         } else {
@@ -61,12 +63,25 @@ impl Language {
                 }
             }
             "rs" => {
-                if trimmed.contains("fn") {
-                    base_score / 3
-                } else if trimmed.contains("///") || trimmed.contains("//") {
-                    -(base_score / 5)
-                } else {
-                    0
+                let calc_bonus = |item: Option<&str>| {
+                    item.and_then(|s| {
+                        // pub(crate) fn
+                        if s.starts_with("pub") || s == "fn" {
+                            Some(base_score / 3)
+                        } else if s == "let" {
+                            Some(base_score / 6)
+                        } else if s.starts_with("//") {
+                            Some(-(base_score / 5))
+                        } else {
+                            None
+                        }
+                    })
+                };
+
+                let mut iter = trimmed.split_whitespace();
+                match calc_bonus(iter.next()) {
+                    Some(bonus) => bonus,
+                    None => calc_bonus(iter.next()).unwrap_or_default(),
                 }
             }
 
