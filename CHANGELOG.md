@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.23] 2021-02-16
 ### Added
 
 - Add `g:clap_force_matchfuzzy` to use the builtin `matchfuzzy()` when filtering in sync way. #607
