@@ -46,8 +46,8 @@ impl From<HashMap<String, String>> for MatchContext {
         let bonus_type = ctx.get("bonus_type").map(Into::into).unwrap_or(Bonus::None);
 
         let mut bonuses = vec![bonus_type];
-        if let Some(filetype) = ctx.get("filetype") {
-            bonuses.push(Bonus::Language(filetype.into()));
+        if let Some(language) = ctx.get("language") {
+            bonuses.push(Bonus::Language(language.into()));
         }
 
         Self {
