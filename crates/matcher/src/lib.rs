@@ -19,13 +19,12 @@
 
 mod algo;
 mod bonus;
-mod language;
 
 use source_item::SourceItem;
 
 pub use self::algo::*;
+pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-pub use self::language::Language;
 pub use source_item::MatchType;
 
 /// Score of base matching algorithm(fzy, skim, etc).
@@ -133,7 +132,7 @@ mod tests {
     #[test]
     fn test_filetype_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
-        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileType("vim".into()));
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::Language("vim".into()));
         let query = "fo";
         for line in lines {
             let (base_score, indices1) = matcher.base_match(&line.into(), query).unwrap();

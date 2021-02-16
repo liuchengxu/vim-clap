@@ -76,7 +76,7 @@ fn fuzzy_match(
         mut bonuses,
     } = context.into();
 
-    bonuses.push(Bonus::RecentFiles(recent_files));
+    bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
     let matcher = Matcher::new_with_bonuses(
         if query.contains(' ') {
