@@ -99,6 +99,8 @@ else
             \ 'match_type': s:match_type(),
             \ 'bonus_type': clap#filter#get_bonus_type(),
             \ }
+      " TODO: support more providers by detecting if the specific
+      " file exists in the project root? Cargo.toml(rs), go.mod(go), ...
       if g:clap.provider.id ==# 'blines'
         let context['language'] = expand('#'.g:clap.start.bufnr.':e')
       endif
