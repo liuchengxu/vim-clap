@@ -134,15 +134,9 @@ mod tests {
         let lines = vec!["hellorsr foo", "function foo"];
         let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::Language("vim".into()));
         let query = "fo";
-        for line in lines {
-            let (base_score, indices1) = matcher.base_match(&line.into(), query).unwrap();
-            let (score_with_bonus, indices2) = matcher.do_match(&line.into(), query).unwrap();
-            println!(
-                "base_score: {}, score_with_bonus: {}",
-                base_score, score_with_bonus
-            );
-            assert!(indices1 == indices2);
-            // assert!(score_with_bonus > base_score);
-        }
+        let (score_1, indices1) = matcher.do_match(&lines[0].into(), query).unwrap();
+        let (score_2, indices2) = matcher.do_match(&lines[1].into(), query).unwrap();
+        assert!(indices1 == indices2);
+        assert!(score_1 < score_2);
     }
 }
