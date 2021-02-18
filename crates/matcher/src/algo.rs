@@ -111,6 +111,9 @@ pub mod substring {
 
     #[test]
     fn test_substr() {
-        println!("{:?}", substr_indices("sr bl", "src/bun/blune"));
+        assert_eq!(
+            substr_indices("src/bun/blune", "sr bl"),
+            Some((-7, vec![0, 1, 8, 9]))
+        );
     }
 }

@@ -82,11 +82,11 @@ impl Filter {
         if let Some(ref recent_files) = self.recent_files {
             // Ignore the error cases.
             if let Ok(file) = std::fs::File::open(recent_files) {
-                let lines = std::io::BufReader::new(file)
+                let lines: Vec<String> = std::io::BufReader::new(file)
                     .lines()
                     .filter_map(|x| x.ok())
                     .collect();
-                bonuses.push(Bonus::RecentFiles(lines));
+                bonuses.push(Bonus::RecentFiles(lines.into()));
             }
         }
 

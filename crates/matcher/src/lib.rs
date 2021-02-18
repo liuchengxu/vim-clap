@@ -18,10 +18,13 @@
 //!
 
 mod algo;
+mod bonus;
 
 use source_item::SourceItem;
 
-pub use algo::*;
+pub use self::algo::*;
+pub use self::bonus::language::Language;
+pub use self::bonus::Bonus;
 pub use source_item::MatchType;
 
 /// Score of base matching algorithm(fzy, skim, etc).
@@ -29,84 +32,6 @@ pub type Score = i64;
 
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
 pub type MatchResult = Option<(Score, Vec<usize>)>;
-
-#[derive(Debug, Clone)]
-pub enum Bonus {
-    /// Give a bonus if the needle matches in the basename of the haystack.
-    ///
-    /// Ref https://github.com/liuchengxu/vim-clap/issues/561
-    FileName,
-
-    /// Give a bonus if the item is in the list of recently opened files.
-    RecentFiles(Vec<String>),
-
-    /// No additional bonus.
-    None,
-}
-
-impl Default for Bonus {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-impl From<String> for Bonus {
-    fn from(b: String) -> Self {
-        b.as_str().into()
-    }
-}
-
-impl From<&str> for Bonus {
-    fn from(b: &str) -> Self {
-        match b.to_lowercase().as_str() {
-            "none" => Self::None,
-            "filename" => Self::FileName,
-            _ => Self::None,
-        }
-    }
-}
-
-impl From<&String> for Bonus {
-    fn from(b: &String) -> Self {
-        b.as_str().into()
-    }
-}
-
-impl Bonus {
-    /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_for(&self, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
-        match self {
-            Bonus::FileName => {
-                if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
-                    let hits_filename = indices.iter().filter(|x| **x >= idx).count();
-                    if item.raw.len() > idx {
-                        // bonus = base_score * len(matched elements in filename) / len(filename)
-                        score * hits_filename as i64 / (item.raw.len() - idx) as i64
-                    } else {
-                        0
-                    }
-                } else {
-                    0
-                }
-            }
-            Bonus::RecentFiles(recent_files) => {
-                if let Err(bonus) = recent_files.iter().try_for_each(|s| {
-                    if s.contains(&item.raw) {
-                        let bonus = score / 3;
-                        Err(bonus)
-                    } else {
-                        Ok(())
-                    }
-                }) {
-                    bonus
-                } else {
-                    0
-                }
-            }
-            Bonus::None => 0,
-        }
-    }
-}
 
 /// `Matcher` is composed of two components:
 ///
@@ -202,5 +127,16 @@ mod tests {
             assert!(indices1 == indices2);
             assert!(score_with_bonus > base_score);
         }
+    }
+
+    #[test]
+    fn test_filetype_bonus() {
+        let lines = vec!["hellorsr foo", "function foo"];
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::Language("vim".into()));
+        let query = "fo";
+        let (score_1, indices1) = matcher.do_match(&lines[0].into(), query).unwrap();
+        let (score_2, indices2) = matcher.do_match(&lines[1].into(), query).unwrap();
+        assert!(indices1 == indices2);
+        assert!(score_1 < score_2);
     }
 }
