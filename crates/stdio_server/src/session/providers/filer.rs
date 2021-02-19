@@ -89,7 +89,10 @@ impl HandleMessage for FilerMessageHandler {
                 let path = build_abs_path(&msg.get_cwd(), curline);
                 let on_move_handler = OnMoveHandler {
                     msg_id: msg.id,
-                    size: provider_id.get_preview_size(),
+                    size: std::cmp::max(
+                        provider_id.get_preview_size(),
+                        (context.preview_winheight / 2) as usize,
+                    ),
                     provider_id,
                     context,
                     inner: OnMove::Filer(path.clone()),
