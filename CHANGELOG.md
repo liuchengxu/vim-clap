@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+### Fixed
+
+- Cannot open files with pipe in file path. #643
 
 ## [0.23] 2021-02-16
+
 ### Added
 
 - Add `g:clap_force_matchfuzzy` to use the builtin `matchfuzzy()` when filtering in sync way. #607

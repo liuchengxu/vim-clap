@@ -9,7 +9,7 @@ function! clap#sink#edit_with_open_action(fpath) abort
     execute g:clap.open_action a:fpath
   else
     " Cannot use noautocmd here as it would lose syntax, and ...
-    execute 'edit' a:fpath
+    execute 'edit' fnameescape(a:fpath)
   endif
 endfunction
 
