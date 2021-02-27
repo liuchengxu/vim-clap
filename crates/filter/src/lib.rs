@@ -90,6 +90,15 @@ impl RunContext {
     }
 }
 
+/// Sorts the filtered result by the filter score.
+///
+/// The item with highest score first, the item with lowest score last.
+pub(crate) fn sort_initial_filtered(filtered: Vec<FilterResult>) -> Vec<FilterResult> {
+    let mut filtered = filtered;
+    filtered.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+    filtered
+}
+
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
 pub fn sync_run<I: Iterator<Item = SourceItem>>(
@@ -100,9 +109,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     bonuses: Vec<Bonus>,
 ) -> Result<Vec<FilterResult>> {
     let matcher = Matcher::new_with_bonuses(algo, match_type, bonuses);
-    let mut ranked = source.filter(matcher, query)?;
-
-    ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
+    let filtered = source.filter(matcher, query)?;
+    let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
 }
