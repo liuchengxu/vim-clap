@@ -24,17 +24,14 @@ struct TagInfo {
     kind: String,
 }
 
+/// Returns Ok(()) if the ctags executable is compiled with +json feature.
 fn ensure_has_json_support() -> Result<()> {
     let output = std::process::Command::new("ctags")
         .arg("--list-features")
         .stderr(std::process::Stdio::inherit())
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
-    let lines = stdout
-        .split('\n')
-        .filter(|x| x.starts_with("json"))
-        .collect::<Vec<_>>();
-    if lines.is_empty() {
+    if stdout.split('\n').any(|x| x.starts_with("json")) {
         Err(anyhow!("ctags has no json support"))
     } else {
         Ok(())
