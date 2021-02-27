@@ -8,7 +8,7 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
-    subprocess, Source,
+    subprocess, RunContext, Source,
 };
 
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
@@ -156,11 +156,7 @@ impl Tags {
             filter::dyn_run(
                 &self.query,
                 Source::List(formatted_tags_stream(&cmd_args, &self.dir)?.map(Into::into)),
-                None,
-                Some(30),
-                None,
-                icon_painter,
-                MatchType::TagName,
+                RunContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;
         }

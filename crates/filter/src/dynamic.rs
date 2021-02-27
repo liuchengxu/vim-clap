@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use rayon::slice::ParallelSliceMut;
 
 use icon::{IconPainter, ICON_LEN};
-use matcher::{Bonus, MatchType};
+use matcher::Bonus;
 use utility::{println_json, println_json_with_length};
 
 use super::*;
@@ -342,11 +342,13 @@ macro_rules! source_iter_list {
 pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    algo: Option<Algo>,
-    number: Option<usize>,
-    winwidth: Option<usize>,
-    icon_painter: Option<IconPainter>,
-    match_type: MatchType,
+    RunContext {
+        algo,
+        number,
+        winwidth,
+        icon_painter,
+        match_type,
+    }: RunContext,
     bonuses: Vec<Bonus>,
 ) -> Result<()> {
     let algo = if query.contains(' ') {
@@ -463,11 +465,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            Some(Algo::Fzy),
-            Some(100),
-            None,
-            None,
-            MatchType::Full,
+            RunContext::new(Some(Algo::Fzy), Some(100), None, None, MatchType::Full),
             vec![Bonus::None],
         )
         .unwrap()
