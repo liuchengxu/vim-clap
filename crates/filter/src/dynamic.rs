@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use rayon::slice::ParallelSliceMut;
 
 use icon::{IconPainter, ICON_LEN};
-use matcher::{Bonus, MatchType};
+use matcher::Bonus;
 use utility::{println_json, println_json_with_length};
 
 use super::*;
@@ -342,11 +342,13 @@ macro_rules! source_iter_list {
 pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    algo: Option<Algo>,
-    number: Option<usize>,
-    winwidth: Option<usize>,
-    icon_painter: Option<IconPainter>,
-    match_type: MatchType,
+    RunContext {
+        algo,
+        number,
+        winwidth,
+        icon_painter,
+        match_type,
+    }: RunContext,
     bonuses: Vec<Bonus>,
 ) -> Result<()> {
     let algo = if query.contains(' ') {
@@ -357,7 +359,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     let scoring_matcher = matcher::Matcher::new_with_bonuses(algo, match_type, bonuses);
     let scorer = |item: &SourceItem| scoring_matcher.do_match(item, query);
     if let Some(number) = number {
-        let (total, mut filtered) = match source {
+        let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
             #[cfg(feature = "enable_dyn")]
             Source::Exec(exec) => {
@@ -371,17 +373,17 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             }
         };
 
-        filtered.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+        let ranked = sort_initial_filtered(filtered);
 
         printer::print_dyn_filter_results(
-            filtered,
+            ranked,
             total,
             number,
             winwidth.unwrap_or(100),
             icon_painter,
         );
     } else {
-        let mut filtered = match source {
+        let filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
             #[cfg(feature = "enable_dyn")]
             Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
@@ -389,9 +391,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
         };
 
-        filtered.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-        let ranked = filtered;
+        let ranked = sort_initial_filtered(filtered);
 
         for (item, _, indices) in ranked.into_iter() {
             let text = item.display_text.unwrap_or(item.raw);
@@ -463,11 +463,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            Some(Algo::Fzy),
-            Some(100),
-            None,
-            None,
-            MatchType::Full,
+            RunContext::new(Some(Algo::Fzy), Some(100), None, None, MatchType::Full),
             vec![Bonus::None],
         )
         .unwrap()

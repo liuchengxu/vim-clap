@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess::Exec,
-    Source,
+    RunContext, Source,
 };
 use icon::IconPainter;
 use utility::is_git_repo;
@@ -151,11 +151,13 @@ impl Grep {
             filter::dyn_run(
                 &self.grep_query,
                 source,
-                None,
-                number,
-                winwidth,
-                icon_painter,
-                MatchType::IgnoreFilePath,
+                RunContext::new(
+                    None,
+                    number,
+                    winwidth,
+                    icon_painter,
+                    MatchType::IgnoreFilePath,
+                ),
                 vec![Bonus::None],
             )
         };

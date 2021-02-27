@@ -8,7 +8,7 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
-    subprocess, Source,
+    subprocess, RunContext, Source,
 };
 
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
@@ -24,17 +24,14 @@ struct TagInfo {
     kind: String,
 }
 
+/// Returns Ok(()) if the ctags executable is compiled with +json feature.
 fn ensure_has_json_support() -> Result<()> {
     let output = std::process::Command::new("ctags")
         .arg("--list-features")
         .stderr(std::process::Stdio::inherit())
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
-    let lines = stdout
-        .split('\n')
-        .filter(|x| x.starts_with("json"))
-        .collect::<Vec<_>>();
-    if lines.is_empty() {
+    if stdout.split('\n').any(|x| x.starts_with("json")) {
         Err(anyhow!("ctags has no json support"))
     } else {
         Ok(())
@@ -156,11 +153,7 @@ impl Tags {
             filter::dyn_run(
                 &self.query,
                 Source::List(formatted_tags_stream(&cmd_args, &self.dir)?.map(Into::into)),
-                None,
-                Some(30),
-                None,
-                icon_painter,
-                MatchType::TagName,
+                RunContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;
         }

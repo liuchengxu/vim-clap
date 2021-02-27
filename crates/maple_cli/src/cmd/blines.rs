@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use structopt::StructOpt;
 
-use filter::{
-    matcher::{Bonus, MatchType},
-    Source,
-};
+use filter::{matcher::Bonus, RunContext, Source};
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(StructOpt, Debug, Clone)]
@@ -32,11 +29,7 @@ impl Blines {
                     .map(|(idx, item)| format!("{} {}", idx + 1, item))
                     .map(Into::into),
             ),
-            None,
-            number,
-            winwidth,
-            None,
-            MatchType::Full,
+            RunContext::default().number(number).winwidth(winwidth),
             vec![Bonus::None],
         )
     }

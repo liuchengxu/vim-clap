@@ -11,7 +11,7 @@ use super::*;
 pub enum Source<I: Iterator<Item = SourceItem>> {
     Stdin,
     #[cfg(feature = "enable_dyn")]
-    Exec(Exec),
+    Exec(Box<Exec>),
     File(PathBuf),
     List(I),
 }
@@ -25,7 +25,7 @@ impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {
 #[cfg(feature = "enable_dyn")]
 impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
-        Self::Exec(exec)
+        Self::Exec(Box::new(exec))
     }
 }
 

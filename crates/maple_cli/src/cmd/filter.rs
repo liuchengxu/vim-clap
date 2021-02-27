@@ -5,7 +5,7 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Algo, Bonus, MatchType},
-    subprocess, Source,
+    subprocess, RunContext, Source,
 };
 use icon::IconPainter;
 use source_item::SourceItem;
@@ -124,11 +124,13 @@ impl Filter {
         filter::dyn_run::<std::iter::Empty<_>>(
             &self.query,
             self.generate_source(),
-            self.algo.clone(),
-            number,
-            winwidth,
-            icon_painter,
-            self.match_type.clone().unwrap_or(MatchType::Full),
+            RunContext::new(
+                self.algo.clone(),
+                number,
+                winwidth,
+                icon_painter,
+                self.match_type.clone().unwrap_or(MatchType::Full),
+            ),
             self.get_bonuses(),
         )
     }
