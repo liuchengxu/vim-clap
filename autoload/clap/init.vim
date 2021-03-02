@@ -43,9 +43,6 @@ function! s:init_fuzzy_match_hl_groups() abort
           \ [50  , '#00ffd7'] ,
           \ [51  , '#00ffff'] ,
           \ [87  , '#5fffff'] ,
-          \ [123 , '#87ffff'] ,
-          \ [159 , '#afffff'] ,
-          \ [195 , '#d7ffff'] ,
           \ ]
   endif
 

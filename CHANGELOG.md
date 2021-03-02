@@ -6,6 +6,10 @@
 
 - Cannot open files with pipe in file path. #643
 
+### Changed
+
+- Remove some colors close the white color in the default value of `g:clap_fuzzy_match_hl_groups`.
+
 ## [0.23] 2021-02-16
 
 ### Added
