@@ -300,7 +300,6 @@ let s:grep.sink = function('s:grep_sink')
 let s:grep['sink*'] = function('s:grep_sink_star')
 let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_move = function('s:grep_on_move')
-let s:grep.on_move_async = function('clap#impl#on_move#async')
 
 function! s:grep.on_move_async() abort
   call clap#client#call_on_move('on_move', function('clap#impl#on_move#handler'))
