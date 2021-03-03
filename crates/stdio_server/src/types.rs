@@ -67,7 +67,13 @@ impl Message {
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
         let display_curline = self._get_string("curline")?;
 
-        let curline = if provider_id.should_skip_leading_icon() {
+        let curline = if let Ok(enable_icon) = self._get_bool("enable_icon") {
+            if enable_icon {
+                display_curline.chars().skip(2).collect()
+            } else {
+                display_curline
+            }
+        } else if provider_id.should_skip_leading_icon() {
             display_curline.chars().skip(2).collect()
         } else {
             display_curline
@@ -82,6 +88,13 @@ impl Message {
             .and_then(|x| x.as_str())
             .map(Into::into)
             .unwrap_or_else(|| panic!("Missing {} in msg.params", key))
+    }
+
+    fn _get_bool(&self, key: &str) -> anyhow::Result<bool> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_bool())
+            .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 
     fn _get_string(&self, key: &str) -> anyhow::Result<String> {
