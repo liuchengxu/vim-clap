@@ -32,9 +32,9 @@ fn ensure_has_json_support() -> Result<()> {
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
     if stdout.split('\n').any(|x| x.starts_with("json")) {
-        Err(anyhow!("ctags has no json support"))
-    } else {
         Ok(())
+    } else {
+        Err(anyhow!("ctags has no json support"))
     }
 }
 
