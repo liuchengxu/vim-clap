@@ -79,6 +79,7 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
                 s
             }
         })
+        .chain(std::iter::once("--json"))
         .collect::<Vec<&str>>();
 
     let mut cmd = Command::new(args[0]);
@@ -86,6 +87,71 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     set_current_dir(&mut cmd, cmd_dir);
 
     (cmd, args)
+}
+
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub struct JsonLine {
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub data: Match,
+}
+
+impl JsonLine {
+    pub fn format(&self) -> String {
+        format!(
+            "{}:{}:{}",
+            self.data.path.text,
+            self.data.line_number.unwrap_or_default(),
+            self.data.lines.text.trim_end(),
+        )
+    }
+
+    pub fn offset(&self) -> usize {
+        self.data.path.text.len() + self.data.line_number.unwrap_or_default().to_string().len() + 2
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct Text {
+    pub text: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Match {
+    pub path: Text,
+    pub lines: Text,
+    pub line_number: Option<u64>,
+    pub absolute_offset: u64,
+    pub submatches: Vec<SubMatch>,
+}
+
+impl Match {
+    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+        self.submatches
+            .iter()
+            .map(|s| s.match_indices(offset))
+            .flatten()
+            .collect()
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SubMatch {
+    #[serde(rename = "match")]
+    pub m: Text,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl SubMatch {
+    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+        (self.start..self.end)
+            .into_iter()
+            .map(|x| x + offset)
+            .collect()
+    }
 }
 
 impl Grep {
@@ -97,7 +163,7 @@ impl Grep {
         no_cache: bool,
     ) -> Result<()> {
         if self.sync {
-            self.sync_run(number, icon_painter)?;
+            self.sync_run(number, winwidth, icon_painter)?;
         } else {
             self.dyn_run(number, winwidth, icon_painter, no_cache)?;
         }
@@ -107,7 +173,12 @@ impl Grep {
     /// Runs grep command and returns until its output stream is completed.
     ///
     /// Write the output to the cache file if neccessary.
-    fn sync_run(&self, number: Option<usize>, icon_painter: Option<IconPainter>) -> Result<()> {
+    fn sync_run(
+        &self,
+        number: Option<usize>,
+        winwidth: Option<usize>,
+        icon_painter: Option<IconPainter>,
+    ) -> Result<()> {
         let grep_cmd = self
             .grep_cmd
             .clone()
@@ -130,9 +201,31 @@ impl Grep {
 
         cmd.args(&args[1..]);
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter, None);
+        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
-        light_cmd.execute(&args)?;
+        let execute_info = light_cmd.execute(&args)?;
+
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
+            .lines
+            .iter()
+            .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
+            .map(|line| {
+                let formatted = line.format();
+                let indices = line.data.match_indices(line.offset());
+                (formatted, indices)
+            })
+            .unzip();
+
+        let total = lines.len();
+
+        let (lines, indices, truncated_map) =
+            printer::truncate_grep_lines(lines, indices, winwidth.unwrap_or(80), None);
+
+        if truncated_map.is_empty() {
+            utility::println_json!(total, lines, indices);
+        } else {
+            utility::println_json!(total, lines, indices, truncated_map);
+        }
 
         Ok(())
     }
@@ -244,7 +337,7 @@ impl RipGrepForerunner {
             Some(self.output_threshold),
         );
 
-        light_cmd.execute(&RG_ARGS)?;
+        light_cmd.execute(&RG_ARGS)?.print();
 
         Ok(())
     }

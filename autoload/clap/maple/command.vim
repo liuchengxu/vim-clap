@@ -9,7 +9,7 @@ let s:maple_bin = clap#maple#binary()
 let s:can_enable_icon = ['files', 'git_files']
 
 function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
-  let global_opts = ['--number', g:clap.display.preload_capacity]
+  let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
   if a:enable_icon
     call add(global_opts, '--icon-painter=Grep')
