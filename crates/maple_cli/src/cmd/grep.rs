@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use serde::Deserialize;
 use structopt::StructOpt;
 
 use filter::{
@@ -89,8 +90,7 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     (cmd, args)
 }
 
-use serde::Deserialize;
-
+/// This struct represents the line content of rg's --json.
 #[derive(Deserialize, Debug)]
 pub struct JsonLine {
     #[serde(rename = "type")]
@@ -99,17 +99,30 @@ pub struct JsonLine {
 }
 
 impl JsonLine {
-    pub fn format(&self) -> String {
+    /// Returns the formatted String like using rg's -vimgrep option.
+    pub fn format(&self, enable_icon: bool) -> String {
+        let maybe_icon = if enable_icon {
+            Some(icon::icon_for(&self.data.path.text))
+        } else {
+            None
+        };
         format!(
-            "{}:{}:{}",
+            "{} {}:{}:{}:{}",
+            maybe_icon.unwrap_or_default(),
             self.data.path.text,
             self.data.line_number.unwrap_or_default(),
+            self.data.column(),
             self.data.lines.text.trim_end(),
         )
     }
 
-    pub fn offset(&self) -> usize {
-        self.data.path.text.len() + self.data.line_number.unwrap_or_default().to_string().len() + 2
+    pub fn offset(&self, enable_icon: bool) -> usize {
+        // filepath:line_number:column:text"
+        let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
+        self.data.path.text.len()
+            + self.data.line_number.unwrap_or_default().to_string().len()
+            + self.data.column().to_string().len()
+            + fixed_offset
     }
 }
 
@@ -134,6 +147,10 @@ impl Match {
             .map(|s| s.match_indices(offset))
             .flatten()
             .collect()
+    }
+
+    pub fn column(&self) -> usize {
+        self.submatches[0].start
     }
 }
 
@@ -205,21 +222,27 @@ impl Grep {
 
         let execute_info = light_cmd.execute(&args)?;
 
+        let enable_icon = icon_painter.is_some();
+
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
             .iter()
             .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
             .map(|line| {
-                let formatted = line.format();
-                let indices = line.data.match_indices(line.offset());
+                let formatted = line.format(enable_icon);
+                let indices = line.data.match_indices(line.offset(enable_icon));
                 (formatted, indices)
             })
             .unzip();
 
         let total = lines.len();
 
-        let (lines, indices, truncated_map) =
-            printer::truncate_grep_lines(lines, indices, winwidth.unwrap_or(80), None);
+        let (lines, indices, truncated_map) = printer::truncate_grep_lines(
+            lines,
+            indices,
+            winwidth.unwrap_or(80),
+            if enable_icon { Some(2) } else { None },
+        );
 
         if truncated_map.is_empty() {
             utility::println_json!(total, lines, indices);
