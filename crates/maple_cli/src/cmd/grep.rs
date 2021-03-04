@@ -102,13 +102,13 @@ impl JsonLine {
     /// Returns the formatted String like using rg's -vimgrep option.
     pub fn format(&self, enable_icon: bool) -> String {
         let maybe_icon = if enable_icon {
-            Some(icon::icon_for(&self.data.path.text))
+            format!("{} ", icon::icon_for(&self.data.path.text))
         } else {
-            None
+            Default::default()
         };
         format!(
-            "{} {}:{}:{}:{}",
-            maybe_icon.unwrap_or_default(),
+            "{}{}:{}:{}:{}",
+            maybe_icon,
             self.data.path.text,
             self.data.line_number.unwrap_or_default(),
             self.data.column(),
