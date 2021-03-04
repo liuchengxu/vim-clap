@@ -48,6 +48,7 @@ pub struct ExecutedInfo {
 }
 
 impl ExecutedInfo {
+    /// Print the fields that are not empty to the terminal in json format.
     pub fn print(&self) {
         let Self {
             using_cache,
@@ -223,7 +224,6 @@ impl<'a> LightCommand<'a> {
             let stdout_str = String::from_utf8_lossy(&stdout);
             let lines = self.try_prepend_icon(stdout_str.split('\n').take(number));
             let total = self.env.total;
-            // println_json!(total, lines);
             return Ok(ExecutedInfo {
                 total,
                 lines,
@@ -276,24 +276,13 @@ impl<'a> LightCommand<'a> {
                     }
                 } else {
                     vec![]
-                    // println_json!(using_cache, total, tempfile);
-                    // return Ok(ExecutedInfo {
-                    // using_cache,
-                    // total,
-                    // tempfile: Some(tempfile.clone()),
-                    // lines: vec![],
-                    // });
                 };
-                // println_json!(using_cache, total, tempfile, lines);
                 return Ok(ExecutedInfo {
                     using_cache,
                     total,
                     tempfile: Some(tempfile),
                     lines,
                 });
-
-                // TODO: refresh the cache or mark it as outdated?
-                // return Ok(());
             }
         }
 
