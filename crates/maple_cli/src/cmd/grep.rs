@@ -109,18 +109,18 @@ impl JsonLine {
         format!(
             "{}{}:{}:{}:{}",
             maybe_icon,
-            self.data.path.text,
-            self.data.line_number.unwrap_or_default(),
+            self.data.path(),
+            self.data.line_number(),
             self.data.column(),
-            self.data.lines.text.trim_end(),
+            self.data.line(),
         )
     }
 
     pub fn offset(&self, enable_icon: bool) -> usize {
         // filepath:line_number:column:text"
         let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
-        self.data.path.text.len()
-            + self.data.line_number.unwrap_or_default().to_string().len()
+        self.data.path().len()
+            + self.data.line_number().to_string().len()
             + self.data.column().to_string().len()
             + fixed_offset
     }
@@ -149,8 +149,20 @@ impl Match {
             .collect()
     }
 
+    pub fn path(&self) -> &str {
+        &self.path.text
+    }
+
+    pub fn line_number(&self) -> u64 {
+        self.line_number.unwrap_or_default()
+    }
+
     pub fn column(&self) -> usize {
         self.submatches[0].start
+    }
+
+    pub fn line(&self) -> &str {
+        self.lines.text.trim_end()
     }
 }
 
