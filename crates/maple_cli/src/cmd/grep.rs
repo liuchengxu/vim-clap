@@ -63,7 +63,7 @@ pub struct Grep {
     sync: bool,
 }
 
-fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
+fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
     let args = cmd_str
         .split_whitespace()
         // If cmd_str contains a quoted option, that's problematic.
@@ -212,7 +212,7 @@ impl Grep {
             .grep_cmd
             .clone()
             .context("--grep-cmd is required when --sync is on")?;
-        let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, self.cmd_dir.clone());
+        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.clone());
 
         // We split out the grep opts and query in case of the possible escape issue of clap.
         args.push(&self.grep_query);
