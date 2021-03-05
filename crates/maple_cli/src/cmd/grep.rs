@@ -80,7 +80,7 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
                 s
             }
         })
-        .chain(std::iter::once("--json"))
+        .chain(std::iter::once("--json")) // Force using json format.
         .collect::<Vec<&str>>();
 
     let mut cmd = Command::new(args[0]);
