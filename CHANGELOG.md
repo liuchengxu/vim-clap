@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Improved
+
+- Truncate the lines of `grep` provider. #650
+
 ### Fixed
 
 - Cannot open files with pipe in file path. #643

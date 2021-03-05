@@ -34,6 +34,47 @@ pub fn set_current_dir(cmd: &mut Command, cmd_dir: Option<PathBuf>) {
     }
 }
 
+/// This struct represents all the info about the processed result of executed command.
+#[derive(Debug, Clone)]
+pub struct ExecutedInfo {
+    /// The number of total output lines.
+    pub total: usize,
+    /// The lines that will be printed.
+    pub lines: Vec<String>,
+    /// If these info are from the cache.
+    pub using_cache: bool,
+    /// Optional temp cache file for the whole output.
+    pub tempfile: Option<PathBuf>,
+}
+
+impl ExecutedInfo {
+    /// Print the fields that are not empty to the terminal in json format.
+    pub fn print(&self) {
+        let Self {
+            using_cache,
+            tempfile,
+            total,
+            lines,
+        } = self;
+
+        if self.using_cache {
+            if self.tempfile.is_some() {
+                if self.lines.is_empty() {
+                    println_json!(using_cache, tempfile, total);
+                } else {
+                    println_json!(using_cache, tempfile, total, lines);
+                }
+            } else {
+                println_json!(total, lines);
+            }
+        } else if self.tempfile.is_some() {
+            println_json!(tempfile, total, lines);
+        } else {
+            println_json!(total, lines);
+        }
+    }
+}
+
 /// Environment for running LightCommand.
 #[derive(Debug, Clone)]
 pub struct CommandEnv {
@@ -176,15 +217,19 @@ impl<'a> LightCommand<'a> {
 
     /// Normally we only care about the top N items and number of total results if it's not a
     /// forerunner job.
-    fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<()> {
+    fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<ExecutedInfo> {
         if let Some(number) = self.env.number {
             // TODO: do not have to into String for whole stdout, find the nth index of newline.
             // &cmd_output.stdout[..nth_newline_index]
             let stdout_str = String::from_utf8_lossy(&stdout);
             let lines = self.try_prepend_icon(stdout_str.split('\n').take(number));
             let total = self.env.total;
-            println_json!(total, lines);
-            return Ok(());
+            return Ok(ExecutedInfo {
+                total,
+                lines,
+                using_cache: false,
+                tempfile: None,
+            });
         }
         Err(anyhow!(
             "--number is unspecified, no overhead minimalization"
@@ -214,23 +259,29 @@ impl<'a> LightCommand<'a> {
 
     /// Firstly try the cache given the command args and working dir.
     /// If the cache exists, returns the cache file directly.
-    pub fn try_cache_or_execute(&mut self, args: &[&str], cmd_dir: PathBuf) -> Result<()> {
+    pub fn try_cache_or_execute(
+        &mut self,
+        args: &[&str],
+        cmd_dir: PathBuf,
+    ) -> Result<ExecutedInfo> {
         if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
             if let Ok(total) = CacheEntry::get_total(&cached_entry) {
-                let using_cache = true;
                 let tempfile = cached_entry.path();
-                if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                    let lines: Vec<String> = if let Some(ref painter) = self.env.icon_painter {
+                let lines = if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+                    if let Some(ref painter) = self.env.icon_painter {
                         lines_iter.map(|x| painter.paint(&x)).collect()
                     } else {
                         lines_iter.collect()
-                    };
-                    println_json!(using_cache, total, tempfile, lines);
+                    }
                 } else {
-                    println_json!(using_cache, total, tempfile);
-                }
-                // TODO: refresh the cache or mark it as outdated?
-                return Ok(());
+                    vec![]
+                };
+                return Ok(ExecutedInfo {
+                    using_cache: true,
+                    total,
+                    tempfile: Some(tempfile),
+                    lines,
+                });
             }
         }
 
@@ -245,26 +296,26 @@ impl<'a> LightCommand<'a> {
     /// otherwise print the total results or write them to
     /// a tempfile if they are more than `self.output_threshold`.
     /// This cached tempfile can be reused on the following runs.
-    pub fn execute(&mut self, args: &[&str]) -> Result<()> {
+    pub fn execute(&mut self, args: &[&str]) -> Result<ExecutedInfo> {
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
         self.env.total = bytecount::count(cmd_stdout, b'\n');
 
-        if self.minimalize_job_overhead(cmd_stdout).is_ok() {
-            return Ok(());
+        if let Ok(executed_info) = self.minimalize_job_overhead(cmd_stdout) {
+            return Ok(executed_info);
         }
 
         // Write the output to a tempfile if the lines are too many.
         let (stdout_str, tempfile) = self.try_cache(&cmd_stdout, args)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
         let total = self.env.total;
-        if let Some(tempfile) = tempfile {
-            println_json!(total, lines, tempfile);
-        } else {
-            println_json!(total, lines);
-        }
 
-        Ok(())
+        Ok(ExecutedInfo {
+            total,
+            lines,
+            tempfile,
+            using_cache: false,
+        })
     }
 }

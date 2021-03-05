@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use serde::Deserialize;
 use structopt::StructOpt;
 
 use filter::{
@@ -62,7 +63,7 @@ pub struct Grep {
     sync: bool,
 }
 
-fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
+fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
     let args = cmd_str
         .split_whitespace()
         // If cmd_str contains a quoted option, that's problematic.
@@ -79,6 +80,7 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
                 s
             }
         })
+        .chain(std::iter::once("--json")) // Force using json format.
         .collect::<Vec<&str>>();
 
     let mut cmd = Command::new(args[0]);
@@ -86,6 +88,99 @@ fn prepare_grep_and_args(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     set_current_dir(&mut cmd, cmd_dir);
 
     (cmd, args)
+}
+
+/// This struct represents the line content of rg's --json.
+#[derive(Deserialize, Debug)]
+pub struct JsonLine {
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub data: Match,
+}
+
+impl JsonLine {
+    /// Returns the formatted String like using rg's -vimgrep option.
+    pub fn format(&self, enable_icon: bool) -> String {
+        let maybe_icon = if enable_icon {
+            format!("{} ", icon::icon_for(&self.data.path.text))
+        } else {
+            Default::default()
+        };
+        format!(
+            "{}{}:{}:{}:{}",
+            maybe_icon,
+            self.data.path(),
+            self.data.line_number(),
+            self.data.column(),
+            self.data.line(),
+        )
+    }
+
+    pub fn offset(&self, enable_icon: bool) -> usize {
+        // filepath:line_number:column:text"
+        let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
+        self.data.path().len()
+            + self.data.line_number().to_string().len()
+            + self.data.column().to_string().len()
+            + fixed_offset
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct Text {
+    pub text: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Match {
+    pub path: Text,
+    pub lines: Text,
+    pub line_number: Option<u64>,
+    pub absolute_offset: u64,
+    pub submatches: Vec<SubMatch>,
+}
+
+impl Match {
+    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+        self.submatches
+            .iter()
+            .map(|s| s.match_indices(offset))
+            .flatten()
+            .collect()
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path.text
+    }
+
+    pub fn line_number(&self) -> u64 {
+        self.line_number.unwrap_or_default()
+    }
+
+    pub fn column(&self) -> usize {
+        self.submatches[0].start
+    }
+
+    pub fn line(&self) -> &str {
+        self.lines.text.trim_end()
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SubMatch {
+    #[serde(rename = "match")]
+    pub m: Text,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl SubMatch {
+    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+        (self.start..self.end)
+            .into_iter()
+            .map(|x| x + offset)
+            .collect()
+    }
 }
 
 impl Grep {
@@ -97,7 +192,7 @@ impl Grep {
         no_cache: bool,
     ) -> Result<()> {
         if self.sync {
-            self.sync_run(number, icon_painter)?;
+            self.sync_run(number, winwidth, icon_painter)?;
         } else {
             self.dyn_run(number, winwidth, icon_painter, no_cache)?;
         }
@@ -107,12 +202,17 @@ impl Grep {
     /// Runs grep command and returns until its output stream is completed.
     ///
     /// Write the output to the cache file if neccessary.
-    fn sync_run(&self, number: Option<usize>, icon_painter: Option<IconPainter>) -> Result<()> {
+    fn sync_run(
+        &self,
+        number: Option<usize>,
+        winwidth: Option<usize>,
+        icon_painter: Option<IconPainter>,
+    ) -> Result<()> {
         let grep_cmd = self
             .grep_cmd
             .clone()
             .context("--grep-cmd is required when --sync is on")?;
-        let (mut cmd, mut args) = prepare_grep_and_args(&grep_cmd, self.cmd_dir.clone());
+        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.clone());
 
         // We split out the grep opts and query in case of the possible escape issue of clap.
         args.push(&self.grep_query);
@@ -130,9 +230,37 @@ impl Grep {
 
         cmd.args(&args[1..]);
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, icon_painter, None);
+        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
-        light_cmd.execute(&args)?;
+        let execute_info = light_cmd.execute(&args)?;
+
+        let enable_icon = icon_painter.is_some();
+
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
+            .lines
+            .iter()
+            .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
+            .map(|line| {
+                let formatted = line.format(enable_icon);
+                let indices = line.data.match_indices(line.offset(enable_icon));
+                (formatted, indices)
+            })
+            .unzip();
+
+        let total = lines.len();
+
+        let (lines, indices, truncated_map) = printer::truncate_grep_lines(
+            lines,
+            indices,
+            winwidth.unwrap_or(80),
+            if enable_icon { Some(2) } else { None },
+        );
+
+        if truncated_map.is_empty() {
+            utility::println_json!(total, lines, indices);
+        } else {
+            utility::println_json!(total, lines, indices, truncated_map);
+        }
 
         Ok(())
     }
@@ -244,7 +372,7 @@ impl RipGrepForerunner {
             Some(self.output_threshold),
         );
 
-        light_cmd.execute(&RG_ARGS)?;
+        light_cmd.execute(&RG_ARGS)?.print();
 
         Ok(())
     }

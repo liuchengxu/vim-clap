@@ -69,9 +69,13 @@ impl Exec {
             .collect::<Vec<_>>();
 
         if !no_cache && self.cmd_dir.is_some() {
-            light_cmd.try_cache_or_execute(&args, self.cmd_dir.clone().unwrap())
+            light_cmd
+                .try_cache_or_execute(&args, self.cmd_dir.clone().unwrap())?
+                .print();
         } else {
-            light_cmd.execute(&args)
+            light_cmd.execute(&args)?.print();
         }
+
+        Ok(())
     }
 }

@@ -142,6 +142,34 @@ pub fn truncate_long_matched_lines<T>(
     (lines, truncated_map)
 }
 
+pub fn truncate_grep_lines(
+    lines: impl IntoIterator<Item = String>,
+    indices: impl IntoIterator<Item = Vec<usize>>,
+    winwidth: usize,
+    skipped: Option<usize>,
+) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
+    let mut truncated_map = HashMap::new();
+    let mut lnum = 0usize;
+    let winwidth = winwidth - WINWIDTH_OFFSET;
+    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+        .into_iter()
+        .zip(indices.into_iter())
+        .map(|(line, indices)| {
+            lnum += 1;
+
+            if let Some((truncated, truncated_indices)) =
+                truncate_line_impl(winwidth, &line, &indices, skipped)
+            {
+                truncated_map.insert(lnum, line);
+                (truncated, truncated_indices)
+            } else {
+                (line, indices)
+            }
+        })
+        .unzip();
+    (lines, indices, truncated_map)
+}
+
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn process_top_items<T>(
     top_list: impl IntoIterator<Item = (SourceItem, T, Vec<usize>)>,
