@@ -266,7 +266,6 @@ impl<'a> LightCommand<'a> {
     ) -> Result<ExecutedInfo> {
         if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
             if let Ok(total) = CacheEntry::get_total(&cached_entry) {
-                let using_cache = true;
                 let tempfile = cached_entry.path();
                 let lines = if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
                     if let Some(ref painter) = self.env.icon_painter {
@@ -278,7 +277,7 @@ impl<'a> LightCommand<'a> {
                     vec![]
                 };
                 return Ok(ExecutedInfo {
-                    using_cache,
+                    using_cache: true,
                     total,
                     tempfile: Some(tempfile),
                     lines,
