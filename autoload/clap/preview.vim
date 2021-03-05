@@ -102,6 +102,9 @@ endfunction
 
 function! clap#preview#get_range(origin_lnum) abort
   let size = clap#preview#size_of(g:clap.provider.id)
+  if g:clap_preview_direction ==# 'LR'
+    let size = max([size, winheight(g:clap.display.winid) / 2])
+  endif
   return clap#preview#get_line_range(a:origin_lnum, size)
 endfunction
 
