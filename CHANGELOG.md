@@ -5,6 +5,7 @@
 ### Improved
 
 - Truncate the lines of `grep` provider. #650
+- Support unordered substring query. #652
 
 ### Fixed
 
