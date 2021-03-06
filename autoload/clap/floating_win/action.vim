@@ -49,13 +49,14 @@ endfunction
 
 function! clap#floating_win#action#close() abort
   call clap#util#nvim_win_close_safe(s:action_winid)
+  call win_gotoid(g:clap.input.winid)
 endfunction
 
 function! clap#floating_win#action#apply_choice() abort
   if has_key(s:lnum2key, line('.'))
     let provider_action = g:clap.provider._().action
     let action_key = s:lnum2key[line('.')]
-    call clap#floating_win#action#close()
+    call clap#util#nvim_win_close_safe(s:action_winid)
     " TODO: add `action*` for performing actions against multi-selected entries?
     call clap#floating_win#action#close()
     call provider_action[action_key]()
