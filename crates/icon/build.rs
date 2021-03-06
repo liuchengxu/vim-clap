@@ -10,16 +10,19 @@ use itertools::Itertools;
 fn build_raw_line<S: AsRef<OsStr> + ?Sized>(p: &S, const_name: &str) -> String {
     let json_file_path = Path::new(p);
     let json_file_str = read_to_string(json_file_path).expect("file not found");
-    let exactmatch_map: HashMap<String, char> =
+    let icon_map: HashMap<String, char> =
         serde_json::from_str(&json_file_str).expect("error while reading json");
 
-    let sorted = exactmatch_map
+    let sorted_icon_tuples = icon_map
         .keys()
         .sorted()
-        .map(|k| format!("(\"{}\", '{}')", k, exactmatch_map[k]))
+        .map(|k| format!("(\"{}\", '{}')", k, icon_map[k]))
         .join(",");
 
-    format!("pub const {}: &[(&str, char)] = &[{}];", const_name, sorted)
+    format!(
+        "pub const {}: &[(&str, char)] = &[{}];",
+        const_name, sorted_icon_tuples
+    )
 }
 
 fn main() {
