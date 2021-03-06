@@ -23,27 +23,30 @@ fn build_raw_line<S: AsRef<OsStr> + ?Sized>(p: &S, const_name: &str) -> String {
 }
 
 fn main() {
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("constants.rs");
-
-    let file = File::create(dest_path).expect("can not create file");
-    let mut file = LineWriter::new(file);
-
     let current_dir = std::env::current_dir().unwrap();
 
-    let path_for = |filename: &str| {
+    let file_under_current_dir = |filename: &str| {
         let mut icon_path = current_dir.clone();
         icon_path.push(filename);
         icon_path
     };
 
-    let line = build_raw_line(&path_for("exactmatch_map.json"), "EXACTMATCH_ICON_TABLE");
+    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("constants.rs");
+    let file = File::create(dest_path).expect("can not create file");
+    let mut file = LineWriter::new(file);
+
+    let build_line = |filename: &str, const_name: &str| {
+        build_raw_line(&file_under_current_dir(filename), const_name)
+    };
+
+    let line = build_line("exactmatch_map.json", "EXACTMATCH_ICON_TABLE");
     file.write_all(format!("{}\n", line).as_bytes()).unwrap();
 
-    let line = build_raw_line(&path_for("extension_map.json"), "EXTENSION_ICON_TABLE");
+    let line = build_line("extension_map.json", "EXTENSION_ICON_TABLE");
     file.write_all(format!("\n{}\n", line).as_bytes()).unwrap();
 
-    let line = build_raw_line(&path_for("tagkind_map.json"), "TAGKIND_ICON_TABLE");
+    let line = build_line("tagkind_map.json", "TAGKIND_ICON_TABLE");
     file.write_all(format!("\n{}\n", line).as_bytes()).unwrap();
 
     file.write_all(
