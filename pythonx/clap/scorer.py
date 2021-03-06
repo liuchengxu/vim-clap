@@ -130,9 +130,8 @@ def positions(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (
-                    i > 0 and j > 0
-                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
+                match_required = (i > 0 and j > 0 and M[i][j]
+                                  == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break
@@ -183,9 +182,8 @@ def score(niddle, haystack):
     while i >= 0:
         while j >= 0:
             if (match_required or D[i][j] == M[i][j]) and D[i][j] != SCORE_MIN:
-                match_required = (
-                    i > 0 and j > 0
-                    and M[i][j] == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
+                match_required = (i > 0 and j > 0 and M[i][j]
+                                  == D[i - 1][j - 1] + SCORE_MATCH_CONSECUTIVE)
                 positions[i] = j
                 j -= 1
                 break
@@ -203,20 +201,31 @@ def fzy_scorer(niddle, haystack):
         return SCORE_MIN, None
 
 
-def substr_scorer(niddle, haystack):
-    positions, offset = [], 0
+def substr_impl(niddle, haystack):
     niddle, haystack = niddle.lower(), haystack.lower()
-    for niddle in niddle.split(" "):
-        if not niddle:
-            continue
-        offset = haystack.find(niddle, offset)
-        if offset < 0:
-            return float("-inf"), None
-        niddle_len = len(niddle)
-        positions.extend(range(offset, offset + niddle_len))
-        offset += niddle_len
+    positions = []
+    offset = haystack.find(niddle, 0)
+    if offset < 0:
+        return float("-inf"), None
+    niddle_len = len(niddle)
+    positions.extend(range(offset, offset + niddle_len))
     if not positions:
         return 0, positions
     match_len = positions[-1] + 1 - positions[0]
-    return -match_len + 2 / (positions[0] + 1) + 1 / (
-        positions[-1] + 1), positions
+    return -match_len + 2 / (positions[0] + 1) + 1 / (positions[-1] +
+                                                      1), positions
+
+
+def substr_scorer(niddle, haystack):
+    positions, offset = [], 0
+    niddle, haystack = niddle.lower(), haystack.lower()
+    total_score = 0
+    for niddle in niddle.split(" "):
+        if not niddle:
+            continue
+        score, indices = substr_impl(niddle, haystack)
+        if indices is None:
+            return float("-inf"), None
+        total_score += score
+        positions.extend(indices)
+    return total_score, sorted(positions)
