@@ -203,12 +203,10 @@ def fzy_scorer(niddle, haystack):
 
 def substr_impl(niddle, haystack):
     niddle, haystack = niddle.lower(), haystack.lower()
-    positions = []
     offset = haystack.find(niddle, 0)
     if offset < 0:
         return float("-inf"), None
-    niddle_len = len(niddle)
-    positions.extend(range(offset, offset + niddle_len))
+    positions = range(offset, offset + len(niddle))
     if not positions:
         return 0, positions
     match_len = positions[-1] + 1 - positions[0]
