@@ -65,5 +65,21 @@ function! clap#floating_win#action#apply_choice() abort
   endif
 endfunction
 
+function! clap#floating_win#action#next_item() abort
+  if line('.') == line('$')
+    noautocmd call cursor(2, 6)
+  else
+    noautocmd call cursor(line('.') + 1, 6)
+  endif
+endfunction
+
+function! clap#floating_win#action#prev_item() abort
+  if line('.') == 2
+    noautocmd call cursor(line('$'), 6)
+  else
+    noautocmd call cursor(line('.') - 1, 6)
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
