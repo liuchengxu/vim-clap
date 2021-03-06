@@ -1,6 +1,7 @@
-mod constants;
-
-pub use constants::*;
+include!(concat!(env!("OUT_DIR"), "/constants.rs"));
+// Now we do not need to genetate the constants module using the Python script.
+// mod constants;
+// pub use constants::*;
 
 use std::path::Path;
 
