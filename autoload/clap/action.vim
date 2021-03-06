@@ -34,7 +34,8 @@ function! clap#action#invoke() abort
     return ''
   endif
   if has('nvim')
-    call s:invoke_action()
+    " call s:invoke_action()
+    call clap#floating_win#action#create()
   else
     call clap#popup#action#invoke()
   endif
