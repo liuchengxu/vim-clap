@@ -19,10 +19,15 @@ function! clap#floating_win#action#create() abort
 
   let s:lnum2key = {}
   let idx = 2
+  let max_line_len = 0
   for choice in choices
     let s:lnum2key[idx] = choice
     let str = substitute(choice, '&', '', '')
-    call add(lines, join(split(str, '\ze\u'), ' '))
+    let line = join(split(str, '\ze\u'), ' ')
+    if strlen(line) > max_line_len
+      let max_line_len = strlen(line)
+    endif
+    call add(lines, line)
     let idx += 1
   endfor
 
@@ -39,7 +44,7 @@ function! clap#floating_win#action#create() abort
   let opts.style = 'minimal'
   let opts.relative = 'editor'
   let opts.height = len(lines)
-  let opts.width = opts.width * 3 / 5
+  let opts.width = max([opts.width * 3 / 5, max_line_len + 5])
   silent let s:action_winid = nvim_open_win(buf, v:true, opts)
 
   call cursor(2, 6)
