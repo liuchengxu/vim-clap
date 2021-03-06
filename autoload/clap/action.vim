@@ -6,6 +6,7 @@ set cpoptions&vim
 
 let s:ACTIONS_TITLE_KEY = 'title'
 
+" `confirm()` based action menu, this is deprecated now.
 function! s:invoke_action() abort
   let provider_action = g:clap.provider._().action
   if has_key(provider_action, s:ACTIONS_TITLE_KEY)
@@ -34,7 +35,6 @@ function! clap#action#invoke() abort
     return ''
   endif
   if has('nvim')
-    " call s:invoke_action()
     call clap#floating_win#action#create()
   else
     call clap#popup#action#invoke()
