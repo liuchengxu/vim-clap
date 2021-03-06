@@ -60,7 +60,7 @@ function! clap#floating_win#action#apply_choice() abort
     call clap#floating_win#action#close()
     call provider_action[action_key]()
   else
-    call clap#helper#echo_error('Invalid action choice: '.choice)
+    call clap#helper#echo_error('Invalid action choice: '.getline('.'))
   endif
 endfunction
 
