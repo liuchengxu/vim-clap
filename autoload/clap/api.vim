@@ -374,6 +374,7 @@ function! s:init_provider() abort
       return
     endif
     try
+      call clap#sign#reset()
       call self._().on_typed()
       call clap#preview#async_open_with_delay()
     catch
