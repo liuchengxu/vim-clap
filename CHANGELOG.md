@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Added
+
+- Add user autocmd `ClapOnInitialize`, can be used to ignore some buffers when opening clap. #653
+
 ### Improved
 
 - Truncate the lines of `grep` provider. #650
