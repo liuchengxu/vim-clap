@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Added
+
+- Support neovim floating_win based action menu. #655
+
 ### Improved
 
 - Truncate the lines of `grep` provider. #650
