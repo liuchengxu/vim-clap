@@ -16,6 +16,7 @@
 - Cannot open files with pipe in file path. #643
 - Fix the grep preview when `g:clap_enable_icon` is enabled and `g:clap_provider_grep_enable_icon` is disabled. #648
 - Reset the old selections when the input changes. #646
+- Make customize the icon easier. #392
 
 ### Changed
 

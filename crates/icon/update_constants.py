@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+#  This script is now depreated due to icon/build.rs.
+#
 #  Whenever you change exactmatch_map.json or extension_map.json,
 #  rerun this script to regenerate src/constants.rs:
 #    ./update_constants.py

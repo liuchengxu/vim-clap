@@ -14,3 +14,7 @@ icon is a tool for drawing an icon according to the path name for vim-clap.
 structopt = "0.3"
 
 pattern = { path = "../pattern" }
+
+[build-dependencies]
+serde_json = "1.0"
+itertools = "0.10"
