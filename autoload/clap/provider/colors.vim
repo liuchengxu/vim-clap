@@ -6,11 +6,21 @@ set cpoptions&vim
 
 let s:colors = {}
 
+function! s:ignore_default_colors(colors) abort
+  if !exists('s:default_colors')
+    let s:default_colors = split(globpath($VIMRUNTIME, 'colors/*.vim'), "\n")
+  endif
+  return filter(a:colors, 'index(s:default_colors, v:val) == -1')
+endfunction
+
 " Derived from fzf.vim
 function! s:colors.source() abort
   let colors = split(globpath(&runtimepath, 'colors/*.vim'), "\n")
   if has('packages')
     let colors += split(globpath(&packpath, 'pack/*/opt/*/colors/*.vim'), "\n")
+  endif
+  if get(g:, 'clap_provider_colors_ignore_default', 0)
+    let colors = s:ignore_default_colors(colors)
   endif
   return map(colors, "substitute(fnamemodify(v:val, ':t'), '\\..\\{-}$', '', '')")
 endfunction

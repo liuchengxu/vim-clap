@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add `g:clap_provider_colors_ignore_default` to ignore the default colors in `VIMRUNTIME`. #632
 - Support neovim floating_win based action menu. #655
 
 ### Improved
