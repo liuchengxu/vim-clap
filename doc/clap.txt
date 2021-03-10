@@ -776,18 +776,6 @@ g:clap_provider_yanks_history                     *g:clap_provider_yanks_history
 
 
 -------------------------------------------------------------------------------
-6.3 Other Provider Options                          *clap-other-provider-options*
-
-
-g:clap_provider_buffers_cur_tab_only       *g:clap_provider_buffers_cur_tab_only*
-
-  Type: |bool|
-  Default: `undefined`
-
-  List the buffer list per tab instead of the global buffer list.
-
-
--------------------------------------------------------------------------------
 6.2. Clap History Options                                  *clap-history-options*
 
 
@@ -806,6 +794,26 @@ g:ClapProviderHistoryCustomFilter             *g:ClapProviderHistoryCustomFilter
   function! g:ClapProviderHistoryCustomFilter(line) abort
     return a:line !~? '.so$\|.dat$\|.DS_Store$'
   endfunction
+
+
+-------------------------------------------------------------------------------
+6.3 Other Provider Options                          *clap-other-provider-options*
+
+
+g:clap_provider_buffers_cur_tab_only       *g:clap_provider_buffers_cur_tab_only*
+
+  Type: |bool|
+  Default: `undefined`
+
+  List the buffer list per tab instead of the global buffer list.
+
+
+g:clap_provider_colors_ignore_default     *g:clap_provider_colors_ignore_default*
+
+  Type: |bool|
+  Default: `undefined`
+
+  Ignore the colors under the path `$VIMRUNTIME` .
 
 
 ===============================================================================
