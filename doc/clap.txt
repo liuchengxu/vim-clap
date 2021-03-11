@@ -949,6 +949,13 @@ g:clap.display                                               *g:clap.display*
   the buffer number specified to the display buffer.
 
 
+ClapOnInitialize                                   *ClapOnInitialize-autocmd*
+                                                           *ClapOnInitialize*
+
+  This |User| autocommand is triggered after the initialization is done.
+  Useful for not opening clap window in some special buffers like nerdtree.
+
+
 ClapOnEnter                                             *ClapOnEnter-autocmd*
                                                                 *ClapOnEnter*
 

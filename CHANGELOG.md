@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add user autocmd `ClapOnInitialize`, can be used to ignore some buffers when opening clap. #653
 - Add `g:clap_provider_colors_ignore_default` to ignore the default colors in `VIMRUNTIME`. #632
 - Support neovim floating_win based action menu. #655
 
