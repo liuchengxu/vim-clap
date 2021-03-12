@@ -296,6 +296,22 @@ Find more examples at [wiki/Examples](https://github.com/liuchengxu/vim-clap/wik
 
 For complete guide about writing a clap provider please see [PROVIDER.md](PROVIDER.md).
 
+## Disable auto-completion plugin in clap input window
+
+Some of the auto-completion engines need to turn off to prevent bizarre behaviors(#580)
+
+For nvim-completion, add autocmd to your init.vim:
+
+```vim
+autocmd FileType clap_input let g:completion_enable_auto_pop = 0
+```
+
+For nvim-compe:
+
+```vim
+autocmd FileType clap_input call compe#setup({ 'enabled': v:false }, 0)
+```
+
 ## Contribution
 
 Vim-clap is still in beta. Any kinds of contributions are highly welcome.
