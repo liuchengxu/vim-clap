@@ -12,6 +12,7 @@
 
 - Truncate the lines of `grep` provider. #650
 - Support unordered substring query. #652
+- Add `hi default link ClapIndicator ClapInput` for the default theme.
 
 ### Fixed
 
