@@ -218,6 +218,7 @@ function! g:clap#floating_win#input.open() abort
   if s:exists_deoplete
     call deoplete#custom#buffer_option('auto_complete', v:false)
   endif
+  call setwinvar(s:input_winid, 'airline_disable_statusline', 1)
   call setbufvar(s:input_bufnr, 'coc_suggest_disable', 1)
   " Disable the auto-pairs plugin
   call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
