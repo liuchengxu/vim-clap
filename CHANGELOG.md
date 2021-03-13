@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.24] 2021-03-13
 ### Added
 
 - Add user autocmd `ClapOnInitialize`, can be used to ignore some buffers when opening clap. #653
