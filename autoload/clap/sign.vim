@@ -133,5 +133,11 @@ function! clap#sign#reset() abort
   let s:last_signed_id = -1
 endfunction
 
+function! clap#sign#reset_selected() abort
+  if !empty(s:signed)
+    call clap#sign#reset()
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
