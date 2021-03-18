@@ -794,19 +794,25 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytecount",
+ "crossbeam-channel",
+ "curl",
  "filter",
  "icon",
+ "indicatif",
  "itertools",
  "log",
  "log4rs",
+ "once_cell",
  "pattern",
  "printer",
  "rayon",
+ "regex",
+ "reqwest",
  "serde",
  "serde_json",
  "source_item",
- "stdio_server",
  "structopt",
+ "tokio 1.2.0",
  "upgrade",
  "utility",
 ]
@@ -989,9 +995,9 @@ checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 
 [[package]]
 name = "once_cell"
-version = "1.5.2"
+version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13bd41f508810a131401606d54ac32a467c97172d74ba7662562ebba5ad07fa0"
+checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
 
 [[package]]
 name = "openssl"
@@ -1504,28 +1510,6 @@ version = "0.1.0"
 dependencies = [
  "pattern",
  "structopt",
-]
-
-[[package]]
-name = "stdio_server"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "curl",
- "filter",
- "icon",
- "indicatif",
- "log",
- "once_cell",
- "pattern",
- "printer",
- "reqwest",
- "serde",
- "serde_json",
- "structopt",
- "tokio 1.2.0",
- "utility",
 ]
 
 [[package]]

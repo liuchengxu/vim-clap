@@ -9,7 +9,6 @@ members = [
     "pattern",
     "printer",
     "source_item",
-    "stdio_server",
     "utility",
     "upgrade",
 ]

@@ -51,16 +51,16 @@ pub struct Message {
 
 impl Message {
     pub fn get_provider_id(&self) -> ProviderId {
-        self._get_string_unsafe("provider_id").into()
+        self.get_string_unsafe("provider_id").into()
     }
 
     #[allow(dead_code)]
     pub fn get_query(&self) -> String {
-        self._get_string_unsafe("query")
+        self.get_string_unsafe("query")
     }
 
     pub fn get_cwd(&self) -> String {
-        self._get_string_unsafe("cwd")
+        self.get_string_unsafe("cwd")
     }
 
     /// Get the current line of display window without the leading icon.
@@ -82,7 +82,7 @@ impl Message {
         Ok(curline)
     }
 
-    fn _get_string_unsafe(&self, key: &str) -> String {
+    pub fn get_string_unsafe(&self, key: &str) -> String {
         self.params
             .get(key)
             .and_then(|x| x.as_str())
@@ -109,7 +109,7 @@ impl Message {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProviderId(String);
 
-const NO_ICON_PROVIDERS: [&str; 4] = ["blines", "commits", "bcommits", "help_tags"];
+const NO_ICON_PROVIDERS: [&str; 5] = ["blines", "commits", "bcommits", "help_tags", "dumb_jump"];
 
 impl ProviderId {
     pub fn as_str(&self) -> &str {

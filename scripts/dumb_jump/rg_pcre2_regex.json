@@ -1,0 +1,632 @@
+{
+    "elisp": {
+        "function": [
+            "\\\\((defun|cl-defun)\\s+JJJ\\j"
+        ],
+        "variable": [
+            "\\\\(defvar\\b\\s*JJJ\\j",
+            "\\\\(defcustom\\b\\s*JJJ\\j",
+            "\\\\(setq\\b\\s*JJJ\\j",
+            "\\\\(JJJ\\s+",
+            "\\((defun|cl-defun)\\s*.+\\\\(?\\s*JJJ\\j\\s*\\\\)?"
+        ]
+    },
+    "commonlisp": {
+        "function": [
+            "\\\\(defun\\s+JJJ\\j"
+        ],
+        "variable": [
+            "\\\\(defparameter\\b\\s*JJJ\\j"
+        ]
+    },
+    "racket": {
+        "function": [
+            "\\\\(define\\s+\\(\\s*JJJ\\j",
+            "\\\\(define\\s+JJJ\\s*\\\\(\\s*lambda",
+            "\\\\(let\\s+JJJ\\s*(\\\\(|\\\\[)*"
+        ],
+        "variable": [
+            "\\\\(define\\s+JJJ\\j",
+            "(\\\\(|\\\\[)\\s*JJJ\\s+",
+            "\\\\(lambda\\s+\\\\(?[^\\(\\)]*\\s*JJJ\\j\\s*\\\\)?",
+            "\\\\(define\\s+\\\\([^\\(\\)]+\\s*JJJ\\j\\s*\\\\)?"
+        ],
+        "type": [
+            "\\(struct\\s+JJJ\\j"
+        ]
+    },
+    "scheme": {
+        "function": [
+            "\\\\(define\\s+\\(\\s*JJJ\\j",
+            "\\\\(define\\s+JJJ\\s*\\\\(\\s*lambda",
+            "\\\\(let\\s+JJJ\\s*(\\\\(|\\\\[)*"
+        ],
+        "variable": [
+            "\\\\(define\\s+JJJ\\j",
+            "(\\\\(|\\\\[)\\s*JJJ\\s+",
+            "\\\\(lambda\\s+\\\\(?[^\\(\\)]*\\s*JJJ\\j\\s*\\\\)?",
+            "\\\\(define\\s+\\\\([^\\(\\)]+\\s*JJJ\\j\\s*\\\\)?"
+        ]
+    },
+    "clojure": {
+        "variable": [
+            "\\(def\\s+JJJ\\j"
+        ],
+        "function": [
+            "\\(defn-?\\s+JJJ\\j",
+            "\\(defmacro\\s+JJJ\\j",
+            "\\(deftask\\s+JJJ\\j"
+        ],
+        "type": [
+            "\\(deftype\\s+JJJ\\j",
+            "\\(defmulti\\s+JJJ\\j",
+            "\\(defmethod\\s+JJJ\\j",
+            "\\(definterface\\s+JJJ\\j",
+            "\\(defprotocol\\s+JJJ\\j",
+            "\\(defrecord\\s+JJJ\\j"
+        ]
+    },
+    "coffeescript": {
+        "function": [
+            "^\\s*JJJ\\s*[=:].*[-=]>"
+        ],
+        "variable": [
+            "^\\s*JJJ\\s*[:=][^:=-][^>]+$"
+        ],
+        "class": [
+            "^\\s*\\bclass\\s+JJJ"
+        ]
+    },
+    "objc": {
+        "function": [
+            "\\\\)\\s*JJJ(:|\\b|\\s)"
+        ],
+        "variable": [
+            "\\b\\*?JJJ\\s*=[^=\\n]+"
+        ],
+        "type": [
+            "(@interface|@protocol|@implementation)\\b\\s*JJJ\\b\\s*",
+            "typedef\\b\\s+(NS_OPTIONS|NS_ENUM)\\b\\([^,]+?,\\s*JJJ\\b\\s*"
+        ]
+    },
+    "swift": {
+        "variable": [
+            "(let|var)\\s*JJJ\\s*(=|:)[^=:\\n]+"
+        ],
+        "function": [
+            "func\\s+JJJ\\b\\s*(<[^>]*>)?\\s*\\("
+        ],
+        "type": [
+            "(class|struct|protocol|enum)\\s+JJJ\\b\\s*?",
+            "(typealias)\\s+JJJ\\b\\s*?="
+        ]
+    },
+    "csharp": {
+        "function": [
+            "^\\s*(?:[\\w\\[\\]]+\\s+){1,3}JJJ\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n)]+"
+        ],
+        "type": [
+            "(class|interface)\\s*JJJ\\b"
+        ]
+    },
+    "java": {
+        "function": [
+            "^\\s*(?:[\\w\\[\\]]+\\s+){1,3}JJJ\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n)]+"
+        ],
+        "type": [
+            "(class|interface)\\s*JJJ\\b"
+        ]
+    },
+    "vala": {
+        "function": [
+            "^\\s*(?:[\\w\\[\\]]+\\s+){1,3}JJJ\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n)]+"
+        ],
+        "type": [
+            "(class|interface)\\s*JJJ\\b"
+        ]
+    },
+    "coq": {
+        "function": [
+            "\\s*Variable\\s+JJJ\\b",
+            "\\s*Inductive\\s+JJJ\\b",
+            "\\s*Lemma\\s+JJJ\\b",
+            "\\s*Definition\\s+JJJ\\b",
+            "\\s*Hypothesis\\s+JJJ\\b",
+            "\\s*Theorm\\s+JJJ\\b",
+            "\\s*Fixpoint\\s+JJJ\\b",
+            "\\s*Module\\s+JJJ\\b",
+            "\\s*CoInductive\\s+JJJ\\b"
+        ]
+    },
+    "python": {
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+"
+        ],
+        "function": [
+            "def\\s*JJJ\\b\\s*\\\\("
+        ],
+        "type": [
+            "class\\s*JJJ\\b\\s*\\\\(?"
+        ]
+    },
+    "matlab": {
+        "variable": [
+            "^\\s*\\bJJJ\\s*=[^=\\n]+"
+        ],
+        "function": [
+            "^\\s*function\\s*[^=]+\\s*=\\s*JJJ\\b"
+        ],
+        "type": [
+            "^\\s*classdef\\s*JJJ\\b\\s*"
+        ]
+    },
+    "nim": {
+        "variable": [
+            "(const|let|var)\\s*JJJ\\s*(=|:)[^=:\\n]+"
+        ],
+        "function": [
+            "(proc|func|macro|template)\\s*`?JJJ`?\\b\\s*\\\\("
+        ],
+        "type": [
+            "type\\s*JJJ\\b\\s*(\\{[^}]+\\})?\\s*=\\s*\\w+"
+        ]
+    },
+    "nix": {
+        "variable": [
+            "\\b\\s*JJJ\\s*=[^=;]+"
+        ]
+    },
+    "ruby": {
+        "variable": [
+            "^\\s*((\\w+[.])*\\w+,\\s*)*JJJ(,\\s*(\\w+[.])*\\w+)*\\s*=([^=>~]|$)"
+        ],
+        "function": [
+            "(^|[^\\w.])((private|public|protected)\\s+)?def\\s+(\\w+(::|[.]))*JJJ($|[^\\w|:])",
+            "(^|\\W)define(_singleton|_instance)?_method(\\s|[(])\\s*:JJJ($|[^\\w|:])",
+            "(^|\\W)alias(_method)?\\W+JJJ(\\W|$)"
+        ],
+        "type": [
+            "(^|[^\\w.])class\\s+(\\w*::)*JJJ($|[^\\w|:])",
+            "(^|[^\\w.])module\\s+(\\w*::)*JJJ($|[^\\w|:])"
+        ]
+    },
+    "groovy": {
+        "variable": [
+            "^\\s*((\\w+[.])*\\w+,\\s*)*JJJ(,\\s*(\\w+[.])*\\w+)*\\s*=([^=>~]|$)"
+        ],
+        "function": [
+            "(^|[^\\w.])((private|public)\\s+)?def\\s+(\\w+(::|[.]))*JJJ($|[^\\w|:])"
+        ],
+        "type": [
+            "(^|[^\\w.])class\\s+(\\w*::)*JJJ($|[^\\w|:])"
+        ]
+    },
+    "crystal": {
+        "variable": [
+            "^\\s*((\\w+[.])*\\w+,\\s*)*JJJ(,\\s*(\\w+[.])*\\w+)*\\s*=([^=>~]|$)"
+        ],
+        "function": [
+            "(^|[^\\w.])((private|public|protected)\\s+)?def\\s+(\\w+(::|[.]))*JJJ($|[^\\w|:])"
+        ],
+        "type": [
+            "(^|[^\\w.])class\\s+(\\w*::)*JJJ($|[^\\w|:])",
+            "(^|[^\\w.])module\\s+(\\w*::)*JJJ($|[^\\w|:])",
+            "(^|[^\\w.])struct\\s+(\\w*::)*JJJ($|[^\\w|:])",
+            "(^|[^\\w.])alias\\s+(\\w*::)*JJJ($|[^\\w|:])"
+        ]
+    },
+    "scad": {
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+"
+        ],
+        "function": [
+            "function\\s*JJJ\\s*\\\\("
+        ],
+        "module": [
+            "module\\s*JJJ\\s*\\\\("
+        ]
+    },
+    "scala": {
+        "variable": [
+            "\\bval\\s*JJJ\\s*=[^=\\n]+",
+            "\\bvar\\s*JJJ\\s*=[^=\\n]+",
+            "\\btype\\s*JJJ\\s*=[^=\\n]+"
+        ],
+        "function": [
+            "\\bdef\\s*JJJ\\s*\\\\("
+        ],
+        "type": [
+            "class\\s*JJJ\\s*\\\\(?",
+            "trait\\s*JJJ\\s*\\\\(?",
+            "object\\s*JJJ\\s*\\\\(?"
+        ]
+    },
+    "r": {
+        "variable": [
+            "\\bJJJ\\s*=[^=><]"
+        ],
+        "function": [
+            "\\bJJJ\\s*<-\\s*function\\b"
+        ]
+    },
+    "perl": {
+        "function": [
+            "sub\\s*JJJ\\s*(\\{|\\()"
+        ],
+        "variable": [
+            "JJJ\\s*=\\s*"
+        ]
+    },
+    "tcl": {
+        "function": [
+            "proc\\s+JJJ\\s*\\{"
+        ],
+        "variable": [
+            "set\\s+JJJ",
+            "(variable|global)\\s+JJJ"
+        ]
+    },
+    "shell": {
+        "function": [
+            "function\\s*JJJ\\s*",
+            "JJJ\\\\(\\\\)\\s*\\{"
+        ],
+        "variable": [
+            "\\bJJJ\\s*=\\s*"
+        ]
+    },
+    "php": {
+        "function": [
+            "function\\s*JJJ\\s*\\\\(",
+            "\\*\\s@method\\s+["
+        ],
+        "variable": [
+            "(\\s|->|\\$|::)JJJ\\s*=\\s*",
+            "\\*\\s@property(-read|-write)?\\s+(["
+        ],
+        "trait": [
+            "trait\\s*JJJ\\s*\\\\{"
+        ],
+        "interface": [
+            "interface\\s*JJJ\\s*\\\\{"
+        ],
+        "class": [
+            "class\\s*JJJ\\s*(extends|implements|\\\\{)"
+        ]
+    },
+    "dart": {
+        "function": [
+            "\\bJJJ\\s*\\([^()]*\\)\\s*[{]",
+            "class\\s*JJJ\\s*[\\\\(\\\\{]"
+        ]
+    },
+    "faust": {
+        "function": [
+            "\\bJJJ\\(\\\\(.+\\\\)\\)*\\s*="
+        ]
+    },
+    "fennel": {
+        "variable": [
+            "\\((local|var)\\s+JJJ\\j"
+        ],
+        "function": [
+            "\\(fn\\s+JJJ\\j",
+            "\\(macro\\s+JJJ\\j"
+        ]
+    },
+    "fortran": {
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+"
+        ],
+        "function": [
+            "\\b(function|subroutine|FUNCTION|SUBROUTINE)\\s+JJJ\\b\\s*\\\\(",
+            "^\\s*(interface|INTERFACE)\\s+JJJ\\b"
+        ],
+        "type": [
+            "^\\s*(module|MODULE)\\s+JJJ\\s*"
+        ]
+    },
+    "go": {
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+",
+            "\\s*\\bJJJ\\s*:=\\s*"
+        ],
+        "function": [
+            "func\\s+\\\\([^\\\\)]*\\\\)\\s+JJJ\\s*\\\\(",
+            "func\\s+JJJ\\s*\\\\("
+        ],
+        "type": [
+            "type\\s+JJJ\\s+struct\\s+\\\\{"
+        ]
+    },
+    "javascript": {
+        "function": [
+            "(service|factory)\\\\(['\\\"]JJJ['\\\"]",
+            "\\bJJJ\\s*[=:]\\s*\\\\([^\\\\)]*\\\\)\\s+=>",
+            "\\bJJJ\\s*\\([^()]*\\)\\s*[{]",
+            "class\\s*JJJ\\s*[\\\\(\\\\{]",
+            "class\\s*JJJ\\s+extends",
+            "function\\s*JJJ\\s*\\\\(",
+            "\\bJJJ\\s*:\\s*function\\s*\\\\(",
+            "\\bJJJ\\s*=\\s*function\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+",
+            "\\bfunction\\b[^\\(]*\\\\(\\s*[^\\)]*\\bJJJ\\b\\s*,?\\s*\\\\)?"
+        ]
+    },
+    "hcl": {
+        "block": [
+            "(variable|output|module)\\s*\\\"JJJ\\\"\\s*\\\\{",
+            "(data|resource)\\s*\\\"\\w+\\\"\\s*\\\"JJJ\\\"\\s*\\\\{"
+        ]
+    },
+    "typescript": {
+        "function": [
+            "(service|factory)\\\\(['\\\"]JJJ['\\\"]",
+            "\\bJJJ\\s*[=:]\\s*\\\\([^\\\\)]*\\\\)\\s+=>",
+            "\\bJJJ\\s*\\([^()]*\\)\\s*[{]",
+            "class\\s*JJJ\\s*[\\\\(\\\\{]",
+            "class\\s*JJJ\\s+extends",
+            "function\\s*JJJ\\s*\\\\(",
+            "\\bJJJ\\s*:\\s*function\\s*\\\\(",
+            "\\bJJJ\\s*=\\s*function\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+",
+            "\\bfunction\\b[^\\(]*\\\\(\\s*[^\\)]*\\bJJJ\\b\\s*,?\\s*\\\\)?"
+        ]
+    },
+    "julia": {
+        "function": [
+            "(@noinline|@inline)?\\s*function\\s*JJJ(\\{[^\\}]*\\})?\\(",
+            "(@noinline|@inline)?JJJ(\\{[^\\}]*\\})?\\([^\\)]*\\)\\s*=",
+            "macro\\s*JJJ\\("
+        ],
+        "variable": [
+            "const\\s+JJJ\\b"
+        ],
+        "type": [
+            "(mutable)?\\s*struct\\s*JJJ",
+            "(type|immutable|abstract)\\s*JJJ"
+        ]
+    },
+    "haskell": {
+        "module": [
+            "^module\\s+JJJ\\s+"
+        ],
+        "top level function": [
+            "^\\bJJJ(?!(\\s+::))\\s+((.|\\s)*?)=\\s+"
+        ],
+        "type-like": [
+            "^\\s*((data(\\s+family)?)|(newtype)|(type(\\s+family)?))\\s+JJJ\\s+"
+        ],
+        "(data)type constructor 1": [
+            "(data|newtype)\\s{1,3}(?!JJJ\\s+)([^=]{1,40})=((\\s{0,3}JJJ\\s+)|([^=]{0,500}?((?<!(-"
+        ],
+        "data/newtype record field": [
+            "(data|newtype)([^=]*)=[^=]*?({([^=}]*?)(\\bJJJ)\\s+::[^=}]+})"
+        ],
+        "typeclass": [
+            "^class\\s+(.+=>\\s*)?JJJ\\s+"
+        ]
+    },
+    "ocaml": {
+        "type": [
+            "^\\s*(and|type)\\s+.*\\bJJJ\\b"
+        ],
+        "variable": [
+            "let\\s+JJJ\\b",
+            "let\\s+rec\\s+JJJ\\b",
+            "\\s*val\\s*\\bJJJ\\b\\s*"
+        ],
+        "module": [
+            "^\\s*module\\s*\\bJJJ\\b",
+            "^\\s*module\\s*type\\s*\\bJJJ\\b"
+        ]
+    },
+    "lua": {
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n]+",
+            "\\bfunction\\b[^\\(]*\\\\(\\s*[^\\)]*\\bJJJ\\b\\s*,?\\s*\\\\)?"
+        ],
+        "function": [
+            "function\\s*JJJ\\s*\\\\(",
+            "function\\s*.+[.:]JJJ\\s*\\\\(",
+            "\\bJJJ\\s*=\\s*function\\s*\\\\(",
+            "\\b.+\\.JJJ\\s*=\\s*function\\s*\\\\("
+        ]
+    },
+    "rust": {
+        "variable": [
+            "\\blet\\s+(\\\\([^=\\n]*)?(mut\\s+)?JJJ([^=\\n]*\\\\))?(:\\s*[^=\\n]+)?\\s*=\\s*[^=\\n]+",
+            "\\bconst\\s+JJJ:\\s*[^=\\n]+\\s*=[^=\\n]+",
+            "\\bstatic\\s+(mut\\s+)?JJJ:\\s*[^=\\n]+\\s*=[^=\\n]+",
+            "\\bfn\\s+.+\\s*\\\\((.+,\\s+)?JJJ:\\s*[^=\\n]+\\s*(,\\s*.+)*\\\\)",
+            "(if|while)\\s+let\\s+([^=\\n]+)?(mut\\s+)?JJJ([^=\\n\\\\(]+)?\\s*=\\s*[^=\\n]+",
+            "struct\\s+[^\\n{]+[{][^}]*(\\s*JJJ\\s*:\\s*[^\\n},]+)[^}]*}",
+            "enum\\s+[^\\n{]+\\s*[{][^}]*\\bJJJ\\b[^}]*}"
+        ],
+        "function": [
+            "\\bfn\\s+JJJ\\s*\\\\(",
+            "\\bmacro_rules!\\s+JJJ"
+        ],
+        "type": [
+            "struct\\s+JJJ\\s*[{\\\\(]?",
+            "trait\\s+JJJ\\s*[{]?",
+            "\\btype\\s+JJJ([^=\\n]+)?\\s*=[^=\\n]+;",
+            "impl\\s+((\\w+::)*\\w+\\s+for\\s+)?(\\w+::)*JJJ\\s+[{]?",
+            "mod\\s+JJJ\\s*[{]?"
+        ]
+    },
+    "elixir": {
+        "function": [
+            "\\bdef(p)?\\s+JJJ\\s*"
+        ],
+        "variable": [
+            "\\s*JJJ\\s*=[^=\\n]+"
+        ],
+        "module": [
+            "defmodule\\s+(\\w+\\.)*JJJ\\s+",
+            "defprotocol\\s+(\\w+\\.)*JJJ\\s+"
+        ]
+    },
+    "erlang": {
+        "function": [
+            "^JJJ\\b\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*JJJ\\s*=[^:=\\n]+"
+        ],
+        "module": [
+            "^-module\\\\(JJJ\\\\)"
+        ]
+    },
+    "scss": {
+        "function": [
+            "@mixin\\sJJJ\\b\\s*\\\\(",
+            "@function\\sJJJ\\b\\s*\\\\("
+        ],
+        "variable": [
+            "JJJ\\s*:\\s*"
+        ]
+    },
+    "sml": {
+        "type": [
+            "\\s*(data)?type\\s+.*\\bJJJ\\b"
+        ],
+        "variable": [
+            "\\s*val\\s+\\bJJJ\\b"
+        ],
+        "function": [
+            "\\s*fun\\s+\\bJJJ\\b.*\\s*="
+        ],
+        "module": [
+            "\\s*(structure|signature|functor)\\s+\\bJJJ\\b"
+        ]
+    },
+    "sql": {
+        "function": [
+            "(CREATE|create)\\s+(.+?\\s+)?(FUNCTION|function|PROCEDURE|procedure)\\s+JJJ\\s*\\\\("
+        ],
+        "table": [
+            "(CREATE|create)\\s+(.+?\\s+)?(TABLE|table)(\\s+(I"
+        ],
+        "view": [
+            "(CREATE|create)\\s+(.+?\\s+)?(VIEW|view)\\s+JJJ\\b"
+        ],
+        "type": [
+            "(CREATE|create)\\s+(.+?\\s+)?(TYPE|type)\\s+JJJ\\b"
+        ]
+    },
+    "systemverilog": {
+        "type": [
+            "\\s*class\\s+\\bJJJ\\b",
+            "\\s*task\\s+\\bJJJ\\b",
+            "\\s*\\bJJJ\\b\\s*="
+        ],
+        "function": [
+            "function\\s[^\\s]+\\s*\\bJJJ\\b",
+            "^\\s*[^\\s]*\\s*[^\\s]+\\s+\\bJJJ\\b"
+        ]
+    },
+    "vhdl": {
+        "type": [
+            "\\s*type\\s+\\bJJJ\\b",
+            "\\s*constant\\s+\\bJJJ\\b"
+        ],
+        "function": [
+            "function\\s*\\\"?JJJ\\\"?\\s*\\\\("
+        ]
+    },
+    "tex": {
+        "command": [
+            "\\\\.*newcommand\\\\*?\\s*\\\\{\\s*(\\\\)JJJ\\s*}",
+            "\\\\.*newcommand\\\\*?\\s*(\\\\)JJJ\\j"
+        ],
+        "length": [
+            "\\\\(s)etlength\\s*\\\\{\\s*(\\\\)JJJ\\s*}"
+        ],
+        "counter": [
+            "\\\\newcounter\\\\{\\s*JJJ\\s*}"
+        ],
+        "environment": [
+            "\\\\.*newenvironment\\s*\\\\{\\s*JJJ\\s*}"
+        ]
+    },
+    "pascal": {
+        "function": [
+            "\\bfunction\\s+JJJ\\b",
+            "\\bprocedure\\s+JJJ\\b"
+        ]
+    },
+    "fsharp": {
+        "variable": [
+            "let\\s+JJJ\\b.*\\\\="
+        ],
+        "interface": [
+            "member(\\b.+\\.|\\s+)JJJ\\b.*\\\\="
+        ],
+        "type": [
+            "type\\s+JJJ\\b.*\\\\="
+        ]
+    },
+    "kotlin": {
+        "function": [
+            "fun\\s*(<[^>]*>)?\\s*JJJ\\s*\\("
+        ],
+        "variable": [
+            "(val|var)\\s*JJJ\\b"
+        ],
+        "type": [
+            "(class|interface)\\s*JJJ\\b"
+        ]
+    },
+    "zig": {
+        "function": [
+            "fn\\s+JJJ\\b"
+        ],
+        "variable": [
+            "(var|const)\\s+JJJ\\b"
+        ]
+    },
+    "protobuf": {
+        "message": [
+            "message\\s+JJJ\\s*\\\\{"
+        ],
+        "enum": [
+            "enum\\s+JJJ\\s*\\\\{"
+        ]
+    },
+    "apex": {
+        "function": [
+            "^\\s*(?:[\\w\\[\\]]+\\s+){1,3}JJJ\\s*\\\\("
+        ],
+        "variable": [
+            "\\s*\\bJJJ\\s*=[^=\\n)]+"
+        ],
+        "type": [
+            "(class|interface)\\s*JJJ\\b"
+        ]
+    },
+    "cpp": {
+        "function": [
+            "\\bJJJ(\\s|\\))*\\((\\w|[,&*.<>:]|\\s)*(\\))\\s*(const|->|\\{|$)|typedef\\s+(\\w|[(*]|\\s)+JJJ(\\)|\\s)*\\("
+        ],
+        "variable": [
+            "\\b(?!(class\\b|struct\\b|return\\b|else\\b|delete\\b))(\\w+|[,>])([*&]|\\s)+JJJ\\s*(\\[(\\d|\\s)*\\])*\\s*([=,(){;]|:\\s*\\d)|#define\\s+JJJ\\b"
+        ],
+        "type": [
+            "\\b(class|struct|enum|union)\\b\\s*JJJ\\b\\s*(final\\s*)?(:((\\s*\\w+\\s*::)*\\s*\\w*\\s*<?(\\s*\\w+\\s*::)*\\w+>?\\s*,*)+)?((\\{|$))|}\\s*JJJ\\b\\s*;"
+        ]
+    }
+}

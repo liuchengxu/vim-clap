@@ -366,6 +366,15 @@ mod tests {
     }
 
     #[test]
+    fn test_grep_line() {
+        let source = into_source(
+        vec![" bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}"]
+      );
+        let query = "PartialComponents";
+        run_test(source, query, Some(2), 64);
+    }
+
+    #[test]
     fn starting_point_should_work() {
         let source = into_source(vec![
           " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",

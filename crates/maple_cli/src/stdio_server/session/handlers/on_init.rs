@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::Result;
 use serde_json::json;
 
-use crate::{
+use crate::stdio_server::{
     session::{HandleMessage, Session},
     write_response,
 };

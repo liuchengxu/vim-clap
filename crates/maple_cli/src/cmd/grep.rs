@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use serde::Deserialize;
 use structopt::StructOpt;
 
 use filter::{
@@ -15,6 +14,7 @@ use utility::is_git_repo;
 
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
+use crate::tools::rg::JsonLine;
 
 const RG_ARGS: [&str; 7] = [
     "rg",
@@ -90,99 +90,6 @@ fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
     (cmd, args)
 }
 
-/// This struct represents the line content of rg's --json.
-#[derive(Deserialize, Debug)]
-pub struct JsonLine {
-    #[serde(rename = "type")]
-    pub ty: String,
-    pub data: Match,
-}
-
-impl JsonLine {
-    /// Returns the formatted String like using rg's -vimgrep option.
-    pub fn format(&self, enable_icon: bool) -> String {
-        let maybe_icon = if enable_icon {
-            format!("{} ", icon::icon_for(&self.data.path.text))
-        } else {
-            Default::default()
-        };
-        format!(
-            "{}{}:{}:{}:{}",
-            maybe_icon,
-            self.data.path(),
-            self.data.line_number(),
-            self.data.column(),
-            self.data.line(),
-        )
-    }
-
-    pub fn offset(&self, enable_icon: bool) -> usize {
-        // filepath:line_number:column:text"
-        let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
-        self.data.path().len()
-            + self.data.line_number().to_string().len()
-            + self.data.column().to_string().len()
-            + fixed_offset
-    }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct Text {
-    pub text: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Match {
-    pub path: Text,
-    pub lines: Text,
-    pub line_number: Option<u64>,
-    pub absolute_offset: u64,
-    pub submatches: Vec<SubMatch>,
-}
-
-impl Match {
-    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
-        self.submatches
-            .iter()
-            .map(|s| s.match_indices(offset))
-            .flatten()
-            .collect()
-    }
-
-    pub fn path(&self) -> &str {
-        &self.path.text
-    }
-
-    pub fn line_number(&self) -> u64 {
-        self.line_number.unwrap_or_default()
-    }
-
-    pub fn column(&self) -> usize {
-        self.submatches[0].start
-    }
-
-    pub fn line(&self) -> &str {
-        self.lines.text.trim_end()
-    }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SubMatch {
-    #[serde(rename = "match")]
-    pub m: Text,
-    pub start: usize,
-    pub end: usize,
-}
-
-impl SubMatch {
-    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
-        (self.start..self.end)
-            .into_iter()
-            .map(|x| x + offset)
-            .collect()
-    }
-}
-
 impl Grep {
     pub fn run(
         &self,
@@ -240,11 +147,7 @@ impl Grep {
             .lines
             .iter()
             .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
-            .map(|line| {
-                let formatted = line.format(enable_icon);
-                let indices = line.data.match_indices(line.offset(enable_icon));
-                (formatted, indices)
-            })
+            .map(|line| line.build_grep_line(enable_icon))
             .unzip();
 
         let total = lines.len();

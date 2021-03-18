@@ -80,6 +80,8 @@ function! g:clap#floating_win#display.open() abort
         \ '&cursorline': 0,
         \ '&signcolumn': 'yes',
         \ '&foldcolumn': 0,
+        \ 'autopairs_enabled': 0,
+        \ 'ale_enabled': 0,
         \ })
 endfunction
 

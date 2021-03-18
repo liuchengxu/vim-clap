@@ -31,15 +31,7 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = if cfg!(target_os = "windows") {
-            let mut cmd = Command::new("cmd");
-            cmd.args(&["/C", &self.cmd]);
-            cmd
-        } else {
-            let mut cmd = Command::new("bash");
-            cmd.arg("-c").arg(&self.cmd);
-            cmd
-        };
+        let mut cmd = crate::std_command::build_command(&self.cmd);
 
         set_current_dir(&mut cmd, self.cmd_dir.clone());
 

@@ -3,7 +3,7 @@ use serde_json::json;
 
 use filter::matcher::{Algo, Bonus, MatchType};
 
-use crate::{session::SessionContext, write_response, Message};
+use crate::stdio_server::{session::SessionContext, write_response, Message};
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
     debug!("recv OnTyped event: {:?}", msg);
