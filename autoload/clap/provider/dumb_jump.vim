@@ -43,6 +43,7 @@ function! s:handle_response(result, error) abort
 
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
+  call clap#preview#async_open_with_delay()
 endfunction
 
 function! s:dumb_jump.on_typed() abort
