@@ -2,7 +2,6 @@ syntax match ClapDumbLinNr /^.*:\zs\d\+\ze:\d\+:/hs=s+1,he=e-1 contained
 syntax match ClapDumbColumn /:\d\+:\zs\d\+\ze:/ contains=ClapDumbLinNr contained
 syntax match ClapDumbLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapDumbLinNr,ClapDumbColumn contained
 
-" Not sure why this icon somehow are unable to be highlighted in clap#icon#add_head_hl_groups()
 syntax match ClapDumbKind /^\[\a*\]/ contained
 
 syntax match ClapDumbFpath /^.*:\d\+:\d\+:/ contains=ClapDumbLinNrColumn,ClapDumbKind
