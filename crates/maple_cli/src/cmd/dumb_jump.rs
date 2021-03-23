@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 use structopt::StructOpt;
 
@@ -29,28 +29,30 @@ pub fn get_comments_by_ext(ext: &str) -> &[String] {
 
 /// Map of file extension to language.
 ///
-/// NOTE: must be sorted as we use binary search to find if a key exists later.
-///
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
-pub const DEFAULT_LANGUAGE_EXT_TABLE: &[(&str, &str)] = &[
-    ("clj", "clojure"),
-    ("cpp", "cpp"),
-    ("go", "go"),
-    ("java", "java"),
-    ("lua", "lua"),
-    ("py", "python"),
-    ("r", "r"),
-    ("rb", "ruby"),
-    ("rs", "rust"),
-    ("scala", "scala"),
-];
+static LANGUAGE_EXT_TABLE: Lazy<HashMap<String, String>> = Lazy::new(|| {
+    vec![
+        ("clj", "clojure"),
+        ("cpp", "cpp"),
+        ("go", "go"),
+        ("java", "java"),
+        ("lua", "lua"),
+        ("py", "python"),
+        ("r", "r"),
+        ("rb", "ruby"),
+        ("rs", "rust"),
+        ("scala", "scala"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k.into(), v.into()))
+    .collect()
+});
 
 /// Finds the language given the file extension.
 pub fn get_language_by_ext(ext: &str) -> Result<&str> {
-    DEFAULT_LANGUAGE_EXT_TABLE
-        .binary_search_by(|&(key, _)| key.cmp(&ext))
-        .ok()
-        .map(|idx| DEFAULT_LANGUAGE_EXT_TABLE[idx].1)
+    LANGUAGE_EXT_TABLE
+        .get(ext)
+        .map(|x| x.as_str())
         .ok_or_else(|| anyhow!("dumb_jump is unsupported for {}", ext))
 }
 
