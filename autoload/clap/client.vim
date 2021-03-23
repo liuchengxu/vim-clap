@@ -12,7 +12,7 @@ function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
   " Only process the latest request, drop the outdated responses.
-  if s:req_id != decoded.id
+  if !has_key(decoded, 'force_execute') && s:req_id != decoded.id
     return
   endif
 

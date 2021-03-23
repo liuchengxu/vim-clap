@@ -82,6 +82,10 @@ impl Message {
         Ok(curline)
     }
 
+    pub fn get_string_unsafe(&self, key: &str) -> String {
+        self._get_string_unsafe(key)
+    }
+
     fn _get_string_unsafe(&self, key: &str) -> String {
         self.params
             .get(key)
