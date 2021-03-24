@@ -1070,8 +1070,8 @@ dependencies = [
 name = "pattern"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "log",
+ "once_cell",
  "regex",
 ]
 

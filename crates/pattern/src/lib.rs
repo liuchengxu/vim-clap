@@ -2,27 +2,27 @@
 
 use std::path::PathBuf;
 
-use lazy_static::lazy_static;
 use log::error;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
-lazy_static! {
-  static ref GREP_POS: Regex = Regex::new(r"^(.*?):(\d+):(\d+):").unwrap();
+static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):").unwrap());
 
-  static ref DUMB_JUMP_LINE: Regex = Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap();
+static DUMB_JUMP_LINE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap());
 
-  // match the file path and line number of grep line.
-  static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
+// match the file path and line number of grep line.
+static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:\d+:\d+:").unwrap());
 
-  // match the tag_name:lnum of tag line.
-  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
+// match the tag_name:lnum of tag line.
+static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*:\d+)").unwrap());
 
-  static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
+static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+)").unwrap());
 
-  static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap();
+static PROJ_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap());
 
-  static ref COMMIT_RE: Regex = Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap();
-}
+static COMMIT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap());
 
 /// Extract tag name from the line in tags provider.
 #[inline]
