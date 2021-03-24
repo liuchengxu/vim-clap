@@ -11,8 +11,14 @@ let s:handlers = get(s:, 'handlers', {})
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
+  if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
+    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
+    call remove(s:handlers, decoded.id)
+    return
+  endif
+
   " Only process the latest request, drop the outdated responses.
-  if !has_key(decoded, 'force_execute') && s:req_id != decoded.id
+  if s:req_id != decoded.id
     return
   endif
 
