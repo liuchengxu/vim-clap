@@ -6,6 +6,9 @@ set cpoptions&vim
 
 " This is not complete, but should be enough to cover the most extensions.
 " https://vi.stackexchange.com/questions/9962/get-filetype-by-extension-or-filename-in-vimscript
+"
+" This function can takes 0.1s in some machines so we offer to initialize it
+" on the Rust side too.
 function! s:init_ext2ft() abort
   let matched = []
   for line in split(execute('autocmd filetypedetect'), "\n")
@@ -23,11 +26,15 @@ function! s:init_ext2ft() abort
   endfor
 endfunction
 
-if !exists('s:ext2ft')
-  call s:init_ext2ft()
-endif
+function! clap#ext#handle_init_response(result, error) abort
+  let s:ext2ft = a:result['ext_map']
+endfunction
 
 function! clap#ext#into_filetype(fname) abort
+  if !exists('s:ext2ft')
+    call s:init_ext2ft()
+  endif
+
   let ext = fnamemodify(a:fname, ':e')
   if !empty(ext) && has_key(s:ext2ft, ext)
     return s:ext2ft[ext]

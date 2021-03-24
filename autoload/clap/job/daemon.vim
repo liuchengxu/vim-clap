@@ -134,6 +134,11 @@ function! clap#job#daemon#start(MessageHandler) abort
       \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
       \   'clap_preview_size': g:clap_preview_size,
       \ })
+  call clap#client#call(
+        \ 'init_ext_map',
+        \ function('clap#ext#handle_init_response'),
+        \ {'autocmd_filetypedetect': execute('autocmd filetypedetect')}
+        \ )
   return
 endfunction
 
