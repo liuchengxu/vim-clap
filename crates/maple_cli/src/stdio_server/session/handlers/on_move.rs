@@ -6,9 +6,11 @@ use serde_json::json;
 
 use pattern::*;
 
-use crate::session::SessionContext;
-use crate::types::{Message, ProviderId};
-use crate::write_response;
+use crate::stdio_server::{
+    session::SessionContext,
+    types::{Message, ProviderId},
+    write_response,
+};
 
 #[inline]
 pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
@@ -138,6 +140,13 @@ impl OnMove {
 
                 Self::Grep { path, lnum }
             }
+            "dumb_jump" => {
+                let (_def_kind, fpath, lnum, _col) =
+                    extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
+                let mut path: PathBuf = context.cwd.clone();
+                path.push(&fpath);
+                Self::Grep { path, lnum }
+            }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
@@ -247,7 +256,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::types::ProviderId = self.provider_id.clone();
+        let provider_id: crate::stdio_server::types::ProviderId = self.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -363,8 +372,9 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let enable_icon = crate::env::global().enable_icon;
-        let lines = crate::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let enable_icon = crate::stdio_server::env::global().enable_icon;
+        let lines =
+            crate::stdio_server::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({
           "event": "on_move",
           "lines": lines,

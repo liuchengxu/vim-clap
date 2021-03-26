@@ -17,6 +17,9 @@ pub enum Cmd {
     /// Execute the shell command.
     #[structopt(name = "exec")]
     Exec(crate::cmd::exec::Exec),
+    /// Dumb jump.
+    #[structopt(name = "dumb-jump")]
+    DumbJump(crate::cmd::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
     #[structopt(name = "tags")]
     Tags(crate::cmd::tags::Tags),
@@ -98,6 +101,9 @@ impl Maple {
             Cmd::Grep(grep) => {
                 grep.run(self.number, self.winwidth, self.icon_painter, self.no_cache)?;
             }
+            Cmd::DumbJump(dumb_jump) => {
+                dumb_jump.run()?;
+            }
             Cmd::RPC => {
                 if let Some(ref log_path) = self.log {
                     crate::logger::init(log_path)?;
@@ -105,7 +111,7 @@ impl Maple {
                     crate::logger::init(log_path)?;
                 }
 
-                stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+                crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
         }
         Ok(())

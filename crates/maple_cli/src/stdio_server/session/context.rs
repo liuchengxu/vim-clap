@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
 use super::*;
-use crate::types::ProviderId;
+use crate::stdio_server::types::ProviderId;
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;

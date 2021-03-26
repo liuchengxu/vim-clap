@@ -1,9 +1,8 @@
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
 use filter::{
@@ -12,47 +11,9 @@ use filter::{
 };
 
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
+use crate::tools::ctags::{ensure_has_json_support, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
-
-#[derive(Serialize, Deserialize, Debug)]
-struct TagInfo {
-    name: String,
-    path: String,
-    pattern: String,
-    line: usize,
-    kind: String,
-}
-
-/// Returns Ok(()) if the ctags executable is compiled with +json feature.
-fn ensure_has_json_support() -> Result<()> {
-    let output = std::process::Command::new("ctags")
-        .arg("--list-features")
-        .stderr(std::process::Stdio::inherit())
-        .output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-    if stdout.split('\n').any(|x| x.starts_with("json")) {
-        Ok(())
-    } else {
-        Err(anyhow!("ctags has no json support"))
-    }
-}
-
-impl TagInfo {
-    pub fn format(&self) -> String {
-        let pat_len = self.pattern.len();
-        let name_lnum = format!("{}:{}", self.name, self.line);
-        let kind = format!("[{}@{}]", self.kind, self.path);
-        format!(
-            "{text:<width1$} {kind:<width2$} {pattern}",
-            text = name_lnum,
-            width1 = 30,
-            kind = kind,
-            width2 = 30,
-            pattern = &self.pattern[2..pat_len - 2].trim(),
-        )
-    }
-}
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
@@ -80,7 +41,7 @@ pub struct Tags {
     /// Exclude files and directories matching 'pattern'.
     ///
     /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(long, default_value = ".git,*.json,node_modules,target")]
+    #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
     exclude: Vec<String>,
 }
 
@@ -91,7 +52,7 @@ fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<I
     Ok(BufReader::new(stdout_stream).lines().filter_map(|line| {
         line.ok().and_then(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.format())
+                Some(tag.display_line())
             } else {
                 None
             }
@@ -160,11 +121,4 @@ impl Tags {
 
         Ok(())
     }
-}
-
-#[test]
-fn test_parse_ctags_line() {
-    let data = r#"{"_type": "tag", "name": "Exec", "path": "crates/maple_cli/src/cmd/exec.rs", "pattern": "/^pub struct Exec {$/", "line": 10, "kind": "struct"}"#;
-    let tag: TagInfo = serde_json::from_str(&data).unwrap();
-    assert_eq!(tag.name, "Exec");
 }

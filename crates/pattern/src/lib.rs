@@ -2,25 +2,27 @@
 
 use std::path::PathBuf;
 
-use lazy_static::lazy_static;
 use log::error;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
-lazy_static! {
-  static ref GREP_POS: Regex = Regex::new(r"^(.*?):(\d+):(\d+):").unwrap();
+static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):").unwrap());
 
-  // match the file path and line number of grep line.
-  static ref GREP_STRIP_FPATH: Regex = Regex::new(r"^.*:\d+:\d+:").unwrap();
+static DUMB_JUMP_LINE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap());
 
-  // match the tag_name:lnum of tag line.
-  static ref TAG_RE: Regex = Regex::new(r"^(.*:\d+)").unwrap();
+// match the file path and line number of grep line.
+static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:\d+:\d+:").unwrap());
 
-  static ref BUFFER_TAGS: Regex = Regex::new(r"^.*:(\d+)").unwrap();
+// match the tag_name:lnum of tag line.
+static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*:\d+)").unwrap());
 
-  static ref PROJ_TAGS: Regex = Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap();
+static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+)").unwrap());
 
-  static ref COMMIT_RE: Regex = Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap();
-}
+static PROJ_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap());
+
+static COMMIT_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap());
 
 /// Extract tag name from the line in tags provider.
 #[inline]
@@ -51,6 +53,17 @@ pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize)> {
     let lnum = str2nr(2)?;
     let col = str2nr(3)?;
     Some((fpath, lnum, col))
+}
+
+/// Returns a tuple of (fpath, lnum, col).
+pub fn extract_jump_line_info(line: &str) -> Option<(&str, PathBuf, usize, usize)> {
+    let cap = DUMB_JUMP_LINE.captures(line)?;
+    let def_kind = cap.get(1).map(|x| x.as_str())?;
+    let fpath = cap.get(2).map(|x| x.as_str().into())?;
+    let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
+    let lnum = str2nr(3)?;
+    let col = str2nr(4)?;
+    Some((def_kind, fpath, lnum, col))
 }
 
 pub fn extract_grep_file_path(line: &str) -> Option<String> {
@@ -131,6 +144,23 @@ mod tests {
             "/home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs",
             extract_grep_file_path(line).unwrap()
         );
+    }
+
+    #[test]
+    fn test_dumb_jump_line() {
+        let line = "[variable]crates/maple_cli/src/stdio_server/session/context.rs:36:8:        let cwd = msg.get_cwd().into();";
+        let info = extract_jump_line_info(line).unwrap();
+        assert_eq!(
+            info,
+            (
+                "variable".into(),
+                "crates/maple_cli/src/stdio_server/session/context.rs".into(),
+                36,
+                8
+            )
+        );
+        let line = "[variable]crates/maple_cli/src/stdio_server/session/providers/dumb_jump.rs:9:8:        let cwd = msg.get_cwd();";
+        println!("{:?}", extract_jump_line_info(line));
     }
 
     #[test]

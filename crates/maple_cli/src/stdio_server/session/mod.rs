@@ -6,7 +6,7 @@ mod providers;
 use anyhow::Result;
 
 use super::*;
-use crate::types::ProviderId;
+use crate::stdio_server::types::ProviderId;
 
 pub use self::context::SessionContext;
 pub use self::handlers::on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler};

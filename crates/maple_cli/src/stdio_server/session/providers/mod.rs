@@ -1,11 +1,15 @@
+pub mod dumb_jump;
 pub mod filer;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
 
-use crate::{
-    session::{handlers::MessageHandler, NewSession, Session, SessionEvent},
+use crate::stdio_server::{
+    session::{
+        handlers::{self, MessageHandler},
+        NewSession, Session, SessionEvent,
+    },
     Message,
 };
 
@@ -30,9 +34,7 @@ impl NewSession for GeneralSession {
             let session_cloned = session.clone();
             // TODO: choose different fitler strategy according to the time forerunner job spent.
             tokio::spawn(async move {
-                if let Err(e) =
-                    crate::session::handlers::on_init::run(msg_id, source_cmd, session_cloned).await
-                {
+                if let Err(e) = handlers::on_init::run(msg_id, source_cmd, session_cloned).await {
                     log::error!(
                         "error occurred when running the forerunner job, msg_id: {}, error: {:?}",
                         msg_id,

@@ -11,6 +11,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use session::{
+    dumb_jump,
     filer::{self, FilerSession},
     GeneralSession, Manager, SessionEvent,
 };
@@ -50,8 +51,9 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             debug!("==> message(in): {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => env::initialize_global(msg), // should be called only once.
-                "init_ext_map" => crate::ext::parse_filetypedetect(msg),
+                "init_ext_map" => ext::parse_filetypedetect(msg),
                 "filer" => filer::handle_filer_message(msg),
+                "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "on_init" => session_manager.new_session(msg.session_id, msg, GeneralSession),
