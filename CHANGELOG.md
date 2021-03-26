@@ -2,8 +2,16 @@
 
 ## [unreleased]
 
+### Added
+
+- Add `dumb_jump` provider. #65
+
+### Internal change
+
+- Move `stdio_server` crate into a module of `maple_cli` crate for reusing the utilities in `maple_cli` easily.
 
 ## [0.24] 2021-03-13
+
 ### Added
 
 - Add user autocmd `ClapOnInitialize`, can be used to ignore some buffers when opening clap. #653

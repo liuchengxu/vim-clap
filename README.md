@@ -38,6 +38,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
 * [How to define your own provider](#how-to-define-your-own-provider)
+* [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
 * [Credit](#credit)
 * [License](#license)
@@ -145,6 +146,7 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap proj_tags`                       | Tags in the current project                         | **[maple][maple]** and **[universal-ctags][universal-ctags]** with JSON output support |
 | `Clap yanks`                           | Yank stack of the current vim session               | _none_                                                                                 |
 | `Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**                                                                     |
+| `Clap dumb_jump`                       | Definitions/References using regexp                 | **[rg][rg]** with `--pcre2`                                                            |
 | `Clap providers`                       | List the vim-clap providers                         | _none_                                                                                 |
 | `Clap windows`                         | Windows                                             | _none_                                                                                 |
 
@@ -217,7 +219,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
-  -  Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
+  - Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
 - [x] By default <kbd>Alt-u</kbd> does nothing.
   - Use <kbd>Alt-u</kbd> to go up one directory in `:Clap filer`.
 - [x] Use <kbd>Tab</kbd> to select multiple entries and open them using the quickfix window.(Need the provider has `sink*` support)
