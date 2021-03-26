@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add `dumb_jump` provider. #65
+- Add `dumb_jump` provider. #659
 
 ### Internal change
 
