@@ -118,7 +118,7 @@ impl NewSession for FilerSession {
         let session = Session {
             session_id: msg.session_id,
             context: msg.clone().into(),
-            message_handler: FilerMessageHandler,
+            event_handler: FilerMessageHandler,
             event_recv: session_receiver,
         };
 

@@ -29,7 +29,7 @@ pub struct Session<T> {
     pub session_id: u64,
     pub context: SessionContext,
     /// Each Session can have its own message processing logic.
-    pub message_handler: T,
+    pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
 }
 
@@ -89,10 +89,10 @@ impl<T: EventHandler> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => self
-                                .message_handler
+                                .event_handler
                                 .handle(Event::OnMove(msg), &self.context),
                             SessionEvent::OnTyped(msg) => self
-                                .message_handler
+                                .event_handler
                                 .handle(Event::OnTyped(msg), &self.context),
                         }
                     }

@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::stdio_server::{
     session::{
-        handlers::{self, MessageHandler},
+        handlers::{self, DefaultEventHandler},
         NewSession, Session, SessionEvent,
     },
     Message,
@@ -23,7 +23,7 @@ impl NewSession for GeneralSession {
         let session = Session {
             session_id: msg.session_id,
             context: msg.into(),
-            message_handler: MessageHandler,
+            event_handler: DefaultEventHandler,
             event_recv: session_receiver,
         };
 

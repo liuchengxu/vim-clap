@@ -1,3 +1,5 @@
+//! Implements the event.
+
 pub mod on_init;
 pub mod on_move;
 pub mod on_typed;
@@ -6,12 +8,16 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::stdio_server::{write_response, session::{EventHandler, Event, SessionContext}, types::Message};
+use crate::stdio_server::{
+    session::{Event, EventHandler, SessionContext},
+    types::Message,
+    write_response,
+};
 
 #[derive(Clone)]
-pub struct MessageHandler;
+pub struct DefaultEventHandler;
 
-impl EventHandler for MessageHandler {
+impl EventHandler for DefaultEventHandler {
     fn handle(&self, event: Event, context: &SessionContext) {
         match event {
             Event::OnMove(msg) => {
