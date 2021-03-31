@@ -1,6 +1,7 @@
 mod context;
-pub mod handlers;
+pub mod event_handlers;
 mod manager;
+pub mod message_handlers;
 mod providers;
 
 use anyhow::Result;
@@ -9,7 +10,7 @@ use super::*;
 use crate::stdio_server::types::ProviderId;
 
 pub use self::context::SessionContext;
-pub use self::handlers::on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler};
+pub use self::event_handlers::on_move::{as_absolute_path, build_abs_path, OnMove, OnMoveHandler};
 pub use self::manager::{Manager, NewSession};
 pub use self::providers::*;
 
@@ -88,9 +89,9 @@ impl<T: EventHandler> Session<T> {
                                 self.handle_terminate();
                                 return;
                             }
-                            SessionEvent::OnMove(msg) => self
-                                .event_handler
-                                .handle(Event::OnMove(msg), &self.context),
+                            SessionEvent::OnMove(msg) => {
+                                self.event_handler.handle(Event::OnMove(msg), &self.context)
+                            }
                             SessionEvent::OnTyped(msg) => self
                                 .event_handler
                                 .handle(Event::OnTyped(msg), &self.context),

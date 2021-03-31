@@ -13,6 +13,7 @@ use serde_json::json;
 use session::{
     dumb_jump,
     filer::{self, FilerSession},
+    message_handlers,
     GeneralSession, Manager, SessionEvent,
 };
 use types::{GlobalEnv, Message};
@@ -92,7 +93,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             debug!("==> message(in): {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
-                "init_ext_map" => session::handlers::parse_filetypedetect(msg),
+                "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
