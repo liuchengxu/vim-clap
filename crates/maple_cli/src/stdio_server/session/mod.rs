@@ -15,13 +15,13 @@ pub use self::providers::*;
 
 pub type SessionId = u64;
 
-pub enum RpcMessage {
+pub enum Event {
     OnMove(Message),
     OnTyped(Message),
 }
 
-pub trait HandleMessage: Send + 'static {
-    fn handle(&self, msg: RpcMessage, context: &SessionContext);
+pub trait EventHandler: Send + 'static {
+    fn handle(&self, event: Event, context: &SessionContext);
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ pub enum SessionEvent {
     Terminate,
 }
 
-impl<T: HandleMessage> Session<T> {
+impl<T: EventHandler> Session<T> {
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
         let mut val = self.context.is_running.lock().unwrap();
@@ -90,10 +90,10 @@ impl<T: HandleMessage> Session<T> {
                             }
                             SessionEvent::OnMove(msg) => self
                                 .message_handler
-                                .handle(RpcMessage::OnMove(msg), &self.context),
+                                .handle(Event::OnMove(msg), &self.context),
                             SessionEvent::OnTyped(msg) => self
                                 .message_handler
-                                .handle(RpcMessage::OnTyped(msg), &self.context),
+                                .handle(Event::OnTyped(msg), &self.context),
                         }
                     }
                     Err(err) => debug!("session recv error: {:?}", err),
