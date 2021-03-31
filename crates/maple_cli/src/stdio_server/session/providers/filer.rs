@@ -135,7 +135,7 @@ pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
-    let result = match read_dir_entries(&cwd, crate::stdio_server::env::global().enable_icon, None)
+    let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
     {
         Ok(entries) => {
             let result = json!({
