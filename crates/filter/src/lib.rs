@@ -27,7 +27,7 @@ pub type FilterResult = (SourceItem, i64, Vec<usize>);
 
 /// Context for running the filter.
 #[derive(Debug, Clone)]
-pub struct RunContext {
+pub struct FilterContext {
     algo: Option<Algo>,
     number: Option<usize>,
     winwidth: Option<usize>,
@@ -35,7 +35,7 @@ pub struct RunContext {
     match_type: MatchType,
 }
 
-impl Default for RunContext {
+impl Default for FilterContext {
     fn default() -> Self {
         Self {
             algo: None,
@@ -47,7 +47,7 @@ impl Default for RunContext {
     }
 }
 
-impl RunContext {
+impl FilterContext {
     pub fn new(
         algo: Option<Algo>,
         number: Option<usize>,

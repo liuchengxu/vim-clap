@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess::Exec,
-    RunContext, Source,
+    FilterContext, Source,
 };
 use icon::IconPainter;
 use utility::is_git_repo;
@@ -92,19 +92,11 @@ fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
 }
 
 impl Grep {
-    pub fn run(
-        &self,
-        Params {
-            number,
-            winwidth,
-            icon_painter,
-            no_cache,
-        }: Params,
-    ) -> Result<()> {
+    pub fn run(&self, params: Params) -> Result<()> {
         if self.sync {
-            self.sync_run(number, winwidth, icon_painter)?;
+            self.sync_run(params)?;
         } else {
-            self.dyn_run(number, winwidth, icon_painter, no_cache)?;
+            self.dyn_run(params)?;
         }
         Ok(())
     }
@@ -114,9 +106,12 @@ impl Grep {
     /// Write the output to the cache file if neccessary.
     fn sync_run(
         &self,
-        number: Option<usize>,
-        winwidth: Option<usize>,
-        icon_painter: Option<IconPainter>,
+        Params {
+            number,
+            winwidth,
+            icon_painter,
+            ..
+        }: Params,
     ) -> Result<()> {
         let grep_cmd = self
             .grep_cmd
@@ -176,16 +171,18 @@ impl Grep {
     /// Firstly try using the cache.
     fn dyn_run(
         &self,
-        number: Option<usize>,
-        winwidth: Option<usize>,
-        icon_painter: Option<IconPainter>,
-        no_cache: bool,
+        Params {
+            number,
+            winwidth,
+            icon_painter,
+            no_cache,
+        }: Params,
     ) -> Result<()> {
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
                 source,
-                RunContext::new(
+                FilterContext::new(
                     None,
                     number,
                     winwidth,

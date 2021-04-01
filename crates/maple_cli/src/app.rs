@@ -1,6 +1,7 @@
 use anyhow::Result;
 use structopt::{clap::AppSettings, StructOpt};
 
+use filter::FilterContext;
 use icon::IconPainter;
 
 #[derive(StructOpt, Debug)]
@@ -83,6 +84,15 @@ pub struct Params {
     /// Do not use the cached file for exec subcommand.
     #[structopt(long = "no-cache")]
     pub no_cache: bool,
+}
+
+impl Params {
+    pub fn into_filter_context(self) -> FilterContext {
+        FilterContext::default()
+            .number(self.number)
+            .winwidth(self.winwidth)
+            .icon_painter(self.icon_painter)
+    }
 }
 
 impl Maple {

@@ -342,13 +342,13 @@ macro_rules! source_iter_list {
 pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    RunContext {
+    FilterContext {
         algo,
         number,
         winwidth,
         icon_painter,
         match_type,
-    }: RunContext,
+    }: FilterContext,
     bonuses: Vec<Bonus>,
 ) -> Result<()> {
     let algo = if query.contains(' ') {
@@ -463,7 +463,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            RunContext::new(Some(Algo::Fzy), Some(100), None, None, MatchType::Full),
+            FilterContext::new(Some(Algo::Fzy), Some(100), None, None, MatchType::Full),
             vec![Bonus::None],
         )
         .unwrap()
