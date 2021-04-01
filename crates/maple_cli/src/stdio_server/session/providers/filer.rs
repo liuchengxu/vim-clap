@@ -10,7 +10,7 @@ use icon::prepend_filer_icon;
 
 use crate::stdio_server::{
     session::{
-        build_abs_path, EventHandler, NewSession, OnMove, OnMoveHandler, Event, Session,
+        build_abs_path, Event, EventHandler, NewSession, OnMove, OnMoveHandler, Session,
         SessionContext, SessionEvent,
     },
     write_response, Message,
@@ -135,8 +135,7 @@ pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
-    let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
-    {
+    let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
         Ok(entries) => {
             let result = json!({
             "entries": entries,

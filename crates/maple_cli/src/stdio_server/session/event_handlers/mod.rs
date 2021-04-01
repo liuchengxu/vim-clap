@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::stdio_server::{
     session::{Event, EventHandler, SessionContext},
-    write_response
+    write_response,
 };
 
 #[derive(Clone)]

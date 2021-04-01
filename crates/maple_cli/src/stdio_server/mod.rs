@@ -13,8 +13,7 @@ use serde_json::json;
 use session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers,
-    GeneralSession, Manager, SessionEvent,
+    message_handlers, GeneralSession, Manager, SessionEvent,
 };
 use types::{GlobalEnv, Message};
 

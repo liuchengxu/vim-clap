@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::stdio_server::{write_response, types::Message};
+use crate::stdio_server::{types::Message, write_response};
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");
