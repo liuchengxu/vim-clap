@@ -89,15 +89,15 @@ impl Maple {
     pub fn run(self) -> Result<()> {
         match self.command {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
-            Cmd::Helptags(helptags) => helptags.run()?,
-            Cmd::Tags(tags) => tags.run(self.params)?,
-            Cmd::Blines(blines) => blines.run(self.params)?,
-            Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
-            Cmd::Cache(cache) => cache.run()?,
-            Cmd::Filter(filter) => filter.run(self.params)?,
             Cmd::Exec(exec) => exec.run(self.params)?,
             Cmd::Grep(grep) => grep.run(self.params)?,
+            Cmd::Tags(tags) => tags.run(self.params)?,
+            Cmd::Cache(cache) => cache.run()?,
+            Cmd::Blines(blines) => blines.run(self.params)?,
+            Cmd::Filter(filter) => filter.run(self.params)?,
+            Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::DumbJump(dumb_jump) => dumb_jump.run()?,
+            Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::RPC => {
                 if let Some(ref log_path) = self.log {
                     crate::logger::init(log_path)?;
