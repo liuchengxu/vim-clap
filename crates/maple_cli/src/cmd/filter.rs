@@ -5,10 +5,12 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Algo, Bonus, MatchType},
-    subprocess, RunContext, Source,
+    subprocess, FilterContext, Source,
 };
 use icon::IconPainter;
 use source_item::SourceItem;
+
+use crate::app::Params;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {
@@ -124,7 +126,7 @@ impl Filter {
         filter::dyn_run::<std::iter::Empty<_>>(
             &self.query,
             self.generate_source(),
-            RunContext::new(
+            FilterContext::new(
                 self.algo.clone(),
                 number,
                 winwidth,
@@ -137,9 +139,12 @@ impl Filter {
 
     pub fn run(
         &self,
-        number: Option<usize>,
-        winwidth: Option<usize>,
-        icon_painter: Option<IconPainter>,
+        Params {
+            number,
+            winwidth,
+            icon_painter,
+            ..
+        }: Params,
     ) -> Result<()> {
         if self.sync {
             self.sync_run(number, winwidth, icon_painter)?;

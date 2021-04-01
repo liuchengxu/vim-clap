@@ -125,13 +125,13 @@ impl ProviderId {
     /// We should skip that icon when hoping to get the origin cursorline content.
     #[inline]
     pub fn should_skip_leading_icon(&self) -> bool {
-        super::env::global().enable_icon && self.has_icon_support()
+        super::global().enable_icon && self.has_icon_support()
     }
 
     /// Returns the preview size of current provider.
     #[inline]
     pub fn get_preview_size(&self) -> usize {
-        super::env::global().preview_size_of(&self.0)
+        super::global().preview_size_of(&self.0)
     }
 
     /// Returns true if the provider can have icon.

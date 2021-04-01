@@ -256,7 +256,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: crate::stdio_server::types::ProviderId = self.provider_id.clone();
+        let provider_id: ProviderId = self.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -372,7 +372,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let enable_icon = crate::stdio_server::env::global().enable_icon;
+        let enable_icon = crate::stdio_server::global().enable_icon;
         let lines =
             crate::stdio_server::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({

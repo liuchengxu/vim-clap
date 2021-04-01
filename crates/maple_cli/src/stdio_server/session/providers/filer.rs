@@ -10,7 +10,7 @@ use icon::prepend_filer_icon;
 
 use crate::stdio_server::{
     session::{
-        build_abs_path, HandleMessage, NewSession, OnMove, OnMoveHandler, RpcMessage, Session,
+        build_abs_path, Event, EventHandler, NewSession, OnMove, OnMoveHandler, Session,
         SessionContext, SessionEvent,
     },
     write_response, Message,
@@ -80,10 +80,10 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 #[derive(Clone)]
 pub struct FilerMessageHandler;
 
-impl HandleMessage for FilerMessageHandler {
-    fn handle(&self, msg: RpcMessage, context: &SessionContext) {
-        match msg {
-            RpcMessage::OnMove(msg) => {
+impl EventHandler for FilerMessageHandler {
+    fn handle(&self, event: Event, context: &SessionContext) {
+        match event {
+            Event::OnMove(msg) => {
                 let provider_id = context.provider_id.clone();
                 let curline = msg.get_curline(&provider_id).unwrap();
                 let path = build_abs_path(&msg.get_cwd(), curline);
@@ -104,7 +104,7 @@ impl HandleMessage for FilerMessageHandler {
                 }
             }
             // TODO: handle on_typed
-            RpcMessage::OnTyped(msg) => handle_filer_message(msg),
+            Event::OnTyped(msg) => handle_filer_message(msg),
         }
     }
 }
@@ -118,7 +118,7 @@ impl NewSession for FilerSession {
         let session = Session {
             session_id: msg.session_id,
             context: msg.clone().into(),
-            message_handler: FilerMessageHandler,
+            event_handler: FilerMessageHandler,
             event_recv: session_receiver,
         };
 
@@ -135,8 +135,7 @@ pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd,);
 
-    let result = match read_dir_entries(&cwd, crate::stdio_server::env::global().enable_icon, None)
-    {
+    let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
         Ok(entries) => {
             let result = json!({
             "entries": entries,

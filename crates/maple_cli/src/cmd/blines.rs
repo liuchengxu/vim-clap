@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use anyhow::Result;
 use structopt::StructOpt;
 
-use filter::{matcher::Bonus, RunContext, Source};
+use filter::{matcher::Bonus, Source};
+
+use crate::app::Params;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(StructOpt, Debug, Clone)]
@@ -19,7 +21,7 @@ pub struct Blines {
 
 impl Blines {
     /// Looks for matches of `query` in lines of the current vim buffer.
-    pub fn run(&self, number: Option<usize>, winwidth: Option<usize>) -> Result<()> {
+    pub fn run(&self, params: Params) -> Result<()> {
         filter::dyn_run(
             &self.query,
             Source::List(
@@ -29,7 +31,7 @@ impl Blines {
                     .map(|(idx, item)| format!("{} {}", idx + 1, item))
                     .map(Into::into),
             ),
-            RunContext::default().number(number).winwidth(winwidth),
+            params.into_filter_context(),
             vec![Bonus::None],
         )
     }

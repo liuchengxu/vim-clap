@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::json;
 
 use crate::stdio_server::{
-    session::{HandleMessage, Session},
+    session::{EventHandler, Session},
     write_response,
 };
 
@@ -46,7 +46,7 @@ async fn gather_source<S: AsRef<OsStr>, P: AsRef<Path>>(
     Ok(lines)
 }
 
-pub async fn run<T: HandleMessage>(
+pub async fn run<T: EventHandler>(
     msg_id: u64,
     source_cmd: String,
     session: Session<T>,

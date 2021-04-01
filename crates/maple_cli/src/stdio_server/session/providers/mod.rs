@@ -7,7 +7,7 @@ use log::debug;
 
 use crate::stdio_server::{
     session::{
-        handlers::{self, MessageHandler},
+        event_handlers::{self, DefaultEventHandler},
         NewSession, Session, SessionEvent,
     },
     Message,
@@ -23,7 +23,7 @@ impl NewSession for GeneralSession {
         let session = Session {
             session_id: msg.session_id,
             context: msg.into(),
-            message_handler: MessageHandler,
+            event_handler: DefaultEventHandler,
             event_recv: session_receiver,
         };
 
@@ -34,7 +34,9 @@ impl NewSession for GeneralSession {
             let session_cloned = session.clone();
             // TODO: choose different fitler strategy according to the time forerunner job spent.
             tokio::spawn(async move {
-                if let Err(e) = handlers::on_init::run(msg_id, source_cmd, session_cloned).await {
+                if let Err(e) =
+                    event_handlers::on_init::run(msg_id, source_cmd, session_cloned).await
+                {
                     log::error!(
                         "error occurred when running the forerunner job, msg_id: {}, error: {:?}",
                         msg_id,

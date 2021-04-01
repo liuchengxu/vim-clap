@@ -7,9 +7,10 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
-    subprocess, RunContext, Source,
+    subprocess, FilterContext, Source,
 };
 
+use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use crate::tools::ctags::{ensure_has_json_support, TagInfo};
 
@@ -73,7 +74,14 @@ fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
 }
 
 impl Tags {
-    pub fn run(&self, no_cache: bool, icon_painter: Option<icon::IconPainter>) -> Result<()> {
+    pub fn run(
+        &self,
+        Params {
+            no_cache,
+            icon_painter,
+            ..
+        }: Params,
+    ) -> Result<()> {
         ensure_has_json_support()?;
 
         // In case of passing an invalid icon-painter option.
@@ -114,7 +122,7 @@ impl Tags {
             filter::dyn_run(
                 &self.query,
                 Source::List(formatted_tags_stream(&cmd_args, &self.dir)?.map(Into::into)),
-                RunContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
+                FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;
         }

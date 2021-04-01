@@ -44,7 +44,7 @@ impl Manager {
         msg: Message,
         new_session: T,
     ) {
-        if self.has(session_id) {
+        if self.exists(session_id) {
             error!("Session {} already exists", msg.session_id);
         } else {
             match new_session.spawn(msg) {
@@ -59,7 +59,7 @@ impl Manager {
     }
 
     /// Returns true if the sessoion exists given the session_id.
-    pub fn has(&self, session_id: SessionId) -> bool {
+    pub fn exists(&self, session_id: SessionId) -> bool {
         self.sessions.contains_key(&session_id)
     }
 
