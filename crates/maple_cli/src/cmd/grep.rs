@@ -12,6 +12,7 @@ use filter::{
 use icon::IconPainter;
 use utility::is_git_repo;
 
+use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::light_command::{set_current_dir, LightCommand};
 use crate::tools::rg::JsonLine;
@@ -93,10 +94,12 @@ fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, V
 impl Grep {
     pub fn run(
         &self,
-        number: Option<usize>,
-        winwidth: Option<usize>,
-        icon_painter: Option<IconPainter>,
-        no_cache: bool,
+        Params {
+            number,
+            winwidth,
+            icon_painter,
+            no_cache,
+        }: Params,
     ) -> Result<()> {
         if self.sync {
             self.sync_run(number, winwidth, icon_painter)?;
@@ -239,9 +242,12 @@ impl RipGrepForerunner {
 
     pub fn run(
         self,
-        number: Option<usize>,
-        icon_painter: Option<IconPainter>,
-        no_cache: bool,
+        Params {
+            number,
+            icon_painter,
+            no_cache,
+            ..
+        }: Params,
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {

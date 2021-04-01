@@ -4,8 +4,7 @@ use std::process::Command;
 use anyhow::Result;
 use structopt::StructOpt;
 
-use icon::IconPainter;
-
+use crate::app::Params;
 use crate::light_command::{set_current_dir, LightCommand};
 
 /// Execute the shell command
@@ -40,9 +39,12 @@ impl Exec {
 
     pub fn run(
         &self,
-        number: Option<usize>,
-        icon_painter: Option<IconPainter>,
-        no_cache: bool,
+        Params {
+            number,
+            icon_painter,
+            no_cache,
+            ..
+        }: Params,
     ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 

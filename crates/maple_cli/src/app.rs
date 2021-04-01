@@ -50,26 +50,8 @@ pub enum Cmd {
   global_settings = &[AppSettings::DisableVersion]
 )]
 pub struct Maple {
-    /// Print the top NUM of filtered items.
-    ///
-    /// The returned JSON has three fields:
-    ///   - total: total number of initial filtered result set.
-    ///   - lines: text lines used for displaying directly.
-    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(short = "n", long = "number", name = "NUM")]
-    pub number: Option<usize>,
-
-    /// Width of clap window.
-    #[structopt(short = "w", long = "winwidth")]
-    pub winwidth: Option<usize>,
-
-    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(short, long, possible_values = &IconPainter::variants(), case_insensitive = true)]
-    pub icon_painter: Option<IconPainter>,
-
-    /// Do not use the cached file for exec subcommand.
-    #[structopt(long = "no-cache")]
-    pub no_cache: bool,
+    #[structopt(flatten)]
+    pub params: Params,
 
     /// Enable the logging system.
     #[structopt(long = "log", parse(from_os_str))]
@@ -79,31 +61,43 @@ pub struct Maple {
     pub command: Cmd,
 }
 
+#[derive(StructOpt, Debug)]
+pub struct Params {
+    /// Print the top NUM of filtered items.
+    ///
+    /// The returned JSON has three fields:
+    ///   - total: total number of initial filtered result set.
+    ///   - lines: text lines used for displaying directly.
+    ///   - indices: the indices of matched elements per line, used for the highlight purpose.
+    #[structopt(long = "number", name = "NUM")]
+    pub number: Option<usize>,
+
+    /// Width of clap window.
+    #[structopt(long = "winwidth")]
+    pub winwidth: Option<usize>,
+
+    /// Prepend an icon for item of files and grep provider, valid only when --number is used.
+    #[structopt(long, possible_values = &IconPainter::variants(), case_insensitive = true)]
+    pub icon_painter: Option<IconPainter>,
+
+    /// Do not use the cached file for exec subcommand.
+    #[structopt(long = "no-cache")]
+    pub no_cache: bool,
+}
+
 impl Maple {
     pub fn run(self) -> Result<()> {
         match self.command {
-            Cmd::Version | Cmd::Upgrade(_) => unreachable!(),
+            Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
             Cmd::Helptags(helptags) => helptags.run()?,
-            Cmd::Tags(tags) => tags.run(self.no_cache, self.icon_painter)?,
-            Cmd::Blines(blines) => {
-                blines.run(self.number, self.winwidth)?;
-            }
-            Cmd::RipGrepForerunner(rip_grep_forerunner) => {
-                rip_grep_forerunner.run(self.number, self.icon_painter, self.no_cache)?
-            }
+            Cmd::Tags(tags) => tags.run(self.params)?,
+            Cmd::Blines(blines) => blines.run(self.params)?,
+            Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::Cache(cache) => cache.run()?,
-            Cmd::Filter(filter) => {
-                filter.run(self.number, self.winwidth, self.icon_painter)?;
-            }
-            Cmd::Exec(exec) => {
-                exec.run(self.number, self.icon_painter, self.no_cache)?;
-            }
-            Cmd::Grep(grep) => {
-                grep.run(self.number, self.winwidth, self.icon_painter, self.no_cache)?;
-            }
-            Cmd::DumbJump(dumb_jump) => {
-                dumb_jump.run()?;
-            }
+            Cmd::Filter(filter) => filter.run(self.params)?,
+            Cmd::Exec(exec) => exec.run(self.params)?,
+            Cmd::Grep(grep) => grep.run(self.params)?,
+            Cmd::DumbJump(dumb_jump) => dumb_jump.run()?,
             Cmd::RPC => {
                 if let Some(ref log_path) = self.log {
                     crate::logger::init(log_path)?;

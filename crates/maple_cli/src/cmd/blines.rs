@@ -5,6 +5,8 @@ use structopt::StructOpt;
 
 use filter::{matcher::Bonus, RunContext, Source};
 
+use crate::app::Params;
+
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(StructOpt, Debug, Clone)]
 pub struct Blines {
@@ -19,7 +21,12 @@ pub struct Blines {
 
 impl Blines {
     /// Looks for matches of `query` in lines of the current vim buffer.
-    pub fn run(&self, number: Option<usize>, winwidth: Option<usize>) -> Result<()> {
+    pub fn run(
+        &self,
+        Params {
+            number, winwidth, ..
+        }: Params,
+    ) -> Result<()> {
         filter::dyn_run(
             &self.query,
             Source::List(
