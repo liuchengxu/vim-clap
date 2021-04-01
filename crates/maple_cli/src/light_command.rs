@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 use anyhow::{anyhow, Result};
 
 use icon::IconPainter;
-use utility::{get_cached_entry, read_first_lines, remove_dir_contents};
+use utility::{get_cached_entry, read_first_lines, remove_dir_contents, println_json};
 
 use crate::cmd::cache::CacheEntry;
 

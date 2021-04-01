@@ -8,7 +8,8 @@ use structopt::StructOpt;
 
 use icon::IconPainter;
 use utility::{
-    calculate_hash, clap_cache_dir, get_cached_entry, read_first_lines, remove_dir_contents,
+    calculate_hash, clap_cache_dir, get_cached_entry, println_json, println_json_with_length,
+    read_first_lines, remove_dir_contents,
 };
 
 /// List and remove all the cached contents.
@@ -160,14 +161,14 @@ pub fn send_response_from_cache(
         match response_ty {
             SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
             SendResponse::JsonWithContentLength => {
-                print_json_with_length!(total, tempfile, using_cache, lines)
+                println_json_with_length!(total, tempfile, using_cache, lines)
             }
         }
     } else {
         match response_ty {
             SendResponse::Json => println_json!(total, tempfile, using_cache),
             SendResponse::JsonWithContentLength => {
-                print_json_with_length!(total, tempfile, using_cache)
+                println_json_with_length!(total, tempfile, using_cache)
             }
         }
     }
