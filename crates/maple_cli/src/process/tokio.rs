@@ -43,8 +43,25 @@ impl TokioCommand {
 
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         let output = self.0.output().await?;
+
+        if !output.status.success() && !output.stderr.is_empty() {
+            return Err(anyhow::anyhow!(
+                "an error occured for command {:?}: {:?}",
+                self.0,
+                output.stderr
+            ));
+        }
+
         let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(stdout.split('\n').map(Into::into).collect())
+
+        let mut output_lines = stdout.split('\n').map(Into::into).collect::<Vec<String>>();
+
+        // Remove the last empty line.
+        if output_lines.last().map(|s| s.is_empty()).unwrap_or(false) {
+            output_lines.pop();
+        }
+
+        Ok(output_lines)
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
