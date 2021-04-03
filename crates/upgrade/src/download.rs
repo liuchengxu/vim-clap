@@ -110,7 +110,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
-    fn test_async_download_to_a_tempfile() {
+    async fn test_async_download_to_a_tempfile() {
         let file = download_prebuilt_binary_to_a_tempfile_async("v0.14").await;
         println!("async downloaded file: {:?}", file);
     }
