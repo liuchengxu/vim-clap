@@ -24,9 +24,7 @@ async fn main() -> Result<()> {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         match maple.command {
-            Cmd::Version => {
-                version();
-            }
+            Cmd::Version => version(),
             Cmd::Upgrade(upgrade) => {
                 let local_git_tag = built_info::GIT_VERSION.expect("Failed to get GIT_VERSION");
                 if let Err(e) = upgrade.run(local_git_tag).await {
