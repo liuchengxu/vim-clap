@@ -129,8 +129,8 @@ impl DefinitionRules {
     ) -> Result<Vec<(DefinitionKind, Vec<JsonLine>)>> {
         let all_def_futures = LanguageDefinition::get_rules(lang)?
             .0
-            .iter()
-            .map(|(kind, _)| find_definitions_in_jsonline_with_kind(lang, kind, &word, dir))
+            .keys()
+            .map(|kind| find_definitions_in_jsonline_with_kind(lang, kind, &word, dir))
             .collect::<Vec<_>>();
 
         let maybe_defs = futures::future::join_all(all_def_futures).await;
@@ -141,8 +141,8 @@ impl DefinitionRules {
     pub async fn definitions(lang: &str, word: &Word, dir: &Option<PathBuf>) -> Result<Lines> {
         let all_def_futures = LanguageDefinition::get_rules(lang)?
             .0
-            .iter()
-            .map(|(kind, _)| find_definitions_per_kind(lang, kind, word, dir))
+            .keys()
+            .map(|kind| find_definitions_per_kind(lang, kind, word, dir))
             .collect::<Vec<_>>();
 
         let maybe_defs = futures::future::join_all(all_def_futures).await;
