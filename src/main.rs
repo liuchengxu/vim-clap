@@ -21,25 +21,22 @@ fn version() {
 async fn main() -> Result<()> {
     let maple = Maple::from_args();
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(async {
-        match maple.command {
-            Cmd::Version => version(),
-            Cmd::Upgrade(upgrade) => {
-                let local_git_tag = built_info::GIT_VERSION.expect("Failed to get GIT_VERSION");
-                if let Err(e) = upgrade.run(local_git_tag).await {
-                    eprintln!("failed to upgrade: {:?}", e);
-                    std::process::exit(1);
-                }
-            }
-            _ => {
-                if let Err(e) = maple.run().await {
-                    eprintln!("error: {:?}", e);
-                    std::process::exit(1);
-                }
+    match maple.command {
+        Cmd::Version => version(),
+        Cmd::Upgrade(upgrade) => {
+            let local_git_tag = built_info::GIT_VERSION.expect("Failed to get GIT_VERSION");
+            if let Err(e) = upgrade.run(local_git_tag).await {
+                eprintln!("failed to upgrade: {:?}", e);
+                std::process::exit(1);
             }
         }
-    });
+        _ => {
+            if let Err(e) = maple.run().await {
+                eprintln!("error: {:?}", e);
+                std::process::exit(1);
+            }
+        }
+    }
 
     Ok(())
 }
