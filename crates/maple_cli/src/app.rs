@@ -11,7 +11,7 @@ pub enum Cmd {
     Version,
     /// Start the stdio-based service, currently there is only filer support.
     #[structopt(name = "rpc")]
-    RPC,
+    Rpc,
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
     Grep(crate::cmd::grep::Grep),
@@ -96,7 +96,7 @@ impl Params {
 }
 
 impl Maple {
-    async fn dispatch(self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
         match self.command {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
             Cmd::Exec(exec) => exec.run(self.params)?,
@@ -108,7 +108,7 @@ impl Maple {
             Cmd::Helptags(helptags) => helptags.run()?,
             Cmd::DumbJump(dumb_jump) => dumb_jump.run().await?,
             Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
-            Cmd::RPC => {
+            Cmd::Rpc => {
                 if let Some(ref log_path) = self.log {
                     crate::logger::init(log_path)?;
                 } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
@@ -118,19 +118,6 @@ impl Maple {
                 crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
         };
-        Ok(())
-    }
-
-    pub fn run(self) -> Result<()> {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-
-        runtime.block_on(async {
-            if let Err(e) = self.dispatch().await {
-                eprintln!("error: {:?}", e);
-                std::process::exit(1);
-            }
-        });
-
         Ok(())
     }
 }
