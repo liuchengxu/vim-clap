@@ -1,4 +1,5 @@
 use std::fs::{read_dir, DirEntry, File};
+use std::hash::Hash;
 use std::io::Write;
 use std::path::{self, Path, PathBuf};
 use std::time::SystemTime;
@@ -74,11 +75,15 @@ pub struct CacheEntry;
 impl CacheEntry {
     /// Construct the cache entry given command arguments and its working directory, the `total`
     /// info is cached in the file name.
-    pub fn try_new(cmd_args: &[&str], cmd_dir: Option<PathBuf>, total: usize) -> Result<PathBuf> {
+    pub fn try_new<T: AsRef<Path> + Hash>(
+        cmd_args: &[&str],
+        cmd_dir: Option<T>,
+        total: usize,
+    ) -> Result<PathBuf> {
         let mut dir = clap_cache_dir();
         dir.push(cmd_args.join("_"));
         if let Some(cmd_dir) = cmd_dir {
-            dir.push(format!("{}", calculate_hash(&cmd_dir)));
+            dir.push(format!("{}", calculate_hash(&cmd_dir.as_ref())));
         } else {
             dir.push("no_cmd_dir");
         }
@@ -112,9 +117,9 @@ impl CacheEntry {
     }
 
     /// Creates a new cache entry.
-    pub fn create<T: AsRef<[u8]>>(
+    pub fn create<T: AsRef<[u8]>, P: AsRef<Path> + Hash>(
         cmd_args: &[&str],
-        cmd_dir: Option<PathBuf>,
+        cmd_dir: Option<P>,
         total: usize,
         contents: T,
     ) -> Result<PathBuf> {
