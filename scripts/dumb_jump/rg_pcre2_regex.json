@@ -460,11 +460,17 @@
             "\\bfn\\s+JJJ\\s*\\\\(",
             "\\bmacro_rules!\\s+JJJ"
         ],
+        "impl": [
+            "impl\\s+((\\w+::)*\\w+\\s+for\\s+)?(\\w+::)*JJJ\\s+[{]?"
+        ],
+        "struct": [
+            "struct\\s+JJJ\\s*[{\\\\(]?"
+        ],
+        "trait": [
+            "trait\\s+JJJ\\s*[{]?"
+        ],
         "type": [
-            "struct\\s+JJJ\\s*[{\\\\(]?",
-            "trait\\s+JJJ\\s*[{]?",
             "\\btype\\s+JJJ([^=\\n]+)?\\s*=[^=\\n]+;",
-            "impl\\s+((\\w+::)*\\w+\\s+for\\s+)?(\\w+::)*JJJ\\s+[{]?",
             "mod\\s+JJJ\\s*[{]?"
         ]
     },

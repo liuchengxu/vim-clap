@@ -89,11 +89,11 @@ endfunction
 
 if has('nvim')
   function! s:wrap_move(Move, args) abort
-    call g:clap.display.goto_win()
+    noautocmd call g:clap.display.goto_win()
 
     call call(a:Move, a:args)
 
-    call g:clap.input.goto_win()
+    noautocmd call g:clap.input.goto_win()
     call s:on_move_safe()
 
     " Must return '' explicitly
