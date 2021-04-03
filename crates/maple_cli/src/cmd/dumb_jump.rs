@@ -355,8 +355,6 @@ impl DumbJump {
     }
 
     pub async fn references_or_occurrences(&self) -> Result<Lines> {
-        let comments = get_comments_by_ext(&self.extension);
-
         let word = Word::new(self.word.to_string());
 
         let lang = match get_language_by_ext(&self.extension) {
@@ -366,6 +364,7 @@ impl DumbJump {
             }
         };
 
+        let comments = get_comments_by_ext(&self.extension);
         DefinitionRules::definitions_and_references(lang, word, &self.cmd_dir, comments).await
     }
 }
