@@ -166,18 +166,18 @@ impl SubMatch {
 
 /// Word represents the input query around by word boundries.
 #[derive(Clone, Debug)]
-pub struct Word<'a> {
-    pub raw: &'a str,
+pub struct Word {
+    pub raw: String,
     pub len: usize,
     pub re: regex::Regex,
 }
 
-impl<'a> Word<'a> {
-    pub fn new(word: &'a str) -> Word {
+impl Word {
+    pub fn new(word: String) -> Word {
         let re = regex::Regex::new(&format!("\\b{}\\b", word)).unwrap();
         Self {
-            raw: word,
             len: word.len(),
+            raw: word,
             re,
         }
     }

@@ -12,6 +12,8 @@ categories = ["command-line-utilities"]
 description = "vim-clap external filter gadget"
 
 [dependencies]
+tokio = { version = "1.4", features = ["rt"] }
+
 maple_cli = { path = "crates/maple_cli" }
 
 [build-dependencies]

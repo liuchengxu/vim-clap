@@ -108,11 +108,10 @@ mod tests {
         download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_async_download_to_a_tempfile() {
-        let mut rt = tokio::runtime::Runtime::new().unwrap();
-        let file = rt.block_on(download_prebuilt_binary_to_a_tempfile_async("v0.14"));
+    async fn test_async_download_to_a_tempfile() {
+        let file = download_prebuilt_binary_to_a_tempfile_async("v0.14").await;
         println!("async downloaded file: {:?}", file);
     }
 }

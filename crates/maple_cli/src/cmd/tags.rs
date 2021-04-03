@@ -1,5 +1,6 @@
+use std::hash::Hash;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -46,7 +47,10 @@ pub struct Tags {
     exclude: Vec<String>,
 }
 
-fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<Item = String>> {
+fn formatted_tags_stream(
+    args: &[&str],
+    dir: impl AsRef<Path>,
+) -> Result<impl Iterator<Item = String>> {
     let stdout_stream = subprocess::Exec::shell(args.join(" "))
         .cwd(dir)
         .stream_stdout()?;
@@ -61,15 +65,18 @@ fn formatted_tags_stream(args: &[&str], dir: &PathBuf) -> Result<impl Iterator<I
     }))
 }
 
-fn create_tags_cache(args: &[&str], dir: &PathBuf) -> Result<(PathBuf, usize)> {
-    let tags_stream = formatted_tags_stream(args, dir)?;
+fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
+    args: &[&str],
+    dir: T,
+) -> Result<(PathBuf, usize)> {
+    let tags_stream = formatted_tags_stream(args, dir.clone())?;
     let mut total = 0usize;
     let mut formatted_tags_stream = tags_stream.map(|x| {
         total += 1;
         x
     });
     let lines = formatted_tags_stream.join("\n");
-    let cache = CacheEntry::create(args, Some(dir.clone()), total, lines)?;
+    let cache = CacheEntry::create(args, Some(dir), total, lines)?;
     Ok((cache, total))
 }
 

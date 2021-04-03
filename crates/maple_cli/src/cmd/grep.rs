@@ -14,7 +14,7 @@ use utility::is_git_repo;
 
 use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
-use crate::light_command::{set_current_dir, LightCommand};
+use crate::process::light::{set_current_dir, LightCommand};
 use crate::tools::rg::JsonLine;
 
 const RG_ARGS: [&str; 7] = [
@@ -215,6 +215,7 @@ pub struct RipGrepForerunner {
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
+
     /// Specify the threshold for writing the output of command to a tempfile.
     #[structopt(long = "output-threshold", default_value = "30000")]
     output_threshold: usize,
