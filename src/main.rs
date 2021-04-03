@@ -1,4 +1,4 @@
-use maple_cli::{Cmd, Maple, Result, StructOpt};
+use maple_cli::{Cmd, Context, Maple, Result, StructOpt};
 
 pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     match maple.command {
         Cmd::Version => version(),
         Cmd::Upgrade(upgrade) => {
-            let local_git_tag = built_info::GIT_VERSION.expect("Failed to get GIT_VERSION");
+            let local_git_tag = built_info::GIT_VERSION.context("Failed to get GIT_VERSION")?;
             if let Err(e) = upgrade.run(local_git_tag).await {
                 eprintln!("failed to upgrade: {:?}", e);
                 std::process::exit(1);
