@@ -15,18 +15,6 @@ static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCe
 
 static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<String, Vec<String>>> = OnceCell::new();
 
-pub fn get_comments_by_ext(ext: &str) -> &[String] {
-    let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
-        let comments: HashMap<String, Vec<String>> = serde_json::from_str(include_str!(
-            "../../../../scripts/dumb_jump/comments_map.json"
-        ))
-        .unwrap();
-        comments
-    });
-
-    table.get(ext).unwrap_or_else(|| table.get("*").unwrap())
-}
-
 /// Map of file extension to language.
 ///
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
@@ -54,6 +42,19 @@ pub fn get_language_by_ext(ext: &str) -> Result<&str> {
         .get(ext)
         .map(|x| x.as_str())
         .ok_or_else(|| anyhow!("dumb_jump is unsupported for {}", ext))
+}
+
+/// Map of file extension to the comment prefix.
+pub fn get_comments_by_ext(ext: &str) -> &[String] {
+    let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
+        let comments: HashMap<String, Vec<String>> = serde_json::from_str(include_str!(
+            "../../../../scripts/dumb_jump/comments_map.json"
+        ))
+        .unwrap();
+        comments
+    });
+
+    table.get(ext).unwrap_or_else(|| table.get("*").unwrap())
 }
 
 /// Unit type wrapper of the kind of definition.
@@ -135,17 +136,6 @@ impl DefinitionRules {
         }
 
         Ok(defs)
-
-        // Ok(LanguageDefinition::get_rules(lang)?
-        // .0
-        // .iter()
-        // .filter_map(|(kind, _)| async {
-        // find_definitions_in_jsonline(lang, kind, &word, dir)
-        // .await
-        // .ok()
-        // .map(|line| (kind.clone(), line))
-        // })
-        // .collect())
     }
 
     pub async fn definitions(lang: &str, word: &Word, dir: &Option<PathBuf>) -> Result<Lines> {
@@ -165,9 +155,14 @@ impl DefinitionRules {
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<Lines> {
-        // TODO: run these tasks simultaneously
-        let occurrences = find_all_occurrences_by_type(word.clone(), lang, dir, comments).await?;
-        let definitions = Self::all_definitions(lang, word.clone(), dir).await?;
+        let (occurrences, definitions) = futures::future::join(
+            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
+            Self::all_definitions(lang, word.clone(), dir),
+        )
+        .await;
+
+        let occurrences = occurrences?;
+        let definitions = definitions?;
 
         let defs = definitions
             .iter()
@@ -240,6 +235,7 @@ async fn collect_json_lines(
         .iter()
         .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
         .filter(|json_line| {
+            // Filter out the comment line
             if let Some(comments) = comments {
                 !comments
                     .iter()
