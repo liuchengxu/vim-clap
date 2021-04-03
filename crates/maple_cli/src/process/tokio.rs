@@ -68,5 +68,4 @@ async fn test_tokio_command() {
         vec!["Cargo.toml", "src", ""],
         tokio_cmd.lines().await.unwrap()
     );
-    println!("{:?}", tokio_cmd.lines().await.unwrap());
 }
