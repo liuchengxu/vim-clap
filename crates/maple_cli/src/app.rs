@@ -96,7 +96,7 @@ impl Params {
 }
 
 impl Maple {
-    pub fn run(self) -> Result<()> {
+    async fn dispatch(self) -> Result<()> {
         match self.command {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
             Cmd::Exec(exec) => exec.run(self.params)?,
@@ -106,7 +106,7 @@ impl Maple {
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,
             Cmd::Helptags(helptags) => helptags.run()?,
-            Cmd::DumbJump(dumb_jump) => dumb_jump.run()?,
+            Cmd::DumbJump(dumb_jump) => dumb_jump.run().await?,
             Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::RPC => {
                 if let Some(ref log_path) = self.log {
@@ -117,7 +117,20 @@ impl Maple {
 
                 crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
             }
-        }
+        };
+        Ok(())
+    }
+
+    pub fn run(self) -> Result<()> {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+
+        runtime.block_on(async {
+            if let Err(e) = self.dispatch().await {
+                eprintln!("error: {:?}", e);
+                std::process::exit(1);
+            }
+        });
+
         Ok(())
     }
 }

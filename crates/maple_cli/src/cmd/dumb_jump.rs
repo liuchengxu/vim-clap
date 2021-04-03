@@ -8,7 +8,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 use structopt::StructOpt;
 
-use crate::std_command::StdCommand;
+use crate::process::tokio::TokioCommand;
 use crate::tools::rg::{JsonLine, Word};
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
@@ -115,47 +115,59 @@ impl DefinitionRules {
         let regexp = LanguageDefinition::get_rules(lang)?
             .kind_rules_for(kind)?
             .map(|x| x.replace("\\\\", "\\"))
-            .map(|x| x.replace("JJJ", word.raw))
+            .map(|x| x.replace("JJJ", &word.raw))
             .collect::<Vec<_>>()
             .join("|");
         Ok(regexp)
     }
 
-    pub fn all_definitions(
+    pub async fn all_definitions(
         lang: &str,
-        word: &Word,
+        word: Word,
         dir: &Option<PathBuf>,
     ) -> Result<Vec<(DefinitionKind, Vec<JsonLine>)>> {
-        Ok(LanguageDefinition::get_rules(lang)?
-            .0
-            .iter()
-            .filter_map(|(kind, _)| {
-                find_definitions_in_jsonline(lang, kind, word, dir)
-                    .ok()
-                    .map(|line| (kind.clone(), line))
-            })
-            .collect())
+        let mut defs = Vec::new();
+
+        for (kind, _) in LanguageDefinition::get_rules(lang)?.0.iter() {
+            if let Ok(line) = find_definitions_in_jsonline(lang, kind, &word, dir).await {
+                defs.push((kind.clone(), line));
+            }
+        }
+
+        Ok(defs)
+
+        // Ok(LanguageDefinition::get_rules(lang)?
+        // .0
+        // .iter()
+        // .filter_map(|(kind, _)| async {
+        // find_definitions_in_jsonline(lang, kind, &word, dir)
+        // .await
+        // .ok()
+        // .map(|line| (kind.clone(), line))
+        // })
+        // .collect())
     }
 
-    pub fn definitions(lang: &str, word: &Word, dir: &Option<PathBuf>) -> Result<Lines> {
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = LanguageDefinition::get_rules(lang)?
-            .0
-            .iter()
-            .filter_map(|(kind, _)| find_definitions_per_kind(lang, kind, word, dir).ok())
-            .flatten()
-            .unzip();
+    pub async fn definitions(lang: &str, word: &Word, dir: &Option<PathBuf>) -> Result<Lines> {
+        let mut defs = Vec::new();
+        for (kind, _) in LanguageDefinition::get_rules(lang)?.0.iter() {
+            if let Ok(def) = find_definitions_per_kind(lang, kind, word, dir).await {
+                defs.push(def);
+            }
+        }
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = defs.into_iter().flatten().unzip();
         Ok(Lines::new(lines, indices))
     }
 
-    pub fn definitions_and_references(
+    pub async fn definitions_and_references(
         lang: &str,
-        word: &Word,
+        word: Word,
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<Lines> {
         // TODO: run these tasks simultaneously
-        let occurrences = find_all_occurrences_by_type(word, lang, dir, comments)?;
-        let definitions = Self::all_definitions(lang, word, dir)?;
+        let occurrences = find_all_occurrences_by_type(word.clone(), lang, dir, comments).await?;
+        let definitions = Self::all_definitions(lang, word.clone(), dir).await?;
 
         let defs = definitions
             .iter()
@@ -211,18 +223,18 @@ impl LanguageDefinition {
 }
 
 /// Executes the command as a child process, converting all the output into a stream of `JsonLine`.
-fn collect_json_lines(
+async fn collect_json_lines(
     command: String,
     dir: &Option<PathBuf>,
     comments: Option<&[String]>,
 ) -> Result<Vec<JsonLine>> {
-    let mut std_cmd = StdCommand::new(command);
+    let mut tokio_cmd = TokioCommand::new(command);
 
     if let Some(ref dir) = dir {
-        std_cmd.current_dir(dir.to_path_buf());
+        tokio_cmd.current_dir(dir.to_path_buf());
     }
 
-    let lines = std_cmd.lines()?;
+    let lines = tokio_cmd.lines().await?;
 
     Ok(lines
         .iter()
@@ -242,8 +254,8 @@ fn collect_json_lines(
 /// Finds all the occurrences of `word`.
 ///
 /// Basically the occurrences are composed of definitions and usages.
-fn find_all_occurrences_by_type(
-    word: &Word,
+async fn find_all_occurrences_by_type(
+    word: Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
     comments: &[String],
@@ -253,13 +265,13 @@ fn find_all_occurrences_by_type(
         word.raw, lang_type
     );
 
-    collect_json_lines(command, dir, Some(comments))
+    collect_json_lines(command, dir, Some(comments)).await
 }
 
-fn find_occurrences_by_ext(word: &Word, ext: &str, dir: &Option<PathBuf>) -> Result<Lines> {
+async fn find_occurrences_by_ext(word: &Word, ext: &str, dir: &Option<PathBuf>) -> Result<Lines> {
     let command = format!("rg --json --word-regexp '{}' -g '*.{}'", word.raw, ext);
     let comments = get_comments_by_ext(ext);
-    let occurrences = collect_json_lines(command, dir, Some(comments))?;
+    let occurrences = collect_json_lines(command, dir, Some(comments)).await?;
 
     let (lines, indices) = occurrences
         .iter()
@@ -269,13 +281,13 @@ fn find_occurrences_by_ext(word: &Word, ext: &str, dir: &Option<PathBuf>) -> Res
     Ok(Lines::new(lines, indices))
 }
 
-fn find_definitions_per_kind(
+async fn find_definitions_per_kind(
     lang: &str,
     kind: &DefinitionKind,
     word: &Word,
     dir: &Option<PathBuf>,
 ) -> Result<Vec<(String, Vec<usize>)>> {
-    let definitions = find_definitions_in_jsonline(lang, kind, word, dir)?;
+    let definitions = find_definitions_in_jsonline(lang, kind, word, dir).await?;
 
     Ok(definitions
         .iter()
@@ -283,7 +295,7 @@ fn find_definitions_per_kind(
         .collect())
 }
 
-fn find_definitions_in_jsonline(
+async fn find_definitions_in_jsonline(
     lang: &str,
     kind: &DefinitionKind,
     word: &Word,
@@ -291,7 +303,7 @@ fn find_definitions_in_jsonline(
 ) -> Result<Vec<JsonLine>> {
     let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    collect_json_lines(command, dir, None)
+    collect_json_lines(command, dir, None).await
 }
 
 /// Execute the shell command
@@ -315,28 +327,30 @@ pub struct DumbJump {
 }
 
 impl DumbJump {
-    pub fn run(&self) -> Result<()> {
+    pub async fn run(self) -> Result<()> {
         let lang = get_language_by_ext(&self.extension)?;
         let comments = get_comments_by_ext(&self.extension);
 
-        let word = Word::new(&self.word);
-        DefinitionRules::definitions_and_references(lang, &word, &self.cmd_dir, comments)?.print();
+        let word = Word::new(self.word.to_string());
+        DefinitionRules::definitions_and_references(lang, word, &self.cmd_dir, comments)
+            .await?
+            .print();
 
         Ok(())
     }
 
-    pub fn references_or_occurrences(&self) -> Result<Lines> {
+    pub async fn references_or_occurrences(&self) -> Result<Lines> {
         let comments = get_comments_by_ext(&self.extension);
 
-        let word = Word::new(&self.word);
+        let word = Word::new(self.word.to_string());
 
         let lang = match get_language_by_ext(&self.extension) {
             Ok(lang) => lang,
             Err(_) => {
-                return find_occurrences_by_ext(&word, &self.extension, &self.cmd_dir);
+                return find_occurrences_by_ext(&word, &self.extension, &self.cmd_dir).await;
             }
         };
 
-        DefinitionRules::definitions_and_references(lang, &word, &self.cmd_dir, comments)
+        DefinitionRules::definitions_and_references(lang, word, &self.cmd_dir, comments).await
     }
 }

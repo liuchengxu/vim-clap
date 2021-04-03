@@ -1,3 +1,5 @@
+//! Wrapper of std `Command`.
+
 use std::path::PathBuf;
 use std::process::Command;
 

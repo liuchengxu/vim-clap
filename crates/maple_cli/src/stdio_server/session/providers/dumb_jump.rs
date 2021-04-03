@@ -18,7 +18,7 @@ pub fn handle_dumb_jump_message(msg: Message) {
             cmd_dir: Some(cwd.into()),
         };
 
-        let result = match dumb_jump.references_or_occurrences() {
+        let result = match dumb_jump.references_or_occurrences().await {
             Ok(Lines { lines, indices }) => {
                 let total = lines.len();
                 let result = json!({

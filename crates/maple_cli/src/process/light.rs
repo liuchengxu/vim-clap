@@ -1,3 +1,5 @@
+//! Wrapper of std `Command` with some optimization about the output.
+
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;

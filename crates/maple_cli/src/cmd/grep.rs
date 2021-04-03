@@ -14,7 +14,7 @@ use utility::is_git_repo;
 
 use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
-use crate::light_command::{set_current_dir, LightCommand};
+use crate::process::light::{set_current_dir, LightCommand};
 use crate::tools::rg::JsonLine;
 
 const RG_ARGS: [&str; 7] = [

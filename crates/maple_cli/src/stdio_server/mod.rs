@@ -116,12 +116,9 @@ where
     R: BufRead + Send + 'static,
 {
     let (tx, rx) = crossbeam_channel::unbounded();
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(async {
-        tokio::spawn(async move {
-            loop_read_rpc_message(reader, &tx);
-        });
-
-        loop_handle_rpc_message(&rx);
+    tokio::spawn(async move {
+        loop_read_rpc_message(reader, &tx);
     });
+
+    loop_handle_rpc_message(&rx);
 }

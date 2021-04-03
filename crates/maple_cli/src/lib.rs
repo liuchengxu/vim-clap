@@ -1,7 +1,6 @@
 mod app;
-mod light_command;
 mod logger;
-mod std_command;
+mod process;
 mod stdio_server;
 mod tools;
 
