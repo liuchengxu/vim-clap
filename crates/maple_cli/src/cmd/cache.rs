@@ -55,7 +55,7 @@ impl Cache {
                             .file_name()
                             .and_then(std::ffi::OsStr::to_str)
                             .map(Into::into)
-                            .unwrap_or_else(|| panic!("Couldn't get file name"))
+                            .unwrap_or_else(|| panic!("Couldn't get file name from {:?}", e.path()))
                     })
                 })
                 .collect::<Result<Vec<String>, std::io::Error>>()?;
