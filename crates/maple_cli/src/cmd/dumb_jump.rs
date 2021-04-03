@@ -127,25 +127,32 @@ impl DefinitionRules {
         word: Word,
         dir: &Option<PathBuf>,
     ) -> Result<Vec<(DefinitionKind, Vec<JsonLine>)>> {
-        let mut defs = Vec::new();
+        let all_def_futures = LanguageDefinition::get_rules(lang)?
+            .0
+            .iter()
+            .map(|(kind, _)| find_definitions_in_jsonline_with_kind(lang, kind, &word, dir))
+            .collect::<Vec<_>>();
 
-        for (kind, _) in LanguageDefinition::get_rules(lang)?.0.iter() {
-            if let Ok(line) = find_definitions_in_jsonline(lang, kind, &word, dir).await {
-                defs.push((kind.clone(), line));
-            }
-        }
+        let maybe_defs = futures::future::join_all(all_def_futures).await;
 
-        Ok(defs)
+        Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
     }
 
     pub async fn definitions(lang: &str, word: &Word, dir: &Option<PathBuf>) -> Result<Lines> {
-        let mut defs = Vec::new();
-        for (kind, _) in LanguageDefinition::get_rules(lang)?.0.iter() {
-            if let Ok(def) = find_definitions_per_kind(lang, kind, word, dir).await {
-                defs.push(def);
-            }
-        }
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = defs.into_iter().flatten().unzip();
+        let all_def_futures = LanguageDefinition::get_rules(lang)?
+            .0
+            .iter()
+            .map(|(kind, _)| find_definitions_per_kind(lang, kind, word, dir))
+            .collect::<Vec<_>>();
+
+        let maybe_defs = futures::future::join_all(all_def_futures).await;
+
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = maybe_defs
+            .into_iter()
+            .filter_map(|def| def.ok())
+            .flatten()
+            .unzip();
+
         Ok(Lines::new(lines, indices))
     }
 
@@ -161,8 +168,7 @@ impl DefinitionRules {
         )
         .await;
 
-        let occurrences = occurrences?;
-        let definitions = definitions?;
+        let (occurrences, definitions) = (occurrences?, definitions?);
 
         let defs = definitions
             .iter()
@@ -300,6 +306,19 @@ async fn find_definitions_in_jsonline(
     let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
     collect_json_lines(command, dir, None).await
+}
+
+async fn find_definitions_in_jsonline_with_kind(
+    lang: &str,
+    kind: &DefinitionKind,
+    word: &Word,
+    dir: &Option<PathBuf>,
+) -> Result<(DefinitionKind, Vec<JsonLine>)> {
+    let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
+    let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
+    collect_json_lines(command, dir, None)
+        .await
+        .map(|defs| (kind.clone(), defs))
 }
 
 /// Execute the shell command
