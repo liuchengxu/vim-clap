@@ -15,7 +15,7 @@ mod macros;
 pub const CLAP_CACHE: &str = "vim.clap";
 
 /// Removes all the file and directories under `target_dir`.
-pub fn remove_dir_contents(target_dir: &PathBuf) -> Result<()> {
+pub fn remove_dir_contents(target_dir: &Path) -> Result<()> {
     let entries = read_dir(target_dir)?;
     for entry in entries {
         if let Ok(entry) = entry {
@@ -80,7 +80,7 @@ pub fn clap_cache_dir() -> PathBuf {
 /// of using a path as the directory name.
 ///
 /// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
-pub fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
+pub fn get_cache_dir(args: &[&str], cmd_dir: &Path) -> PathBuf {
     let mut dir = clap_cache_dir();
     dir.push(args.join("_"));
     // TODO: use a readable cache cmd_dir name?
@@ -89,7 +89,7 @@ pub fn get_cache_dir(args: &[&str], cmd_dir: &PathBuf) -> PathBuf {
 }
 
 /// Returns the cached entry given the cmd args and working dir.
-pub fn get_cached_entry(args: &[&str], cmd_dir: &PathBuf) -> Result<DirEntry> {
+pub fn get_cached_entry(args: &[&str], cmd_dir: &Path) -> Result<DirEntry> {
     let cache_dir = get_cache_dir(args, &cmd_dir);
     if cache_dir.exists() {
         let mut entries = read_dir(cache_dir)?;

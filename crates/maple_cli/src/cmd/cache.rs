@@ -1,6 +1,6 @@
 use std::fs::{read_dir, DirEntry, File};
 use std::io::Write;
-use std::path::{self, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::time::SystemTime;
 
 use anyhow::{anyhow, Result};
@@ -41,7 +41,7 @@ impl Cache {
         Ok(())
     }
 
-    fn list(&self, cache_dir: &PathBuf) -> Result<()> {
+    fn list(&self, cache_dir: &Path) -> Result<()> {
         let cache_dir_str = cache_dir.display();
         println!("Current cache directory:");
         println!("\t{}\n", cache_dir_str);
@@ -98,7 +98,7 @@ impl CacheEntry {
     /// Write the `contents` to given cache entry.
     ///
     /// Remove all the existing old entries if there are any.
-    pub fn write<T: AsRef<[u8]>>(entry: &PathBuf, contents: T) -> Result<()> {
+    pub fn write<T: AsRef<[u8]>>(entry: &Path, contents: T) -> Result<()> {
         // Remove the other outdated cache file if there are any.
         //
         // There should be only one cache file in parent_dir at this moment.
@@ -146,7 +146,7 @@ pub enum SendResponse {
 
 /// Reads the first lines from cache file and send back the cached info.
 pub fn send_response_from_cache(
-    tempfile: &PathBuf,
+    tempfile: &Path,
     total: usize,
     response_ty: SendResponse,
     icon_painter: Option<IconPainter>,
@@ -175,7 +175,7 @@ pub fn send_response_from_cache(
 }
 
 /// Returns the cache file path and number of total cached items.
-pub fn cache_exists(args: &[&str], cmd_dir: &PathBuf) -> Result<(PathBuf, usize)> {
+pub fn cache_exists(args: &[&str], cmd_dir: &Path) -> Result<(PathBuf, usize)> {
     if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
         if let Ok(total) = CacheEntry::get_total(&cached_entry) {
             let tempfile = cached_entry.path();
