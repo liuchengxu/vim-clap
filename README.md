@@ -117,38 +117,38 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 
 #### Providers
 
-| Command                                | List                                                | Requirement                                                                            |
-| :------------------------------------- | :-------------------------------------------------- | :------------------------------------------------------------------------------------- |
-| `Clap bcommits`                        | Git commits for the current buffer                  | **[git][git]**                                                                         |
-| `Clap blines`                          | Lines in the current buffer                         | _none_                                                                                 |
-| `Clap buffers`                         | Open buffers                                        | _none_                                                                                 |
-| `Clap colors`                          | Colorschemes                                        | _none_                                                                                 |
-| `Clap command`                         | Command                                             | _none_                                                                                 |
-| `Clap hist:` or `Clap command_history` | Command history                                     | _none_                                                                                 |
-| `Clap hist/` or `Clap search_history`  | Search history                                      | _none_                                                                                 |
-| `Clap commits`                         | Git commits                                         | **[git][git]**                                                                         |
-| `Clap files`                           | Files                                               | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find                                          |
-| `Clap filetypes`                       | File types                                          | _none_                                                                                 |
-| `Clap gfiles` or `Clap git_files`      | Files managed by git                                | **[git][git]**                                                                         |
-| `Clap git_diff_files`                  | Files managed by git and having uncommitted changes | **[git][git]**                                                                         |
-| `Clap grep`**<sup>+</sup>**            | Grep on the fly                                     | **[rg][rg]**                                                                           |
-| `Clap grep2`**<sup>+</sup>**           | Grep on the fly with cache and dynamic results      | **[maple][maple]**                                                                     |
-| `Clap history`                         | Open buffers and `v:oldfiles`                       | _none_                                                                                 |
-| `Clap help_tags`                       | Help tags                                           | _none_                                                                                 |
-| `Clap jumps`                           | Jumps                                               | _none_                                                                                 |
-| `Clap lines`                           | Lines in the loaded buffers                         | _none_                                                                                 |
-| `Clap marks`                           | Marks                                               | _none_                                                                                 |
-| `Clap maps`                            | Maps                                                | _none_                                                                                 |
-| `Clap quickfix`                        | Entries of the quickfix list                        | _none_                                                                                 |
-| `Clap loclist`                         | Entries of the location list                        | _none_                                                                                 |
-| `Clap registers`                       | Registers                                           | _none_                                                                                 |
-| `Clap tags`                            | Tags in the current buffer                          | **[vista.vim][vista.vim]**                                                             |
-| `Clap proj_tags`                       | Tags in the current project                         | **[maple][maple]** and **[universal-ctags][universal-ctags]** with JSON output support |
-| `Clap yanks`                           | Yank stack of the current vim session               | _none_                                                                                 |
-| `Clap filer`                           | Ivy-like file explorer                              | **[maple][maple]**                                                                     |
-| `Clap dumb_jump`                       | Definitions/References using regexp                 | **[rg][rg]** with `--pcre2`                                                            |
-| `Clap providers`                       | List the vim-clap providers                         | _none_                                                                                 |
-| `Clap windows`                         | Windows                                             | _none_                                                                                 |
+| Command                                | List                                                   | Requirement                                                                            |
+| :------------------------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| `Clap bcommits`                        | Git commits for the current buffer                     | **[git][git]**                                                                         |
+| `Clap blines`                          | Lines in the current buffer                            | _none_                                                                                 |
+| `Clap buffers`                         | Open buffers                                           | _none_                                                                                 |
+| `Clap colors`                          | Colorschemes                                           | _none_                                                                                 |
+| `Clap command`                         | Command                                                | _none_                                                                                 |
+| `Clap hist:` or `Clap command_history` | Command history                                        | _none_                                                                                 |
+| `Clap hist/` or `Clap search_history`  | Search history                                         | _none_                                                                                 |
+| `Clap commits`                         | Git commits                                            | **[git][git]**                                                                         |
+| `Clap files`                           | Files                                                  | **[fd][fd]**/**[git][git]**/**[rg][rg]**/find                                          |
+| `Clap filetypes`                       | File types                                             | _none_                                                                                 |
+| `Clap gfiles` or `Clap git_files`      | Files managed by git                                   | **[git][git]**                                                                         |
+| `Clap git_diff_files`                  | Files managed by git and having uncommitted changes    | **[git][git]**                                                                         |
+| `Clap grep`**<sup>+</sup>**            | Grep on the fly                                        | **[rg][rg]**                                                                           |
+| `Clap grep2`**<sup>+</sup>**           | Grep on the fly with cache and dynamic results         | **[maple][maple]**                                                                     |
+| `Clap history`                         | Open buffers and `v:oldfiles`                          | _none_                                                                                 |
+| `Clap help_tags`                       | Help tags                                              | _none_                                                                                 |
+| `Clap jumps`                           | Jumps                                                  | _none_                                                                                 |
+| `Clap lines`                           | Lines in the loaded buffers                            | _none_                                                                                 |
+| `Clap marks`                           | Marks                                                  | _none_                                                                                 |
+| `Clap maps`                            | Maps                                                   | _none_                                                                                 |
+| `Clap quickfix`                        | Entries of the quickfix list                           | _none_                                                                                 |
+| `Clap loclist`                         | Entries of the location list                           | _none_                                                                                 |
+| `Clap registers`                       | Registers                                              | _none_                                                                                 |
+| `Clap tags`                            | Tags in the current buffer                             | **[vista.vim][vista.vim]**                                                             |
+| `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** with JSON output support |
+| `Clap yanks`                           | Yank stack of the current vim session                  | _none_                                                                                 |
+| `Clap filer`                           | Ivy-like file explorer                                 | **[maple][maple]**                                                                     |
+| `Clap dumb_jump`                       | Definitions/References using regexp with grep fallback | **[rg][rg]** with `--pcre2`                                                            |
+| `Clap providers`                       | List the vim-clap providers                            | _none_                                                                                 |
+| `Clap windows`                         | Windows                                                | _none_                                                                                 |
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
@@ -164,6 +164,8 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 - Use `:Clap grep ++query=<cword>` to grep the word under cursor.
 
 - Use `:Clap grep ++query=@visual` to grep the visual selection.
+
+- `:Clap grep` is not recommended now as it's relatively much slower to `:Clap grep2` and `:Clap dumb_jump`.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
