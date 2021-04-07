@@ -24,6 +24,7 @@ pub fn handle_dumb_jump_message(msg: Message) {
                 mut indices,
             }) => {
                 let total = lines.len();
+                // Only show the top 200 items.
                 lines.truncate(200);
                 indices.truncate(200);
                 let result = json!({
