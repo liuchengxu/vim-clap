@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add `dumb_jump` provider. #659
+- Add `dumb_jump` provider, which will fall back to the normal grep way when the regexp approach fails. #659
 
 ### Internal change
 

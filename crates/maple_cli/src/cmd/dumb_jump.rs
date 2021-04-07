@@ -201,6 +201,15 @@ impl DefinitionRules {
             )
             .unzip();
 
+        if lines.is_empty() {
+            let lines = fallback_to_grep(word.clone(), lang, dir, comments).await?;
+            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+                .into_iter()
+                .map(|line| line.build_jump_line("plain", &word))
+                .unzip();
+            return Ok(Lines::new(lines, indices));
+        }
+
         Ok(Lines::new(lines, indices))
     }
 }
@@ -267,6 +276,20 @@ async fn find_all_occurrences_by_type(
         word.raw, lang_type
     );
 
+    collect_json_lines(command, dir, Some(comments)).await
+}
+
+async fn fallback_to_grep(
+    word: Word,
+    lang_type: &str,
+    dir: &Option<PathBuf>,
+    comments: &[String],
+) -> Result<Vec<JsonLine>> {
+    let command = format!(
+        "rg --json -e '{}' --type {}",
+        word.raw.replace(char::is_whitespace, ".*"),
+        lang_type
+    );
     collect_json_lines(command, dir, Some(comments)).await
 }
 
