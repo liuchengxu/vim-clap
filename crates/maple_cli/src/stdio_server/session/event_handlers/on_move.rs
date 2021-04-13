@@ -27,7 +27,7 @@ struct PreviewTag {
     runtimepath: String,
 }
 
-fn find_tag_line(p: &PathBuf, subject: &str) -> Option<usize> {
+fn find_tag_line(p: &Path, subject: &str) -> Option<usize> {
     if let Ok(doc_lines) = utility::read_lines(p) {
         for (idx, doc_line) in doc_lines.enumerate() {
             if let Ok(d_line) = doc_line {
@@ -269,7 +269,7 @@ impl<'a> OnMoveHandler<'a> {
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
-            .take(self.provider_id.get_preview_size() * 2)
+            .take(self.size * 2)
             .collect::<Vec<_>>();
         self.send_response(json!({
           "event": "on_move",
