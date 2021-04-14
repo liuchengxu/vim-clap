@@ -551,6 +551,8 @@ g:clap_enable_background_shadow                 *g:clap_enable_background_shadow
   " Deactivates the background shadow
   let g:clap_enable_background_shadow = v:false
 <
+  If clap break highlights in neovim, you should be turned off this option.
+  https://github.com/liuchengxu/vim-clap/issues/670
 
 g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
 
