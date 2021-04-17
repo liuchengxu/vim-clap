@@ -10,6 +10,10 @@
 
 - Move `stdio_server` crate into a module of `maple_cli` crate for reusing the utilities in `maple_cli` easily.
 
+### Fixed
+
+- Force using sync impl for the providers's `source_type` that is list type. #672
+
 ## [0.24] 2021-03-13
 
 ### Added

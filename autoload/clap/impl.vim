@@ -191,6 +191,8 @@ function! clap#impl#on_typed() abort
   endif
 
   if exists('g:__clap_forerunner_result')
+        \ || g:clap.provider.source_type == g:__t_list
+        \ || g:clap.provider.source_type == g:__t_func_list
     call s:on_typed_sync_impl()
     return
   endif
