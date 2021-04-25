@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.25] 2021-04-25
 ### Added
 
 - Add `dumb_jump` provider, which will fall back to the normal grep way when the regexp approach fails. #659
