@@ -192,13 +192,30 @@ impl DefinitionRules {
                     .map(|line| line.build_jump_line(kind.as_ref(), &word))
                     .collect::<Vec<_>>()
             })
-            .chain(
+            .chain({
+                let mut group_refs = std::collections::HashMap::new();
+
                 // references are these occurrences not in the definitions.
-                occurrences
-                    .iter()
-                    .filter(|r| !defs.contains(&r))
-                    .map(|line| line.build_jump_line("references", &word)),
-            )
+                for line in occurrences.iter().filter(|r| !defs.contains(&r)) {
+                    let counter = group_refs.entry(line.data.path()).or_insert_with(Vec::new);
+                    counter.push(line);
+                }
+
+                let mut res = Vec::new();
+
+                for lines in group_refs.values() {
+                    res.push((format!("[refs] {} [{}]", lines[0].data.path(), lines.len()), vec![]));
+                    for line in lines {
+                        res.push(line.build_jump_line_bare("refs", &word));
+                    }
+                }
+
+                res
+
+                // group_refs.values().into_iter().collect::<Vec<(String, Vec<usize>)>>()
+
+                // .map(|line| line.build_jump_line("references", &word)),
+            })
             .unzip();
 
         if lines.is_empty() {

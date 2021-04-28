@@ -55,6 +55,15 @@ impl JsonLine {
         )
     }
 
+    pub fn jump_line_format_bare(&self, kind: &str) -> String {
+        format!(
+            "{}:{}:{}",
+            self.data.line_number(),
+            self.data.column(),
+            self.data.line(),
+        )
+    }
+
     pub fn jump_line_offset(&self, kind: &str) -> usize {
         self.data.path().len()
             + self.data.line_number().to_string().len()
@@ -65,6 +74,14 @@ impl JsonLine {
 
     pub fn build_jump_line(&self, kind: &str, word: &Word) -> (String, Vec<usize>) {
         let formatted = self.jump_line_format(kind);
+        let indices = self
+            .data
+            .match_indices_for_dumb_jump(self.jump_line_offset(kind), word);
+        (formatted, indices)
+    }
+
+    pub fn build_jump_line_bare(&self, kind: &str, word: &Word) -> (String, Vec<usize>) {
+        let formatted = self.jump_line_format_bare(kind);
         let indices = self
             .data
             .match_indices_for_dumb_jump(self.jump_line_offset(kind), word);
