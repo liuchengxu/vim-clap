@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+### Fixed
+
+- Handle the non-utf8 line of rg's output properly. #673
 
 ## [0.25] 2021-04-25
 ### Added

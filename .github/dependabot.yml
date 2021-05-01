@@ -1,0 +1,14 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: weekly
+    time: "21:00"
+  open-pull-requests-limit: 10
+- package-ecosystem: cargo
+  directory: "/pythonx/clap/fuzzymatch-rs"
+  schedule:
+    interval: weekly
+    time: "21:00"
+  open-pull-requests-limit: 10
