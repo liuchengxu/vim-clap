@@ -4,7 +4,9 @@ pub mod util;
 
 use std::convert::TryFrom;
 
-use jsont::{Match, Message, SubMatch};
+use anyhow::Result;
+
+use self::jsont::{Match, Message, SubMatch};
 
 /// Word represents the input query around by word boundries.
 #[derive(Clone, Debug)]
@@ -15,13 +17,13 @@ pub struct Word {
 }
 
 impl Word {
-    pub fn new(word: String) -> Word {
-        let re = regex::Regex::new(&format!("\\b{}\\b", word)).unwrap();
-        Self {
+    pub fn new(word: String) -> Result<Word> {
+        let re = regex::Regex::new(&format!("\\b{}\\b", word))?;
+        Ok(Self {
             len: word.len(),
             raw: word,
             re,
-        }
+        })
     }
 
     pub fn find(&self, line: &str) -> Option<usize> {
