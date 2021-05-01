@@ -135,8 +135,6 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
 }
 
 /// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
-///
-/// FIXME: read line that is not valid utf-8.
 pub fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     target_line: usize,
@@ -254,5 +252,4 @@ fn test_multi_byte_reading() {
             "test_ddd    //hello"
         ]
     );
-    // assert!(lines[0] == 5);
 }
