@@ -118,18 +118,36 @@ impl TryFrom<&str> for Match {
     }
 }
 
+/// Returns the width of displaying `n` on the screen.
+///
+/// Same with `n.to_string().len()` but without allocation.
+fn display_width(mut n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+
+    let mut len = 0;
+    while n > 0 {
+        len += 1;
+        n /= 10;
+    }
+
+    len
+}
+
 impl Match {
     /// Returns the formatted String like using rg's -vimgrep option.
     pub fn grep_line_format(&self, enable_icon: bool) -> String {
+        let path = self.path();
         let maybe_icon = if enable_icon {
-            format!("{} ", icon::icon_for(&self.path()))
+            format!("{} ", icon::icon_for(&path))
         } else {
             Default::default()
         };
         format!(
             "{}{}:{}:{}:{}",
             maybe_icon,
-            self.path(),
+            path,
             self.line_number(),
             self.column(),
             self.line(),
@@ -140,8 +158,8 @@ impl Match {
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
         let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
         self.path().len()
-            + self.line_number().to_string().len()
-            + self.column().to_string().len()
+            + display_width(self.line_number() as usize)
+            + display_width(self.column())
             + fixed_offset
     }
 
@@ -165,8 +183,8 @@ impl Match {
 
     pub fn jump_line_offset(&self, kind: &str) -> usize {
         self.path().len()
-            + self.line_number().to_string().len()
-            + self.column().to_string().len()
+            + display_width(self.line_number() as usize)
+            + display_width(self.column())
             + 5 // [] + 3 `:`
             + kind.len()
     }
