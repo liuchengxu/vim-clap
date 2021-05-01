@@ -2,19 +2,14 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
-use once_cell::sync::{Lazy, OnceCell};
-use serde::Deserialize;
+use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::dumb_analyzer::{
     find_occurrence_matches_by_ext, get_comments_by_ext, get_language_by_ext, DefinitionRules,
 };
-use crate::process::tokio::TokioCommand;
 use crate::tools::ripgrep::{Match, Word};
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
@@ -105,7 +100,8 @@ impl DumbJump {
         )
         .await?;
 
-        render(res, "refs", &word).print();
+        // render(res, "refs", &word).print();
+        render_jump_line(res, "refs", &word).print();
 
         Ok(())
     }
@@ -133,6 +129,7 @@ impl DumbJump {
         )
         .await?;
 
-        Ok(render_jump_line(res, "refs", &word))
+        // Ok(render_jump_line(res, "refs", &word))
+        Ok(render(res, "refs", &word))
     }
 }
