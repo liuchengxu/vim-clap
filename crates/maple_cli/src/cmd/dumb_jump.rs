@@ -1,4 +1,6 @@
 //! Inspired by https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
+//!
+//! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -10,8 +12,6 @@ use serde::Deserialize;
 use structopt::StructOpt;
 
 use crate::process::tokio::TokioCommand;
-// use crate::tools::rg::{JsonLine, Word};
-
 use crate::tools::ripgrep::jsont::Match;
 use crate::tools::ripgrep::Word;
 

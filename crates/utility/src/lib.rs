@@ -109,6 +109,8 @@ pub fn get_cached_entry(args: &[&str], cmd_dir: &Path) -> Result<DirEntry> {
 }
 
 /// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
+///
+/// FIXME: read line that is not valid utf-8.
 pub fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     target_line: usize,
