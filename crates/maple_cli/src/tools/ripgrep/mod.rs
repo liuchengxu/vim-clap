@@ -2,8 +2,8 @@ pub mod jsont;
 pub mod stats;
 pub mod util;
 
-use std::convert::TryFrom;
 use std::ops::Range;
+use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
@@ -72,7 +72,7 @@ impl PartialEq for Match {
 impl Eq for Match {}
 
 impl Match {
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Cow<str> {
         self.path.text()
     }
 

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::Deserialize;
 
 use super::stats::Stats;
@@ -72,10 +74,10 @@ pub enum Data {
 }
 
 impl Data {
-    pub fn text(&self) -> String {
+    pub fn text(&self) -> Cow<str> {
         match self {
-            Self::Text { text } => text.to_string(),
-            Self::Bytes { bytes } => String::from_utf8_lossy(bytes).to_string(),
+            Self::Text { text } => text.as_str().into(),
+            Self::Bytes { bytes } => String::from_utf8_lossy(bytes).into(),
         }
     }
 }
