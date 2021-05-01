@@ -3,6 +3,7 @@ pub mod stats;
 pub mod util;
 
 use std::convert::TryFrom;
+use std::ops::Range;
 
 use anyhow::Result;
 
@@ -32,17 +33,17 @@ impl Word {
 }
 
 #[inline]
-fn range(start: usize, end: usize, offset: usize) -> Vec<usize> {
-    (start + offset..end + offset).into_iter().collect()
+fn range(start: usize, end: usize, offset: usize) -> Range<usize> {
+    start + offset..end + offset
 }
 
 impl SubMatch {
-    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+    pub fn match_indices(&self, offset: usize) -> Range<usize> {
         range(self.start, self.end, offset)
     }
 
     // FIXME find the word in non-utf8?
-    pub fn match_indices_for_dumb_jump(&self, offset: usize, search_word: &Word) -> Vec<usize> {
+    pub fn match_indices_for_dumb_jump(&self, offset: usize, search_word: &Word) -> Range<usize> {
         // The text in SubMatch is not exactly the search word itself in some cases,
         // we need to first find the offset of search word in the SubMatch text manually.
         match search_word.find(&self.m.text()) {
