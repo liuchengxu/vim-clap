@@ -1,2 +1,2 @@
 pub mod ctags;
-pub mod rg;
+pub mod ripgrep;

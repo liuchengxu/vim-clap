@@ -9,7 +9,10 @@ use serde::Deserialize;
 use structopt::StructOpt;
 
 use crate::process::tokio::TokioCommand;
-use crate::tools::rg::{JsonLine, Word};
+// use crate::tools::rg::{JsonLine, Word};
+
+use crate::tools::ripgrep::jsont::{Match, Message};
+use crate::tools::ripgrep::Word;
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
 
@@ -126,7 +129,7 @@ impl DefinitionRules {
         lang: &str,
         word: Word,
         dir: &Option<PathBuf>,
-    ) -> Result<Vec<(DefinitionKind, Vec<JsonLine>)>> {
+    ) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
         let all_def_futures = LanguageDefinition::get_rules(lang)?
             .0
             .keys()
@@ -233,11 +236,11 @@ impl LanguageDefinition {
 }
 
 /// Executes the command as a child process, converting all the output into a stream of `JsonLine`.
-async fn collect_json_lines(
+async fn collect_matches(
     command: String,
     dir: &Option<PathBuf>,
     comments: Option<&[String]>,
-) -> Result<Vec<JsonLine>> {
+) -> Result<Vec<Match>> {
     let mut tokio_cmd = TokioCommand::new(command);
 
     if let Some(ref dir) = dir {
@@ -248,13 +251,20 @@ async fn collect_json_lines(
 
     Ok(lines
         .iter()
-        .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
-        .filter(|json_line| {
+        .filter_map(|s| serde_json::from_str::<Message>(s).ok())
+        .filter_map(|msg| {
+            if let Message::Match(mat) = msg {
+                Some(mat)
+            } else {
+                None
+            }
+        })
+        .filter(|mat| {
             // Filter out the comment line
             if let Some(comments) = comments {
                 !comments
                     .iter()
-                    .any(|c| json_line.data.line().trim_start().starts_with(c))
+                    .any(|c| mat.line().trim_start().starts_with(c))
             } else {
                 true
             }
@@ -270,13 +280,13 @@ async fn find_all_occurrences_by_type(
     lang_type: &str,
     dir: &Option<PathBuf>,
     comments: &[String],
-) -> Result<Vec<JsonLine>> {
+) -> Result<Vec<Match>> {
     let command = format!(
         "rg --json --word-regexp '{}' --type {}",
         word.raw, lang_type
     );
 
-    collect_json_lines(command, dir, Some(comments)).await
+    collect_matches(command, dir, Some(comments)).await
 }
 
 async fn fallback_to_grep(
@@ -284,19 +294,19 @@ async fn fallback_to_grep(
     lang_type: &str,
     dir: &Option<PathBuf>,
     comments: &[String],
-) -> Result<Vec<JsonLine>> {
+) -> Result<Vec<Match>> {
     let command = format!(
         "rg --json -e '{}' --type {}",
         word.raw.replace(char::is_whitespace, ".*"),
         lang_type
     );
-    collect_json_lines(command, dir, Some(comments)).await
+    collect_matches(command, dir, Some(comments)).await
 }
 
 async fn find_occurrences_by_ext(word: &Word, ext: &str, dir: &Option<PathBuf>) -> Result<Lines> {
     let command = format!("rg --json --word-regexp '{}' -g '*.{}'", word.raw, ext);
     let comments = get_comments_by_ext(ext);
-    let occurrences = collect_json_lines(command, dir, Some(comments)).await?;
+    let occurrences = collect_matches(command, dir, Some(comments)).await?;
 
     let (lines, indices) = occurrences
         .iter()
@@ -325,10 +335,10 @@ async fn find_definitions_in_jsonline(
     kind: &DefinitionKind,
     word: &Word,
     dir: &Option<PathBuf>,
-) -> Result<Vec<JsonLine>> {
+) -> Result<Vec<Match>> {
     let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    collect_json_lines(command, dir, None).await
+    collect_matches(command, dir, None).await
 }
 
 async fn find_definitions_in_jsonline_with_kind(
@@ -336,10 +346,10 @@ async fn find_definitions_in_jsonline_with_kind(
     kind: &DefinitionKind,
     word: &Word,
     dir: &Option<PathBuf>,
-) -> Result<(DefinitionKind, Vec<JsonLine>)> {
+) -> Result<(DefinitionKind, Vec<Match>)> {
     let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    collect_json_lines(command, dir, None)
+    collect_matches(command, dir, None)
         .await
         .map(|defs| (kind.clone(), defs))
 }

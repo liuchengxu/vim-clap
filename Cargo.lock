@@ -835,6 +835,7 @@ name = "maple_cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "bytecount",
  "crossbeam-channel",
  "curl",

@@ -124,7 +124,10 @@ pub fn read_preview_lines<P: AsRef<Path>>(
         io::BufReader::new(file)
             .lines()
             .skip(start)
-            .filter_map(|i| i.ok())
+            .map(|i| match i {
+                Ok(i) => i.to_string(),
+                Err(e) => e.to_string(),
+            })
             .take(end - start),
         hl_line,
     ))
@@ -171,4 +174,11 @@ where
 {
     let mut cmd = as_std_command(shell_cmd, dir);
     Ok(cmd.output()?)
+}
+
+#[test]
+fn test_multi_byte_reading() {
+    let file = "/home/xlc/.vim/plugged/vim-clap/test_673.txt";
+    let (lines_iter, n) = read_preview_lines(file, 2, 5).unwrap();
+    println!("{:?}", lines_iter.collect::<Vec<_>>());
 }
