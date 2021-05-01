@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use super::stats::Stats;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
@@ -12,19 +12,19 @@ pub enum Message {
     Context(Context),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Begin {
     pub path: Data,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct End {
     pub path: Data,
     pub binary_offset: Option<u64>,
     pub stats: Stats,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Match {
     pub path: Data,
     pub lines: Data,
@@ -33,7 +33,7 @@ pub struct Match {
     pub submatches: Vec<SubMatch>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Context {
     pub path: Data,
     pub lines: Data,
@@ -42,7 +42,7 @@ pub struct Context {
     pub submatches: Vec<SubMatch>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct SubMatch {
     #[serde(rename = "match")]
     pub m: Data,
@@ -59,7 +59,7 @@ pub struct SubMatch {
 /// The happy path is valid UTF-8, which streams right through as-is, since
 /// it is natively supported by JSON. When invalid UTF-8 is found, then it is
 /// represented as arbitrary bytes and base64 encoded.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize)]
 #[serde(untagged)]
 pub enum Data {
     Text {
