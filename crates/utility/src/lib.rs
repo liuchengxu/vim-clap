@@ -2,14 +2,17 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::ffi::OsStr;
-use std::fs::{read_dir, remove_dir_all, remove_file, DirEntry, File};
+use std::fs::{self, read_dir, remove_dir_all, remove_file, DirEntry, File};
 use std::hash::{Hash, Hasher};
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use anyhow::{anyhow, Result};
 
+use self::bytelines::ByteLines;
+
+pub mod bytelines;
 mod macros;
 
 pub const CLAP_CACHE: &str = "vim.clap";
@@ -108,10 +111,9 @@ pub fn get_cached_entry(args: &[&str], cmd_dir: &Path) -> Result<DirEntry> {
     ))
 }
 
-/// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
-///
-/// FIXME: read line that is not valid utf-8.
-pub fn read_preview_lines<P: AsRef<Path>>(
+/// Works for utf-8 lines only.
+#[allow(unused)]
+fn read_preview_lines_utf8<P: AsRef<Path>>(
     path: P,
     target_line: usize,
     size: usize,
@@ -126,13 +128,72 @@ pub fn read_preview_lines<P: AsRef<Path>>(
         io::BufReader::new(file)
             .lines()
             .skip(start)
-            .map(|i| match i {
-                Ok(i) => i.to_string(),
-                Err(e) => e.to_string(),
-            })
+            .filter_map(|l| l.ok())
             .take(end - start),
         hl_line,
     ))
+}
+
+/// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
+///
+/// FIXME: read line that is not valid utf-8.
+pub fn read_preview_lines<P: AsRef<Path>>(
+    path: P,
+    target_line: usize,
+    size: usize,
+) -> io::Result<(Vec<String>, usize)> {
+    read_preview_lines_impl(path, target_line, size)
+}
+
+// Copypasted from stdlib.
+/// Indicates how large a buffer to pre-allocate before reading the entire file.
+fn initial_buffer_size(file: &fs::File) -> usize {
+    // Allocate one extra byte so the buffer doesn't need to grow before the
+    // final `read` call at the end of the file.  Don't worry about `usize`
+    // overflow because reading will fail regardless in that case.
+    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
+}
+
+fn read_preview_lines_impl<P: AsRef<Path>>(
+    path: P,
+    target_line: usize,
+    size: usize,
+) -> io::Result<(Vec<String>, usize)> {
+    let (start, end, hl_line) = if target_line > size {
+        (target_line - size, target_line + size, size)
+    } else {
+        (0, 2 * size, target_line)
+    };
+
+    let mut filebuf: Vec<u8> = Vec::new();
+
+    std::fs::File::open(path)
+        .and_then(|mut file| {
+            //x XXX: is megabyte enough for any text file?
+            const MEGABYTE: usize = 100 * 1_048_576;
+
+            let filesize = initial_buffer_size(&file);
+            if filesize > MEGABYTE {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "maximum preview file buffer size reached",
+                ));
+            }
+
+            filebuf.reserve_exact(filesize);
+            file.read_to_end(&mut filebuf)
+        })
+        .map(|_| {
+            (
+                ByteLines::new(&filebuf)
+                    .into_iter()
+                    .skip(start)
+                    .take(end - start)
+                    .map(|l| l.to_string())
+                    .collect::<Vec<_>>(),
+                hl_line,
+            )
+        })
 }
 
 /// Returns an iterator of limited lines of `filename` from the line number `start_line`.
@@ -180,7 +241,18 @@ where
 
 #[test]
 fn test_multi_byte_reading() {
-    let file = "/home/xlc/.vim/plugged/vim-clap/test_673.txt";
-    let (lines_iter, n) = read_preview_lines(file, 2, 5).unwrap();
-    println!("{:?}", lines_iter.collect::<Vec<_>>());
+    let mut current_dir = std::env::current_dir().unwrap();
+    current_dir.push("test_673.txt");
+    let (lines, _hl_line) = read_preview_lines_impl(current_dir, 2, 5).unwrap();
+    assert_eq!(
+        lines,
+        [
+            "test_ddd",
+            "test_ddd    //1����ˤ��ϡ�����1",
+            "test_ddd    //2����ˤ��ϡ�����2",
+            "test_ddd    //3����ˤ��ϡ�����3",
+            "test_ddd    //hello"
+        ]
+    );
+    // assert!(lines[0] == 5);
 }

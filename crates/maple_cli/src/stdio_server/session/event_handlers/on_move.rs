@@ -307,7 +307,7 @@ impl<'a> OnMoveHandler<'a> {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = format!("{}", path.as_ref().display());
                 let lines = std::iter::once(format!("{}:{}", fname, lnum))
-                    .chain(self.truncate_preview_lines(lines_iter))
+                    .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
                 debug!(
                     "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines: {:?}",
