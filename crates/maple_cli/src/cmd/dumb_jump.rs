@@ -1,6 +1,7 @@
 //! Inspired by https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
@@ -11,7 +12,7 @@ use structopt::StructOpt;
 use crate::process::tokio::TokioCommand;
 // use crate::tools::rg::{JsonLine, Word};
 
-use crate::tools::ripgrep::jsont::{Match, Message};
+use crate::tools::ripgrep::jsont::Match;
 use crate::tools::ripgrep::Word;
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
@@ -251,14 +252,7 @@ async fn collect_matches(
 
     Ok(lines
         .iter()
-        .filter_map(|s| serde_json::from_str::<Message>(s).ok())
-        .filter_map(|msg| {
-            if let Message::Match(mat) = msg {
-                Some(mat)
-            } else {
-                None
-            }
-        })
+        .filter_map(|s| Match::try_from(s.as_str()).ok())
         .filter(|mat| {
             // Filter out the comment line
             if let Some(comments) = comments {

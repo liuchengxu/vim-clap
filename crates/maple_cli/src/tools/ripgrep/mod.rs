@@ -2,7 +2,9 @@ pub mod jsont;
 pub mod stats;
 pub mod util;
 
-use jsont::{Match, SubMatch};
+use std::convert::TryFrom;
+
+use jsont::{Match, Message, SubMatch};
 
 /// Word represents the input query around by word boundries.
 #[derive(Clone, Debug)]
@@ -97,6 +99,19 @@ impl Match {
             .map(|s| s.match_indices_for_dumb_jump(offset, search_word))
             .flatten()
             .collect()
+    }
+}
+
+impl TryFrom<&str> for Match {
+    type Error = String;
+    fn try_from(serialized_str: &str) -> Result<Self, Self::Error> {
+        let msg = serde_json::from_str::<Message>(serialized_str)
+            .map_err(|e| format!("deserialize error: {:?}", e))?;
+        if let Message::Match(mat) = msg {
+            Ok(mat)
+        } else {
+            Err("Not Message::Match type".into())
+        }
     }
 }
 

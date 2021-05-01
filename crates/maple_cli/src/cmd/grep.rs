@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -15,7 +16,7 @@ use utility::is_git_repo;
 use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::process::light::{set_current_dir, LightCommand};
-use crate::tools::ripgrep::jsont::Message;
+use crate::tools::ripgrep::jsont::Match;
 
 const RG_ARGS: [&str; 7] = [
     "rg",
@@ -144,14 +145,7 @@ impl Grep {
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
             .iter()
-            .filter_map(|s| serde_json::from_str::<Message>(s).ok())
-            .filter_map(|msg| {
-                if let Message::Match(mat) = msg {
-                    Some(mat)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|s| Match::try_from(s.as_str()).ok())
             .map(|mat| mat.build_grep_line(enable_icon))
             .unzip();
 
