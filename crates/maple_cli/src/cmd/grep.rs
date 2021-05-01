@@ -16,7 +16,7 @@ use utility::is_git_repo;
 use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::process::light::{set_current_dir, LightCommand};
-use crate::tools::ripgrep::jsont::Match;
+use crate::tools::ripgrep::Match;
 
 const RG_ARGS: [&str; 7] = [
     "rg",

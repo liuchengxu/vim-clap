@@ -12,8 +12,7 @@ use serde::Deserialize;
 use structopt::StructOpt;
 
 use crate::process::tokio::TokioCommand;
-use crate::tools::ripgrep::jsont::Match;
-use crate::tools::ripgrep::Word;
+use crate::tools::ripgrep::{Match, Word};
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
 

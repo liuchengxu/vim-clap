@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 
 use anyhow::Result;
 
-use self::jsont::{Match, Message, SubMatch};
+pub use self::jsont::{Match, Message, SubMatch};
 
 /// Word represents the input query around by word boundries.
 #[derive(Clone, Debug)]
