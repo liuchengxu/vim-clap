@@ -96,6 +96,7 @@ impl DumbJump {
         let comments = get_comments_by_ext(&self.extension);
 
         let word = Word::new(self.word.to_string())?;
+
         let res = DefinitionRules::definitions_and_references(
             lang,
             word.clone(),
