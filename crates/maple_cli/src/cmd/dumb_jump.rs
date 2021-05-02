@@ -115,7 +115,7 @@ impl DumbJump {
         Ok(())
     }
 
-    pub async fn references_or_occurrences(&self) -> Result<Lines> {
+    pub async fn references_or_occurrences(&self, classify: bool) -> Result<Lines> {
         let word = Word::new(self.word.to_string())?;
 
         let lang = match get_language_by_ext(&self.extension) {
@@ -131,20 +131,31 @@ impl DumbJump {
 
         let comments = get_comments_by_ext(&self.extension);
 
-        let res = DefinitionRules::definitions_and_references(
-            lang,
-            word.clone(),
-            &self.cmd_dir,
-            comments,
-        )
-        .await?;
+        // render the results in group.
+        if classify {
+            let res = DefinitionRules::definitions_and_references(
+                lang,
+                word.clone(),
+                &self.cmd_dir,
+                comments,
+            )
+            .await?;
 
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
-            .into_iter()
-            .map(|(match_kind, matches)| render(matches, &match_kind, &word))
-            .flatten()
-            .unzip();
+            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+                .into_iter()
+                .map(|(match_kind, matches)| render(matches, &match_kind, &word))
+                .flatten()
+                .unzip();
 
-        Ok(Lines::new(lines, indices))
+            Ok(Lines::new(lines, indices))
+        } else {
+            DefinitionRules::definitions_and_references_lines(
+                lang,
+                word.clone(),
+                &self.cmd_dir,
+                comments,
+            )
+            .await
+        }
     }
 }

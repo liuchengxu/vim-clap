@@ -154,6 +154,63 @@ impl DefinitionRules {
         Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
     }
 
+    pub async fn definitions_and_references_lines(
+        lang: &str,
+        word: Word,
+        dir: &Option<PathBuf>,
+        comments: &[String],
+    ) -> Result<crate::cmd::dumb_jump::Lines> {
+        let (occurrences, definitions) = futures::future::join(
+            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
+            Self::all_definitions(lang, word.clone(), dir),
+        )
+        .await;
+
+        let (occurrences, definitions) = (occurrences?, definitions?);
+
+        let defs = definitions
+            .iter()
+            .map(|(_, defs)| defs)
+            .flatten()
+            .collect::<Vec<_>>();
+
+        // There are some negative definitions we need to filter them out, e.g., the word
+        // is a subtring in some identifer but we consider every word is a valid identifer.
+        let positive_defs = defs
+            .iter()
+            .filter(|def| occurrences.contains(def))
+            .collect::<Vec<_>>();
+
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
+            .iter()
+            .flat_map(|(kind, lines)| {
+                lines
+                    .iter()
+                    .filter(|line| positive_defs.contains(&line))
+                    .map(|line| line.build_jump_line(kind.as_ref(), &word))
+                    .collect::<Vec<_>>()
+            })
+            .chain(
+                // references are these occurrences not in the definitions.
+                occurrences
+                    .iter()
+                    .filter(|r| !defs.contains(&r))
+                    .map(|line| line.build_jump_line("references", &word)),
+            )
+            .unzip();
+
+        if lines.is_empty() {
+            let lines = naive_grep_fallback(word.clone(), lang, dir, comments).await?;
+            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+                .into_iter()
+                .map(|line| line.build_jump_line("plain", &word))
+                .unzip();
+            return Ok(crate::cmd::dumb_jump::Lines::new(lines, indices));
+        }
+
+        Ok(crate::cmd::dumb_jump::Lines::new(lines, indices))
+    }
+
     pub async fn definitions_and_references_matches(
         lang: &str,
         word: Word,
