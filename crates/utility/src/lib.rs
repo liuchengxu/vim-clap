@@ -165,7 +165,7 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
 
     let mut filebuf: Vec<u8> = Vec::new();
 
-    std::fs::File::open(path)
+    File::open(path)
         .and_then(|mut file| {
             //x XXX: is megabyte enough for any text file?
             const MEGABYTE: usize = 100 * 1_048_576;
