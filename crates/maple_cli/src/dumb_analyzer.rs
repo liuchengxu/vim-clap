@@ -10,6 +10,7 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
+use crate::cmd::dumb_jump::Lines;
 use crate::process::tokio::TokioCommand;
 use crate::tools::ripgrep::{Match, Word};
 
@@ -159,7 +160,7 @@ impl DefinitionRules {
         word: Word,
         dir: &Option<PathBuf>,
         comments: &[String],
-    ) -> Result<crate::cmd::dumb_jump::Lines> {
+    ) -> Result<Lines> {
         let (occurrences, definitions) = futures::future::join(
             find_all_occurrences_by_type(word.clone(), lang, dir, comments),
             Self::all_definitions(lang, word.clone(), dir),
@@ -205,58 +206,10 @@ impl DefinitionRules {
                 .into_iter()
                 .map(|line| line.build_jump_line("plain", &word))
                 .unzip();
-            return Ok(crate::cmd::dumb_jump::Lines::new(lines, indices));
+            return Ok(Lines::new(lines, indices));
         }
 
-        Ok(crate::cmd::dumb_jump::Lines::new(lines, indices))
-    }
-
-    pub async fn definitions_and_references_matches(
-        lang: &str,
-        word: Word,
-        dir: &Option<PathBuf>,
-        comments: &[String],
-    ) -> Result<Vec<Match>> {
-        let (occurrences, definitions) = futures::future::join(
-            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
-            Self::all_definitions(lang, word.clone(), dir),
-        )
-        .await;
-
-        let (occurrences, definitions) = (occurrences?, definitions?);
-
-        let defs = definitions
-            .clone()
-            .into_iter()
-            .map(|(_, defs)| defs)
-            .flatten()
-            .collect::<Vec<Match>>();
-
-        // There are some negative definitions we need to filter them out, e.g., the word
-        // is a subtring in some identifer but we consider every word is a valid identifer.
-        let positive_defs = defs
-            .iter()
-            .filter(|def| occurrences.contains(def))
-            .collect::<Vec<_>>();
-
-        let res = definitions
-            .into_iter()
-            .flat_map(|(_kind, lines)| {
-                lines
-                    .into_iter()
-                    .filter(|ref line| positive_defs.contains(&line))
-            })
-            .chain({
-                // references are these occurrences not in the definitions.
-                occurrences.into_iter().filter(|r| !defs.contains(&r))
-            })
-            .collect::<Vec<Match>>();
-
-        if res.is_empty() {
-            naive_grep_fallback(word, lang, dir, comments).await
-        } else {
-            Ok(res)
-        }
+        Ok(Lines::new(lines, indices))
     }
 
     pub async fn definitions_and_references(

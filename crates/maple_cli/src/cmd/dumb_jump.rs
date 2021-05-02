@@ -102,15 +102,9 @@ impl DumbJump {
 
         let word = Word::new(self.word.to_string())?;
 
-        let res = DefinitionRules::definitions_and_references_matches(
-            lang,
-            word.clone(),
-            &self.cmd_dir,
-            comments,
-        )
-        .await?;
-
-        render_jump_line(res, "refs", &word).print();
+        DefinitionRules::definitions_and_references_lines(lang, word, &self.cmd_dir, comments)
+            .await?
+            .print();
 
         Ok(())
     }
