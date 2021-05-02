@@ -2,6 +2,7 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -32,27 +33,30 @@ impl Lines {
 }
 
 fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
-    let mut group_refs = std::collections::HashMap::new();
+    let mut group_refs = HashMap::new();
 
     // references are these occurrences not in the definitions.
     for line in matches.iter() {
-        let counter = group_refs.entry(line.path()).or_insert_with(Vec::new);
-        counter.push(line);
+        let group = group_refs.entry(line.path()).or_insert_with(Vec::new);
+        group.push(line);
     }
 
-    let mut res = Vec::new();
+    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = group_refs
+        .values()
+        .map(|lines| {
+            let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
-    for lines in group_refs.values() {
-        res.push((
-            format!("[{}] {} [{}]", kind, lines[0].path(), lines.len()),
-            vec![],
-        ));
-        for line in lines {
-            res.push(line.build_jump_line_bare("refs", word));
-        }
-    }
+            inner_group.push((
+                format!("[{}] {} [{}]", kind, lines[0].path(), lines.len()),
+                vec![],
+            ));
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res.into_iter().unzip();
+            inner_group.extend(lines.iter().map(|line| line.build_jump_line_bare(word)));
+
+            inner_group
+        })
+        .flatten()
+        .unzip();
 
     Lines::new(lines, indices)
 }

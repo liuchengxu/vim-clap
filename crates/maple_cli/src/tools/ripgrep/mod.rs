@@ -206,13 +206,20 @@ impl Match {
         (formatted, indices)
     }
 
-    pub fn jump_line_format_bare(&self) -> String {
-        format!("{}:{}:{}", self.line_number(), self.column(), self.line(),)
+    fn jump_line_format_bare(&self) -> (String, usize) {
+        let line_number = self.line_number();
+        let column = self.column();
+
+        let formatted_string = format!("{}:{}:{}", line_number, column, self.line());
+
+        let offset = display_width(line_number as usize) + display_width(column) + 2;
+
+        (formatted_string, offset)
     }
 
-    pub fn build_jump_line_bare(&self, kind: &str, word: &Word) -> (String, Vec<usize>) {
-        let formatted = self.jump_line_format_bare();
-        let indices = self.match_indices_for_dumb_jump(self.jump_line_offset(kind), word);
+    pub fn build_jump_line_bare(&self, word: &Word) -> (String, Vec<usize>) {
+        let (formatted, offset) = self.jump_line_format_bare();
+        let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
     }
 }
