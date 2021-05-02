@@ -77,7 +77,7 @@ impl Data {
     pub fn text(&self) -> Cow<str> {
         match self {
             Self::Text { text } => text.as_str().into(),
-            Self::Bytes { bytes } => String::from_utf8_lossy(bytes).into(),
+            Self::Bytes { bytes } => String::from_utf8_lossy(bytes),
         }
     }
 }

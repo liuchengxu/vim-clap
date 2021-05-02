@@ -154,7 +154,6 @@ impl DefinitionRules {
                 lines
                     .into_iter()
                     .filter(|ref line| positive_defs.contains(&line))
-                    .collect::<Vec<_>>()
             })
             .chain({
                 // references are these occurrences not in the definitions.
@@ -163,7 +162,7 @@ impl DefinitionRules {
             .collect::<Vec<Match>>();
 
         if res.is_empty() {
-            fallback_to_grep(word, lang, dir, comments).await
+            naive_grep_fallback(word, lang, dir, comments).await
         } else {
             Ok(res)
         }
@@ -184,7 +183,7 @@ impl LanguageDefinition {
                 rules
             })
             .get(lang)
-            .ok_or_else(|| anyhow!("Language {} is unsupported in dumb-jump", lang))
+            .ok_or_else(|| anyhow!("Language {} is unsupported in dumb analyzer", lang))
     }
 }
 
@@ -235,7 +234,7 @@ async fn find_all_occurrences_by_type(
     collect_matches(command, dir, Some(comments)).await
 }
 
-async fn fallback_to_grep(
+async fn naive_grep_fallback(
     word: Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
