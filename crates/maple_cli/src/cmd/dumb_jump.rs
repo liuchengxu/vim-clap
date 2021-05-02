@@ -10,6 +10,7 @@ use structopt::StructOpt;
 
 use crate::dumb_analyzer::{
     find_occurrence_matches_by_ext, get_comments_by_ext, get_language_by_ext, DefinitionRules,
+    MatchKind,
 };
 use crate::tools::ripgrep::{Match, Word};
 
@@ -34,7 +35,7 @@ impl Lines {
 
 // TODO: a new renderer for dumb jump
 #[allow(unused)]
-fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
+fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Vec<usize>)> {
     let mut group_refs = HashMap::new();
 
     // references are these occurrences not in the definitions.
@@ -45,7 +46,7 @@ fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
 
     let mut kind_inserted = false;
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = group_refs
+    group_refs
         .values()
         .map(|lines| {
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
@@ -62,9 +63,7 @@ fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
             inner_group
         })
         .flatten()
-        .unzip();
-
-    Lines::new(lines, indices)
+        .collect()
 }
 
 fn render_jump_line(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
@@ -103,7 +102,7 @@ impl DumbJump {
 
         let word = Word::new(self.word.to_string())?;
 
-        let res = DefinitionRules::definitions_and_references(
+        let res = DefinitionRules::definitions_and_references_matches(
             lang,
             word.clone(),
             &self.cmd_dir,
@@ -131,6 +130,7 @@ impl DumbJump {
         };
 
         let comments = get_comments_by_ext(&self.extension);
+
         let res = DefinitionRules::definitions_and_references(
             lang,
             word.clone(),
@@ -139,6 +139,12 @@ impl DumbJump {
         )
         .await?;
 
-        Ok(render_jump_line(res, "refs", &word))
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+            .into_iter()
+            .map(|(match_kind, matches)| render(matches, &match_kind, &word))
+            .flatten()
+            .unzip();
+
+        Ok(Lines::new(lines, indices))
     }
 }

@@ -2,9 +2,9 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
+use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
@@ -56,6 +56,40 @@ pub fn get_comments_by_ext(ext: &str) -> &[String] {
     });
 
     table.get(ext).unwrap_or_else(|| table.get("*").unwrap())
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
+pub enum MatchKind {
+    Definition(DefinitionKind),
+    Reference(&'static str),
+    /// Pure grep results.
+    Occurrence(&'static str),
+}
+
+impl Display for MatchKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Definition(def_kind) => write!(f, "{}", def_kind.as_ref()),
+            Self::Reference(ref_kind) => write!(f, "{}", ref_kind),
+            Self::Occurrence(grep_kind) => write!(f, "{}", grep_kind),
+        }
+    }
+}
+
+impl AsRef<str> for MatchKind {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Definition(def_kind) => def_kind.as_ref(),
+            Self::Reference(ref_kind) => ref_kind,
+            Self::Occurrence(grep_kind) => grep_kind,
+        }
+    }
+}
+
+impl From<DefinitionKind> for MatchKind {
+    fn from(def_kind: DefinitionKind) -> Self {
+        Self::Definition(def_kind)
+    }
 }
 
 /// Unit type wrapper of the kind of definition.
@@ -120,7 +154,7 @@ impl DefinitionRules {
         Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
     }
 
-    pub async fn definitions_and_references(
+    pub async fn definitions_and_references_matches(
         lang: &str,
         word: Word,
         dir: &Option<PathBuf>,
@@ -163,6 +197,67 @@ impl DefinitionRules {
 
         if res.is_empty() {
             naive_grep_fallback(word, lang, dir, comments).await
+        } else {
+            Ok(res)
+        }
+    }
+
+    pub async fn definitions_and_references(
+        lang: &str,
+        word: Word,
+        dir: &Option<PathBuf>,
+        comments: &[String],
+    ) -> Result<HashMap<MatchKind, Vec<Match>>> {
+        let (occurrences, definitions) = futures::future::join(
+            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
+            Self::all_definitions(lang, word.clone(), dir),
+        )
+        .await;
+
+        let (occurrences, definitions) = (occurrences?, definitions?);
+
+        let defs = definitions
+            .clone()
+            .into_iter()
+            .map(|(_, defs)| defs)
+            .flatten()
+            .collect::<Vec<Match>>();
+
+        // There are some negative definitions we need to filter them out, e.g., the word
+        // is a subtring in some identifer but we consider every word is a valid identifer.
+        let positive_defs = defs
+            .iter()
+            .filter(|def| occurrences.contains(def))
+            .collect::<Vec<_>>();
+
+        let res: HashMap<MatchKind, Vec<Match>> = definitions
+            .into_iter()
+            .filter_map(|(kind, lines)| {
+                let defs = lines
+                    .into_iter()
+                    .filter(|ref line| positive_defs.contains(&line))
+                    .collect::<Vec<_>>();
+
+                if defs.is_empty() {
+                    None
+                } else {
+                    Some((kind.into(), defs))
+                }
+            })
+            .chain(std::iter::once((
+                MatchKind::Reference("refs"),
+                occurrences
+                    .into_iter()
+                    .filter(|r| !defs.contains(&r))
+                    .collect::<Vec<_>>(),
+            )))
+            .collect();
+
+        if res.is_empty() {
+            // todo!()
+            naive_grep_fallback(word, lang, dir, comments)
+                .await
+                .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
         } else {
             Ok(res)
         }
