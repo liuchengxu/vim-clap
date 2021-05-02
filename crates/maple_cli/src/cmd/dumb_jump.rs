@@ -32,6 +32,8 @@ impl Lines {
     }
 }
 
+// TODO: a new renderer for dumb jump
+#[allow(unused)]
 fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
     let mut group_refs = HashMap::new();
 
@@ -41,15 +43,19 @@ fn render(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
         group.push(line);
     }
 
+    let mut kind_inserted = false;
+
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = group_refs
         .values()
         .map(|lines| {
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
-            inner_group.push((
-                format!("[{}] {} [{}]", kind, lines[0].path(), lines.len()),
-                vec![],
-            ));
+            if !kind_inserted {
+                inner_group.push((format!("[{}]", kind), vec![]));
+                kind_inserted = true;
+            }
+
+            inner_group.push((format!("  {} [{}]", lines[0].path(), lines.len()), vec![]));
 
             inner_group.extend(lines.iter().map(|line| line.build_jump_line_bare(word)));
 
@@ -105,7 +111,6 @@ impl DumbJump {
         )
         .await?;
 
-        // render(res, "refs", &word).print();
         render_jump_line(res, "refs", &word).print();
 
         Ok(())
@@ -134,7 +139,6 @@ impl DumbJump {
         )
         .await?;
 
-        // Ok(render_jump_line(res, "refs", &word))
-        Ok(render(res, "refs", &word))
+        Ok(render_jump_line(res, "refs", &word))
     }
 }

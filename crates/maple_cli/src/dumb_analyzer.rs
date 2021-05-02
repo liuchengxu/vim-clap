@@ -43,7 +43,7 @@ pub fn get_language_by_ext(ext: &str) -> Result<&str> {
     LANGUAGE_EXT_TABLE
         .get(ext)
         .map(|x| x.as_str())
-        .ok_or_else(|| anyhow!("dumb_jump is unsupported for {}", ext))
+        .ok_or_else(|| anyhow!("dumb_analyzer is unsupported for {}", ext))
 }
 
 /// Map of file extension to the comment prefix.
