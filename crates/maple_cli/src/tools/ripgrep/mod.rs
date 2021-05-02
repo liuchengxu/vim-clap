@@ -2,7 +2,8 @@ pub mod jsont;
 pub mod stats;
 pub mod util;
 
-use std::convert::TryFrom;
+use std::ops::Range;
+use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
@@ -32,17 +33,17 @@ impl Word {
 }
 
 #[inline]
-fn range(start: usize, end: usize, offset: usize) -> Vec<usize> {
-    (start + offset..end + offset).into_iter().collect()
+fn range(start: usize, end: usize, offset: usize) -> Range<usize> {
+    start + offset..end + offset
 }
 
 impl SubMatch {
-    pub fn match_indices(&self, offset: usize) -> Vec<usize> {
+    pub fn match_indices(&self, offset: usize) -> Range<usize> {
         range(self.start, self.end, offset)
     }
 
     // FIXME find the word in non-utf8?
-    pub fn match_indices_for_dumb_jump(&self, offset: usize, search_word: &Word) -> Vec<usize> {
+    pub fn match_indices_for_dumb_jump(&self, offset: usize, search_word: &Word) -> Range<usize> {
         // The text in SubMatch is not exactly the search word itself in some cases,
         // we need to first find the offset of search word in the SubMatch text manually.
         match search_word.find(&self.m.text()) {
@@ -71,7 +72,7 @@ impl PartialEq for Match {
 impl Eq for Match {}
 
 impl Match {
-    pub fn path(&self) -> String {
+    pub fn path(&self) -> Cow<str> {
         self.path.text()
     }
 
@@ -117,62 +118,91 @@ impl TryFrom<&str> for Match {
     }
 }
 
+/// Returns the width of displaying `n` on the screen.
+///
+/// Same with `n.to_string().len()` but without allocation.
+fn display_width(mut n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+
+    let mut len = 0;
+    while n > 0 {
+        len += 1;
+        n /= 10;
+    }
+
+    len
+}
+
 impl Match {
-    /// Returns the formatted String like using rg's -vimgrep option.
-    pub fn grep_line_format(&self, enable_icon: bool) -> String {
+    /// Returns a pair of the formatted `String` and the offset of origin match indices.
+    ///
+    /// The formatted String is same with the output line using rg's -vimgrep option.
+    fn grep_line_format(&self, enable_icon: bool) -> (String, usize) {
+        let path = self.path();
+        let line_number = self.line_number();
+        let column = self.column();
+
         let maybe_icon = if enable_icon {
-            format!("{} ", icon::icon_for(&self.path()))
+            format!("{} ", icon::icon_for(&path))
         } else {
             Default::default()
         };
-        format!(
+
+        let formatted_line = format!(
             "{}{}:{}:{}:{}",
             maybe_icon,
-            self.path(),
-            self.line_number(),
-            self.column(),
+            path,
+            line_number,
+            column,
             self.line(),
-        )
-    }
+        );
 
-    pub fn grep_line_offset(&self, enable_icon: bool) -> usize {
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
         let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
-        self.path().len()
-            + self.line_number().to_string().len()
-            + self.column().to_string().len()
-            + fixed_offset
+
+        let offset =
+            path.len() + display_width(line_number as usize) + display_width(column) + fixed_offset;
+
+        (formatted_line, offset)
     }
 
     pub fn build_grep_line(&self, enable_icon: bool) -> (String, Vec<usize>) {
-        let formatted = self.grep_line_format(enable_icon);
-        let indices = self.match_indices(self.grep_line_offset(enable_icon));
+        let (formatted, offset) = self.grep_line_format(enable_icon);
+        let indices = self.match_indices(offset);
         (formatted, indices)
     }
 
+    /// Returns a pair of the formatted `String` and the offset of matches for dumb_jump provider.
+    ///
     /// NOTE: [`pattern::DUMB_JUMP_LINE`] must be updated accordingly once the format is changed.
-    pub fn jump_line_format(&self, kind: &str) -> String {
-        format!(
+    fn jump_line_format(&self, kind: &str) -> (String, usize) {
+        let path = self.path();
+        let line_number = self.line_number();
+        let column = self.column();
+
+        let formatted_line = format!(
             "[{}]{}:{}:{}:{}",
             kind,
-            self.path(),
-            self.line_number(),
-            self.column(),
+            path,
+            line_number,
+            column,
             self.line(),
-        )
-    }
+        );
 
-    pub fn jump_line_offset(&self, kind: &str) -> usize {
-        self.path().len()
-            + self.line_number().to_string().len()
-            + self.column().to_string().len()
+        let offset = path.len()
+            + display_width(line_number as usize)
+            + display_width(column)
             + 5 // [] + 3 `:`
-            + kind.len()
+            + kind.len();
+
+        (formatted_line, offset)
     }
 
     pub fn build_jump_line(&self, kind: &str, word: &Word) -> (String, Vec<usize>) {
-        let formatted = self.jump_line_format(kind);
-        let indices = self.match_indices_for_dumb_jump(self.jump_line_offset(kind), word);
+        let (formatted, offset) = self.jump_line_format(kind);
+        let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
     }
 

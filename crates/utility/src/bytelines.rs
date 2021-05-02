@@ -1,28 +1,12 @@
 //! A custom implementation of `lines()` method, display the non-utf8 line as well.
 
 use std::{
-    fmt::Display,
+    borrow::Cow,
     iter::{DoubleEndedIterator, FusedIterator, Iterator},
     str,
 };
 
 use memchr::{memchr, memrchr};
-
-/// The result of `ByteLines` parser.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Line<'a> {
-    Utf8(&'a str),
-    NotUtf8(String),
-}
-
-impl<'a> Display for Line<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Utf8(line) => write!(f, "{}", line),
-            Self::NotUtf8(line) => write!(f, "{}", line),
-        }
-    }
-}
 
 /// Parses raw untrusted bytes into the strings.
 #[derive(Clone)]
@@ -40,7 +24,7 @@ impl<'a> ByteLines<'a> {
 const NL: u8 = b'\n';
 
 impl<'a> Iterator for ByteLines<'a> {
-    type Item = Line<'a>;
+    type Item = Cow<'a, str>;
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -70,10 +54,10 @@ impl<'a> Iterator for ByteLines<'a> {
             }
         };
 
-        Some(std::str::from_utf8(line).map_or(
-            Line::NotUtf8(String::from_utf8_lossy(line).to_string()),
-            Line::Utf8,
-        ))
+        Some(match std::str::from_utf8(line) {
+            Ok(s) => s.into(),
+            Err(_) => String::from_utf8_lossy(line),
+        })
     }
 }
 
@@ -99,10 +83,10 @@ impl DoubleEndedIterator for ByteLines<'_> {
             }
         };
 
-        Some(std::str::from_utf8(line).map_or(
-            Line::NotUtf8(String::from_utf8_lossy(line).to_string()),
-            Line::Utf8,
-        ))
+        Some(match std::str::from_utf8(line) {
+            Ok(s) => s.into(),
+            Err(_) => String::from_utf8_lossy(line),
+        })
     }
 }
 
