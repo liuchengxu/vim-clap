@@ -264,7 +264,6 @@ impl DefinitionRules {
             .collect();
 
         if res.is_empty() {
-            // todo!()
             naive_grep_fallback(word, lang, dir, comments)
                 .await
                 .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
