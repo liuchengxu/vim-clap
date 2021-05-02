@@ -136,62 +136,73 @@ fn display_width(mut n: usize) -> usize {
 }
 
 impl Match {
-    /// Returns the formatted String like using rg's -vimgrep option.
-    pub fn grep_line_format(&self, enable_icon: bool) -> String {
+    /// Returns a pair of the formatted `String` and the offset of origin match indices.
+    ///
+    /// The formatted String is same with the output line using rg's -vimgrep option.
+    fn grep_line_format(&self, enable_icon: bool) -> (String, usize) {
         let path = self.path();
+        let line_number = self.line_number();
+        let column = self.column();
+
         let maybe_icon = if enable_icon {
             format!("{} ", icon::icon_for(&path))
         } else {
             Default::default()
         };
-        format!(
+
+        let formatted_line = format!(
             "{}{}:{}:{}:{}",
             maybe_icon,
             path,
-            self.line_number(),
-            self.column(),
+            line_number,
+            column,
             self.line(),
-        )
-    }
+        );
 
-    pub fn grep_line_offset(&self, enable_icon: bool) -> usize {
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
         let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
-        self.path().len()
-            + display_width(self.line_number() as usize)
-            + display_width(self.column())
-            + fixed_offset
+
+        let offset =
+            path.len() + display_width(line_number as usize) + display_width(column) + fixed_offset;
+
+        (formatted_line, offset)
     }
 
     pub fn build_grep_line(&self, enable_icon: bool) -> (String, Vec<usize>) {
-        let formatted = self.grep_line_format(enable_icon);
-        let indices = self.match_indices(self.grep_line_offset(enable_icon));
+        let (formatted, offset) = self.grep_line_format(enable_icon);
+        let indices = self.match_indices(offset);
         (formatted, indices)
     }
 
+    /// Returns a pair of the formatted `String` and the offset of matches for dumb_jump provider.
+    ///
     /// NOTE: [`pattern::DUMB_JUMP_LINE`] must be updated accordingly once the format is changed.
-    pub fn jump_line_format(&self, kind: &str) -> String {
-        format!(
+    fn jump_line_format(&self, kind: &str) -> (String, usize) {
+        let path = self.path();
+        let line_number = self.line_number();
+        let column = self.column();
+
+        let formatted_line = format!(
             "[{}]{}:{}:{}:{}",
             kind,
-            self.path(),
-            self.line_number(),
-            self.column(),
+            path,
+            line_number,
+            column,
             self.line(),
-        )
-    }
+        );
 
-    pub fn jump_line_offset(&self, kind: &str) -> usize {
-        self.path().len()
-            + display_width(self.line_number() as usize)
-            + display_width(self.column())
+        let offset = path.len()
+            + display_width(line_number as usize)
+            + display_width(column)
             + 5 // [] + 3 `:`
-            + kind.len()
+            + kind.len();
+
+        (formatted_line, offset)
     }
 
     pub fn build_jump_line(&self, kind: &str, word: &Word) -> (String, Vec<usize>) {
-        let formatted = self.jump_line_format(kind);
-        let indices = self.match_indices_for_dumb_jump(self.jump_line_offset(kind), word);
+        let (formatted, offset) = self.jump_line_format(kind);
+        let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
     }
 }
