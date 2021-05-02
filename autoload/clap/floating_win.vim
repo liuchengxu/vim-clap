@@ -426,10 +426,10 @@ function! clap#floating_win#open() abort
       call s:open_shadow_win()
     end
   else
+    call s:open_indicator_win()
     if g:clap_enable_background_shadow
       call s:open_shadow_win()
     end
-    call s:open_indicator_win()
   endif
   call s:open_win_border_right()
 
