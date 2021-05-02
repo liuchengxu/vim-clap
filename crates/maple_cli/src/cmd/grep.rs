@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -15,7 +16,7 @@ use utility::is_git_repo;
 use crate::app::Params;
 use crate::cmd::cache::{cache_exists, send_response_from_cache, SendResponse};
 use crate::process::light::{set_current_dir, LightCommand};
-use crate::tools::rg::JsonLine;
+use crate::tools::ripgrep::Match;
 
 const RG_ARGS: [&str; 7] = [
     "rg",
@@ -144,8 +145,8 @@ impl Grep {
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
             .iter()
-            .filter_map(|s| serde_json::from_str::<JsonLine>(s).ok())
-            .map(|line| line.build_grep_line(enable_icon))
+            .filter_map(|s| Match::try_from(s.as_str()).ok())
+            .map(|mat| mat.build_grep_line(enable_icon))
             .unzip();
 
         let total = lines.len();

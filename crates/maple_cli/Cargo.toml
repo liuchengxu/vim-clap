@@ -10,6 +10,7 @@ description = "vim-clap external filter gadget"
 
 [dependencies]
 anyhow = "1.0"
+base64 = "0.13"
 bytecount = "0.6"
 crossbeam-channel = "0.5"
 curl = "0.4.28"
