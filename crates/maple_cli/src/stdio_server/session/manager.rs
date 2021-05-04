@@ -76,8 +76,9 @@ impl Manager {
             sender.send(event);
         } else {
             error!(
-                "Can't find session_id: {} in SessionManager: {:?}",
-                session_id, self
+                "Can't find session_id: {}, current sessions: {:?}",
+                session_id,
+                self.sessions.keys()
             );
         }
     }
