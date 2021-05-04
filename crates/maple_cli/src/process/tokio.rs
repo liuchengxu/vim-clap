@@ -42,6 +42,13 @@ impl TokioCommand {
     }
 
     pub async fn lines(&mut self) -> Result<Vec<String>> {
+        // Calling `output()` or `spawn().wait_with_output()` directly does not
+        // work for Vim.
+        // let output = self.0.spawn()?.wait_with_output().await?;
+        //
+        // TokioCommand works great for Neovim, but it seemingly has some issues with Vim due to
+        // the stdout pipe stuffs, not sure the reason under the hood clearly, but StdCommand works
+        // both for Neovim and Vim.
         let output = self.0.output().await?;
 
         if !output.status.success() && !output.stderr.is_empty() {

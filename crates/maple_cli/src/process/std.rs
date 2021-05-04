@@ -1,6 +1,6 @@
 //! Wrapper of std `Command`.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
@@ -37,19 +37,19 @@ impl From<String> for StdCommand {
 }
 
 impl StdCommand {
+    /// Constructs a `StdCommand` given the command String.
     #[allow(unused)]
     pub fn new(spawned_cmd: String) -> Self {
         Self(build_command(&spawned_cmd))
     }
 
     /// Sets the working directory for the inner `Command`.
-    #[allow(unused)]
-    pub fn current_dir(&mut self, cmd_dir: PathBuf) -> &mut Self {
-        // If cmd_dir is not a directory, use its parent as current dir.
-        if cmd_dir.is_dir() {
-            self.0.current_dir(cmd_dir);
+    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
+        // If `dir` is not a directory, use its parent as current dir.
+        if dir.as_ref().is_dir() {
+            self.0.current_dir(dir);
         } else {
-            let mut cmd_dir = cmd_dir;
+            let mut cmd_dir: PathBuf = dir.as_ref().into();
             cmd_dir.pop();
             self.0.current_dir(cmd_dir);
         }
@@ -57,10 +57,14 @@ impl StdCommand {
         self
     }
 
-    #[allow(unused)]
-    pub fn lines(&mut self) -> Result<Vec<String>> {
+    /// Executes the command and consume the stdout as a stream of utf8 lines.
+    fn _lines(&mut self) -> Result<Vec<String>> {
         let output = self.0.output()?;
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout.split('\n').map(Into::into).collect())
+    }
+
+    pub async fn lines(&mut self) -> Result<Vec<String>> {
+        async { self._lines() }.await
     }
 }

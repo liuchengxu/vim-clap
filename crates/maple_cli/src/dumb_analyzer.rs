@@ -10,9 +10,8 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
-use crate::cmd::dumb_jump::Lines;
-use crate::process::tokio::TokioCommand;
 use crate::tools::ripgrep::{Match, Word};
+use crate::{cmd::dumb_jump::Lines, process::AsyncCommand};
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
 
@@ -297,13 +296,13 @@ async fn collect_matches(
     dir: &Option<PathBuf>,
     comments: Option<&[String]>,
 ) -> Result<Vec<Match>> {
-    let mut tokio_cmd = TokioCommand::new(command);
+    let mut cmd = AsyncCommand::new(command);
 
     if let Some(ref dir) = dir {
-        tokio_cmd.current_dir(dir.to_path_buf());
+        cmd.0.current_dir(dir.to_path_buf());
     }
 
-    let lines = tokio_cmd.lines().await?;
+    let lines = cmd.lines().await?;
 
     Ok(lines
         .iter()

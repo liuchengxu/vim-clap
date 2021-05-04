@@ -30,7 +30,7 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
     }
 }
 
-pub fn initialize_global(msg: Message) {
+fn initialize_global(msg: Message) {
     let is_nvim = msg
         .params
         .get("is_nvim")
