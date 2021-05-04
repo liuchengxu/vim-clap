@@ -60,8 +60,7 @@ impl StdCommand {
     /// Executes the command and consume the stdout as a stream of utf8 lines.
     fn _lines(&mut self) -> Result<Vec<String>> {
         let output = self.0.output()?;
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(stdout.split('\n').map(Into::into).collect())
+        super::process_output(output)
     }
 
     pub async fn lines(&mut self) -> Result<Vec<String>> {

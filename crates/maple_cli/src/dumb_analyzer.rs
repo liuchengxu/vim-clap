@@ -299,7 +299,7 @@ async fn collect_matches(
     let mut cmd = AsyncCommand::new(command);
 
     if let Some(ref dir) = dir {
-        cmd.0.current_dir(dir.to_path_buf());
+        cmd.current_dir(dir);
     }
 
     let lines = cmd.lines().await?;

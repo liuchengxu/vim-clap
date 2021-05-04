@@ -37,10 +37,12 @@ impl From<String> for TokioCommand {
 }
 
 impl TokioCommand {
+    #[allow(unused)]
     pub fn new(cmd: String) -> Self {
         cmd.into()
     }
 
+    #[allow(unused)]
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         // Calling `output()` or `spawn().wait_with_output()` directly does not
         // work for Vim.
@@ -51,26 +53,10 @@ impl TokioCommand {
         // both for Neovim and Vim.
         let output = self.0.output().await?;
 
-        if !output.status.success() && !output.stderr.is_empty() {
-            return Err(anyhow::anyhow!(
-                "an error occured for command {:?}: {:?}",
-                self.0,
-                output.stderr
-            ));
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        let mut output_lines = stdout.split('\n').map(Into::into).collect::<Vec<String>>();
-
-        // Remove the last empty line.
-        if output_lines.last().map(|s| s.is_empty()).unwrap_or(false) {
-            output_lines.pop();
-        }
-
-        Ok(output_lines)
+        super::process_output(output)
     }
 
+    #[allow(unused)]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde_json::json;
 
-use crate::process::tokio::TokioCommand;
+use crate::process::AsyncCommand;
 use crate::stdio_server::{
     session::{EventHandler, Session},
     write_response,
@@ -12,7 +12,7 @@ pub async fn run<T: EventHandler>(
     source_cmd: String,
     session: Session<T>,
 ) -> Result<()> {
-    let lines = TokioCommand::new(source_cmd)
+    let lines = AsyncCommand::new(source_cmd)
         .current_dir(&session.context.cwd)
         .lines()
         .await?;
