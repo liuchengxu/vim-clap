@@ -31,7 +31,7 @@ function! s:maps_source() abort
   let s:map_reg = empty(v:register) ? '' : ('"'.v:register)
   let s:map_op  = mode ==# 'o' ? v:operator : ''
 
-  let cout = execute('verbose '.mode.'map')
+  let cout = clap#api#win_execute(g:clap.start.winid, 'verbose '.mode.'map')
   let list = []
   let curr = ''
   for line in split(cout, "\n")
