@@ -404,6 +404,20 @@ function! s:ensure_closed() abort
   silent! autocmd! ClapEnsureAllClosed
 endfunction
 
+function! s:open_shadow_before_indicator_win(yes) abort
+  if a:yes
+    if g:clap_enable_background_shadow
+      call s:open_shadow_win()
+    end
+    call s:open_indicator_win()
+  else
+    call s:open_indicator_win()
+    if g:clap_enable_background_shadow
+      call s:open_shadow_win()
+    end
+  endif
+endfunction
+
 function! clap#floating_win#open() abort
   let g:__clap_display_curlnum = 1
 
@@ -418,19 +432,18 @@ function! clap#floating_win#open() abort
   if clap#preview#is_enabled() && g:clap_preview_direction ==# 'LR'
     call s:create_preview_win(s:display_opts.height)
   endif
+
   if g:clap_search_box_border_style ==# 'curve'
-    " Indicator win must be opened before shadow win.
-    " ref 567
-    call s:open_indicator_win()
-    if g:clap_enable_background_shadow
-      call s:open_shadow_win()
-    end
+    let open_shadow_first = v:false
+  elseif g:clap_search_box_border_style ==# 'nil'
+    let open_shadow_first = v:true
   else
-    call s:open_indicator_win()
-    if g:clap_enable_background_shadow
-      call s:open_shadow_win()
-    end
+    let open_shadow_first = v:false
   endif
+  " Indicator win must be opened before shadow win in some cases.
+  " ref https://github.com/liuchengxu/vim-clap/issues/567#issuecomment-717554261
+  call s:open_shadow_before_indicator_win(open_shadow_first)
+
   call s:open_win_border_right()
 
   " This seemingly does not look good.
