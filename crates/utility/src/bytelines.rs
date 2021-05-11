@@ -54,7 +54,7 @@ impl<'a> Iterator for ByteLines<'a> {
             }
         };
 
-        Some(match std::str::from_utf8(line) {
+        Some(match simdutf8::basic::from_utf8(line) {
             Ok(s) => s.into(),
             Err(_) => String::from_utf8_lossy(line),
         })
@@ -83,7 +83,7 @@ impl DoubleEndedIterator for ByteLines<'_> {
             }
         };
 
-        Some(match std::str::from_utf8(line) {
+        Some(match simdutf8::basic::from_utf8(line) {
             Ok(s) => s.into(),
             Err(_) => String::from_utf8_lossy(line),
         })

@@ -591,6 +591,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simdutf8"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3002a9785179d935c5680a1ee84a45666006407659f53cba077d6c7b48aef1fd"
+
+[[package]]
 name = "smallvec"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -704,6 +710,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "memchr",
+ "simdutf8",
 ]
 
 [[package]]
