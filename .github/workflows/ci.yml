@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   cpoptions_checker:
+    name: Check cpoptions
     strategy:
       fail-fast: false
 
@@ -16,6 +17,7 @@ jobs:
       run: test/autoload_should_check_cpo.sh
 
   vint:
+    name: Vint
     strategy:
       fail-fast: false
 
@@ -31,6 +33,7 @@ jobs:
         reporter: github-pr-review
 
   crates:
+    name: Rust
     strategy:
       fail-fast: false
 
@@ -48,8 +51,11 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests under crates
       run: bash ci/run_test.sh
+    - name: Build maple
+      run: cargo build --release
 
   clippy_check:
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -63,26 +69,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
-  maple_binary:
-    strategy:
-      fail-fast: false
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@master
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build maple
-      run: cargo build --release
-
   python_dynamic_module:
+    name: Python Dynamic Module
     strategy:
       fail-fast: false
 
