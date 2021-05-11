@@ -4,55 +4,52 @@ on: [push, pull_request]
 
 jobs:
   cpoptions_checker:
+    name: Check cpoptions
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
-    runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
-      uses: actions/checkout@master
-    - name: Check cpoptions
+      uses: actions/checkout@v2
+    - name: Ensure each vim source file declares cpoptions
       run: test/autoload_should_check_cpo.sh
 
   vint:
+    name: Vint
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
-    runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
     - name: Run vint with reviewdog
       uses: reviewdog/action-vint@v1.0.1
       with:
         github_token: ${{ secrets.github_token }}
         reporter: github-pr-review
 
-  crates:
-    strategy:
-      fail-fast: false
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@master
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests under crates
-      run: bash ci/run_test.sh
-
-  clippy_check:
+  fmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: rustfmt
+            override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          cmd: fmt
+          args: --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
             toolchain: nightly
@@ -63,15 +60,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
-  maple_binary:
+  crates:
+    name: Rust
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
-    runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
         path: |
@@ -79,23 +76,21 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Run tests under crates
+      run: bash ci/run_test.sh
     - name: Build maple
       run: cargo build --release
 
   python_dynamic_module:
+    name: Python Dynamic Module
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
 
-    runs-on: ubuntu-latest
-
     steps:
     - name: Checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@v2
     - name: Run Cargo test
       run: |
         cd pythonx/clap/fuzzymatch-rs
         cargo test --no-default-features
-    - name: Install Rustfmt
-      run: rustup component add rustfmt
-    - name: Check formatting
-      run: cargo fmt --all -- --check
