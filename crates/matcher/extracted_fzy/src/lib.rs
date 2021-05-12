@@ -55,7 +55,7 @@ pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<Ma
 /// ```
 #[inline]
 fn matches(needle: &str, haystack: &str) -> Option<usize> {
-    if needle.is_empty() || needle == haystack {
+    if needle.is_empty() {
         return Some(0);
     }
 
