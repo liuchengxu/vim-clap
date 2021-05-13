@@ -81,7 +81,7 @@ impl Match {
     }
 
     pub fn column(&self) -> usize {
-        self.submatches[0].start
+        self.submatches.get(0).map(|x| x.start).unwrap_or_default()
     }
 
     pub fn line(&self) -> String {
