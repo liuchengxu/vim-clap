@@ -165,7 +165,8 @@ endfunction
 
 function! s:matchlist(line, pattern) abort
   if s:icon_appended && a:line[3] ==# ' '
-    return matchlist(a:line, '^.* '.a:pattern)
+    " Strip the leading icon
+    return matchlist(a:line[4:], '^'.a:pattern)
   else
     return matchlist(a:line, '^'.a:pattern)
   endif
