@@ -735,9 +735,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.82"
+version = "0.2.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89203f3fba0a3795506acaad8ebce3c80c0af93f994d5a1d7a0b1eeb23271929"
+checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
 
 [[package]]
 name = "libgit2-sys"
@@ -827,7 +827,7 @@ version = "0.1.25"
 dependencies = [
  "built",
  "maple_cli",
- "tokio 1.5.0",
+ "tokio 1.6.0",
 ]
 
 [[package]]
@@ -856,7 +856,7 @@ dependencies = [
  "serde_json",
  "source_item",
  "structopt",
- "tokio 1.5.0",
+ "tokio 1.6.0",
  "upgrade",
  "utility",
 ]
@@ -1754,9 +1754,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.5.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83f0c8e7c0addab50b663055baf787d0af7f413a46e6e7fb9559a4e4db7137a5"
+checksum = "bd3076b5c8cc18138b8f8814895c11eb4de37114a5d127bafdc5e55798ceef37"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -1944,7 +1944,7 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "tokio 1.5.0",
+ "tokio 1.6.0",
 ]
 
 [[package]]
