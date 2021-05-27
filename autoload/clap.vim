@@ -311,6 +311,7 @@ function! s:parse_opts(args) abort
   for arg in a:args
     if arg ==# '--'
       let g:clap.context.query = join(a:args[idx+1 :], ' ')
+      let idx = len(a:args)
       break
     endif
     if arg =~? '^++\w*=\w*'
