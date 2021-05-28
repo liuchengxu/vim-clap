@@ -19,7 +19,7 @@ function! clap#floating_win#action#create() abort
 
   let s:lnum2key = {}
   let idx = 2
-  let max_line_len = 0
+  let max_line_len = strlen(title)
   for choice in choices
     let s:lnum2key[idx] = choice
     let str = substitute(choice, '&', '', '')
@@ -38,15 +38,17 @@ function! clap#floating_win#action#create() abort
 
   call setbufvar(buf,  '&filetype', 'clap_action')
 
-  let opts = nvim_win_get_config(g:clap.display.winid)
-  let opts.row += opts.height / 3
-  let opts.col += opts.width / 5
+  let display_opts = nvim_win_get_config(g:clap.display.winid)
+  let opts = {}
+  let opts.row = display_opts.row + display_opts.height / 3
+  let opts.col = display_opts.col + display_opts.width / 5
   let opts.style = 'minimal'
   let opts.relative = 'editor'
   let opts.height = len(lines)
-  let opts.width = max([opts.width * 3 / 5, max_line_len + 5])
+  let opts.width = max([display_opts.width * 3 / 5, max_line_len + 5])
   silent let s:action_winid = nvim_open_win(buf, v:true, opts)
 
+  noautocmd call win_gotoid(s:action_winid)
   call cursor(2, 6)
 
   let w:action_header_id = matchaddpos('Title', [1])

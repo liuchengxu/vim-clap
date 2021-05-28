@@ -5,6 +5,7 @@
 ### Fixed
 
 - Handle the non-utf8 line of rg's output properly. #673
+- [neovim] Fix the action dialog creation using floating_win. #688
 
 ### Perf
 
