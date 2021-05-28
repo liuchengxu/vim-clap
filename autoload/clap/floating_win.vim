@@ -328,7 +328,11 @@ function! s:get_config_preview(height) abort
   endif
   let opts.style = 'minimal'
   let opts.border = 'single'
-  let opts.height -= 2
+  if g:clap_preview_direction ==# 'UD'
+    let opts.width -= 2
+  else
+    let opts.height -= 2
+  endif
   return opts
 endfunction
 
