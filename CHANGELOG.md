@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Added
+
+- [neovim]Add border and zindex option. #693
+
 ### Fixed
 
 - Handle the non-utf8 line of rg's output properly. #673
