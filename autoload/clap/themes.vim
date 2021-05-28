@@ -193,6 +193,8 @@ function! clap#themes#init() abort
   hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapPopupCursor Type
 
+  hi default link FloatBorder ClapPreview
+
   if exists('g:clap_theme')
     " If anything is wrong, just use the default theme.
     if type(g:clap_theme) == v:t_string

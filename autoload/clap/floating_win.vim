@@ -144,6 +144,7 @@ function! s:get_config_spinner() abort
   let opts.width = clap#spinner#width()
   let opts.height = 1
   let opts.focusable = v:false
+  let opts.zindex = 1000
   return opts
 endfunction
 
@@ -194,6 +195,7 @@ function! s:get_config_input() abort
     let opts.width = 1
   endif
   let opts.focusable = v:true
+  let opts.zindex = 1000
   return opts
 endfunction
 
@@ -260,6 +262,7 @@ function! s:get_config_indicator() abort
   let opts.width = g:__clap_indicator_winwidth
   let opts.focusable = v:false
   let opts.style = 'minimal'
+  let opts.zindex = 1000
   return opts
 endfunction
 
@@ -324,6 +327,8 @@ function! s:get_config_preview(height) abort
     let opts.height = a:height
   endif
   let opts.style = 'minimal'
+  let opts.border = 'single'
+  let opts.height -= 2
   return opts
 endfunction
 
@@ -440,6 +445,8 @@ function! clap#floating_win#open() abort
   else
     let open_shadow_first = v:false
   endif
+  " This tricky issue has been resolved with the newly added zindex in neovim.
+  "
   " Indicator win must be opened before shadow win in some cases.
   " ref https://github.com/liuchengxu/vim-clap/issues/567#issuecomment-717554261
   call s:open_shadow_before_indicator_win(open_shadow_first)
