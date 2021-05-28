@@ -308,7 +308,12 @@ endif
 
 function! s:parse_opts(args) abort
   let idx = 0
+  let g:clap.provider.args = []
   for arg in a:args
+    if arg ==# '--'
+      let g:clap.context.query = join(a:args[idx+1 :], ' ')
+      break
+    endif
     if arg =~? '^++\w*=\w*'
       let matched = matchlist(arg, '^++\(\w*\)=\(\S*\)')
       let [k, v] = [matched[1], matched[2]]
@@ -321,7 +326,7 @@ function! s:parse_opts(args) abort
       let opt = arg[1:]
       let g:clap.context[opt] = v:true
     else
-      break
+      call add(g:clap.provider.args, arg)
     endif
     let idx += 1
   endfor
@@ -332,7 +337,6 @@ function! s:parse_opts(args) abort
       let g:clap.context.query = clap#util#expand(g:clap.context.query)
     endif
   endif
-  let g:clap.provider.args = a:args[idx :]
 endfunction
 
 function! clap#(bang, ...) abort

@@ -97,6 +97,11 @@ Supported Providers & Tools                                    *clap-support*
                          the git base directory or `getcwd()` . For example,
                          use `Clap grep ..` to grep from the parent directory.
 
+                         Use `Clap grep -- word1 word2..` to grep a complex
+			                   query, all text after -- would be treated as the query
+			                   text. You have to pass `++opt=[OPTION]` and `[DIR]`
+			                   before `--` if there is any of them.
+
 
                                                      *:Clap-help_tags*
 :Clap help_tags          List the help tags.
