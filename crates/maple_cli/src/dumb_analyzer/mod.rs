@@ -2,6 +2,8 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
+mod default_types;
+
 use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
@@ -21,21 +23,25 @@ static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<String, Vec<String>>> = OnceCell
 ///
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
 static LANGUAGE_EXT_TABLE: Lazy<HashMap<String, String>> = Lazy::new(|| {
-    vec![
-        ("clj", "clojure"),
-        ("cpp", "cpp"),
-        ("go", "go"),
-        ("java", "java"),
-        ("lua", "lua"),
-        ("py", "python"),
-        ("r", "r"),
-        ("rb", "ruby"),
-        ("rs", "rust"),
-        ("scala", "scala"),
-    ]
-    .into_iter()
-    .map(|(k, v)| (k.into(), v.into()))
-    .collect()
+    default_types::DEFAULT_TYPES
+        .iter()
+        .map(|(lang, values)| {
+            values
+                .iter()
+                .filter_map(|v| {
+                    v.split('.').last().and_then(|ext| {
+                        // Simply ignore the abnormal cases.
+                        if ext.contains('[') || ext.contains('*') {
+                            None
+                        } else {
+                            Some((ext.into(), String::from(*lang)))
+                        }
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .flatten()
+        .collect()
 });
 
 /// Finds the language given the file extension.
@@ -49,9 +55,10 @@ pub fn get_language_by_ext(ext: &str) -> Result<&str> {
 /// Map of file extension to the comment prefix.
 pub fn get_comments_by_ext(ext: &str) -> &[String] {
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
-        let comments: HashMap<String, Vec<String>> =
-            serde_json::from_str(include_str!("../../../scripts/dumb_jump/comments_map.json"))
-                .unwrap();
+        let comments: HashMap<String, Vec<String>> = serde_json::from_str(include_str!(
+            "../../../../scripts/dumb_jump/comments_map.json"
+        ))
+        .unwrap();
         comments
     });
 
@@ -195,7 +202,7 @@ impl DefinitionRules {
                 occurrences
                     .iter()
                     .filter(|r| !defs.contains(&r))
-                    .map(|line| line.build_jump_line("references", &word)),
+                    .map(|line| line.build_jump_line("refs", &word)),
             )
             .unzip();
 
@@ -280,7 +287,7 @@ impl LanguageDefinition {
         RG_PCRE2_REGEX_RULES
             .get_or_init(|| {
                 let rules: HashMap<String, DefinitionRules> = serde_json::from_str(include_str!(
-                    "../../../scripts/dumb_jump/rg_pcre2_regex.json"
+                    "../../../../scripts/dumb_jump/rg_pcre2_regex.json"
                 ))
                 .unwrap();
                 rules
@@ -386,4 +393,14 @@ async fn find_definition_matches_with_kind(
     collect_matches(command, dir, None)
         .await
         .map(|defs| (kind.clone(), defs))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ext_table() {
+        println!("{:?}", LANGUAGE_EXT_TABLE.clone());
+    }
 }
