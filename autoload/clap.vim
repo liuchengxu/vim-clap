@@ -85,7 +85,7 @@ let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
 
-let g:clap_popup_border = get(g:, 'clap_popup_border', 'rounded')
+let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 
 function! clap#builtin_providers() abort
   if !exists('s:builtin_providers')

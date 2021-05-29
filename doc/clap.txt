@@ -154,12 +154,11 @@ g:clap_popup_border                                        *g:clap_popup_border*
   Default: `'rounded'`
 
   This variable adds the border to the preview popup, avaliable border style:
-  `'rounded'`, `'sharp'`.
+
+  - Vim:` 'rounded'`, `'sharp'`
+  - NeoVim: `'single'`, `'double'`
 
   Set it to `'nil'` to disable the border.
-
-  NeoVim's floating_win is unsupported as it does not have a native
-  border option and the workaround is not good for clap's use case.
 
 
 g:clap_popup_move_manager                            *g:clap_popup_move_manager*
