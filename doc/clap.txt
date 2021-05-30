@@ -155,7 +155,7 @@ g:clap_popup_border                                        *g:clap_popup_border*
 
   This variable adds the border to the preview popup, avaliable border style:
 
-  - Vim:` 'rounded'`, `'sharp'`
+  - Vim: `'rounded'`, `'sharp'`
   - NeoVim: `'single'`, `'double'`
 
   Set it to `'nil'` to disable the border.
