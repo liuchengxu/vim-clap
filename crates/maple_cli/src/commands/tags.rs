@@ -12,7 +12,7 @@ use filter::{
 };
 
 use crate::app::Params;
-use crate::cmd::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
+use crate::commands::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
 use crate::tools::ctags::{ensure_has_json_support, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";

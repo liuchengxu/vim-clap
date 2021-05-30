@@ -13,7 +13,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
 use crate::tools::ripgrep::{Match, Word};
-use crate::{cmd::dumb_jump::Lines, process::AsyncCommand};
+use crate::{commands::dumb_jump::Lines, process::AsyncCommand};
 
 static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
 
