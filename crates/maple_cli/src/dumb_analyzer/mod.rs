@@ -289,12 +289,12 @@ pub struct LanguageDefinition;
 
 impl LanguageDefinition {
     pub fn get_rules(lang: &str) -> Result<&DefinitionRules> {
-        let extion_language_map: HashMap<&str, &str> =
-            [("js", "javascript")].iter().cloned().collect();
+        static EXTION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
+            Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
         match RG_PCRE2_REGEX_RULES.get(lang) {
             Some(rules) => Ok(rules),
-            None => extion_language_map
+            None => EXTION_LANGUAGE_MAP
                 .get(lang)
                 .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
                 .ok_or_else(|| {
