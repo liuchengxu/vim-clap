@@ -237,19 +237,24 @@ where
     Ok(cmd.output()?)
 }
 
-#[test]
-fn test_multi_byte_reading() {
-    let mut current_dir = std::env::current_dir().unwrap();
-    current_dir.push("test_673.txt");
-    let (lines, _hl_line) = read_preview_lines_impl(current_dir, 2, 5).unwrap();
-    assert_eq!(
-        lines,
-        [
-            "test_ddd",
-            "test_ddd    //1����ˤ��ϡ�����1",
-            "test_ddd    //2����ˤ��ϡ�����2",
-            "test_ddd    //3����ˤ��ϡ�����3",
-            "test_ddd    //hello"
-        ]
-    );
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_multi_byte_reading() {
+        let mut current_dir = std::env::current_dir().unwrap();
+        current_dir.push("test_673.txt");
+        let (lines, _hl_line) = read_preview_lines_impl(current_dir, 2, 5).unwrap();
+        assert_eq!(
+            lines,
+            [
+                "test_ddd",
+                "test_ddd    //1����ˤ��ϡ�����1",
+                "test_ddd    //2����ˤ��ϡ�����2",
+                "test_ddd    //3����ˤ��ϡ�����3",
+                "test_ddd    //hello"
+            ]
+        );
+    }
 }
