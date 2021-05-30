@@ -15,7 +15,12 @@ use serde::Deserialize;
 use crate::tools::ripgrep::{Match, Word};
 use crate::{commands::dumb_jump::Lines, process::AsyncCommand};
 
-static RG_PCRE2_REGEX_RULES: OnceCell<HashMap<String, DefinitionRules>> = OnceCell::new();
+static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
+    serde_json::from_str(include_str!(
+        "../../../../scripts/dumb_jump/rg_pcre2_regex.json"
+    ))
+    .unwrap()
+});
 
 static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<String, Vec<String>>> = OnceCell::new();
 
@@ -284,16 +289,21 @@ pub struct LanguageDefinition;
 
 impl LanguageDefinition {
     pub fn get_rules(lang: &str) -> Result<&DefinitionRules> {
-        RG_PCRE2_REGEX_RULES
-            .get_or_init(|| {
-                let rules: HashMap<String, DefinitionRules> = serde_json::from_str(include_str!(
-                    "../../../../scripts/dumb_jump/rg_pcre2_regex.json"
-                ))
-                .unwrap();
-                rules
-            })
-            .get(lang)
-            .ok_or_else(|| anyhow!("Language {} is unsupported in dumb analyzer", lang))
+        let extion_language_map: HashMap<&str, &str> =
+            [("js", "javascript")].iter().cloned().collect();
+
+        match RG_PCRE2_REGEX_RULES.get(lang) {
+            Some(rules) => Ok(rules),
+            None => extion_language_map
+                .get(lang)
+                .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
+                .ok_or_else(|| {
+                    anyhow!(
+                        "Language {} can not be found in dumb_jump/rg_pcre2_regex.json",
+                        lang
+                    )
+                }),
+        }
     }
 }
 
