@@ -7,18 +7,11 @@ use serde_json::json;
 use pattern::*;
 
 use crate::stdio_server::{
+    previewer::as_absolute_path,
     session::SessionContext,
     types::{Message, ProviderId},
     write_response,
 };
-
-#[inline]
-pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
-    std::fs::canonicalize(path.as_ref())?
-        .into_os_string()
-        .into_string()
-        .map_err(|e| anyhow!("{:?}, path:{}", e, path.as_ref().display()))
-}
 
 #[derive(Debug, Clone)]
 struct PreviewTag {
@@ -339,22 +332,7 @@ impl<'a> OnMoveHandler<'a> {
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
         let max_width = 2 * self.context.display_winwidth as usize;
-        lines.map(move |line| {
-            if line.len() > max_width {
-                let mut line = line;
-                // https://github.com/liuchengxu/vim-clap/pull/544#discussion_r506281014
-                line.truncate(
-                    (0..max_width + 1)
-                        .rev()
-                        .find(|idx| line.is_char_boundary(*idx))
-                        .unwrap(),
-                );
-                line.push_str("……");
-                line
-            } else {
-                line
-            }
-        })
+        crate::stdio_server::previewer::truncate_preview_lines(max_width, lines)
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {

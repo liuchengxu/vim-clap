@@ -86,6 +86,13 @@ impl Message {
         self._get_string_unsafe(key)
     }
 
+    pub fn get_u64(&self, key: &str) -> anyhow::Result<u64> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_u64())
+            .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+
     fn _get_string_unsafe(&self, key: &str) -> String {
         self.params
             .get(key)
