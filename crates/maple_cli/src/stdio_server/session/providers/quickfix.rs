@@ -42,7 +42,7 @@ async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
         })
     };
 
-    write_response(serde_json::json!({
+    write_response(json!({
             "id": msg.id,
             "provider_id": "quickfix",
             "result": result
