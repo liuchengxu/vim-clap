@@ -166,19 +166,32 @@ impl DefinitionRules {
         Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
     }
 
+    async fn get_occurences_and_definitions(
+        word: Word,
+        lang: &str,
+        dir: &Option<PathBuf>,
+        comments: &[String],
+    ) -> (Vec<Match>, Vec<(DefinitionKind, Vec<Match>)>) {
+        let (occurrences, definitions) = futures::future::join(
+            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
+            Self::all_definitions(lang, word, dir),
+        )
+        .await;
+
+        (
+            occurrences.unwrap_or_default(),
+            definitions.unwrap_or_default(),
+        )
+    }
+
     pub async fn definitions_and_references_lines(
         lang: &str,
         word: Word,
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<Lines> {
-        let (occurrences, definitions) = futures::future::join(
-            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
-            Self::all_definitions(lang, word.clone(), dir),
-        )
-        .await;
-
-        let (occurrences, definitions) = (occurrences?, definitions?);
+        let (occurrences, definitions) =
+            Self::get_occurences_and_definitions(word.clone(), lang, dir, comments).await;
 
         let defs = definitions
             .iter()
@@ -229,17 +242,8 @@ impl DefinitionRules {
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-        let (occurrences, definitions) = futures::future::join(
-            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
-            Self::all_definitions(lang, word.clone(), dir),
-        )
-        .await;
-
-        // FIXME: Regression: langauge vimscript?
-        let (occurrences, definitions) = (
-            occurrences.unwrap_or_default(),
-            definitions.unwrap_or_default(),
-        );
+        let (occurrences, definitions) =
+            Self::get_occurences_and_definitions(word.clone(), lang, dir, comments).await;
 
         let defs = definitions
             .clone()
