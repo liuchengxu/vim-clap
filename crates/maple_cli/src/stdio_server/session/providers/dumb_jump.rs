@@ -1,7 +1,7 @@
 use log::{debug, error};
 use serde_json::json;
 
-use crate::cmd::dumb_jump::{DumbJump, Lines};
+use crate::commands::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{write_response, Message};
 
 pub fn handle_dumb_jump_message(msg: Message) {

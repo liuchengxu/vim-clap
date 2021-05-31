@@ -131,51 +131,56 @@ fn fuzzymatch_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
-#[test]
-fn py_and_rs_subscore_should_work() {
-    use filter::matcher::substring::substr_indices as substr_scorer;
-    use pyo3::{prelude::*, types::PyModule};
-    use std::fs;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let cur_dir = std::env::current_dir().unwrap();
-    let py_path = cur_dir.parent().unwrap().join("scorer.py");
-    let py_source_code = fs::read_to_string(py_path).unwrap();
+    #[test]
+    fn py_and_rs_subscore_should_work() {
+        use filter::matcher::substring::substr_indices as substr_scorer;
+        use pyo3::{prelude::*, types::PyModule};
+        use std::fs;
 
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let py_scorer = PyModule::from_code(py, &py_source_code, "scorer.py", "scorer").unwrap();
+        let cur_dir = std::env::current_dir().unwrap();
+        let py_path = cur_dir.parent().unwrap().join("scorer.py");
+        let py_source_code = fs::read_to_string(py_path).unwrap();
 
-    let test_cases = vec![
-        ("su ou", "substr_scorer_should_work"),
-        ("su ork", "substr_scorer_should_work"),
-    ];
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let py_scorer = PyModule::from_code(py, &py_source_code, "scorer.py", "scorer").unwrap();
 
-    for (niddle, haystack) in test_cases.into_iter() {
-        let py_result: (i64, Vec<usize>) = py_scorer
-            .call1("substr_scorer", (niddle, haystack))
-            .unwrap()
-            .extract()
-            .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
-            .unwrap();
-        let rs_result = substr_scorer(haystack, niddle).unwrap();
-        assert_eq!(py_result, rs_result);
+        let test_cases = vec![
+            ("su ou", "substr_scorer_should_work"),
+            ("su ork", "substr_scorer_should_work"),
+        ];
+
+        for (niddle, haystack) in test_cases.into_iter() {
+            let py_result: (i64, Vec<usize>) = py_scorer
+                .call1("substr_scorer", (niddle, haystack))
+                .unwrap()
+                .extract()
+                .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
+                .unwrap();
+            let rs_result = substr_scorer(haystack, niddle).unwrap();
+            assert_eq!(py_result, rs_result);
+        }
     }
-}
 
-#[test]
-fn test_skip_icon() {
-    let lines = vec![" .dependabot/config.yml".into(), " .editorconfig".into()];
-    let query = "con";
+    #[test]
+    fn test_skip_icon() {
+        let lines = vec![" .dependabot/config.yml".into(), " .editorconfig".into()];
+        let query = "con";
 
-    let context: HashMap<String, String> = vec![
-        ("winwidth", "62"),
-        ("enable_icon", "True"),
-        ("match_type", "Full"),
-        ("bonus_type", "FileName"),
-    ]
-    .into_iter()
-    .map(|(x, y)| (x.into(), y.into()))
-    .collect();
+        let context: HashMap<String, String> = vec![
+            ("winwidth", "62"),
+            ("enable_icon", "True"),
+            ("match_type", "Full"),
+            ("bonus_type", "FileName"),
+        ]
+        .into_iter()
+        .map(|(x, y)| (x.into(), y.into()))
+        .collect();
 
-    println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context));
+        println!("ret: {:#?}", fuzzy_match(query, lines, vec![], context));
+    }
 }
