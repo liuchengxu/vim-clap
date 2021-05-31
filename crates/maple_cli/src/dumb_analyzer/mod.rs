@@ -235,7 +235,11 @@ impl DefinitionRules {
         )
         .await;
 
-        let (occurrences, definitions) = (occurrences?, definitions?);
+        // FIXME: Regression: langauge vimscript?
+        let (occurrences, definitions) = (
+            occurrences.unwrap_or_default(),
+            definitions.unwrap_or_default(),
+        );
 
         let defs = definitions
             .clone()
