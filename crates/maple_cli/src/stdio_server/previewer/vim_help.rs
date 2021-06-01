@@ -14,7 +14,7 @@ fn find_tag_line(p: &Path, subject: &str) -> Option<usize> {
     if let Ok(doc_lines) = utility::read_lines(p) {
         for (idx, doc_line) in doc_lines.enumerate() {
             if let Ok(d_line) = doc_line {
-                if d_line.trim().contains(&format!("*{}*", subject)) {
+                if d_line.trim().contains(subject) {
                     return Some(idx);
                 }
             }
@@ -33,10 +33,11 @@ impl<'a> HelpTagPreview<'a> {
     }
 
     pub fn get_help_lines(&self, size: usize) -> Option<(String, Vec<String>)> {
+        let target_tag = format!("*{}*", self.subject);
         for r in self.runtimepath.split(',') {
             let p = Path::new(r).join("doc").join(&self.doc_filename);
             if p.exists() {
-                if let Some(line_number) = find_tag_line(&p, &self.subject) {
+                if let Some(line_number) = find_tag_line(&p, &target_tag) {
                     if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, size) {
                         return Some((format!("{}", p.display()), lines_iter.collect()));
                     }
