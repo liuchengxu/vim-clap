@@ -1,3 +1,5 @@
+pub mod vim_help;
+
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
@@ -38,14 +40,18 @@ pub fn truncate_preview_lines(
     })
 }
 
-pub fn preview_file<P: AsRef<Path>>(path: P, size: usize, max_width: usize) -> Result<Vec<String>> {
+pub fn preview_file<P: AsRef<Path>>(
+    path: P,
+    size: usize,
+    max_width: usize,
+) -> Result<(Vec<String>, String)> {
     let abs_path = as_absolute_path(path.as_ref())?;
     let lines_iter = read_first_lines(path.as_ref(), size)?;
-    let lines = std::iter::once(abs_path)
+    let lines = std::iter::once(abs_path.clone())
         .chain(truncate_preview_lines(max_width, lines_iter))
         .collect::<Vec<_>>();
 
-    Ok(lines)
+    Ok((lines, abs_path))
 }
 
 pub fn preview_file_at<P: AsRef<Path>>(

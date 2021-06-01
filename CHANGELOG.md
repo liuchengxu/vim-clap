@@ -5,6 +5,7 @@
 ### Added
 
 - [neovim] Add zindex option to fix the tricky floating_win overlapping, and add border for the preview window, use `let g:clap_popup_border = 'nil'` to disable the order. #693
+- Impl preview for `quickfix` provider. #691
 
 ### Fixed
 
