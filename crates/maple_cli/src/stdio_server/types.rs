@@ -89,12 +89,15 @@ impl Message {
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 
-    pub fn get_string(&self, key: &str) -> anyhow::Result<String> {
+    pub fn get_str(&self, key: &str) -> anyhow::Result<&str> {
         self.params
             .get(key)
             .and_then(|x| x.as_str())
-            .map(Into::into)
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+
+    pub fn get_string(&self, key: &str) -> anyhow::Result<String> {
+        self.get_str(key).map(Into::into)
     }
 
     pub fn get_string_unsafe(&self, key: &str) -> String {
