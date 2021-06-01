@@ -6,6 +6,9 @@ use anyhow::Result;
 
 use self::std::StdCommand;
 
+/// Converts [`std::process::Output`] to a Vec of String.
+///
+/// Remove the last line if it's empty.
 pub fn process_output(output: ::std::process::Output) -> Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
         return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
@@ -13,16 +16,17 @@ pub fn process_output(output: ::std::process::Output) -> Result<Vec<String>> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    let mut output_lines = stdout.split('\n').map(Into::into).collect::<Vec<String>>();
+    let mut lines = stdout.split('\n').map(Into::into).collect::<Vec<String>>();
 
     // Remove the last empty line.
-    if output_lines.last().map(|s| s.is_empty()).unwrap_or(false) {
-        output_lines.pop();
+    if lines.last().map(|s| s.is_empty()).unwrap_or(false) {
+        lines.pop();
     }
 
-    Ok(output_lines)
+    Ok(lines)
 }
 
+/// Wrapper type of `StdCommand`.
 #[derive(Debug)]
 pub struct AsyncCommand(StdCommand);
 

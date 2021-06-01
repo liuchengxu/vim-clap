@@ -6,6 +6,7 @@ use anyhow::Result;
 use crate::stdio_server::{types::ProviderId, Message};
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
+
 const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 
 #[derive(Debug, Clone)]
@@ -22,7 +23,7 @@ pub struct SessionContext {
 }
 
 impl SessionContext {
-    // Executes the command `cmd` and returns the raw bytes of stdout.
+    /// Executes the command `cmd` and returns the raw bytes of stdout.
     pub fn execute(&self, cmd: &str) -> Result<Vec<u8>> {
         let out = utility::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)

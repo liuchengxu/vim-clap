@@ -54,7 +54,6 @@ impl Message {
         self.get_string_unsafe("provider_id").into()
     }
 
-    #[allow(dead_code)]
     pub fn get_query(&self) -> String {
         self.get_string_unsafe("query")
     }
@@ -67,7 +66,7 @@ impl Message {
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
         let display_curline = self.get_string("curline")?;
 
-        let curline = if let Ok(enable_icon) = self._get_bool("enable_icon") {
+        let curline = if let Ok(enable_icon) = self.get_bool("enable_icon") {
             if enable_icon {
                 display_curline.chars().skip(2).collect()
             } else {
@@ -105,7 +104,7 @@ impl Message {
             .unwrap_or_else(|e| panic!("Get String error: {:?}", e))
     }
 
-    fn _get_bool(&self, key: &str) -> anyhow::Result<bool> {
+    pub fn get_bool(&self, key: &str) -> anyhow::Result<bool> {
         self.params
             .get(key)
             .and_then(|x| x.as_bool())
