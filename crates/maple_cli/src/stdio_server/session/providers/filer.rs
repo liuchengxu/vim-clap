@@ -85,7 +85,9 @@ impl EventHandler for FilerMessageHandler {
         match event {
             Event::OnMove(msg) => {
                 let provider_id = context.provider_id.clone();
-                let curline = msg.get_curline(&provider_id).unwrap();
+                let curline = msg
+                    .get_curline(&provider_id)
+                    .unwrap_or_else(|e| panic!("{}", e));
                 let path = build_abs_path(&msg.get_cwd(), curline);
                 let on_move_handler = OnMoveHandler {
                     msg_id: msg.id,
@@ -98,7 +100,7 @@ impl EventHandler for FilerMessageHandler {
                     inner: OnMove::Filer(path.clone()),
                 };
                 if let Err(err) = on_move_handler.handle() {
-                    let error = json!({"message": format!("{}", err), "dir": path});
+                    let error = json!({"message": err.to_string(), "dir": path});
                     let res = json!({ "id": msg.id, "provider_id": "filer", "error": error });
                     write_response(res);
                 }
