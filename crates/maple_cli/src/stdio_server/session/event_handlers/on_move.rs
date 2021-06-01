@@ -7,56 +7,12 @@ use serde_json::json;
 use pattern::*;
 
 use crate::stdio_server::{
-    previewer::as_absolute_path,
+    filer, global,
+    previewer::{self, vim_help::HelpTagPreview},
     session::SessionContext,
     types::{Message, ProviderId},
     write_response,
 };
-
-#[derive(Debug, Clone)]
-struct PreviewTag {
-    subject: String,
-    doc_filename: String,
-    runtimepath: String,
-}
-
-fn find_tag_line(p: &Path, subject: &str) -> Option<usize> {
-    if let Ok(doc_lines) = utility::read_lines(p) {
-        for (idx, doc_line) in doc_lines.enumerate() {
-            if let Ok(d_line) = doc_line {
-                if d_line.trim().contains(&format!("*{}*", subject)) {
-                    return Some(idx);
-                }
-            }
-        }
-    }
-    None
-}
-
-impl PreviewTag {
-    pub fn new(subject: String, doc_filename: String, runtimepath: String) -> Self {
-        Self {
-            subject,
-            doc_filename,
-            runtimepath,
-        }
-    }
-
-    pub fn get_help_lines(&self, size: usize) -> Option<(String, Vec<String>)> {
-        for r in self.runtimepath.split(',') {
-            let p = Path::new(r).join("doc").join(&self.doc_filename);
-            if p.exists() {
-                if let Some(line_number) = find_tag_line(&p, &self.subject) {
-                    if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, size) {
-                        return Some((format!("{}", p.display()), lines_iter.collect()));
-                    }
-                }
-            }
-        }
-
-        None
-    }
-}
 
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]
@@ -272,7 +228,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) {
-        let preview_tag = PreviewTag::new(subject.into(), doc_filename.into(), runtimepath.into());
+        let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
         if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
             let lines = std::iter::once(fname.clone())
                 .chain(lines.into_iter())
@@ -331,28 +287,27 @@ impl<'a> OnMoveHandler<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        let max_width = 2 * self.context.display_winwidth as usize;
-        crate::stdio_server::previewer::truncate_preview_lines(max_width, lines)
+        previewer::truncate_preview_lines(self.max_width(), lines)
+    }
+
+    /// Returns the maximum line width.
+    fn max_width(&self) -> usize {
+        2 * self.context.display_winwidth as usize
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let abs_path = as_absolute_path(path.as_ref())?;
-        let lines_iter = utility::read_first_lines(path.as_ref(), 2 * self.size)?;
-        let lines = std::iter::once(abs_path.clone())
-            .chain(self.truncate_preview_lines(lines_iter))
-            .collect::<Vec<_>>();
+        let (lines, fname) = previewer::preview_file(path, 2 * self.size, self.max_width())?;
         self.send_response(json!({
           "event": "on_move",
           "lines": lines,
-          "fname": abs_path
+          "fname": fname
         }));
         Ok(())
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let enable_icon = crate::stdio_server::global().enable_icon;
-        let lines =
-            crate::stdio_server::filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let enable_icon = global().enable_icon;
+        let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({
           "event": "on_move",
           "lines": lines,

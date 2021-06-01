@@ -25,7 +25,7 @@ async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
 
     let result = if lnum == 0 {
         let size = (winheight + 5) as usize;
-        let lines = preview_file(fpath.as_path(), size, winwidth as usize)?;
+        let (lines, _) = preview_file(fpath.as_path(), size, winwidth as usize)?;
         json!({
           "event": "on_move",
           "lines": lines,
