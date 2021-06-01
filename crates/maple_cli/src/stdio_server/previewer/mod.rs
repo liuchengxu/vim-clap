@@ -30,7 +30,7 @@ pub fn truncate_preview_lines(
                 (0..max_width + 1)
                     .rev()
                     .find(|idx| line.is_char_boundary(*idx))
-                    .unwrap(),
+                    .unwrap_or_default(), // truncate to 0
             );
             line.push_str("……");
             line
