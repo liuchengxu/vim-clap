@@ -8,7 +8,8 @@ let s:path_seperator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
 function! s:peek_file(fname, fpath) abort
-  let lines = readfile(a:fpath, '', 2 * s:default_size)
+  let size = max([2 * s:default_size, winheight(g:clap.preview.winid)])
+  let lines = readfile(a:fpath, '', size)
   call insert(lines, a:fpath)
   call g:clap.preview.show(lines)
   call g:clap.preview.set_syntax(clap#ext#into_filetype(a:fname))
