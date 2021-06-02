@@ -43,6 +43,25 @@ function! s:quickfix.sink(selected) abort
   noautocmd call cursor(lnum, column)
 endfunction
 
+function! s:quickfix.on_move() abort
+  let [fpath, lnum, column] = s:extract_position(g:clap.display.getcurline())
+
+  if lnum == 0 || column == 0
+    call clap#preview#file(fpath)
+  else
+    call clap#preview#file_at(fpath, lnum)
+  endif
+endfunction
+
+function! s:quickfix.on_move_async() abort
+  call clap#client#call('quickfix', function('clap#impl#on_move#handler'), {
+        \ 'curline': g:clap.display.getcurline(),
+        \ 'cwd': clap#rooter#working_dir(),
+        \ 'winwidth': winwidth(g:clap.display.winid),
+        \ 'winheight': winheight(g:clap.display.winid),
+        \ })
+endfunction
+
 let s:quickfix.syntax = 'qf'
 let g:clap#provider#quickfix# = s:quickfix
 

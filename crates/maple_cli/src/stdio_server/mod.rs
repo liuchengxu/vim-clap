@@ -1,3 +1,4 @@
+mod previewer;
 mod session;
 mod types;
 
@@ -10,12 +11,12 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
 
-use session::{
+use self::session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, GeneralSession, Manager, SessionEvent,
+    message_handlers, quickfix, GeneralSession, Manager, SessionEvent,
 };
-use types::{GlobalEnv, Message};
+use self::types::{GlobalEnv, Message};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -94,6 +95,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "filer" => filer::handle_filer_message(msg),
+                "quickfix" => quickfix::preview_quickfix_entry(msg),
                 "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),

@@ -8,7 +8,7 @@ use crate::stdio_server::{types::Message, write_response};
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");
-    let ext_map: HashMap<String, String> = output
+    let ext_map: HashMap<&str, &str> = output
         .split('\n')
         .filter(|s| s.contains("setf"))
         .filter_map(|s| {
@@ -22,7 +22,7 @@ pub fn parse_filetypedetect(msg: Message) {
             }
         })
         .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim")].into_iter())
-        .map(|(ext, ft)| (ext.into(), ft.into()))
+        .map(|(ext, ft)| (ext, ft))
         .collect();
 
     let result =

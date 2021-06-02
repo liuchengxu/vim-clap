@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
-use super::*;
-use crate::stdio_server::types::ProviderId;
+use anyhow::Result;
+
+use crate::stdio_server::{types::ProviderId, Message};
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
+
 const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 
 #[derive(Debug, Clone)]
@@ -21,7 +23,7 @@ pub struct SessionContext {
 }
 
 impl SessionContext {
-    // Executes the command `cmd` and returns the raw bytes of stdout.
+    /// Executes the command `cmd` and returns the raw bytes of stdout.
     pub fn execute(&self, cmd: &str) -> Result<Vec<u8>> {
         let out = utility::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
@@ -35,33 +37,21 @@ impl From<Message> for SessionContext {
 
         let cwd = msg.get_cwd().into();
 
-        let runtimepath = msg
-            .params
-            .get("runtimepath")
-            .and_then(|x| x.as_str().map(Into::into));
-
-        let source_cmd = msg
-            .params
-            .get("source_cmd")
-            .and_then(|x| x.as_str().map(Into::into));
+        let runtimepath = msg.get_str("runtimepath").map(Into::into).ok();
+        let source_cmd = msg.get_str("source_cmd").map(Into::into).ok();
 
         let display_winwidth = msg
-            .params
-            .get("display_winwidth")
-            .and_then(|x| x.as_u64())
+            .get_u64("display_winwidth")
             .unwrap_or(DEFAULT_DISPLAY_WINWIDTH);
+
         let preview_winheight = msg
-            .params
-            .get("preview_winheight")
-            .and_then(|x| x.as_u64())
+            .get_u64("preview_winheight")
             .unwrap_or(DEFAULT_PREVIEW_WINHEIGHT);
 
         let start_buffer_path = msg
-            .params
-            .get("source_fpath")
-            .and_then(|x| x.as_str())
-            .unwrap_or_else(|| panic!("Missing source_fpath"))
-            .into();
+            .get_str("source_fpath")
+            .map(Into::into)
+            .unwrap_or_else(|e| panic!("{}", e));
 
         Self {
             provider_id,

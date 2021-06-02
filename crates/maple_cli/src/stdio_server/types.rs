@@ -54,7 +54,6 @@ impl Message {
         self.get_string_unsafe("provider_id").into()
     }
 
-    #[allow(dead_code)]
     pub fn get_query(&self) -> String {
         self.get_string_unsafe("query")
     }
@@ -65,9 +64,9 @@ impl Message {
 
     /// Get the current line of display window without the leading icon.
     pub fn get_curline(&self, provider_id: &ProviderId) -> anyhow::Result<String> {
-        let display_curline = self._get_string("curline")?;
+        let display_curline = self.get_string("curline")?;
 
-        let curline = if let Ok(enable_icon) = self._get_bool("enable_icon") {
+        let curline = if let Ok(enable_icon) = self.get_bool("enable_icon") {
             if enable_icon {
                 display_curline.chars().skip(2).collect()
             } else {
@@ -82,30 +81,33 @@ impl Message {
         Ok(curline)
     }
 
-    pub fn get_string_unsafe(&self, key: &str) -> String {
-        self._get_string_unsafe(key)
-    }
-
-    fn _get_string_unsafe(&self, key: &str) -> String {
+    pub fn get_u64(&self, key: &str) -> anyhow::Result<u64> {
         self.params
             .get(key)
-            .and_then(|x| x.as_str())
-            .map(Into::into)
-            .unwrap_or_else(|| panic!("Missing {} in msg.params", key))
-    }
-
-    fn _get_bool(&self, key: &str) -> anyhow::Result<bool> {
-        self.params
-            .get(key)
-            .and_then(|x| x.as_bool())
+            .and_then(|x| x.as_u64())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 
-    fn _get_string(&self, key: &str) -> anyhow::Result<String> {
+    pub fn get_str(&self, key: &str) -> anyhow::Result<&str> {
         self.params
             .get(key)
             .and_then(|x| x.as_str())
-            .map(Into::into)
+            .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+
+    pub fn get_string(&self, key: &str) -> anyhow::Result<String> {
+        self.get_str(key).map(Into::into)
+    }
+
+    pub fn get_string_unsafe(&self, key: &str) -> String {
+        self.get_string(key)
+            .unwrap_or_else(|e| panic!("Get String error: {:?}", e))
+    }
+
+    pub fn get_bool(&self, key: &str) -> anyhow::Result<bool> {
+        self.params
+            .get(key)
+            .and_then(|x| x.as_bool())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 }
