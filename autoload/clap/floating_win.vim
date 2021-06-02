@@ -179,7 +179,7 @@ function! g:clap#floating_win#spinner.shrink() abort
 
       let opts = nvim_win_get_config(s:spinner_winid)
       let opts.col += opts.width
-      let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth
+      let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - s:indicator_width
       if opts.width < 0
         let opts.width = 1
       endif
@@ -192,7 +192,7 @@ endfunction
 function! s:get_config_input() abort
   let opts = nvim_win_get_config(s:spinner_winid)
   let opts.col += opts.width
-  let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - g:__clap_indicator_winwidth
+  let opts.width = s:display_opts.width - opts.width - s:symbol_width * 2 - s:indicator_width
   " E5555: API call: 'width' key must be a positive Integer
   " Avoid E5555 here and it seems to be fine later.
   if opts.width < 0
@@ -265,7 +265,7 @@ endfunction
 function! s:get_config_indicator() abort
   let opts = nvim_win_get_config(s:input_winid)
   let opts.col += opts.width
-  let opts.width = g:__clap_indicator_winwidth
+  let opts.width = s:indicator_width
   let opts.focusable = v:false
   let opts.style = 'minimal'
   if s:has_nvim_0_5
@@ -443,6 +443,8 @@ function! clap#floating_win#open() abort
 
   let s:save_winheight = &winheight
   let &winheight = 1
+
+  let s:indicator_width = clap#layout#indicator_width()
 
   " The order matters.
   call g:clap#floating_win#display.open()

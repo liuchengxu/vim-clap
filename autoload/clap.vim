@@ -51,8 +51,6 @@ let g:clap_disable_optional_async = get(g:, 'clap_disable_optional_async', v:fal
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 
-let g:__clap_indicator_winwidth = 18
-
 let s:default_symbols = {
       \ 'arrow' : ["\ue0b2", "\ue0b0"],
       \ 'curve' : ["\ue0b6", "\ue0b4"],
