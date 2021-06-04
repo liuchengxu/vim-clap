@@ -9,8 +9,7 @@ let s:grep_blink = get(g:, 'clap_provider_grep_blink', [2, 100])
 let s:grep_opts = get(g:, 'clap_provider_grep_opts', '-H --no-heading --vimgrep --smart-case --color=never')
 let s:grep_executable = get(g:, 'clap_provider_grep_executable', 'rg')
 let s:grep_cmd_format = get(g:, 'clap_provider_grep_cmd_format', '%s %s "%s"'.(has('win32') ? ' .' : ''))
-let g:clap_provider_grep_enable_icon = get(g:, 'clap_provider_grep_enable_icon',
-        \ exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
+let g:clap_provider_grep_enable_icon = get(g:, 'clap_provider_grep_enable_icon', g:clap_enable_icon)
 let s:grep_enable_icon = g:clap_provider_grep_enable_icon
 
 let s:old_query = ''

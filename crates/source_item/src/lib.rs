@@ -82,8 +82,8 @@ impl SourceItem {
     ) -> Self {
         Self {
             raw,
-            display_text,
             match_text,
+            display_text,
         }
     }
 
