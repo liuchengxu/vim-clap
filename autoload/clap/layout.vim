@@ -65,7 +65,11 @@ endfunction
 
 function! s:layout() abort
   if !exists('s:layout')
-    let s:layout = extend(copy(s:default_layout), g:clap_layout)
+    if exists('g:clap_layout')
+      let s:layout = extend(copy(s:default_layout), g:clap_layout)
+    else
+      let s:layout = s:default_layout
+    endif
   endif
   return s:layout
 endfunction
