@@ -23,6 +23,11 @@ let s:palette.current_selection = { 'ctermbg': '231', 'guibg': '#fafafa', 'cterm
 let s:palette.selected_sign = { 'ctermfg': '167', 'guifg': '#e45649' } " red
 let s:palette.current_selection_sign = s:palette.selected_sign
 
+" blue
+let g:clap_fuzzy_match_hl_groups = [
+  \ ['75', '#61afef'],
+\ ]
+
 let g:clap#themes#onehalflight#palette = s:palette
 
 let &cpoptions = s:save_cpo
