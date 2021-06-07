@@ -148,6 +148,15 @@ function! clap#preview#async_open_with_delay() abort
   let s:preview_timer = timer_start(s:preview_delay, { -> clap#impl#on_move#invoke_async()})
 endfunction
 
+function! clap#preview#maple_opts(extra) abort
+  let opts = {
+        \ 'fpath': fnamemodify(fnameescape(g:clap.display.getcurline()), ':p'),
+        \ 'preview_width': winwidth(g:clap.preview.winid),
+        \ 'preview_height': winheight(g:clap.preview.winid),
+        \ }
+  return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
+endfunction
+
 if has('nvim')
   let s:header_ns_id = nvim_create_namespace('clap_preview_header')
   " Sometimes the first line of preview window is used for the header.
