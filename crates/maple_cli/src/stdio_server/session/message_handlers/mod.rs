@@ -33,11 +33,11 @@ pub fn parse_filetypedetect(msg: Message) {
 }
 
 async fn preview_file_impl(msg: Message) -> Result<()> {
-    let fpath = msg.get_string_unsafe("fpath");
-    let size = 20;
-    let max_width = 80;
+    let fpath = msg.get_string("fpath")?;
+    let winwidth = msg.get_u64("preview_width")?;
+    let winheight = msg.get_u64("preview_height")?;
 
-    let (lines, fname) = previewer::preview_file(fpath, 2 * size, max_width)?;
+    let (lines, fname) = previewer::preview_file(fpath, winheight as usize, winwidth as usize)?;
 
     let result = json!({"id": msg.id, "result": json!({"lines": lines, "fname": fname})});
 
