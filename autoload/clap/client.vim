@@ -12,8 +12,8 @@ function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
-    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
-    call remove(s:handlers, decoded.id)
+    let Handler = remove(s:handlers, decoded.id)
+    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
 
@@ -23,8 +23,8 @@ function! clap#client#handle(msg) abort
   endif
 
   if has_key(s:handlers, decoded.id)
-    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
-    call remove(s:handlers, decoded.id)
+    let Handler = remove(s:handlers, decoded.id)
+    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
 endfunction
