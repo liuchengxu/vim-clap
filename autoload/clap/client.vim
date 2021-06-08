@@ -71,6 +71,10 @@ function! clap#client#call_on_move(method, callback, ...) abort
   call clap#client#call(a:method, a:callback, params)
 endfunction
 
+function! clap#client#call_preview_file(extra) abort
+  call clap#client#call("preview/file", function("clap#impl#on_move#handler"), clap#preview#maple_opts(a:extra))
+endfunction
+
 function! clap#client#notify(method, params) abort
   let s:req_id += 1
   call clap#job#daemon#send_message(json_encode({
