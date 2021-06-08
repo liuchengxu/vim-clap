@@ -72,7 +72,7 @@ function! clap#client#call_on_move(method, callback, ...) abort
 endfunction
 
 function! clap#client#call_preview_file(extra) abort
-  call clap#client#call("preview/file", function("clap#impl#on_move#handler"), clap#preview#maple_opts(a:extra))
+  call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction
 
 function! clap#client#notify(method, params) abort
