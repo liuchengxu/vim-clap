@@ -7,15 +7,8 @@ pub struct RecentFiles(Vec<String>);
 
 impl RecentFiles {
     pub fn calc_bonus(&self, item: &SourceItem, base_score: Score) -> Score {
-        if let Err(bonus) = self.0.iter().try_for_each(|s| {
-            if s.contains(&item.raw) {
-                let bonus = base_score / 3;
-                Err(bonus)
-            } else {
-                Ok(())
-            }
-        }) {
-            bonus
+        if self.0.iter().any(|s| s.contains(&item.raw)) {
+            base_score / 3
         } else {
             0
         }
