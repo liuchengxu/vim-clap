@@ -131,6 +131,7 @@ let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call cla
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
 let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
+let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
 let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
@@ -146,7 +147,6 @@ let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
 let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
-let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)

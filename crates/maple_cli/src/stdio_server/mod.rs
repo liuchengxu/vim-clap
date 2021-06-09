@@ -95,6 +95,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "preview/file" => message_handlers::preview_file(msg),
+                "recent_files" => message_handlers::note_recent_file(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
                 "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),

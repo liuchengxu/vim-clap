@@ -63,6 +63,10 @@ function! clap#init#() abort
   " Spawn the daemon process eagerly
   if clap#maple#is_available()
     call clap#job#daemon#start(function('clap#client#handle'))
+    augroup ClapRecentFiles
+      autocmd!
+      autocmd BufAdd,BufEnter,BufWritePost * call clap#client#call('recent_files', v:null, {'file': expand(expand('<afile>:p'))})
+    augroup END
   endif
 endfunction
 

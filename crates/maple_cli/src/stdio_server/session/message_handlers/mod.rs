@@ -1,11 +1,15 @@
 //! Processes the RPC message directly.
 
+mod recent_files;
+
 use std::collections::HashMap;
 
 use anyhow::Result;
 use serde_json::json;
 
 use crate::stdio_server::{previewer, types::Message, write_response};
+
+pub use recent_files::note_recent_file;
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");
