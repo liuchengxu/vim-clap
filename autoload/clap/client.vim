@@ -12,8 +12,8 @@ function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
-    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
-    call remove(s:handlers, decoded.id)
+    let Handler = remove(s:handlers, decoded.id)
+    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
 
@@ -23,8 +23,8 @@ function! clap#client#handle(msg) abort
   endif
 
   if has_key(s:handlers, decoded.id)
-    call s:handlers[decoded.id](get(decoded, 'result', v:null), get(decoded, 'error', v:null))
-    call remove(s:handlers, decoded.id)
+    let Handler = remove(s:handlers, decoded.id)
+    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
 endfunction
@@ -69,6 +69,10 @@ function! clap#client#call_on_move(method, callback, ...) abort
     call extend(params, a:1)
   endif
   call clap#client#call(a:method, a:callback, params)
+endfunction
+
+function! clap#client#call_preview_file(extra) abort
+  call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction
 
 function! clap#client#notify(method, params) abort
