@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::io::Write;
-use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
@@ -114,10 +113,26 @@ impl Default for SortedRecentFiles {
 
 impl Drop for SortedRecentFiles {
     fn drop(&mut self) {
+        log::debug!("------------ calling Drop for SortedRecentFiles");
         if let Err(e) = self.write_to_disk() {
             log::error!("Error when writing MRU back to the disk: {}", e);
         }
     }
+}
+
+fn persistent_recent_files_path() -> Result<PathBuf> {
+    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
+        let data_dir = proj_dirs.data_dir();
+        std::fs::create_dir_all(data_dir)?;
+        log::debug!("data_dir: {:?}", data_dir);
+
+        let mut recent_files_json = data_dir.to_path_buf();
+        recent_files_json.push("recent_files.json");
+
+        return Ok(recent_files_json);
+    }
+
+    Err(anyhow!("Can not fetch the Vim Clap project directory"))
 }
 
 impl SortedRecentFiles {
@@ -156,21 +171,14 @@ impl SortedRecentFiles {
     }
 
     pub fn write_to_disk(&self) -> Result<()> {
-        if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
-            let data_dir = proj_dirs.data_dir();
-            std::fs::create_dir_all(data_dir).expect("Failed to create data directory");
-            log::debug!("data_dir: {:?}", data_dir);
-
-            let mut recent_files_json = data_dir.to_path_buf();
-            recent_files_json.push("recent_files.json");
-
+        if let Ok(recent_files_json) = persistent_recent_files_path() {
+            // Overwrite it.
             let mut f = std::fs::OpenOptions::new()
                 .write(true)
                 .truncate(true)
-                .open("./recent_files_json")?;
+                .open(recent_files_json)?;
 
-            let j = serde_json::to_string(self)?;
-            f.write_all(j.as_bytes())?;
+            f.write_all(serde_json::to_string(self)?.as_bytes())?;
             f.flush()?;
         }
         Ok(())
@@ -181,15 +189,8 @@ static RECENT_FILES: Lazy<Mutex<SortedRecentFiles>> =
     Lazy::new(|| Mutex::new(initialize_recent_files()));
 
 fn initialize_recent_files() -> SortedRecentFiles {
-    directories::ProjectDirs::from("org", "vim", "Vim Clap")
-        .map(|proj_dirs| {
-            let data_dir = proj_dirs.data_dir();
-            std::fs::create_dir_all(data_dir).expect("Failed to create data directory");
-            log::debug!("data_dir: {:?}", data_dir);
-
-            let mut recent_files_json = data_dir.to_path_buf();
-            recent_files_json.push("recent_files.json");
-
+    persistent_recent_files_path()
+        .map(|recent_files_json| {
             if recent_files_json.exists() {
                 // todo!("load from disk")
                 Default::default()
@@ -210,8 +211,6 @@ pub fn note_recent_file(msg: Message) {
 
     let mut recent_files = RECENT_FILES.lock().unwrap();
     recent_files.upsert(file);
-    // let mut recent_files = RECENT_FILES::get();
-    // recent_files.upsert(file);
 
     log::debug!("recent_files: {:?}", recent_files);
 }
