@@ -159,29 +159,31 @@ endfunction
 
 if has('nvim')
   let s:header_ns_id = nvim_create_namespace('clap_preview_header')
+
+  " lnum is 1-based.
+  function! s:add_highlight_at(lnum) abort
+    if nvim_buf_is_valid(g:clap.preview.bufnr)
+      call nvim_buf_add_highlight(g:clap.preview.bufnr, s:header_ns_id, 'Title', a:lnum - 1, 0, -1)
+    endif
+  endfunction
+
   " Sometimes the first line of preview window is used for the header.
   function! clap#preview#highlight_header() abort
-    " try
-      " let winid = win_getid()
-      " Do not use matchaddpos() as it needs to be executed in that window.
-      " call g:clap.preview.goto_win()
-      " call s:highlight_header()
-      if nvim_buf_is_valid(g:clap.preview.bufnr)
-        call nvim_buf_add_highlight(g:clap.preview.bufnr, s:header_ns_id, 'Title', 0, 0, -1)
-      endif
-    " finally
-      " noautocmd call win_gotoid(winid)
-    " endtry
+    call s:add_highlight_at(1)
   endfunction
 
   function! clap#preview#clear_header_highlight() abort
     call nvim_buf_clear_namespace(g:clap.preview.bufnr, s:header_ns_id, 0, -1)
   endfunction
 else
-  function! s:highlight_header() abort
+  function! s:add_highlight_at(lnum) abort
     if !exists('w:preview_header_id')
-      let w:preview_header_id = matchaddpos('Title', [1])
+      let w:preview_header_id = matchaddpos('Title', [a:lnum])
     endif
+  endfunction
+
+  function! s:highlight_header() abort
+    call s:add_highlight_at(1)
   endfunction
 
   function! s:clear_header_highlight() abort

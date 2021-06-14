@@ -53,7 +53,7 @@ function! s:loclist.on_move() abort
   let locitem = locations[str2nr(s:locline2idx[curline])]
 
   let lines = []
-  call add(lines, '--> '.bufname(locitem.bufnr).':'.locitem.lnum.':'.locitem.col)
+  call add(lines, bufname(locitem.bufnr).':'.locitem.lnum.':'.locitem.col)
 
   if locitem.lnum !=# ''
     let line = getbufline(locitem.bufnr, str2nr(locitem.lnum))
@@ -77,6 +77,7 @@ function! s:loclist.on_move() abort
 
   call g:clap.preview.show(lines)
   call g:clap.preview.setbufvar('&syntax', getbufvar(locitem.bufnr, '&syntax'))
+  call clap#preview#highlight_header()
 endfunction
 
 let s:loclist.syntax = 'qf'
