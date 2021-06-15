@@ -19,6 +19,7 @@
 - Fix the indicator winwidth is not flexible. #687
 - Fix the icon offset when restoring the full display line for grep provider. #701
 - Fix the Pyo3 compilation on M1. #707
+- Add icon for `*.tex`. #709
 
 ### Perf
 

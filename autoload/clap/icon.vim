@@ -8,6 +8,7 @@ set cpoptions&vim
 
 let g:clap#icon#default = ''
 
+" Convert an icon char to hex: printf("%x", char2nr('C'))
 let g:clap#icon#extensions = {
       \ 'styl'         : '',
       \ 'sass'         : '',
@@ -111,6 +112,7 @@ let g:clap#icon#extensions = {
       \ 'vue'          : '﵂',
       \ 'swift'        : '',
       \ 'xcplayground' : '',
+      \ 'tex'          : 'ﭨ',
       \ 'lock'         : '',
       \ 'bin'          : '',
       \ 'timestamp'    : '﨟',
