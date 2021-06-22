@@ -29,10 +29,8 @@ const RG_ARGS: [&str; 7] = [
 ];
 
 // Ref https://github.com/liuchengxu/vim-clap/issues/533
-#[cfg(windows)]
+// Now `.` is pushed to the end for all platforms due to https://github.com/liuchengxu/vim-clap/issues/711.
 const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never --smart-case '' .";
-#[cfg(not(windows))]
-const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never --smart-case ''";
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Grep {

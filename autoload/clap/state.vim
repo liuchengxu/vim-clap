@@ -15,6 +15,9 @@ function! clap#state#handle_message(msg) abort
   let decoded = json_decode(a:msg)
 
   if has_key(decoded, 'total')
+    if decoded.total == 0 && exists('g:__clap_lines_truncated_map')
+      unlet g:__clap_lines_truncated_map
+    endif
     call clap#indicator#set_matches_number(decoded.total)
   endif
 

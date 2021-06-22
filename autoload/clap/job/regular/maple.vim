@@ -26,6 +26,9 @@ function! s:on_complete() abort
   endif
 
   if empty(s:chunks)
+    if exists('g:__clap_lines_truncated_map')
+      unlet g:__clap_lines_truncated_map
+    endif
     return
   endif
 
@@ -54,6 +57,9 @@ function! s:on_complete() abort
     call clap#sign#disable_cursorline()
     call g:clap#display_win.shrink_if_undersize()
     call g:clap.preview.hide()
+    if exists('g:__clap_lines_truncated_map')
+      unlet g:__clap_lines_truncated_map
+    endif
     return
   endif
 
