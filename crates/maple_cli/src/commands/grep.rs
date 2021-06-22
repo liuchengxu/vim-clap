@@ -18,7 +18,7 @@ use crate::commands::cache::{cache_exists, send_response_from_cache, SendRespons
 use crate::process::light::{set_current_dir, LightCommand};
 use crate::tools::ripgrep::Match;
 
-const RG_ARGS: [&str; 7] = [
+const RG_ARGS: &[&str] = &[
     "rg",
     "--column",
     "--line-number",
@@ -26,6 +26,7 @@ const RG_ARGS: [&str; 7] = [
     "--color=never",
     "--smart-case",
     "",
+    ".",
 ];
 
 // Ref https://github.com/liuchengxu/vim-clap/issues/533
