@@ -69,8 +69,8 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
           \ v:exception,
           \ ))
   finally
-  " If the sink function changes cwd intentionally? Then we
-  " should not restore to the current cwd after executing the sink function.
+    " If the sink function changes cwd intentionally? Then we
+    " should not restore to the current cwd after executing the sink function.
     if getcwd(winnr()) ==# a:target_dir
       execute 'lcd' save_cwd
     endif

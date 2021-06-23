@@ -62,7 +62,8 @@ endfunction
 
 function! clap#handler#sink() abort
   " This could be more robust by checking the exact matches count, but this should also be enough.
-  if g:clap.display.get_lines() == [g:clap_no_matches_msg]
+  if empty(g:clap.display.getcurline())
+        \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
     call s:handle_no_matches()
     return
   endif

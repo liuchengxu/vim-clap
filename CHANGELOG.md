@@ -2,8 +2,13 @@
 
 ## [unreleased]
 
+### Fixed
+
+- Fix rg 13.0.0 does not work for neovim. #711
+- Fix grep2 does not work on Windows. #533
 
 ## [0.26] 2021-06-15
+
 ### Added
 
 - [neovim] Add zindex option to fix the tricky floating_win overlapping, and add border for the preview window, use `let g:clap_popup_border = 'nil'` to disable the order. #693
