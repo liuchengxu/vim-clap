@@ -640,7 +640,6 @@ endfunction
 
 function! clap#api#bake() abort
   let g:clap = {}
-  let g:clap.is_busy = 0
 
   let g:clap.registrar = {}
   let g:clap.spinner = {}
