@@ -13,18 +13,17 @@ let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%forerunner_statu
 let s:frame_index = 0
 let s:spinner = s:frames[0]
 
-let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.running
-
 " The spinner and current provider prompt are actually displayed in a same window.
 function! s:fill_in_placeholders(prompt_format) abort
   let l:prompt = a:prompt_format
 
   let l:provider_id = g:clap.provider.id
+  let l:forerunner_status = get(g:, '__clap_current_forerunner_status', ' ')
 
   " Replace special markers with certain information.
   " \=l:variable is used to avoid escaping issues.
   let l:prompt = substitute(l:prompt, '\V%spinner%', '\=s:spinner', 'g')
-  let l:prompt = substitute(l:prompt, '\V%forerunner_status%', '\=g:__clap_current_forerunner_status', 'g')
+  let l:prompt = substitute(l:prompt, '\V%forerunner_status%', '\=l:forerunner_status', 'g')
   let l:prompt = substitute(l:prompt, '\V%provider_id%', '\=l:provider_id', 'g')
 
   return l:prompt
@@ -109,7 +108,7 @@ function! s:on_frame(...) abort
   call s:set_spinner()
   let s:frame_index += 1
   let s:frame_index = s:frame_index % s:frames_len
-  if !g:clap.is_busy
+  if !s:is_busy
     call timer_stop(s:timer)
     unlet s:timer
     let s:spinner = s:frames[0]
@@ -128,12 +127,12 @@ function! clap#spinner#run() abort
 endfunction
 
 function! clap#spinner#set_busy() abort
-  let g:clap.is_busy = 1
+  let s:is_busy = 1
   call clap#spinner#run()
 endfunction
 
 function! clap#spinner#set_idle() abort
-  let g:clap.is_busy = 0
+  let s:is_busy = 0
   if exists('s:timer')
     call timer_stop(s:timer)
     unlet s:timer

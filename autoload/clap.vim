@@ -158,7 +158,6 @@ function! clap#_exit() abort
   noautocmd call g:clap.close_win()
   call g:clap.preview.clear()
 
-  let g:clap.is_busy = 0
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1
   " Reset this for vim issue. Ref #223
