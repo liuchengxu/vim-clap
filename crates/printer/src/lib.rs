@@ -377,10 +377,7 @@ mod tests {
         (
           $text:expr,
           $truncated_text:expr,
-          $query:expr,
-          $highlighted:expr,
-          $skipped:expr,
-          $winwidth:expr
+          ($query:expr, $highlighted:expr, $skipped:expr, $winwidth:expr)
         ) => {
             let params = TestParams {
                 text: $text.into(),
@@ -399,68 +396,62 @@ mod tests {
         test_printer!(
             "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
             "..he/matched/items/will/be/invisible/file.scss",
-            "files",
-            "files",
-            None,
-            50usize
+            ("files", "files", None, 50usize)
         );
 
         test_printer!(
             "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
             "..ed/items/will/be/invisible/another-file.scss",
-            "files",
-            "files",
-            None,
-            50usize
+            ("files", "files", None, 50usize)
         );
 
         test_printer!(
             "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
             "..then/the/matched/items/will/be/invisible/file.js",
-            "files",
-            "files",
-            None,
-            50usize
+            ("files", "files", None, 50usize)
         );
 
         test_printer!(
             "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
             "../matched/items/will/be/invisible/another-file.js",
-            "files",
-            "files",
-            None,
-            50usize
+            ("files", "files", None, 50usize)
         );
 
         test_printer!(
             "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
             "..s/Homebrew/universal-ctags--git/Units/afl-fuzz..",
-            "srcggithub",
-            "srcg",
-            None,
-            50usize
+            ("srcggithub", "srcg", None, 50usize)
         );
 
         test_printer!(
             "        // Wait until propagation delay period after block we plan to mine on",
             "..pagation delay period after block we plan to mine on",
-            "bmine",
-            "bmine",
-            None,
-            58usize
+            ("bmine", "bmine", None, 58usize)
         );
-    }
 
-    #[test]
-    fn case1() {
-        let source = into_source(vec![
+        test_printer!(
           "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
+          "..stversion-b273394e6c9c64f6.dylib.dSYM/Contents..",
+          ("srlisresource", "srlis", None, 50usize)
+        );
+
+        test_printer!(
+          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
+          "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
+          ("srlisresource", "srli", None, 50usize)
+        );
+
+        test_printer!(
+          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
+          "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
+          ("srlisresource", "srli", None, 50usize)
+        );
+
+        test_printer!(
           "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
-        ]);
-        let query = "srlisresource";
-        run_test(source, query, None, 50usize);
+          "..stversion-15764ff2535f190d.dylib.dSYM/Contents..",
+          ("srlisresource", "srlis", None, 50usize)
+        );
     }
 
     #[test]
@@ -468,10 +459,7 @@ mod tests {
         test_printer!(
             " bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}",
             " ..       let PartialComponents { client, task_manager, ..}",
-            "PartialComponents",
-            "PartialComponents",
-            Some(2),
-            64
+            ("PartialComponents", "PartialComponents", Some(2), 64)
         );
     }
 
