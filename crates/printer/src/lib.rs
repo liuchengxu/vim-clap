@@ -281,48 +281,6 @@ mod tests {
         ret
     }
 
-    fn run_test<I: Iterator<Item = SourceItem>>(
-        source: Source<I>,
-        query: &str,
-        skipped: Option<usize>,
-        winwidth: usize,
-    ) {
-        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
-        let mut ranked = source.filter(matcher, query).unwrap();
-        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
-
-        let (truncated_lines, truncated_map) =
-            truncate_long_matched_lines(ranked, winwidth, skipped);
-        for (idx, (truncated_line, _score, truncated_indices)) in truncated_lines.iter().enumerate()
-        {
-            let highlighted = truncated_indices
-                .iter()
-                .filter_map(|i| truncated_line.chars().nth(*i))
-                .collect::<String>();
-            println!("\n   winwidth: {}", "─".repeat(winwidth));
-            println!(
-                "    display: {}",
-                wrap_matches(&truncated_line, &truncated_indices)
-            );
-            println!("   raw_line: {}", truncated_map.get(&(idx + 1)).unwrap());
-            println!("highlighted: {}", highlighted);
-            // The highlighted result can be case insensitive.
-            assert!(query
-                .to_lowercase()
-                .starts_with(&highlighted.to_lowercase()));
-        }
-    }
-
-    fn into_source(lines: Vec<&str>) -> Source<std::vec::IntoIter<SourceItem>> {
-        Source::List(
-            lines
-                .into_iter()
-                .map(|s| s.to_string().into())
-                .collect::<Vec<SourceItem>>()
-                .into_iter(),
-        )
-    }
-
     struct TestParams {
         text: String,
         truncated_text: String,
@@ -465,19 +423,31 @@ mod tests {
 
     #[test]
     fn starting_point_should_work() {
-        let source = into_source(vec![
-          " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-          " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
-        ]);
-        let query = "srlisrlisrsr";
-        run_test(source, query, Some(2), 50usize);
+        const QUERY: &str = "srlisrlisrsr";
 
-        let source  = into_source(vec![
-          "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+        test_printer!(
+            " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+            " ..s/fuzzy_filter/target/debug/deps/librustvers..",
+            (QUERY, "srlisr", Some(2), 50)
+        );
+
+        test_printer!(
+            " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
+            " ..s/fuzzy_filter/target/debug/deps/libstructop..",
+            (QUERY, "srlis", Some(2), 50)
+        );
+
+        test_printer!(
+            "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+            "..s/fuzzy_filter/target/debug/deps/librustversio..",
+            (QUERY, "srlisr", None, 50)
+        );
+
+        test_printer!(
           "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
-        ]);
-        let query = "srlisrlisrsr";
-        run_test(source, query, None, 50usize);
+          "..s/fuzzy_filter/target/debug/deps/libstructopt_..",
+            (QUERY, "srlis", None, 50)
+        );
     }
 
     #[test]
