@@ -323,20 +323,136 @@ mod tests {
         )
     }
 
-    #[test]
-    fn case1() {
-        let source = into_source(vec![
-          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
-          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
-          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
-          "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js"
-        ]);
-        let query = "files";
-        run_test(source, query, None, 50usize);
+    struct TestParams {
+        text: String,
+        truncated_text: String,
+        query: String,
+        highlighted: String,
+        skipped: Option<usize>,
+        winwidth: usize,
+    }
+
+    fn run(params: TestParams) {
+        let TestParams {
+            text,
+            truncated_text,
+            query,
+            highlighted,
+            skipped,
+            winwidth,
+        } = params;
+
+        let source = Source::List(std::iter::once(text.into()));
+
+        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
+        let mut ranked = source.filter(matcher, &query).unwrap();
+        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+
+        let (truncated_lines, _truncated_map) =
+            truncate_long_matched_lines(ranked, winwidth, skipped);
+
+        let (truncated_text_got, _score, truncated_indices) = truncated_lines[0].clone();
+
+        assert_eq!(truncated_text, truncated_text_got);
+
+        let highlighted_got = truncated_indices
+            .iter()
+            .filter_map(|i| truncated_text_got.chars().nth(*i))
+            .collect::<String>();
+
+        assert_eq!(highlighted, highlighted_got);
+
+        println!("\n   winwidth: {}", "─".repeat(winwidth));
+        println!(
+            "    display: {}",
+            wrap_matches(&truncated_text_got, &truncated_indices)
+        );
+        // The highlighted result can be case insensitive.
+        assert!(query
+            .to_lowercase()
+            .starts_with(&highlighted.to_lowercase()));
+    }
+
+    macro_rules! test_printer {
+        (
+          $text:expr,
+          $truncated_text:expr,
+          $query:expr,
+          $highlighted:expr,
+          $skipped:expr,
+          $winwidth:expr
+        ) => {
+            let params = TestParams {
+                text: $text.into(),
+                truncated_text: $truncated_text.into(),
+                query: $query.into(),
+                highlighted: $highlighted.into(),
+                skipped: $skipped,
+                winwidth: $winwidth,
+            };
+            run(params);
+        };
     }
 
     #[test]
-    fn case2() {
+    fn test_printer_basics() {
+        test_printer!(
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
+            "..he/matched/items/will/be/invisible/file.scss",
+            "files",
+            "files",
+            None,
+            50usize
+        );
+
+        test_printer!(
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
+            "..ed/items/will/be/invisible/another-file.scss",
+            "files",
+            "files",
+            None,
+            50usize
+        );
+
+        test_printer!(
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
+            "..then/the/matched/items/will/be/invisible/file.js",
+            "files",
+            "files",
+            None,
+            50usize
+        );
+
+        test_printer!(
+            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
+            "../matched/items/will/be/invisible/another-file.js",
+            "files",
+            "files",
+            None,
+            50usize
+        );
+
+        test_printer!(
+            "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
+            "..s/Homebrew/universal-ctags--git/Units/afl-fuzz..",
+            "srcggithub",
+            "srcg",
+            None,
+            50usize
+        );
+
+        test_printer!(
+            "        // Wait until propagation delay period after block we plan to mine on",
+            "..pagation delay period after block we plan to mine on",
+            "bmine",
+            "bmine",
+            None,
+            58usize
+        );
+    }
+
+    #[test]
+    fn case1() {
         let source = into_source(vec![
           "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
           "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
@@ -348,30 +464,15 @@ mod tests {
     }
 
     #[test]
-    fn case3() {
-        let source = into_source(vec![
-          "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r"
-        ]);
-        let query = "srcggithub";
-        run_test(source, query, None, 50usize);
-    }
-
-    #[test]
-    fn case4() {
-        let source = into_source(vec![
-            "        // Wait until propagation delay period after block we plan to mine on",
-        ]);
-        let query = "bmine";
-        run_test(source, query, None, 58usize);
-    }
-
-    #[test]
     fn test_grep_line() {
-        let source = into_source(
-        vec![" bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}"]
-      );
-        let query = "PartialComponents";
-        run_test(source, query, Some(2), 64);
+        test_printer!(
+            " bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}",
+            " ..       let PartialComponents { client, task_manager, ..}",
+            "PartialComponents",
+            "PartialComponents",
+            Some(2),
+            64
+        );
     }
 
     #[test]
