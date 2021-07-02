@@ -124,6 +124,9 @@ function! s:get_config_border_left() abort
   let opts.width = s:symbol_width
   let opts.height = 1
   let opts.focusable = v:false
+  if s:has_nvim_0_5
+    let opts.zindex = 1000
+  endif
   return opts
 endfunction
 
@@ -292,6 +295,9 @@ function! s:get_config_border_right() abort
   let opts.col += opts.width
   let opts.width = s:symbol_width
   let opts.focusable = v:false
+  if s:has_nvim_0_5
+    let opts.zindex = 1000
+  endif
   return opts
 endfunction
 
