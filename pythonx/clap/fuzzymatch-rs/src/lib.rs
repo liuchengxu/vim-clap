@@ -145,6 +145,8 @@ mod tests {
         let py_path = cur_dir.parent().unwrap().join("scorer.py");
         let py_source_code = fs::read_to_string(py_path).unwrap();
 
+        pyo3::prepare_freethreaded_python();
+
         let gil = Python::acquire_gil();
         let py = gil.python();
         let py_scorer = PyModule::from_code(py, &py_source_code, "scorer.py", "scorer").unwrap();
@@ -156,7 +158,9 @@ mod tests {
 
         for (niddle, haystack) in test_cases.into_iter() {
             let py_result: (i64, Vec<usize>) = py_scorer
-                .call1("substr_scorer", (niddle, haystack))
+                .getattr("substr_scorer")
+                .unwrap()
+                .call1((niddle, haystack))
                 .unwrap()
                 .extract()
                 .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
