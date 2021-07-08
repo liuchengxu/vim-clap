@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
 use anyhow::Result;
+use serde::Deserialize;
 
 use crate::stdio_server::{types::ProviderId, Message};
 
@@ -33,34 +34,38 @@ impl SessionContext {
 impl From<Message> for SessionContext {
     fn from(msg: Message) -> Self {
         log::debug!("recv msg for SessionContext: {:?}", msg);
-        let provider_id = msg.get_provider_id();
 
-        let cwd = msg.get_cwd().into();
+        #[derive(Debug, Clone, Deserialize)]
+        struct Params {
+            provider_id: ProviderId,
+            cwd: PathBuf,
+            source_fpath: PathBuf,
+            display_winwidth: Option<u64>,
+            preview_winheight: Option<u64>,
+            source_cmd: Option<String>,
+            runtimepath: Option<String>,
+        }
 
-        let runtimepath = msg.get_str("runtimepath").map(Into::into).ok();
-        let source_cmd = msg.get_str("source_cmd").map(Into::into).ok();
-
-        let display_winwidth = msg
-            .get_u64("display_winwidth")
-            .unwrap_or(DEFAULT_DISPLAY_WINWIDTH);
-
-        let preview_winheight = msg
-            .get_u64("preview_winheight")
-            .unwrap_or(DEFAULT_PREVIEW_WINHEIGHT);
-
-        let start_buffer_path = msg
-            .get_str("source_fpath")
-            .map(Into::into)
-            .unwrap_or_else(|e| panic!("{}", e));
+        let Params {
+            provider_id,
+            cwd,
+            source_fpath,
+            display_winwidth,
+            preview_winheight,
+            source_cmd,
+            runtimepath,
+        } = msg
+            .deserialize_params()
+            .unwrap_or_else(|e| panic!("Failed to deserialize as session Params: {:?}", e));
 
         Self {
             provider_id,
             cwd,
+            start_buffer_path: source_fpath,
+            display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
+            preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             source_cmd,
             runtimepath,
-            display_winwidth,
-            preview_winheight,
-            start_buffer_path,
             is_running: Arc::new(Mutex::new(true.into())),
             source_list: Arc::new(Mutex::new(None)),
         }
