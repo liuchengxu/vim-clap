@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use serde::Deserialize;
 use serde_json::json;
 
 use crate::stdio_server::{previewer, types::Message, write_response};
@@ -33,13 +34,24 @@ pub fn parse_filetypedetect(msg: Message) {
 }
 
 async fn preview_file_impl(msg: Message) -> Result<()> {
-    let fpath = msg.get_string("fpath")?;
-    let winwidth = msg.get_u64("preview_width")?;
-    let winheight = msg.get_u64("preview_height")?;
+    let msg_id = msg.id;
 
-    let (lines, fname) = previewer::preview_file(fpath, winheight as usize, winwidth as usize)?;
+    #[derive(Deserialize)]
+    struct Params {
+        fpath: String,
+        preview_width: usize,
+        preview_height: usize,
+    }
 
-    let result = json!({"id": msg.id, "result": json!({"lines": lines, "fname": fname})});
+    let Params {
+        fpath,
+        preview_width,
+        preview_height,
+    } = msg.deserialize_params()?;
+
+    let (lines, fname) = previewer::preview_file(fpath, preview_height, preview_width)?;
+
+    let result = json!({"id": msg_id, "result": json!({"lines": lines, "fname": fname})});
 
     write_response(result);
 

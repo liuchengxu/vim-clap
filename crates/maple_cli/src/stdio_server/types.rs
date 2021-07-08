@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
@@ -50,6 +50,11 @@ pub struct Message {
 }
 
 impl Message {
+    pub fn deserialize_params<T: DeserializeOwned>(self) -> anyhow::Result<T> {
+        let json_value = serde_json::Value::Object(self.params);
+        serde_json::from_value(json_value).map_err(Into::into)
+    }
+
     pub fn get_provider_id(&self) -> ProviderId {
         self.get_string_unsafe("provider_id").into()
     }
