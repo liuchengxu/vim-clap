@@ -24,15 +24,17 @@ type Icon = char;
 ///
 /// Try matching the exactmatch map against the file name, and then the extension map.
 #[inline]
-pub fn get_icon_or(path: &Path, default: Icon) -> Icon {
-    path.file_name()
+pub fn get_icon_or<P: AsRef<Path>>(path: P, default: Icon) -> Icon {
+    path.as_ref()
+        .file_name()
         .and_then(std::ffi::OsStr::to_str)
         .and_then(|filename| {
             bsearch_icon_table(&filename.to_lowercase().as_str(), EXACTMATCH_ICON_TABLE)
                 .map(|idx| EXACTMATCH_ICON_TABLE[idx].1)
         })
         .unwrap_or_else(|| {
-            path.extension()
+            path.as_ref()
+                .extension()
                 .and_then(std::ffi::OsStr::to_str)
                 .and_then(|ext| {
                     bsearch_icon_table(ext, EXTENSION_ICON_TABLE)
@@ -52,15 +54,15 @@ pub fn prepend_icon(line: &str) -> String {
 }
 
 #[inline]
-pub fn icon_for_filer(path: &Path) -> Icon {
-    if path.is_dir() {
+pub fn icon_for_filer<P: AsRef<Path>>(path: P) -> Icon {
+    if path.as_ref().is_dir() {
         FOLDER_ICON
     } else {
         get_icon_or(path, DEFAULT_FILER_ICON)
     }
 }
 
-pub fn prepend_filer_icon(path: &Path, line: &str) -> String {
+pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: &str) -> String {
     format!("{} {}", icon_for_filer(path), line)
 }
 

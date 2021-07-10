@@ -1,4 +1,4 @@
-use std::path::{self, Path, PathBuf};
+use std::path::{self, Path};
 use std::{fs, io};
 
 use anyhow::Result;
@@ -17,41 +17,45 @@ use crate::stdio_server::{
 };
 
 /// Display the inner path in a nicer way.
-struct DisplayPath {
-    inner: PathBuf,
+struct DisplayPath<P> {
+    inner: P,
     enable_icon: bool,
 }
 
-impl DisplayPath {
-    pub fn new(path: PathBuf, enable_icon: bool) -> Self {
-        Self {
-            inner: path,
-            enable_icon,
-        }
+impl<P: AsRef<Path>> DisplayPath<P> {
+    pub fn new(inner: P, enable_icon: bool) -> Self {
+        Self { inner, enable_icon }
     }
 
     #[inline]
-    fn to_file_name_str(&self) -> Option<&str> {
-        self.inner.file_name().and_then(std::ffi::OsStr::to_str)
+    fn to_str_file_name(&self) -> Option<&str> {
+        self.inner
+            .as_ref()
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
     }
 }
 
-impl std::fmt::Display for DisplayPath {
+impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let path_str = if self.inner.is_dir() {
-            format!(
-                "{}{}",
-                self.to_file_name_str().unwrap(),
-                path::MAIN_SEPARATOR
-            )
-        } else {
-            self.to_file_name_str().map(Into::into).unwrap()
+        let mut write_with_icon = |path: &str| {
+            if self.enable_icon {
+                write!(f, "{}", prepend_filer_icon(self.inner.as_ref(), path))
+            } else {
+                write!(f, "{}", path)
+            }
         };
 
-        if self.enable_icon {
-            write!(f, "{}", prepend_filer_icon(&self.inner, &path_str))
+        if self.inner.as_ref().is_dir() {
+            let path = format!(
+                "{}{}",
+                self.to_str_file_name().unwrap(),
+                path::MAIN_SEPARATOR
+            );
+
+            write_with_icon(&path)
         } else {
-            write!(f, "{}", path_str)
+            write_with_icon(self.to_str_file_name().unwrap())
         }
     }
 }
