@@ -20,13 +20,13 @@ const DEFAULT_PREVIEW_SIZE: u64 = 5;
 
 impl From<Value> for PreviewConfig {
     fn from(v: Value) -> Self {
+        if v.is_object() {
+            let m: HashMap<String, u64> = serde_json::from_value(v)
+                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {:?}", e));
+            return Self::Map(m);
+        }
         match v {
             Value::Number(number) => Self::Number(number.as_u64().unwrap_or(DEFAULT_PREVIEW_SIZE)),
-            Value::Object(map) => {
-                let m: HashMap<String, u64> = serde_json::from_value(Value::Object(map))
-                    .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {:?}", e));
-                Self::Map(m)
-            }
             _ => unreachable!("clap_preview_size has to be either Number or Object"),
         }
     }
