@@ -35,7 +35,7 @@ impl From<Message> for SessionContext {
     fn from(msg: Message) -> Self {
         log::debug!("recv msg for SessionContext: {:?}", msg);
 
-        #[derive(Debug, Clone, Deserialize)]
+        #[derive(Deserialize)]
         struct Params {
             provider_id: ProviderId,
             cwd: PathBuf,
