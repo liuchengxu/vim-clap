@@ -8,7 +8,7 @@ use std::ops::Deref;
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use once_cell::sync::OnceCell;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use self::session::{
@@ -32,24 +32,24 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
 }
 
 fn initialize_global(msg: Message) {
-    let is_nvim = msg
-        .params
-        .get("is_nvim")
-        .and_then(|x| x.as_bool())
-        .unwrap_or(false);
+    #[derive(Deserialize)]
+    struct Params {
+        is_nvim: Option<bool>,
+        enable_icon: Option<bool>,
+        clap_preview_size: serde_json::Value,
+    }
+    let Params {
+        is_nvim,
+        enable_icon,
+        clap_preview_size,
+    } = msg
+        .deserialize_params()
+        .unwrap_or_else(|e| panic!("Failed to deserialize global params: {:?}", e));
 
-    let enable_icon = msg
-        .params
-        .get("enable_icon")
-        .and_then(|x| x.as_bool())
-        .unwrap_or(false);
+    let is_nvim = is_nvim.unwrap_or(false);
+    let enable_icon = enable_icon.unwrap_or(false);
 
-    let preview_size = msg
-        .params
-        .get("clap_preview_size")
-        .unwrap_or_else(|| panic!("Missing clap_preview_size on initialize_global_env"));
-
-    let global_env = GlobalEnv::new(is_nvim, enable_icon, preview_size.clone());
+    let global_env = GlobalEnv::new(is_nvim, enable_icon, clap_preview_size.into());
 
     if let Err(e) = GLOBAL_ENV.set(global_env) {
         debug!("failed to initialized GLOBAL_ENV, error: {:?}", e);

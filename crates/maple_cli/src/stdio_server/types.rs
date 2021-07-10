@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
@@ -5,38 +7,56 @@ use serde_json::Value;
 pub struct GlobalEnv {
     pub is_nvim: bool,
     pub enable_icon: bool,
-    pub preview_size: Value,
+    pub preview_config: PreviewConfig,
+}
+
+#[derive(Debug, Clone)]
+pub enum PreviewConfig {
+    Number(u64),
+    Map(HashMap<String, u64>),
+}
+
+const DEFAULT_PREVIEW_SIZE: u64 = 5;
+
+impl From<Value> for PreviewConfig {
+    fn from(v: Value) -> Self {
+        if v.is_object() {
+            let m: HashMap<String, u64> = serde_json::from_value(v)
+                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {:?}", e));
+            return Self::Map(m);
+        }
+        match v {
+            Value::Number(number) => Self::Number(number.as_u64().unwrap_or(DEFAULT_PREVIEW_SIZE)),
+            _ => unreachable!("clap_preview_size has to be either Number or Object"),
+        }
+    }
+}
+
+impl PreviewConfig {
+    pub fn preview_size(&self, provider_id: &str) -> usize {
+        match self {
+            Self::Number(n) => *n as usize,
+            Self::Map(map) => map
+                .get(provider_id)
+                .map(|x| *x)
+                .unwrap_or_else(|| map.get("*").copied().unwrap_or(DEFAULT_PREVIEW_SIZE))
+                as usize,
+        }
+    }
 }
 
 impl GlobalEnv {
-    pub fn new(is_nvim: bool, enable_icon: bool, preview_size: Value) -> Self {
+    pub fn new(is_nvim: bool, enable_icon: bool, preview_config: PreviewConfig) -> Self {
         Self {
             is_nvim,
             enable_icon,
-            preview_size,
+            preview_config,
         }
     }
 
     /// Each provider can have its preferred preview size.
     pub fn preview_size_of(&self, provider_id: &str) -> usize {
-        match self.preview_size {
-            Value::Number(ref number) => number.as_u64().unwrap() as usize,
-            Value::Object(ref obj) => {
-                let get_size = |key: &str| {
-                    obj.get(key)
-                        .and_then(|x| x.as_u64().map(|i| i as usize))
-                        .unwrap()
-                };
-                if obj.contains_key(provider_id) {
-                    get_size(provider_id)
-                } else if obj.contains_key("*") {
-                    get_size("*")
-                } else {
-                    5usize
-                }
-            }
-            _ => unreachable!("clap_preview_size has to be either Number or Object"),
-        }
+        self.preview_config.preview_size(provider_id)
     }
 }
 
@@ -163,5 +183,16 @@ impl From<&str> for ProviderId {
 impl std::fmt::Display for ProviderId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_preview_config_deserialize() {
+        let v: Value = serde_json::json!({"filer": 10, "files": 5});
+        let _config: PreviewConfig = v.into();
     }
 }
