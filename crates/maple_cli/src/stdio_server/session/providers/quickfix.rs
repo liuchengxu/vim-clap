@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use serde::Deserialize;
 use serde_json::json;
 
 use crate::stdio_server::{
@@ -14,14 +15,26 @@ pub fn preview_quickfix_entry(msg: Message) {
 }
 
 async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
-    // TODO: use a struct
-    let curline = msg.get_string_unsafe("curline");
-    let winwidth = msg.get_u64("winwidth")?;
-    let winheight = msg.get_u64("winheight")?;
+    let msg_id = msg.id;
+
+    #[derive(Deserialize)]
+    struct Params {
+        cwd: String,
+        curline: String,
+        winwidth: u64,
+        winheight: u64,
+    }
+
+    let Params {
+        cwd,
+        curline,
+        winwidth,
+        winheight,
+    } = msg.deserialize_params()?;
 
     let (p, lnum) = parse_quickfix_entry(curline.as_str())?;
 
-    let mut fpath: PathBuf = msg.get_cwd().into();
+    let mut fpath: PathBuf = cwd.into();
     fpath.push(p);
 
     let result = if lnum == 0 {
@@ -44,7 +57,7 @@ async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
     };
 
     write_response(json!({
-            "id": msg.id,
+            "id": msg_id,
             "provider_id": "quickfix",
             "result": result
     }));

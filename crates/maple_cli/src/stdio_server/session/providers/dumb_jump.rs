@@ -79,16 +79,14 @@ impl EventHandler for DumbJumpMessageHandler {
                 }
             }
             Event::OnTyped(msg) => {
-                tokio::spawn(async {
-                    handle_dumb_jump_message(msg).await;
-                })
-                .await
-                .unwrap_or_else(|e| {
-                    log::error!(
-                        "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                        e
-                    );
-                });
+                tokio::spawn(handle_dumb_jump_message(msg))
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::error!(
+                            "Failed to spawn a task for handle_dumb_jump_message: {:?}",
+                            e
+                        );
+                    });
             }
         }
     }

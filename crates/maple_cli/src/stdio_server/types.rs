@@ -106,6 +106,7 @@ impl Message {
         Ok(curline)
     }
 
+    #[allow(unused)]
     pub fn get_u64(&self, key: &str) -> anyhow::Result<u64> {
         self.params
             .get(key)
