@@ -41,13 +41,14 @@ pub trait NewSession {
 
 /// This structs manages all the created sessions tracked by the session id.
 #[derive(Debug, Default)]
-pub struct Manager {
+pub struct SessionManager {
     sessions: HashMap<SessionId, SessionEventSender>,
 }
 
-impl Manager {
-    /// Starts a session in a new thread given the session id and init message.
-    pub fn new_session<T: NewSession>(&mut self, session_id: SessionId, msg: Message) {
+impl SessionManager {
+    /// Starts a session in a new thread given the init message.
+    pub fn new_session<T: NewSession>(&mut self, msg: Message) {
+        let session_id = msg.session_id;
         if self.exists(session_id) {
             error!("Skipped as session {} already exists", msg.session_id);
         } else {

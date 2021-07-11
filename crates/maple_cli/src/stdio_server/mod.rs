@@ -14,7 +14,7 @@ use serde_json::json;
 use self::session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, quickfix, GeneralSession, Manager, SessionEvent,
+    message_handlers, quickfix, GeneralSession, SessionManager, SessionEvent,
 };
 use self::types::{GlobalEnv, Message};
 
@@ -88,7 +88,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     use dumb_jump::DumbJumpSession;
     use SessionEvent::*;
 
-    let mut session_manager = Manager::default();
+    let mut manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
             debug!("==> message(in): {:?}", msg);
@@ -98,19 +98,15 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "preview/file" => message_handlers::preview_file(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
-                // "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
-                "dumb_jump/on_init" => {
-                    log::debug!("==================== Created DumbJumpSession session",);
-                    session_manager.new_session::<DumbJumpSession>(msg.session_id, msg)
-                }
-                "dumb_jump/on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
-                "dumb_jump/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
-                "filer/on_init" => session_manager.new_session::<FilerSession>(msg.session_id, msg),
-                "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
-                "on_init" => session_manager.new_session::<GeneralSession>(msg.session_id, msg),
-                "on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
-                "on_move" => session_manager.send(msg.session_id, OnMove(msg)),
-                "exit" => session_manager.terminate(msg.session_id),
+                "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
+                "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+                "filer/on_init" => manager.new_session::<FilerSession>(msg),
+                "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+                "on_init" => manager.new_session::<GeneralSession>(msg),
+                "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                "on_move" => manager.send(msg.session_id, OnMove(msg)),
+                "exit" => manager.terminate(msg.session_id),
                 _ => write_response(
                     json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
                 ),

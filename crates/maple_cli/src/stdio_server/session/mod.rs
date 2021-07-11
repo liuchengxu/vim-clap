@@ -11,7 +11,7 @@ use crate::stdio_server::types::ProviderId;
 
 pub use self::context::SessionContext;
 pub use self::event_handlers::on_move::{build_abs_path, OnMove, OnMoveHandler};
-pub use self::manager::{Manager, NewSession};
+pub use self::manager::{SessionManager, NewSession};
 pub use self::providers::*;
 
 pub type SessionId = u64;
