@@ -23,7 +23,7 @@ pub enum Event {
 
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
-    async fn handle(&self, event: Event, context: SessionContext);
+    async fn handle(&mut self, event: Event, context: SessionContext);
 }
 
 #[derive(Debug, Clone)]

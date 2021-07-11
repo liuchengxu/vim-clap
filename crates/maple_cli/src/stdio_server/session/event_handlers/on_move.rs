@@ -176,6 +176,36 @@ impl<'a> OnMoveHandler<'a> {
         })
     }
 
+    pub fn with_curline(
+        msg: &Message,
+        context: &'a SessionContext,
+        curline: String,
+    ) -> anyhow::Result<Self> {
+        let msg_id = msg.id;
+        let provider_id = context.provider_id.clone();
+        if provider_id.as_str() == "filer" {
+            let path = build_abs_path(&msg.get_cwd(), curline);
+            return Ok(Self {
+                msg_id,
+                size: provider_id.get_preview_size(),
+                provider_id,
+                context,
+                inner: OnMove::Filer(path),
+            });
+        }
+        let size = std::cmp::max(
+            provider_id.get_preview_size(),
+            (context.preview_winheight / 2) as usize,
+        );
+        Ok(Self {
+            msg_id,
+            size,
+            provider_id,
+            context,
+            inner: OnMove::new(curline, context)?,
+        })
+    }
+
     pub fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
@@ -259,8 +289,8 @@ impl<'a> OnMoveHandler<'a> {
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
                 debug!(
-                    "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines: {:?}",
-                    self.msg_id, self.provider_id, lines
+                    "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines len: {:?}",
+                    self.msg_id, self.provider_id, lines.len()
                 );
                 self.send_response(json!({
                   "event": "on_move",

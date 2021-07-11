@@ -96,13 +96,13 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "preview/file" => message_handlers::preview_file(msg),
-                "filer" => filer::handle_filer_message(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
 
                 "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
                 "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
+                "filer" => filer::handle_filer_message(msg),
                 "filer/on_init" => manager.new_session::<FilerSession>(msg),
                 "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 

@@ -86,7 +86,7 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    async fn handle(&self, event: Event, context: SessionContext) {
+    async fn handle(&mut self, event: Event, context: SessionContext) {
         match event {
             Event::OnMove(msg) => {
                 let provider_id = context.provider_id.clone();

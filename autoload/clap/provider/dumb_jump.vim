@@ -69,10 +69,14 @@ function! s:dumb_jump.init() abort
         \ })
 endfunction
 
+function! s:dumb_jump.on_move_async() abort
+  call clap#client#call_on_move_dumb_jump('dumb_jump/on_move', function('clap#impl#on_move#handler'))
+endfunction
+
 let s:dumb_jump['sink*'] = function('s:dumb_jump_sink_star')
 let s:dumb_jump.syntax = 'clap_dumb_jump'
 let s:dumb_jump.enable_rooter = v:true
-let s:dumb_jump.on_move_async = function('clap#impl#on_move#async')
+" let s:dumb_jump.on_move_async = function('clap#impl#on_move#async')
 let g:clap#provider#dumb_jump# = s:dumb_jump
 
 let &cpoptions = s:save_cpo
