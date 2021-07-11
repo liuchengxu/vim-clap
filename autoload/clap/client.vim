@@ -71,6 +71,17 @@ function! clap#client#call_on_move(method, callback, ...) abort
   call clap#client#call(a:method, a:callback, params)
 endfunction
 
+function! clap#client#call_on_move_dumb_jump(method, callback, ...) abort
+  let params = {'lnum': g:__clap_display_curlnum}
+  if g:clap.provider.id ==# 'grep'
+    let params['enable_icon'] = g:clap_provider_grep_enable_icon ? v:true : v:false
+  endif
+  if a:0 > 0
+    call extend(params, a:1)
+  endif
+  call clap#client#call(a:method, a:callback, params)
+endfunction
+
 function! clap#client#call_preview_file(extra) abort
   call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction

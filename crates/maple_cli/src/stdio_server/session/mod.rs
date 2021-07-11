@@ -11,7 +11,7 @@ use crate::stdio_server::types::ProviderId;
 
 pub use self::context::SessionContext;
 pub use self::event_handlers::on_move::{build_abs_path, OnMove, OnMoveHandler};
-pub use self::manager::{Manager, NewSession};
+pub use self::manager::{NewSession, SessionManager};
 pub use self::providers::*;
 
 pub type SessionId = u64;
@@ -21,8 +21,10 @@ pub enum Event {
     OnTyped(Message),
 }
 
-pub trait EventHandler: Send + 'static {
-    fn handle(&self, event: Event, context: &SessionContext);
+#[async_trait::async_trait]
+pub trait EventHandler: Send + Sync + 'static {
+    /// Use the mutable self so that we can cache some info inside the handler.
+    async fn handle(&mut self, event: Event, context: SessionContext);
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +41,16 @@ pub enum SessionEvent {
     OnTyped(Message),
     OnMove(Message),
     Terminate,
+}
+
+impl SessionEvent {
+    pub fn short_display(&self) -> String {
+        match self {
+            Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
+            Self::OnMove(msg) => format!("OnMove, msg id: {}", msg.id),
+            Self::Terminate => "Terminate".into(),
+        }
+    }
 }
 
 impl<T: EventHandler> Session<T> {
@@ -83,21 +95,31 @@ impl<T: EventHandler> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!("event(in) receive a session event: {:?}", event);
+                        debug!(
+                            "Event(in) receive a session event: {:?}",
+                            event.short_display()
+                        );
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
-                                self.event_handler.handle(Event::OnMove(msg), &self.context)
+                                self.event_handler
+                                    .handle(Event::OnMove(msg), self.context.clone())
+                                    .await
                             }
-                            SessionEvent::OnTyped(msg) => self
-                                .event_handler
-                                .handle(Event::OnTyped(msg), &self.context),
+                            SessionEvent::OnTyped(msg) => {
+                                self.event_handler
+                                    .handle(Event::OnTyped(msg), self.context.clone())
+                                    .await
+                            }
                         }
                     }
-                    Err(err) => debug!("session recv error: {:?}", err),
+                    Err(err) => debug!(
+                        "The channel is possibly disconnected, session recv error: {:?}",
+                        err
+                    ),
                 }
             }
         });

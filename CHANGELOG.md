@@ -7,6 +7,10 @@
 - Fix rg 13.0.0 does not work for neovim. #711
 - Fix grep2 does not work on Windows. #533
 
+### Improved
+
+- Support passing the cursor position instead of full cursor line from Vim to Rust since the performance of Vim is pretty bad when the cursor line is extremely long. #719
+
 ## [0.26] 2021-06-15
 
 ### Added

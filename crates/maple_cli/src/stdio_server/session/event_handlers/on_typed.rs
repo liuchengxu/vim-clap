@@ -6,8 +6,6 @@ use filter::matcher::{Algo, Bonus, MatchType};
 use crate::stdio_server::{session::SessionContext, write_response, Message};
 
 pub fn handle_on_typed(msg: Message, context: &SessionContext) {
-    debug!("recv OnTyped event: {:?}", msg);
-
     if msg.get_provider_id().as_str() == "filer" {
         // let _ = self._handle_filer_impl(msg);
         return;
