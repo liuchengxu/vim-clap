@@ -42,15 +42,12 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
     };
 
     let result = match dumb_jump.references_or_occurrences(false).await {
-        Ok(Lines {
-            mut lines,
-            mut indices,
-        }) => {
-            let lines_clone = lines.clone();
+        Ok(Lines { lines, mut indices }) => {
+            let total_lines = lines;
 
-            let total = lines.len();
+            let total = total_lines.len();
             // Only show the top 200 items.
-            lines.truncate(200);
+            let lines = total_lines.iter().take(200).clone().collect::<Vec<_>>();
             indices.truncate(200);
             let result = json!({
             "lines": lines,
@@ -67,7 +64,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
             write_response(result);
 
-            return lines_clone;
+            return total_lines;
         }
         Err(e) => {
             error!("Error when running dumb_jump: {:?}", e);
