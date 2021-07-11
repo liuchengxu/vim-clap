@@ -11,11 +11,8 @@ let s:handlers = get(s:, 'handlers', {})
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
-  echom 'keys:'.string(keys(s:handlers)).', decoded id:'.decoded.id.', s:req_id:'.s:req_id
-
   if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
     let Handler = remove(s:handlers, decoded.id)
-    echom 'handling id:'.decoded.id
     call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
   endif
@@ -80,7 +77,6 @@ endfunction
 
 function! clap#client#notify(method, params) abort
   let s:req_id += 1
-  echom 's:req_id:'. s:req_id
   call clap#job#daemon#send_message(json_encode({
         \ 'id': s:req_id,
         \ 'session_id': s:session_id,

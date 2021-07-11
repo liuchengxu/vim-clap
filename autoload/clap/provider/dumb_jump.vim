@@ -48,7 +48,6 @@ endfunction
 
 function! s:dumb_jump.on_typed() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  echom 'sending dumb_jump/on_typed'
   call clap#client#call('dumb_jump/on_typed', function('s:handle_response'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': g:clap.input.get(),
@@ -60,7 +59,6 @@ endfunction
 
 function! s:dumb_jump.init() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  echom 'sending dumb_jump/on_init'
   call clap#client#call_on_init('dumb_jump/on_init', function('s:handle_response'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'input': g:clap.input.get(),
