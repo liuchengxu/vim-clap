@@ -21,7 +21,7 @@ impl SessionEventSender {
 
 impl std::fmt::Display for SessionEventSender {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "sender for session {}", self.id)
+        write!(f, "SessionEventSender for session {}", self.id)
     }
 }
 

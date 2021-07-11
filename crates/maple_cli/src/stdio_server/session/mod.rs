@@ -23,6 +23,7 @@ pub enum Event {
 
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
+    /// Use the mutable self so that we can cache some info inside the handler.
     async fn handle(&mut self, event: Event, context: SessionContext);
 }
 
