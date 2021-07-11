@@ -30,6 +30,10 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         .deserialize_params()
         .unwrap_or_else(|e| panic!("Failed to deserialize dumb_jump params: {:?}", e));
 
+    if query.is_empty() {
+        return Default::default();
+    }
+
     let dumb_jump = DumbJump {
         word: query,
         extension,
