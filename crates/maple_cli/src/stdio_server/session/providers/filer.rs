@@ -89,22 +89,25 @@ impl EventHandler for FilerMessageHandler {
     async fn handle(&mut self, event: Event, context: SessionContext) {
         match event {
             Event::OnMove(msg) => {
-                let curline = msg
-                    .get_curline(&context.provider_id)
-                    .unwrap_or_else(|e| panic!("{}", e));
-                let path = build_abs_path(&msg.get_cwd(), curline);
+                #[derive(serde::Deserialize)]
+                struct Params {
+                    curline: String,
+                    cwd: String,
+                }
+                let msg_id = msg.id;
+                let Params { curline, cwd } = msg
+                    .deserialize_params()
+                    .unwrap_or_else(|e| panic!("Can not deserialize filer OnMove params: {}", e));
+                let path = build_abs_path(&cwd, curline);
                 let on_move_handler = OnMoveHandler {
-                    msg_id: msg.id,
-                    size: std::cmp::max(
-                        context.provider_id.get_preview_size(),
-                        (context.preview_winheight / 2) as usize,
-                    ),
+                    msg_id,
+                    size: context.sensible_preview_size(),
                     context: &context,
                     inner: OnMove::Filer(path.clone()),
                 };
                 if let Err(err) = on_move_handler.handle() {
                     let error = json!({"message": err.to_string(), "dir": path});
-                    let res = json!({ "id": msg.id, "provider_id": "filer", "error": error });
+                    let res = json!({ "id": msg_id, "provider_id": "filer", "error": error });
                     write_response(res);
                 }
             }
