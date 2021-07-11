@@ -54,10 +54,6 @@ impl SessionManager {
         } else {
             match T::spawn(msg) {
                 Ok(sender) => {
-                    log::debug!(
-                        "----------------- insert sender fo session id: {}",
-                        session_id
-                    );
                     self.sessions
                         .insert(session_id, SessionEventSender::new(sender, session_id));
                 }
@@ -83,11 +79,10 @@ impl SessionManager {
     /// Dispatch the session event to the session thread accordingly.
     pub fn send(&self, session_id: SessionId, event: SessionEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
-            log::debug!("------------- sender: {}", sender);
             sender.send(event);
         } else {
             error!(
-                "Can not find session_id: {}, current available sessions: {:?}",
+                "Can not find `session_id`: {}, current available sessions: {:?}",
                 session_id,
                 self.sessions.keys()
             );

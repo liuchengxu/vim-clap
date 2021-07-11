@@ -11,7 +11,7 @@ use crate::stdio_server::types::ProviderId;
 
 pub use self::context::SessionContext;
 pub use self::event_handlers::on_move::{build_abs_path, OnMove, OnMoveHandler};
-pub use self::manager::{SessionManager, NewSession};
+pub use self::manager::{NewSession, SessionManager};
 pub use self::providers::*;
 
 pub type SessionId = u64;
@@ -43,7 +43,7 @@ pub enum SessionEvent {
 }
 
 impl SessionEvent {
-    pub fn display_event_type(&self) -> String {
+    pub fn short_display(&self) -> String {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
             Self::OnMove(msg) => format!("OnMove, msg id: {}", msg.id),
@@ -96,7 +96,7 @@ impl<T: EventHandler> Session<T> {
                     Ok(event) => {
                         debug!(
                             "Event(in) receive a session event: {:?}",
-                            event.display_event_type()
+                            event.short_display()
                         );
                         match event {
                             SessionEvent::Terminate => {
@@ -115,7 +115,10 @@ impl<T: EventHandler> Session<T> {
                             }
                         }
                     }
-                    Err(err) => debug!("session recv error: {:?}", err),
+                    Err(err) => debug!(
+                        "The channel is possibly disconnected, session recv error: {:?}",
+                        err
+                    ),
                 }
             }
         });

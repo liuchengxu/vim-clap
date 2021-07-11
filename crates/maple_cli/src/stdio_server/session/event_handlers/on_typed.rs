@@ -11,8 +11,6 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
         return;
     }
 
-    debug!("Handle OnTyped Event");
-
     let msg_id = msg.id;
     let query = msg.get_query();
 

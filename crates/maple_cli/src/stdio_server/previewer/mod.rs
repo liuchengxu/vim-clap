@@ -61,7 +61,7 @@ pub fn preview_file_at<P: AsRef<Path>>(
     lnum: usize,
 ) -> Result<(Vec<String>, usize)> {
     debug!(
-        "try to preview the file, path: {}, lnum: {}",
+        "Try to preview the file, path: {}, lnum: {}",
         path.as_ref().display(),
         lnum
     );

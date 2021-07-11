@@ -14,7 +14,7 @@ use serde_json::json;
 use self::session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, quickfix, GeneralSession, SessionManager, SessionEvent,
+    message_handlers, quickfix, GeneralSession, SessionEvent, SessionManager,
 };
 use self::types::{GlobalEnv, Message};
 
@@ -91,22 +91,26 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
-            debug!("==> message(in): {:?}", msg);
+            debug!("==> stdio message(in): {:?}", msg);
             match &msg.method[..] {
                 "initialize_global_env" => initialize_global(msg), // should be called only once.
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "preview/file" => message_handlers::preview_file(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
+
                 "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
                 "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
                 "filer/on_init" => manager.new_session::<FilerSession>(msg),
                 "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
                 "on_init" => manager.new_session::<GeneralSession>(msg),
                 "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "on_move" => manager.send(msg.session_id, OnMove(msg)),
                 "exit" => manager.terminate(msg.session_id),
+
                 _ => write_response(
                     json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
                 ),
