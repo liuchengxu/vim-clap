@@ -105,8 +105,6 @@ impl NewSession for DumbJumpSession {
             event_recv: session_receiver,
         };
 
-        // handle_dumb_jump_message(msg);
-
         session.start_event_loop()?;
 
         Ok(session_sender)
