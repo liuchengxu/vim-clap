@@ -179,33 +179,6 @@ impl<'a> OnMoveHandler<'a> {
         })
     }
 
-    pub fn with_curline(
-        msg: &Message,
-        context: &'a SessionContext,
-        curline: String,
-    ) -> anyhow::Result<Self> {
-        let msg_id = msg.id;
-        if context.provider_id.as_str() == "filer" {
-            let path = build_abs_path(&msg.get_cwd(), curline);
-            return Ok(Self {
-                msg_id,
-                size: context.provider_id.get_preview_size(),
-                context,
-                inner: OnMove::Filer(path),
-            });
-        }
-        let size = std::cmp::max(
-            context.provider_id.get_preview_size(),
-            (context.preview_winheight / 2) as usize,
-        );
-        Ok(Self {
-            msg_id,
-            size,
-            context,
-            inner: OnMove::new(curline, context)?,
-        })
-    }
-
     pub fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {

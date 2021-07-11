@@ -101,7 +101,7 @@ impl EventHandler for DumbJumpMessageHandler {
 
                 // lnum is 1-indexed
                 if let Some(curline) = self.lines.get((lnum - 1) as usize) {
-                    if let Err(e) = OnMoveHandler::with_curline(&msg, &context, curline.into())
+                    if let Err(e) = OnMoveHandler::try_new(&msg, &context, Some(curline.into()))
                         .map(|x| x.handle())
                     {
                         log::error!("Failed to handle OnMove event: {:?}", e);

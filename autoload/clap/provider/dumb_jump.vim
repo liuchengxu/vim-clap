@@ -60,7 +60,7 @@ function! s:dumb_jump.init() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
   call clap#client#call_on_init('dumb_jump/on_init', function('s:handle_response'), {
         \ 'provider_id': g:clap.provider.id,
-        \ 'query': g:clap.context.query,
+        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
         \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ 'extension': extension,
         \ 'cwd': clap#rooter#working_dir(),
