@@ -28,7 +28,7 @@ impl NewSession for GeneralSession {
             event_recv: session_receiver,
         };
 
-        debug!("new session context: {:?}", session.context);
+        debug!("New general session context: {:?}", session.context);
 
         // FIXME: Actually unused for now
         if let Some(source_cmd) = session.context.source_cmd.clone() {
@@ -39,7 +39,7 @@ impl NewSession for GeneralSession {
                     event_handlers::on_init::run(msg_id, source_cmd, session_cloned).await
                 {
                     log::error!(
-                        "error occurred when running the forerunner job, msg_id: {}, error: {:?}",
+                        "Error occurred when running the forerunner job, msg_id: {}, error: {:?}",
                         msg_id,
                         e
                     );

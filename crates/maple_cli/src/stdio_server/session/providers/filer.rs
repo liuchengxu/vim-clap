@@ -84,8 +84,9 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 #[derive(Clone)]
 pub struct FilerMessageHandler;
 
+#[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    fn handle(&self, event: Event, context: &SessionContext) {
+    async fn handle(&self, event: Event, context: SessionContext) {
         match event {
             Event::OnMove(msg) => {
                 let provider_id = context.provider_id.clone();
@@ -100,7 +101,7 @@ impl EventHandler for FilerMessageHandler {
                         (context.preview_winheight / 2) as usize,
                     ),
                     provider_id,
-                    context,
+                    context: &context,
                     inner: OnMove::Filer(path.clone()),
                 };
                 if let Err(err) = on_move_handler.handle() {
@@ -139,7 +140,7 @@ impl NewSession for FilerSession {
 
 pub fn handle_filer_message(msg: Message) {
     let cwd = msg.get_cwd();
-    debug!("Recv filer params: cwd:{}", cwd,);
+    debug!("Recv filer params: cwd:{}", cwd);
 
     let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
         Ok(entries) => {

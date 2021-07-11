@@ -21,8 +21,9 @@ pub enum Event {
     OnTyped(Message),
 }
 
-pub trait EventHandler: Send + 'static {
-    fn handle(&self, event: Event, context: &SessionContext);
+#[async_trait::async_trait]
+pub trait EventHandler: Send + Sync + 'static {
+    async fn handle(&self, event: Event, context: SessionContext);
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +40,16 @@ pub enum SessionEvent {
     OnTyped(Message),
     OnMove(Message),
     Terminate,
+}
+
+impl SessionEvent {
+    pub fn display_event_type(&self) -> String {
+        match self {
+            Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
+            Self::OnMove(msg) => format!("OnMove, msg id: {}", msg.id),
+            Self::Terminate => "Terminate".into(),
+        }
+    }
 }
 
 impl<T: EventHandler> Session<T> {
@@ -83,18 +94,25 @@ impl<T: EventHandler> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!("event(in) receive a session event: {:?}", event);
+                        debug!(
+                            "Event(in) receive a session event: {:?}",
+                            event.display_event_type()
+                        );
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
-                                self.event_handler.handle(Event::OnMove(msg), &self.context)
+                                self.event_handler
+                                    .handle(Event::OnMove(msg), self.context.clone())
+                                    .await
                             }
-                            SessionEvent::OnTyped(msg) => self
-                                .event_handler
-                                .handle(Event::OnTyped(msg), &self.context),
+                            SessionEvent::OnTyped(msg) => {
+                                self.event_handler
+                                    .handle(Event::OnTyped(msg), self.context.clone())
+                                    .await
+                            }
                         }
                     }
                     Err(err) => debug!("session recv error: {:?}", err),

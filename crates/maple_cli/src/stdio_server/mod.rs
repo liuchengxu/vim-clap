@@ -85,6 +85,7 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
+    use dumb_jump::DumbJumpSession;
     use SessionEvent::*;
 
     let mut session_manager = Manager::default();
@@ -97,7 +98,13 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "preview/file" => message_handlers::preview_file(msg),
                 "filer" => filer::handle_filer_message(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
-                "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
+                // "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
+                "dumb_jump/on_init" => {
+                    log::debug!("==================== Created DumbJumpSession session",);
+                    session_manager.new_session(msg.session_id, msg, DumbJumpSession)
+                }
+                "dumb_jump/on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
+                "dumb_jump/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "on_init" => session_manager.new_session(msg.session_id, msg, GeneralSession),

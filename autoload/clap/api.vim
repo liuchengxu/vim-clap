@@ -608,7 +608,7 @@ function! s:init_provider() abort
       call self.init_default_impl()
     endif
     " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
-    if clap#maple#is_available() && self.id !=# 'filer'
+    if clap#maple#is_available() && self.id !=# 'filer' && self.id !=# 'dumb_jump'
       call clap#client#notify_on_init('on_init')
     endif
     " Try to fill the preview window.
