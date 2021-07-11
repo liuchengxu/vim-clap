@@ -1,13 +1,12 @@
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use log::{debug, error};
+use log::error;
 use serde_json::json;
 
 use crate::commands::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{
     session::{
-        build_abs_path, Event, EventHandler, NewSession, OnMove, OnMoveHandler, Session,
-        SessionContext, SessionEvent,
+        Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,
     },
     write_response, Message,
 };
@@ -43,7 +42,7 @@ pub async fn handle_dumb_jump_message(msg: Message) {
             json!({ "id": msg_id, "provider_id": "dumb_jump", "result": result })
         }
         Err(e) => {
-            error!("error when running dumb_jump: {:?}", e);
+            error!("Error when running dumb_jump: {:?}", e);
             let error = json!({"message": e.to_string()});
             json!({ "id": msg_id, "provider_id": "dumb_jump", "error": error })
         }
@@ -52,7 +51,7 @@ pub async fn handle_dumb_jump_message(msg: Message) {
     write_response(result);
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DumbJumpMessageHandler;
 
 #[async_trait::async_trait]
@@ -70,7 +69,13 @@ impl EventHandler for DumbJumpMessageHandler {
                 tokio::spawn(async {
                     handle_dumb_jump_message(msg).await;
                 })
-                .await;
+                .await
+                .unwrap_or_else(|e| {
+                    log::error!(
+                        "Failed to spawn a task for handle_dumb_jump_message: {:?}",
+                        e
+                    );
+                });
             }
         }
     }
@@ -89,10 +94,6 @@ impl NewSession for DumbJumpSession {
             event_recv: session_receiver,
         };
 
-        log::debug!(
-            "----------------- created new dumb jump session, msg.id: {}",
-            msg.id
-        );
         // handle_dumb_jump_message(msg);
 
         session.start_event_loop()?;
