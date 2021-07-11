@@ -20,7 +20,8 @@ impl EventHandler for DefaultEventHandler {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;
-                if let Err(e) = on_move::OnMoveHandler::try_new(&msg, &context).map(|x| x.handle())
+                if let Err(e) =
+                    on_move::OnMoveHandler::try_new(&msg, &context, None).map(|x| x.handle())
                 {
                     log::error!("Failed to handle OnMove event: {:?}", e);
                     write_response(json!({"error": e.to_string(), "id": msg_id }));

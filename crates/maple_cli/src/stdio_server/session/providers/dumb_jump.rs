@@ -12,26 +12,26 @@ use crate::stdio_server::{
     write_response, Message,
 };
 
-pub async fn handle_dumb_jump_message(msg: Message) -> Vec<String> {
+pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
     struct Params {
         cwd: String,
-        input: String,
+        query: String,
         extension: String,
     }
 
     let Params {
         cwd,
-        input,
+        query,
         extension,
     } = msg
         .deserialize_params()
         .unwrap_or_else(|e| panic!("Failed to deserialize dumb_jump params: {:?}", e));
 
     let dumb_jump = DumbJump {
-        word: input,
+        word: query,
         extension,
         kind: None,
         cmd_dir: Some(cwd.into()),
@@ -54,7 +54,13 @@ pub async fn handle_dumb_jump_message(msg: Message) -> Vec<String> {
             "total": total,
             });
 
-            let result = json!({ "id": msg_id, "provider_id": "dumb_jump", "result": result });
+            let result = json!({
+              "id": msg_id,
+              "force_execute": force_execute,
+              "provider_id": "dumb_jump",
+              "result": result,
+            });
+
             write_response(result);
 
             return lines_clone;
@@ -100,7 +106,7 @@ impl EventHandler for DumbJumpMessageHandler {
                 }
             }
             Event::OnTyped(msg) => {
-                let lines = tokio::spawn(handle_dumb_jump_message(msg))
+                let lines = tokio::spawn(handle_dumb_jump_message(msg, false))
                     .await
                     .unwrap_or_else(|e| {
                         log::error!(
@@ -123,12 +129,16 @@ impl NewSession for DumbJumpSession {
 
         let session = Session {
             session_id: msg.session_id,
-            context: msg.into(),
+            context: msg.clone().into(),
             event_handler: DumbJumpMessageHandler::default(),
             event_recv: session_receiver,
         };
 
         session.start_event_loop()?;
+
+        tokio::spawn(async move {
+            handle_dumb_jump_message(msg, true).await;
+        });
 
         Ok(session_sender)
     }

@@ -89,18 +89,16 @@ impl EventHandler for FilerMessageHandler {
     async fn handle(&mut self, event: Event, context: SessionContext) {
         match event {
             Event::OnMove(msg) => {
-                let provider_id = context.provider_id.clone();
                 let curline = msg
-                    .get_curline(&provider_id)
+                    .get_curline(&context.provider_id)
                     .unwrap_or_else(|e| panic!("{}", e));
                 let path = build_abs_path(&msg.get_cwd(), curline);
                 let on_move_handler = OnMoveHandler {
                     msg_id: msg.id,
                     size: std::cmp::max(
-                        provider_id.get_preview_size(),
+                        context.provider_id.get_preview_size(),
                         (context.preview_winheight / 2) as usize,
                     ),
-                    provider_id,
                     context: &context,
                     inner: OnMove::Filer(path.clone()),
                 };

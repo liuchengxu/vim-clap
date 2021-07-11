@@ -142,35 +142,38 @@ impl OnMove {
 
 pub struct OnMoveHandler<'a> {
     pub msg_id: u64,
-    pub provider_id: ProviderId,
     pub size: usize,
     pub inner: OnMove,
     pub context: &'a SessionContext,
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn try_new(msg: &Message, context: &'a SessionContext) -> anyhow::Result<Self> {
+    pub fn try_new(
+        msg: &Message,
+        context: &'a SessionContext,
+        curline: Option<String>,
+    ) -> anyhow::Result<Self> {
         let msg_id = msg.id;
-        let provider_id = context.provider_id.clone();
-        let curline = msg.get_curline(&provider_id)?;
-        if provider_id.as_str() == "filer" {
+        let curline = match curline {
+            Some(line) => line,
+            None => msg.get_curline(&context.provider_id)?,
+        };
+        if context.provider_id.as_str() == "filer" {
             let path = build_abs_path(&msg.get_cwd(), curline);
             return Ok(Self {
                 msg_id,
-                size: provider_id.get_preview_size(),
-                provider_id,
+                size: context.provider_id.get_preview_size(),
                 context,
                 inner: OnMove::Filer(path),
             });
         }
         let size = std::cmp::max(
-            provider_id.get_preview_size(),
+            context.provider_id.get_preview_size(),
             (context.preview_winheight / 2) as usize,
         );
         Ok(Self {
             msg_id,
             size,
-            provider_id,
             context,
             inner: OnMove::new(curline, context)?,
         })
@@ -182,25 +185,22 @@ impl<'a> OnMoveHandler<'a> {
         curline: String,
     ) -> anyhow::Result<Self> {
         let msg_id = msg.id;
-        let provider_id = context.provider_id.clone();
-        if provider_id.as_str() == "filer" {
+        if context.provider_id.as_str() == "filer" {
             let path = build_abs_path(&msg.get_cwd(), curline);
             return Ok(Self {
                 msg_id,
-                size: provider_id.get_preview_size(),
-                provider_id,
+                size: context.provider_id.get_preview_size(),
                 context,
                 inner: OnMove::Filer(path),
             });
         }
         let size = std::cmp::max(
-            provider_id.get_preview_size(),
+            context.provider_id.get_preview_size(),
             (context.preview_winheight / 2) as usize,
         );
         Ok(Self {
             msg_id,
             size,
-            provider_id,
             context,
             inner: OnMove::new(curline, context)?,
         })
@@ -235,7 +235,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: ProviderId = self.provider_id.clone();
+        let provider_id: ProviderId = self.context.provider_id.clone();
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
@@ -277,7 +277,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
         debug!(
-            "try to preview the file, path: {}, lnum: {}",
+            "Try to preview file: {}, lnum: {}",
             path.as_ref().display(),
             lnum
         );
@@ -290,7 +290,7 @@ impl<'a> OnMoveHandler<'a> {
                     .collect::<Vec<_>>();
                 debug!(
                     "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines len: {:?}",
-                    self.msg_id, self.provider_id, lines.len()
+                    self.msg_id, self.context.provider_id, lines.len()
                 );
                 self.send_response(json!({
                   "event": "on_move",
@@ -302,7 +302,7 @@ impl<'a> OnMoveHandler<'a> {
             Err(err) => {
                 error!(
                     "[{}]Couldn't read first lines of {}, error: {:?}",
-                    self.provider_id,
+                    self.context.provider_id,
                     path.as_ref().display(),
                     err
                 );

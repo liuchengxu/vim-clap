@@ -51,7 +51,6 @@ function! s:dumb_jump.on_typed() abort
   call clap#client#call('dumb_jump/on_typed', function('s:handle_response'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': g:clap.input.get(),
-        \ 'input': g:clap.input.get(),
         \ 'extension': extension,
         \ 'cwd': clap#rooter#working_dir(),
         \ })
@@ -61,8 +60,7 @@ function! s:dumb_jump.init() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
   call clap#client#call_on_init('dumb_jump/on_init', function('s:handle_response'), {
         \ 'provider_id': g:clap.provider.id,
-        \ 'input': g:clap.input.get(),
-        \ 'query': g:clap.input.get(),
+        \ 'query': g:clap.context.query,
         \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \ 'extension': extension,
         \ 'cwd': clap#rooter#working_dir(),
