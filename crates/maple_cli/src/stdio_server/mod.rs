@@ -101,13 +101,13 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 // "dumb_jump" => dumb_jump::handle_dumb_jump_message(msg),
                 "dumb_jump/on_init" => {
                     log::debug!("==================== Created DumbJumpSession session",);
-                    session_manager.new_session(msg.session_id, msg, DumbJumpSession)
+                    session_manager.new_session::<DumbJumpSession>(msg.session_id, msg)
                 }
                 "dumb_jump/on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
                 "dumb_jump/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
-                "filer/on_init" => session_manager.new_session(msg.session_id, msg, FilerSession),
+                "filer/on_init" => session_manager.new_session::<FilerSession>(msg.session_id, msg),
                 "filer/on_move" => session_manager.send(msg.session_id, OnMove(msg)),
-                "on_init" => session_manager.new_session(msg.session_id, msg, GeneralSession),
+                "on_init" => session_manager.new_session::<GeneralSession>(msg.session_id, msg),
                 "on_typed" => session_manager.send(msg.session_id, OnTyped(msg)),
                 "on_move" => session_manager.send(msg.session_id, OnMove(msg)),
                 "exit" => session_manager.terminate(msg.session_id),

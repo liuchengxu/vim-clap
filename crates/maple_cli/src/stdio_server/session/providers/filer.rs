@@ -119,7 +119,7 @@ impl EventHandler for FilerMessageHandler {
 pub struct FilerSession;
 
 impl NewSession for FilerSession {
-    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {

@@ -36,7 +36,7 @@ impl SessionEventSender {
 /// Creates a new session with a context built from the message `msg`.
 pub trait NewSession {
     /// Spawns a new session thread given `msg`.
-    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>>;
+    fn spawn(msg: Message) -> Result<Sender<SessionEvent>>;
 }
 
 /// This structs manages all the created sessions tracked by the session id.
@@ -47,16 +47,11 @@ pub struct Manager {
 
 impl Manager {
     /// Starts a session in a new thread given the session id and init message.
-    pub fn new_session<T: NewSession>(
-        &mut self,
-        session_id: SessionId,
-        msg: Message,
-        new_session: T,
-    ) {
+    pub fn new_session<T: NewSession>(&mut self, session_id: SessionId, msg: Message) {
         if self.exists(session_id) {
             error!("Skipped as session {} already exists", msg.session_id);
         } else {
-            match new_session.spawn(msg) {
+            match T::spawn(msg) {
                 Ok(sender) => {
                     log::debug!(
                         "----------------- insert sender fo session id: {}",

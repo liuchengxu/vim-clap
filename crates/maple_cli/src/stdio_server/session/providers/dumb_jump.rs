@@ -84,12 +84,12 @@ impl EventHandler for DumbJumpMessageHandler {
 pub struct DumbJumpSession;
 
 impl NewSession for DumbJumpSession {
-    fn spawn(&self, msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {
             session_id: msg.session_id,
-            context: msg.clone().into(),
+            context: msg.into(),
             event_handler: DumbJumpMessageHandler,
             event_recv: session_receiver,
         };

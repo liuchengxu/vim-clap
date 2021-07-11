@@ -14,6 +14,7 @@ pub fn preview_quickfix_entry(msg: Message) {
 }
 
 async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
+    // TODO: use a struct
     let curline = msg.get_string_unsafe("curline");
     let winwidth = msg.get_u64("winwidth")?;
     let winheight = msg.get_u64("winheight")?;
