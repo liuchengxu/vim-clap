@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
+use serde::Deserialize;
 use serde_json::json;
 
 use crate::commands::dumb_jump::{DumbJump, Lines};
@@ -12,9 +13,22 @@ use crate::stdio_server::{
 };
 
 pub async fn handle_dumb_jump_message(msg: Message) {
-    let cwd = msg.get_cwd();
-    let input = msg.get_string_unsafe("input");
-    let extension = msg.get_string_unsafe("extension");
+    let msg_id = msg.id;
+
+    #[derive(Deserialize)]
+    struct Params {
+        cwd: String,
+        input: String,
+        extension: String,
+    }
+
+    let Params {
+        cwd,
+        input,
+        extension,
+    } = msg
+        .deserialize_params()
+        .unwrap_or_else(|e| panic!("Failed to deserialize dumb_jump params: {:?}", e));
 
     let dumb_jump = DumbJump {
         word: input,
@@ -23,7 +37,6 @@ pub async fn handle_dumb_jump_message(msg: Message) {
         cmd_dir: Some(cwd.into()),
     };
 
-    let msg_id = msg.id;
     let result = match dumb_jump.references_or_occurrences(false).await {
         Ok(Lines {
             mut lines,
