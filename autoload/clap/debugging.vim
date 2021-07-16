@@ -76,6 +76,12 @@ function! clap#debugging#info() abort
     echohl Normal | echon 'ctags not found'    | echohl NONE
   endif
 
+  if executable('rustc')
+    echohl Type   | echo '        rustc version: ' | echohl NONE
+    let rustc_version = system('rustc --version')
+    echohl Normal | echon rustc_version            | echohl NONE
+  endif
+
   echohl Type   | echo '    Current sync impl: '   | echohl NONE
   echohl Normal | echon clap#filter#current_impl() | echohl NONE
 
