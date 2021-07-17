@@ -4,7 +4,7 @@ use log::error;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::commands::dumb_jump::{DumbJump, Lines};
+use crate::command::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{
     session::{
         Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,
@@ -26,9 +26,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         cwd,
         query,
         extension,
-    } = msg
-        .deserialize_params()
-        .unwrap_or_else(|e| panic!("Failed to deserialize dumb_jump params: {:?}", e));
+    } = msg.deserialize_params_unsafe();
 
     if query.is_empty() {
         return Default::default();
@@ -89,7 +87,7 @@ pub struct DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) {
+    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;
@@ -119,6 +117,7 @@ impl EventHandler for DumbJumpMessageHandler {
                 self.lines = lines;
             }
         }
+        Ok(())
     }
 }
 
@@ -126,14 +125,8 @@ pub struct DumbJumpSession;
 
 impl NewSession for DumbJumpSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
-
-        let session = Session {
-            session_id: msg.session_id,
-            context: msg.clone().into(),
-            event_handler: DumbJumpMessageHandler::default(),
-            event_recv: session_receiver,
-        };
+        let (session, session_sender) =
+            Session::new(msg.clone(), DumbJumpMessageHandler::default());
 
         session.start_event_loop()?;
 

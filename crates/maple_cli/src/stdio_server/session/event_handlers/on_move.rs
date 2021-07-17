@@ -55,7 +55,10 @@ pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: String) -> PathBuf {
 impl OnMove {
     pub fn new(curline: String, context: &SessionContext) -> Result<Self> {
         let context = match context.provider_id.as_str() {
+            "filer" => unreachable!("filer has been handled ahead"),
+
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, curline)),
+            "recent_files" => Self::Files(curline.into()),
             "history" => {
                 if curline.starts_with('~') {
                     // I know std::env::home_dir() is incorrect in some rare cases[1], but dirs crate has been archived.
@@ -69,9 +72,9 @@ impl OnMove {
                     Self::History(build_abs_path(&context.cwd, curline))
                 }
             }
-            "filer" => unreachable!("filer has been handled ahead"),
             "proj_tags" => {
-                let (lnum, p) = extract_proj_tags(&curline).context("can not extract proj tags")?;
+                let (lnum, p) =
+                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
                 Self::ProjTags { path, lnum }
@@ -97,13 +100,13 @@ impl OnMove {
                 Self::Grep { path, lnum }
             }
             "blines" => {
-                let lnum = extract_blines_lnum(&curline).context("can not extract buffer lnum")?;
+                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
                 Self::BLines { path, lnum }
             }
             "tags" => {
                 let lnum =
-                    extract_buf_tags_lnum(&curline).context("can not extract buffer tags")?;
+                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
                 let path = context.start_buffer_path.clone();
                 Self::BufferTags { path, lnum }
             }
@@ -125,13 +128,13 @@ impl OnMove {
                 }
             }
             "commits" | "bcommits" => {
-                let rev = parse_rev(&curline).context("can not extract rev")?;
+                let rev = parse_rev(&curline).context("Couldn't extract rev")?;
                 Self::Commit(rev.into())
             }
             _ => {
                 return Err(anyhow!(
-                    "Couldn't constructs a OnMove instance, context: {:?}",
-                    context
+                    "Couldn't construct an `OnMove` instance, you probably forget to add an implementation for this provider: {:?}",
+                    context.provider_id
                 ))
             }
         };

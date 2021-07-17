@@ -86,7 +86,7 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) {
+    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 #[derive(serde::Deserialize)]
@@ -95,9 +95,7 @@ impl EventHandler for FilerMessageHandler {
                     cwd: String,
                 }
                 let msg_id = msg.id;
-                let Params { curline, cwd } = msg
-                    .deserialize_params()
-                    .unwrap_or_else(|e| panic!("Can not deserialize filer OnMove params: {}", e));
+                let Params { curline, cwd } = msg.deserialize_params_unsafe();
                 let path = build_abs_path(&cwd, curline);
                 let on_move_handler = OnMoveHandler {
                     msg_id,
@@ -114,6 +112,7 @@ impl EventHandler for FilerMessageHandler {
             // TODO: handle on_typed
             Event::OnTyped(msg) => handle_filer_message(msg),
         }
+        Ok(())
     }
 }
 
@@ -121,14 +120,7 @@ pub struct FilerSession;
 
 impl NewSession for FilerSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
-
-        let session = Session {
-            session_id: msg.session_id,
-            context: msg.clone().into(),
-            event_handler: FilerMessageHandler,
-            event_recv: session_receiver,
-        };
+        let (session, session_sender) = Session::new(msg.clone(), FilerMessageHandler);
 
         // Handle the on_init message.
         handle_filer_message(msg);

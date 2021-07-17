@@ -13,7 +13,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
 use crate::tools::ripgrep::{Match, Word};
-use crate::{commands::dumb_jump::Lines, process::AsyncCommand};
+use crate::{command::dumb_jump::Lines, process::AsyncCommand};
 
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(

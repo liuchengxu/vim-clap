@@ -82,7 +82,7 @@ impl SessionManager {
             sender.send(event);
         } else {
             error!(
-                "Can not find `session_id`: {}, current available sessions: {:?}",
+                "Couldn't find `session_id`: {}, current available sessions: {:?}",
                 session_id,
                 self.sessions.keys()
             );

@@ -31,7 +31,7 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
         let total = lines_info.len();
 
         let (lines, indices, truncated_map) = printer::process_top_items(
-            lines_info.into_iter().take(30),
+            lines_info.into_iter().take(30).collect(),
             context.display_winwidth as usize,
             Some(icon::IconPainter::File),
         );

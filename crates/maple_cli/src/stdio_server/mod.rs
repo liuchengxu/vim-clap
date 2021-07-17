@@ -14,7 +14,7 @@ use serde_json::json;
 use self::session::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, quickfix, GeneralSession, SessionEvent, SessionManager,
+    message_handlers, quickfix, recent_files, GeneralSession, SessionEvent, SessionManager,
 };
 use self::types::{GlobalEnv, Message};
 
@@ -42,9 +42,7 @@ fn initialize_global(msg: Message) {
         is_nvim,
         enable_icon,
         clap_preview_size,
-    } = msg
-        .deserialize_params()
-        .unwrap_or_else(|e| panic!("Failed to deserialize global params: {:?}", e));
+    } = msg.deserialize_params_unsafe();
 
     let is_nvim = is_nvim.unwrap_or(false);
     let enable_icon = enable_icon.unwrap_or(false);
@@ -86,6 +84,7 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
     use dumb_jump::DumbJumpSession;
+    use recent_files::RecentFilesSession;
     use SessionEvent::*;
 
     let mut manager = SessionManager::default();
@@ -97,10 +96,15 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                 "preview/file" => message_handlers::preview_file(msg),
                 "quickfix" => quickfix::preview_quickfix_entry(msg),
+                "note_recent_files" => message_handlers::note_recent_file(msg),
 
                 "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
                 "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+                "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
+                "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                 "filer" => filer::handle_filer_message(msg),
                 "filer/on_init" => manager.new_session::<FilerSession>(msg),

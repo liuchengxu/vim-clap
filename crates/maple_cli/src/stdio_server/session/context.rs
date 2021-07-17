@@ -62,9 +62,7 @@ impl From<Message> for SessionContext {
             preview_winheight,
             source_cmd,
             runtimepath,
-        } = msg
-            .deserialize_params()
-            .unwrap_or_else(|e| panic!("Failed to deserialize as session Params: {:?}", e));
+        } = msg.deserialize_params_unsafe();
 
         Self {
             provider_id,

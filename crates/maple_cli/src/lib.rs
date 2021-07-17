@@ -4,8 +4,9 @@ mod logger;
 mod process;
 mod stdio_server;
 mod tools;
+mod recent_files;
 
-pub mod commands;
+pub mod command;
 /// Re-exports.
 pub use {
     anyhow::{Context, Result},

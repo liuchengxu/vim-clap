@@ -44,6 +44,27 @@ function! clap#state#handle_message(msg) abort
   endif
 endfunction
 
+" Handle the response of OnTyped event
+function! clap#state#handle_response_on_typed(result, error) abort
+  if a:error isnot v:null
+    call clap#indicator#set_matches_number(0)
+    call g:clap.display.set_lines([a:error.message])
+    return
+  endif
+
+  call clap#indicator#set_matches_number(a:result.total)
+
+  if a:result.total == 0
+    call g:clap.display.clear()
+    call g:clap.preview.clear()
+    return
+  endif
+
+  call g:clap.display.set_lines(a:result.lines)
+  call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
+  call clap#preview#async_open_with_delay()
+endfunction
+
 " Returns the cached source tmp file.
 "
 " Write the providers whose `source` is list-style into a tempfile.

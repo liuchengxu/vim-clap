@@ -29,46 +29,79 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     }
 }
 
+/// macros for `dyn_collect_number` and `dyn_collect_number`
+///
+/// Generate an iterator of [`FilteredItem`] from [`Source::Stdin`].
+#[macro_export]
+macro_rules! source_iter_stdin {
+    ( $scorer:ident ) => {
+        std::io::stdin().lock().lines().filter_map(|lines_iter| {
+            lines_iter
+                .ok()
+                .map(Into::<SourceItem>::into)
+                .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                .map(Into::into)
+        })
+    };
+}
+
+/// Generate an iterator of [`FilteredItem`] from [`Source::Exec(exec)`].
+#[cfg(feature = "enable_dyn")]
+#[macro_export]
+macro_rules! source_iter_exec {
+    ( $scorer:ident, $exec:ident ) => {
+        std::io::BufReader::new($exec.stream_stdout()?)
+            .lines()
+            .filter_map(|lines_iter| {
+                lines_iter
+                    .ok()
+                    .map(Into::<SourceItem>::into)
+                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .map(Into::into)
+            })
+    };
+}
+
+/// Generate an iterator of [`FilteredItem`] from [`Source::File(fpath)`].
+#[macro_export]
+macro_rules! source_iter_file {
+    ( $scorer:ident, $fpath:ident ) => {
+        // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+        // The line stream can contain invalid UTF-8 data.
+        std::io::BufReader::new(std::fs::File::open($fpath)?)
+            .lines()
+            .filter_map(|x| {
+                x.ok()
+                    .map(Into::<SourceItem>::into)
+                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .map(Into::into)
+            })
+    };
+}
+
+/// Generate an iterator of [`FilteredItem`] from [`Source::List(list)`].
+#[macro_export]
+macro_rules! source_iter_list {
+    ( $scorer:ident, $list:ident ) => {
+        $list
+            .filter_map(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+            .map(Into::into)
+    };
+}
+
 impl<I: Iterator<Item = SourceItem>> Source<I> {
-    /// Returns the complete filtered results after applying the specified
-    /// matcher algo on each item in the input stream.
+    /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter(self, matcher: Matcher, query: &str) -> Result<Vec<FilterResult>> {
-        let do_match = |line: &str| matcher.do_match(&line.into(), query);
+    pub fn filter_and_collect(self, matcher: Matcher, query: &str) -> Result<Vec<FilteredItem>> {
+        let scorer = |item: &SourceItem| matcher.do_match(item, query);
 
         let filtered = match self {
-            Self::Stdin => std::io::stdin()
-                .lock()
-                .lines()
-                .filter_map(|lines_iter| {
-                    lines_iter.ok().and_then(|line| {
-                        do_match(&line).map(|(score, indices)| (line.into(), score, indices))
-                    })
-                })
-                .collect::<Vec<_>>(),
+            Self::Stdin => source_iter_stdin!(scorer).collect(),
             #[cfg(feature = "enable_dyn")]
-            Self::Exec(exec_cmd) => std::io::BufReader::new(exec_cmd.stream_stdout()?)
-                .lines()
-                .filter_map(|lines_iter| {
-                    lines_iter.ok().and_then(|line| {
-                        do_match(&line).map(|(score, indices)| (line.into(), score, indices))
-                    })
-                })
-                .collect::<Vec<_>>(),
-            Self::File(fpath) => std::fs::read_to_string(fpath)?
-                .par_lines()
-                .filter_map(|line| {
-                    do_match(&line)
-                        .map(|(score, indices)| (line.to_string().into(), score, indices))
-                })
-                .collect::<Vec<_>>(),
-            Self::List(list) => list
-                .filter_map(|item| {
-                    let line = item.match_text();
-                    do_match(line).map(|(score, indices)| (line.into(), score, indices))
-                })
-                .collect::<Vec<_>>(),
+            Self::Exec(exec) => source_iter_exec!(scorer, exec).collect(),
+            Self::File(fpath) => source_iter_file!(scorer, fpath).collect(),
+            Self::List(list) => source_iter_list!(scorer, list).collect(),
         };
 
         Ok(filtered)

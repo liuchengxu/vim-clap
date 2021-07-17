@@ -71,7 +71,7 @@ function! clap#client#call_on_move(method, callback, ...) abort
   call clap#client#call(a:method, a:callback, params)
 endfunction
 
-function! clap#client#call_on_move_dumb_jump(method, callback, ...) abort
+function! clap#client#call_with_lnum(method, callback, ...) abort
   let params = {'lnum': g:__clap_display_curlnum}
   if g:clap.provider.id ==# 'grep'
     let params['enable_icon'] = g:clap_provider_grep_enable_icon ? v:true : v:false
@@ -94,6 +94,13 @@ function! clap#client#notify(method, params) abort
         \ 'method': a:method,
         \ 'params': a:params,
         \ }))
+endfunction
+
+function! clap#client#notify_recent_file() abort
+  if &buftype ==# 'nofile'
+    return
+  endif
+  call clap#client#call('note_recent_files', v:null, {'file': expand(expand('<afile>:p'))})
 endfunction
 
 function! clap#client#call(method, callback, params) abort

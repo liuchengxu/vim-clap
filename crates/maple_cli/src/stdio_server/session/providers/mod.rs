@@ -1,6 +1,7 @@
 pub mod dumb_jump;
 pub mod filer;
 pub mod quickfix;
+pub mod recent_files;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
@@ -17,16 +18,9 @@ pub struct GeneralSession;
 
 impl NewSession for GeneralSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
         let msg_id = msg.id;
 
-        let session = Session {
-            session_id: msg.session_id,
-            context: msg.into(),
-            event_handler: DefaultEventHandler,
-            event_recv: session_receiver,
-        };
-
+        let (session, session_sender) = Session::new(msg, DefaultEventHandler);
         log::debug!("New general session context: {:?}", session.context);
 
         // FIXME: Actually unused for now
