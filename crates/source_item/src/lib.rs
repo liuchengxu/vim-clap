@@ -130,7 +130,7 @@ pub struct FilteredItem<T = i64> {
     pub source_item: SourceItem,
     /// Filtering score.
     pub score: T,
-    /// Indices of matched elements.
+    /// Indices of matched elements, may be truncated.
     pub match_indices: Vec<usize>,
     /// The text might be truncated for fitting into the display window.
     pub display_text: Option<String>,
