@@ -14,16 +14,15 @@ use rayon::prelude::*;
 
 use icon::IconPainter;
 use matcher::{Algo, Bonus, MatchType, Matcher};
-use source_item::SourceItem;
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
+pub use source_item::{FilteredItem, SourceItem};
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
 
-/// Tuple of (matched line text, filtering score, indices of matched elements)
-pub type FilterResult = (SourceItem, i64, Vec<usize>);
+// pub type FilteredItem = (SourceItem, i64, Vec<usize>);
 
 /// Context for running the filter.
 #[derive(Debug, Clone)]
@@ -93,9 +92,9 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub(crate) fn sort_initial_filtered(filtered: Vec<FilterResult>) -> Vec<FilterResult> {
+pub(crate) fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
     let mut filtered = filtered;
-    filtered.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+    filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
     filtered
 }
 
@@ -107,7 +106,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     algo: Algo,
     match_type: MatchType,
     bonuses: Vec<Bonus>,
-) -> Result<Vec<FilterResult>> {
+) -> Result<Vec<FilteredItem>> {
     let matcher = Matcher::new_with_bonuses(algo, match_type, bonuses);
     let filtered = source.filter(matcher, query)?;
     let ranked = sort_initial_filtered(filtered);

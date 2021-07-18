@@ -69,7 +69,11 @@ impl From<&str> for SourceItem {
 
 impl From<String> for SourceItem {
     fn from(raw: String) -> Self {
-        raw.as_str().into()
+        Self {
+            raw,
+            display_text: None,
+            match_text: None,
+        }
     }
 }
 
@@ -113,5 +117,46 @@ impl SourceItem {
             MatchType::FileName => file_name_only(self.raw.as_str()),
             MatchType::IgnoreFilePath => strip_grep_filepath(self.raw.as_str()),
         }
+    }
+}
+
+/// This struct represents the result of filtered source item.
+pub struct FilteredItem<T = i64> {
+    /// Tuple of (matched line text, filtering score, indices of matched elements)
+    pub source_item: SourceItem,
+    /// Filtering score.
+    pub score: T,
+    /// Indices of matched elements.
+    pub match_indices: Vec<usize>,
+}
+
+impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
+    fn from((source_item, score, match_indices): (SourceItem, T, Vec<usize>)) -> Self {
+        Self {
+            source_item,
+            score,
+            match_indices,
+        }
+    }
+}
+
+impl<T> From<(String, T, Vec<usize>)> for FilteredItem<T> {
+    fn from((text, score, match_indices): (String, T, Vec<usize>)) -> Self {
+        Self {
+            source_item: text.into(),
+            score,
+            match_indices,
+        }
+    }
+}
+
+impl<T> FilteredItem<T> {
+    pub fn deconstruct(self) -> (SourceItem, T, Vec<usize>) {
+        let Self {
+            source_item,
+            score,
+            match_indices,
+        } = self;
+        (source_item, score, match_indices)
     }
 }

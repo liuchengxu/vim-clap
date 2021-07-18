@@ -8,7 +8,7 @@ use matcher::Bonus;
 use utility::{println_json, println_json_with_length};
 
 use super::*;
-use crate::FilterResult;
+use crate::FilteredItem;
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 30;
@@ -41,7 +41,7 @@ macro_rules! insert_both {
         match $index {
             // If index is last possible, then the worst item is better than this we want to push in,
             // and we do nothing.
-            Some(MAX_IDX) => $buffer.push(($text, $score, $indices)),
+            Some(MAX_IDX) => $buffer.push(($text, $score, $indices).into()),
             // Else, one item gets popped from the queue
             // and other is inserted.
             Some(idx) => {
@@ -56,7 +56,11 @@ macro_rules! insert_both {
     // This macro pushes all things into buffer and inserts all things into
     // `top_` queues.
     ($index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
-        $buffer.push(($text, $score, $indices));
+        $buffer.push(FilteredItem {
+          source_item: $text.into(),
+          score: $score,
+          match_indices: $indices
+        });
         $top_results.pop_and_insert($index, $buffer.len() - 1);
         $top_scores.pop_and_insert($index, $score);
     }};
@@ -68,29 +72,36 @@ type SelectedTopItemsInfo = (usize, [i64; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]
 ///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
 fn select_top_items_to_show(
-    buffer: &mut Vec<FilterResult>,
-    iter: &mut impl Iterator<Item = FilterResult>,
+    buffer: &mut Vec<FilteredItem>,
+    iter: &mut impl Iterator<Item = FilteredItem>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
     let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
-    let res = iter.try_for_each(|(text, score, indices)| {
-        let idx = match find_best_score_idx(&top_scores, score) {
-            Some(idx) => idx + 1,
-            None => 0,
-        };
+    let res = iter.try_for_each(
+        |FilteredItem {
+             source_item,
+             score,
+             match_indices,
+         }| {
+            let (text, score, indices) = (source_item.raw, score, match_indices);
+            let idx = match find_best_score_idx(&top_scores, score) {
+                Some(idx) => idx + 1,
+                None => 0,
+            };
 
-        insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
+            insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
 
-        // Stop iterating after `ITEMS_TO_SHOW` iterations.
-        total += 1;
-        if total == ITEMS_TO_SHOW {
-            Err(())
-        } else {
-            Ok(())
-        }
-    });
+            // Stop iterating after `ITEMS_TO_SHOW` iterations.
+            total += 1;
+            if total == ITEMS_TO_SHOW {
+                Err(())
+            } else {
+                Ok(())
+            }
+        },
+    );
 
     if res.is_ok() {
         Ok(total)
@@ -121,7 +132,7 @@ fn try_notify_top_results(
     past: &Instant,
     top_results_len: usize,
     top_results: &[usize; ITEMS_TO_SHOW],
-    buffer: &[FilterResult],
+    buffer: &[FilteredItem],
     last_lines: &[String],
 ) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
     if total % 16 == 0 {
@@ -130,7 +141,12 @@ fn try_notify_top_results(
             let mut indices = Vec::with_capacity(top_results_len);
             let mut lines = Vec::with_capacity(top_results_len);
             for &idx in top_results.iter() {
-                let (item, _, idxs) = std::ops::Index::index(buffer, idx);
+                let FilteredItem {
+                    source_item,
+                    match_indices,
+                    ..
+                } = std::ops::Index::index(buffer, idx);
+                let (item, idxs) = (source_item, match_indices);
                 let text = if let Some(painter) = icon_painter {
                     indices.push(idxs.iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
                     painter.paint(item.display_text())
@@ -171,9 +187,9 @@ fn try_notify_top_results(
 ///
 /// So, this particular function won't work in parallel context at all.
 fn dyn_collect_all(
-    mut iter: impl Iterator<Item = FilterResult>,
+    mut iter: impl Iterator<Item = FilteredItem>,
     icon_painter: &Option<IconPainter>,
-) -> Vec<FilterResult> {
+) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -191,28 +207,36 @@ fn dyn_collect_all(
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(|(text, score, indices)| {
-        let idx = find_best_score_idx(&top_scores, score);
+    iter.for_each(
+        |FilteredItem {
+             source_item,
+             score,
+             match_indices,
+         }| {
+            let (text, score, indices) = (source_item.raw, score, match_indices);
 
-        insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
+            let idx = find_best_score_idx(&top_scores, score);
 
-        total = total.wrapping_add(1);
+            insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
 
-        if let Ok((now, new_lines)) = try_notify_top_results(
-            &icon_painter,
-            total,
-            &past,
-            top_results.len(),
-            &top_results,
-            &buffer,
-            &last_lines,
-        ) {
-            past = now;
-            if let Some(lines) = new_lines {
-                last_lines = lines;
+            total = total.wrapping_add(1);
+
+            if let Ok((now, new_lines)) = try_notify_top_results(
+                &icon_painter,
+                total,
+                &past,
+                top_results.len(),
+                &top_results,
+                &buffer,
+                &last_lines,
+            ) {
+                past = now;
+                if let Some(lines) = new_lines {
+                    last_lines = lines;
+                }
             }
-        }
-    });
+        },
+    );
 
     buffer
 }
@@ -229,10 +253,10 @@ fn dyn_collect_all(
 // I think, it's just good enough. And should be more effective than full
 // `collect()` into Vec on big numbers of iterations.
 fn dyn_collect_number(
-    mut iter: impl Iterator<Item = FilterResult>,
+    mut iter: impl Iterator<Item = FilteredItem>,
     number: usize,
     icon_painter: &Option<IconPainter>,
-) -> (usize, Vec<(SourceItem, i64, Vec<usize>)>) {
+) -> (usize, Vec<FilteredItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
@@ -249,40 +273,49 @@ fn dyn_collect_number(
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(|(text, score, indices)| {
-        let idx = find_best_score_idx(&top_scores, score);
+    iter.for_each(
+        |FilteredItem {
+             source_item,
+             score,
+             match_indices,
+         }| {
+            let (text, score, indices) = (source_item, score, match_indices);
 
-        insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
+            let idx = find_best_score_idx(&top_scores, score);
 
-        total += 1;
+            insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
 
-        if let Ok((now, new_lines)) = try_notify_top_results(
-            &icon_painter,
-            total,
-            &past,
-            top_results.len(),
-            &top_results,
-            &buffer,
-            &last_lines,
-        ) {
-            past = now;
-            if let Some(lines) = new_lines {
-                last_lines = lines;
+            total += 1;
+
+            if let Ok((now, new_lines)) = try_notify_top_results(
+                &icon_painter,
+                total,
+                &past,
+                top_results.len(),
+                &top_results,
+                &buffer,
+                &last_lines,
+            ) {
+                past = now;
+                if let Some(lines) = new_lines {
+                    last_lines = lines;
+                }
             }
-        }
 
-        if buffer.len() == buffer.capacity() {
-            buffer.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+            if buffer.len() == buffer.capacity() {
+                buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
-            for (idx, (_, score, _)) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
-                top_scores[idx] = *score;
-                top_results[idx] = idx;
+                for (idx, FilteredItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate()
+                {
+                    top_scores[idx] = *score;
+                    top_results[idx] = idx;
+                }
+
+                let half = buffer.len() / 2;
+                buffer.truncate(half);
             }
-
-            let half = buffer.len() / 2;
-            buffer.truncate(half);
-        }
-    });
+        },
+    );
 
     (total, buffer)
 }
@@ -297,6 +330,7 @@ macro_rules! source_iter_stdin {
                 .ok()
                 .map(Into::<SourceItem>::into)
                 .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                .map(Into::into)
         })
     };
 }
@@ -312,6 +346,7 @@ macro_rules! source_iter_exec {
                     .ok()
                     .map(Into::<SourceItem>::into)
                     .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .map(Into::into)
             })
     };
 }
@@ -327,6 +362,7 @@ macro_rules! source_iter_file {
                 x.ok()
                     .map(Into::<SourceItem>::into)
                     .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .map(Into::into)
             })
     };
 }
@@ -334,7 +370,9 @@ macro_rules! source_iter_file {
 // Generate an filtered iterator from Source::List(list).
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
-        $list.filter_map(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+        $list
+            .filter_map(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+            .map(Into::into)
     };
 }
 
@@ -393,8 +431,14 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         let ranked = sort_initial_filtered(filtered);
 
-        for (item, _, indices) in ranked.into_iter() {
-            let text = item.display_text.unwrap_or(item.raw);
+        for FilteredItem {
+            source_item,
+            match_indices,
+            ..
+        } in ranked.into_iter()
+        {
+            let text = source_item.display_text.unwrap_or(source_item.raw);
+            let indices = match_indices;
             println_json!(text, indices);
         }
     }
