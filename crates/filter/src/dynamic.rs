@@ -407,10 +407,11 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         for FilteredItem {
             source_item,
             match_indices,
+            display_text,
             ..
         } in ranked.into_iter()
         {
-            let text = source_item.display_text.unwrap_or(source_item.raw);
+            let text = display_text.unwrap_or_else(|| source_item.display_text().to_owned());
             let indices = match_indices;
             println_json!(text, indices);
         }

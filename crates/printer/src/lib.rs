@@ -174,39 +174,27 @@ pub fn process_top_items<T>(
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
-            .map(
-                |(
-                    idx,
-                    FilteredItem {
-                        source_item,
-                        match_indices,
-                        display_text,
-                        ..
-                    },
-                )| {
-                    let text = display_text.unwrap_or_else(|| source_item.display_text().into());
-                    let idxs = match_indices;
-                    let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
-                        format!("{} {}", painter.get_icon(origin_text), text)
-                    } else {
-                        painter.paint(&text)
-                    };
-                    (iconized, idxs.iter().map(|x| x + ICON_LEN).collect())
-                },
-            )
+            .map(|(idx, filtered_item)| {
+                let text = filtered_item.display_text();
+                let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
+                    format!("{} {}", painter.get_icon(origin_text), text)
+                } else {
+                    painter.paint(&text)
+                };
+                (iconized, filtered_item.shift_indices(ICON_LEN))
+            })
             .unzip();
 
         (lines, indices, truncated_map)
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
-            .map(
-                |FilteredItem {
-                     source_item,
-                     match_indices,
-                     ..
-                 }| (source_item.raw, match_indices),
-            )
+            .map(|filtered_item| {
+                (
+                    filtered_item.display_text().to_owned(),
+                    filtered_item.match_indices,
+                )
+            })
             .unzip();
 
         (lines, indices, truncated_map)
