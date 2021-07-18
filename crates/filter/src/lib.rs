@@ -22,8 +22,6 @@ pub use source_item::{FilteredItem, SourceItem};
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
 
-// pub type FilteredItem = (SourceItem, i64, Vec<usize>);
-
 /// Context for running the filter.
 #[derive(Debug, Clone)]
 pub struct FilterContext {
