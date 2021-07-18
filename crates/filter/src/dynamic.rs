@@ -37,30 +37,26 @@ impl<T: Copy> Insert<T> for [T; ITEMS_TO_SHOW] {
 macro_rules! insert_both {
     // This macro pushes all things into buffer, pops one worst item from each top queue
     // and then inserts all things into `top_` queues.
-    (pop; $index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+    (pop; $index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
         match $index {
             // If index is last possible, then the worst item is better than this we want to push in,
             // and we do nothing.
-            Some(MAX_IDX) => $buffer.push(($text, $score, $indices).into()),
+            Some(MAX_IDX) => $buffer.push($item),
             // Else, one item gets popped from the queue
             // and other is inserted.
             Some(idx) => {
-                insert_both!(idx + 1, $score, $text, $indices => $buffer, $top_results, $top_scores);
+                insert_both!(idx + 1, $score, $item => $buffer, $top_results, $top_scores);
             }
             None => {
-                insert_both!(0, $score, $text, $indices => $buffer, $top_results, $top_scores);
+                insert_both!(0, $score, $item => $buffer, $top_results, $top_scores);
             }
         }
     }};
 
     // This macro pushes all things into buffer and inserts all things into
     // `top_` queues.
-    ($index:expr, $score:expr, $text:expr, $indices:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
-        $buffer.push(FilteredItem {
-          source_item: $text.into(),
-          score: $score,
-          match_indices: $indices
-        });
+    ($index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+        $buffer.push($item);
         $top_results.pop_and_insert($index, $buffer.len() - 1);
         $top_scores.pop_and_insert($index, $score);
     }};
@@ -79,29 +75,23 @@ fn select_top_items_to_show(
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
-    let res = iter.try_for_each(
-        |FilteredItem {
-             source_item,
-             score,
-             match_indices,
-         }| {
-            let (text, score, indices) = (source_item.raw, score, match_indices);
-            let idx = match find_best_score_idx(&top_scores, score) {
-                Some(idx) => idx + 1,
-                None => 0,
-            };
+    let res = iter.try_for_each(|filtered_item| {
+        let score = filtered_item.score;
+        let idx = match find_best_score_idx(&top_scores, score) {
+            Some(idx) => idx + 1,
+            None => 0,
+        };
 
-            insert_both!(idx, score, text, indices => buffer, top_results, top_scores);
+        insert_both!(idx, score, filtered_item => buffer, top_results, top_scores);
 
-            // Stop iterating after `ITEMS_TO_SHOW` iterations.
-            total += 1;
-            if total == ITEMS_TO_SHOW {
-                Err(())
-            } else {
-                Ok(())
-            }
-        },
-    );
+        // Stop iterating after `ITEMS_TO_SHOW` iterations.
+        total += 1;
+        if total == ITEMS_TO_SHOW {
+            Err(())
+        } else {
+            Ok(())
+        }
+    });
 
     if res.is_ok() {
         Ok(total)
@@ -207,36 +197,30 @@ fn dyn_collect_all(
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(
-        |FilteredItem {
-             source_item,
-             score,
-             match_indices,
-         }| {
-            let (text, score, indices) = (source_item.raw, score, match_indices);
+    iter.for_each(|filtered_item| {
+        let score = filtered_item.score;
 
-            let idx = find_best_score_idx(&top_scores, score);
+        let idx = find_best_score_idx(&top_scores, score);
 
-            insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
+        insert_both!(pop; idx, score, filtered_item => buffer, top_results, top_scores);
 
-            total = total.wrapping_add(1);
+        total = total.wrapping_add(1);
 
-            if let Ok((now, new_lines)) = try_notify_top_results(
-                &icon_painter,
-                total,
-                &past,
-                top_results.len(),
-                &top_results,
-                &buffer,
-                &last_lines,
-            ) {
-                past = now;
-                if let Some(lines) = new_lines {
-                    last_lines = lines;
-                }
+        if let Ok((now, new_lines)) = try_notify_top_results(
+            &icon_painter,
+            total,
+            &past,
+            top_results.len(),
+            &top_results,
+            &buffer,
+            &last_lines,
+        ) {
+            past = now;
+            if let Some(lines) = new_lines {
+                last_lines = lines;
             }
-        },
-    );
+        }
+    });
 
     buffer
 }
@@ -273,49 +257,41 @@ fn dyn_collect_number(
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(
-        |FilteredItem {
-             source_item,
-             score,
-             match_indices,
-         }| {
-            let (text, score, indices) = (source_item, score, match_indices);
+    iter.for_each(|filtered_item| {
+        let score = filtered_item.score;
+        let idx = find_best_score_idx(&top_scores, score);
 
-            let idx = find_best_score_idx(&top_scores, score);
+        insert_both!(pop; idx, score, filtered_item => buffer, top_results, top_scores);
 
-            insert_both!(pop; idx, score, text, indices => buffer, top_results, top_scores);
+        total += 1;
 
-            total += 1;
+        if let Ok((now, new_lines)) = try_notify_top_results(
+            &icon_painter,
+            total,
+            &past,
+            top_results.len(),
+            &top_results,
+            &buffer,
+            &last_lines,
+        ) {
+            past = now;
+            if let Some(lines) = new_lines {
+                last_lines = lines;
+            }
+        }
 
-            if let Ok((now, new_lines)) = try_notify_top_results(
-                &icon_painter,
-                total,
-                &past,
-                top_results.len(),
-                &top_results,
-                &buffer,
-                &last_lines,
-            ) {
-                past = now;
-                if let Some(lines) = new_lines {
-                    last_lines = lines;
-                }
+        if buffer.len() == buffer.capacity() {
+            buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+
+            for (idx, FilteredItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
+                top_scores[idx] = *score;
+                top_results[idx] = idx;
             }
 
-            if buffer.len() == buffer.capacity() {
-                buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-
-                for (idx, FilteredItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate()
-                {
-                    top_scores[idx] = *score;
-                    top_results[idx] = idx;
-                }
-
-                let half = buffer.len() / 2;
-                buffer.truncate(half);
-            }
-        },
-    );
+            let half = buffer.len() / 2;
+            buffer.truncate(half);
+        }
+    });
 
     (total, buffer)
 }

@@ -114,9 +114,9 @@ fn fuzzy_match(
 
     // 2 = chars(icon)
     let skipped = if enable_icon { Some(2) } else { None };
-    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, skipped);
+    let truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-    let (filtered, indices): (Vec<_>, Vec<_>) = lines
+    let (filtered, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
         .map(
             |FilteredItem {

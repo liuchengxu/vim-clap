@@ -52,8 +52,11 @@ impl<'a> MatchTextFor<'a> for SourceItem {
 
 #[derive(Debug, Clone)]
 pub struct SourceItem {
+    /// Raw line content of the input stream.
     pub raw: String,
+    /// Text for matching.
     pub match_text: Option<(String, usize)>,
+    /// The display text can be built when creating a new source item.
     pub display_text: Option<String>,
 }
 
@@ -129,6 +132,8 @@ pub struct FilteredItem<T = i64> {
     pub score: T,
     /// Indices of matched elements.
     pub match_indices: Vec<usize>,
+    /// The text might be truncated for fitting into the display window.
+    pub display_text: Option<String>,
 }
 
 impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
@@ -137,6 +142,7 @@ impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
             source_item,
             score,
             match_indices,
+            display_text: None,
         }
     }
 }
@@ -147,16 +153,31 @@ impl<T> From<(String, T, Vec<usize>)> for FilteredItem<T> {
             source_item: text.into(),
             score,
             match_indices,
+            display_text: None,
         }
     }
 }
 
 impl<T> FilteredItem<T> {
+    pub fn new<I: Into<SourceItem>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
+        Self {
+            source_item: item.into(),
+            score,
+            match_indices,
+            display_text: None,
+        }
+    }
+
+    pub fn display_text_before_truncated(&self) -> &str {
+        self.source_item.display_text()
+    }
+
     pub fn deconstruct(self) -> (SourceItem, T, Vec<usize>) {
         let Self {
             source_item,
             score,
             match_indices,
+            ..
         } = self;
         (source_item, score, match_indices)
     }

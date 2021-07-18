@@ -2,6 +2,7 @@
 //! by printing them to stdout in JSON format.
 
 use std::collections::HashMap;
+use std::slice::IterMut;
 
 use icon::{IconPainter, ICON_LEN};
 use source_item::{FilteredItem, SourceItem};
@@ -113,40 +114,25 @@ fn truncate_line_impl(
 /// - winwidth: width of the display window.
 /// - skipped: number of skipped chars, used when need to skip the leading icons.
 pub fn truncate_long_matched_lines<T>(
-    lines: impl IntoIterator<Item = FilteredItem<T>>,
+    items: IterMut<FilteredItem<T>>,
     winwidth: usize,
     skipped: Option<usize>,
-) -> (Vec<FilteredItem<T>>, LinesTruncatedMap) {
+) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
-    let mut lnum = 0usize;
     let winwidth = winwidth - WINWIDTH_OFFSET;
-    let lines = lines
-        .into_iter()
-        .map(
-            |FilteredItem {
-                 source_item,
-                 score,
-                 match_indices,
-             }| {
-                let item = source_item;
-                let indices = match_indices;
+    items.enumerate().for_each(|(lnum, filtered_item)| {
+        let line = filtered_item.display_text_before_truncated();
 
-                let line = item.display_text.unwrap_or(item.raw);
-                lnum += 1;
+        if let Some((truncated, truncated_indices)) =
+            truncate_line_impl(winwidth, &line, &filtered_item.match_indices, skipped)
+        {
+            truncated_map.insert(lnum + 1, line.to_string());
 
-                if let Some((truncated, truncated_indices)) =
-                    truncate_line_impl(winwidth, &line, &indices, skipped)
-                {
-                    truncated_map.insert(lnum, line);
-                    (truncated, score, truncated_indices)
-                } else {
-                    (line, score, indices)
-                }
-            },
-        )
-        .map(Into::into)
-        .collect::<Vec<_>>();
-    (lines, truncated_map)
+            filtered_item.display_text = Some(truncated);
+            filtered_item.match_indices = truncated_indices;
+        }
+    });
+    truncated_map
 }
 
 pub fn truncate_grep_lines(
@@ -179,13 +165,13 @@ pub fn truncate_grep_lines(
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn process_top_items<T>(
-    top_list: impl IntoIterator<Item = FilteredItem<T>>,
+    mut top_list: Vec<FilteredItem<T>>,
     winwidth: usize,
     icon_painter: Option<IconPainter>,
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
-    let (truncated_lines, truncated_map) = truncate_long_matched_lines(top_list, winwidth, None);
+    let truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon_painter {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = truncated_lines
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
             .map(
@@ -194,10 +180,11 @@ pub fn process_top_items<T>(
                     FilteredItem {
                         source_item,
                         match_indices,
+                        display_text,
                         ..
                     },
                 )| {
-                    let text = source_item.raw;
+                    let text = display_text.unwrap_or_else(|| source_item.display_text().into());
                     let idxs = match_indices;
                     let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
                         format!("{} {}", painter.get_icon(origin_text), text)
@@ -211,7 +198,7 @@ pub fn process_top_items<T>(
 
         (lines, indices, truncated_map)
     } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = truncated_lines
+        let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
             .map(
                 |FilteredItem {
@@ -235,8 +222,11 @@ pub fn print_sync_filter_results(
 ) {
     if let Some(number) = number {
         let total = ranked.len();
-        let (lines, indices, truncated_map) =
-            process_top_items(ranked.into_iter().take(number), winwidth, icon_painter);
+        let (lines, indices, truncated_map) = process_top_items(
+            ranked.into_iter().take(number).collect(),
+            winwidth,
+            icon_painter,
+        );
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);
         } else {
@@ -246,10 +236,11 @@ pub fn print_sync_filter_results(
         for FilteredItem {
             source_item,
             match_indices,
+            display_text,
             ..
         } in ranked.into_iter()
         {
-            let text = source_item.display_text.unwrap_or(source_item.raw);
+            let text = display_text.unwrap_or_else(|| source_item.display_text().into());
             let indices = match_indices;
             println_json!(text, indices);
         }
@@ -264,8 +255,11 @@ pub fn print_dyn_filter_results(
     winwidth: usize,
     icon_painter: Option<IconPainter>,
 ) {
-    let (lines, indices, truncated_map) =
-        process_top_items(ranked.into_iter().take(number), winwidth, icon_painter);
+    let (lines, indices, truncated_map) = process_top_items(
+        ranked.into_iter().take(number).collect(),
+        winwidth,
+        icon_painter,
+    );
 
     if truncated_map.is_empty() {
         println_json_with_length!(total, lines, indices);
@@ -340,7 +334,7 @@ mod tests {
             truncate_long_matched_lines(ranked, winwidth, skipped);
 
         let (truncated_text_got, _score, truncated_indices) =
-            truncated_lines[0].clone().deconstrct();
+            truncated_lines[0].clone().deconstruct();
 
         assert_eq!(truncated_text, truncated_text_got);
 
