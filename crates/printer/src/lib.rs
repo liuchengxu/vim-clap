@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::slice::IterMut;
 
 use icon::{IconPainter, ICON_LEN};
-use source_item::{FilteredItem, SourceItem};
+use source_item::FilteredItem;
 use utility::{println_json, println_json_with_length};
 
 pub const DOTS: &str = "..";
@@ -330,13 +330,13 @@ mod tests {
         let mut ranked = source.filter(matcher, &query).unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
-        let (truncated_lines, _truncated_map) =
-            truncate_long_matched_lines(ranked, winwidth, skipped);
+        let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-        let (truncated_text_got, _score, truncated_indices) =
-            truncated_lines[0].clone().deconstruct();
+        let (_source_item, _score, truncated_indices) = ranked[0].clone().deconstruct();
 
-        assert_eq!(truncated_text, truncated_text_got);
+        let truncated_text_got = ranked[0].display_text();
+
+        assert_eq!(truncated_text, ranked[0].display_text());
 
         let highlighted_got = truncated_indices
             .iter()

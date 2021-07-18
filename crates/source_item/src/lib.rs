@@ -123,7 +123,7 @@ impl SourceItem {
     }
 }
 
-/// This struct represents the result of filtered source item.
+/// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
 pub struct FilteredItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
@@ -170,6 +170,14 @@ impl<T> FilteredItem<T> {
 
     pub fn display_text_before_truncated(&self) -> &str {
         self.source_item.display_text()
+    }
+
+    pub fn display_text(&self) -> &str {
+        if let Some(ref text) = self.display_text {
+            text
+        } else {
+            self.source_item.display_text()
+        }
     }
 
     pub fn deconstruct(self) -> (SourceItem, T, Vec<usize>) {
