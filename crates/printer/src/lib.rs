@@ -334,12 +334,13 @@ mod tests {
 
         let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
         let mut ranked = source.filter(matcher, &query).unwrap();
-        ranked.par_sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(&v1).unwrap());
+        ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
         let (truncated_lines, _truncated_map) =
             truncate_long_matched_lines(ranked, winwidth, skipped);
 
-        let (truncated_text_got, _score, truncated_indices) = truncated_lines[0].clone();
+        let (truncated_text_got, _score, truncated_indices) =
+            truncated_lines[0].clone().deconstrct();
 
         assert_eq!(truncated_text, truncated_text_got);
 

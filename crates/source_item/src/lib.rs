@@ -121,6 +121,7 @@ impl SourceItem {
 }
 
 /// This struct represents the result of filtered source item.
+#[derive(Debug, Clone)]
 pub struct FilteredItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
     pub source_item: SourceItem,
