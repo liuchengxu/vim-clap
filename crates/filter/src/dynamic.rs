@@ -113,9 +113,11 @@ fn find_best_score_idx(top_scores: &[i64; ITEMS_TO_SHOW], score: i64) -> Option<
         .map(|(idx, _)| idx)
 }
 
-/// Returns the new freshed time when the new top scored items are sent to the client.
+/// Returns the new freshed time when the new top scored items were sent to the client.
 ///
-/// Printing to stdout is to send the printed content to the client.
+/// # NOTE
+///
+/// Printing to stdout is to send the content to the client.
 fn try_notify_top_results(
     icon_painter: &Option<IconPainter>,
     total: usize,
@@ -131,18 +133,13 @@ fn try_notify_top_results(
             let mut indices = Vec::with_capacity(top_results_len);
             let mut lines = Vec::with_capacity(top_results_len);
             for &idx in top_results.iter() {
-                let FilteredItem {
-                    source_item,
-                    match_indices,
-                    ..
-                } = std::ops::Index::index(buffer, idx);
-                let (item, idxs) = (source_item, match_indices);
+                let filtered_item = std::ops::Index::index(buffer, idx);
                 let text = if let Some(painter) = icon_painter {
-                    indices.push(idxs.iter().map(|x| x + ICON_LEN).collect::<Vec<_>>());
-                    painter.paint(item.display_text())
+                    indices.push(filtered_item.shift_indices(ICON_LEN));
+                    painter.paint(filtered_item.display_text())
                 } else {
-                    indices.push(idxs.clone());
-                    item.display_text().to_owned()
+                    indices.push(filtered_item.match_indices.clone());
+                    filtered_item.display_text().to_owned()
                 };
                 lines.push(text);
             }
@@ -185,9 +182,9 @@ fn dyn_collect_all(
         high.unwrap_or(low)
     });
 
-    let should_return = select_top_items_to_show(&mut buffer, &mut iter);
+    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let (mut total, mut top_scores, mut top_results) = match should_return {
+    let (mut total, mut top_scores, mut top_results) = match top_selected_result {
         Ok(_) => return buffer,
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
@@ -197,12 +194,12 @@ fn dyn_collect_all(
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     let mut past = std::time::Instant::now();
-    iter.for_each(|filtered_item| {
-        let score = filtered_item.score;
+    iter.for_each(|item| {
+        let score = item.score;
 
         let idx = find_best_score_idx(&top_scores, score);
 
-        insert_both!(pop; idx, score, filtered_item => buffer, top_results, top_scores);
+        insert_both!(pop; idx, score, item => buffer, top_results, top_scores);
 
         total = total.wrapping_add(1);
 
@@ -245,9 +242,9 @@ fn dyn_collect_number(
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
 
-    let should_return = select_top_items_to_show(&mut buffer, &mut iter);
+    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let (mut total, mut top_scores, mut top_results) = match should_return {
+    let (mut total, mut top_scores, mut top_results) = match top_selected_result {
         Ok(t) => return (t, buffer),
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };

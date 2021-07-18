@@ -180,6 +180,10 @@ impl<T> FilteredItem<T> {
         }
     }
 
+    pub fn shift_indices(&self, offset: usize) -> Vec<usize> {
+        self.match_indices.iter().map(|x| x + offset).collect()
+    }
+
     pub fn deconstruct(self) -> (SourceItem, T, Vec<usize>) {
         let Self {
             source_item,
