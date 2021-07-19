@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use icon::IconPainter;
 use utility::{get_cached_entry, println_json, read_first_lines, remove_dir_contents};
 
-use crate::commands::cache::CacheEntry;
+use crate::command::cache::CacheEntry;
 
 /// Remove the last element if it's empty string.
 #[inline]

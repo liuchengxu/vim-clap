@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use filter::matcher::{Algo, Bonus, MatchType, Matcher};
+use filter::{
+    matcher::{Algo, Bonus, MatchType, Matcher},
+    FilteredItem, SourceItem,
+};
 use printer::truncate_long_matched_lines;
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
@@ -101,17 +104,22 @@ fn fuzzy_match(
 
     let mut ranked = candidates
         .into_iter()
-        .filter_map(|line| do_match(&line).map(|(score, indices)| (line.into(), score, indices)))
+        .filter_map(|line| {
+            do_match(&line).map(|(score, indices)| (Into::<SourceItem>::into(line), score, indices))
+        })
+        .map(Into::<FilteredItem>::into)
         .collect::<Vec<_>>();
 
-    ranked.sort_unstable_by(|(_, v1, _), (_, v2, _)| v2.partial_cmp(v1).unwrap());
+    ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
     // 2 = chars(icon)
     let skipped = if enable_icon { Some(2) } else { None };
-    let (lines, truncated_map) = truncate_long_matched_lines(ranked, winwidth, skipped);
+    let truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-    let (filtered, indices): (Vec<_>, Vec<_>) =
-        lines.into_iter().map(|(text, _, ids)| (text, ids)).unzip();
+    let (filtered, indices): (Vec<_>, Vec<_>) = ranked
+        .into_iter()
+        .map(|filtered_item| (filtered_item.display_text().to_owned(), filtered_item.match_indices))
+        .unzip();
 
     Ok((
         indices,

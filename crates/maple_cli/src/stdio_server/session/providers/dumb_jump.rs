@@ -4,7 +4,7 @@ use log::error;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::commands::dumb_jump::{DumbJump, Lines};
+use crate::command::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{
     session::{
         Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,

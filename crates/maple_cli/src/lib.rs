@@ -5,7 +5,7 @@ mod process;
 mod stdio_server;
 mod tools;
 
-pub mod commands;
+pub mod command;
 /// Re-exports.
 pub use {
     anyhow::{Context, Result},
