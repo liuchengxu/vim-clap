@@ -4,7 +4,7 @@ use structopt::{clap::AppSettings, StructOpt};
 use filter::FilterContext;
 use icon::IconPainter;
 
-use crate::commands;
+use crate::command;
 
 #[derive(StructOpt, Debug)]
 pub enum Cmd {
@@ -16,31 +16,31 @@ pub enum Cmd {
     Rpc,
     /// Execute the grep command to avoid the escape issue
     #[structopt(name = "grep")]
-    Grep(commands::grep::Grep),
+    Grep(command::grep::Grep),
     /// Execute the shell command.
     #[structopt(name = "exec")]
-    Exec(commands::exec::Exec),
+    Exec(command::exec::Exec),
     /// Dumb jump.
     #[structopt(name = "dumb-jump")]
-    DumbJump(commands::dumb_jump::DumbJump),
+    DumbJump(command::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
     #[structopt(name = "tags")]
-    Tags(commands::tags::Tags),
+    Tags(command::tags::Tags),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
-    Cache(commands::cache::Cache),
+    Cache(command::cache::Cache),
     /// Fuzzy filter the input.
     #[structopt(name = "filter")]
-    Filter(commands::filter::Filter),
+    Filter(command::filter::Filter),
     /// Filter against current Vim buffer.
     #[structopt(name = "blines")]
-    Blines(commands::blines::Blines),
+    Blines(command::blines::Blines),
     /// Generate vim help tags.
     #[structopt(name = "helptags")]
-    Helptags(commands::helptags::Helptags),
+    Helptags(command::helptags::Helptags),
     /// Start the forerunner job of grep.
     #[structopt(name = "ripgrep-forerunner")]
-    RipGrepForerunner(commands::grep::RipGrepForerunner),
+    RipGrepForerunner(command::grep::RipGrepForerunner),
     /// Retrive the latest remote release info.
     #[structopt(name = "upgrade")]
     Upgrade(upgrade::Upgrade),
