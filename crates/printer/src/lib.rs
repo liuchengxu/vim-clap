@@ -313,7 +313,7 @@ mod tests {
         let source = Source::List(std::iter::once(text.into()));
 
         let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
-        let mut ranked = source.filter(matcher, &query).unwrap();
+        let mut ranked = source.filter_and_collect(matcher, &query).unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
