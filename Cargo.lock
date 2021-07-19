@@ -840,7 +840,7 @@ version = "0.1.26"
 dependencies = [
  "built",
  "maple_cli",
- "tokio 1.8.0",
+ "tokio 1.8.2",
 ]
 
 [[package]]
@@ -870,7 +870,7 @@ dependencies = [
  "serde_json",
  "source_item",
  "structopt",
- "tokio 1.8.0",
+ "tokio 1.8.2",
  "upgrade",
  "utility",
 ]
@@ -1768,9 +1768,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.8.0"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "570c2eb13b3ab38208130eccd41be92520388791207fde783bda7c1e8ace28d4"
+checksum = "c2602b8af3767c285202012822834005f596c811042315fa7e9f5b12b2a43207"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -1958,7 +1958,7 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "tokio 1.8.0",
+ "tokio 1.8.2",
 ]
 
 [[package]]
