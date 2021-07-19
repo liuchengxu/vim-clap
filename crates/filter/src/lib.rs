@@ -106,7 +106,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     bonuses: Vec<Bonus>,
 ) -> Result<Vec<FilteredItem>> {
     let matcher = Matcher::new_with_bonuses(algo, match_type, bonuses);
-    let filtered = source.filter(matcher, query)?;
+    let filtered = source.filter_and_collect(matcher, query)?;
     let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
 }

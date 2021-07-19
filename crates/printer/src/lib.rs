@@ -210,11 +210,9 @@ pub fn print_sync_filter_results(
 ) {
     if let Some(number) = number {
         let total = ranked.len();
-        let (lines, indices, truncated_map) = process_top_items(
-            ranked.into_iter().take(number).collect(),
-            winwidth,
-            icon_painter,
-        );
+        let mut ranked = ranked;
+        ranked.truncate(number);
+        let (lines, indices, truncated_map) = process_top_items(ranked, winwidth, icon_painter);
         if truncated_map.is_empty() {
             println_json!(total, lines, indices);
         } else {

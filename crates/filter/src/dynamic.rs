@@ -1,4 +1,4 @@
-use std::io::{self, BufRead};
+use std::io::BufRead;
 use std::time::{Duration, Instant};
 
 use rayon::slice::ParallelSliceMut;
@@ -62,7 +62,10 @@ macro_rules! insert_both {
     }};
 }
 
-type SelectedTopItemsInfo = (usize, [i64; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
+/// Type of matcher scoring.
+type Score = i64;
+
+type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
 
 /// Returns Ok if all items in the iterator has been processed.
 ///
@@ -71,7 +74,7 @@ fn select_top_items_to_show(
     buffer: &mut Vec<FilteredItem>,
     iter: &mut impl Iterator<Item = FilteredItem>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
-    let mut top_scores: [i64; ITEMS_TO_SHOW] = [i64::min_value(); ITEMS_TO_SHOW];
+    let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
@@ -104,7 +107,7 @@ fn select_top_items_to_show(
 ///
 /// Best results are stored in front, the bigger the better.
 #[inline]
-fn find_best_score_idx(top_scores: &[i64; ITEMS_TO_SHOW], score: i64) -> Option<usize> {
+fn find_best_score_idx(top_scores: &[Score; ITEMS_TO_SHOW], score: Score) -> Option<usize> {
     top_scores
         .iter()
         .enumerate()
@@ -251,8 +254,8 @@ fn dyn_collect_number(
 
     let mut last_lines = Vec::with_capacity(top_results.len());
 
-    // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
-    // the queue with best results the same size.
+    // Now we have the full queue and can just pair `.pop_back()` with
+    // `.insert()` to keep the queue with best results the same size.
     let mut past = std::time::Instant::now();
     iter.for_each(|filtered_item| {
         let score = filtered_item.score;
@@ -291,62 +294,6 @@ fn dyn_collect_number(
     });
 
     (total, buffer)
-}
-
-// macros for `dyn_collect_number` and `dyn_collect_number`
-//
-// Generate an filtered iterator from Source::Stdin.
-macro_rules! source_iter_stdin {
-    ( $scorer:ident ) => {
-        io::stdin().lock().lines().filter_map(|lines_iter| {
-            lines_iter
-                .ok()
-                .map(Into::<SourceItem>::into)
-                .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
-                .map(Into::into)
-        })
-    };
-}
-
-// Generate an filtered iterator from Source::Exec(exec).
-#[cfg(feature = "enable_dyn")]
-macro_rules! source_iter_exec {
-    ( $scorer:ident, $exec:ident ) => {
-        std::io::BufReader::new($exec.stream_stdout()?)
-            .lines()
-            .filter_map(|lines_iter| {
-                lines_iter
-                    .ok()
-                    .map(Into::<SourceItem>::into)
-                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
-                    .map(Into::into)
-            })
-    };
-}
-
-// Generate an filtered iterator from Source::File(fpath).
-macro_rules! source_iter_file {
-    ( $scorer:ident, $fpath:ident ) => {
-        // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-        // The line stream can contain invalid UTF-8 data.
-        std::io::BufReader::new(std::fs::File::open($fpath)?)
-            .lines()
-            .filter_map(|x| {
-                x.ok()
-                    .map(Into::<SourceItem>::into)
-                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
-                    .map(Into::into)
-            })
-    };
-}
-
-// Generate an filtered iterator from Source::List(list).
-macro_rules! source_iter_list {
-    ( $scorer:ident, $list:ident ) => {
-        $list
-            .filter_map(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
-            .map(Into::into)
-    };
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.

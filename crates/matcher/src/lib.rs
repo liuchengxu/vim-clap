@@ -39,8 +39,8 @@ pub type MatchResult = Option<(Score, Vec<usize>)>;
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
 pub struct Matcher {
-    match_type: MatchType,
     algo: Algo,
+    match_type: MatchType,
     bonuses: Vec<Bonus>,
 }
 
