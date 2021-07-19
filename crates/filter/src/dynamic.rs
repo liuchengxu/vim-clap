@@ -138,7 +138,7 @@ fn try_notify_top_results(
             for &idx in top_results.iter() {
                 let filtered_item = std::ops::Index::index(buffer, idx);
                 let text = if let Some(painter) = icon_painter {
-                    indices.push(filtered_item.shift_indices(ICON_LEN));
+                    indices.push(filtered_item.shifted_indices(ICON_LEN));
                     painter.paint(filtered_item.display_text())
                 } else {
                     indices.push(filtered_item.match_indices.clone());

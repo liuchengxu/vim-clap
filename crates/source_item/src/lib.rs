@@ -130,7 +130,9 @@ pub struct FilteredItem<T = i64> {
     pub source_item: SourceItem,
     /// Filtering score.
     pub score: T,
-    /// Indices of matched elements, may be truncated.
+    /// Indices of matched elements.
+    ///
+    /// The indices may be truncated when truncating the text.
     pub match_indices: Vec<usize>,
     /// The text might be truncated for fitting into the display window.
     pub display_text: Option<String>,
@@ -180,7 +182,8 @@ impl<T> FilteredItem<T> {
         }
     }
 
-    pub fn shift_indices(&self, offset: usize) -> Vec<usize> {
+    /// Returns the match indices shifted by `offset`.
+    pub fn shifted_indices(&self, offset: usize) -> Vec<usize> {
         self.match_indices.iter().map(|x| x + offset).collect()
     }
 

@@ -181,7 +181,7 @@ pub fn process_top_items<T>(
                 } else {
                     painter.paint(&text)
                 };
-                (iconized, filtered_item.shift_indices(ICON_LEN))
+                (iconized, filtered_item.shifted_indices(ICON_LEN))
             })
             .unzip();
 
