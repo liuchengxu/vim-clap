@@ -29,6 +29,7 @@ pub async fn handle_recent_files_message(
 
     let recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
     let ranked = recent_files.filter_on_query(&query);
+    let initial_size = recent_files.len();
 
     let total = ranked.len();
 
@@ -43,6 +44,7 @@ pub async fn handle_recent_files_message(
         "lines": lines,
         "indices": indices,
         "total": total,
+        "initial_size": initial_size,
         })
     } else {
         json!({
@@ -50,6 +52,7 @@ pub async fn handle_recent_files_message(
         "indices": indices,
         "truncated_map": truncated_map,
         "total": total,
+        "initial_size": initial_size,
         })
     };
 

@@ -170,6 +170,10 @@ impl SortedRecentFiles {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
     pub fn filter_on_query(&self, query: &str) -> Vec<filter::FilteredItem> {
         // .map(|entry| {
         // let fpath = &entry.fpath;

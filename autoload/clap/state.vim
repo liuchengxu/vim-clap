@@ -52,6 +52,10 @@ function! clap#state#handle_response_on_typed(result, error) abort
     return
   endif
 
+  if has_key(a:result, 'initial_size')
+    let g:clap.display.initial_size = a:result.initial_size
+  endif
+
   call clap#indicator#set_matches_number(a:result.total)
 
   if a:result.total == 0
