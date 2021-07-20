@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Added
+
+- Add a new provider `recent_files` for persistent recent files history. #724
+
 ### Fixed
 
 - Fix rg 13.0.0 does not work for neovim. #711
