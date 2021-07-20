@@ -38,12 +38,20 @@ pub async fn handle_recent_files_message(
         Some(icon::IconPainter::File),
     );
 
-    let result = json!({
-    "lines": lines,
-    "indices": indices,
-    "truncated_map": truncated_map,
-    "total": total,
-    });
+    let result = if truncated_map.is_empty() {
+        json!({
+        "lines": lines,
+        "indices": indices,
+        "total": total,
+        })
+    } else {
+        json!({
+        "lines": lines,
+        "indices": indices,
+        "truncated_map": truncated_map,
+        "total": total,
+        })
+    };
 
     let result = json!({
     "id": msg_id,

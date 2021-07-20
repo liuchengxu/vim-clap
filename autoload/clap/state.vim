@@ -55,9 +55,16 @@ function! clap#state#handle_response_on_typed(result, error) abort
   call clap#indicator#set_matches_number(a:result.total)
 
   if a:result.total == 0
+    if exists('g:__clap_lines_truncated_map')
+      unlet g:__clap_lines_truncated_map
+    endif
     call g:clap.display.clear()
     call g:clap.preview.clear()
     return
+  endif
+
+  if has_key(a:result, 'truncated_map')
+    let g:__clap_lines_truncated_map = a:result.truncated_map
   endif
 
   call g:clap.display.set_lines(a:result.lines)
