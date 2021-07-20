@@ -36,8 +36,8 @@ pub static JSON_PATH: Lazy<Option<PathBuf>> = Lazy::new(|| persistent_recent_fil
 fn read_recent_files_from_file<P: AsRef<Path>>(path: P) -> Result<SortedRecentFiles> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
-    let recent_files = serde_json::from_reader(reader)?;
-    Ok(recent_files)
+    let recent_files: SortedRecentFiles = serde_json::from_reader(reader)?;
+    Ok(recent_files.remove_invalid_entries())
 }
 
 pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> =
@@ -159,6 +159,17 @@ impl Default for SortedRecentFiles {
 }
 
 impl SortedRecentFiles {
+    pub fn remove_invalid_entries(self) -> Self {
+        Self {
+            entries: self
+                .entries
+                .into_iter()
+                .filter(|entry| std::path::Path::new(&entry.fpath).exists())
+                .collect(),
+            ..self
+        }
+    }
+
     pub fn filter_on_query(&self, query: &str) -> Vec<filter::FilteredItem> {
         // .map(|entry| {
         // let fpath = &entry.fpath;
