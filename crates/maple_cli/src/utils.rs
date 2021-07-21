@@ -39,3 +39,11 @@ pub fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>
         }
     })
 }
+
+pub fn write_json<T: serde::Serialize, P: AsRef<Path>>(obj: T, path: Option<P>) -> Result<()> {
+    if let Some(json_path) = path.as_ref() {
+        utility::create_or_overwrite(json_path, serde_json::to_string(&obj)?.as_bytes())?;
+    }
+
+    Ok(())
+}

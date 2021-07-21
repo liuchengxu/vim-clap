@@ -75,13 +75,7 @@ impl CacheInfo {
     }
 
     fn write_to_disk(&self) -> Result<()> {
-        if let Some(recent_files_json) = CACHE_JSON_PATH.as_deref() {
-            utility::create_or_overwrite(
-                recent_files_json,
-                serde_json::to_string(self)?.as_bytes(),
-            )?;
-        }
-        Ok(())
+        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())
     }
 }
 
