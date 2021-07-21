@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use chrono::prelude::*;
 use anyhow::{anyhow, Result};
+use chrono::prelude::*;
+use once_cell::sync::Lazy;
 
 pub type UtcTime = DateTime<Utc>;
 
@@ -27,4 +28,14 @@ pub fn generate_data_file_path(filename: &str) -> Result<PathBuf> {
     }
 
     Err(anyhow!("Couldn't create the Vim Clap project directory"))
+}
+
+pub fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {
+    path.and_then(|json_path| {
+        if json_path.as_ref().exists() {
+            crate::utils::read_json_as::<_, T>(json_path).ok()
+        } else {
+            None
+        }
+    })
 }

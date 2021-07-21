@@ -23,17 +23,8 @@ pub static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| crate::utils::generate_data_file_path(JSON_FILENAME).ok());
 
 pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(|| {
-    let maybe_persistent = RECENT_FILES_JSON_PATH
-        .as_deref()
-        .and_then(|recent_files_json| {
-            if recent_files_json.exists() {
-                crate::utils::read_json_as::<_, SortedRecentFiles>(recent_files_json)
-                    .ok()
-                    .map(|f| f.remove_invalid_entries())
-            } else {
-                None
-            }
-        })
+    let maybe_persistent = crate::utils::load_json(RECENT_FILES_JSON_PATH.as_deref())
+        .map(|f: SortedRecentFiles| f.remove_invalid_entries())
         .unwrap_or_default();
     Mutex::new(maybe_persistent)
 });

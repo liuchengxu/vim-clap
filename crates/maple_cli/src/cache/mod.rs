@@ -17,17 +17,8 @@ pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| crate::utils::generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
-    let maybe_persistent = CACHE_JSON_PATH
-        .as_deref()
-        .and_then(|cache_json| {
-            if cache_json.exists() {
-                crate::utils::read_json_as::<_, CacheInfo>(cache_json).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default();
-
+    let maybe_persistent =
+        crate::utils::load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref()).unwrap_or_default();
     Mutex::new(maybe_persistent)
 });
 
