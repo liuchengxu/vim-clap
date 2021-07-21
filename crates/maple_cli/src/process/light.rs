@@ -12,24 +12,6 @@ use utility::{get_cached_entry, println_json, read_first_lines, remove_dir_conte
 
 use crate::command::cache::CacheEntry;
 
-use chrono::prelude::*;
-
-type UtcTime = DateTime<Utc>;
-
-#[derive(Debug, Clone)]
-pub struct CachedCommand {
-    /// Raw shell command string.
-    pub raw: String,
-    /// Working directory of command.
-    pub cwd: PathBuf,
-    /// Time of last execution.
-    pub last_run: UtcTime,
-    /// Number of results from last run.
-    pub results: u64,
-    /// File saved for caching the results.
-    pub cache_file: PathBuf,
-}
-
 /// Remove the last element if it's empty string.
 #[inline]
 fn trim_trailing(lines: &mut Vec<String>) {
