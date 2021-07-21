@@ -2,9 +2,9 @@ mod app;
 mod dumb_analyzer;
 mod logger;
 mod process;
+mod recent_files;
 mod stdio_server;
 mod tools;
-mod recent_files;
 
 pub mod command;
 /// Re-exports.
