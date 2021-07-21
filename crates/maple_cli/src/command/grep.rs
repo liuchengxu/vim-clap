@@ -29,6 +29,8 @@ const RG_ARGS: &[&str] = &[
     ".",
 ];
 
+const RG_ARGS_STRING: &str = "rg --column --line-number --no-heading --color=never --smart-case .";
+
 // Ref https://github.com/liuchengxu/vim-clap/issues/533
 // Now `.` is pushed to the end for all platforms due to https://github.com/liuchengxu/vim-clap/issues/711.
 const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never --smart-case '' .";
@@ -137,7 +139,7 @@ impl Grep {
 
         let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
-        let execute_info = light_cmd.execute(&args)?;
+        let execute_info = light_cmd.execute(grep_cmd.clone(), &args)?;
 
         let enable_icon = icon_painter.is_some();
 
@@ -279,7 +281,7 @@ impl RipGrepForerunner {
             Some(self.output_threshold),
         );
 
-        light_cmd.execute(&RG_ARGS)?.print();
+        light_cmd.execute(RG_ARGS_STRING.into(), &RG_ARGS)?.print();
 
         Ok(())
     }

@@ -245,9 +245,18 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Cache the stdout into a tempfile if the output threshold exceeds.
-    fn try_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<(String, Option<PathBuf>)> {
+    fn try_cache(
+        &self,
+        command: String,
+        cmd_stdout: &[u8],
+        args: &[&str],
+    ) -> Result<(String, Option<PathBuf>)> {
         if self.env.should_do_cache() {
             let cache_file = self.env.do_cache(cmd_stdout, args)?;
+
+            // TODO: add cache digest.
+            // CacheEntry::try_new(args, self.dir.clone(), self.total)
+
             Ok((
                 // lines used for displaying directly.
                 // &cmd_output.stdout[..nth_newline_index]
@@ -263,6 +272,7 @@ impl<'a> LightCommand<'a> {
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(
         &mut self,
+        command: String,
         args: &[&str],
         cmd_dir: PathBuf,
     ) -> Result<ExecutedInfo> {
@@ -289,7 +299,7 @@ impl<'a> LightCommand<'a> {
 
         self.env.dir = Some(cmd_dir);
 
-        self.execute(args)
+        self.execute(command, args)
     }
 
     /// Execute the command directly and capture the output.
@@ -298,7 +308,7 @@ impl<'a> LightCommand<'a> {
     /// otherwise print the total results or write them to
     /// a tempfile if they are more than `self.output_threshold`.
     /// This cached tempfile can be reused on the following runs.
-    pub fn execute(&mut self, args: &[&str]) -> Result<ExecutedInfo> {
+    pub fn execute(&mut self, command: String, args: &[&str]) -> Result<ExecutedInfo> {
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
@@ -309,7 +319,7 @@ impl<'a> LightCommand<'a> {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) = self.try_cache(&cmd_stdout, args)?;
+        let (stdout_str, tempfile) = self.try_cache(command, &cmd_stdout, args)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
         let total = self.env.total;
 
