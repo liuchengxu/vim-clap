@@ -24,7 +24,7 @@ pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
 
 /// Digest of cached info about a command.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CacheDigest {
+pub struct Digest {
     /// Raw shell command string.
     pub command: String,
     /// Working directory of command.
@@ -40,7 +40,7 @@ pub struct CacheDigest {
     pub cached_path: PathBuf,
 }
 
-impl CacheDigest {
+impl Digest {
     pub fn new(command: String, cwd: PathBuf, results_number: u64, cached_path: PathBuf) -> Self {
         Self {
             command,
@@ -53,7 +53,7 @@ impl CacheDigest {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CacheInfo(Vec<CacheDigest>);
+pub struct CacheInfo(Vec<Digest>);
 
 impl Default for CacheInfo {
     fn default() -> Self {
@@ -62,13 +62,13 @@ impl Default for CacheInfo {
 }
 
 impl CacheInfo {
-    pub fn cache_digest(&self, command: &str, cwd: &PathBuf) -> Option<&CacheDigest> {
+    pub fn cache_digest(&self, command: &str, cwd: &PathBuf) -> Option<&Digest> {
         self.0
             .iter()
             .find(|d| d.command == command && &d.cwd == cwd)
     }
 
-    pub fn add(&mut self, cache_digest: CacheDigest) -> Result<()> {
+    pub fn add(&mut self, cache_digest: Digest) -> Result<()> {
         self.0.push(cache_digest);
         self.write_to_disk()?;
         Ok(())
@@ -79,7 +79,7 @@ impl CacheInfo {
     }
 }
 
-pub fn add_new_cache_digest(digest: CacheDigest) -> Result<()> {
+pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.add(digest)?;
     Ok(())
