@@ -22,7 +22,7 @@ pub struct CacheDigest {
     /// different results, thus we need to record the cwd too.
     pub cwd: PathBuf,
     /// Time of last execution.
-    pub last_run: UtcTime,
+    pub execution_time: UtcTime,
     /// Number of results from last run.
     pub results_number: u64,
     /// File saved for caching the results.
@@ -36,7 +36,7 @@ impl CacheDigest {
             cwd,
             results_number,
             cached_path,
-            last_run: Utc::now(),
+            execution_time: Utc::now(),
         }
     }
 }
@@ -103,6 +103,12 @@ fn read_cache_info_from_file<P: AsRef<Path>>(path: P) -> Result<CacheInfo> {
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> =
     Lazy::new(|| Mutex::new(initialize_cache_info()));
+
+pub fn add_new_cache_digest(digest: CacheDigest) -> Result<()> {
+    let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+    cache_info.add(digest)?;
+    Ok(())
+}
 
 fn initialize_cache_info() -> CacheInfo {
     JSON_PATH

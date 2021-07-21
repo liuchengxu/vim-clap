@@ -254,10 +254,13 @@ impl<'a> LightCommand<'a> {
         if self.env.should_do_cache() {
             let cache_file = self.env.do_cache(cmd_stdout, args)?;
 
-            let cache_digest =
-                crate::cache::CacheDigest::new(command, self.env.dir.clone().unwrap(), self.env.total as u64, cache_file.clone());
-            // TODO: add cache digest.
-            // CacheEntry::try_new(args, self.dir.clone(), self.total)
+            let cache_digest = crate::cache::CacheDigest::new(
+                command,
+                self.env.dir.clone().unwrap(),
+                self.env.total as u64,
+                cache_file.clone(),
+            );
+            crate::cache::add_new_cache_digest(cache_digest)?;
 
             Ok((
                 // lines used for displaying directly.
