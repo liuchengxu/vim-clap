@@ -2,22 +2,12 @@ mod old;
 
 pub use self::old::*;
 
-use std::fs::{DirEntry, File};
-use std::hash::Hash;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::SystemTime;
 
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
-
-use icon::IconPainter;
-use utility::{
-    calculate_hash, clap_cache_dir, get_cached_entry, println_json, println_json_with_length,
-    read_first_lines, remove_dir_contents,
-};
 
 type UtcTime = DateTime<Utc>;
 
@@ -75,15 +65,10 @@ impl CacheInfo {
 
     fn write_to_disk(&self) -> Result<()> {
         if let Some(recent_files_json) = JSON_PATH.as_deref() {
-            // Overwrite it.
-            let mut f = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(recent_files_json)?;
-
-            f.write_all(serde_json::to_string(self)?.as_bytes())?;
-            f.flush()?;
+            utility::create_or_overwrite(
+                recent_files_json,
+                serde_json::to_string(self)?.as_bytes(),
+            )?;
         }
         Ok(())
     }
