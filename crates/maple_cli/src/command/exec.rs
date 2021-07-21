@@ -64,10 +64,10 @@ impl Exec {
 
         if !no_cache && self.cmd_dir.is_some() {
             light_cmd
-                .try_cache_or_execute(&args, self.cmd_dir.clone().unwrap())?
+                .try_cache_or_execute(self.cmd.clone(), &args, self.cmd_dir.clone().unwrap())?
                 .print();
         } else {
-            light_cmd.execute(&args)?.print();
+            light_cmd.execute(self.cmd.clone(), &args)?.print();
         }
 
         Ok(())
