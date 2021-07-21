@@ -34,7 +34,7 @@ pub async fn handle_recent_files_message(
     let total = ranked.len();
 
     let (lines, indices, truncated_map) = printer::process_top_items(
-        ranked.clone().into_iter().take(200).collect(),
+        ranked.iter().take(200).map(|x| x.clone()).collect(),
         winwidth as usize,
         Some(icon::IconPainter::File),
     );
