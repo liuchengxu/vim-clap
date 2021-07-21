@@ -9,7 +9,27 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 
-type UtcTime = DateTime<Utc>;
+use crate::utils::UtcTime;
+
+const CACHE_FILENAME: &str = "cache.json";
+
+pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
+    Lazy::new(|| crate::utils::generate_data_file_path(CACHE_FILENAME).ok());
+
+pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
+    let maybe_persistent = CACHE_JSON_PATH
+        .as_deref()
+        .and_then(|cache_json| {
+            if cache_json.exists() {
+                crate::utils::read_json_as::<_, CacheInfo>(cache_json).ok()
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    Mutex::new(maybe_persistent)
+});
 
 /// Digest of cached info about a command.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -64,7 +84,7 @@ impl CacheInfo {
     }
 
     fn write_to_disk(&self) -> Result<()> {
-        if let Some(recent_files_json) = JSON_PATH.as_deref() {
+        if let Some(recent_files_json) = CACHE_JSON_PATH.as_deref() {
             utility::create_or_overwrite(
                 recent_files_json,
                 serde_json::to_string(self)?.as_bytes(),
@@ -74,53 +94,10 @@ impl CacheInfo {
     }
 }
 
-const CACHE_FILENAME: &str = "cache.json";
-
-fn persistent_cache_info_path() -> Result<PathBuf> {
-    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
-        let data_dir = proj_dirs.data_dir();
-        std::fs::create_dir_all(data_dir)?;
-
-        let mut recent_files_json = data_dir.to_path_buf();
-        recent_files_json.push(CACHE_FILENAME);
-
-        return Ok(recent_files_json);
-    }
-
-    Err(anyhow!("Couldn't create the Vim Clap project directory"))
-}
-
-pub static JSON_PATH: Lazy<Option<PathBuf>> = Lazy::new(|| persistent_cache_info_path().ok());
-
-fn read_cache_info_from_file<P: AsRef<Path>>(path: P) -> Result<CacheInfo> {
-    use std::io::BufReader;
-
-    let file = std::fs::File::open(path)?;
-    let reader = BufReader::new(file);
-    let cache_infos = serde_json::from_reader(reader)?;
-    Ok(cache_infos)
-}
-
-pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> =
-    Lazy::new(|| Mutex::new(initialize_cache_info()));
-
 pub fn add_new_cache_digest(digest: CacheDigest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.add(digest)?;
     Ok(())
-}
-
-fn initialize_cache_info() -> CacheInfo {
-    JSON_PATH
-        .as_deref()
-        .and_then(|cache_json| {
-            if cache_json.exists() {
-                read_cache_info_from_file(cache_json).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default()
 }
 
 pub struct RawCommand(String);
