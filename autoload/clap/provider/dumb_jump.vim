@@ -26,29 +26,9 @@ function! s:dumb_jump_sink_star(lines) abort
   call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val)'))
 endfunction
 
-function! s:handle_response(result, error) abort
-  if a:error isnot v:null
-    call clap#indicator#set_matches_number(0)
-    call g:clap.display.set_lines([a:error.message])
-    return
-  endif
-
-  call clap#indicator#set_matches_number(a:result.total)
-
-  if a:result.total == 0
-    call g:clap.display.clear()
-    call g:clap.preview.clear()
-    return
-  endif
-
-  call g:clap.display.set_lines(a:result.lines)
-  call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
-  call clap#preview#async_open_with_delay()
-endfunction
-
 function! s:dumb_jump.on_typed() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  call clap#client#call('dumb_jump/on_typed', function('s:handle_response'), {
+  call clap#client#call('dumb_jump/on_typed', function('clap#state#handle_response_on_typed'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': g:clap.input.get(),
         \ 'extension': extension,
@@ -58,7 +38,7 @@ endfunction
 
 function! s:dumb_jump.init() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  call clap#client#call_on_init('dumb_jump/on_init', function('s:handle_response'), {
+  call clap#client#call_on_init('dumb_jump/on_init', function('clap#state#handle_response_on_typed'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
         \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
@@ -68,7 +48,7 @@ function! s:dumb_jump.init() abort
 endfunction
 
 function! s:dumb_jump.on_move_async() abort
-  call clap#client#call_on_move_dumb_jump('dumb_jump/on_move', function('clap#impl#on_move#handler'))
+  call clap#client#call_with_lnum('dumb_jump/on_move', function('clap#impl#on_move#handler'))
 endfunction
 
 let s:dumb_jump['sink*'] = function('s:dumb_jump_sink_star')

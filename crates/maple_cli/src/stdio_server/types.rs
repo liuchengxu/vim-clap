@@ -75,6 +75,12 @@ impl Message {
         serde_json::from_value(json_value).map_err(Into::into)
     }
 
+    pub fn deserialize_params_unsafe<T: DeserializeOwned>(self) -> T {
+        let json_value = serde_json::Value::Object(self.params);
+        serde_json::from_value(json_value)
+            .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
+    }
+
     pub fn get_provider_id(&self) -> ProviderId {
         self.get_string_unsafe("provider_id").into()
     }

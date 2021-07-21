@@ -90,7 +90,7 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub(crate) fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
+pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
     let mut filtered = filtered;
     filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
     filtered
@@ -109,4 +109,24 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     let filtered = source.filter_and_collect(matcher, query)?;
     let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
+}
+
+pub fn simple_run<T: Into<SourceItem>>(
+    lines: impl Iterator<Item = T>,
+    query: &str,
+) -> Vec<FilteredItem> {
+    let matcher =
+        matcher::Matcher::new_with_bonuses(Algo::Fzy, MatchType::Full, Default::default());
+
+    let do_match = |source_item: &SourceItem| matcher.do_match(source_item, query);
+
+    let filtered = lines
+        .map(|line| line.into())
+        .filter_map(|source_item| {
+            do_match(&source_item).map(|(score, indices)| (source_item, score, indices))
+        })
+        .map(Into::into)
+        .collect::<Vec<_>>();
+
+    sort_initial_filtered(filtered)
 }

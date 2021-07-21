@@ -16,6 +16,7 @@ pub use self::providers::*;
 
 pub type SessionId = u64;
 
+#[derive(Debug)]
 pub enum Event {
     OnMove(Message),
     OnTyped(Message),
@@ -24,7 +25,7 @@ pub enum Event {
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
     /// Use the mutable self so that we can cache some info inside the handler.
-    async fn handle(&mut self, event: Event, context: SessionContext);
+    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +55,19 @@ impl SessionEvent {
 }
 
 impl<T: EventHandler> Session<T> {
+    pub fn new(msg: Message, event_handler: T) -> (Self, Sender<SessionEvent>) {
+        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
+
+        let session = Session {
+            session_id: msg.session_id,
+            context: msg.into(),
+            event_handler,
+            event_recv: session_receiver,
+        };
+
+        (session, session_sender)
+    }
+
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
         let mut val = self.context.is_running.lock().unwrap();
@@ -105,14 +119,22 @@ impl<T: EventHandler> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
-                                self.event_handler
+                                if let Err(e) = self
+                                    .event_handler
                                     .handle(Event::OnMove(msg), self.context.clone())
                                     .await
+                                {
+                                    debug!("Error occurrred when handling OnMove event: {:?}", e);
+                                }
                             }
                             SessionEvent::OnTyped(msg) => {
-                                self.event_handler
+                                if let Err(e) = self
+                                    .event_handler
                                     .handle(Event::OnTyped(msg), self.context.clone())
                                     .await
+                                {
+                                    debug!("Error occurrred when handling OnTyped event: {:?}", e);
+                                }
                             }
                         }
                     }

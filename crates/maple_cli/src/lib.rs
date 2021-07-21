@@ -2,6 +2,7 @@ mod app;
 mod dumb_analyzer;
 mod logger;
 mod process;
+mod recent_files;
 mod stdio_server;
 mod tools;
 

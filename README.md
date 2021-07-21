@@ -146,6 +146,7 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** with JSON output support |
 | `Clap yanks`                           | Yank stack of the current vim session                  | _none_                                                                                 |
 | `Clap filer`                           | Ivy-like file explorer                                 | **[maple][maple]**                                                                     |
+| `Clap recent_files`                    | Persistent ordered history of recent files             | **[maple][maple]**                                                                     |
 | `Clap dumb_jump`                       | Definitions/References using regexp with grep fallback | **[rg][rg]** with `--pcre2`                                                            |
 | `Clap providers`                       | List the vim-clap providers                            | _none_                                                                                 |
 | `Clap windows`                         | Windows                                                | _none_                                                                                 |

@@ -6,7 +6,10 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::stdio_server::{previewer, types::Message, write_response};
+use crate::{
+    recent_files::RECENT_FILES_IN_MEMORY,
+    stdio_server::{previewer, types::Message, write_response},
+};
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");
@@ -63,5 +66,19 @@ pub fn preview_file(msg: Message) {
         if let Err(e) = preview_file_impl(msg).await {
             log::error!("Error when previewing the file: {}", e);
         }
+    });
+}
+
+pub fn note_recent_file(msg: Message) {
+    // Use a buffered channel?
+    tokio::spawn(async move {
+        let file = msg.get_string_unsafe("file");
+
+        if file.is_empty() || !std::path::Path::new(&file).exists() {
+            return;
+        }
+
+        let mut recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
+        recent_files.upsert(file);
     });
 }
