@@ -20,16 +20,14 @@ pub const CLAP_CACHE: &str = "vim.clap";
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents(target_dir: &Path) -> Result<()> {
     let entries = read_dir(target_dir)?;
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path = entry.path();
+    for entry in entries.into_iter().flatten() {
+        let path = entry.path();
 
-            if path.is_dir() {
-                remove_dir_all(path)?;
-            } else {
-                remove_file(path)?;
-            }
-        };
+        if path.is_dir() {
+            remove_dir_all(path)?;
+        } else {
+            remove_file(path)?;
+        }
     }
     Ok(())
 }
