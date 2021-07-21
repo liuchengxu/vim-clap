@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -216,15 +216,10 @@ impl SortedRecentFiles {
 
     fn write_to_disk(&self) -> Result<()> {
         if let Some(recent_files_json) = JSON_PATH.as_deref() {
-            // Overwrite it.
-            let mut f = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(recent_files_json)?;
-
-            f.write_all(serde_json::to_string(self)?.as_bytes())?;
-            f.flush()?;
+            utility::create_or_overwrite(
+                recent_files_json,
+                serde_json::to_string(self)?.as_bytes(),
+            )?;
         }
         Ok(())
     }

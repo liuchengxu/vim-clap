@@ -235,6 +235,24 @@ where
     Ok(cmd.output()?)
 }
 
+/// Attempts to write an entire buffer into the file.
+///
+/// Creates one if the file doed not exist.
+pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
+    use std::io::Write;
+
+    // Overwrite it.
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
+
+    f.write_all(buf)?;
+    f.flush()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
