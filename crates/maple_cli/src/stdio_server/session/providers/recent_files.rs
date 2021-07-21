@@ -21,11 +21,10 @@ pub async fn handle_recent_files_message(
     #[derive(Deserialize)]
     struct Params {
         query: String,
+        enable_icon: Option<bool>,
     }
 
-    // TODO: respect enable_icon flag
-
-    let Params { query } = msg.deserialize_params_unsafe();
+    let Params { query, enable_icon } = msg.deserialize_params_unsafe();
 
     let recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
     let ranked = recent_files.filter_on_query(&query);
@@ -34,9 +33,13 @@ pub async fn handle_recent_files_message(
     let total = ranked.len();
 
     let (lines, indices, truncated_map) = printer::process_top_items(
-        ranked.iter().take(200).map(|x| x.clone()).collect(),
+        ranked.iter().take(200).cloned().collect(),
         winwidth as usize,
-        Some(icon::IconPainter::File),
+        if enable_icon.unwrap_or(true) {
+            Some(icon::IconPainter::File)
+        } else {
+            None
+        },
     );
 
     let result = if truncated_map.is_empty() {
@@ -81,8 +84,6 @@ impl EventHandler for RecentFilesMessageHandler {
                 let msg_id = msg.id;
 
                 let lnum = msg.get_u64("lnum").expect("lnum is required");
-
-                // TODO: preview on query is empty
 
                 if let Some(curline) = self
                     .lines

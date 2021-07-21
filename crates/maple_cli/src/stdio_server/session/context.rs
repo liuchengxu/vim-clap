@@ -41,7 +41,7 @@ impl SessionContext {
 
 impl From<Message> for SessionContext {
     fn from(msg: Message) -> Self {
-        log::debug!("recv msg for SessionContext: {:?}", msg);
+        log::debug!("Creating a new SessionContext from: {:?}", msg);
 
         #[derive(Deserialize)]
         struct Params {

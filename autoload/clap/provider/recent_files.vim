@@ -10,6 +10,7 @@ function! s:recent_files.on_typed() abort
   call clap#client#call('recent_files/on_typed', function('clap#state#handle_response_on_typed'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': g:clap.input.get(),
+        \ 'enable_icon': g:clap_enable_icon ? v:true : v:false
         \ })
 endfunction
 
