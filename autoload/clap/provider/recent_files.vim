@@ -27,7 +27,6 @@ function! s:recent_files.init() abort
 endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')
-let s:recent_files.enable_rooter = v:true
 let s:recent_files.support_open_action = v:true
 let s:recent_files.syntax = 'clap_files'
 
