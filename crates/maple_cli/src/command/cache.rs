@@ -1,17 +1,10 @@
-use std::fs::{read_dir, DirEntry, File};
-use std::hash::Hash;
-use std::io::Write;
-use std::path::{self, Path, PathBuf};
-use std::time::SystemTime;
+use std::fs::read_dir;
+use std::path::{self, Path};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use structopt::StructOpt;
 
-use icon::IconPainter;
-use utility::{
-    calculate_hash, clap_cache_dir, get_cached_entry, println_json, println_json_with_length,
-    read_first_lines, remove_dir_contents,
-};
+use utility::{clap_cache_dir, remove_dir_contents};
 
 /// List and remove all the cached contents.
 #[derive(StructOpt, Debug, Clone)]
