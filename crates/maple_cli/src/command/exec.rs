@@ -63,9 +63,10 @@ impl Exec {
             .collect::<Vec<_>>();
 
         if !no_cache && self.cmd_dir.is_some() {
-            light_cmd
-                .try_cache_or_execute(self.cmd.clone(), &args, self.cmd_dir.clone().unwrap())?
-                .print();
+            let base_cmd =
+                crate::cache::BaseCommand::new(self.cmd.clone(), self.cmd_dir.clone().unwrap());
+
+            light_cmd.try_cache_or_execute(base_cmd, &args)?.print();
         } else {
             light_cmd.execute(self.cmd.clone(), &args)?.print();
         }

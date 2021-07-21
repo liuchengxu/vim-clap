@@ -277,34 +277,37 @@ impl<'a> LightCommand<'a> {
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(
         &mut self,
-        command: String,
+        base_cmd: crate::cache::BaseCommand,
         args: &[&str],
-        cmd_dir: PathBuf,
     ) -> Result<ExecutedInfo> {
-        if let Ok(cached_entry) = get_cached_entry(args, &cmd_dir) {
-            if let Ok(total) = CacheEntry::get_total(&cached_entry) {
-                let tempfile = cached_entry.path();
-                let lines = if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
-                    if let Some(ref painter) = self.env.icon_painter {
-                        lines_iter.map(|x| painter.paint(&x)).collect()
-                    } else {
-                        lines_iter.collect()
-                    }
+        if let Some(cache_digest) = base_cmd.cache_exists() {
+            let crate::cache::Digest {
+                results_number,
+                cached_path,
+                ..
+            } = cache_digest;
+
+            let lines = if let Ok(lines_iter) = read_first_lines(&cached_path, 100) {
+                if let Some(ref painter) = self.env.icon_painter {
+                    lines_iter.map(|x| painter.paint(&x)).collect()
                 } else {
-                    vec![]
-                };
-                return Ok(ExecutedInfo {
-                    using_cache: true,
-                    total,
-                    tempfile: Some(tempfile),
-                    lines,
-                });
-            }
+                    lines_iter.collect()
+                }
+            } else {
+                vec![]
+            };
+
+            Ok(ExecutedInfo {
+                using_cache: true,
+                total: results_number as usize,
+                tempfile: Some(cached_path),
+                lines,
+            })
+        } else {
+            let crate::cache::BaseCommand { command, cwd } = base_cmd;
+            self.env.dir = Some(cwd);
+            self.execute(command, args)
         }
-
-        self.env.dir = Some(cmd_dir);
-
-        self.execute(command, args)
     }
 
     /// Execute the command directly and capture the output.

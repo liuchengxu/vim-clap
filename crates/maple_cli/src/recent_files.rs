@@ -1,15 +1,13 @@
 use std::cmp::Ordering;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::UtcTime;
+use crate::utils::{generate_data_file_path, load_json, UtcTime};
 
 const HOUR: i64 = 3600;
 const DAY: i64 = HOUR * 24;
@@ -20,10 +18,10 @@ const MAX_ENTRIES: u64 = 10_000;
 const JSON_FILENAME: &str = "recent_files.json";
 
 pub static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
-    Lazy::new(|| crate::utils::generate_data_file_path(JSON_FILENAME).ok());
+    Lazy::new(|| generate_data_file_path(JSON_FILENAME).ok());
 
 pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(|| {
-    let maybe_persistent = crate::utils::load_json(RECENT_FILES_JSON_PATH.as_deref())
+    let maybe_persistent = load_json(RECENT_FILES_JSON_PATH.as_deref())
         .map(|f: SortedRecentFiles| f.remove_invalid_entries())
         .unwrap_or_default();
     Mutex::new(maybe_persistent)
@@ -135,7 +133,7 @@ impl SortedRecentFiles {
             entries: self
                 .entries
                 .into_iter()
-                .filter(|entry| std::path::Path::new(&entry.fpath).exists())
+                .filter(|entry| Path::new(&entry.fpath).exists())
                 .collect(),
             ..self
         }

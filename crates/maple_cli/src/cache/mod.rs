@@ -9,16 +9,16 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 
-use crate::utils::UtcTime;
+use crate::utils::{generate_data_file_path, load_json, UtcTime};
 
 const CACHE_FILENAME: &str = "cache.json";
 
 pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
-    Lazy::new(|| crate::utils::generate_data_file_path(CACHE_FILENAME).ok());
+    Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
     let maybe_persistent =
-        crate::utils::load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref()).unwrap_or_default();
+        load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref()).unwrap_or_default();
     Mutex::new(maybe_persistent)
 });
 
@@ -85,13 +85,19 @@ pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     Ok(())
 }
 
-pub struct RawCommand(String);
+#[derive(Debug, Clone)]
+pub struct BaseCommand {
+    pub command: String,
+    pub cwd: PathBuf,
+}
 
-impl RawCommand {
-    pub fn cache_exists(&self, command: &str, cwd: &PathBuf) -> Option<PathBuf> {
+impl BaseCommand {
+    pub fn new(command: String, cwd: PathBuf) -> Self {
+        Self { command, cwd }
+    }
+
+    pub fn cache_exists(&self) -> Option<Digest> {
         let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        cache_info
-            .cache_digest(command, cwd)
-            .map(|d| d.cached_path.clone())
+        cache_info.cache_digest(&self.command, &self.cwd).cloned()
     }
 }

@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
-use once_cell::sync::Lazy;
 
 pub type UtcTime = DateTime<Utc>;
 
