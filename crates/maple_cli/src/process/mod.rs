@@ -6,6 +6,8 @@ use anyhow::Result;
 
 use self::std::StdCommand;
 
+use crate::cache::{Digest, CACHE_INFO_IN_MEMORY};
+
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
 /// Remove the last line if it's empty.
@@ -42,5 +44,22 @@ impl AsyncCommand {
 
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         self.0.lines().await
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BaseCommand {
+    pub command: String,
+    pub cwd: ::std::path::PathBuf,
+}
+
+impl BaseCommand {
+    pub fn new(command: String, cwd: ::std::path::PathBuf) -> Self {
+        Self { command, cwd }
+    }
+
+    pub fn cache_exists(&self) -> Option<Digest> {
+        let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        cache_info.find_digest(&self.command, &self.cwd).cloned()
     }
 }

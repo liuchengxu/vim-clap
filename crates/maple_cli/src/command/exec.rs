@@ -5,7 +5,10 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::app::Params;
-use crate::process::light::{set_current_dir, LightCommand};
+use crate::process::{
+    light::{set_current_dir, LightCommand},
+    BaseCommand,
+};
 
 /// Execute the shell command
 #[derive(StructOpt, Debug, Clone)]
@@ -56,19 +59,17 @@ impl Exec {
             self.output_threshold,
         );
 
-        let args = self
-            .cmd
-            .split_whitespace()
-            .map(Into::into)
-            .collect::<Vec<_>>();
+        let cwd = match &self.cmd_dir {
+            Some(dir) => dir.clone(),
+            None => std::env::current_dir()?,
+        };
 
-        if !no_cache && self.cmd_dir.is_some() {
-            let base_cmd =
-                crate::cache::BaseCommand::new(self.cmd.clone(), self.cmd_dir.clone().unwrap());
+        let base_cmd = BaseCommand::new(self.cmd.clone(), cwd);
 
-            light_cmd.try_cache_or_execute(base_cmd, &args)?.print();
+        if !no_cache {
+            light_cmd.try_cache_or_execute(base_cmd)?.print();
         } else {
-            light_cmd.execute(self.cmd.clone(), &args)?.print();
+            light_cmd.execute(base_cmd)?.print();
         }
 
         Ok(())

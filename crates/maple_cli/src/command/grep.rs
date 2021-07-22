@@ -15,7 +15,10 @@ use utility::is_git_repo;
 
 use crate::app::Params;
 use crate::cache::{cache_exists, send_response_from_cache, SendResponse};
-use crate::process::light::{set_current_dir, LightCommand};
+use crate::process::{
+    light::{set_current_dir, LightCommand},
+    BaseCommand,
+};
 use crate::tools::ripgrep::Match;
 
 const RG_ARGS: &[&str] = &[
@@ -139,7 +142,8 @@ impl Grep {
 
         let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
-        let execute_info = light_cmd.execute(grep_cmd.clone(), &args)?;
+        let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
+        let execute_info = light_cmd.execute(base_cmd)?;
 
         let enable_icon = icon_painter.is_some();
 
@@ -275,13 +279,18 @@ impl RipGrepForerunner {
 
         let mut light_cmd = LightCommand::new_grep(
             &mut cmd,
-            self.cmd_dir,
+            self.cmd_dir.clone(),
             number,
             icon_painter,
             Some(self.output_threshold),
         );
 
-        light_cmd.execute(RG_ARGS_STRING.into(), &RG_ARGS)?.print();
+        let base_cmd = BaseCommand::new(
+            RG_ARGS_STRING.into(),
+            self.cmd_dir.clone().unwrap_or(std::env::current_dir()?),
+        );
+
+        light_cmd.execute(base_cmd)?.print();
 
         Ok(())
     }

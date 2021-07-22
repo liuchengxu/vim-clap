@@ -10,7 +10,8 @@ use anyhow::{anyhow, Result};
 use icon::IconPainter;
 use utility::{get_cached_entry, println_json, read_first_lines, remove_dir_contents};
 
-use crate::cache::CacheEntry;
+use crate::cache::{CacheEntry, Digest};
+use crate::process::BaseCommand;
 
 /// Remove the last element if it's empty string.
 #[inline]
@@ -142,12 +143,16 @@ impl CommandEnv {
         if let Some(ref output) = self.output {
             Ok(output.into())
         } else {
-            CacheEntry::try_new(args, self.dir.clone(), self.total)
+            todo!()
+            // CacheEntry::try_new(args, self.dir.clone(), self.total)
         }
     }
 
     /// Writes the whole stdout of LightCommand to a tempfile.
-    pub fn do_cache(&self, cmd_stdout: &[u8], args: &[&str]) -> Result<PathBuf> {
+    pub fn cache_the_output(&self, base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
+        todo!()
+
+        /*
         let tempfile = self.new_cache_entry(args)?;
 
         // Remove the other outdated cache file if there are any.
@@ -163,6 +168,7 @@ impl CommandEnv {
         // let _end = std::cmp::min(cmd_stdout.len(), 500);
 
         Ok(tempfile)
+        */
     }
 }
 
@@ -245,22 +251,20 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Cache the stdout into a tempfile if the output threshold exceeds.
-    fn try_cache(
+    fn create_cache(
         &self,
-        command: String,
+        base_cmd: BaseCommand,
         cmd_stdout: &[u8],
-        args: &[&str],
     ) -> Result<(String, Option<PathBuf>)> {
         if self.env.should_do_cache() {
-            let cache_file = self.env.do_cache(cmd_stdout, args)?;
+            let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
 
-            let cache_digest = crate::cache::Digest::new(
-                command,
-                self.env.dir.clone().unwrap(),
-                self.env.total as u64,
-                cache_file.clone(),
-            );
-            crate::cache::add_new_cache_digest(cache_digest)?;
+            let BaseCommand { command, cwd } = base_cmd;
+
+            let digest =
+                crate::cache::Digest::new(command, cwd, self.env.total as u64, cache_file.clone());
+
+            crate::cache::add_new_cache_digest(digest)?;
 
             Ok((
                 // lines used for displaying directly.
@@ -273,40 +277,39 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    fn handle_with_cache_digest(&self, digest: Digest) -> Result<ExecutedInfo> {
+        let Digest {
+            results_number,
+            cached_path,
+            ..
+        } = digest;
+
+        let lines = if let Ok(lines_iter) = read_first_lines(&cached_path, 100) {
+            if let Some(ref painter) = self.env.icon_painter {
+                lines_iter.map(|x| painter.paint(&x)).collect()
+            } else {
+                lines_iter.collect()
+            }
+        } else {
+            Vec::new()
+        };
+
+        Ok(ExecutedInfo {
+            using_cache: true,
+            total: results_number as usize,
+            tempfile: Some(cached_path),
+            lines,
+        })
+    }
+
     /// Firstly try the cache given the command args and working dir.
     /// If the cache exists, returns the cache file directly.
-    pub fn try_cache_or_execute(
-        &mut self,
-        base_cmd: crate::cache::BaseCommand,
-        args: &[&str],
-    ) -> Result<ExecutedInfo> {
+    pub fn try_cache_or_execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         if let Some(cache_digest) = base_cmd.cache_exists() {
-            let crate::cache::Digest {
-                results_number,
-                cached_path,
-                ..
-            } = cache_digest;
-
-            let lines = if let Ok(lines_iter) = read_first_lines(&cached_path, 100) {
-                if let Some(ref painter) = self.env.icon_painter {
-                    lines_iter.map(|x| painter.paint(&x)).collect()
-                } else {
-                    lines_iter.collect()
-                }
-            } else {
-                vec![]
-            };
-
-            Ok(ExecutedInfo {
-                using_cache: true,
-                total: results_number as usize,
-                tempfile: Some(cached_path),
-                lines,
-            })
+            self.handle_with_cache_digest(cache_digest)
         } else {
-            let crate::cache::BaseCommand { command, cwd } = base_cmd;
-            self.env.dir = Some(cwd);
-            self.execute(command, args)
+            self.env.dir = Some(base_cmd.cwd.clone());
+            self.execute(base_cmd)
         }
     }
 
@@ -316,7 +319,7 @@ impl<'a> LightCommand<'a> {
     /// otherwise print the total results or write them to
     /// a tempfile if they are more than `self.output_threshold`.
     /// This cached tempfile can be reused on the following runs.
-    pub fn execute(&mut self, command: String, args: &[&str]) -> Result<ExecutedInfo> {
+    pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
@@ -327,7 +330,7 @@ impl<'a> LightCommand<'a> {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) = self.try_cache(command, &cmd_stdout, args)?;
+        let (stdout_str, tempfile) = self.create_cache(base_cmd, &cmd_stdout)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
         let total = self.env.total;
 

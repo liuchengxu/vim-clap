@@ -62,20 +62,16 @@ impl Default for CacheInfo {
 }
 
 impl CacheInfo {
-    pub fn cache_digest(&self, command: &str, cwd: &PathBuf) -> Option<&Digest> {
+    pub fn find_digest(&self, command: &str, cwd: &PathBuf) -> Option<&Digest> {
         self.0
             .iter()
             .find(|d| d.command == command && &d.cwd == cwd)
     }
 
-    pub fn add(&mut self, cache_digest: Digest) -> Result<()> {
-        self.0.push(cache_digest);
-        self.write_to_disk()?;
+    pub fn add(&mut self, digest: Digest) -> Result<()> {
+        self.0.push(digest);
+        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
         Ok(())
-    }
-
-    fn write_to_disk(&self) -> Result<()> {
-        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())
     }
 }
 
@@ -83,21 +79,4 @@ pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.add(digest)?;
     Ok(())
-}
-
-#[derive(Debug, Clone)]
-pub struct BaseCommand {
-    pub command: String,
-    pub cwd: PathBuf,
-}
-
-impl BaseCommand {
-    pub fn new(command: String, cwd: PathBuf) -> Self {
-        Self { command, cwd }
-    }
-
-    pub fn cache_exists(&self) -> Option<Digest> {
-        let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        cache_info.cache_digest(&self.command, &self.cwd).cloned()
-    }
 }
