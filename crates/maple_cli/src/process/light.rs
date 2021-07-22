@@ -250,7 +250,7 @@ impl<'a> LightCommand<'a> {
         ))
     }
 
-    fn handle_with_cache_digest(&self, digest: Digest) -> Result<ExecutedInfo> {
+    fn handle_with_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
         let Digest {
             results_number,
             cached_path,
@@ -269,8 +269,8 @@ impl<'a> LightCommand<'a> {
 
         Ok(ExecutedInfo {
             using_cache: true,
-            total: results_number as usize,
-            tempfile: Some(cached_path),
+            total: *results_number as usize,
+            tempfile: Some(cached_path.clone()),
             lines,
         })
     }
@@ -279,7 +279,7 @@ impl<'a> LightCommand<'a> {
     /// If the cache exists, returns the cache file directly.
     pub fn try_cache_or_execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         if let Some(cache_digest) = base_cmd.cache_exists() {
-            self.handle_with_cache_digest(cache_digest)
+            self.handle_with_cache_digest(&cache_digest)
         } else {
             self.env.dir = Some(base_cmd.cwd.clone());
             self.execute(base_cmd)
