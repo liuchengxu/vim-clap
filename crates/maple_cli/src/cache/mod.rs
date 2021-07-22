@@ -31,17 +31,17 @@ pub struct Digest {
     pub base: BaseCommand,
     /// Time of last execution.
     pub execution_time: UtcTime,
-    /// Number of results from last run.
-    pub results_number: u64,
+    /// Number of results from last execution.
+    pub total: u64,
     /// File saved for caching the results.
     pub cached_path: PathBuf,
 }
 
 impl Digest {
-    pub fn new(base: BaseCommand, results_number: u64, cached_path: PathBuf) -> Self {
+    pub fn new(base: BaseCommand, total: u64, cached_path: PathBuf) -> Self {
         Self {
             base,
-            results_number,
+            total,
             cached_path,
             execution_time: Utc::now(),
         }
@@ -79,5 +79,5 @@ pub fn get_cached(base_cmd: &BaseCommand) -> Option<(u64, PathBuf)> {
     let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info
         .find_digest(base_cmd)
-        .map(|d| (d.results_number, d.cached_path.clone()))
+        .map(|d| (d.total, d.cached_path.clone()))
 }

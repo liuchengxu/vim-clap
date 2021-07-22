@@ -134,6 +134,7 @@ impl CommandEnv {
         }
     }
 
+    /// Returns true if the number of total results is larger than the output threshold.
     // TODO: add a cache upper bound?
     #[inline]
     pub fn should_create_cache(&self) -> bool {
@@ -141,8 +142,8 @@ impl CommandEnv {
     }
 }
 
-/// Writes the whole stdout of LightCommand to a tempfile.
-fn cache_stdout(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
+/// Writes the whole stdout of `base_cmd` to a cache file.
+fn write_stdout_to_disk(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
     let cached_filename = utility::calculate_hash(base_cmd);
     let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
 
@@ -151,15 +152,15 @@ fn cache_stdout(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
     Ok(cached_path)
 }
 
-/// Cache the stdout into a tempfile if the output threshold exceeds.
+/// Caches the output into a tempfile and also writes the cache digest to the disk.
 fn create_cache(
     base_cmd: BaseCommand,
-    results_number: u64,
+    total: u64,
     cmd_stdout: &[u8],
 ) -> Result<(String, Option<PathBuf>)> {
-    let cache_file = cache_stdout(&base_cmd, cmd_stdout)?;
+    let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;
 
-    let digest = Digest::new(base_cmd, results_number, cache_file.clone());
+    let digest = Digest::new(base_cmd, total, cache_file.clone());
 
     crate::cache::add_new_cache_digest(digest)?;
 
@@ -249,18 +250,16 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    fn handle_with_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
+    fn handle_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
         let Digest {
-            results_number,
-            cached_path,
-            ..
+            total, cached_path, ..
         } = digest;
 
-        let lines = if let Ok(lines_iter) = read_first_lines(&cached_path, 100) {
+        let lines = if let Ok(iter) = read_first_lines(&cached_path, 100) {
             if let Some(ref painter) = self.env.icon_painter {
-                lines_iter.map(|x| painter.paint(&x)).collect()
+                iter.map(|x| painter.paint(&x)).collect()
             } else {
-                lines_iter.collect()
+                iter.collect()
             }
         } else {
             Vec::new()
@@ -268,19 +267,27 @@ impl<'a> LightCommand<'a> {
 
         Ok(ExecutedInfo {
             using_cache: true,
-            total: *results_number as usize,
+            total: *total as usize,
             tempfile: Some(cached_path.clone()),
             lines,
         })
     }
 
-    /// Firstly try the cache given the command args and working dir.
-    /// If the cache exists, returns the cache file directly.
-    pub fn try_cache_or_execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
-        if let Some(cache_digest) = base_cmd.cache_exists() {
-            self.handle_with_cache_digest(&cache_digest)
+    /// Checks if the cache exists given `base_cmd` and `no_cache` flag.
+    /// If the cache exists, return the cached info, otherwise execute
+    /// the command.
+    pub fn try_cache_or_execute(
+        &mut self,
+        base_cmd: BaseCommand,
+        no_cache: bool,
+    ) -> Result<ExecutedInfo> {
+        if !no_cache {
+            if let Some(cache_digest) = base_cmd.cache_exists() {
+                self.handle_cache_digest(&cache_digest)
+            } else {
+                self.execute(base_cmd)
+            }
         } else {
-            self.env.dir = Some(base_cmd.cwd.clone());
             self.execute(base_cmd)
         }
     }
@@ -292,6 +299,8 @@ impl<'a> LightCommand<'a> {
     /// a tempfile if they are more than `self.output_threshold`.
     /// This cached tempfile can be reused on the following runs.
     pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
+        self.env.dir = Some(base_cmd.cwd.clone());
+
         let cmd_output = self.output()?;
         let cmd_stdout = &cmd_output.stdout;
 
@@ -301,7 +310,7 @@ impl<'a> LightCommand<'a> {
             return Ok(executed_info);
         }
 
-        // Write the output to a tempfile if the lines are too many.
+        // Cache the output if there are too many lines.
         let (stdout_str, cached_path) = if self.env.should_create_cache() {
             create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?
         } else {

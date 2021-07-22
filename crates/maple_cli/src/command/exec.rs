@@ -66,11 +66,7 @@ impl Exec {
 
         let base_cmd = BaseCommand::new(self.cmd.clone(), cwd);
 
-        if !no_cache {
-            light_cmd.try_cache_or_execute(base_cmd)?.print();
-        } else {
-            light_cmd.execute(base_cmd)?.print();
-        }
+        light_cmd.try_cache_or_execute(base_cmd, no_cache)?.print();
 
         Ok(())
     }
