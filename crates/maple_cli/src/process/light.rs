@@ -150,25 +150,12 @@ impl CommandEnv {
 
     /// Writes the whole stdout of LightCommand to a tempfile.
     pub fn cache_the_output(&self, base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
-        todo!()
+        let cached_filename = utility::calculate_hash(base_cmd);
+        let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
 
-        /*
-        let tempfile = self.new_cache_entry(args)?;
+        File::create(&cached_path)?.write_all(cmd_stdout)?;
 
-        // Remove the other outdated cache file if there are any.
-        //
-        // There should be only one cache file in parent_dir at this moment.
-        if let Some(parent_dir) = tempfile.parent() {
-            remove_dir_contents(&parent_dir.to_path_buf())?;
-        }
-
-        File::create(&tempfile)?.write_all(cmd_stdout)?;
-
-        // FIXME find the nth newline index of stdout.
-        // let _end = std::cmp::min(cmd_stdout.len(), 500);
-
-        Ok(tempfile)
-        */
+        Ok(cached_path)
     }
 }
 
@@ -259,8 +246,7 @@ impl<'a> LightCommand<'a> {
         if self.env.should_do_cache() {
             let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
 
-            let digest =
-                crate::cache::Digest::new(base_cmd, self.env.total as u64, cache_file.clone());
+            let digest = Digest::new(base_cmd, self.env.total as u64, cache_file.clone());
 
             crate::cache::add_new_cache_digest(digest)?;
 
@@ -328,14 +314,13 @@ impl<'a> LightCommand<'a> {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, tempfile) = self.create_cache(base_cmd, &cmd_stdout)?;
+        let (stdout_str, cached_path) = self.create_cache(base_cmd, &cmd_stdout)?;
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
-        let total = self.env.total;
 
         Ok(ExecutedInfo {
-            total,
+            total: self.env.total,
             lines,
-            tempfile,
+            tempfile: cached_path,
             using_cache: false,
         })
     }

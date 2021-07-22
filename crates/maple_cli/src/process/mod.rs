@@ -2,7 +2,10 @@ pub mod light;
 pub mod std;
 pub mod tokio;
 
+use ::std::hash::Hash;
+
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 use self::std::StdCommand;
 
@@ -47,7 +50,7 @@ impl AsyncCommand {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct BaseCommand {
     /// Raw shell command string.
     pub command: String,

@@ -29,6 +29,20 @@ pub fn generate_data_file_path(filename: &str) -> Result<PathBuf> {
     Err(anyhow!("Couldn't create the Vim Clap project directory"))
 }
 
+pub fn generate_cache_file_path(filename: &str) -> Result<PathBuf> {
+    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
+        let cache_dir = proj_dirs.cache_dir();
+        std::fs::create_dir_all(cache_dir)?;
+
+        let mut file = cache_dir.to_path_buf();
+        file.push(filename);
+
+        return Ok(file);
+    }
+
+    Err(anyhow!("Couldn't create the Vim Clap project directory"))
+}
+
 pub fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {
     path.and_then(|json_path| {
         if json_path.as_ref().exists() {
