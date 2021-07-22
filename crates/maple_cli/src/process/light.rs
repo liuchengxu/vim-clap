@@ -151,6 +151,26 @@ fn cache_stdout(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
     Ok(cached_path)
 }
 
+/// Cache the stdout into a tempfile if the output threshold exceeds.
+fn create_cache(
+    base_cmd: BaseCommand,
+    results_number: u64,
+    cmd_stdout: &[u8],
+) -> Result<(String, Option<PathBuf>)> {
+    let cache_file = cache_stdout(&base_cmd, cmd_stdout)?;
+
+    let digest = Digest::new(base_cmd, results_number, cache_file.clone());
+
+    crate::cache::add_new_cache_digest(digest)?;
+
+    Ok((
+        // lines used for displaying directly.
+        // &cmd_output.stdout[..nth_newline_index]
+        String::from_utf8_lossy(cmd_stdout).into(),
+        Some(cache_file),
+    ))
+}
+
 /// A wrapper of std::process::Command for building cache, adding icon and minimalize the
 /// throughput.
 #[derive(Debug)]
@@ -229,27 +249,6 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    /// Cache the stdout into a tempfile if the output threshold exceeds.
-    fn create_cache(
-        &self,
-        base_cmd: BaseCommand,
-        results_number: u64,
-        cmd_stdout: &[u8],
-    ) -> Result<(String, Option<PathBuf>)> {
-        let cache_file = cache_stdout(&base_cmd, cmd_stdout)?;
-
-        let digest = Digest::new(base_cmd, results_number, cache_file.clone());
-
-        crate::cache::add_new_cache_digest(digest)?;
-
-        Ok((
-            // lines used for displaying directly.
-            // &cmd_output.stdout[..nth_newline_index]
-            String::from_utf8_lossy(cmd_stdout).into(),
-            Some(cache_file),
-        ))
-    }
-
     fn handle_with_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
         let Digest {
             results_number,
@@ -304,7 +303,7 @@ impl<'a> LightCommand<'a> {
 
         // Write the output to a tempfile if the lines are too many.
         let (stdout_str, cached_path) = if self.env.should_create_cache() {
-            self.create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?
+            create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?
         } else {
             (String::from_utf8_lossy(cmd_stdout).into(), None)
         };
