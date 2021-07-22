@@ -78,6 +78,8 @@ impl ExecutedInfo {
     }
 }
 
+const OUTPUT_THRESHOLD: usize = 100_000;
+
 /// Environment for running LightCommand.
 #[derive(Debug, Clone)]
 pub struct CommandEnv {
@@ -97,7 +99,7 @@ impl Default for CommandEnv {
             number: None,
             output: None,
             icon_painter: None,
-            output_threshold: 100_000usize,
+            output_threshold: OUTPUT_THRESHOLD,
         }
     }
 }
@@ -115,7 +117,7 @@ impl CommandEnv {
             number,
             output,
             icon_painter,
-            output_threshold: output_threshold.unwrap_or(100_000usize),
+            output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
             ..Default::default()
         }
     }
@@ -137,16 +139,16 @@ impl CommandEnv {
     pub fn should_create_cache(&self) -> bool {
         self.total > self.output_threshold
     }
+}
 
-    /// Writes the whole stdout of LightCommand to a tempfile.
-    pub fn cache_the_output(&self, base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
-        let cached_filename = utility::calculate_hash(base_cmd);
-        let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
+/// Writes the whole stdout of LightCommand to a tempfile.
+fn cache_stdout(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
+    let cached_filename = utility::calculate_hash(base_cmd);
+    let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
 
-        File::create(&cached_path)?.write_all(cmd_stdout)?;
+    File::create(&cached_path)?.write_all(cmd_stdout)?;
 
-        Ok(cached_path)
-    }
+    Ok(cached_path)
 }
 
 /// A wrapper of std::process::Command for building cache, adding icon and minimalize the
@@ -234,7 +236,7 @@ impl<'a> LightCommand<'a> {
         results_number: u64,
         cmd_stdout: &[u8],
     ) -> Result<(String, Option<PathBuf>)> {
-        let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
+        let cache_file = cache_stdout(&base_cmd, cmd_stdout)?;
 
         let digest = Digest::new(base_cmd, results_number, cache_file.clone());
 
