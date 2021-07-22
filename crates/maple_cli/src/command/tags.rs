@@ -13,7 +13,7 @@ use filter::{
 
 use crate::app::Params;
 use crate::cache::{send_response_from_cache, SendResponse};
-use crate::tools::ctags::{ensure_has_json_support, TagInfo};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
@@ -47,28 +47,12 @@ pub struct Tags {
     exclude: Vec<String>,
 }
 
-fn formatted_tags_stream(
-    args: &[&str],
-    dir: impl AsRef<Path>,
-) -> Result<impl Iterator<Item = String>> {
-    let stdout_stream = subprocess::Exec::shell(args.join(" "))
-        .cwd(dir)
-        .stream_stdout()?;
-    Ok(BufReader::new(stdout_stream).lines().filter_map(|line| {
-        line.ok().and_then(|tag| {
-            if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.display_line())
-            } else {
-                None
-            }
-        })
-    }))
-}
-
 fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
     args: &[&str],
     dir: T,
 ) -> Result<(PathBuf, usize)> {
+    todo!()
+    /*
     let tags_stream = formatted_tags_stream(args, dir.clone())?;
     let mut total = 0usize;
     let mut formatted_tags_stream = tags_stream.map(|x| {
@@ -77,11 +61,30 @@ fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
     });
     let lines = formatted_tags_stream.join("\n");
     todo!("Create cache for tags")
+    */
     // let cache = CacheEntry::create(args, Some(dir), total, lines)?;
     // Ok((cache, total))
 }
 
 impl Tags {
+    fn assemble_ctags_cmd(&self) -> CtagsCommand<String, &PathBuf> {
+        let exclude = self
+            .exclude
+            .iter()
+            .map(|x| x.split(',').collect::<Vec<_>>())
+            .flatten()
+            .map(|x| format!("--exclude={}", x))
+            .join(" ");
+
+        let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
+
+        if let Some(ref languages) = self.languages {
+            command.push_str(&format!(" --languages={}", languages));
+        };
+
+        CtagsCommand::new(command, &self.dir)
+    }
+
     pub fn run(
         &self,
         Params {
@@ -95,26 +98,7 @@ impl Tags {
         // In case of passing an invalid icon-painter option.
         let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
 
-        let mut cmd_args = BASE_TAGS_CMD
-            .split_whitespace()
-            .map(Into::into)
-            .collect::<Vec<_>>();
-
-        let exclude = self
-            .exclude
-            .iter()
-            .map(|x| x.split(',').collect::<Vec<_>>())
-            .flatten()
-            .map(|x| format!("--exclude={}", x))
-            .collect::<Vec<_>>();
-
-        cmd_args.extend(exclude);
-
-        if let Some(ref languages) = self.languages {
-            cmd_args.push(format!("--languages={}", languages));
-        };
-
-        let cmd_args = cmd_args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+        let ctags_cmd = self.assemble_ctags_cmd();
 
         if self.forerunner {
             // TODO:
@@ -130,7 +114,7 @@ impl Tags {
         } else {
             filter::dyn_run(
                 &self.query,
-                Source::List(formatted_tags_stream(&cmd_args, &self.dir)?.map(Into::into)),
+                Source::List(ctags_cmd.formatted_tags_stream()?.map(Into::into)),
                 FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;

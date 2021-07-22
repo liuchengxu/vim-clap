@@ -1,6 +1,43 @@
+use std::ffi::OsStr;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+
+use filter::subprocess;
+
+#[derive(Debug, Clone)]
+pub struct CtagsCommand<S, P> {
+    command: S,
+    dir: P,
+}
+
+impl<S: AsRef<OsStr>, P: AsRef<Path>> CtagsCommand<S, P> {
+    pub fn new(command: S, dir: P) -> Self {
+        Self { command, dir }
+    }
+
+    /// Returns an iterator of raw output line.
+    pub fn run(&self) -> Result<impl Iterator<Item = String>> {
+        let stdout_stream = subprocess::Exec::shell(&self.command)
+            .cwd(&self.dir)
+            .stream_stdout()?;
+        Ok(BufReader::new(stdout_stream).lines().flatten())
+    }
+
+    /// Returns an iterator of tags line in a formatted form.
+    pub fn formatted_tags_stream(&self) -> Result<impl Iterator<Item = String>> {
+        Ok(self.run()?.filter_map(|tag| {
+            if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
+                Some(tag.display_line())
+            } else {
+                None
+            }
+        }))
+    }
+}
 
 fn detect_json_feature() -> Result<bool> {
     let output = std::process::Command::new("ctags")
