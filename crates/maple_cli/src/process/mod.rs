@@ -62,10 +62,12 @@ pub struct BaseCommand {
 }
 
 impl BaseCommand {
+    /// Creates a new instance of [`BaseCommand`].
     pub fn new(command: String, cwd: ::std::path::PathBuf) -> Self {
         Self { command, cwd }
     }
 
+    /// Returns the cache digest if the cache exists.
     pub fn cache_exists(&self) -> Option<Digest> {
         let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
         cache_info.find_digest(self).cloned()

@@ -19,7 +19,10 @@ use crate::process::{
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
-use crate::{app::Params, cache::{send_response_from_cache, get_cached, SendResponse}};
+use crate::{
+    app::Params,
+    cache::{get_cached, send_response_from_cache, SendResponse},
+};
 
 const RG_ARGS: &[&str] = &[
     "rg",
@@ -31,8 +34,6 @@ const RG_ARGS: &[&str] = &[
     "",
     ".",
 ];
-
-const RG_ARGS_STRING: &str = "rg --column --line-number --no-heading --color=never --smart-case .";
 
 // Ref https://github.com/liuchengxu/vim-clap/issues/533
 // Now `.` is pushed to the end for all platforms due to https://github.com/liuchengxu/vim-clap/issues/711.
@@ -203,7 +204,7 @@ impl Grep {
             Source::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                let base_cmd = BaseCommand::new(RG_ARGS_STRING.into(), dir.clone());
+                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
                 if let Some((_, cached_file)) = get_cached(&base_cmd) {
                     return do_dyn_filter(Source::File(cached_file));
                 }
@@ -256,7 +257,7 @@ impl RipGrepForerunner {
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
-                let base_cmd = BaseCommand::new(RG_ARGS_STRING.into(), dir.clone());
+                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
                 if let Some((total, cache)) = get_cached(&base_cmd) {
                     send_response_from_cache(
                         &cache,
@@ -288,8 +289,8 @@ impl RipGrepForerunner {
         );
 
         let base_cmd = BaseCommand::new(
-            RG_ARGS_STRING.into(),
-            self.cmd_dir.clone().unwrap_or(std::env::current_dir()?),
+            RG_EXEC_CMD.into(),
+            self.cmd_dir.unwrap_or(std::env::current_dir()?),
         );
 
         light_cmd.execute(base_cmd)?.print();

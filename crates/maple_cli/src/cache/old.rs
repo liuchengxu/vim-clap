@@ -117,11 +117,11 @@ pub fn send_response_from_cache(
     icon_painter: Option<IconPainter>,
 ) {
     let using_cache = true;
-    if let Ok(lines_iter) = read_first_lines(&tempfile, 100) {
+    if let Ok(iter) = read_first_lines(&tempfile, 100) {
         let lines: Vec<String> = if let Some(painter) = icon_painter {
-            lines_iter.map(|x| painter.paint(&x)).collect()
+            iter.map(|x| painter.paint(&x)).collect()
         } else {
-            lines_iter.collect()
+            iter.collect()
         };
         match response_ty {
             SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
