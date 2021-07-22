@@ -259,10 +259,8 @@ impl<'a> LightCommand<'a> {
         if self.env.should_do_cache() {
             let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
 
-            let BaseCommand { command, cwd } = base_cmd;
-
             let digest =
-                crate::cache::Digest::new(command, cwd, self.env.total as u64, cache_file.clone());
+                crate::cache::Digest::new(base_cmd, self.env.total as u64, cache_file.clone());
 
             crate::cache::add_new_cache_digest(digest)?;
 

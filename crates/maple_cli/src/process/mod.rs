@@ -47,9 +47,14 @@ impl AsyncCommand {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BaseCommand {
+    /// Raw shell command string.
     pub command: String,
+    /// Working directory of command.
+    ///
+    /// The same command with different cwd normally has
+    /// different results, thus we need to record the cwd too.
     pub cwd: ::std::path::PathBuf,
 }
 
@@ -60,6 +65,6 @@ impl BaseCommand {
 
     pub fn cache_exists(&self) -> Option<Digest> {
         let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        cache_info.find_digest(&self.command, &self.cwd).cloned()
+        cache_info.find_digest(self).cloned()
     }
 }

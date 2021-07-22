@@ -9,6 +9,7 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 
+use crate::process::BaseCommand;
 use crate::utils::{generate_data_file_path, load_json, UtcTime};
 
 const CACHE_FILENAME: &str = "cache.json";
@@ -25,13 +26,9 @@ pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
 /// Digest of cached info about a command.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Digest {
-    /// Raw shell command string.
-    pub command: String,
-    /// Working directory of command.
-    ///
-    /// The same command with different cwd normally has
-    /// different results, thus we need to record the cwd too.
-    pub cwd: PathBuf,
+    /// Base command.
+    #[serde(flatten)]
+    pub base: BaseCommand,
     /// Time of last execution.
     pub execution_time: UtcTime,
     /// Number of results from last run.
@@ -41,10 +38,9 @@ pub struct Digest {
 }
 
 impl Digest {
-    pub fn new(command: String, cwd: PathBuf, results_number: u64, cached_path: PathBuf) -> Self {
+    pub fn new(base: BaseCommand, results_number: u64, cached_path: PathBuf) -> Self {
         Self {
-            command,
-            cwd,
+            base,
             results_number,
             cached_path,
             execution_time: Utc::now(),
@@ -62,10 +58,8 @@ impl Default for CacheInfo {
 }
 
 impl CacheInfo {
-    pub fn find_digest(&self, command: &str, cwd: &PathBuf) -> Option<&Digest> {
-        self.0
-            .iter()
-            .find(|d| d.command == command && &d.cwd == cwd)
+    pub fn find_digest(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
+        self.0.iter().find(|d| &d.base == base_cmd)
     }
 
     pub fn add(&mut self, digest: Digest) -> Result<()> {
