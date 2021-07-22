@@ -12,7 +12,7 @@ use filter::{
 };
 
 use crate::app::Params;
-use crate::cache::{cache_exists, send_response_from_cache, CacheEntry, SendResponse};
+use crate::cache::{send_response_from_cache, SendResponse};
 use crate::tools::ctags::{ensure_has_json_support, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -76,8 +76,9 @@ fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
         x
     });
     let lines = formatted_tags_stream.join("\n");
-    let cache = CacheEntry::create(args, Some(dir), total, lines)?;
-    Ok((cache, total))
+    todo!("Create cache for tags")
+    // let cache = CacheEntry::create(args, Some(dir), total, lines)?;
+    // Ok((cache, total))
 }
 
 impl Tags {
@@ -116,14 +117,15 @@ impl Tags {
         let cmd_args = cmd_args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
 
         if self.forerunner {
-            let (cache, total) = if no_cache {
-                create_tags_cache(&cmd_args, &self.dir)?
-            } else if let Ok(cached_info) = cache_exists(&cmd_args, &self.dir) {
-                cached_info
-            } else {
-                create_tags_cache(&cmd_args, &self.dir)?
-            };
-            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
+            // TODO:
+            // let (cache, total) = if no_cache {
+            // create_tags_cache(&cmd_args, &self.dir)?
+            // } else if let Ok(cached_info) = cache_exists(&cmd_args, &self.dir) {
+            // cached_info
+            // } else {
+            // create_tags_cache(&cmd_args, &self.dir)?
+            // };
+            // send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
             filter::dyn_run(

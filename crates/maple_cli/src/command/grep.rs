@@ -13,13 +13,13 @@ use filter::{
 use icon::IconPainter;
 use utility::is_git_repo;
 
-use crate::app::Params;
-use crate::cache::{cache_exists, send_response_from_cache, SendResponse};
+use crate::cache;
 use crate::process::{
     light::{set_current_dir, LightCommand},
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
+use crate::{app::Params, cache::{send_response_from_cache, get_cached, SendResponse}};
 
 const RG_ARGS: &[&str] = &[
     "rg",
@@ -203,7 +203,8 @@ impl Grep {
             Source::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                if let Ok((cached_file, _)) = cache_exists(&RG_ARGS, dir) {
+                let base_cmd = BaseCommand::new(RG_ARGS_STRING.into(), dir.clone());
+                if let Some((_, cached_file)) = get_cached(&base_cmd) {
                     return do_dyn_filter(Source::File(cached_file));
                 }
             }
@@ -255,10 +256,11 @@ impl RipGrepForerunner {
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
-                if let Ok((cache, total)) = cache_exists(&RG_ARGS, dir) {
+                let base_cmd = BaseCommand::new(RG_ARGS_STRING.into(), dir.clone());
+                if let Some((total, cache)) = get_cached(&base_cmd) {
                     send_response_from_cache(
                         &cache,
-                        total,
+                        total as usize,
                         SendResponse::Json,
                         Some(IconPainter::Grep),
                     );

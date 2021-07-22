@@ -8,10 +8,11 @@ use anyhow::{anyhow, Result};
 
 use icon::IconPainter;
 use utility::{
-    calculate_hash, clap_cache_dir, get_cached_entry, println_json, println_json_with_length,
-    read_first_lines, remove_dir_contents,
+    calculate_hash, clap_cache_dir, println_json, println_json_with_length, read_first_lines,
+    remove_dir_contents,
 };
 
+/*
 pub struct CacheEntry;
 
 impl CacheEntry {
@@ -85,6 +86,23 @@ impl CacheEntry {
     }
 }
 
+/// Returns the cache file path and number of total cached items.
+pub fn cache_exists(args: &[&str], cmd_dir: &Path) -> Result<(PathBuf, usize)> {
+    if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
+        if let Ok(total) = CacheEntry::get_total(&cached_entry) {
+            let tempfile = cached_entry.path();
+            return Ok((tempfile, total));
+        }
+    }
+    Err(anyhow!(
+        "Cache does not exist for: {:?} in {:?}",
+        args,
+        cmd_dir
+    ))
+}
+
+*/
+
 #[derive(Debug, Clone)]
 pub enum SendResponse {
     Json,
@@ -119,19 +137,4 @@ pub fn send_response_from_cache(
             }
         }
     }
-}
-
-/// Returns the cache file path and number of total cached items.
-pub fn cache_exists(args: &[&str], cmd_dir: &Path) -> Result<(PathBuf, usize)> {
-    if let Ok(cached_entry) = get_cached_entry(args, cmd_dir) {
-        if let Ok(total) = CacheEntry::get_total(&cached_entry) {
-            let tempfile = cached_entry.path();
-            return Ok((tempfile, total));
-        }
-    }
-    Err(anyhow!(
-        "Cache does not exist for: {:?} in {:?}",
-        args,
-        cmd_dir
-    ))
 }

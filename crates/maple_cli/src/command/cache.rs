@@ -20,7 +20,7 @@ pub struct Cache {
 
 impl Cache {
     pub fn run(&self) -> Result<()> {
-        let cache_dir = clap_cache_dir();
+        let cache_dir = clap_cache_dir()?;
         if self.purge {
             remove_dir_contents(&cache_dir)?;
             println!(

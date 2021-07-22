@@ -1,6 +1,6 @@
 mod old;
 
-pub use self::old::*;
+pub use self::old::{send_response_from_cache, SendResponse};
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -73,4 +73,11 @@ pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.add(digest)?;
     Ok(())
+}
+
+pub fn get_cached(base_cmd: &BaseCommand) -> Option<(u64, PathBuf)> {
+    let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+    cache_info
+        .find_digest(base_cmd)
+        .map(|d| (d.results_number, d.cached_path.clone()))
 }
