@@ -5,16 +5,6 @@ use chrono::prelude::*;
 
 pub type UtcTime = DateTime<Utc>;
 
-pub fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> Result<T> {
-    use std::io::BufReader;
-
-    let file = std::fs::File::open(path)?;
-    let reader = BufReader::new(file);
-    let deserializd = serde_json::from_reader(reader)?;
-
-    Ok(deserializd)
-}
-
 pub fn generate_data_file_path(filename: &str) -> Result<PathBuf> {
     if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
         let data_dir = proj_dirs.data_dir();
@@ -41,6 +31,16 @@ pub fn generate_cache_file_path(filename: &str) -> Result<PathBuf> {
     }
 
     Err(anyhow!("Couldn't create the Vim Clap project directory"))
+}
+
+pub fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> Result<T> {
+    use std::io::BufReader;
+
+    let file = std::fs::File::open(path)?;
+    let reader = BufReader::new(file);
+    let deserializd = serde_json::from_reader(reader)?;
+
+    Ok(deserializd)
 }
 
 pub fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {

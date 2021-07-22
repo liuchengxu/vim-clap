@@ -8,9 +8,9 @@ use std::process::{Command, Output};
 use anyhow::{anyhow, Result};
 
 use icon::IconPainter;
-use utility::{get_cached_entry, println_json, read_first_lines, remove_dir_contents};
+use utility::{println_json, read_first_lines};
 
-use crate::cache::{CacheEntry, Digest};
+use crate::cache::Digest;
 use crate::process::BaseCommand;
 
 /// Remove the last element if it's empty string.
@@ -134,18 +134,8 @@ impl CommandEnv {
 
     // TODO: add a cache upper bound?
     #[inline]
-    pub fn should_do_cache(&self) -> bool {
+    pub fn should_create_cache(&self) -> bool {
         self.total > self.output_threshold
-    }
-
-    #[inline]
-    pub fn new_cache_entry(&self, args: &[&str]) -> Result<PathBuf> {
-        if let Some(ref output) = self.output {
-            Ok(output.into())
-        } else {
-            todo!()
-            // CacheEntry::try_new(args, self.dir.clone(), self.total)
-        }
     }
 
     /// Writes the whole stdout of LightCommand to a tempfile.
@@ -241,24 +231,21 @@ impl<'a> LightCommand<'a> {
     fn create_cache(
         &self,
         base_cmd: BaseCommand,
+        results_number: u64,
         cmd_stdout: &[u8],
     ) -> Result<(String, Option<PathBuf>)> {
-        if self.env.should_do_cache() {
-            let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
+        let cache_file = self.env.cache_the_output(&base_cmd, cmd_stdout)?;
 
-            let digest = Digest::new(base_cmd, self.env.total as u64, cache_file.clone());
+        let digest = Digest::new(base_cmd, results_number, cache_file.clone());
 
-            crate::cache::add_new_cache_digest(digest)?;
+        crate::cache::add_new_cache_digest(digest)?;
 
-            Ok((
-                // lines used for displaying directly.
-                // &cmd_output.stdout[..nth_newline_index]
-                String::from_utf8_lossy(cmd_stdout).into(),
-                Some(cache_file),
-            ))
-        } else {
-            Ok((String::from_utf8_lossy(cmd_stdout).into(), None))
-        }
+        Ok((
+            // lines used for displaying directly.
+            // &cmd_output.stdout[..nth_newline_index]
+            String::from_utf8_lossy(cmd_stdout).into(),
+            Some(cache_file),
+        ))
     }
 
     fn handle_with_cache_digest(&self, digest: Digest) -> Result<ExecutedInfo> {
@@ -314,7 +301,11 @@ impl<'a> LightCommand<'a> {
         }
 
         // Write the output to a tempfile if the lines are too many.
-        let (stdout_str, cached_path) = self.create_cache(base_cmd, &cmd_stdout)?;
+        let (stdout_str, cached_path) = if self.env.should_create_cache() {
+            self.create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?
+        } else {
+            (String::from_utf8_lossy(cmd_stdout).into(), None)
+        };
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
 
         Ok(ExecutedInfo {

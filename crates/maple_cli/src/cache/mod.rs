@@ -2,10 +2,10 @@ mod old;
 
 pub use self::old::*;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 
