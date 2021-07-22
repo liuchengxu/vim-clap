@@ -48,7 +48,9 @@ endfunction
 function! clap#state#handle_response_on_typed(result, error) abort
   if a:error isnot v:null
     call clap#indicator#set_matches_number(0)
-    call g:clap.display.set_lines([a:error.message])
+    if has_key(a:error, 'message')
+      call g:clap.display.set_lines([a:error.message])
+    endif
     return
   endif
 
