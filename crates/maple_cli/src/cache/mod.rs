@@ -40,7 +40,7 @@ pub struct Digest {
     pub cached_path: PathBuf,
 }
 
-impl CacheDigest {
+impl Digest {
     pub fn new(command: String, cwd: PathBuf, results_number: u64, cached_path: PathBuf) -> Self {
         Self {
             command,
