@@ -70,7 +70,6 @@ impl Digest {
         stale_duration.num_seconds()
     }
 
-    // TODO: Detect if the cache is usable?
     pub fn is_usable(&self) -> bool {
         let now = Utc::now();
 
