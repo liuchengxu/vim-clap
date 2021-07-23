@@ -107,8 +107,9 @@ impl CacheInfo {
     pub fn find_digest_usable(&mut self, base_cmd: &BaseCommand) -> Option<Digest> {
         match self.find_digest(base_cmd) {
             Some(index) => {
-                let d = &self.digests[index];
+                let mut d = &mut self.digests[index];
                 if d.is_usable() {
+                    d.total_visits += 1;
                     Some(d.clone())
                 } else {
                     if let Err(e) = self.prune_stale(index) {
