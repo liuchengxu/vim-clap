@@ -124,6 +124,12 @@ impl CacheInfo {
     ///
     /// Also writes the memory cached info back to the disk.
     pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
+        // The digest already exists.
+        if let Some(index) = self.find_digest(&digest.base) {
+            self.digests[index] = digest;
+            return Ok(());
+        }
+
         self.digests.push(digest);
         if self.digests.len() > MAX_DIGESTS {
             self.digests

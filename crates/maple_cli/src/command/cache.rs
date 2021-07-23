@@ -6,6 +6,8 @@ use structopt::StructOpt;
 
 use utility::{clap_cache_dir, remove_dir_contents};
 
+use crate::cache::CACHE_INFO_IN_MEMORY;
+
 /// List and remove all the cached contents.
 #[derive(StructOpt, Debug, Clone)]
 pub struct Cache {
@@ -39,6 +41,10 @@ impl Cache {
         let cache_dir_str = cache_dir.display();
         println!("Current cache directory:");
         println!("\t{}\n", cache_dir_str);
+
+        let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        println!("{:#?}\n", cache_info);
+
         if self.list {
             println!("Cached entries:");
             let mut entries = read_dir(cache_dir)?
