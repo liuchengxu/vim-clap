@@ -126,7 +126,10 @@ impl CacheInfo {
     pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
         // The digest already exists.
         if let Some(index) = self.find_digest(&digest.base) {
-            self.digests[index] = digest;
+            let old_visits = self.digests[index].total_visits;
+            let mut new_digest = digest;
+            new_digest.total_visits += old_visits;
+            self.digests[index] = new_digest;
             return Ok(());
         }
 
