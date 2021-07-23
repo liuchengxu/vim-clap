@@ -48,25 +48,6 @@ pub struct Tags {
     exclude: Vec<String>,
 }
 
-fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
-    args: &[&str],
-    dir: T,
-) -> Result<(PathBuf, usize)> {
-    todo!()
-    /*
-    let tags_stream = formatted_tags_stream(args, dir.clone())?;
-    let mut total = 0usize;
-    let mut formatted_tags_stream = tags_stream.map(|x| {
-        total += 1;
-        x
-    });
-    let lines = formatted_tags_stream.join("\n");
-    todo!("Create cache for tags")
-    */
-    // let cache = CacheEntry::create(args, Some(dir), total, lines)?;
-    // Ok((cache, total))
-}
-
 impl Tags {
     fn assemble_ctags_cmd(&self) -> CtagsCommand {
         let exclude = self

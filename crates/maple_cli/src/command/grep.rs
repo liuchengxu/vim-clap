@@ -21,7 +21,7 @@ use crate::process::{
 use crate::tools::ripgrep::Match;
 use crate::{
     app::Params,
-    cache::{get_cached, send_response_from_cache, SendResponse},
+    cache::{get_cache_file, get_cached, send_response_from_cache, SendResponse},
 };
 
 const RG_ARGS: &[&str] = &[
@@ -205,8 +205,8 @@ impl Grep {
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some((_, cached_file)) = get_cached(&base_cmd) {
-                    return do_dyn_filter(Source::File(cached_file));
+                if let Some(cache_file) = get_cache_file(&base_cmd) {
+                    return do_dyn_filter(Source::File(cache_file));
                 }
             }
             Exec::shell(RG_EXEC_CMD).cwd(dir).into()

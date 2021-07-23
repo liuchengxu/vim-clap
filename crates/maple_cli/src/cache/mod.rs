@@ -86,6 +86,13 @@ pub fn get_cached(base_cmd: &BaseCommand) -> Option<(u64, PathBuf)> {
         .map(|d| (d.total, d.cached_path.clone()))
 }
 
+pub fn get_cache_file(base_cmd: &BaseCommand) -> Option<PathBuf> {
+    let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+    cache_info
+        .find_digest(base_cmd)
+        .map(|d| d.cached_path.clone())
+}
+
 /// Writes the whole stdout of `base_cmd` to a cache file.
 fn write_stdout_to_disk(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
     use std::io::Write;
