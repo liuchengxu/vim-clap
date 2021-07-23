@@ -23,7 +23,7 @@ pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
     Mutex::new(maybe_persistent)
 });
 
-/// Digest of cached info about a command.
+/// Digest of a cached command execution.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Digest {
     /// Base command.
@@ -33,6 +33,8 @@ pub struct Digest {
     pub execution_time: UtcTime,
     /// Time of last visit.
     pub last_visit: UtcTime,
+    /// Number of total visits.
+    pub total_visits: usize,
     /// Number of results from last execution.
     pub total: usize,
     /// File saved for caching the results.
@@ -47,27 +49,50 @@ impl Digest {
             total,
             cached_path,
             last_visit: now,
+            total_visits: 1,
             execution_time: now,
         }
+    }
+
+    // TODO:
+    pub fn is_usable(&self) -> bool {
+        true
     }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CacheInfo(Vec<Digest>);
+pub struct CacheInfo {
+    digests: Vec<Digest>,
+}
 
 impl Default for CacheInfo {
     fn default() -> Self {
-        Self(Vec::new())
+        Self {
+            digests: Vec::new(),
+        }
     }
 }
 
+const MAX_DIGESTS: usize = 100;
+
 impl CacheInfo {
     pub fn find_digest(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
-        self.0.iter().find(|d| &d.base == base_cmd)
+        self.digests.iter().find(|d| &d.base == base_cmd)
     }
 
-    pub fn add(&mut self, digest: Digest) -> Result<()> {
-        self.0.push(digest);
+    pub fn find_digest_usable(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
+        match self.digests.iter().find(|d| &d.base == base_cmd) {
+            Some(d) if d.is_usable() => Some(d),
+            _ => None,
+        }
+    }
+
+    pub fn limited_add(&mut self, digest: Digest) -> Result<()> {
+        self.digests.push(digest);
+        if self.digests.len() > MAX_DIGESTS {
+            // TODO: Sort and remove the one with lowest priority.
+            self.digests.pop();
+        }
         crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
         Ok(())
     }
@@ -75,7 +100,7 @@ impl CacheInfo {
 
 pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-    cache_info.add(digest)?;
+    cache_info.limited_add(digest)?;
     Ok(())
 }
 
