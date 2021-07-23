@@ -12,6 +12,8 @@ use once_cell::sync::Lazy;
 use crate::process::BaseCommand;
 use crate::utils::{generate_data_file_path, load_json, UtcTime};
 
+const MAX_DIGESTS: usize = 100;
+
 const CACHE_FILENAME: &str = "cache.json";
 
 pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
@@ -86,8 +88,6 @@ impl Default for CacheInfo {
         }
     }
 }
-
-const MAX_DIGESTS: usize = 100;
 
 impl CacheInfo {
     /// Finds the digest given `base_cmd`.

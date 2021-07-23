@@ -287,10 +287,11 @@ impl RipGrepForerunner {
             Some(self.output_threshold),
         );
 
-        let base_cmd = BaseCommand::new(
-            RG_EXEC_CMD.into(),
-            self.cmd_dir.unwrap_or(std::env::current_dir()?),
-        );
+        let cwd = match self.cmd_dir {
+            Some(d) => d,
+            None => std::env::current_dir()?,
+        };
+        let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), cwd);
 
         light_cmd.execute(base_cmd)?.print();
 

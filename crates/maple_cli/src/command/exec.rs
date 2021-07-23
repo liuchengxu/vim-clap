@@ -33,7 +33,7 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = crate::process::std::build_command(&self.cmd);
+        let mut cmd = crate::process::rstd::build_command(&self.cmd);
 
         set_current_dir(&mut cmd, self.cmd_dir.clone());
 

@@ -4,6 +4,7 @@ use icon::IconPainter;
 use utility::{println_json, println_json_with_length, read_first_lines};
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 pub enum SendResponse {
     Json,
     JsonWithContentLength,

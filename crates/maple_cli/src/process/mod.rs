@@ -1,20 +1,20 @@
 pub mod light;
-pub mod std;
+pub mod rstd;
 pub mod tokio;
 
-use ::std::path::PathBuf;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use self::std::StdCommand;
+use self::rstd::StdCommand;
 
 use crate::cache::{add_cache_digest, Digest, CACHE_INFO_IN_MEMORY};
 
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
 /// Remove the last line if it's empty.
-pub fn process_output(output: ::std::process::Output) -> Result<Vec<String>> {
+pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
         return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
     }
@@ -40,7 +40,7 @@ impl AsyncCommand {
         Self(command.into())
     }
 
-    pub fn current_dir<P: AsRef<::std::path::Path>>(&mut self, dir: P) -> &mut Self {
+    pub fn current_dir<P: AsRef<std::path::Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
     }
@@ -58,7 +58,7 @@ pub struct BaseCommand {
     ///
     /// The same command with different cwd normally has
     /// different results, thus we need to record the cwd too.
-    pub cwd: ::std::path::PathBuf,
+    pub cwd: std::path::PathBuf,
 }
 
 impl BaseCommand {
@@ -86,12 +86,12 @@ impl BaseCommand {
 
     /// Writes the whole stdout of `base_cmd` to a cache file.
     fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
-        use ::std::io::Write;
+        use std::io::Write;
 
         let cached_filename = utility::calculate_hash(self);
         let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
 
-        ::std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
+        std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
 
         Ok(cached_path)
     }
