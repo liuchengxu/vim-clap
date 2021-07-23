@@ -11,6 +11,9 @@ use utility::{println_json, read_first_lines};
 use crate::cache::Digest;
 use crate::process::BaseCommand;
 
+/// Threshold for making a cache for the results.
+const OUTPUT_THRESHOLD: usize = 50_000;
+
 /// Remove the last element if it's empty string.
 #[inline]
 fn trim_trailing(lines: &mut Vec<String>) {
@@ -76,9 +79,7 @@ impl ExecutedInfo {
     }
 }
 
-const OUTPUT_THRESHOLD: usize = 100_000;
-
-/// Environment for running LightCommand.
+/// Environment for running [`LightCommand`].
 #[derive(Debug, Clone)]
 pub struct CommandEnv {
     pub dir: Option<PathBuf>,
@@ -140,8 +141,11 @@ impl CommandEnv {
     }
 }
 
-/// A wrapper of std::process::Command for building cache, adding icon and minimalize the
-/// throughput.
+/// A wrapper of std::process::Command with more more functions, including:
+///
+/// - Build cache for the larger results.
+/// - Add an icon to the display line.
+/// - Minimalize the throughput.
 #[derive(Debug)]
 pub struct LightCommand<'a> {
     cmd: &'a mut Command,
