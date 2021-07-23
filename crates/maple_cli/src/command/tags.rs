@@ -1,6 +1,4 @@
-use std::hash::Hash;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -8,13 +6,13 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
-    subprocess, FilterContext, Source,
+    FilterContext, Source,
 };
 
 use crate::app::Params;
 use crate::cache::{send_response_from_cache, SendResponse};
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
@@ -46,25 +44,6 @@ pub struct Tags {
     /// Will be translated into ctags' option: --exclude=pattern.
     #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
     exclude: Vec<String>,
-}
-
-fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
-    args: &[&str],
-    dir: T,
-) -> Result<(PathBuf, usize)> {
-    todo!()
-    /*
-    let tags_stream = formatted_tags_stream(args, dir.clone())?;
-    let mut total = 0usize;
-    let mut formatted_tags_stream = tags_stream.map(|x| {
-        total += 1;
-        x
-    });
-    let lines = formatted_tags_stream.join("\n");
-    todo!("Create cache for tags")
-    */
-    // let cache = CacheEntry::create(args, Some(dir), total, lines)?;
-    // Ok((cache, total))
 }
 
 impl Tags {
@@ -109,7 +88,7 @@ impl Tags {
             } else {
                 ctags_cmd.create_cache()?
             };
-            send_response_from_cache(&cache, total as usize, SendResponse::Json, icon_painter);
+            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
             filter::dyn_run(

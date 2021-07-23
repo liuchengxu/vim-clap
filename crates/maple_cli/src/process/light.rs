@@ -1,7 +1,5 @@
 //! Wrapper of std `Command` with some optimization about the output.
 
-use std::fs::File;
-use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
@@ -282,7 +280,7 @@ impl<'a> LightCommand<'a> {
 
         // Cache the output if there are too many lines.
         let (stdout_str, cached_path) = if self.env.should_create_cache() {
-            let (s, p) = create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?;
+            let (s, p) = create_cache(base_cmd, self.env.total, &cmd_stdout)?;
             (s, Some(p))
         } else {
             (String::from_utf8_lossy(cmd_stdout).into(), None)
