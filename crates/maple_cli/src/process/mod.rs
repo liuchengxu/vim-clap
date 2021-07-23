@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use self::rstd::StdCommand;
 
-use crate::cache::{add_cache_digest, Digest, CACHE_INFO_IN_MEMORY};
+use crate::cache::{push_cache_digest, Digest, CACHE_INFO_IN_MEMORY};
 
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
@@ -69,17 +69,17 @@ impl BaseCommand {
 
     /// Returns the cache digest if the cache exists.
     pub fn cache_digest(&self) -> Option<Digest> {
-        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        info.find_digest_usable(self).cloned()
+        let mut info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        info.find_digest_usable(self)
     }
 
     pub fn cache_file(&self) -> Option<PathBuf> {
-        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        let mut info = CACHE_INFO_IN_MEMORY.lock().unwrap();
         info.find_digest_usable(self).map(|d| d.cached_path.clone())
     }
 
     pub fn cached_info(&self) -> Option<(usize, PathBuf)> {
-        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        let mut info = CACHE_INFO_IN_MEMORY.lock().unwrap();
         info.find_digest_usable(&self)
             .map(|d| (d.total, d.cached_path.clone()))
     }
@@ -102,7 +102,7 @@ impl BaseCommand {
 
         let digest = Digest::new(self, total, cache_file.clone());
 
-        add_cache_digest(digest)?;
+        push_cache_digest(digest)?;
 
         Ok(cache_file)
     }

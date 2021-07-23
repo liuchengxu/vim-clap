@@ -72,6 +72,14 @@ impl Digest {
 
     // TODO: Detect if the cache is usable?
     pub fn is_usable(&self) -> bool {
+        let now = Utc::now();
+
+        const EXECUTION_EXPIRATION_DAYS: i64 = 3;
+
+        if now.signed_duration_since(self.execution_time).num_days() > EXECUTION_EXPIRATION_DAYS {
+            return false;
+        }
+
         true
     }
 }
@@ -91,14 +99,24 @@ impl Default for CacheInfo {
 
 impl CacheInfo {
     /// Finds the digest given `base_cmd`.
-    fn find_digest(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
-        self.digests.iter().find(|d| &d.base == base_cmd)
+    fn find_digest(&self, base_cmd: &BaseCommand) -> Option<usize> {
+        self.digests.iter().position(|d| &d.base == base_cmd)
     }
 
     /// Finds the usable digest given `base_cmd`.
-    pub fn find_digest_usable(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
+    pub fn find_digest_usable(&mut self, base_cmd: &BaseCommand) -> Option<Digest> {
         match self.find_digest(base_cmd) {
-            Some(d) if d.is_usable() => Some(d),
+            Some(index) => {
+                let d = &self.digests[index];
+                if d.is_usable() {
+                    Some(d.clone())
+                } else {
+                    if let Err(e) = self.prune_stale(index) {
+                        log::error!("Failed to prune the stale cache digest: {:?}", e);
+                    }
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -106,7 +124,7 @@ impl CacheInfo {
     /// Pushes `digest` to the digests queue with max capacity constraint.
     ///
     /// Also writes the memory cached info back to the disk.
-    pub fn limited_add(&mut self, digest: Digest) -> Result<()> {
+    pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
         self.digests.push(digest);
         if self.digests.len() > MAX_DIGESTS {
             self.digests
@@ -116,10 +134,16 @@ impl CacheInfo {
         crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
         Ok(())
     }
+
+    pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
+        self.digests.remove(stale_index);
+        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
+        Ok(())
+    }
 }
 
-pub fn add_cache_digest(digest: Digest) -> Result<()> {
+pub fn push_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-    cache_info.limited_add(digest)?;
+    cache_info.limited_push(digest)?;
     Ok(())
 }
