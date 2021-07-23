@@ -5,7 +5,8 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Algo, Bonus, MatchType},
-    subprocess, FilterContext, Source,
+    subprocess::Exec,
+    FilterContext, Source,
 };
 use source_item::SourceItem;
 
@@ -64,9 +65,9 @@ impl Filter {
     fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
-                subprocess::Exec::shell(cmd_str).cwd(dir).into()
+                Exec::shell(cmd_str).cwd(dir).into()
             } else {
-                subprocess::Exec::shell(cmd_str).into()
+                Exec::shell(cmd_str).into()
             }
         } else {
             self.input
