@@ -2,8 +2,6 @@ pub mod light;
 pub mod std;
 pub mod tokio;
 
-use ::std::hash::Hash;
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -68,8 +66,19 @@ impl BaseCommand {
     }
 
     /// Returns the cache digest if the cache exists.
-    pub fn cache_exists(&self) -> Option<Digest> {
-        let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        cache_info.find_digest(self).cloned()
+    pub fn cache_digest(&self) -> Option<Digest> {
+        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        info.find_digest_usable(self).cloned()
+    }
+
+    pub fn cache_file(&self) -> Option<::std::path::PathBuf> {
+        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        info.find_digest_usable(self).map(|d| d.cached_path.clone())
+    }
+
+    pub fn cached_info(&self) -> Option<(usize, ::std::path::PathBuf)> {
+        let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        info.find_digest_usable(&self)
+            .map(|d| (d.total, d.cached_path.clone()))
     }
 }

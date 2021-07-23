@@ -250,8 +250,8 @@ impl<'a> LightCommand<'a> {
         no_cache: bool,
     ) -> Result<ExecutedInfo> {
         if !no_cache {
-            if let Some(cache_digest) = base_cmd.cache_exists() {
-                self.handle_cache_digest(&cache_digest)
+            if let Some(digest) = base_cmd.cache_digest() {
+                self.handle_cache_digest(&digest)
             } else {
                 self.execute(base_cmd)
             }

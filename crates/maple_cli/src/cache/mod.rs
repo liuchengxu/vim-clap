@@ -37,11 +37,12 @@ pub struct Digest {
     pub total_visits: usize,
     /// Number of results from last execution.
     pub total: usize,
-    /// File saved for caching the results.
+    /// File persistent on the disk for caching the results.
     pub cached_path: PathBuf,
 }
 
 impl Digest {
+    /// Creates an instance of [`Digest`].
     pub fn new(base: BaseCommand, total: usize, cached_path: PathBuf) -> Self {
         let now = Utc::now();
         Self {
@@ -54,7 +55,20 @@ impl Digest {
         }
     }
 
-    // TODO:
+    /// Returns the score of being stale.
+    ///
+    /// The item with higher stale score should be removed first.
+    pub fn stale_score(&self) -> i64 {
+        let now = Utc::now();
+        let execution_diff = now - self.execution_time;
+        let visit_diff = now - self.last_visit;
+
+        let stale_duration = execution_diff + visit_diff;
+
+        stale_duration.num_seconds()
+    }
+
+    // TODO: Detect if the cache is usable?
     pub fn is_usable(&self) -> bool {
         true
     }
@@ -76,21 +90,27 @@ impl Default for CacheInfo {
 const MAX_DIGESTS: usize = 100;
 
 impl CacheInfo {
-    pub fn find_digest(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
+    /// Finds the digest given `base_cmd`.
+    fn find_digest(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
         self.digests.iter().find(|d| &d.base == base_cmd)
     }
 
+    /// Finds the usable digest given `base_cmd`.
     pub fn find_digest_usable(&self, base_cmd: &BaseCommand) -> Option<&Digest> {
-        match self.digests.iter().find(|d| &d.base == base_cmd) {
+        match self.find_digest(base_cmd) {
             Some(d) if d.is_usable() => Some(d),
             _ => None,
         }
     }
 
+    /// Pushes `digest` to the digests queue with max capacity constraint.
+    ///
+    /// Also writes the memory cached info back to the disk.
     pub fn limited_add(&mut self, digest: Digest) -> Result<()> {
         self.digests.push(digest);
         if self.digests.len() > MAX_DIGESTS {
-            // TODO: Sort and remove the one with lowest priority.
+            self.digests
+                .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
             self.digests.pop();
         }
         crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
@@ -98,24 +118,10 @@ impl CacheInfo {
     }
 }
 
-pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
+pub fn add_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.limited_add(digest)?;
     Ok(())
-}
-
-pub fn get_cached(base_cmd: &BaseCommand) -> Option<(usize, PathBuf)> {
-    let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-    cache_info
-        .find_digest(base_cmd)
-        .map(|d| (d.total, d.cached_path.clone()))
-}
-
-pub fn get_cache_file(base_cmd: &BaseCommand) -> Option<PathBuf> {
-    let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-    cache_info
-        .find_digest(base_cmd)
-        .map(|d| d.cached_path.clone())
 }
 
 /// Writes the whole stdout of `base_cmd` to a cache file.
@@ -140,7 +146,7 @@ pub fn create_cache(
 
     let digest = Digest::new(base_cmd, total, cache_file.clone());
 
-    add_new_cache_digest(digest)?;
+    add_cache_digest(digest)?;
 
     Ok((
         // lines used for displaying directly.
@@ -160,7 +166,7 @@ pub fn create_cache_bare(
 
     let digest = Digest::new(base_cmd, total, cache_file.clone());
 
-    add_new_cache_digest(digest)?;
+    add_cache_digest(digest)?;
 
     Ok(cache_file)
 }

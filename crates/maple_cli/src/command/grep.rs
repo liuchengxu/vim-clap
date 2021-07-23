@@ -13,7 +13,6 @@ use filter::{
 use icon::IconPainter;
 use utility::is_git_repo;
 
-use crate::cache;
 use crate::process::{
     light::{set_current_dir, LightCommand},
     BaseCommand,
@@ -21,7 +20,7 @@ use crate::process::{
 use crate::tools::ripgrep::Match;
 use crate::{
     app::Params,
-    cache::{get_cache_file, get_cached, send_response_from_cache, SendResponse},
+    cache::{send_response_from_cache, SendResponse},
 };
 
 const RG_ARGS: &[&str] = &[
@@ -205,7 +204,7 @@ impl Grep {
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some(cache_file) = get_cache_file(&base_cmd) {
+                if let Some(cache_file) = base_cmd.cache_file() {
                     return do_dyn_filter(Source::File(cache_file));
                 }
             }
@@ -258,7 +257,7 @@ impl RipGrepForerunner {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some((total, cache)) = get_cached(&base_cmd) {
+                if let Some((total, cache)) = base_cmd.cached_info() {
                     send_response_from_cache(
                         &cache,
                         total as usize,
