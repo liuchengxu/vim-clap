@@ -31,6 +31,8 @@ pub struct Digest {
     pub base: BaseCommand,
     /// Time of last execution.
     pub execution_time: UtcTime,
+    /// Time of last visit.
+    pub last_visit: UtcTime,
     /// Number of results from last execution.
     pub total: u64,
     /// File saved for caching the results.
@@ -39,11 +41,13 @@ pub struct Digest {
 
 impl Digest {
     pub fn new(base: BaseCommand, total: u64, cached_path: PathBuf) -> Self {
+        let now = Utc::now();
         Self {
             base,
             total,
             cached_path,
-            execution_time: Utc::now(),
+            last_visit: now,
+            execution_time: now,
         }
     }
 }
@@ -80,4 +84,36 @@ pub fn get_cached(base_cmd: &BaseCommand) -> Option<(u64, PathBuf)> {
     cache_info
         .find_digest(base_cmd)
         .map(|d| (d.total, d.cached_path.clone()))
+}
+
+/// Writes the whole stdout of `base_cmd` to a cache file.
+fn write_stdout_to_disk(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
+    use std::io::Write;
+
+    let cached_filename = utility::calculate_hash(base_cmd);
+    let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
+
+    std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
+
+    Ok(cached_path)
+}
+
+/// Caches the output into a tempfile and also writes the cache digest to the disk.
+pub fn create_cache(
+    base_cmd: BaseCommand,
+    total: u64,
+    cmd_stdout: &[u8],
+) -> Result<(String, Option<PathBuf>)> {
+    let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;
+
+    let digest = Digest::new(base_cmd, total, cache_file.clone());
+
+    add_new_cache_digest(digest)?;
+
+    Ok((
+        // lines used for displaying directly.
+        // &cmd_output.stdout[..nth_newline_index]
+        String::from_utf8_lossy(cmd_stdout).into(),
+        Some(cache_file),
+    ))
 }

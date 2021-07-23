@@ -8,21 +8,22 @@ use serde::{Deserialize, Serialize};
 
 use filter::subprocess;
 
+use crate::process::BaseCommand;
+
 #[derive(Debug, Clone)]
-pub struct CtagsCommand<S, P> {
-    command: S,
-    dir: P,
+pub struct CtagsCommand {
+    inner: BaseCommand,
 }
 
-impl<S: AsRef<OsStr>, P: AsRef<Path>> CtagsCommand<S, P> {
-    pub fn new(command: S, dir: P) -> Self {
-        Self { command, dir }
+impl CtagsCommand {
+    pub fn new(inner: BaseCommand) -> Self {
+        Self { inner }
     }
 
     /// Returns an iterator of raw output line.
     pub fn run(&self) -> Result<impl Iterator<Item = String>> {
-        let stdout_stream = subprocess::Exec::shell(&self.command)
-            .cwd(&self.dir)
+        let stdout_stream = subprocess::Exec::shell(&self.inner.command)
+            .cwd(&self.inner.cwd)
             .stream_stdout()?;
         Ok(BufReader::new(stdout_stream).lines().flatten())
     }

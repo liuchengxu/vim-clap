@@ -10,7 +10,7 @@ use anyhow::{anyhow, Result};
 use icon::IconPainter;
 use utility::{println_json, read_first_lines};
 
-use crate::cache::Digest;
+use crate::cache::{create_cache, Digest};
 use crate::process::BaseCommand;
 
 /// Remove the last element if it's empty string.
@@ -140,36 +140,6 @@ impl CommandEnv {
     pub fn should_create_cache(&self) -> bool {
         self.total > self.output_threshold
     }
-}
-
-/// Writes the whole stdout of `base_cmd` to a cache file.
-fn write_stdout_to_disk(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<PathBuf> {
-    let cached_filename = utility::calculate_hash(base_cmd);
-    let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
-
-    File::create(&cached_path)?.write_all(cmd_stdout)?;
-
-    Ok(cached_path)
-}
-
-/// Caches the output into a tempfile and also writes the cache digest to the disk.
-fn create_cache(
-    base_cmd: BaseCommand,
-    total: u64,
-    cmd_stdout: &[u8],
-) -> Result<(String, Option<PathBuf>)> {
-    let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;
-
-    let digest = Digest::new(base_cmd, total, cache_file.clone());
-
-    crate::cache::add_new_cache_digest(digest)?;
-
-    Ok((
-        // lines used for displaying directly.
-        // &cmd_output.stdout[..nth_newline_index]
-        String::from_utf8_lossy(cmd_stdout).into(),
-        Some(cache_file),
-    ))
 }
 
 /// A wrapper of std::process::Command for building cache, adding icon and minimalize the

@@ -13,6 +13,7 @@ use filter::{
 
 use crate::app::Params;
 use crate::cache::{send_response_from_cache, SendResponse};
+use crate::process::BaseCommand;
 use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -67,7 +68,7 @@ fn create_tags_cache<T: AsRef<Path> + Clone + Hash>(
 }
 
 impl Tags {
-    fn assemble_ctags_cmd(&self) -> CtagsCommand<String, &PathBuf> {
+    fn assemble_ctags_cmd(&self) -> CtagsCommand {
         let exclude = self
             .exclude
             .iter()
@@ -82,7 +83,7 @@ impl Tags {
             command.push_str(&format!(" --languages={}", languages));
         };
 
-        CtagsCommand::new(command, &self.dir)
+        CtagsCommand::new(BaseCommand::new(command, self.dir.clone()))
     }
 
     pub fn run(
