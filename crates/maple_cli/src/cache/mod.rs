@@ -124,3 +124,18 @@ pub fn create_cache(
         cache_file,
     ))
 }
+
+/// Caches the output into a tempfile and also writes the cache digest to the disk.
+pub fn create_cache_bare(
+    base_cmd: BaseCommand,
+    total: usize,
+    cmd_stdout: &[u8],
+) -> Result<PathBuf> {
+    let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;
+
+    let digest = Digest::new(base_cmd, total, cache_file.clone());
+
+    add_new_cache_digest(digest)?;
+
+    Ok(cache_file)
+}
