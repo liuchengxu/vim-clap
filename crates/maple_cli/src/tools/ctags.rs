@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use filter::subprocess;
 
-use crate::cache::create_cache_bare;
 use crate::process::BaseCommand;
 
 #[derive(Debug, Clone)]
@@ -53,7 +52,7 @@ impl CtagsCommand {
         });
         let lines = formatted_tags_stream.join("\n");
 
-        let cache_path = create_cache_bare(self.inner.clone(), total, lines.as_bytes())?;
+        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
 
         Ok((total, cache_path))
     }

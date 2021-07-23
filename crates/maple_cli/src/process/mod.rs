@@ -2,12 +2,14 @@ pub mod light;
 pub mod std;
 pub mod tokio;
 
+use ::std::path::PathBuf;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use self::std::StdCommand;
 
-use crate::cache::{Digest, CACHE_INFO_IN_MEMORY};
+use crate::cache::{add_cache_digest, Digest, CACHE_INFO_IN_MEMORY};
 
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
@@ -61,7 +63,7 @@ pub struct BaseCommand {
 
 impl BaseCommand {
     /// Creates a new instance of [`BaseCommand`].
-    pub fn new(command: String, cwd: ::std::path::PathBuf) -> Self {
+    pub fn new(command: String, cwd: PathBuf) -> Self {
         Self { command, cwd }
     }
 
@@ -71,14 +73,37 @@ impl BaseCommand {
         info.find_digest_usable(self).cloned()
     }
 
-    pub fn cache_file(&self) -> Option<::std::path::PathBuf> {
+    pub fn cache_file(&self) -> Option<PathBuf> {
         let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
         info.find_digest_usable(self).map(|d| d.cached_path.clone())
     }
 
-    pub fn cached_info(&self) -> Option<(usize, ::std::path::PathBuf)> {
+    pub fn cached_info(&self) -> Option<(usize, PathBuf)> {
         let info = CACHE_INFO_IN_MEMORY.lock().unwrap();
         info.find_digest_usable(&self)
             .map(|d| (d.total, d.cached_path.clone()))
+    }
+
+    /// Writes the whole stdout of `base_cmd` to a cache file.
+    fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
+        use ::std::io::Write;
+
+        let cached_filename = utility::calculate_hash(self);
+        let cached_path = crate::utils::generate_cache_file_path(&cached_filename.to_string())?;
+
+        ::std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
+
+        Ok(cached_path)
+    }
+
+    /// Caches the output into a tempfile and also writes the cache digest to the disk.
+    pub fn create_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
+        let cache_file = self.write_stdout_to_disk(cmd_stdout)?;
+
+        let digest = Digest::new(self, total, cache_file.clone());
+
+        add_cache_digest(digest)?;
+
+        Ok(cache_file)
     }
 }

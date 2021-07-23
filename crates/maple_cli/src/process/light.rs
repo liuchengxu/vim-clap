@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 use icon::IconPainter;
 use utility::{println_json, read_first_lines};
 
-use crate::cache::{create_cache, Digest};
+use crate::cache::Digest;
 use crate::process::BaseCommand;
 
 /// Remove the last element if it's empty string.
@@ -280,10 +280,10 @@ impl<'a> LightCommand<'a> {
 
         // Cache the output if there are too many lines.
         let (stdout_str, cached_path) = if self.env.should_create_cache() {
-            let (s, p) = create_cache(base_cmd, self.env.total, &cmd_stdout)?;
-            (s, Some(p))
+            let p = base_cmd.create_cache(self.env.total, &cmd_stdout)?;
+            (String::from_utf8_lossy(cmd_stdout), Some(p))
         } else {
-            (String::from_utf8_lossy(cmd_stdout).into(), None)
+            (String::from_utf8_lossy(cmd_stdout), None)
         };
         let lines = self.try_prepend_icon(stdout_str.split('\n'));
 
