@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
@@ -37,6 +37,26 @@ impl CtagsCommand {
                 None
             }
         }))
+    }
+
+    pub fn get_ctags_cache(&self) -> Option<(u64, PathBuf)> {
+        crate::cache::get_cached(&self.inner)
+    }
+
+    pub fn create_cache(&self) -> Result<(u64, PathBuf)> {
+        use itertools::Itertools;
+
+        let mut total = 0usize;
+        let mut formatted_tags_stream = self.formatted_tags_stream()?.map(|x| {
+            total += 1;
+            x
+        });
+        let lines = formatted_tags_stream.join("\n");
+
+        let (_, cache_path) =
+            crate::cache::create_cache(self.inner.clone(), total as u64, lines.as_bytes())?;
+
+        Ok((total as u64, cache_path))
     }
 }
 

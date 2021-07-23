@@ -102,15 +102,14 @@ impl Tags {
         let ctags_cmd = self.assemble_ctags_cmd();
 
         if self.forerunner {
-            // TODO:
-            // let (cache, total) = if no_cache {
-            // create_tags_cache(&cmd_args, &self.dir)?
-            // } else if let Ok(cached_info) = cache_exists(&cmd_args, &self.dir) {
-            // cached_info
-            // } else {
-            // create_tags_cache(&cmd_args, &self.dir)?
-            // };
-            // send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
+            let (total, cache) = if no_cache {
+                ctags_cmd.create_cache()?
+            } else if let Some((total, cache_path)) = ctags_cmd.get_ctags_cache() {
+                (total, cache_path)
+            } else {
+                ctags_cmd.create_cache()?
+            };
+            send_response_from_cache(&cache, total as usize, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
             filter::dyn_run(

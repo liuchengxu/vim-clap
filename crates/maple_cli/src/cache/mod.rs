@@ -103,7 +103,7 @@ pub fn create_cache(
     base_cmd: BaseCommand,
     total: u64,
     cmd_stdout: &[u8],
-) -> Result<(String, Option<PathBuf>)> {
+) -> Result<(String, PathBuf)> {
     let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;
 
     let digest = Digest::new(base_cmd, total, cache_file.clone());
@@ -114,6 +114,6 @@ pub fn create_cache(
         // lines used for displaying directly.
         // &cmd_output.stdout[..nth_newline_index]
         String::from_utf8_lossy(cmd_stdout).into(),
-        Some(cache_file),
+        cache_file,
     ))
 }

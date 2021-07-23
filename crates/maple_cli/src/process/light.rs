@@ -282,7 +282,8 @@ impl<'a> LightCommand<'a> {
 
         // Cache the output if there are too many lines.
         let (stdout_str, cached_path) = if self.env.should_create_cache() {
-            create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?
+            let (s, p) = create_cache(base_cmd, self.env.total as u64, &cmd_stdout)?;
+            (s, Some(p))
         } else {
             (String::from_utf8_lossy(cmd_stdout).into(), None)
         };
