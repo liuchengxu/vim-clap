@@ -9,25 +9,27 @@ use filter::subprocess;
 
 use crate::process::BaseCommand;
 
+/// Unit type of [`BaseCommand`] for ctags.
 #[derive(Debug, Clone)]
 pub struct CtagsCommand {
     inner: BaseCommand,
 }
 
 impl CtagsCommand {
+    /// Creates an instance of [`CtagsCommand`].
     pub fn new(inner: BaseCommand) -> Self {
         Self { inner }
     }
 
-    /// Returns an iterator of raw output line.
-    pub fn run(&self) -> Result<impl Iterator<Item = String>> {
+    /// Returns an iterator of raw line of ctags output.
+    fn run(&self) -> Result<impl Iterator<Item = String>> {
         let stdout_stream = subprocess::Exec::shell(&self.inner.command)
             .cwd(&self.inner.cwd)
             .stream_stdout()?;
         Ok(BufReader::new(stdout_stream).lines().flatten())
     }
 
-    /// Returns an iterator of tags line in a formatted form.
+    /// Returns an iterator of tag line in a formatted form.
     pub fn formatted_tags_stream(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
@@ -38,10 +40,12 @@ impl CtagsCommand {
         }))
     }
 
+    /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn get_ctags_cache(&self) -> Option<(usize, PathBuf)> {
         self.inner.cached_info()
     }
 
+    /// Runs the command and writes the cache to the disk.
     pub fn create_cache(&self) -> Result<(usize, PathBuf)> {
         use itertools::Itertools;
 

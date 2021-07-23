@@ -83,6 +83,7 @@ impl Digest {
     }
 }
 
+/// List of cache digests.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CacheInfo {
     digests: Vec<Digest>,
@@ -143,6 +144,7 @@ impl CacheInfo {
         Ok(())
     }
 
+    /// Prunes the stale digest at index of `stale_index`.
     pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
         self.digests.remove(stale_index);
         crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
@@ -150,6 +152,7 @@ impl CacheInfo {
     }
 }
 
+/// Pushes the digest to [`CACHE_INFO_IN_MEMORY`].
 pub fn push_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info.limited_push(digest)?;

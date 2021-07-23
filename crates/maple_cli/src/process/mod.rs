@@ -2,7 +2,7 @@ pub mod light;
 pub mod rstd;
 pub mod tokio;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,7 @@ impl AsyncCommand {
         Self(command.into())
     }
 
-    pub fn current_dir<P: AsRef<std::path::Path>>(&mut self, dir: P) -> &mut Self {
+    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
     }
@@ -50,6 +50,7 @@ impl AsyncCommand {
     }
 }
 
+/// Shell command for executing with cache.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct BaseCommand {
     /// Raw shell command string.
@@ -58,7 +59,7 @@ pub struct BaseCommand {
     ///
     /// The same command with different cwd normally has
     /// different results, thus we need to record the cwd too.
-    pub cwd: std::path::PathBuf,
+    pub cwd: PathBuf,
 }
 
 impl BaseCommand {
@@ -84,7 +85,7 @@ impl BaseCommand {
             .map(|d| (d.total, d.cached_path.clone()))
     }
 
-    /// Writes the whole stdout of `base_cmd` to a cache file.
+    /// Writes the whole stdout `cmd_stdout` to a cache file.
     fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;
 
