@@ -34,13 +34,13 @@ pub struct Digest {
     /// Time of last visit.
     pub last_visit: UtcTime,
     /// Number of results from last execution.
-    pub total: u64,
+    pub total: usize,
     /// File saved for caching the results.
     pub cached_path: PathBuf,
 }
 
 impl Digest {
-    pub fn new(base: BaseCommand, total: u64, cached_path: PathBuf) -> Self {
+    pub fn new(base: BaseCommand, total: usize, cached_path: PathBuf) -> Self {
         let now = Utc::now();
         Self {
             base,
@@ -79,7 +79,7 @@ pub fn add_new_cache_digest(digest: Digest) -> Result<()> {
     Ok(())
 }
 
-pub fn get_cached(base_cmd: &BaseCommand) -> Option<(u64, PathBuf)> {
+pub fn get_cached(base_cmd: &BaseCommand) -> Option<(usize, PathBuf)> {
     let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
     cache_info
         .find_digest(base_cmd)
@@ -108,7 +108,7 @@ fn write_stdout_to_disk(base_cmd: &BaseCommand, cmd_stdout: &[u8]) -> Result<Pat
 /// Caches the output into a tempfile and also writes the cache digest to the disk.
 pub fn create_cache(
     base_cmd: BaseCommand,
-    total: u64,
+    total: usize,
     cmd_stdout: &[u8],
 ) -> Result<(String, PathBuf)> {
     let cache_file = write_stdout_to_disk(&base_cmd, cmd_stdout)?;

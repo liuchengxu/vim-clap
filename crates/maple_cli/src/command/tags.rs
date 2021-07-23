@@ -1,6 +1,4 @@
-use std::hash::Hash;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -8,13 +6,13 @@ use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
-    subprocess, FilterContext, Source,
+    FilterContext, Source,
 };
 
 use crate::app::Params;
 use crate::cache::{send_response_from_cache, SendResponse};
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
@@ -90,7 +88,7 @@ impl Tags {
             } else {
                 ctags_cmd.create_cache()?
             };
-            send_response_from_cache(&cache, total as usize, SendResponse::Json, icon_painter);
+            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
         } else {
             filter::dyn_run(
