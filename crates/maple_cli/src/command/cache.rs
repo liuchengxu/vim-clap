@@ -1,4 +1,5 @@
 use std::fs::read_dir;
+use std::io::Write;
 use std::path::{self, Path};
 
 use anyhow::Result;
@@ -38,15 +39,18 @@ impl Cache {
     }
 
     fn list(&self, cache_dir: &Path) -> Result<()> {
+        let stdout = std::io::stdout();
+        let mut lock = stdout.lock();
+
         let cache_dir_str = cache_dir.display();
-        println!("Current cache directory:");
-        println!("\t{}\n", cache_dir_str);
+        writeln!(lock, "Current cache directory:")?;
+        writeln!(lock, "\t{}\n", cache_dir_str)?;
 
         let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
-        println!("{:#?}\n", cache_info);
+        writeln!(lock, "{:#?}\n", cache_info)?;
 
         if self.list {
-            println!("Cached entries:");
+            writeln!(lock, "Cached entries:")?;
             let mut entries = read_dir(cache_dir)?
                 .map(|res| {
                     res.map(|e| {
@@ -62,7 +66,7 @@ impl Cache {
             entries.sort();
 
             for fname in entries {
-                println!("\t{}{}{}", cache_dir_str, path::MAIN_SEPARATOR, fname);
+                writeln!(lock, "\t{}{}{}", cache_dir_str, path::MAIN_SEPARATOR, fname)?;
             }
         }
         Ok(())
