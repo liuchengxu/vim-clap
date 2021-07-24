@@ -885,6 +885,7 @@ dependencies = [
  "log4rs",
  "matcher",
  "once_cell",
+ "parking_lot",
  "pattern",
  "printer",
  "rayon",

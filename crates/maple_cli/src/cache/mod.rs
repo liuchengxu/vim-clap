@@ -131,7 +131,7 @@ impl CacheInfo {
 
     /// Prunes the stale digest at index of `stale_index`.
     pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
-        self.digests.remove(stale_index);
+        self.digests.swap_remove(stale_index);
         crate::datastore::store_cache_info(self)?;
         Ok(())
     }
@@ -139,7 +139,7 @@ impl CacheInfo {
 
 /// Pushes the digest to [`CACHE_INFO_IN_MEMORY`].
 pub fn push_cache_digest(digest: Digest) -> Result<()> {
-    let mut cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+    let mut cache_info = CACHE_INFO_IN_MEMORY.lock();
     cache_info.limited_push(digest)?;
     Ok(())
 }

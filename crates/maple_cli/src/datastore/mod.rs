@@ -1,10 +1,10 @@
 //! This module provides the feature of persistent data store via file system.
 
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 
 use crate::cache::CacheInfo;
 use crate::recent_files::SortedRecentFiles;

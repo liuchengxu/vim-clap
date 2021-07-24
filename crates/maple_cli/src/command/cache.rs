@@ -46,7 +46,7 @@ impl Cache {
         writeln!(lock, "Current cache directory:")?;
         writeln!(lock, "\t{}\n", cache_dir_str)?;
 
-        let cache_info = CACHE_INFO_IN_MEMORY.lock().unwrap();
+        let cache_info = CACHE_INFO_IN_MEMORY.lock();
         writeln!(lock, "{:#?}\n", cache_info)?;
 
         if self.list {

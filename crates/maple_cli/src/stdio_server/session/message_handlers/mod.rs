@@ -76,7 +76,7 @@ pub fn note_recent_file(msg: Message) {
             return;
         }
 
-        let mut recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
+        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         recent_files.upsert(file);
     });
 }
