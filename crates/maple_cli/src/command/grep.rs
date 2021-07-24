@@ -13,15 +13,13 @@ use filter::{
 use icon::IconPainter;
 use utility::is_git_repo;
 
+use crate::app::Params;
 use crate::process::{
     light::{set_current_dir, LightCommand},
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
-use crate::{
-    app::Params,
-    cache::{send_response_from_cache, SendResponse},
-};
+use crate::utils::{send_response_from_cache, SendResponse};
 
 const RG_ARGS: &[&str] = &[
     "rg",

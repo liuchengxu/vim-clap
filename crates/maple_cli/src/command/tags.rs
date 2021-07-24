@@ -10,9 +10,9 @@ use filter::{
 };
 
 use crate::app::Params;
-use crate::cache::{send_response_from_cache, SendResponse};
 use crate::process::BaseCommand;
 use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
+use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 

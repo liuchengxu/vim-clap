@@ -1,7 +1,3 @@
-mod old;
-
-pub use self::old::{send_response_from_cache, SendResponse};
-
 use std::path::PathBuf;
 
 use anyhow::Result;

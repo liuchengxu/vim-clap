@@ -3,6 +3,9 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 
+use icon::IconPainter;
+use utility::{println_json, println_json_with_length, read_first_lines};
+
 pub type UtcTime = DateTime<Utc>;
 
 pub fn generate_data_file_path(filename: &str) -> Result<PathBuf> {
@@ -59,4 +62,41 @@ pub fn write_json<T: serde::Serialize, P: AsRef<Path>>(obj: T, path: Option<P>) 
     }
 
     Ok(())
+}
+
+#[derive(Debug, Clone)]
+#[allow(unused)]
+pub enum SendResponse {
+    Json,
+    JsonWithContentLength,
+}
+
+/// Reads the first lines from cache file and send back the cached info.
+pub fn send_response_from_cache(
+    tempfile: &Path,
+    total: usize,
+    response_ty: SendResponse,
+    icon_painter: Option<IconPainter>,
+) {
+    let using_cache = true;
+    if let Ok(iter) = read_first_lines(&tempfile, 100) {
+        let lines: Vec<String> = if let Some(painter) = icon_painter {
+            iter.map(|x| painter.paint(&x)).collect()
+        } else {
+            iter.collect()
+        };
+        match response_ty {
+            SendResponse::Json => println_json!(total, tempfile, using_cache, lines),
+            SendResponse::JsonWithContentLength => {
+                println_json_with_length!(total, tempfile, using_cache, lines)
+            }
+        }
+    } else {
+        match response_ty {
+            SendResponse::Json => println_json!(total, tempfile, using_cache),
+            SendResponse::JsonWithContentLength => {
+                println_json_with_length!(total, tempfile, using_cache)
+            }
+        }
+    }
 }
