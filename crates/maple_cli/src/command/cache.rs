@@ -6,7 +6,7 @@ use structopt::StructOpt;
 
 use utility::{clap_cache_dir, remove_dir_contents};
 
-use crate::cache::CACHE_INFO_IN_MEMORY;
+use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// List and remove all the cached contents.
 #[derive(StructOpt, Debug, Clone)]

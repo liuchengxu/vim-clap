@@ -3,7 +3,7 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::recent_files::RECENT_FILES_IN_MEMORY;
+use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     session::{
         Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,

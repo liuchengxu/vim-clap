@@ -1,5 +1,6 @@
 mod app;
 mod cache;
+mod datastore;
 mod dumb_analyzer;
 mod logger;
 mod process;

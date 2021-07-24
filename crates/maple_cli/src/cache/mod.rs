@@ -3,27 +3,15 @@ mod old;
 pub use self::old::{send_response_from_cache, SendResponse};
 
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use anyhow::Result;
 use chrono::prelude::*;
-use once_cell::sync::Lazy;
 
+use crate::datastore::CACHE_INFO_IN_MEMORY;
 use crate::process::BaseCommand;
-use crate::utils::{generate_data_file_path, load_json, UtcTime};
+use crate::utils::UtcTime;
 
 const MAX_DIGESTS: usize = 100;
-
-const CACHE_FILENAME: &str = "cache.json";
-
-pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
-    Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
-
-pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
-    let maybe_persistent =
-        load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref()).unwrap_or_default();
-    Mutex::new(maybe_persistent)
-});
 
 /// Digest of a cached command execution.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -141,14 +129,14 @@ impl CacheInfo {
                 .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
             self.digests.pop();
         }
-        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
+        crate::datastore::store_cache_info(self)?;
         Ok(())
     }
 
     /// Prunes the stale digest at index of `stale_index`.
     pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
         self.digests.remove(stale_index);
-        crate::utils::write_json(self, CACHE_JSON_PATH.as_ref())?;
+        crate::datastore::store_cache_info(self)?;
         Ok(())
     }
 }

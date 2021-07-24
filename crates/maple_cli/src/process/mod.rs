@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use self::rstd::StdCommand;
 
-use crate::cache::{push_cache_digest, Digest, CACHE_INFO_IN_MEMORY};
+use crate::cache::{push_cache_digest, Digest};
+use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
