@@ -27,6 +27,7 @@ impl Cache {
         if self.purge {
             if let Some(f) = crate::datastore::CACHE_JSON_PATH.as_deref() {
                 std::fs::remove_file(f)?;
+                println!("Cache metadata {} has been deleted", f.display());
             }
             remove_dir_contents(&cache_dir)?;
             println!(
