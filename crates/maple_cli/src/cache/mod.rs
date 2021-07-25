@@ -63,6 +63,8 @@ impl Digest {
             return false;
         }
 
+        // TODO: when the preview content mismatches the line, the cache is outdated and should be updated.
+
         true
     }
 }
