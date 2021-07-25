@@ -24,6 +24,7 @@ tokio = { version = "1.2", features = ["fs", "rt", "process", "macros", "rt-mult
 log = "0.4"
 log4rs = "1.0"
 once_cell = "1.7"
+parking_lot = "0.11"
 rayon = "1.5"
 regex = "1.4"
 reqwest = { version = "0.10", features = ["blocking"] }

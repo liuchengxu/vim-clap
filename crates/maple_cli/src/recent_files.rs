@@ -1,62 +1,17 @@
 use std::cmp::Ordering;
-use std::fs::File;
-use std::io::{BufReader, Write};
-use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::path::Path;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::prelude::*;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+
+use crate::utils::UtcTime;
 
 const HOUR: i64 = 3600;
 const DAY: i64 = HOUR * 24;
 const WEEK: i64 = DAY * 7;
 
-const JSON_FILENAME: &str = "recent_files.json";
-
 const MAX_ENTRIES: u64 = 10_000;
-
-fn persistent_recent_files_path() -> Result<PathBuf> {
-    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
-        let data_dir = proj_dirs.data_dir();
-        std::fs::create_dir_all(data_dir)?;
-
-        let mut recent_files_json = data_dir.to_path_buf();
-        recent_files_json.push(JSON_FILENAME);
-
-        return Ok(recent_files_json);
-    }
-
-    Err(anyhow!("Couldn't create the Vim Clap project directory"))
-}
-
-pub static JSON_PATH: Lazy<Option<PathBuf>> = Lazy::new(|| persistent_recent_files_path().ok());
-
-fn read_recent_files_from_file<P: AsRef<Path>>(path: P) -> Result<SortedRecentFiles> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let recent_files: SortedRecentFiles = serde_json::from_reader(reader)?;
-    Ok(recent_files.remove_invalid_entries())
-}
-
-pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> =
-    Lazy::new(|| Mutex::new(initialize_recent_files()));
-
-fn initialize_recent_files() -> SortedRecentFiles {
-    JSON_PATH
-        .as_deref()
-        .and_then(|recent_files_json| {
-            if recent_files_json.exists() {
-                read_recent_files_from_file(recent_files_json).ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default()
-}
-
-type UtcTime = DateTime<Utc>;
 
 /// Preference for sorting the recent files.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -164,7 +119,7 @@ impl SortedRecentFiles {
             entries: self
                 .entries
                 .into_iter()
-                .filter(|entry| std::path::Path::new(&entry.fpath).exists())
+                .filter(|entry| Path::new(&entry.fpath).exists())
                 .collect(),
             ..self
         }
@@ -215,17 +170,6 @@ impl SortedRecentFiles {
     }
 
     fn write_to_disk(&self) -> Result<()> {
-        if let Some(recent_files_json) = JSON_PATH.as_deref() {
-            // Overwrite it.
-            let mut f = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(recent_files_json)?;
-
-            f.write_all(serde_json::to_string(self)?.as_bytes())?;
-            f.flush()?;
-        }
-        Ok(())
+        crate::datastore::store_recent_files(self)
     }
 }

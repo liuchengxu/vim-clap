@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## Improved
+
+- Rewrite the cache system to be more efficient and convenient. See #726 for details.
 
 ## [0.27] 2021-07-22
+
 ### Added
 
 - Add a new provider `recent_files` for recent files history, which is persistent and can keep up to 10,000 entries ordered by [Frecency](https://en.wikipedia.org/wiki/Frecency). #724

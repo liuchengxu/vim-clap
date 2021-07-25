@@ -6,10 +6,8 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::{
-    recent_files::RECENT_FILES_IN_MEMORY,
-    stdio_server::{previewer, types::Message, write_response},
-};
+use crate::datastore::RECENT_FILES_IN_MEMORY;
+use crate::stdio_server::{previewer, types::Message, write_response};
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");
@@ -78,7 +76,7 @@ pub fn note_recent_file(msg: Message) {
             return;
         }
 
-        let mut recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
+        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         recent_files.upsert(file);
     });
 }

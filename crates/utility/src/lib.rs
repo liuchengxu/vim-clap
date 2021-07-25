@@ -2,7 +2,7 @@
 
 use std::collections::hash_map::DefaultHasher;
 use std::ffi::OsStr;
-use std::fs::{self, read_dir, remove_dir_all, remove_file, DirEntry, File};
+use std::fs::{self, read_dir, remove_dir_all, remove_file, File};
 use std::hash::{Hash, Hasher};
 use std::io::{self, BufRead, Read};
 use std::path::{Path, PathBuf};
@@ -69,44 +69,15 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 }
 
 #[inline]
-pub fn clap_cache_dir() -> PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push(CLAP_CACHE);
-    dir
-}
+pub fn clap_cache_dir() -> Result<PathBuf> {
+    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
+        let cache_dir = proj_dirs.cache_dir();
+        std::fs::create_dir_all(cache_dir)?;
 
-/// Returns the cache path for clap.
-///
-/// The reason for using hash(cmd_dir) instead of cmd_dir directory is to avoid the possible issue
-/// of using a path as the directory name.
-///
-/// Formula: temp_dir + clap_cache + arg1_arg2_arg3 + hash(cmd_dir)
-pub fn get_cache_dir(args: &[&str], cmd_dir: &Path) -> PathBuf {
-    let mut dir = clap_cache_dir();
-    dir.push(args.join("_"));
-    // TODO: use a readable cache cmd_dir name?
-    dir.push(format!("{}", calculate_hash(&cmd_dir)));
-    dir
-}
-
-/// Returns the cached entry given the cmd args and working dir.
-pub fn get_cached_entry(args: &[&str], cmd_dir: &Path) -> Result<DirEntry> {
-    let cache_dir = get_cache_dir(args, &cmd_dir);
-    if cache_dir.exists() {
-        let mut entries = read_dir(cache_dir)?;
-
-        // Everytime when we are about to create a new cache entry, the old entry will be removed,
-        // so there is only one cache entry, therefore it should be always the latest one.
-        if let Some(Ok(first_entry)) = entries.next() {
-            return Ok(first_entry);
-        }
+        Ok(cache_dir.to_path_buf())
+    } else {
+        Err(anyhow!("Couldn't create Vim Clap project directory"))
     }
-
-    Err(anyhow!(
-        "Couldn't get the cached entry for {:?} {:?}",
-        args,
-        cmd_dir
-    ))
 }
 
 /// Works for utf-8 lines only.
@@ -233,6 +204,24 @@ where
 {
     let mut cmd = as_std_command(shell_cmd, dir);
     Ok(cmd.output()?)
+}
+
+/// Attempts to write an entire buffer into the file.
+///
+/// Creates one if the file doed not exist.
+pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
+    use std::io::Write;
+
+    // Overwrite it.
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
+
+    f.write_all(buf)?;
+    f.flush()?;
+    Ok(())
 }
 
 #[cfg(test)]

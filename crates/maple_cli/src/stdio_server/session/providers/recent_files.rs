@@ -3,7 +3,7 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::recent_files::RECENT_FILES_IN_MEMORY;
+use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     session::{
         Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,
@@ -26,7 +26,7 @@ pub async fn handle_recent_files_message(
 
     let Params { query, enable_icon } = msg.deserialize_params_unsafe();
 
-    let recent_files = RECENT_FILES_IN_MEMORY.lock().unwrap();
+    let recent_files = RECENT_FILES_IN_MEMORY.lock();
     let ranked = recent_files.filter_on_query(&query);
     let initial_size = recent_files.len();
 

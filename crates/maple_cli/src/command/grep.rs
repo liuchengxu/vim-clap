@@ -14,9 +14,12 @@ use icon::IconPainter;
 use utility::is_git_repo;
 
 use crate::app::Params;
-use crate::command::cache::{cache_exists, send_response_from_cache, SendResponse};
-use crate::process::light::{set_current_dir, LightCommand};
+use crate::process::{
+    light::{set_current_dir, LightCommand},
+    BaseCommand,
+};
 use crate::tools::ripgrep::Match;
+use crate::utils::{send_response_from_cache, SendResponse};
 
 const RG_ARGS: &[&str] = &[
     "rg",
@@ -137,7 +140,8 @@ impl Grep {
 
         let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
-        let execute_info = light_cmd.execute(&args)?;
+        let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
+        let execute_info = light_cmd.execute(base_cmd)?;
 
         let enable_icon = icon_painter.is_some();
 
@@ -197,8 +201,9 @@ impl Grep {
             Source::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                if let Ok((cached_file, _)) = cache_exists(&RG_ARGS, dir) {
-                    return do_dyn_filter(Source::File(cached_file));
+                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                if let Some(cache_file) = base_cmd.cache_file() {
+                    return do_dyn_filter(Source::File(cache_file));
                 }
             }
             Exec::shell(RG_EXEC_CMD).cwd(dir).into()
@@ -249,10 +254,11 @@ impl RipGrepForerunner {
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
-                if let Ok((cache, total)) = cache_exists(&RG_ARGS, dir) {
+                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                if let Some((total, cache)) = base_cmd.cached_info() {
                     send_response_from_cache(
                         &cache,
-                        total,
+                        total as usize,
                         SendResponse::Json,
                         Some(IconPainter::Grep),
                     );
@@ -273,13 +279,19 @@ impl RipGrepForerunner {
 
         let mut light_cmd = LightCommand::new_grep(
             &mut cmd,
-            self.cmd_dir,
+            self.cmd_dir.clone(),
             number,
             icon_painter,
             Some(self.output_threshold),
         );
 
-        light_cmd.execute(&RG_ARGS)?.print();
+        let cwd = match self.cmd_dir {
+            Some(d) => d,
+            None => std::env::current_dir()?,
+        };
+        let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), cwd);
+
+        light_cmd.execute(base_cmd)?.print();
 
         Ok(())
     }
