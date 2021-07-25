@@ -1,6 +1,7 @@
 //! This module provides the feature of persistent data store via file system.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use once_cell::sync::Lazy;
@@ -15,10 +16,10 @@ const CACHE_FILENAME: &str = "cache.json";
 pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
-pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
+pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
     let maybe_persistent = load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref())
         .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
-    Mutex::new(maybe_persistent)
+    Arc::new(Mutex::new(maybe_persistent))
 });
 
 const RECENT_FILES_FILENAME: &str = "recent_files.json";

@@ -124,29 +124,17 @@ impl CacheInfo {
             let mut new_digest = digest;
             new_digest.total_visits += old_visits;
             self.digests[index] = new_digest;
-            let cloned = self.clone();
-            tokio::spawn(async move {
-                if let Err(e) = crate::datastore::store_cache_info(&cloned) {
-                    log::error!("Failed to store the cache info for: {:?}", e);
-                }
-            });
-            return Ok(());
-        }
+        } else {
+            self.digests.push(digest);
 
-        self.digests.push(digest);
-
-        if self.digests.len() > MAX_DIGESTS {
-            self.digests
-                .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
-            self.digests.pop();
-        }
-
-        let cloned = self.clone();
-        tokio::spawn(async move {
-            if let Err(e) = crate::datastore::store_cache_info(&cloned) {
-                log::error!("Failed to store the cache info for: {:?}", e);
+            if self.digests.len() > MAX_DIGESTS {
+                self.digests
+                    .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
+                self.digests.pop();
             }
-        });
+        }
+
+        crate::datastore::store_cache_info(self)?;
 
         Ok(())
     }
@@ -155,12 +143,7 @@ impl CacheInfo {
     pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
         self.digests.swap_remove(stale_index);
 
-        let cloned = self.clone();
-        tokio::spawn(async move {
-            if let Err(e) = crate::datastore::store_cache_info(&cloned) {
-                log::error!("Failed to store the cache info for: {:?}", e);
-            }
-        });
+        crate::datastore::store_cache_info(self)?;
 
         Ok(())
     }
@@ -168,7 +151,14 @@ impl CacheInfo {
 
 /// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
 pub fn push_cache_digest(digest: Digest) -> Result<()> {
-    let mut cache_info = CACHE_INFO_IN_MEMORY.lock();
-    cache_info.limited_push(digest)?;
+    let cache_info = CACHE_INFO_IN_MEMORY.lock();
+
+    let mut cache_info_cloned = cache_info.clone();
+    tokio::spawn(async move {
+        if let Err(e) = cache_info_cloned.limited_push(digest) {
+            log::error!("Failed to store the cache info for: {:?}", e);
+        }
+    });
+
     Ok(())
 }
