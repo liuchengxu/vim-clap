@@ -11,6 +11,8 @@ use crate::cache::{CacheInfo, MAX_DIGESTS};
 use crate::recent_files::SortedRecentFiles;
 use crate::utils::{generate_data_file_path, load_json};
 
+// TODO: use mmap?
+
 const CACHE_FILENAME: &str = "cache.json";
 
 pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
