@@ -6,7 +6,7 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use crate::cache::CacheInfo;
+use crate::cache::{CacheInfo, MAX_DIGESTS};
 use crate::recent_files::SortedRecentFiles;
 use crate::utils::{generate_data_file_path, load_json};
 
@@ -16,8 +16,8 @@ pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Mutex<CacheInfo>> = Lazy::new(|| {
-    let maybe_persistent =
-        load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref()).unwrap_or_default();
+    let maybe_persistent = load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref())
+        .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
     Mutex::new(maybe_persistent)
 });
 

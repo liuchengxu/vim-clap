@@ -7,7 +7,7 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 use crate::process::BaseCommand;
 use crate::utils::UtcTime;
 
-const MAX_DIGESTS: usize = 100;
+pub const MAX_DIGESTS: usize = 100;
 
 /// Digest of a cached command execution.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -84,6 +84,12 @@ impl Default for CacheInfo {
 }
 
 impl CacheInfo {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            digests: Vec::with_capacity(capacity),
+        }
+    }
+
     /// Finds the digest given `base_cmd`.
     fn find_digest(&self, base_cmd: &BaseCommand) -> Option<usize> {
         self.digests.iter().position(|d| &d.base == base_cmd)
