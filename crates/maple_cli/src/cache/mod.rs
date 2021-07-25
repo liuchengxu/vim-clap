@@ -19,8 +19,10 @@ pub struct Digest {
     pub execution_time: UtcTime,
     /// Time of last visit.
     pub last_visit: UtcTime,
-    /// Number of times the command was actually executed so far.
+    /// Number of times the base command was visited.
     pub total_visits: usize,
+    /// Number of times the command was executed so far.
+    pub total_executions: usize,
     /// Number of results from last execution.
     pub total: usize,
     /// File persistent on the disk for caching the results.
@@ -37,6 +39,7 @@ impl Digest {
             cached_path,
             last_visit: now,
             total_visits: 1,
+            total_executions: 1,
             execution_time: now,
         }
     }
@@ -102,6 +105,8 @@ impl CacheInfo {
                 let mut d = &mut self.digests[index];
                 if d.is_usable() {
                     d.total_visits += 1;
+                    d.last_visit = Utc::now();
+                    // FIXME: save the latest state?
                     Some(d.clone())
                 } else {
                     if let Err(e) = self.prune_stale(index) {
@@ -120,9 +125,9 @@ impl CacheInfo {
     pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
         // The digest already exists.
         if let Some(index) = self.find_digest(&digest.base) {
-            let old_visits = self.digests[index].total_visits;
+            let old_executions = self.digests[index].total_executions;
             let mut new_digest = digest;
-            new_digest.total_visits += old_visits;
+            new_digest.total_executions += old_executions;
             self.digests[index] = new_digest;
         } else {
             self.digests.push(digest);

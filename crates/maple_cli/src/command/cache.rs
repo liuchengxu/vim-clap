@@ -25,6 +25,9 @@ impl Cache {
     pub fn run(&self) -> Result<()> {
         let cache_dir = clap_cache_dir()?;
         if self.purge {
+            if let Some(f) = crate::datastore::CACHE_JSON_PATH.as_deref() {
+                std::fs::remove_file(f)?;
+            }
             remove_dir_contents(&cache_dir)?;
             println!(
                 "Current cache directory {} has been purged",
