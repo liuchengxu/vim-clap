@@ -156,7 +156,7 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info_cloned = cache_info.clone();
     tokio::spawn(async move {
         if let Err(e) = cache_info_cloned.limited_push(digest) {
-            log::error!("Failed to store the cache info for: {:?}", e);
+            log::error!("Failed to push the cache digest: {:?}", e);
         }
     });
 
