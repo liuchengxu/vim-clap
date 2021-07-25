@@ -19,7 +19,7 @@ pub struct Digest {
     pub execution_time: UtcTime,
     /// Time of last visit.
     pub last_visit: UtcTime,
-    /// Number of total visits.
+    /// Number of times the command was actually executed so far.
     pub total_visits: usize,
     /// Number of results from last execution.
     pub total: usize,
@@ -118,28 +118,49 @@ impl CacheInfo {
             let mut new_digest = digest;
             new_digest.total_visits += old_visits;
             self.digests[index] = new_digest;
+            let cloned = self.clone();
+            tokio::spawn(async move {
+                if let Err(e) = crate::datastore::store_cache_info(&cloned) {
+                    log::error!("Failed to store the cache info for: {:?}", e);
+                }
+            });
             return Ok(());
         }
 
         self.digests.push(digest);
+
         if self.digests.len() > MAX_DIGESTS {
             self.digests
                 .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
             self.digests.pop();
         }
-        crate::datastore::store_cache_info(self)?;
+
+        let cloned = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = crate::datastore::store_cache_info(&cloned) {
+                log::error!("Failed to store the cache info for: {:?}", e);
+            }
+        });
+
         Ok(())
     }
 
     /// Prunes the stale digest at index of `stale_index`.
     pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
         self.digests.swap_remove(stale_index);
-        crate::datastore::store_cache_info(self)?;
+
+        let cloned = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = crate::datastore::store_cache_info(&cloned) {
+                log::error!("Failed to store the cache info for: {:?}", e);
+            }
+        });
+
         Ok(())
     }
 }
 
-/// Pushes the digest to [`CACHE_INFO_IN_MEMORY`].
+/// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
 pub fn push_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info = CACHE_INFO_IN_MEMORY.lock();
     cache_info.limited_push(digest)?;
