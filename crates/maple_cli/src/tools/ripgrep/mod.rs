@@ -88,6 +88,11 @@ impl Match {
         self.lines.text().trim_end().to_owned()
     }
 
+    /// Returns true if the text line starts with `pat`.
+    pub fn line_starts_with(&self, pat: &str) -> bool {
+        self.lines.text().trim_start().starts_with(pat)
+    }
+
     pub fn match_indices(&self, offset: usize) -> Vec<usize> {
         self.submatches
             .iter()

@@ -67,7 +67,9 @@ pub fn get_comments_by_ext(ext: &str) -> &[String] {
         comments
     });
 
-    table.get(ext).unwrap_or_else(|| table.get("*").unwrap())
+    table
+        .get(ext)
+        .unwrap_or_else(|| table.get("*").expect("`*` entry exists; qed"))
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
@@ -323,10 +325,10 @@ impl LanguageDefinition {
     }
 }
 
+/// Returns true if the match is from a comment line.
+#[inline]
 fn is_comment(mat: &Match, comments: &[String]) -> bool {
-    comments
-        .iter()
-        .any(|c| mat.line().trim_start().starts_with(c))
+    comments.iter().any(|c| mat.line_starts_with(c))
 }
 
 /// Executes the command as a child process, converting all the output into a stream of `JsonLine`.
@@ -342,14 +344,15 @@ async fn collect_matches(
     }
 
     if let Some(comments) = comments {
-        cmd.filter_map_lines(|s| {
+        cmd.execute_and_filter_map(|s| {
             Match::try_from(s)
                 .ok()
                 .filter(|mat| !is_comment(&mat, comments))
         })
         .await
     } else {
-        cmd.filter_map_lines(|s| Match::try_from(s).ok()).await
+        cmd.execute_and_filter_map(|s| Match::try_from(s).ok())
+            .await
     }
 }
 

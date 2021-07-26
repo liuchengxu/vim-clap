@@ -50,7 +50,7 @@ impl AsyncCommand {
         self.0.lines().await
     }
 
-    pub async fn filter_map_lines<B, F>(&mut self, f: F) -> Result<Vec<B>>
+    pub async fn execute_and_filter_map<B, F>(&mut self, f: F) -> Result<Vec<B>>
     where
         F: FnMut(&str) -> Option<B>,
     {
