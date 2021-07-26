@@ -5,6 +5,7 @@
 ## Improved
 
 - Rewrite the cache system to be more efficient and convenient. See #726 for details.
+- Less clones. #728
 
 ## [0.27] 2021-07-22
 
