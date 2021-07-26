@@ -69,20 +69,13 @@ impl StdCommand {
 
     /// Executes the inner command and applies the predicate
     /// same with `filter_map` on each of stream line.
-    pub fn filter_map_lines<B, F>(&mut self, f: F) -> Result<Vec<B>>
-    where
-        F: FnMut(&str) -> Option<B>,
-    {
+    pub fn filter_map_byte_line<B>(&mut self, f: impl FnMut(&[u8]) -> Option<B>) -> Result<Vec<B>> {
         let output = self.0.output()?;
 
         if !output.status.success() && !output.stderr.is_empty() {
             return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
         }
 
-        // TODO: without using String::from_utf8_lossy()?
-        Ok(String::from_utf8_lossy(&output.stdout)
-            .split('\n')
-            .filter_map(f)
-            .collect())
+        Ok(output.stdout.split(|x| x == &b'\n').filter_map(f).collect())
     }
 }
