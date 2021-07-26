@@ -63,13 +63,13 @@ impl StdCommand {
         super::process_output(output)
     }
 
-    pub async fn lines(&mut self) -> Result<Vec<String>> {
+    pub fn lines(&mut self) -> Result<Vec<String>> {
         self._lines()
     }
 
     /// Executes the inner command and applies the predicate
     /// same with `filter_map` on each of stream line.
-    pub async fn filter_map_lines<B, F>(&mut self, f: F) -> Result<Vec<B>>
+    pub fn filter_map_lines<B, F>(&mut self, f: F) -> Result<Vec<B>>
     where
         F: FnMut(&str) -> Option<B>,
     {
