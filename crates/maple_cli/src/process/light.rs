@@ -120,7 +120,7 @@ impl CommandEnv {
     #[inline]
     pub fn try_paint_icon<'b>(
         &self,
-        top_n: impl std::iter::Iterator<Item = &'b str>,
+        top_n: impl Iterator<Item = std::borrow::Cow<'b, str>>,
     ) -> Vec<String> {
         if let Some(ref painter) = self.icon_painter {
             top_n.map(|x| painter.paint(x)).collect()
@@ -194,10 +194,12 @@ impl<'a> LightCommand<'a> {
     /// forerunner job.
     fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<ExecutedInfo> {
         if let Some(number) = self.env.number {
-            // TODO: do not have to into String for whole stdout, find the nth index of newline.
-            // &cmd_output.stdout[..nth_newline_index]
-            let stdout_str = String::from_utf8_lossy(&stdout);
-            let lines = self.try_prepend_icon(stdout_str.split('\n').take(number));
+            let lines = self.try_prepend_icon(
+                stdout
+                    .split(|x| x == &b'\n')
+                    .map(|s| String::from_utf8_lossy(s))
+                    .take(number),
+            );
             let total = self.env.total;
             return Ok(ExecutedInfo {
                 total,
@@ -211,7 +213,10 @@ impl<'a> LightCommand<'a> {
         ))
     }
 
-    fn try_prepend_icon<'b>(&self, top_n: impl std::iter::Iterator<Item = &'b str>) -> Vec<String> {
+    fn try_prepend_icon<'b>(
+        &self,
+        top_n: impl std::iter::Iterator<Item = std::borrow::Cow<'b, str>>,
+    ) -> Vec<String> {
         let mut lines = self.env.try_paint_icon(top_n);
         trim_trailing(&mut lines);
         lines
@@ -278,13 +283,17 @@ impl<'a> LightCommand<'a> {
         }
 
         // Cache the output if there are too many lines.
-        let (stdout_str, cached_path) = if self.env.should_create_cache() {
+        let cached_path = if self.env.should_create_cache() {
             let p = base_cmd.create_cache(self.env.total, &cmd_stdout)?;
-            (String::from_utf8_lossy(cmd_stdout), Some(p))
+            Some(p)
         } else {
-            (String::from_utf8_lossy(cmd_stdout), None)
+            None
         };
-        let lines = self.try_prepend_icon(stdout_str.split('\n'));
+        let lines = self.try_prepend_icon(
+            cmd_stdout
+                .split(|n| n == &b'\n')
+                .map(|s| String::from_utf8_lossy(s)),
+        );
 
         Ok(ExecutedInfo {
             total: self.env.total,

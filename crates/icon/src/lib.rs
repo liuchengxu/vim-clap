@@ -98,11 +98,15 @@ arg_enum! {
 
 impl IconPainter {
     /// Returns a `String` of raw str with icon added.
-    pub fn paint(&self, raw_str: &str) -> String {
+    pub fn paint<S: AsRef<str>>(&self, raw_str: S) -> String {
         match *self {
-            Self::File => prepend_icon(raw_str),
-            Self::Grep => prepend_grep_icon(raw_str),
-            Self::ProjTags => format!("{} {}", get_tagkind_icon(raw_str), raw_str),
+            Self::File => prepend_icon(raw_str.as_ref()),
+            Self::Grep => prepend_grep_icon(raw_str.as_ref()),
+            Self::ProjTags => format!(
+                "{} {}",
+                get_tagkind_icon(raw_str.as_ref()),
+                raw_str.as_ref()
+            ),
         }
     }
 
