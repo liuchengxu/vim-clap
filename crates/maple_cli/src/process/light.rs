@@ -85,7 +85,6 @@ pub struct CommandEnv {
     pub dir: Option<PathBuf>,
     pub total: usize,
     pub number: Option<usize>,
-    pub output: Option<String>,
     pub icon_painter: Option<IconPainter>,
     pub output_threshold: usize,
 }
@@ -96,7 +95,6 @@ impl Default for CommandEnv {
             dir: None,
             total: 0usize,
             number: None,
-            output: None,
             icon_painter: None,
             output_threshold: OUTPUT_THRESHOLD,
         }
@@ -107,14 +105,12 @@ impl CommandEnv {
     pub fn new(
         dir: Option<PathBuf>,
         number: Option<usize>,
-        output: Option<String>,
         icon_painter: Option<IconPainter>,
         output_threshold: Option<usize>,
     ) -> Self {
         Self {
             dir,
             number,
-            output,
             icon_painter,
             output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
             ..Default::default()
@@ -157,13 +153,12 @@ impl<'a> LightCommand<'a> {
     pub fn new(
         cmd: &'a mut Command,
         number: Option<usize>,
-        output: Option<String>,
         icon_painter: Option<IconPainter>,
         output_threshold: usize,
     ) -> Self {
         Self {
             cmd,
-            env: CommandEnv::new(None, number, output, icon_painter, Some(output_threshold)),
+            env: CommandEnv::new(None, number, icon_painter, Some(output_threshold)),
         }
     }
 
@@ -177,7 +172,7 @@ impl<'a> LightCommand<'a> {
     ) -> Self {
         Self {
             cmd,
-            env: CommandEnv::new(dir, number, None, icon_painter, output_threshold),
+            env: CommandEnv::new(dir, number, icon_painter, output_threshold),
         }
     }
 
