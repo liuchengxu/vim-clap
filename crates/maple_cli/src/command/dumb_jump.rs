@@ -75,7 +75,7 @@ fn render_jump_line(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
     Lines::new(lines, indices)
 }
 
-/// Execute the shell command
+/// Search-based jump.
 #[derive(StructOpt, Debug, Clone)]
 pub struct DumbJump {
     /// Search term.

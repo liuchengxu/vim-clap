@@ -35,7 +35,7 @@ impl Exec {
     fn prepare_exec_cmd(&self) -> Command {
         let mut cmd = crate::process::rstd::build_command(&self.cmd);
 
-        set_current_dir(&mut cmd, self.cmd_dir.clone());
+        set_current_dir(&mut cmd, self.cmd_dir.as_ref());
 
         cmd
     }
