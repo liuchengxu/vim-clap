@@ -160,8 +160,7 @@ impl DefinitionRules {
         let all_def_futures = LanguageDefinition::get_rules(lang)?
             .0
             .keys()
-            .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir))
-            .collect::<Vec<_>>();
+            .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
 
         let maybe_defs = futures::future::join_all(all_def_futures).await;
 
