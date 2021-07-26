@@ -64,7 +64,7 @@ impl StdCommand {
     }
 
     pub async fn lines(&mut self) -> Result<Vec<String>> {
-        async { self._lines() }.await
+        self._lines()
     }
 
     /// Executes the inner command and applies the predicate
@@ -73,19 +73,16 @@ impl StdCommand {
     where
         F: FnMut(&str) -> Option<B>,
     {
-        async {
-            let output = self.0.output()?;
+        let output = self.0.output()?;
 
-            if !output.status.success() && !output.stderr.is_empty() {
-                return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
-            }
-
-            // TODO: without using String::from_utf8_lossy()?
-            Ok(String::from_utf8_lossy(&output.stdout)
-                .split('\n')
-                .filter_map(f)
-                .collect())
+        if !output.status.success() && !output.stderr.is_empty() {
+            return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
         }
-        .await
+
+        // TODO: without using String::from_utf8_lossy()?
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .split('\n')
+            .filter_map(f)
+            .collect())
     }
 }
