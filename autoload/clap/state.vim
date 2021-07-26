@@ -14,6 +14,10 @@ endfunction
 function! clap#state#handle_message(msg) abort
   let decoded = json_decode(a:msg)
 
+  if type(decoded) != v:t_dict
+    return
+  endif
+
   if has_key(decoded, 'total')
     if decoded.total == 0 && exists('g:__clap_lines_truncated_map')
       unlet g:__clap_lines_truncated_map

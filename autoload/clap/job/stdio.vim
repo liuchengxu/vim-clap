@@ -96,9 +96,12 @@ else
         " Not sure if a change of vim itself, the message now is no longer
         " seperated by new line, hereby we try to split and take the last
         " item.
-        call s:MessageHandler(split(a:message, "\n")[-1])
+        let splitted = split(a:message, "\n")
+        if !empty(splitted)
+          call s:MessageHandler(splitted[-1])
+        endif
       catch
-        call clap#helper#echo_error('Failed to handle message:'.a:message.', exception:'.v:exception)
+        call clap#helper#echo_error('[stdio]Failed to handle message:'.a:message.', exception:'.v:exception.', throwpoint:'.v:throwpoint)
       endtry
     endif
   endfunction

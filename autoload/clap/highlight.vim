@@ -52,6 +52,10 @@ if has('nvim')
 
 else
   function! s:apply_add_highlight(hl_lines) abort
+    " Avoid the error invalid buf
+    if !bufexists(g:clap.display.bufnr)
+      return
+    endif
     " We do not have to clear the previous matches like neovim
     " as the previous lines have been deleted, and the associated text_props have also been removed.
     let lnum = 0

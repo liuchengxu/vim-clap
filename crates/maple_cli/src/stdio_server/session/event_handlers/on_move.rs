@@ -10,7 +10,7 @@ use crate::stdio_server::{
     filer, global,
     previewer::{self, vim_help::HelpTagPreview},
     session::SessionContext,
-    types::{Message, ProviderId},
+    types::Message,
     write_response,
 };
 
@@ -207,7 +207,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id: ProviderId = self.context.provider_id.clone();
+        let provider_id = &self.context.provider_id;
         write_response(json!({
                 "id": self.msg_id,
                 "provider_id": provider_id,
