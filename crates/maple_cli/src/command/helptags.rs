@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::io::Write;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use structopt::StructOpt;

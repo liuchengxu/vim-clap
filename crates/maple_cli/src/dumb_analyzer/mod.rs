@@ -152,7 +152,7 @@ impl DefinitionRules {
 
     pub async fn all_definitions(
         lang: &str,
-        word: Word,
+        word: &Word,
         dir: &Option<PathBuf>,
     ) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
         let all_def_futures = LanguageDefinition::get_rules(lang)?
@@ -167,13 +167,13 @@ impl DefinitionRules {
     }
 
     async fn get_occurences_and_definitions(
-        word: Word,
+        word: &Word,
         lang: &str,
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> (Vec<Match>, Vec<(DefinitionKind, Vec<Match>)>) {
         let (occurrences, definitions) = futures::future::join(
-            find_all_occurrences_by_type(word.clone(), lang, dir, comments),
+            find_all_occurrences_by_type(word, lang, dir, comments),
             Self::all_definitions(lang, word, dir),
         )
         .await;
@@ -186,12 +186,12 @@ impl DefinitionRules {
 
     pub async fn definitions_and_references_lines(
         lang: &str,
-        word: Word,
+        word: &Word,
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<Lines> {
         let (occurrences, definitions) =
-            Self::get_occurences_and_definitions(word.clone(), lang, dir, comments).await;
+            Self::get_occurences_and_definitions(word, lang, dir, comments).await;
 
         let defs = definitions
             .iter()
@@ -211,21 +211,29 @@ impl DefinitionRules {
             .flat_map(|(kind, lines)| {
                 lines
                     .iter()
-                    .filter(|line| positive_defs.contains(&line))
-                    .map(|line| line.build_jump_line(kind.as_ref(), &word))
+                    .filter_map(|ref line| {
+                        if positive_defs.contains(&line) {
+                            Some(line.build_jump_line(kind.as_ref(), &word))
+                        } else {
+                            None
+                        }
+                    })
                     .collect::<Vec<_>>()
             })
             .chain(
                 // references are these occurrences not in the definitions.
-                occurrences
-                    .iter()
-                    .filter(|r| !defs.contains(&r))
-                    .map(|line| line.build_jump_line("refs", &word)),
+                occurrences.iter().filter_map(|ref line| {
+                    if !defs.contains(&line) {
+                        Some(line.build_jump_line("refs", &word))
+                    } else {
+                        None
+                    }
+                }),
             )
             .unzip();
 
         if lines.is_empty() {
-            let lines = naive_grep_fallback(word.clone(), lang, dir, comments).await?;
+            let lines = naive_grep_fallback(word, lang, dir, comments).await?;
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
                 .into_iter()
                 .map(|line| line.build_jump_line("plain", &word))
@@ -238,12 +246,12 @@ impl DefinitionRules {
 
     pub async fn definitions_and_references(
         lang: &str,
-        word: Word,
+        word: &Word,
         dir: &Option<PathBuf>,
         comments: &[String],
     ) -> Result<HashMap<MatchKind, Vec<Match>>> {
         let (occurrences, definitions) =
-            Self::get_occurences_and_definitions(word.clone(), lang, dir, comments).await;
+            Self::get_occurences_and_definitions(word, lang, dir, comments).await;
 
         let defs = definitions
             .clone()
@@ -327,6 +335,7 @@ async fn collect_matches(
         cmd.current_dir(dir);
     }
 
+    // FIXME: avoid the collection in lines()?
     let lines = cmd.lines().await?;
 
     Ok(lines
@@ -349,7 +358,7 @@ async fn collect_matches(
 ///
 /// Basically the occurrences are composed of definitions and usages.
 async fn find_all_occurrences_by_type(
-    word: Word,
+    word: &Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
     comments: &[String],
@@ -363,7 +372,7 @@ async fn find_all_occurrences_by_type(
 }
 
 async fn naive_grep_fallback(
-    word: Word,
+    word: &Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
     comments: &[String],
