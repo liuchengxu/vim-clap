@@ -84,10 +84,6 @@ impl Match {
         self.submatches.get(0).map(|x| x.start).unwrap_or_default()
     }
 
-    pub fn line(&self) -> String {
-        self.lines.text().trim_end().to_owned()
-    }
-
     /// Returns true if the text line starts with `pat`.
     pub fn line_starts_with(&self, pat: &str) -> bool {
         self.lines.text().trim_start().starts_with(pat)
@@ -161,7 +157,7 @@ impl Match {
             path,
             line_number,
             column,
-            self.line(),
+            self.lines.text().trim_end()
         );
 
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
@@ -193,7 +189,7 @@ impl Match {
             path,
             line_number,
             column,
-            self.line(),
+            self.lines.text().trim_end()
         );
 
         let offset = path.len()
@@ -215,7 +211,12 @@ impl Match {
         let line_number = self.line_number();
         let column = self.column();
 
-        let formatted_string = format!("  {}:{}:{}", line_number, column, self.line());
+        let formatted_string = format!(
+            "  {}:{}:{}",
+            line_number,
+            column,
+            self.lines.text().trim_end()
+        );
 
         let offset = display_width(line_number as usize) + display_width(column) + 2 + 2;
 
