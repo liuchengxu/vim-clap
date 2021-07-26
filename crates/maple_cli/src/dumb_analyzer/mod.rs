@@ -323,6 +323,12 @@ impl LanguageDefinition {
     }
 }
 
+fn is_comment(mat: &Match, comments: &[String]) -> bool {
+    comments
+        .iter()
+        .any(|c| mat.line().trim_start().starts_with(c))
+}
+
 /// Executes the command as a child process, converting all the output into a stream of `JsonLine`.
 async fn collect_matches(
     command: String,
@@ -335,23 +341,16 @@ async fn collect_matches(
         cmd.current_dir(dir);
     }
 
-    // FIXME: avoid the collection in lines()?
-    let lines = cmd.lines().await?;
-
-    Ok(lines
-        .iter()
-        .filter_map(|s| Match::try_from(s.as_str()).ok())
-        .filter(|mat| {
-            // Filter out the comment line
-            if let Some(comments) = comments {
-                !comments
-                    .iter()
-                    .any(|c| mat.line().trim_start().starts_with(c))
-            } else {
-                true
-            }
+    if let Some(comments) = comments {
+        cmd.filter_map_lines(|s| {
+            Match::try_from(s)
+                .ok()
+                .filter(|mat| !is_comment(&mat, comments))
         })
-        .collect())
+        .await
+    } else {
+        cmd.filter_map_lines(|s| Match::try_from(s).ok()).await
+    }
 }
 
 /// Finds all the occurrences of `word`.

@@ -66,4 +66,26 @@ impl StdCommand {
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         async { self._lines() }.await
     }
+
+    /// Executes the inner command and applies the predicate
+    /// same with `filter_map` on each of stream line.
+    pub async fn filter_map_lines<B, F>(&mut self, f: F) -> Result<Vec<B>>
+    where
+        F: FnMut(&str) -> Option<B>,
+    {
+        async {
+            let output = self.0.output()?;
+
+            if !output.status.success() && !output.stderr.is_empty() {
+                return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
+            }
+
+            // TODO: without using String::from_utf8_lossy()?
+            Ok(String::from_utf8_lossy(&output.stdout)
+                .split('\n')
+                .filter_map(f)
+                .collect())
+        }
+        .await
+    }
 }
