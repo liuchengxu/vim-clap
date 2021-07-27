@@ -75,7 +75,7 @@ fn render_jump_line(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
     Lines::new(lines, indices)
 }
 
-/// Execute the shell command
+/// Search-based jump.
 #[derive(StructOpt, Debug, Clone)]
 pub struct DumbJump {
     /// Search term.
@@ -100,9 +100,9 @@ impl DumbJump {
         let lang = get_language_by_ext(&self.extension)?;
         let comments = get_comments_by_ext(&self.extension);
 
-        let word = Word::new(self.word.to_string())?;
+        let word = Word::new(self.word)?;
 
-        DefinitionRules::definitions_and_references_lines(lang, word, &self.cmd_dir, comments)
+        DefinitionRules::definitions_and_references_lines(lang, &word, &self.cmd_dir, comments)
             .await?
             .print();
 
@@ -127,13 +127,9 @@ impl DumbJump {
 
         // render the results in group.
         if classify {
-            let res = DefinitionRules::definitions_and_references(
-                lang,
-                word.clone(),
-                &self.cmd_dir,
-                comments,
-            )
-            .await?;
+            let res =
+                DefinitionRules::definitions_and_references(lang, &word, &self.cmd_dir, comments)
+                    .await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
                 .into_iter()
@@ -143,13 +139,8 @@ impl DumbJump {
 
             Ok(Lines::new(lines, indices))
         } else {
-            DefinitionRules::definitions_and_references_lines(
-                lang,
-                word.clone(),
-                &self.cmd_dir,
-                comments,
-            )
-            .await
+            DefinitionRules::definitions_and_references_lines(lang, &word, &self.cmd_dir, comments)
+                .await
         }
     }
 }

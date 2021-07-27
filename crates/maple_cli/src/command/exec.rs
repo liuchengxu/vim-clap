@@ -17,10 +17,6 @@ pub struct Exec {
     #[structopt(index = 1, short, long)]
     cmd: String,
 
-    /// Specify the output file path when the output of command exceeds the threshold.
-    #[structopt(long = "output")]
-    output: Option<String>,
-
     /// Specify the working directory of CMD
     #[structopt(long = "cmd-dir", parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
@@ -35,7 +31,7 @@ impl Exec {
     fn prepare_exec_cmd(&self) -> Command {
         let mut cmd = crate::process::rstd::build_command(&self.cmd);
 
-        set_current_dir(&mut cmd, self.cmd_dir.clone());
+        set_current_dir(&mut cmd, self.cmd_dir.as_ref());
 
         cmd
     }
@@ -51,13 +47,8 @@ impl Exec {
     ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 
-        let mut light_cmd = LightCommand::new(
-            &mut exec_cmd,
-            number,
-            self.output.clone(),
-            icon_painter,
-            self.output_threshold,
-        );
+        let mut light_cmd =
+            LightCommand::new(&mut exec_cmd, number, icon_painter, self.output_threshold);
 
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),

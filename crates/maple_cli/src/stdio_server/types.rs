@@ -38,7 +38,7 @@ impl PreviewConfig {
             Self::Number(n) => *n as usize,
             Self::Map(map) => map
                 .get(provider_id)
-                .map(|x| *x)
+                .copied()
                 .unwrap_or_else(|| map.get("*").copied().unwrap_or(DEFAULT_PREVIEW_SIZE))
                 as usize,
         }

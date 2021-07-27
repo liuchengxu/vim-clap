@@ -84,8 +84,9 @@ impl Match {
         self.submatches.get(0).map(|x| x.start).unwrap_or_default()
     }
 
-    pub fn line(&self) -> String {
-        self.lines.text().trim_end().to_owned()
+    /// Returns true if the text line starts with `pat`.
+    pub fn line_starts_with(&self, pat: &str) -> bool {
+        self.lines.text().trim_start().starts_with(pat)
     }
 
     pub fn match_indices(&self, offset: usize) -> Vec<usize> {
@@ -105,10 +106,23 @@ impl Match {
     }
 }
 
+impl TryFrom<&[u8]> for Match {
+    type Error = String;
+    fn try_from(byte_line: &[u8]) -> Result<Self, Self::Error> {
+        let msg = serde_json::from_slice::<Message>(byte_line)
+            .map_err(|e| format!("deserialize error: {:?}", e))?;
+        if let Message::Match(mat) = msg {
+            Ok(mat)
+        } else {
+            Err("Not Message::Match type".into())
+        }
+    }
+}
+
 impl TryFrom<&str> for Match {
     type Error = String;
-    fn try_from(serialized_str: &str) -> Result<Self, Self::Error> {
-        let msg = serde_json::from_str::<Message>(serialized_str)
+    fn try_from(line: &str) -> Result<Self, Self::Error> {
+        let msg = serde_json::from_str::<Message>(line)
             .map_err(|e| format!("deserialize error: {:?}", e))?;
         if let Message::Match(mat) = msg {
             Ok(mat)
@@ -156,7 +170,7 @@ impl Match {
             path,
             line_number,
             column,
-            self.line(),
+            self.lines.text().trim_end()
         );
 
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
@@ -188,7 +202,7 @@ impl Match {
             path,
             line_number,
             column,
-            self.line(),
+            self.lines.text().trim_end()
         );
 
         let offset = path.len()
@@ -210,7 +224,12 @@ impl Match {
         let line_number = self.line_number();
         let column = self.column();
 
-        let formatted_string = format!("  {}:{}:{}", line_number, column, self.line());
+        let formatted_string = format!(
+            "  {}:{}:{}",
+            line_number,
+            column,
+            self.lines.text().trim_end()
+        );
 
         let offset = display_width(line_number as usize) + display_width(column) + 2 + 2;
 

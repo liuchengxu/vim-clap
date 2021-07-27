@@ -63,7 +63,19 @@ impl StdCommand {
         super::process_output(output)
     }
 
-    pub async fn lines(&mut self) -> Result<Vec<String>> {
-        async { self._lines() }.await
+    pub fn lines(&mut self) -> Result<Vec<String>> {
+        self._lines()
+    }
+
+    /// Executes the inner command and applies the predicate
+    /// same with `filter_map` on each of stream line.
+    pub fn filter_map_byte_line<B>(&mut self, f: impl FnMut(&[u8]) -> Option<B>) -> Result<Vec<B>> {
+        let output = self.0.output()?;
+
+        if !output.status.success() && !output.stderr.is_empty() {
+            return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
+        }
+
+        Ok(output.stdout.split(|x| x == &b'\n').filter_map(f).collect())
     }
 }

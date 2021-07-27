@@ -51,7 +51,7 @@ impl Tags {
         let exclude = self
             .exclude
             .iter()
-            .map(|x| x.split(',').collect::<Vec<_>>())
+            .map(|x| x.split(','))
             .flatten()
             .map(|x| format!("--exclude={}", x))
             .join(" ");
@@ -59,7 +59,8 @@ impl Tags {
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
 
         if let Some(ref languages) = self.languages {
-            command.push_str(&format!(" --languages={}", languages));
+            command.push_str(" --language=");
+            command.push_str(languages);
         };
 
         CtagsCommand::new(BaseCommand::new(command, self.dir.clone()))
