@@ -18,7 +18,7 @@ const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
-pub struct Tags {
+pub struct Ctags {
     /// Initial query string
     #[structopt(index = 1, short, long)]
     query: String,
@@ -46,7 +46,7 @@ pub struct Tags {
     exclude: Vec<String>,
 }
 
-impl Tags {
+impl Ctags {
     fn assemble_ctags_cmd(&self) -> CtagsCommand {
         let exclude = self
             .exclude

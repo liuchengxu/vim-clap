@@ -24,8 +24,8 @@ pub enum Cmd {
     #[structopt(name = "dumb-jump")]
     DumbJump(command::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
-    #[structopt(name = "tags")]
-    Tags(command::tags::Tags),
+    #[structopt(name = "ctags")]
+    Ctags(command::ctags::Ctags),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
     Cache(command::cache::Cache),
@@ -103,7 +103,7 @@ impl Maple {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
             Cmd::Exec(exec) => exec.run(self.params)?,
             Cmd::Grep(grep) => grep.run(self.params)?,
-            Cmd::Tags(tags) => tags.run(self.params)?,
+            Cmd::Ctags(ctags) => ctags.run(self.params)?,
             Cmd::Cache(cache) => cache.run()?,
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,
