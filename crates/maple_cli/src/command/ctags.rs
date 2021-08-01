@@ -20,7 +20,7 @@ const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 #[derive(StructOpt, Debug, Clone)]
 pub struct Ctags {
     /// The directory to generate recursive ctags.
-    #[structopt(index = 1, short, long, parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     dir: PathBuf,
 
     /// Initial query string
@@ -36,7 +36,7 @@ pub struct Ctags {
     input: Option<PathBuf>,
 
     /// Runs as the forerunner job, create the new cache entry.
-    #[structopt(short, long)]
+    #[structopt(long)]
     forerunner: bool,
 
     /// Exclude files and directories matching 'pattern'.
