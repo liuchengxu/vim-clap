@@ -39,7 +39,7 @@ const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     grep_query: String,
 
     /// Specify the grep command to run, normally rg will be used.
@@ -47,23 +47,23 @@ pub struct Grep {
     /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
     ///                                                       |-----------------|
     ///                                                   this can be seen as an option by mistake.
-    #[structopt(short, long, required_if("sync", "true"))]
+    #[structopt(long, required_if("sync", "true"))]
     grep_cmd: Option<String>,
 
     /// Delegate to -g option of rg
-    #[structopt(short = "g", long = "glob")]
+    #[structopt(long)]
     glob: Option<String>,
 
     /// Specify the working directory of CMD
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(short, long)]
+    #[structopt(long)]
     sync: bool,
 }
 

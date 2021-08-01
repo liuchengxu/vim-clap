@@ -11,7 +11,7 @@ use utility::read_lines;
 #[derive(StructOpt, Debug, Clone)]
 pub struct Helptags {
     /// Tempfile containing the info of vim helptags.
-    #[structopt(index = 1, short, long, parse(from_os_str))]
+    #[structopt(index = 1, long, parse(from_os_str))]
     meta_info: PathBuf,
 }
 

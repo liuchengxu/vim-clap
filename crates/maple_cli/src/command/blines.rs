@@ -11,11 +11,11 @@ use crate::app::Params;
 #[derive(StructOpt, Debug, Clone)]
 pub struct Blines {
     /// Initial query string
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     query: String,
 
     /// File path of current vim buffer.
-    #[structopt(index = 2, short, long, parse(from_os_str))]
+    #[structopt(index = 2, long, parse(from_os_str))]
     input: PathBuf,
 }
 

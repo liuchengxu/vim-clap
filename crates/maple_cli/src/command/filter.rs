@@ -24,19 +24,19 @@ fn parse_bonus(s: &str) -> Bonus {
 #[derive(StructOpt, Debug, Clone)]
 pub struct Filter {
     /// Initial query string
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     query: String,
 
     /// Filter algorithm
-    #[structopt(short, long, possible_values = &Algo::variants(), case_insensitive = true)]
+    #[structopt(long, possible_values = &Algo::variants(), case_insensitive = true)]
     algo: Option<Algo>,
 
     /// Shell command to produce the whole dataset that query is applied on.
-    #[structopt(short, long)]
+    #[structopt(long)]
     cmd: Option<String>,
 
     /// Working directory of shell command.
-    #[structopt(short, long)]
+    #[structopt(long)]
     cmd_dir: Option<String>,
 
     /// Recently opened file list for adding a bonus to the initial score.
@@ -48,15 +48,15 @@ pub struct Filter {
     input: Option<PathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[structopt(short, long, possible_values = &MatchType::variants(), case_insensitive = true)]
+    #[structopt(long, possible_values = &MatchType::variants(), case_insensitive = true)]
     match_type: Option<MatchType>,
 
     /// Add a bonus to the score of base matching algorithm.
-    #[structopt(short, long, parse(from_str = parse_bonus))]
+    #[structopt(long, parse(from_str = parse_bonus))]
     bonus: Option<Bonus>,
 
     /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(short, long)]
+    #[structopt(long)]
     sync: bool,
 }
 
