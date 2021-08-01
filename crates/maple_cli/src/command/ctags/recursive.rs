@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
 use itertools::Itertools;
 use structopt::StructOpt;
@@ -9,44 +7,14 @@ use filter::{
     FilterContext, Source,
 };
 
+use super::SharedParams;
+
 use crate::app::Params;
 use crate::process::BaseCommand;
 use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
 use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
-
-/// Generate ctags recursively given the directory.
-#[derive(StructOpt, Debug, Clone)]
-pub struct SharedParams {
-    /// The directory to generate recursive ctags.
-    #[structopt(long, parse(from_os_str))]
-    dir: PathBuf,
-
-    /// Specify the language.
-    #[structopt(long)]
-    languages: Option<String>,
-
-    /// Exclude files and directories matching 'pattern'.
-    ///
-    /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
-    exclude: Vec<String>,
-}
-
-/// Ctags command.
-#[derive(StructOpt, Debug, Clone)]
-pub enum Ctags {
-    RecursiveTags(RecursiveTags),
-}
-
-impl Ctags {
-    pub fn run(&self, params: Params) -> Result<()> {
-        match self {
-            Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
-        }
-    }
-}
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
