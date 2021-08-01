@@ -46,7 +46,7 @@ impl RecursiveTags {
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
 
         if let Some(ref languages) = self.shared.languages {
-            command.push_str(" --language=");
+            command.push_str(" --languages=");
             command.push_str(languages);
         };
 

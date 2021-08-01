@@ -11,7 +11,7 @@ use crate::app::Params;
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
 pub(self) struct SharedParams {
-    /// The directory to generate recursive ctags.
+    /// The directory for executing the ctags command.
     #[structopt(long, parse(from_os_str))]
     dir: PathBuf,
 
