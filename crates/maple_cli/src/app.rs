@@ -50,7 +50,7 @@ pub enum Cmd {
 #[structopt(
   name = "maple",
   no_version,
-  global_settings = &[AppSettings::DisableVersion]
+  global_settings = &[AppSettings::DisableVersion, AppSettings::ColoredHelp]
 )]
 pub struct Maple {
     #[structopt(flatten)]
@@ -72,11 +72,11 @@ pub struct Params {
     ///   - total: total number of initial filtered result set.
     ///   - lines: text lines used for displaying directly.
     ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(long = "number", name = "NUM")]
+    #[structopt(long, name = "NUM")]
     pub number: Option<usize>,
 
     /// Width of clap window.
-    #[structopt(long = "winwidth")]
+    #[structopt(long)]
     pub winwidth: Option<usize>,
 
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
@@ -84,7 +84,7 @@ pub struct Params {
     pub icon_painter: Option<IconPainter>,
 
     /// Do not use the cached file for exec subcommand.
-    #[structopt(long = "no-cache")]
+    #[structopt(long)]
     pub no_cache: bool,
 }
 

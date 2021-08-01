@@ -18,26 +18,14 @@ const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
-pub struct Ctags {
+pub struct SharedParams {
     /// The directory to generate recursive ctags.
     #[structopt(long, parse(from_os_str))]
     dir: PathBuf,
 
-    /// Initial query string
-    #[structopt(long)]
-    query: Option<String>,
-
     /// Specify the language.
     #[structopt(long)]
     languages: Option<String>,
-
-    /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long, parse(from_os_str))]
-    input: Option<PathBuf>,
-
-    /// Runs as the forerunner job, create the new cache entry.
-    #[structopt(long)]
-    forerunner: bool,
 
     /// Exclude files and directories matching 'pattern'.
     ///
@@ -46,9 +34,40 @@ pub struct Ctags {
     exclude: Vec<String>,
 }
 
+/// Ctags command.
+#[derive(StructOpt, Debug, Clone)]
+pub enum Ctags {
+    RecursiveTags(RecursiveTags),
+}
+
 impl Ctags {
+    pub fn run(&self, params: Params) -> Result<()> {
+        match self {
+            Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
+        }
+    }
+}
+
+/// Generate ctags recursively given the directory.
+#[derive(StructOpt, Debug, Clone)]
+pub struct RecursiveTags {
+    /// Query content.
+    #[structopt(long)]
+    query: Option<String>,
+
+    /// Runs as the forerunner job, create cache when neccessary.
+    #[structopt(long)]
+    forerunner: bool,
+
+    /// Shared parameters arouns ctags.
+    #[structopt(flatten)]
+    shared: SharedParams,
+}
+
+impl RecursiveTags {
     fn assemble_ctags_cmd(&self) -> CtagsCommand {
         let exclude = self
+            .shared
             .exclude
             .iter()
             .map(|x| x.split(','))
@@ -58,12 +77,12 @@ impl Ctags {
 
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
 
-        if let Some(ref languages) = self.languages {
+        if let Some(ref languages) = self.shared.languages {
             command.push_str(" --language=");
             command.push_str(languages);
         };
 
-        CtagsCommand::new(BaseCommand::new(command, self.dir.clone()))
+        CtagsCommand::new(BaseCommand::new(command, self.shared.dir.clone()))
     }
 
     pub fn run(
