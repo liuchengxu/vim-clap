@@ -19,13 +19,13 @@ const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
 pub struct Ctags {
-    /// Initial query string
-    #[structopt(index = 1, short, long)]
-    query: String,
-
     /// The directory to generate recursive ctags.
-    #[structopt(index = 2, short, long, parse(from_os_str))]
+    #[structopt(index = 1, short, long, parse(from_os_str))]
     dir: PathBuf,
+
+    /// Initial query string
+    #[structopt(long)]
+    query: Option<String>,
 
     /// Specify the language.
     #[structopt(long = "languages")]
@@ -93,7 +93,11 @@ impl Ctags {
             return Ok(());
         } else {
             filter::dyn_run(
-                &self.query,
+                if let Some(ref q) = self.query {
+                    q
+                } else {
+                    Default::default()
+                },
                 Source::List(ctags_cmd.formatted_tags_stream()?.map(Into::into)),
                 FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],

@@ -22,7 +22,7 @@ function! s:proj_tags.on_typed() abort
   if exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
   else
-    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('ctags', g:clap.input.get(), clap#rooter#working_dir()))
+    call clap#filter#async#dyn#start_directly(clap#maple#build_cmd('ctags', clap#rooter#working_dir(), '--query', g:clap.input.get()))
   endif
 endfunction
 

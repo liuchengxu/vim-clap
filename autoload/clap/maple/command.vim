@@ -124,7 +124,7 @@ function! clap#maple#command#tags(is_forerunner) abort
   let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
   let global_opts = s:inject_icon_painter_opt(global_opts)
 
-  let subcommand = ['ctags', '', clap#rooter#working_dir()]
+  let subcommand = ['ctags', clap#rooter#working_dir()]
   if a:is_forerunner
     call add(subcommand, '--forerunner')
   endif
