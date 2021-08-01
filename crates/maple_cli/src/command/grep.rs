@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
@@ -67,7 +67,10 @@ pub struct Grep {
     sync: bool,
 }
 
-fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
+fn prepare_sync_grep_cmd<P: AsRef<Path>>(
+    cmd_str: &str,
+    cmd_dir: Option<P>,
+) -> (Command, Vec<&str>) {
     let args = cmd_str
         .split_whitespace()
         // If cmd_str contains a quoted option, that's problematic.
@@ -120,7 +123,7 @@ impl Grep {
             .grep_cmd
             .clone()
             .context("--grep-cmd is required when --sync is on")?;
-        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.clone());
+        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.as_ref());
 
         // We split out the grep opts and query in case of the possible escape issue of clap.
         args.push(&self.grep_query);

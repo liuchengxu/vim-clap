@@ -91,7 +91,7 @@ pub struct DumbJump {
     pub kind: Option<String>,
 
     /// Specify the working directory.
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     pub cmd_dir: Option<PathBuf>,
 }
 

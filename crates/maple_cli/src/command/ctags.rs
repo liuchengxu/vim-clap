@@ -28,11 +28,11 @@ pub struct Ctags {
     query: Option<String>,
 
     /// Specify the language.
-    #[structopt(long = "languages")]
+    #[structopt(long)]
     languages: Option<String>,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Runs as the forerunner job, create the new cache entry.
