@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 use super::SharedParams;
 
-use crate::{app::Params, process::BaseCommand};
+use crate::app::Params;
 
 #[derive(StructOpt, Debug, Clone)]
 struct TagsFileParams {
@@ -112,7 +112,7 @@ impl<'a, P: AsRef<Path> + std::hash::Hash> CreateTagsConfig<'a, P> {
 }
 
 impl TagsFile {
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub fn run(&self, _params: Params) -> Result<()> {
         let create_tags_config = CreateTagsConfig::new(
             self.shared.languages.as_ref(),
             &self.inner.kinds_all,
