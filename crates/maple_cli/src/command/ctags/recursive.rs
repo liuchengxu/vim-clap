@@ -1,5 +1,4 @@
 use anyhow::Result;
-use itertools::Itertools;
 use structopt::StructOpt;
 
 use filter::{
@@ -34,14 +33,7 @@ pub struct RecursiveTags {
 
 impl RecursiveTags {
     fn assemble_ctags_cmd(&self) -> CtagsCommand {
-        let exclude = self
-            .shared
-            .exclude
-            .iter()
-            .map(|x| x.split(','))
-            .flatten()
-            .map(|x| format!("--exclude={}", x))
-            .join(" ");
+        let exclude = self.shared.exclude_opt();
 
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
 

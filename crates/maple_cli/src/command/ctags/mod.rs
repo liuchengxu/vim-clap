@@ -4,6 +4,7 @@ pub mod tagsfile;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use itertools::Itertools;
 use structopt::StructOpt;
 
 use crate::app::Params;
@@ -24,6 +25,17 @@ pub(self) struct SharedParams {
     /// Will be translated into ctags' option: --exclude=pattern.
     #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
     exclude: Vec<String>,
+}
+
+impl SharedParams {
+    pub fn exclude_opt(&self) -> String {
+        self.exclude
+            .iter()
+            .map(|x| x.split(','))
+            .flatten()
+            .map(|x| format!("--exclude={}", x))
+            .join(" ")
+    }
 }
 
 /// Ctags command.
