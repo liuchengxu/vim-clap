@@ -6,6 +6,8 @@ use anyhow::Result;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 
+use filter::subprocess::Exec;
+
 use super::SharedParams;
 
 use crate::app::Params;
@@ -35,6 +37,14 @@ pub struct TagsFile {
     /// Shared parameters arouns ctags.
     #[structopt(flatten)]
     shared: SharedParams,
+
+    /// Search the tag matching the given query.
+    #[structopt(long)]
+    query: Option<String>,
+
+    /// Search the tag case insensitively
+    #[structopt(long)]
+    ignorecase: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -112,9 +122,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     /// Executes the command to generate the tags file.
     fn create(&self) -> Result<()> {
         let command = self.build_command();
-        let exit_status = filter::subprocess::Exec::shell(&command)
-            .cwd(self.dir.as_ref())
-            .join()?;
+        let exit_status = Exec::shell(&command).cwd(self.dir.as_ref()).join()?;
 
         if !exit_status.success() {
             return Err(anyhow::anyhow!("Error occured when creating tags file"));
@@ -142,17 +150,45 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
 
 impl TagsFile {
     pub fn run(&self, _params: Params) -> Result<()> {
+        let dir = self.shared.dir()?;
+
         let config = TagsConfig::new(
             self.shared.languages.as_ref(),
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
-            self.shared.dir()?,
+            &dir,
             self.shared.exclude_opt(),
         );
 
         let tags = Tags::new(config);
-        tags.create()?;
+
+        if !tags.exists() {
+            tags.create()?;
+        }
+
+        if let Some(ref query) = self.query {
+            use std::io::BufRead;
+
+            // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
+            let stdout = Exec::cmd("readtags")
+                .arg("-t")
+                .arg(tags.tags_path)
+                .arg("-p")
+                .arg("-ne")
+                .arg("-")
+                .arg(query)
+                .stream_stdout()?;
+
+            let lines = std::io::BufReader::new(stdout)
+                .lines()
+                .flatten()
+                .collect::<Vec<_>>();
+
+            for line in lines {
+                println!("{}", line);
+            }
+        }
 
         Ok(())
     }
