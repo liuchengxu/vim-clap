@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
@@ -37,13 +38,20 @@ pub struct TagsFile {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-struct CreateTagsConfig<'a, P> {
+struct TagsConfig<'a, P> {
     languages: Option<&'a String>,
     kinds_all: &'a str,
     fields: &'a str,
     extras: &'a str,
     exclude_opt: String,
     dir: P,
+}
+
+/// Represents the manager of tags file.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+struct Tags<'a, P> {
+    config: TagsConfig<'a, P>,
+    tags_path: PathBuf,
 }
 
 pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
@@ -57,7 +65,7 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     tags_dir
 });
 
-impl<'a, P: AsRef<Path> + std::hash::Hash> CreateTagsConfig<'a, P> {
+impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     pub fn new(
         languages: Option<&'a String>,
         kinds_all: &'a str,
@@ -76,10 +84,14 @@ impl<'a, P: AsRef<Path> + std::hash::Hash> CreateTagsConfig<'a, P> {
         }
     }
 
-    fn build_command(&self) -> String {
-        let mut tags_filepath = TAGS_DIR.deref().clone();
-        tags_filepath.push(utility::calculate_hash(self).to_string());
+    /// Returns the path of tags file.
+    pub fn tags_path(&self) -> PathBuf {
+        let mut tags_path = TAGS_DIR.deref().clone();
+        tags_path.push(utility::calculate_hash(self).to_string());
+        tags_path
+    }
 
+    fn build_command(&self) -> String {
         // TODO: detect the languages by dir if not explicitly specified?
         let languages_opt = self
             .languages
@@ -93,11 +105,12 @@ impl<'a, P: AsRef<Path> + std::hash::Hash> CreateTagsConfig<'a, P> {
             self.fields,
             self.extras,
             self.exclude_opt,
-            tags_filepath.display()
+            self.tags_path().display()
         )
     }
 
-    fn create_tags(&self) -> Result<()> {
+    /// Executes the command to generate the tags file.
+    fn create(&self) -> Result<()> {
         let command = self.build_command();
         let exit_status = filter::subprocess::Exec::shell(&command)
             .cwd(self.dir.as_ref())
@@ -111,9 +124,25 @@ impl<'a, P: AsRef<Path> + std::hash::Hash> CreateTagsConfig<'a, P> {
     }
 }
 
+impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
+    pub fn new(config: TagsConfig<'a, P>) -> Self {
+        let tags_path = config.tags_path();
+        Self { config, tags_path }
+    }
+
+    /// Returns `true` if the tags file already exists.
+    pub fn exists(&self) -> bool {
+        self.tags_path.exists()
+    }
+
+    pub fn create(&self) -> Result<()> {
+        self.config.create()
+    }
+}
+
 impl TagsFile {
     pub fn run(&self, _params: Params) -> Result<()> {
-        let create_tags_config = CreateTagsConfig::new(
+        let config = TagsConfig::new(
             self.shared.languages.as_ref(),
             &self.inner.kinds_all,
             &self.inner.fields,
@@ -122,7 +151,8 @@ impl TagsFile {
             self.shared.exclude_opt(),
         );
 
-        create_tags_config.create_tags()?;
+        let tags = Tags::new(config);
+        tags.create()?;
 
         Ok(())
     }
