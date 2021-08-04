@@ -147,7 +147,7 @@ impl TagsFile {
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
-            &self.shared.dir,
+            self.shared.dir()?,
             self.shared.exclude_opt(),
         );
 

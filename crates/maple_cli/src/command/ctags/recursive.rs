@@ -32,7 +32,7 @@ pub struct RecursiveTags {
 }
 
 impl RecursiveTags {
-    fn assemble_ctags_cmd(&self) -> CtagsCommand {
+    fn assemble_ctags_cmd(&self) -> Result<CtagsCommand> {
         let exclude = self.shared.exclude_opt();
 
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
@@ -42,7 +42,10 @@ impl RecursiveTags {
             command.push_str(languages);
         };
 
-        CtagsCommand::new(BaseCommand::new(command, self.shared.dir.clone()))
+        Ok(CtagsCommand::new(BaseCommand::new(
+            command,
+            self.shared.dir()?,
+        )))
     }
 
     pub fn run(
@@ -58,7 +61,7 @@ impl RecursiveTags {
         // In case of passing an invalid icon-painter option.
         let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
 
-        let ctags_cmd = self.assemble_ctags_cmd();
+        let ctags_cmd = self.assemble_ctags_cmd()?;
 
         if self.forerunner {
             let (total, cache) = if no_cache {

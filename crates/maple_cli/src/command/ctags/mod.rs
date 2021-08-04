@@ -14,7 +14,7 @@ use crate::app::Params;
 pub(self) struct SharedParams {
     /// The directory for executing the ctags command.
     #[structopt(long, parse(from_os_str))]
-    dir: PathBuf,
+    dir: Option<PathBuf>,
 
     /// Specify the language.
     #[structopt(long)]
@@ -35,6 +35,15 @@ impl SharedParams {
             .flatten()
             .map(|x| format!("--exclude={}", x))
             .join(" ")
+    }
+
+    pub fn dir(&self) -> Result<PathBuf> {
+        let dir = match self.dir {
+            Some(ref d) => d.clone(),
+            None => std::env::current_dir()?,
+        };
+
+        Ok(dir)
     }
 }
 
