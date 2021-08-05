@@ -3,6 +3,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 
@@ -11,6 +12,7 @@ use filter::subprocess::Exec;
 use super::SharedParams;
 
 use crate::app::Params;
+use crate::paths::AbsPathBuf;
 
 #[derive(StructOpt, Debug, Clone)]
 struct TagsFileParams {
@@ -54,7 +56,7 @@ struct TagsConfig<'a, P> {
     fields: &'a str,
     extras: &'a str,
     exclude_opt: String,
-    files: &'a [String],
+    files: &'a [AbsPathBuf],
     dir: P,
 }
 
@@ -82,7 +84,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         kinds_all: &'a str,
         fields: &'a str,
         extras: &'a str,
-        files: &'a [String],
+        files: &'a [AbsPathBuf],
         dir: P,
         exclude_opt: String,
     ) -> Self {
@@ -126,7 +128,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         // pass the input files.
         if !self.files.is_empty() {
             cmd.push_str(" ");
-            cmd.push_str(&self.files.join(" "));
+            cmd.push_str(&self.files.iter().map(|f| f.display()).join(" "));
         }
 
         cmd
@@ -187,7 +189,7 @@ impl TagsFile {
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
-            &self.shared.files,
+            self.shared.files.as_slice(),
             &dir,
             self.shared.exclude_opt(),
         );

@@ -3,6 +3,7 @@ mod cache;
 mod datastore;
 mod dumb_analyzer;
 mod logger;
+mod paths;
 mod process;
 mod recent_files;
 mod stdio_server;

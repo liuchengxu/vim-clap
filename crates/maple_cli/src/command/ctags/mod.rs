@@ -8,6 +8,7 @@ use itertools::Itertools;
 use structopt::StructOpt;
 
 use crate::app::Params;
+use crate::paths::AbsPathBuf;
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
@@ -23,7 +24,11 @@ pub(self) struct SharedParams {
     /// Exclude files and directories matching 'pattern'.
     ///
     /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
+    #[structopt(
+        long,
+        default_value = ".git,*.json,node_modules,target,_build",
+        use_delimiter = true
+    )]
     exclude: Vec<String>,
 
     /// Specify the input files.
@@ -33,15 +38,13 @@ pub(self) struct SharedParams {
     /// - restrict to absolute path.
     /// - notify the tags update on demand.
     #[structopt(long)]
-    files: Vec<String>,
+    files: Vec<AbsPathBuf>,
 }
 
 impl SharedParams {
     pub fn exclude_opt(&self) -> String {
         self.exclude
             .iter()
-            .map(|x| x.split(','))
-            .flatten()
             .map(|x| format!("--exclude={}", x))
             .join(" ")
     }
