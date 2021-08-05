@@ -98,6 +98,8 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     }
 
     /// Returns the path of tags file.
+    ///
+    /// The file path of generated tags is determined by the hash of command itself.
     pub fn tags_path(&self) -> PathBuf {
         let mut tags_path = TAGS_DIR.deref().clone();
         tags_path.push(utility::calculate_hash(self).to_string());
@@ -121,6 +123,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             self.tags_path().display()
         );
 
+        // pass the input files.
         if !self.files.is_empty() {
             cmd.push_str(" ");
             cmd.push_str(&self.files.join(" "));
@@ -156,6 +159,23 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
     pub fn create(&self) -> Result<()> {
         self.config.create()
     }
+
+    pub fn readtags(&self, query: &str) -> Result<impl Iterator<Item = String>> {
+        use std::io::BufRead;
+
+        // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
+        let stdout = Exec::cmd("readtags")
+            .arg("-t")
+            .arg(&self.tags_path)
+            .arg("-p")
+            .arg("-i")
+            .arg("-ne")
+            .arg("-")
+            .arg(query)
+            .stream_stdout()?;
+
+        Ok(std::io::BufReader::new(stdout).lines().flatten())
+    }
 }
 
 impl TagsFile {
@@ -179,25 +199,7 @@ impl TagsFile {
         }
 
         if let Some(ref query) = self.query {
-            use std::io::BufRead;
-
-            // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
-            let stdout = Exec::cmd("readtags")
-                .arg("-t")
-                .arg(tags.tags_path)
-                .arg("-p")
-                .arg("-i")
-                .arg("-ne")
-                .arg("-")
-                .arg(query)
-                .stream_stdout()?;
-
-            let lines = std::io::BufReader::new(stdout)
-                .lines()
-                .flatten()
-                .collect::<Vec<_>>();
-
-            for line in lines {
+            for line in tags.readtags(query)?.collect::<Vec<_>>() {
                 println!("{}", line);
             }
         }

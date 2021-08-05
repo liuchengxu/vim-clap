@@ -28,7 +28,10 @@ pub(self) struct SharedParams {
 
     /// Specify the input files.
     ///
-    /// TODO: restrict to absolute path.
+    /// TODO:
+    ///
+    /// - restrict to absolute path.
+    /// - notify the tags update on demand.
     #[structopt(long)]
     files: Vec<String>,
 }
