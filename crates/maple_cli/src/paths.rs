@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::path::{Display, PathBuf};
+use std::path::{Display, Path, PathBuf};
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct AbsPathBuf(PathBuf);
@@ -30,6 +30,19 @@ impl TryFrom<&str> for AbsPathBuf {
     type Error = PathBuf;
     fn try_from(path: &str) -> Result<AbsPathBuf, PathBuf> {
         Self::try_from(PathBuf::from(path))
+    }
+}
+
+impl std::ops::Deref for AbsPathBuf {
+    type Target = PathBuf;
+    fn deref(&self) -> &PathBuf {
+        &self.0
+    }
+}
+
+impl AsRef<Path> for AbsPathBuf {
+    fn as_ref(&self) -> &Path {
+        self.0.as_path()
     }
 }
 

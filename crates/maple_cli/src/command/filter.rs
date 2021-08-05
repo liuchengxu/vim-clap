@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -10,7 +11,7 @@ use filter::{
 };
 use source_item::SourceItem;
 
-use crate::app::Params;
+use crate::{app::Params, paths::AbsPathBuf};
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {
@@ -44,8 +45,8 @@ pub struct Filter {
     recent_files: Option<PathBuf>,
 
     /// Read input from a file instead of stdin, only absolute file path is supported.
-    #[structopt(long, parse(from_os_str))]
-    input: Option<PathBuf>,
+    #[structopt(long)]
+    input: Option<AbsPathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
     #[structopt(long, possible_values = &MatchType::variants(), case_insensitive = true)]
@@ -71,8 +72,8 @@ impl Filter {
             }
         } else {
             self.input
-                .clone()
-                .map(Into::into)
+                .as_ref()
+                .map(|i| i.deref().clone().into())
                 .unwrap_or(Source::<I>::Stdin)
         }
     }

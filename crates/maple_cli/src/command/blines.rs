@@ -1,11 +1,10 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
 use structopt::StructOpt;
 
 use filter::{matcher::Bonus, Source};
 
 use crate::app::Params;
+use crate::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(StructOpt, Debug, Clone)]
@@ -15,8 +14,8 @@ pub struct Blines {
     query: String,
 
     /// File path of current vim buffer.
-    #[structopt(index = 2, long, parse(from_os_str))]
-    input: PathBuf,
+    #[structopt(index = 2, long)]
+    input: AbsPathBuf,
 }
 
 impl Blines {
