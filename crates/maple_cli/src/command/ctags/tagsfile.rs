@@ -54,6 +54,7 @@ struct TagsConfig<'a, P> {
     fields: &'a str,
     extras: &'a str,
     exclude_opt: String,
+    files: &'a [String],
     dir: P,
 }
 
@@ -81,6 +82,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         kinds_all: &'a str,
         fields: &'a str,
         extras: &'a str,
+        files: &'a [String],
         dir: P,
         exclude_opt: String,
     ) -> Self {
@@ -89,6 +91,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             kinds_all,
             fields,
             extras,
+            files,
             dir,
             exclude_opt,
         }
@@ -108,7 +111,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             .map(|v| format!("--languages={}", v))
             .unwrap_or_default();
 
-        format!(
+        let mut cmd = format!(
             "ctags {} --kinds-all='{}' --fields='{}' --extras='{}' {} -f '{}' -R",
             languages_opt,
             self.kinds_all,
@@ -116,7 +119,14 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             self.extras,
             self.exclude_opt,
             self.tags_path().display()
-        )
+        );
+
+        if !self.files.is_empty() {
+            cmd.push_str(" ");
+            cmd.push_str(&self.files.join(" "));
+        }
+
+        cmd
     }
 
     /// Executes the command to generate the tags file.
@@ -157,6 +167,7 @@ impl TagsFile {
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
+            &self.shared.files,
             &dir,
             self.shared.exclude_opt(),
         );
@@ -175,6 +186,7 @@ impl TagsFile {
                 .arg("-t")
                 .arg(tags.tags_path)
                 .arg("-p")
+                .arg("-i")
                 .arg("-ne")
                 .arg("-")
                 .arg(query)

@@ -25,6 +25,12 @@ pub(self) struct SharedParams {
     /// Will be translated into ctags' option: --exclude=pattern.
     #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
     exclude: Vec<String>,
+
+    /// Specify the input files.
+    ///
+    /// TODO: restrict to absolute path.
+    #[structopt(long)]
+    files: Vec<String>,
 }
 
 impl SharedParams {
