@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
 
+// 3600 seconds
 const HOUR: i64 = 3600;
 const DAY: i64 = HOUR * 24;
 const WEEK: i64 = DAY * 7;
+const MONTH: i64 = DAY * 30;
 
 const MAX_ENTRIES: u64 = 10_000;
 
@@ -58,6 +60,7 @@ impl PartialOrd for FrecentEntry {
 }
 
 impl FrecentEntry {
+    /// Creates a new instance of [`FrecentEntry`].
     pub fn new(fpath: String) -> Self {
         Self {
             fpath,
@@ -86,6 +89,8 @@ impl FrecentEntry {
         } else if duration < DAY {
             self.visits * 2
         } else if duration < WEEK {
+            self.visits * 3 / 2
+        } else if duration < MONTH {
             self.visits / 2
         } else {
             self.visits / 4
