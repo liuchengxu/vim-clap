@@ -4,11 +4,8 @@ use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::stdio_server::{
-    previewer::{preview_file, preview_file_at},
-    types::Message,
-    write_response,
-};
+use crate::previewer::{preview_file, preview_file_at};
+use crate::stdio_server::{types::Message, write_response};
 
 pub fn preview_quickfix_entry(msg: Message) {
     tokio::spawn(async move { preview_quickfix_entry_impl(msg).await });

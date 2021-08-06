@@ -9,6 +9,7 @@ mod recent_files;
 mod stdio_server;
 mod tools;
 mod utils;
+mod previewer;
 
 pub mod command;
 /// Re-exports.

@@ -6,13 +6,8 @@ use serde_json::json;
 
 use pattern::*;
 
-use crate::stdio_server::{
-    filer, global,
-    previewer::{self, vim_help::HelpTagPreview},
-    session::SessionContext,
-    types::Message,
-    write_response,
-};
+use crate::previewer::{self, vim_help::HelpTagPreview};
+use crate::stdio_server::{filer, global, session::SessionContext, types::Message, write_response};
 
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]

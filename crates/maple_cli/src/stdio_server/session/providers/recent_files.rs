@@ -25,9 +25,14 @@ pub async fn handle_recent_files_message(
     struct Params {
         query: String,
         enable_icon: Option<bool>,
+        lnum: Option<u64>,
     }
 
-    let Params { query, enable_icon } = msg.deserialize_params_unsafe();
+    let Params {
+        query,
+        enable_icon,
+        lnum,
+    } = msg.deserialize_params_unsafe();
 
     let recent_files = RECENT_FILES_IN_MEMORY.lock();
     let ranked = recent_files.filter_on_query(&query);
@@ -35,6 +40,11 @@ pub async fn handle_recent_files_message(
 
     let total = ranked.len();
 
+    if let Some(lnum) = lnum {
+        // process the new preview
+    }
+
+    // Take the first 200 entries and add an icon to each of them.
     let (lines, indices, truncated_map) = printer::process_top_items(
         ranked.iter().take(200).cloned().collect(),
         winwidth as usize,

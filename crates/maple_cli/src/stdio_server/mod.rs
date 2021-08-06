@@ -1,4 +1,3 @@
-mod previewer;
 mod session;
 mod types;
 
