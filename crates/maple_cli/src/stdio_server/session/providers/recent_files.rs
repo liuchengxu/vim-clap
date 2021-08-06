@@ -1,3 +1,6 @@
+use parking_lot::Mutex;
+use std::sync::Arc;
+
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use serde::Deserialize;
@@ -73,7 +76,7 @@ pub async fn handle_recent_files_message(
 
 #[derive(Debug, Clone, Default)]
 pub struct RecentFilesMessageHandler {
-    lines: Vec<filter::FilteredItem>,
+    lines: Arc<Mutex<Vec<filter::FilteredItem>>>,
 }
 
 #[async_trait::async_trait]
@@ -87,6 +90,7 @@ impl EventHandler for RecentFilesMessageHandler {
 
                 if let Some(curline) = self
                     .lines
+                    .lock()
                     .get((lnum - 1) as usize)
                     .map(|r| r.source_item.raw.as_str())
                 {
@@ -100,7 +104,7 @@ impl EventHandler for RecentFilesMessageHandler {
             }
             Event::OnTyped(msg) => {
                 let winwidth = context.display_winwidth;
-                let lines = tokio::spawn(handle_recent_files_message(msg, winwidth, false))
+                let new_lines = tokio::spawn(handle_recent_files_message(msg, winwidth, false))
                     .await
                     .unwrap_or_else(|e| {
                         log::error!(
@@ -109,7 +113,9 @@ impl EventHandler for RecentFilesMessageHandler {
                         );
                         Default::default()
                     });
-                self.lines = lines;
+
+                let mut lines = self.lines.lock();
+                *lines = new_lines;
             }
         }
 
@@ -121,14 +127,22 @@ pub struct RecentFilesSession;
 
 impl NewSession for RecentFilesSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) =
-            Session::new(msg.clone(), RecentFilesMessageHandler::default());
+        let handler = RecentFilesMessageHandler::default();
+        let lines_clone = handler.lines.clone();
+
+        let (session, session_sender) = Session::new(msg.clone(), handler);
 
         let winwidth = session.context.display_winwidth;
 
         session.start_event_loop()?;
 
-        tokio::spawn(handle_recent_files_message(msg, winwidth, true));
+        tokio::spawn(async move {
+            let initial_lines =
+                handle_recent_files_message(msg, winwidth, true).await;
+
+            let mut lines = lines_clone.lock();
+            *lines = initial_lines;
+        });
 
         Ok(session_sender)
     }
