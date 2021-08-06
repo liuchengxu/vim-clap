@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
@@ -39,7 +39,7 @@ const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     grep_query: String,
 
     /// Specify the grep command to run, normally rg will be used.
@@ -47,27 +47,30 @@ pub struct Grep {
     /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
     ///                                                       |-----------------|
     ///                                                   this can be seen as an option by mistake.
-    #[structopt(short, long, required_if("sync", "true"))]
+    #[structopt(long, required_if("sync", "true"))]
     grep_cmd: Option<String>,
 
     /// Delegate to -g option of rg
-    #[structopt(short = "g", long = "glob")]
+    #[structopt(long)]
     glob: Option<String>,
 
     /// Specify the working directory of CMD
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(short, long)]
+    #[structopt(long)]
     sync: bool,
 }
 
-fn prepare_sync_grep_cmd(cmd_str: &str, cmd_dir: Option<PathBuf>) -> (Command, Vec<&str>) {
+fn prepare_sync_grep_cmd<P: AsRef<Path>>(
+    cmd_str: &str,
+    cmd_dir: Option<P>,
+) -> (Command, Vec<&str>) {
     let args = cmd_str
         .split_whitespace()
         // If cmd_str contains a quoted option, that's problematic.
@@ -120,7 +123,7 @@ impl Grep {
             .grep_cmd
             .clone()
             .context("--grep-cmd is required when --sync is on")?;
-        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.clone());
+        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.as_ref());
 
         // We split out the grep opts and query in case of the possible escape issue of clap.
         args.push(&self.grep_query);

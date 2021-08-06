@@ -24,8 +24,8 @@ pub enum Cmd {
     #[structopt(name = "dumb-jump")]
     DumbJump(command::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
-    #[structopt(name = "tags")]
-    Tags(command::tags::Tags),
+    #[structopt(name = "ctags")]
+    Ctags(command::ctags::Ctags),
     /// Interact with the cache info.
     #[structopt(name = "cache")]
     Cache(command::cache::Cache),
@@ -50,7 +50,7 @@ pub enum Cmd {
 #[structopt(
   name = "maple",
   no_version,
-  global_settings = &[AppSettings::DisableVersion]
+  global_settings = &[AppSettings::DisableVersion, AppSettings::ColoredHelp]
 )]
 pub struct Maple {
     #[structopt(flatten)]
@@ -72,11 +72,11 @@ pub struct Params {
     ///   - total: total number of initial filtered result set.
     ///   - lines: text lines used for displaying directly.
     ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(long = "number", name = "NUM")]
+    #[structopt(long, name = "NUM")]
     pub number: Option<usize>,
 
     /// Width of clap window.
-    #[structopt(long = "winwidth")]
+    #[structopt(long)]
     pub winwidth: Option<usize>,
 
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
@@ -84,7 +84,7 @@ pub struct Params {
     pub icon_painter: Option<IconPainter>,
 
     /// Do not use the cached file for exec subcommand.
-    #[structopt(long = "no-cache")]
+    #[structopt(long)]
     pub no_cache: bool,
 }
 
@@ -103,7 +103,7 @@ impl Maple {
             Cmd::Version | Cmd::Upgrade(_) => unreachable!("Version and Upgrade are unusable"),
             Cmd::Exec(exec) => exec.run(self.params)?,
             Cmd::Grep(grep) => grep.run(self.params)?,
-            Cmd::Tags(tags) => tags.run(self.params)?,
+            Cmd::Ctags(ctags) => ctags.run(self.params)?,
             Cmd::Cache(cache) => cache.run()?,
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,

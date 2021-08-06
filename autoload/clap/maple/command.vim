@@ -124,10 +124,13 @@ function! clap#maple#command#tags(is_forerunner) abort
   let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
   let global_opts = s:inject_icon_painter_opt(global_opts)
 
-  let subcommand = ['tags', '', clap#rooter#working_dir()]
+  let subcommand = ['ctags', 'recursive-tags']
+
   if a:is_forerunner
     call add(subcommand, '--forerunner')
   endif
+
+  let subcommand = subcommand + ['--dir', clap#rooter#working_dir()]
 
   return [s:maple_bin] + global_opts + subcommand
 endfunction

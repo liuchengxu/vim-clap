@@ -9,7 +9,7 @@ use filter::subprocess;
 
 use crate::process::BaseCommand;
 
-/// Unit type of [`BaseCommand`] for ctags.
+/// Unit type wrapper of [`BaseCommand`] for ctags.
 #[derive(Debug, Clone)]
 pub struct CtagsCommand {
     inner: BaseCommand,
@@ -84,7 +84,9 @@ pub fn ensure_has_json_support() -> Result<()> {
     if *json_supported {
         Ok(())
     } else {
-        Err(anyhow!("ctags executable has no +json feature"))
+        Err(anyhow!(
+            "The found ctags executable is not compiled with +json feature, please recompile it."
+        ))
     }
 }
 

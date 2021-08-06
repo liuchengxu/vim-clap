@@ -1,18 +1,19 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::PathBuf;
 
 use anyhow::Result;
 use structopt::StructOpt;
 
 use utility::read_lines;
 
+use crate::paths::AbsPathBuf;
+
 /// Parse and display Vim helptags.
 #[derive(StructOpt, Debug, Clone)]
 pub struct Helptags {
     /// Tempfile containing the info of vim helptags.
-    #[structopt(index = 1, short, long, parse(from_os_str))]
-    meta_info: PathBuf,
+    #[structopt(index = 1, long)]
+    meta_info: AbsPathBuf,
 }
 
 #[inline]
@@ -28,7 +29,7 @@ fn strip_trailing_slash(x: &str) -> String {
 
 impl Helptags {
     pub fn run(self) -> Result<()> {
-        let mut lines = read_lines(self.meta_info)?;
+        let mut lines = read_lines(self.meta_info.as_ref())?;
         // line 1:/doc/tags,/doc/tags-cn
         // line 2:&runtimepath
         if let Some(Ok(doc_tags)) = lines.next() {

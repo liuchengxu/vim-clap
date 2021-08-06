@@ -1,13 +1,12 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
-use itertools::Itertools;
 use structopt::StructOpt;
 
 use filter::{
     matcher::{Bonus, MatchType},
     FilterContext, Source,
 };
+
+use super::SharedParams;
 
 use crate::app::Params;
 use crate::process::BaseCommand;
@@ -18,52 +17,35 @@ const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
-pub struct Tags {
-    /// Initial query string
-    #[structopt(index = 1, short, long)]
-    query: String,
+pub struct RecursiveTags {
+    /// Query content.
+    #[structopt(long)]
+    query: Option<String>,
 
-    /// The directory to generate recursive ctags.
-    #[structopt(index = 2, short, long, parse(from_os_str))]
-    dir: PathBuf,
-
-    /// Specify the language.
-    #[structopt(long = "languages")]
-    languages: Option<String>,
-
-    /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
-    input: Option<PathBuf>,
-
-    /// Runs as the forerunner job, create the new cache entry.
-    #[structopt(short, long)]
+    /// Runs as the forerunner job, create cache when neccessary.
+    #[structopt(long)]
     forerunner: bool,
 
-    /// Exclude files and directories matching 'pattern'.
-    ///
-    /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(long, default_value = ".git,*.json,node_modules,target,_build")]
-    exclude: Vec<String>,
+    /// Shared parameters arouns ctags.
+    #[structopt(flatten)]
+    shared: SharedParams,
 }
 
-impl Tags {
-    fn assemble_ctags_cmd(&self) -> CtagsCommand {
-        let exclude = self
-            .exclude
-            .iter()
-            .map(|x| x.split(','))
-            .flatten()
-            .map(|x| format!("--exclude={}", x))
-            .join(" ");
+impl RecursiveTags {
+    fn assemble_ctags_cmd(&self) -> Result<CtagsCommand> {
+        let exclude = self.shared.exclude_opt();
 
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
 
-        if let Some(ref languages) = self.languages {
-            command.push_str(" --language=");
+        if let Some(ref languages) = self.shared.languages {
+            command.push_str(" --languages=");
             command.push_str(languages);
         };
 
-        CtagsCommand::new(BaseCommand::new(command, self.dir.clone()))
+        Ok(CtagsCommand::new(BaseCommand::new(
+            command,
+            self.shared.dir()?,
+        )))
     }
 
     pub fn run(
@@ -79,7 +61,7 @@ impl Tags {
         // In case of passing an invalid icon-painter option.
         let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
 
-        let ctags_cmd = self.assemble_ctags_cmd();
+        let ctags_cmd = self.assemble_ctags_cmd()?;
 
         if self.forerunner {
             let (total, cache) = if no_cache {
@@ -93,7 +75,11 @@ impl Tags {
             return Ok(());
         } else {
             filter::dyn_run(
-                &self.query,
+                if let Some(ref q) = self.query {
+                    q
+                } else {
+                    Default::default()
+                },
                 Source::List(ctags_cmd.formatted_tags_stream()?.map(Into::into)),
                 FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],

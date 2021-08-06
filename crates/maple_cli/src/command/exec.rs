@@ -14,15 +14,15 @@ use crate::process::{
 #[derive(StructOpt, Debug, Clone)]
 pub struct Exec {
     /// Specify the system command to run.
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     cmd: String,
 
     /// Specify the working directory of CMD
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Specify the threshold for writing the output of command to a tempfile.
-    #[structopt(long = "output-threshold", default_value = "100000")]
+    #[structopt(long, default_value = "100000")]
     output_threshold: usize,
 }
 

@@ -79,19 +79,19 @@ fn render_jump_line(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
 #[derive(StructOpt, Debug, Clone)]
 pub struct DumbJump {
     /// Search term.
-    #[structopt(index = 1, short, long)]
+    #[structopt(index = 1, long)]
     pub word: String,
 
     /// File extension.
-    #[structopt(index = 2, short, long)]
+    #[structopt(index = 2, long)]
     pub extension: String,
 
     /// Definition kind.
-    #[structopt(long = "kind")]
+    #[structopt(long)]
     pub kind: Option<String>,
 
     /// Specify the working directory.
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     pub cmd_dir: Option<PathBuf>,
 }
 
