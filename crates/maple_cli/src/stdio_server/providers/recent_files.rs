@@ -39,8 +39,21 @@ pub async fn handle_recent_files_message(
 
     let total = ranked.len();
 
+    let mut preview_content = None;
+
     if let Some(lnum) = lnum {
         // process the new preview
+        if let Some(new_entry) = ranked.get(lnum as usize - 1) {
+            let new_curline = new_entry.display_text();
+            if let Ok((preview_lines, preview_fname)) =
+                crate::previewer::preview_file(new_curline, 100, 80)
+            {
+                preview_content = Some(json!({
+                  "lines": preview_lines,
+                  "fname": preview_fname
+                }));
+            }
+        }
     }
 
     // Take the first 200 entries and add an icon to each of them.
@@ -60,6 +73,7 @@ pub async fn handle_recent_files_message(
         "indices": indices,
         "total": total,
         "initial_size": initial_size,
+        "preview_content": preview_content,
         })
     } else {
         json!({
@@ -68,6 +82,7 @@ pub async fn handle_recent_files_message(
         "truncated_map": truncated_map,
         "total": total,
         "initial_size": initial_size,
+        "preview_content": preview_content,
         })
     };
 
@@ -125,8 +140,6 @@ impl EventHandler for RecentFilesMessageHandler {
 
                 let mut lines = self.lines.lock();
                 *lines = new_lines;
-
-                // TODO: refresh the preview
             }
         }
 
