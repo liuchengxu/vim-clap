@@ -1,5 +1,5 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Persistent recent files.
+" Description: Persistent recent files, ordered by the Mozilla's Frecency algorithm.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
