@@ -48,6 +48,26 @@ function! clap#state#handle_message(msg) abort
   endif
 endfunction
 
+function! clap#state#process_preview_result(result) abort
+  if has_key(a:result, 'lines')
+    try
+      call g:clap.preview.show(a:result.lines)
+    catch
+      return
+    endtry
+    if has_key(a:result, 'syntax')
+      call g:clap.preview.set_syntax(a:result.syntax)
+    elseif has_key(a:result, 'fname')
+      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+    endif
+    call clap#preview#highlight_header()
+
+    if has_key(a:result, 'hi_lnum')
+      call g:clap.preview.add_highlight(a:result.hi_lnum+1)
+    endif
+  endif
+endfunction
+
 " Handle the response of OnTyped event
 function! clap#state#handle_response_on_typed(result, error) abort
   if a:error isnot v:null
@@ -82,21 +102,8 @@ function! clap#state#handle_response_on_typed(result, error) abort
   call clap#preview#async_open_with_delay()
   call clap#sign#ensure_exists()
 
-  if has_key(a:result, 'preview_content') && !empty(a:result.preview_content)
-    let preview = a:result.preview_content
-    try
-      call g:clap.preview.show(preview.lines)
-    catch
-      return
-    endtry
-    if has_key(preview, 'fname')
-      call g:clap.preview.set_syntax(clap#ext#into_filetype(preview.fname))
-    endif
-    call clap#preview#highlight_header()
-
-    if has_key(preview, 'hi_lnum')
-      call g:clap.preview.add_highlight(preview.hi_lnum+1)
-    endif
+  if has_key(a:result, 'preview') && !empty(a:result.preview)
+    call clap#state#process_preview_result(a:result.preview)
   endif
 endfunction
 

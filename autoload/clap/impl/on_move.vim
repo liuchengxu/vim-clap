@@ -19,23 +19,7 @@ if clap#maple#is_available()
     if a:error isnot v:null
       return
     endif
-    if has_key(a:result, 'lines')
-      try
-        call g:clap.preview.show(a:result.lines)
-      catch
-        return
-      endtry
-      if has_key(a:result, 'syntax')
-        call g:clap.preview.set_syntax(a:result.syntax)
-      elseif has_key(a:result, 'fname')
-        call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
-      endif
-      call clap#preview#highlight_header()
-
-      if has_key(a:result, 'hi_lnum')
-        call g:clap.preview.add_highlight(a:result.hi_lnum+1)
-      endif
-    endif
+    call clap#state#process_preview_result(a:result)
   endfunction
 
   function! s:dispatch_on_move_impl() abort

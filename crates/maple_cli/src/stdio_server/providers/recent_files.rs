@@ -39,18 +39,16 @@ pub async fn handle_recent_files_message(
 
     let total = ranked.len();
 
-    let mut preview_content = None;
+    let mut preview = None;
 
     if let Some(lnum) = lnum {
         // process the new preview
         if let Some(new_entry) = ranked.get(lnum as usize - 1) {
             let new_curline = new_entry.display_text();
-            if let Ok((preview_lines, preview_fname)) =
-                crate::previewer::preview_file(new_curline, 100, 80)
-            {
-                preview_content = Some(json!({
-                  "lines": preview_lines,
-                  "fname": preview_fname
+            if let Ok((lines, fname)) = crate::previewer::preview_file(new_curline, 100, 80) {
+                preview = Some(json!({
+                  "lines": lines,
+                  "fname": fname
                 }));
             }
         }
@@ -73,7 +71,7 @@ pub async fn handle_recent_files_message(
         "indices": indices,
         "total": total,
         "initial_size": initial_size,
-        "preview_content": preview_content,
+        "preview": preview,
         })
     } else {
         json!({
@@ -82,7 +80,7 @@ pub async fn handle_recent_files_message(
         "truncated_map": truncated_map,
         "total": total,
         "initial_size": initial_size,
-        "preview_content": preview_content,
+        "preview": preview,
         })
     };
 
