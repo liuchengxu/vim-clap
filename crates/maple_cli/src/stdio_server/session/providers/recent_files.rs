@@ -116,6 +116,8 @@ impl EventHandler for RecentFilesMessageHandler {
 
                 let mut lines = self.lines.lock();
                 *lines = new_lines;
+
+                // TODO: refresh the preview
             }
         }
 
@@ -137,8 +139,7 @@ impl NewSession for RecentFilesSession {
         session.start_event_loop()?;
 
         tokio::spawn(async move {
-            let initial_lines =
-                handle_recent_files_message(msg, winwidth, true).await;
+            let initial_lines = handle_recent_files_message(msg, winwidth, true).await;
 
             let mut lines = lines_clone.lock();
             *lines = initial_lines;
