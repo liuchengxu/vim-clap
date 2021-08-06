@@ -7,10 +7,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
+use crate::stdio_server::event_handlers::OnMoveHandler;
 use crate::stdio_server::{
-    session::{
-        Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,
-    },
+    session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
 

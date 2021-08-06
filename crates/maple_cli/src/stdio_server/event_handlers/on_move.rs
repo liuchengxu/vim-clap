@@ -8,6 +8,7 @@ use pattern::*;
 
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{filer, global, session::SessionContext, types::Message, write_response};
+use crate::utils::build_abs_path;
 
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]
@@ -38,13 +39,6 @@ pub enum OnMove {
         doc_filename: String,
         runtimepath: String,
     },
-}
-
-/// Build the absolute path using cwd and relative path.
-pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: String) -> PathBuf {
-    let mut path: PathBuf = cwd.as_ref().into();
-    path.push(&curline);
-    path
 }
 
 impl OnMove {

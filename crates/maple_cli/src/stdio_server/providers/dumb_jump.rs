@@ -5,10 +5,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::command::dumb_jump::{DumbJump, Lines};
+use crate::stdio_server::event_handlers::OnMoveHandler;
 use crate::stdio_server::{
-    session::{
-        Event, EventHandler, NewSession, OnMoveHandler, Session, SessionContext, SessionEvent,
-    },
+    session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
 

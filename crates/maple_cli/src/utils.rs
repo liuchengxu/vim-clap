@@ -100,3 +100,10 @@ pub fn send_response_from_cache(
         }
     }
 }
+
+/// Build the absolute path using cwd and relative path.
+pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: String) -> PathBuf {
+    let mut path: PathBuf = cwd.as_ref().into();
+    path.push(&curline);
+    path
+}

@@ -1,18 +1,14 @@
 mod context;
-pub mod event_handlers;
 mod manager;
-pub mod message_handlers;
-mod providers;
 
 use anyhow::Result;
+use crossbeam_channel::Sender;
+use log::debug;
 
-use super::*;
-use crate::stdio_server::types::ProviderId;
+use crate::stdio_server::types::{Message, ProviderId};
 
 pub use self::context::SessionContext;
-pub use self::event_handlers::on_move::{build_abs_path, OnMove, OnMoveHandler};
 pub use self::manager::{NewSession, SessionManager};
-pub use self::providers::*;
 
 pub type SessionId = u64;
 

@@ -8,13 +8,12 @@ use serde_json::json;
 
 use icon::prepend_filer_icon;
 
+use crate::stdio_server::event_handlers::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
-    session::{
-        build_abs_path, Event, EventHandler, NewSession, OnMove, OnMoveHandler, Session,
-        SessionContext, SessionEvent,
-    },
+    session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
+use crate::utils::build_abs_path;
 
 /// Display the inner path in a nicer way.
 struct DisplayPath<P> {
