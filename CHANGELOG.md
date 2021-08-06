@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.28] 2021-08-06
 ## Improved
 
 - Rewrite the cache system to be more efficient and convenient. See #726 for details.
