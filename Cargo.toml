@@ -9,7 +9,7 @@ include = ["/Cargo.toml", "src/*.rs"]
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 homepage = "https://github.com/liuchengxu/vim-clap"
 categories = ["command-line-utilities"]
-description = "vim-clap external filter gadget"
+description = "Rust backend for the vim plugin vim-clap"
 
 [dependencies]
 tokio = { version = "1.9", features = ["rt"] }
@@ -17,4 +17,4 @@ tokio = { version = "1.9", features = ["rt"] }
 maple_cli = { path = "crates/maple_cli" }
 
 [build-dependencies]
-built = { package = "built", version = "0.5", features = ["git2"]}
+built = { package = "built", version = "0.5", features = ["git2"] }

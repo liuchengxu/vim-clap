@@ -6,11 +6,9 @@ pub mod recent_files;
 use anyhow::Result;
 use crossbeam_channel::Sender;
 
+use crate::stdio_server::event_handlers::{self, DefaultEventHandler};
 use crate::stdio_server::{
-    session::{
-        event_handlers::{self, DefaultEventHandler},
-        NewSession, Session, SessionEvent,
-    },
+    session::{NewSession, Session, SessionEvent},
     Message,
 };
 

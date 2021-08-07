@@ -8,13 +8,12 @@ use serde_json::json;
 
 use icon::prepend_filer_icon;
 
+use crate::stdio_server::event_handlers::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
-    session::{
-        build_abs_path, Event, EventHandler, NewSession, OnMove, OnMoveHandler, Session,
-        SessionContext, SessionEvent,
-    },
+    session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
+use crate::utils::build_abs_path;
 
 /// Display the inner path in a nicer way.
 struct DisplayPath<P> {
@@ -91,11 +90,13 @@ impl EventHandler for FilerMessageHandler {
             Event::OnMove(msg) => {
                 #[derive(serde::Deserialize)]
                 struct Params {
-                    curline: String,
+                    // curline: String,
                     cwd: String,
                 }
                 let msg_id = msg.id;
-                let Params { curline, cwd } = msg.deserialize_params_unsafe();
+                // Do not use curline directly.
+                let curline = msg.get_curline(&context.provider_id)?;
+                let Params { cwd } = msg.deserialize_params_unsafe();
                 let path = build_abs_path(&cwd, curline);
                 let on_move_handler = OnMoveHandler {
                     msg_id,
@@ -104,6 +105,7 @@ impl EventHandler for FilerMessageHandler {
                     inner: OnMove::Filer(path.clone()),
                 };
                 if let Err(err) = on_move_handler.handle() {
+                    log::error!("Failed to handle filer OnMove: {:?}", err);
                     let error = json!({"message": err.to_string(), "dir": path});
                     let res = json!({ "id": msg_id, "provider_id": "filer", "error": error });
                     write_response(res);
@@ -145,6 +147,7 @@ pub fn handle_filer_message(msg: Message) {
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
         }
         Err(err) => {
+            log::error!("Failed to read directory entries, cwd: {:?}", cwd);
             let error = json!({"message": err.to_string(), "dir": cwd});
             json!({ "id": msg.id, "provider_id": "filer", "error": error })
         }

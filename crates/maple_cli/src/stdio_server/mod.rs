@@ -1,4 +1,6 @@
-mod previewer;
+pub mod event_handlers;
+pub mod message_handlers;
+mod providers;
 mod session;
 mod types;
 
@@ -11,11 +13,12 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use self::session::{
+use self::providers::{
     dumb_jump,
     filer::{self, FilerSession},
-    message_handlers, quickfix, recent_files, GeneralSession, SessionEvent, SessionManager,
+    quickfix, recent_files, GeneralSession,
 };
+use self::session::{SessionEvent, SessionManager};
 use self::types::{GlobalEnv, Message};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();

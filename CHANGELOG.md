@@ -2,8 +2,16 @@
 
 ## [unreleased]
 
+## Improved
+
+- Make the preview on enter work for `recent_files` provider. #731
+
+## Fixed
+
+- Fix the preview of `filer` provider. #731
 
 ## [0.28] 2021-08-06
+
 ## Improved
 
 - Rewrite the cache system to be more efficient and convenient. See #726 for details.

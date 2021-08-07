@@ -12,6 +12,8 @@ use crate::stdio_server::{
     write_response,
 };
 
+pub use on_move::{OnMove, OnMoveHandler};
+
 #[derive(Clone)]
 pub struct DefaultEventHandler;
 

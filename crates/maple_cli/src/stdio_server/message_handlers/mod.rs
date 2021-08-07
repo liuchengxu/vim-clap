@@ -7,7 +7,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::{previewer, types::Message, write_response};
+use crate::previewer;
+use crate::stdio_server::{types::Message, write_response};
 
 pub fn parse_filetypedetect(msg: Message) {
     let output = msg.get_string_unsafe("autocmd_filetypedetect");

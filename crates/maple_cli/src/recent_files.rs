@@ -1,15 +1,16 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
-use anyhow::Result;
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
 
+// 3600 seconds
 const HOUR: i64 = 3600;
 const DAY: i64 = HOUR * 24;
 const WEEK: i64 = DAY * 7;
+const MONTH: i64 = DAY * 30;
 
 const MAX_ENTRIES: u64 = 10_000;
 
@@ -59,6 +60,7 @@ impl PartialOrd for FrecentEntry {
 }
 
 impl FrecentEntry {
+    /// Creates a new instance of [`FrecentEntry`].
     pub fn new(fpath: String) -> Self {
         Self {
             fpath,
@@ -68,6 +70,7 @@ impl FrecentEntry {
         }
     }
 
+    /// Updates an existing entry.
     pub fn refresh_now(&mut self) {
         let now = Utc::now();
         self.last_visit = now;
@@ -75,6 +78,7 @@ impl FrecentEntry {
         self.update_frecent(Some(now));
     }
 
+    /// Updates the frecent score.
     pub fn update_frecent(&mut self, at: Option<UtcTime>) {
         let now = at.unwrap_or_else(Utc::now);
 
@@ -85,6 +89,8 @@ impl FrecentEntry {
         } else if duration < DAY {
             self.visits * 2
         } else if duration < WEEK {
+            self.visits * 3 / 2
+        } else if duration < MONTH {
             self.visits / 2
         } else {
             self.visits / 4
@@ -114,6 +120,9 @@ impl Default for SortedRecentFiles {
 }
 
 impl SortedRecentFiles {
+    /// Deletes the invalid ones from current entries.
+    ///
+    /// Used when loading from the disk.
     pub fn remove_invalid_entries(self) -> Self {
         Self {
             entries: self
@@ -125,25 +134,16 @@ impl SortedRecentFiles {
         }
     }
 
+    /// Returns the size of entries.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     pub fn filter_on_query(&self, query: &str) -> Vec<filter::FilteredItem> {
-        // .map(|entry| {
-        // let fpath = &entry.fpath;
-        // let user_dirs = directories::UserDirs::new().expect("User dirs");
-        // let home_dir = user_dirs.home_dir();
-        // if let Ok(stripped) = std::path::Path::new(fpath).strip_prefix(home_dir) {
-        // format!("~/{}", stripped.to_string_lossy().to_string())
-        // } else {
-        // fpath.to_string()
-        // }
-        // })
         filter::simple_run(self.entries.iter().map(|entry| entry.fpath.as_str()), query)
     }
 
-    /// Update or insert a new entry in a sorted way.
+    /// Updates or inserts a new entry in a sorted way.
     pub fn upsert(&mut self, file: String) {
         match self
             .entries
@@ -164,12 +164,9 @@ impl SortedRecentFiles {
             self.entries.truncate(self.max_entries as usize);
         }
 
-        if let Err(e) = self.write_to_disk() {
+        // Write back to the disk.
+        if let Err(e) = crate::datastore::store_recent_files(self) {
             log::error!("Failed to write the recent files to the disk: {:?}", e);
         }
-    }
-
-    fn write_to_disk(&self) -> Result<()> {
-        crate::datastore::store_recent_files(self)
     }
 }

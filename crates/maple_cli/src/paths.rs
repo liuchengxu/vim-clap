@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::path::{Display, Path, PathBuf};
 
+/// Unit type wrapper of [`PathBuf`] that is absolute path.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct AbsPathBuf(PathBuf);
 
