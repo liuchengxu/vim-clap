@@ -159,7 +159,7 @@ function! s:unix_sanity_check() abort
   " If on *BSD, we need to invoke gmake for clap's Makefiles
   if !has('win32') && executable('uname')
     let l:uname = substitute(system('uname'), '\n', '', '')
-    if l:uname == 'FreeBSD' || l:uname == 'OpenBSD'
+    if l:uname ==? 'FreeBSD' || l:uname ==? 'OpenBSD'
       let s:make_cmd = 'gmake'
       if executable(s:make_cmd) != 1
         call clap#helper#echo_error('To set up clap binaries you need to install gmake package.')
