@@ -67,7 +67,9 @@ function! clap#installer#build_python_dynamic_module() abort
   endif
 
   if executable('cargo')
-    call s:unix_sanity_check()
+    if !s:unix_sanity_check_is_ok()
+      return
+    endif
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
@@ -90,7 +92,9 @@ function! clap#installer#build_all(...) abort
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
-        call s:unix_sanity_check()
+        if !s:unix_sanity_check_is_ok()
+          return
+        endif
         let cmd = s:make_cmd
       endif
       call s:run_term(cmd, s:plugin_root_dir, 'built maple binary and Python dynamic module successfully')
@@ -106,7 +110,9 @@ function! clap#installer#download_binary() abort
   if has('win32')
     let cmd = 'Powershell.exe -ExecutionPolicy ByPass -File "'.s:plugin_root_dir.'\install.ps1"'
   else
-    call s:unix_sanity_check()
+    if !s:unix_sanity_check_is_ok()
+      return
+    endif
     let cmd = './install.sh'
   endif
   call s:run_term(cmd, s:plugin_root_dir, 'download the prebuilt maple binary successfully')
@@ -151,22 +157,29 @@ function! clap#installer#install(try_download) abort
   endif
 endfunction
 
-function! s:unix_sanity_check() abort
+function! s:unix_sanity_check_is_ok() abort
   " If &shell is not set properly, everything will fail
   if executable(&shell) != 1
     call clap#helper#echo_error('Shell not executable. Check if '. &shell . 'exists!')
+    return 0
   endif
   " If on *BSD, we need to invoke gmake for clap's Makefiles
-  if ! has('win32') && executable('uname')
+  if !has('win32')
+    if !executable('uname')
+      call clap#helper#echo_error('uname failed! Cannot detect OS!')
+      return 0
+    endif
     let l:uname = substitute(system('uname'), '\n', '', '')
-    if l:uname == 'FreeBSD' || l:uname == 'OpenBSD'
+    if l:uname ==? 'FreeBSD' || l:uname ==? 'OpenBSD'
       let s:make_cmd = 'gmake'
       if executable(s:make_cmd) != 1
         call clap#helper#echo_error('To set up clap binaries you need to install gmake package.')
+        return 0
       endif
       let s:rust_ext_cmd = s:make_cmd . ' build'
     endif
   endif
+  return 1
 endfunction
 
 let &cpoptions = s:save_cpo
