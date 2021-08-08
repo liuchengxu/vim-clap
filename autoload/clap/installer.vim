@@ -157,7 +157,7 @@ function! s:unix_sanity_check() abort
     call clap#helper#echo_error('Shell not executable. Check if '. &shell . 'exists!')
   endif
   " If on *BSD, we need to invoke gmake for clap's Makefiles
-  if ! has('win32') && executable('uname')
+  if !has('win32') && executable('uname')
     let l:uname = substitute(system('uname'), '\n', '', '')
     if l:uname == 'FreeBSD' || l:uname == 'OpenBSD'
       let s:make_cmd = 'gmake'
