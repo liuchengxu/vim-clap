@@ -26,6 +26,7 @@ function! s:run_term(cmd, cwd, success_info) abort
     call termopen(a:cmd, {
           \ 'cwd': a:cwd,
           \ 'on_exit': {job, status -> s:OnExit(status)},
+          \ 'env': {'MAKE_CMD': s:make_cmd},
           \})
   else
     let cmd = a:cmd
@@ -44,6 +45,7 @@ function! s:run_term(cmd, cwd, success_info) abort
   noautocmd wincmd p
 endfunction
 
+let s:make_cmd = 'make'
 if has('win32')
   let s:from = '.\fuzzymatch-rs\target\release\fuzzymatch_rs.dll'
   let s:to = 'fuzzymatch_rs.pyd'
@@ -52,7 +54,7 @@ if has('win32')
   let s:prebuilt_maple_binary = s:plugin_root_dir.'\bin\maple.exe'
   let s:maple_cargo_toml = s:plugin_root_dir.'\Cargo.toml'
 else
-  let s:rust_ext_cmd = 'make build'
+  let s:rust_ext_cmd = s:make_cmd . ' build'
   let s:rust_ext_cwd = s:plugin_root_dir.'/pythonx/clap'
   let s:prebuilt_maple_binary = s:plugin_root_dir.'/bin/maple'
   let s:maple_cargo_toml = s:plugin_root_dir.'/Cargo.toml'
@@ -65,6 +67,7 @@ function! clap#installer#build_python_dynamic_module() abort
   endif
 
   if executable('cargo')
+    call s:unix_sanity_check()
     call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
@@ -87,7 +90,8 @@ function! clap#installer#build_all(...) abort
       if has('win32')
         let cmd = printf('cargo build --release && cd /d %s && %s', s:rust_ext_cwd, s:rust_ext_cmd)
       else
-        let cmd = 'make'
+        call s:unix_sanity_check()
+        let cmd = s:make_cmd
       endif
       call s:run_term(cmd, s:plugin_root_dir, 'built maple binary and Python dynamic module successfully')
     else
@@ -102,6 +106,7 @@ function! clap#installer#download_binary() abort
   if has('win32')
     let cmd = 'Powershell.exe -ExecutionPolicy ByPass -File "'.s:plugin_root_dir.'\install.ps1"'
   else
+    call s:unix_sanity_check()
     let cmd = './install.sh'
   endif
   call s:run_term(cmd, s:plugin_root_dir, 'download the prebuilt maple binary successfully')
@@ -143,6 +148,24 @@ function! clap#installer#install(try_download) abort
     call s:do_download()
   else
     call clap#helper#echo_warn('Skipped, cargo does not exist and no prebuilt binary downloaded.')
+  endif
+endfunction
+
+function! s:unix_sanity_check() abort
+  " If &shell is not set properly, everything will fail
+  if executable(&shell) != 1
+    call clap#helper#echo_error('Shell not executable. Check if '. &shell . 'exists!')
+  endif
+  " If on *BSD, we need to invoke gmake for clap's Makefiles
+  if ! has('win32') && executable('uname')
+    let l:uname = substitute(system('uname'), '\n', '', '')
+    if l:uname == 'FreeBSD' || l:uname == 'OpenBSD'
+      let s:make_cmd = 'gmake'
+      if executable(s:make_cmd) != 1
+        call clap#helper#echo_error('To set up clap binaries you need to install gmake package.')
+      endif
+      let s:rust_ext_cmd = s:make_cmd . ' build'
+    endif
   endif
 endfunction
 
