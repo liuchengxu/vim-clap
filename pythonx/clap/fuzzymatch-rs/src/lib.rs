@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use pyo3::{prelude::*, wrap_pyfunction};
 
 use filter::{
-    matcher::{Algo, Bonus, MatchType, Matcher},
-    FilteredItem, SourceItem,
+    matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
+    FilteredItem, Query, SourceItem,
 };
 use printer::truncate_long_matched_lines;
 
@@ -81,24 +81,17 @@ fn fuzzy_match(
 
     bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
-    let matcher = Matcher::new_with_bonuses(
-        if query.contains(' ') {
-            Algo::SubString
-        } else {
-            Algo::Fzy
-        },
-        match_type,
-        bonuses,
-    );
+    let matcher = Matcher::with_bonuses(FuzzyAlgorithm::Fzy, match_type, bonuses);
 
+    let query: Query = query.into();
     let do_match = |line: &str| {
         if enable_icon {
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
-                .do_match(&line[4..].into(), query)
+                .match_query(&line[4..].into(), &query)
                 .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
         } else {
-            matcher.do_match(&line.into(), query)
+            matcher.match_query(&line.into(), &query)
         }
     };
 
@@ -118,7 +111,12 @@ fn fuzzy_match(
 
     let (filtered, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
-        .map(|filtered_item| (filtered_item.display_text().to_owned(), filtered_item.match_indices))
+        .map(|filtered_item| {
+            (
+                filtered_item.display_text().to_owned(),
+                filtered_item.match_indices,
+            )
+        })
         .unzip();
 
     Ok((

@@ -178,7 +178,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "source_item",
+ "types",
  "utility",
 ]
 
@@ -321,8 +321,8 @@ dependencies = [
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",
- "source_item",
  "structopt",
+ "types",
 ]
 
 [[package]]
@@ -417,7 +417,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
- "source_item",
+ "types",
  "utility",
 ]
 
@@ -654,14 +654,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3757cb9d89161a2f24e1cf78efa0c1fcff485d18e3f55e0aa3480824ddaa0f3f"
 
 [[package]]
-name = "source_item"
-version = "0.1.0"
-dependencies = [
- "pattern",
- "structopt",
-]
-
-[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -729,6 +721,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "types"
+version = "0.1.0"
+dependencies = [
+ "pattern",
+ "structopt",
 ]
 
 [[package]]

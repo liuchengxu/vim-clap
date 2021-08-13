@@ -1,7 +1,7 @@
 pub mod language;
 pub mod recent_files;
 
-use source_item::SourceItem;
+use types::SourceItem;
 
 use crate::Score;
 use language::Language;

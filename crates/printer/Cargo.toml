@@ -12,7 +12,7 @@ serde = { package = "serde", version = "1.0",  features = ["derive"] }
 serde_json = "1.0"
 
 icon = { path = "../icon" }
-source_item = { path = "../source_item" }
+types = { path = "../types" }
 utility = { path = "../utility" }
 
 [target.'cfg(not(windows))'.dev-dependencies]

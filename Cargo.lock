@@ -354,8 +354,8 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "source_item",
  "subprocess",
+ "types",
  "utility",
 ]
 
@@ -893,9 +893,9 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "source_item",
  "structopt",
  "tokio 1.9.0",
+ "types",
  "upgrade",
  "utility",
 ]
@@ -908,8 +908,8 @@ dependencies = [
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",
- "source_item",
  "structopt",
+ "types",
 ]
 
 [[package]]
@@ -1250,7 +1250,7 @@ dependencies = [
  "icon",
  "serde",
  "serde_json",
- "source_item",
+ "types",
  "utility",
 ]
 
@@ -1628,14 +1628,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "source_item"
-version = "0.1.0"
-dependencies = [
- "pattern",
- "structopt",
-]
-
-[[package]]
 name = "strsim"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1920,6 +1912,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "653be63c80a3296da5551e1bfd2cca35227e13cdd08c6668903ae2f4f77aa1f6"
 dependencies = [
  "unsafe-any",
+]
+
+[[package]]
+name = "types"
+version = "0.1.0"
+dependencies = [
+ "pattern",
+ "structopt",
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::slice::IterMut;
 
 use icon::{IconPainter, ICON_LEN};
-use source_item::FilteredItem;
+use types::FilteredItem;
 use utility::{println_json, println_json_with_length};
 
 pub const DOTS: &str = "..";
@@ -258,7 +258,7 @@ pub fn print_dyn_filter_results(
 mod tests {
     use super::*;
     use filter::{
-        matcher::{Algo, Bonus, MatchType, Matcher},
+        matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
         Source,
     };
     use rayon::prelude::*;
@@ -312,8 +312,10 @@ mod tests {
 
         let source = Source::List(std::iter::once(text.into()));
 
-        let matcher = Matcher::new(Algo::Fzy, MatchType::Full, Bonus::FileName);
-        let mut ranked = source.filter_and_collect(matcher, &query).unwrap();
+        let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
+        let mut ranked = source
+            .filter_and_collect(matcher, &query.clone().into())
+            .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);

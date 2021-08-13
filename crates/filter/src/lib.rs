@@ -13,19 +13,19 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::IconPainter;
-use matcher::{Algo, Bonus, MatchType, Matcher};
+use matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
-pub use source_item::{FilteredItem, SourceItem};
 #[cfg(feature = "enable_dyn")]
 pub use subprocess;
+pub use types::{FilteredItem, Query, SourceItem};
 
 /// Context for running the filter.
 #[derive(Debug, Clone)]
 pub struct FilterContext {
-    algo: Option<Algo>,
+    algo: Option<FuzzyAlgorithm>,
     number: Option<usize>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
@@ -46,7 +46,7 @@ impl Default for FilterContext {
 
 impl FilterContext {
     pub fn new(
-        algo: Option<Algo>,
+        algo: Option<FuzzyAlgorithm>,
         number: Option<usize>,
         winwidth: Option<usize>,
         icon_painter: Option<IconPainter>,
@@ -61,7 +61,7 @@ impl FilterContext {
         }
     }
 
-    pub fn algo(mut self, algo: Option<Algo>) -> Self {
+    pub fn algo(mut self, algo: Option<FuzzyAlgorithm>) -> Self {
         self.algo = algo;
         self
     }
@@ -101,12 +101,13 @@ pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
 pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    algo: Algo,
+    algo: FuzzyAlgorithm,
     match_type: MatchType,
     bonuses: Vec<Bonus>,
 ) -> Result<Vec<FilteredItem>> {
-    let matcher = Matcher::new_with_bonuses(algo, match_type, bonuses);
-    let filtered = source.filter_and_collect(matcher, query)?;
+    let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
+    let query: Query = query.into();
+    let filtered = source.filter_and_collect(matcher, &query)?;
     let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
 }
@@ -116,9 +117,10 @@ pub fn simple_run<T: Into<SourceItem>>(
     query: &str,
 ) -> Vec<FilteredItem> {
     let matcher =
-        matcher::Matcher::new_with_bonuses(Algo::Fzy, MatchType::Full, Default::default());
+        matcher::Matcher::with_bonuses(FuzzyAlgorithm::Fzy, MatchType::Full, Default::default());
 
-    let do_match = |source_item: &SourceItem| matcher.do_match(source_item, query);
+    let query: Query = query.into();
+    let do_match = |source_item: &SourceItem| matcher.match_query(source_item, &query);
 
     let filtered = lines
         .map(|line| line.into())
