@@ -26,12 +26,13 @@
 mod algo;
 mod bonus;
 
-use types::{Query, SourceItem};
-
 pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-pub use types::{ExactTermType, FuzzyTermType, MatchTextFor, MatchType, SearchTerm, TermType};
+// Re-export types
+pub use types::{
+    ExactTermType, FuzzyTermType, MatchTextFor, MatchType, Query, SearchTerm, SourceItem, TermType,
+};
 
 /// Score of base matching algorithm(fzy, skim, etc).
 pub type Score = i64;
