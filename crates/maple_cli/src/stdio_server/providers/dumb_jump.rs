@@ -40,19 +40,25 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         fuzzy_terms,
     } = Query::from(query.as_str());
 
-    // Restore the fuzzy query as the identifier we are going to search.
-    let identifier_query = fuzzy_terms.iter().map(|term| &term.word).join(" ");
+    // If there is no fuzzy term, use the full query as the identifier,
+    // otherwise restore the fuzzy query as the identifier we are going to search.
+    let (identifier, binary_terms) = if fuzzy_terms.is_empty() {
+        (query, BinaryTerms::default())
+    } else {
+        (
+            fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            BinaryTerms {
+                exact_terms,
+                inverse_terms,
+            },
+        )
+    };
 
     let dumb_jump = DumbJump {
-        word: identifier_query,
+        word: identifier,
         extension,
         kind: None,
         cmd_dir: Some(cwd.into()),
-    };
-
-    let binary_terms = BinaryTerms {
-        exact_terms,
-        inverse_terms,
     };
 
     let result = match dumb_jump
