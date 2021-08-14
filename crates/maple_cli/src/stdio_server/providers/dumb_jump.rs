@@ -34,6 +34,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         return Default::default();
     }
 
+    // When we use the dumb_jump, the search query should be `identifier(s) ++ exact_term/inverse_term`
     let Query {
         exact_terms,
         inverse_terms,
