@@ -31,7 +31,8 @@ pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
 // Re-export types
 pub use types::{
-    ExactTermType, FuzzyTermType, MatchTextFor, MatchType, Query, SearchTerm, SourceItem, TermType,
+    ExactTerm, ExactTermType, FuzzyTermType, MatchTextFor, MatchType, Query, SearchTerm,
+    SourceItem, TermType,
 };
 
 /// Score of base matching algorithm(fzy, skim, etc).
@@ -39,6 +40,55 @@ pub type Score = i64;
 
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
 pub type MatchResult = Option<(Score, Vec<usize>)>;
+
+// TODO: the shorter search line has a higher score for the exact matching?
+pub fn search_exact_terms<'a>(
+    terms: impl Iterator<Item = &'a ExactTerm>,
+    full_search_line: &str,
+) -> Option<(Score, Vec<usize>)> {
+    use ExactTermType::*;
+
+    let mut indices = Vec::<usize>::new();
+    let mut exact_score = Score::default();
+
+    for term in terms {
+        let sub_query = &term.word;
+
+        match term.ty {
+            Exact => {
+                if let Some((score, sub_indices)) =
+                    substring::substr_indices(full_search_line, sub_query)
+                {
+                    indices.extend_from_slice(&sub_indices);
+                    exact_score += std::cmp::max(score, sub_query.len() as Score);
+                } else {
+                    return None;
+                }
+            }
+            PrefixExact => {
+                if full_search_line.starts_with(sub_query) {
+                    let sub_indices = (0..sub_query.len()).collect::<Vec<_>>();
+                    indices.extend_from_slice(&sub_indices);
+                    exact_score += sub_query.len() as Score;
+                } else {
+                    return None;
+                }
+            }
+            SuffixExact => {
+                if full_search_line.ends_with(sub_query) {
+                    let total_len = full_search_line.len();
+                    let sub_indices = (total_len - sub_query.len()..total_len).collect::<Vec<_>>();
+                    indices.extend_from_slice(&sub_indices);
+                    exact_score += sub_query.len() as Score;
+                } else {
+                    return None;
+                }
+            }
+        }
+    }
+
+    Some((exact_score, indices))
+}
 
 /// `Matcher` is composed of two components:
 ///
@@ -90,8 +140,6 @@ impl Matcher {
 
     /// Actually performs the matching algorithm.
     pub fn match_query(&self, item: &SourceItem, query: &Query) -> MatchResult {
-        use ExactTermType::*;
-
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.matches(item) {
@@ -100,48 +148,11 @@ impl Matcher {
         }
 
         // Try the exact terms against the full search line.
-        //
-        // TODO: the shorter search line has a higher score for the exact matching?
-        let mut indices = Vec::<usize>::new();
-        let mut exact_score = Score::default();
-
-        for term in query.exact_terms.iter() {
-            let sub_query = &term.word;
-            let full_search_line = &item.raw;
-
-            match term.ty {
-                Exact => {
-                    if let Some((score, sub_indices)) =
-                        substring::substr_indices(full_search_line, sub_query)
-                    {
-                        indices.extend_from_slice(&sub_indices);
-                        exact_score += std::cmp::max(score, sub_query.len() as Score);
-                    } else {
-                        return None;
-                    }
-                }
-                PrefixExact => {
-                    if full_search_line.starts_with(sub_query) {
-                        let sub_indices = (0..sub_query.len()).collect::<Vec<_>>();
-                        indices.extend_from_slice(&sub_indices);
-                        exact_score += sub_query.len() as Score;
-                    } else {
-                        return None;
-                    }
-                }
-                SuffixExact => {
-                    if full_search_line.ends_with(sub_query) {
-                        let total_len = full_search_line.len();
-                        let sub_indices =
-                            (total_len - sub_query.len()..total_len).collect::<Vec<_>>();
-                        indices.extend_from_slice(&sub_indices);
-                        exact_score += sub_query.len() as Score;
-                    } else {
-                        return None;
-                    }
-                }
-            }
-        }
+        let (exact_score, mut indices) =
+            match search_exact_terms(query.exact_terms.iter(), &item.raw) {
+                Some(ret) => ret,
+                None => return None,
+            };
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::<usize>::new();

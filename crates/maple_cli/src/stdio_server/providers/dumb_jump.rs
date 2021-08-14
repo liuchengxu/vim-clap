@@ -1,5 +1,7 @@
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use filter::Query;
+use itertools::Itertools;
 use log::error;
 use serde::Deserialize;
 use serde_json::json;
@@ -31,8 +33,16 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         return Default::default();
     }
 
+    let Query {
+        exact_terms,
+        inverse_terms,
+        fuzzy_terms,
+    } = Query::from(query.as_str());
+
+    let parsed_query = fuzzy_terms.iter().map(|term| &term.word).join(" ");
+
     let dumb_jump = DumbJump {
-        word: query,
+        word: parsed_query,
         extension,
         kind: None,
         cmd_dir: Some(cwd.into()),
@@ -40,7 +50,17 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
     let result = match dumb_jump.references_or_occurrences(false).await {
         Ok(Lines { lines, mut indices }) => {
-            let total_lines = lines;
+            let total_lines = lines
+                .into_iter()
+                .filter_map(|line| {
+                    matcher::search_exact_terms(exact_terms.iter(), &line).map(|_| line)
+                })
+                .filter(|line| {
+                    !inverse_terms
+                        .iter()
+                        .any(|term| term.matches_full_line(&line))
+                })
+                .collect::<Vec<_>>();
 
             let total = total_lines.len();
             // Only show the top 200 items.

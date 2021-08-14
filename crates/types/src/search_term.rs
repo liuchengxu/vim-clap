@@ -55,16 +55,18 @@ impl InverseTerm {
         Self { ty, word }
     }
 
-    /// Returns true if given `item` matches the inverse term.
-    pub fn matches(&self, item: &SourceItem) -> bool {
+    pub fn matches_full_line(&self, full_search_line: &str) -> bool {
         let query = self.word.as_str();
-        let full_search_line = &item.raw;
-
         match self.ty {
             InverseTermType::InverseExact => full_search_line.contains(query),
             InverseTermType::InversePrefixExact => full_search_line.starts_with(query),
             InverseTermType::InverseSuffixExact => full_search_line.ends_with(query),
         }
+    }
+
+    /// Returns true if given `item` matches the inverse term.
+    pub fn matches(&self, item: &SourceItem) -> bool {
+        self.matches_full_line(&item.raw)
     }
 }
 
