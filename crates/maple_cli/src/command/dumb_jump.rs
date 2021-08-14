@@ -13,6 +13,7 @@ use crate::dumb_analyzer::{
     MatchKind,
 };
 use crate::tools::ripgrep::{Match, Word};
+use crate::utils::BinaryTerms;
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug)]
@@ -66,10 +67,15 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
         .collect()
 }
 
-fn render_jump_line(matches: Vec<Match>, kind: &str, word: &Word) -> Lines {
+fn render_jump_line(
+    matches: Vec<Match>,
+    kind: &str,
+    word: &Word,
+    binary_terms: &BinaryTerms,
+) -> Lines {
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
         .into_iter()
-        .map(|line| line.build_jump_line(kind, &word))
+        .filter_map(|line| binary_terms.check_jump_line(line.build_jump_line(kind, &word)))
         .unzip();
 
     Lines::new(lines, indices)
@@ -100,16 +106,27 @@ impl DumbJump {
         let lang = get_language_by_ext(&self.extension)?;
         let comments = get_comments_by_ext(&self.extension);
 
+        // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        DefinitionRules::definitions_and_references_lines(lang, &word, &self.cmd_dir, comments)
-            .await?
-            .print();
+        DefinitionRules::definitions_and_references_lines(
+            lang,
+            &word,
+            &self.cmd_dir,
+            comments,
+            &Default::default(),
+        )
+        .await?
+        .print();
 
         Ok(())
     }
 
-    pub async fn references_or_occurrences(&self, classify: bool) -> Result<Lines> {
+    pub async fn references_or_occurrences(
+        &self,
+        classify: bool,
+        binary_terms: &BinaryTerms,
+    ) -> Result<Lines> {
         let word = Word::new(self.word.to_string())?;
 
         let lang = match get_language_by_ext(&self.extension) {
@@ -119,6 +136,7 @@ impl DumbJump {
                     find_occurrence_matches_by_ext(&word, &self.extension, &self.cmd_dir).await?,
                     "refs",
                     &word,
+                    &binary_terms,
                 ));
             }
         };
@@ -139,8 +157,14 @@ impl DumbJump {
 
             Ok(Lines::new(lines, indices))
         } else {
-            DefinitionRules::definitions_and_references_lines(lang, &word, &self.cmd_dir, comments)
-                .await
+            DefinitionRules::definitions_and_references_lines(
+                lang,
+                &word,
+                &self.cmd_dir,
+                comments,
+                binary_terms,
+            )
+            .await
         }
     }
 }

@@ -4,7 +4,49 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 
 use icon::IconPainter;
+use types::{ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
+
+/// Yes or no terms.
+#[derive(Debug, Clone)]
+pub struct BinaryTerms {
+    pub exact_terms: Vec<ExactTerm>,
+    pub inverse_terms: Vec<InverseTerm>,
+}
+
+impl Default for BinaryTerms {
+    fn default() -> Self {
+        Self {
+            exact_terms: Vec::new(),
+            inverse_terms: Vec::new(),
+        }
+    }
+}
+
+impl BinaryTerms {
+    /// Returns true if given `line` passes against all the search terms.
+    pub fn all_yes(&self, line: &str) -> bool {
+        if matcher::search_exact_terms(self.exact_terms.iter(), &line).is_some() {
+            !self
+                .inverse_terms
+                .iter()
+                .any(|term| term.matches_full_line(&line))
+        } else {
+            false
+        }
+    }
+
+    pub fn check_jump_line(
+        &self,
+        (jump_line, indices): (String, Vec<usize>),
+    ) -> Option<(String, Vec<usize>)> {
+        if self.all_yes(&jump_line) {
+            Some((jump_line, indices))
+        } else {
+            None
+        }
+    }
+}
 
 pub type UtcTime = DateTime<Utc>;
 

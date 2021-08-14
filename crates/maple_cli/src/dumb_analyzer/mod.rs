@@ -13,6 +13,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 
 use crate::tools::ripgrep::{Match, Word};
+use crate::utils::BinaryTerms;
 use crate::{command::dumb_jump::Lines, process::AsyncCommand};
 
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
@@ -190,6 +191,7 @@ impl DefinitionRules {
         word: &Word,
         dir: &Option<PathBuf>,
         comments: &[String],
+        binary_terms: &BinaryTerms,
     ) -> Result<Lines> {
         let (occurrences, definitions) =
             Self::get_occurences_and_definitions(word, lang, dir, comments).await;
@@ -214,7 +216,7 @@ impl DefinitionRules {
                     .iter()
                     .filter_map(|ref line| {
                         if positive_defs.contains(&line) {
-                            Some(line.build_jump_line(kind.as_ref(), &word))
+                            binary_terms.check_jump_line(line.build_jump_line(kind.as_ref(), &word))
                         } else {
                             None
                         }
@@ -225,7 +227,7 @@ impl DefinitionRules {
                 // references are these occurrences not in the definitions.
                 occurrences.iter().filter_map(|ref line| {
                     if !defs.contains(&line) {
-                        Some(line.build_jump_line("refs", &word))
+                        binary_terms.check_jump_line(line.build_jump_line("refs", &word))
                     } else {
                         None
                     }
@@ -237,7 +239,9 @@ impl DefinitionRules {
             let lines = naive_grep_fallback(word, lang, dir, comments).await?;
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
                 .into_iter()
-                .map(|line| line.build_jump_line("plain", &word))
+                .filter_map(|line| {
+                    binary_terms.check_jump_line(line.build_jump_line("plain", &word))
+                })
                 .unzip();
             return Ok(Lines::new(lines, indices));
         }
