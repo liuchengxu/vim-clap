@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+## Added
+
+- Support fzf-like search syntax. #738
+
 ## Improved
 
 - Make the preview on enter work for `recent_files` provider. #731
@@ -9,6 +13,7 @@
 ## Fixed
 
 - Fix the preview of `filer` provider. #731
+- Fix the installer on FreeBSD/OpenBSD. #733 Thanks to @spamwax
 
 ## [0.28] 2021-08-06
 

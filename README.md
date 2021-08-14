@@ -57,6 +57,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Avoid touching the current window layout, less eye movement.
 - [x] Support the preview functionality when navigating the result list.
 - [x] Support built-in fuzzy match and external fuzzy filter tools.
+- [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax).
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
 
