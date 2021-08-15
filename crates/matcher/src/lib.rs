@@ -66,9 +66,15 @@ pub fn search_exact_terms<'a>(
                 }
             }
             PrefixExact => {
-                if full_search_line.starts_with(sub_query) {
+                let trimmed = full_search_line.trim_start();
+                let white_space_len = if full_search_line.len() > trimmed.len() {
+                    full_search_line.len() - trimmed.len()
+                } else {
+                    0
+                };
+                if trimmed.starts_with(sub_query) {
                     let new_len = indices.len() + sub_query.len();
-                    let mut start = -1i32;
+                    let mut start = -1i32 + white_space_len as i32;
                     indices.resize_with(new_len, || {
                         start += 1;
                         start as usize
@@ -79,10 +85,19 @@ pub fn search_exact_terms<'a>(
                 }
             }
             SuffixExact => {
-                if full_search_line.ends_with(sub_query) {
+                let trimmed = full_search_line.trim_end();
+
+                let white_space_len = if full_search_line.len() > trimmed.len() {
+                    full_search_line.len() - trimmed.len()
+                } else {
+                    0
+                };
+
+                if trimmed.ends_with(sub_query) {
                     let total_len = full_search_line.len();
                     // In case of underflow, we use i32 here.
-                    let mut start = total_len as i32 - sub_query.len() as i32 - 1i32;
+                    let mut start =
+                        total_len as i32 - sub_query.len() as i32 - 1i32 - white_space_len as i32;
                     let new_len = indices.len() + sub_query.len();
                     indices.resize_with(new_len, || {
                         start += 1;
@@ -151,7 +166,7 @@ impl Matcher {
     pub fn match_query(&self, item: &SourceItem, query: &Query) -> MatchResult {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.matches(item) {
+            if inverse_term.match_source_item(item) {
                 return None;
             }
         }

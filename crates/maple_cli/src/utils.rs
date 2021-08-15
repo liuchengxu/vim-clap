@@ -24,13 +24,13 @@ impl Default for BinaryTerms {
 }
 
 impl BinaryTerms {
-    /// Returns true if given `line` passes against all the search terms.
+    /// Returns true if given `line` passes all the search terms.
     pub fn all_yes(&self, line: &str) -> bool {
         if matcher::search_exact_terms(self.exact_terms.iter(), &line).is_some() {
             !self
                 .inverse_terms
                 .iter()
-                .any(|term| term.matches_full_line(&line))
+                .any(|term| term.match_full_line(&line))
         } else {
             false
         }
