@@ -25,22 +25,31 @@ impl Default for BinaryTerms {
 
 impl BinaryTerms {
     /// Returns true if given `line` passes all the search terms.
-    pub fn all_yes(&self, line: &str) -> bool {
-        if matcher::search_exact_terms(self.exact_terms.iter(), &line).is_some() {
-            !self
+    pub fn all_yes(&self, line: &str) -> Option<Vec<usize>> {
+        if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
+            let should_return = !self
                 .inverse_terms
                 .iter()
-                .any(|term| term.match_full_line(&line))
+                .any(|term| term.match_full_line(&line));
+
+            if should_return {
+                Some(indices)
+            } else {
+                None
+            }
         } else {
-            false
+            None
         }
     }
 
     pub fn check_jump_line(
         &self,
-        (jump_line, indices): (String, Vec<usize>),
+        (jump_line, mut indices): (String, Vec<usize>),
     ) -> Option<(String, Vec<usize>)> {
-        if self.all_yes(&jump_line) {
+        if let Some(exact_indices) = self.all_yes(&jump_line) {
+            indices.extend_from_slice(&exact_indices);
+            indices.sort();
+            indices.dedup();
             Some((jump_line, indices))
         } else {
             None
