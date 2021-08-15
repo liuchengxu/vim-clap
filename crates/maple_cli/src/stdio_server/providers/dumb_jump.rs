@@ -12,7 +12,7 @@ use crate::stdio_server::{
     session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
-use crate::utils::BinaryTerms;
+use crate::utils::ExactOrInverseTerms;
 
 pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
     let msg_id = msg.id;
@@ -43,12 +43,12 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
     // If there is no fuzzy term, use the full query as the identifier,
     // otherwise restore the fuzzy query as the identifier we are going to search.
-    let (identifier, binary_terms) = if fuzzy_terms.is_empty() {
-        (query, BinaryTerms::default())
+    let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
+        (query, ExactOrInverseTerms::default())
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
-            BinaryTerms {
+            ExactOrInverseTerms {
                 exact_terms,
                 inverse_terms,
             },
@@ -64,7 +64,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     let result = match dumb_jump
-        .references_or_occurrences(false, &binary_terms)
+        .references_or_occurrences(false, &exact_or_inverse_terms)
         .await
     {
         Ok(Lines { lines, mut indices }) => {

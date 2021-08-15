@@ -13,7 +13,7 @@ use crate::dumb_analyzer::{
     MatchKind,
 };
 use crate::tools::ripgrep::{Match, Word};
-use crate::utils::BinaryTerms;
+use crate::utils::ExactOrInverseTerms;
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug)]
@@ -71,11 +71,13 @@ fn render_jump_line(
     matches: Vec<Match>,
     kind: &str,
     word: &Word,
-    binary_terms: &BinaryTerms,
+    exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Lines {
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
         .into_iter()
-        .filter_map(|line| binary_terms.check_jump_line(line.build_jump_line(kind, &word)))
+        .filter_map(|line| {
+            exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, &word))
+        })
         .unzip();
 
     Lines::new(lines, indices)
@@ -125,7 +127,7 @@ impl DumbJump {
     pub async fn references_or_occurrences(
         &self,
         classify: bool,
-        binary_terms: &BinaryTerms,
+        exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
         let word = Word::new(self.word.to_string())?;
 
@@ -136,7 +138,7 @@ impl DumbJump {
                     find_occurrence_matches_by_ext(&word, &self.extension, &self.cmd_dir).await?,
                     "refs",
                     &word,
-                    &binary_terms,
+                    &exact_or_inverse_terms,
                 ));
             }
         };
@@ -162,7 +164,7 @@ impl DumbJump {
                 &word,
                 &self.cmd_dir,
                 comments,
-                binary_terms,
+                exact_or_inverse_terms,
             )
             .await
         }

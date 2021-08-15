@@ -9,12 +9,12 @@ use utility::{println_json, println_json_with_length, read_first_lines};
 
 /// Yes or no terms.
 #[derive(Debug, Clone)]
-pub struct BinaryTerms {
+pub struct ExactOrInverseTerms {
     pub exact_terms: Vec<ExactTerm>,
     pub inverse_terms: Vec<InverseTerm>,
 }
 
-impl Default for BinaryTerms {
+impl Default for ExactOrInverseTerms {
     fn default() -> Self {
         Self {
             exact_terms: Vec::new(),
@@ -23,7 +23,7 @@ impl Default for BinaryTerms {
     }
 }
 
-impl BinaryTerms {
+impl ExactOrInverseTerms {
     /// Returns true if given `line` passes all the search terms.
     pub fn all_yes(&self, line: &str) -> Option<Vec<usize>> {
         if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
