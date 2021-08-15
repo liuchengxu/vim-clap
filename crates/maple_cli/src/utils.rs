@@ -48,7 +48,7 @@ impl BinaryTerms {
     ) -> Option<(String, Vec<usize>)> {
         if let Some(exact_indices) = self.all_yes(&jump_line) {
             indices.extend_from_slice(&exact_indices);
-            indices.sort();
+            indices.sort_unstable();
             indices.dedup();
             Some((jump_line, indices))
         } else {
