@@ -67,8 +67,12 @@ pub fn search_exact_terms<'a>(
             }
             PrefixExact => {
                 if full_search_line.starts_with(sub_query) {
-                    let sub_indices = (0..sub_query.len()).collect::<Vec<_>>();
-                    indices.extend_from_slice(&sub_indices);
+                    let new_len = indices.len() + sub_query.len();
+                    let mut start = -1i32;
+                    indices.resize_with(new_len, || {
+                        start += 1;
+                        start as usize
+                    });
                     exact_score += sub_query.len() as Score;
                 } else {
                     return None;
@@ -77,8 +81,13 @@ pub fn search_exact_terms<'a>(
             SuffixExact => {
                 if full_search_line.ends_with(sub_query) {
                     let total_len = full_search_line.len();
-                    let sub_indices = (total_len - sub_query.len()..total_len).collect::<Vec<_>>();
-                    indices.extend_from_slice(&sub_indices);
+                    // In case of underflow, we use i32 here.
+                    let mut start = total_len as i32 - sub_query.len() as i32 - 1i32;
+                    let new_len = indices.len() + sub_query.len();
+                    indices.resize_with(new_len, || {
+                        start += 1;
+                        start as usize
+                    });
                     exact_score += sub_query.len() as Score;
                 } else {
                     return None;
@@ -194,6 +203,32 @@ impl Matcher {
 mod tests {
     use super::*;
     use crate::fzy;
+
+    #[test]
+    fn test_resize() {
+        let total_len = 100;
+        let sub_query = "hello";
+
+        let new_indices1 = {
+            let mut indices = [1, 2, 3].to_vec();
+            let sub_indices = (total_len - sub_query.len()..total_len).collect::<Vec<_>>();
+            indices.extend_from_slice(&sub_indices);
+            indices
+        };
+
+        let new_indices2 = {
+            let mut indices = [1, 2, 3].to_vec();
+            let mut start = total_len - sub_query.len() - 1;
+            let new_len = indices.len() + sub_query.len();
+            indices.resize_with(new_len, || {
+                start += 1;
+                start
+            });
+            indices
+        };
+
+        assert_eq!(new_indices1, new_indices2);
+    }
 
     #[test]
     fn test_exclude_grep_filepath() {
