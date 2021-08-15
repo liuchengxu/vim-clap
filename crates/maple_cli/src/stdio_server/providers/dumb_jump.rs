@@ -62,6 +62,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         cmd_dir: Some(cwd.into()),
     };
 
+    // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     let result = match dumb_jump
         .references_or_occurrences(false, &binary_terms)
         .await
