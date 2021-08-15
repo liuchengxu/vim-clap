@@ -236,6 +236,7 @@ function! g:clap#floating_win#input.open() abort
   " Disable the auto-pairs plugin
   call setbufvar(s:input_bufnr, 'coc_pairs_disabled', ['"', "'", '(', ')', '<', '>', '[', ']', '{', '}', '`'])
   call setbufvar(s:input_bufnr, 'autopairs_loaded', 1)
+  call setbufvar(s:input_bufnr, 'autopairs_enabled', 0)
   call setbufvar(s:input_bufnr, 'pear_tree_enabled', 0)
   call setwinvar(s:input_winid, '&spell', 0)
   let g:clap.input.winid = s:input_winid
