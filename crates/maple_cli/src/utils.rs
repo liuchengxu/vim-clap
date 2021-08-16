@@ -24,8 +24,8 @@ impl Default for ExactOrInverseTerms {
 }
 
 impl ExactOrInverseTerms {
-    /// Returns true if given `line` passes all the search terms.
-    pub fn all_yes(&self, line: &str) -> Option<Vec<usize>> {
+    /// Returns the match indices of exact terms if given `line` passes all the checks.
+    fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
         if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
             let should_return = !self
                 .inverse_terms
@@ -46,7 +46,7 @@ impl ExactOrInverseTerms {
         &self,
         (jump_line, mut indices): (String, Vec<usize>),
     ) -> Option<(String, Vec<usize>)> {
-        if let Some(exact_indices) = self.all_yes(&jump_line) {
+        if let Some(exact_indices) = self.check_terms(&jump_line) {
             indices.extend_from_slice(&exact_indices);
             indices.sort_unstable();
             indices.dedup();
