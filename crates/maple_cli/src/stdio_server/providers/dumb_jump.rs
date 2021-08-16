@@ -1,5 +1,7 @@
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use filter::Query;
+use itertools::Itertools;
 use log::error;
 use serde::Deserialize;
 use serde_json::json;
@@ -10,6 +12,7 @@ use crate::stdio_server::{
     session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
+use crate::utils::ExactOrInverseTerms;
 
 pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
     let msg_id = msg.id;
@@ -31,17 +34,41 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         return Default::default();
     }
 
+    // When we use the dumb_jump, the search query should be `identifier(s) ++ exact_term/inverse_term`
+    let Query {
+        exact_terms,
+        inverse_terms,
+        fuzzy_terms,
+    } = Query::from(query.as_str());
+
+    // If there is no fuzzy term, use the full query as the identifier,
+    // otherwise restore the fuzzy query as the identifier we are going to search.
+    let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
+        (query, ExactOrInverseTerms::default())
+    } else {
+        (
+            fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            ExactOrInverseTerms {
+                exact_terms,
+                inverse_terms,
+            },
+        )
+    };
+
     let dumb_jump = DumbJump {
-        word: query,
+        word: identifier,
         extension,
         kind: None,
         cmd_dir: Some(cwd.into()),
     };
 
-    let result = match dumb_jump.references_or_occurrences(false).await {
+    // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
+    let result = match dumb_jump
+        .references_or_occurrences(false, &exact_or_inverse_terms)
+        .await
+    {
         Ok(Lines { lines, mut indices }) => {
             let total_lines = lines;
-
             let total = total_lines.len();
             // Only show the top 200 items.
             let lines = total_lines.iter().take(200).clone().collect::<Vec<_>>();

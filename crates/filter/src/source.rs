@@ -93,8 +93,8 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter_and_collect(self, matcher: Matcher, query: &str) -> Result<Vec<FilteredItem>> {
-        let scorer = |item: &SourceItem| matcher.do_match(item, query);
+    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<FilteredItem>> {
+        let scorer = |item: &SourceItem| matcher.match_query(item, query);
 
         let filtered = match self {
             Self::Stdin => source_iter_stdin!(scorer).collect(),

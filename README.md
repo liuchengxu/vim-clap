@@ -37,6 +37,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
       * [Cmdline mode](#cmdline-mode)
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
+  * [Search syntax](#search-syntax)
 * [How to define your own provider](#how-to-define-your-own-provider)
 * [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
@@ -57,6 +58,7 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] Avoid touching the current window layout, less eye movement.
 - [x] Support the preview functionality when navigating the result list.
 - [x] Support built-in fuzzy match and external fuzzy filter tools.
+- [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax).
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
 
@@ -283,6 +285,10 @@ let g:clap_theme = { 'search_text': {'guifg': 'red', 'ctermfg': 'red'} }
 If you want to write your own clap theme, take [autoload/clap/themes/material_design_dark.vim](autoload/clap/themes/material_design_dark.vim) as a reference.
 
 See `:help clap-highlights` for more information.
+
+### Search syntax
+
+vim-clap uses a search syntax similar to the one used in fzf, please refer to [the search syntax section of fzf's README](https://github.com/junegunn/fzf#search-syntax) for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.
 
 ## How to define your own provider
 

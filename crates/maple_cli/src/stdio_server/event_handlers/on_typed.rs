@@ -1,7 +1,7 @@
 use log::debug;
 use serde_json::json;
 
-use filter::matcher::{Algo, Bonus, MatchType};
+use filter::matcher::{Bonus, FuzzyAlgorithm, MatchType};
 
 use crate::stdio_server::{session::SessionContext, write_response, Message};
 
@@ -26,7 +26,7 @@ pub fn handle_on_typed(msg: Message, context: &SessionContext) {
             _ => Bonus::None,
         };
         let lines_info =
-            filter::sync_run(&query, source, Algo::Fzy, match_type, vec![bonus]).unwrap();
+            filter::sync_run(&query, source, FuzzyAlgorithm::Fzy, match_type, vec![bonus]).unwrap();
 
         let total = lines_info.len();
 

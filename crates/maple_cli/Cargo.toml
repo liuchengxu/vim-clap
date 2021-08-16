@@ -37,6 +37,6 @@ icon = { path = "../icon" }
 matcher = { path = "../matcher" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
-source_item = { path = "../source_item" }
+types = { path = "../types" }
 upgrade = { path = "../upgrade" }
 utility = { path = "../utility" }

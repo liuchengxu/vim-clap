@@ -13,4 +13,4 @@ structopt = "0.3"
 
 extracted_fzy = { path = "extracted_fzy" }
 pattern = { path = "../pattern" }
-source_item = { path = "../source_item" }
+types = { path = "../types" }

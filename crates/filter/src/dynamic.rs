@@ -309,13 +309,10 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     }: FilterContext,
     bonuses: Vec<Bonus>,
 ) -> Result<()> {
-    let algo = if query.contains(' ') {
-        Algo::SubString
-    } else {
-        algo.unwrap_or(Algo::Fzy)
-    };
-    let scoring_matcher = matcher::Matcher::new_with_bonuses(algo, match_type, bonuses);
-    let scorer = |item: &SourceItem| scoring_matcher.do_match(item, query);
+    let scoring_matcher =
+        matcher::Matcher::with_bonuses(algo.unwrap_or_default(), match_type, bonuses);
+    let query: Query = query.into();
+    let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
@@ -428,7 +425,13 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            FilterContext::new(Some(Algo::Fzy), Some(100), None, None, MatchType::Full),
+            FilterContext::new(
+                Some(FuzzyAlgorithm::Fzy),
+                Some(100),
+                None,
+                None,
+                MatchType::Full,
+            ),
             vec![Bonus::None],
         )
         .unwrap()

@@ -2,7 +2,7 @@
 //!
 //! Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el
 
-use source_item::SourceItem;
+use types::SourceItem;
 
 use crate::Score;
 

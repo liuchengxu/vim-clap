@@ -5,11 +5,11 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use filter::{
-    matcher::{Algo, Bonus, MatchType},
+    matcher::{Bonus, FuzzyAlgorithm, MatchType},
     subprocess::Exec,
     FilterContext, Source,
 };
-use source_item::SourceItem;
+use types::SourceItem;
 
 use crate::{app::Params, paths::AbsPathBuf};
 
@@ -29,8 +29,8 @@ pub struct Filter {
     query: String,
 
     /// Filter algorithm
-    #[structopt(long, possible_values = &Algo::variants(), case_insensitive = true)]
-    algo: Option<Algo>,
+    #[structopt(long, possible_values = &FuzzyAlgorithm::variants(), case_insensitive = true)]
+    algo: Option<FuzzyAlgorithm>,
 
     /// Shell command to produce the whole dataset that query is applied on.
     #[structopt(long)]
@@ -110,7 +110,7 @@ impl Filter {
         let ranked = filter::sync_run::<std::iter::Empty<_>>(
             &self.query,
             self.generate_source(),
-            self.algo.clone().unwrap_or(Algo::Fzy),
+            self.algo.clone().unwrap_or(FuzzyAlgorithm::Fzy),
             self.match_type.clone().unwrap_or(MatchType::Full),
             self.get_bonuses(),
         )?;

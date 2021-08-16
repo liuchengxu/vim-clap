@@ -4,7 +4,58 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 
 use icon::IconPainter;
+use types::{ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
+
+/// Yes or no terms.
+#[derive(Debug, Clone)]
+pub struct ExactOrInverseTerms {
+    pub exact_terms: Vec<ExactTerm>,
+    pub inverse_terms: Vec<InverseTerm>,
+}
+
+impl Default for ExactOrInverseTerms {
+    fn default() -> Self {
+        Self {
+            exact_terms: Vec::new(),
+            inverse_terms: Vec::new(),
+        }
+    }
+}
+
+impl ExactOrInverseTerms {
+    /// Returns the match indices of exact terms if given `line` passes all the checks.
+    fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
+        if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
+            let should_return = !self
+                .inverse_terms
+                .iter()
+                .any(|term| term.match_full_line(&line));
+
+            if should_return {
+                Some(indices)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn check_jump_line(
+        &self,
+        (jump_line, mut indices): (String, Vec<usize>),
+    ) -> Option<(String, Vec<usize>)> {
+        if let Some(exact_indices) = self.check_terms(&jump_line) {
+            indices.extend_from_slice(&exact_indices);
+            indices.sort_unstable();
+            indices.dedup();
+            Some((jump_line, indices))
+        } else {
+            None
+        }
+    }
+}
 
 pub type UtcTime = DateTime<Utc>;
 
