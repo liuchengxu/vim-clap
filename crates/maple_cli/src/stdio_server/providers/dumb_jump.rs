@@ -44,7 +44,17 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
     // If there is no fuzzy term, use the full query as the identifier,
     // otherwise restore the fuzzy query as the identifier we are going to search.
     let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
-        (query, ExactOrInverseTerms::default())
+        if !exact_terms.is_empty() {
+            (
+                exact_terms[0].word.clone(),
+                ExactOrInverseTerms {
+                    exact_terms,
+                    inverse_terms,
+                },
+            )
+        } else {
+            (query, ExactOrInverseTerms::default())
+        }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
