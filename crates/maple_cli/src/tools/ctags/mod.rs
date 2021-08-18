@@ -121,7 +121,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_ctags_line() {
+    fn test_deserialize_ctags_line() {
         let data = r#"{"_type": "tag", "name": "Exec", "path": "crates/maple_cli/src/cmd/exec.rs", "pattern": "/^pub struct Exec {$/", "line": 10, "kind": "struct"}"#;
         let tag: TagInfo = serde_json::from_str(&data).unwrap();
         assert_eq!(
