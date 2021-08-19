@@ -116,7 +116,7 @@ impl EventHandler for RecentFilesMessageHandler {
                     .get((lnum - 1) as usize)
                     .map(|r| r.source_item.raw.as_str())
                 {
-                    if let Err(e) = OnMoveHandler::try_new(&msg, &context, Some(curline.into()))
+                    if let Err(e) = OnMoveHandler::create(&msg, &context, Some(curline.into()))
                         .map(|x| x.handle())
                     {
                         log::error!("Failed to handle OnMove event: {:?}", e);

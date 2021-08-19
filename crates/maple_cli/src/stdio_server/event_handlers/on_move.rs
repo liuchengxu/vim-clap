@@ -10,6 +10,19 @@ use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{filer, global, session::SessionContext, types::Message, write_response};
 use crate::utils::build_abs_path;
 
+/// We want to preview a certain line in a file.
+#[derive(Debug, Clone)]
+pub struct CertainLine {
+    pub path: PathBuf,
+    pub lnum: usize,
+}
+
+impl CertainLine {
+    pub fn new(path: PathBuf, lnum: usize) -> Self {
+        Self { path, lnum }
+    }
+}
+
 /// Preview environment on Vim CursorMoved event.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -18,22 +31,10 @@ pub enum OnMove {
     Files(PathBuf),
     Filer(PathBuf),
     History(PathBuf),
-    Grep {
-        path: PathBuf,
-        lnum: usize,
-    },
-    BLines {
-        path: PathBuf,
-        lnum: usize,
-    },
-    ProjTags {
-        path: PathBuf,
-        lnum: usize,
-    },
-    BufferTags {
-        path: PathBuf,
-        lnum: usize,
-    },
+    Grep(CertainLine),
+    BLines(CertainLine),
+    ProjTags(CertainLine),
+    BufferTags(CertainLine),
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -42,12 +43,13 @@ pub enum OnMove {
 }
 
 impl OnMove {
-    pub fn new(curline: String, context: &SessionContext) -> Result<Self> {
+    pub fn new<'a>(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
+        let mut line_content = None;
         let context = match context.provider_id.as_str() {
             "filer" => unreachable!("filer has been handled ahead"),
 
-            "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, curline)),
-            "recent_files" => Self::Files(curline.into()),
+            "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, &curline)),
+            "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
                 if curline.starts_with('~') {
                     // I know std::env::home_dir() is incorrect in some rare cases[1], but dirs crate has been archived.
@@ -58,7 +60,7 @@ impl OnMove {
                     path.push(&curline[2..]);
                     Self::History(path)
                 } else {
-                    Self::History(build_abs_path(&context.cwd, curline))
+                    Self::History(build_abs_path(&context.cwd, &curline))
                 }
             }
             "proj_tags" => {
@@ -66,12 +68,15 @@ impl OnMove {
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                Self::ProjTags { path, lnum }
+                Self::ProjTags(CertainLine::new(path, lnum))
             }
             "grep" | "grep2" => {
-                let try_extract_file_path = |line: &str| {
-                    let (fpath, lnum, _col) =
+                let mut try_extract_file_path = |line: &str| {
+                    let (fpath, lnum, _col, expected_line) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
+
+                    line_content = Some(expected_line.into());
+
                     let mut path: PathBuf = context.cwd.clone();
                     path.push(&fpath);
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
@@ -79,25 +84,25 @@ impl OnMove {
 
                 let (path, lnum) = try_extract_file_path(&curline)?;
 
-                Self::Grep { path, lnum }
+                Self::Grep(CertainLine::new(path, lnum))
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, lnum, _col) =
                     extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                Self::Grep { path, lnum }
+                Self::Grep(CertainLine::new(path, lnum))
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
-                Self::BLines { path, lnum }
+                Self::BLines(CertainLine::new(path, lnum))
             }
             "tags" => {
                 let lnum =
                     extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
                 let path = context.start_buffer_path.clone();
-                Self::BufferTags { path, lnum }
+                Self::BufferTags(CertainLine::new(path, lnum))
             }
             "help_tags" => {
                 let runtimepath = context
@@ -128,7 +133,7 @@ impl OnMove {
             }
         };
 
-        Ok(context)
+        Ok((context, line_content))
     }
 }
 
@@ -137,10 +142,11 @@ pub struct OnMoveHandler<'a> {
     pub size: usize,
     pub inner: OnMove,
     pub context: &'a SessionContext,
+    pub expected_line: Option<String>,
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn try_new(
+    pub fn create(
         msg: &Message,
         context: &'a SessionContext,
         curline: Option<String>,
@@ -157,23 +163,26 @@ impl<'a> OnMoveHandler<'a> {
                 size: context.sensible_preview_size(),
                 context,
                 inner: OnMove::Filer(path),
+                expected_line: None,
             });
         }
+        let (inner, expected_line) = OnMove::new(curline, context)?;
         Ok(Self {
             msg_id,
             size: context.sensible_preview_size(),
             context,
-            inner: OnMove::new(curline, context)?,
+            inner,
+            expected_line,
         })
     }
 
     pub fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
-            BLines { path, lnum }
-            | Grep { path, lnum }
-            | ProjTags { path, lnum }
-            | BufferTags { path, lnum } => {
+            BLines(CertainLine { path, lnum })
+            | Grep(CertainLine { path, lnum })
+            | ProjTags(CertainLine { path, lnum })
+            | BufferTags(CertainLine { path, lnum }) => {
                 self.preview_file_at(&path, *lnum);
             }
             HelpTags {
@@ -249,6 +258,15 @@ impl<'a> OnMoveHandler<'a> {
                 let lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
+
+                if let Some(ref expected) = self.expected_line {
+                    if let Some(got) = lines.get(hi_lnum) {
+                        if expected.eq(got) {
+                            // The cache might be outdated.
+                        }
+                    }
+                }
+
                 debug!(
                     "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines len: {:?}",
                     self.msg_id, self.context.provider_id, lines.len()
