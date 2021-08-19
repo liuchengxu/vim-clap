@@ -8,6 +8,9 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
+let s:call_timer = -1
+let s:call_delay = 80
+
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
@@ -62,9 +65,6 @@ function! clap#client#call_on_move(method, callback, ...) abort
     return
   endif
   let params = {'curline': curline}
-  if g:clap.provider.id ==# 'grep'
-    let params['enable_icon'] = g:clap_provider_grep_enable_icon ? v:true : v:false
-  endif
   if a:0 > 0
     call extend(params, a:1)
   endif
