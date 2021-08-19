@@ -27,12 +27,12 @@ impl ExactOrInverseTerms {
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
         if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
-            let should_return = !self
+            let should_retain = !self
                 .inverse_terms
                 .iter()
                 .any(|term| term.match_full_line(&line));
 
-            if should_return {
+            if should_retain {
                 Some(indices)
             } else {
                 None
