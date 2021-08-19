@@ -8,9 +8,6 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
-let s:call_timer = -1
-let s:call_delay = 80
-
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
