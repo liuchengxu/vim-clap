@@ -10,6 +10,8 @@ use structopt::StructOpt;
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
 
+const EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
+
 /// Generate ctags recursively given the directory.
 #[derive(StructOpt, Debug, Clone)]
 pub(self) struct SharedParams {
@@ -26,7 +28,7 @@ pub(self) struct SharedParams {
     /// Will be translated into ctags' option: --exclude=pattern.
     #[structopt(
         long,
-        default_value = ".git,*.json,node_modules,target,_build",
+        default_value = EXCLUDE,
         use_delimiter = true
     )]
     exclude: Vec<String>,

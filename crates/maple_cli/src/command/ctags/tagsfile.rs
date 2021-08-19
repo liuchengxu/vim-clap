@@ -50,7 +50,7 @@ pub struct TagsFile {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-struct TagsConfig<'a, P> {
+pub struct TagsConfig<'a, P> {
     languages: Option<&'a String>,
     kinds_all: &'a str,
     fields: &'a str,
@@ -62,7 +62,7 @@ struct TagsConfig<'a, P> {
 
 /// Represents the manager of tags file.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-struct Tags<'a, P> {
+pub struct Tags<'a, P> {
     config: TagsConfig<'a, P>,
     tags_path: PathBuf,
 }
@@ -96,6 +96,21 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             files,
             dir,
             exclude_opt,
+        }
+    }
+
+    pub fn with_dir(dir: P) -> Self {
+        Self {
+            languages: None,
+            kinds_all: "*",
+            fields: "*",
+            extras: "*",
+            files: Default::default(),
+            dir,
+            exclude_opt: super::EXCLUDE
+                .split(",")
+                .map(|x| format!("--exclude={}", x))
+                .join(" "),
         }
     }
 
@@ -189,7 +204,7 @@ impl TagsFile {
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
-            self.shared.files.as_slice(),
+            &self.shared.files,
             &dir,
             self.shared.exclude_opt(),
         );
