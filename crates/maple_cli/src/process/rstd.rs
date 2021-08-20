@@ -10,7 +10,7 @@ pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
     let cmd_output = cmd.output()?;
 
     if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
-        let e = format!("{}", String::from_utf8_lossy(cmd_output.stderr.as_slice()));
+        let e = String::from_utf8_lossy(cmd_output.stderr.as_slice()).to_string();
         return Err(anyhow!(e));
     }
 
