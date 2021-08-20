@@ -259,10 +259,12 @@ impl<'a> OnMoveHandler<'a> {
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(ref expected) = self.expected_line {
-                    if let Some(got) = lines.get(hi_lnum) {
-                        if expected.eq(got) {
-                            // The cache might be outdated.
+                if self.context.provider_id.as_str() == "grep2" {
+                    if let Some(ref expected) = self.expected_line {
+                        if let Some(got) = lines.get(hi_lnum) {
+                            if !expected.eq(got) {
+                                // The cache might be outdated.
+                            }
                         }
                     }
                 }
