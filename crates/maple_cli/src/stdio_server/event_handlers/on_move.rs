@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error};
+use once_cell::sync::Lazy;
 use serde_json::json;
 
 use pattern::*;
@@ -9,6 +11,8 @@ use pattern::*;
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{filer, global, session::SessionContext, types::Message, write_response};
 use crate::utils::build_abs_path;
+
+static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 /// We want to preview a certain line in a file.
 #[derive(Debug, Clone)]
@@ -245,34 +249,57 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn preview_file_at<P: AsRef<Path>>(&self, path: P, lnum: usize) {
-        debug!(
-            "Try to preview file: {}, lnum: {}",
-            path.as_ref().display(),
-            lnum
-        );
+    fn try_refresh_cache(&self, highlight_line: &str) {
+        if IS_FERESHING_CACHE.load(Ordering::Relaxed) {
+            debug!(
+                "Skipping the cache refreshing as there is already one that is running or waitting"
+            );
+            return;
+        }
+        if self.context.provider_id.as_str() == "grep2" {
+            if let Some(ref expected) = self.expected_line {
+                if !expected.eq(highlight_line) {
+                    log::debug!(
+                        "The cache might be oudated, expected:`{}`, got:`{}`",
+                        expected,
+                        highlight_line
+                    );
+                    let dir = self.context.cwd.clone();
+                    IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
+                    tokio::spawn(async move {
+                        log::debug!("Attempting to refresh the grep2 for `{}`", dir.display());
+                        match crate::command::grep::refresh_cache(dir) {
+                            Ok(total) => {
+                                debug!("Refresh the grep2 cache successfully, total: {}", total);
+                            }
+                            Err(e) => error!("Failed to refresh the grep2 cache: {:?}", e),
+                        }
+                        IS_FERESHING_CACHE.store(false, Ordering::Relaxed);
+                    });
+                }
+            }
+        }
+    }
 
-        match utility::read_preview_lines(path.as_ref(), lnum, self.size) {
+    fn preview_file_at(&self, path: &PathBuf, lnum: usize) {
+        debug!("Try to preview file: {}, lnum: {}", path.display(), lnum);
+
+        match utility::read_preview_lines(path, lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
-                let fname = format!("{}", path.as_ref().display());
+                let fname = format!("{}", path.display());
                 let lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
 
-                if self.context.provider_id.as_str() == "grep2" {
-                    if let Some(ref expected) = self.expected_line {
-                        if let Some(got) = lines.get(hi_lnum) {
-                            if !expected.eq(got) {
-                                // The cache might be outdated.
-                            }
-                        }
-                    }
+                if let Some(got) = lines.get(hi_lnum) {
+                    self.try_refresh_cache(got);
                 }
 
                 debug!(
                     "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines len: {:?}",
                     self.msg_id, self.context.provider_id, lines.len()
                 );
+
                 self.send_response(json!({
                   "event": "on_move",
                   "lines": lines,
@@ -284,7 +311,7 @@ impl<'a> OnMoveHandler<'a> {
                 error!(
                     "[{}]Couldn't read first lines of {}, error: {:?}",
                     self.context.provider_id,
-                    path.as_ref().display(),
+                    path.display(),
                     err
                 );
             }
