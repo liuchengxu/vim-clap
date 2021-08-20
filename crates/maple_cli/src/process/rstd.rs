@@ -9,7 +9,6 @@ use anyhow::{anyhow, Result};
 pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
     let cmd_output = cmd.output()?;
 
-    // vim-clap does not handle the stderr stream, we just pass the error info via stdout.
     if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
         let e = format!("{}", String::from_utf8_lossy(cmd_output.stderr.as_slice()));
         return Err(anyhow!(e));
