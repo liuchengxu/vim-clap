@@ -74,7 +74,7 @@ impl OnMove {
                 path.push(&p);
                 Self::ProjTags(CertainLine::new(path, lnum))
             }
-            "grep" | "grep2" => {
+            "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
                     let (fpath, lnum, _col, expected_line) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
