@@ -6,7 +6,7 @@ use log::error;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):").unwrap());
+static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):(.*)").unwrap());
 
 static DUMB_JUMP_LINE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap());
@@ -46,13 +46,14 @@ pub fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
 }
 
 /// Returns a tuple of (fpath, lnum, col).
-pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize)> {
+pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize, &str)> {
     let cap = GREP_POS.captures(line)?;
     let fpath = cap.get(1).map(|x| x.as_str().into())?;
     let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
     let lnum = str2nr(2)?;
     let col = str2nr(3)?;
-    Some((fpath, lnum, col))
+    let line_content = cap.get(4).map(|x| x.as_str())?;
+    Some((fpath, lnum, col, line_content))
 }
 
 /// Returns a tuple of (fpath, lnum, col).
@@ -134,7 +135,7 @@ mod tests {
     fn test_grep_regex() {
         let line = "install.sh:1:5:#!/usr/bin/env bash";
         let e = extract_grep_position(line).unwrap();
-        assert_eq!(("install.sh".into(), 1, 5), e);
+        assert_eq!(("install.sh".into(), 1, 5, "#!/usr/bin/env bash"), e);
 
         let path = extract_grep_file_path(line).unwrap();
         assert_eq!(path, "install.sh");

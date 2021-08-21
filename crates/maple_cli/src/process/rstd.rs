@@ -3,7 +3,19 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+
+/// Collect the output of command, exit directly if any error happened.
+pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
+    let cmd_output = cmd.output()?;
+
+    if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
+        let e = String::from_utf8_lossy(cmd_output.stderr.as_slice()).to_string();
+        return Err(anyhow!(e));
+    }
+
+    Ok(cmd_output.stdout)
+}
 
 /// Builds `Command` from a cmd string which can use pipe.
 ///

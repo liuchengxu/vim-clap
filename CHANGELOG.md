@@ -9,6 +9,7 @@
 ## Improved
 
 - Make the preview on enter work for `recent_files` provider. #731
+- Refresh the cache when it might be outdated, detected on processing the OnMove event. #740
 
 ## Fixed
 

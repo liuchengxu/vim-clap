@@ -299,3 +299,19 @@ impl RipGrepForerunner {
         Ok(())
     }
 }
+
+pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+    let mut cmd = Command::new(RG_ARGS[0]);
+    // Do not use --vimgrep here.
+    cmd.args(&RG_ARGS[1..]).current_dir(dir.as_ref());
+
+    let stdout = crate::process::rstd::collect_stdout(&mut cmd)?;
+
+    let total = bytecount::count(&stdout, b'\n');
+
+    let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()));
+
+    base_cmd.create_cache(total, &stdout)?;
+
+    Ok(total)
+}

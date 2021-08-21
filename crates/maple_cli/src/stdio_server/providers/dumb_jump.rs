@@ -1,20 +1,66 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use filter::Query;
 use itertools::Itertools;
 use log::error;
 use serde::Deserialize;
 use serde_json::json;
 
+use filter::Query;
+
+use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::{DumbJump, Lines};
-use crate::stdio_server::event_handlers::OnMoveHandler;
 use crate::stdio_server::{
+    event_handlers::OnMoveHandler,
     session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
 use crate::utils::ExactOrInverseTerms;
 
-pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<String> {
+#[derive(Debug, Clone, Default)]
+pub struct SearchResults {
+    /// When passing the line content from Vim to Rust, for
+    /// these lines that are extremely long, the performance
+    /// of Vim can become very bad, we cache the display lines
+    /// on Rust to pass the line number instead.
+    pub lines: Vec<String>,
+    /// Last query.
+    pub query: String,
+}
+
+#[allow(unused)]
+async fn search_tags(dir: &PathBuf, query: &str) -> Result<Vec<String>> {
+    let tags = Tags::new(TagsConfig::with_dir(dir));
+    if tags.exists() {
+        for line in tags.readtags(query)?.collect::<Vec<_>>() {
+            println!("{}", line);
+        }
+        todo!()
+    } else {
+        Ok(Default::default())
+    }
+}
+
+impl DumbJumpMessageHandler {
+    async fn handle_dumb_jump_message(&mut self, msg: Message) {
+        // TODO: try refilter
+
+        let results = tokio::spawn(handle_dumb_jump_message(msg, false))
+            .await
+            .unwrap_or_else(|e| {
+                log::error!(
+                    "Failed to spawn a task for handle_dumb_jump_message: {:?}",
+                    e
+                );
+                Default::default()
+            });
+
+        self.results = results;
+    }
+}
+
+pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> SearchResults {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -34,6 +80,8 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
         return Default::default();
     }
 
+    let last_query = query.clone();
+
     // When we use the dumb_jump, the search query should be `identifier(s) ++ exact_term/inverse_term`
     let Query {
         exact_terms,
@@ -44,7 +92,17 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
     // If there is no fuzzy term, use the full query as the identifier,
     // otherwise restore the fuzzy query as the identifier we are going to search.
     let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
-        (query, ExactOrInverseTerms::default())
+        if !exact_terms.is_empty() {
+            (
+                exact_terms[0].word.clone(),
+                ExactOrInverseTerms {
+                    exact_terms,
+                    inverse_terms,
+                },
+            )
+        } else {
+            (query, ExactOrInverseTerms::default())
+        }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
@@ -88,7 +146,10 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
             write_response(result);
 
-            return total_lines;
+            return SearchResults {
+                lines: total_lines,
+                query: last_query,
+            };
         }
         Err(e) => {
             error!("Error when running dumb_jump: {:?}", e);
@@ -99,16 +160,16 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Vec<
 
     write_response(result);
 
-    Default::default()
+    SearchResults {
+        lines: Default::default(),
+        query: last_query,
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DumbJumpMessageHandler {
-    /// When passing the line content from Vim to Rust, for
-    /// these lines that are extremely long, the performance
-    /// of Vim can become very bad, we cache the display lines
-    /// on Rust to pass the line number instead.
-    lines: Vec<String>,
+    /// Last/Latest search results.
+    results: SearchResults,
 }
 
 #[async_trait::async_trait]
@@ -121,8 +182,8 @@ impl EventHandler for DumbJumpMessageHandler {
                 let lnum = msg.get_u64("lnum").expect("lnum exists");
 
                 // lnum is 1-indexed
-                if let Some(curline) = self.lines.get((lnum - 1) as usize) {
-                    if let Err(e) = OnMoveHandler::try_new(&msg, &context, Some(curline.into()))
+                if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
+                    if let Err(e) = OnMoveHandler::create(&msg, &context, Some(curline.into()))
                         .map(|x| x.handle())
                     {
                         log::error!("Failed to handle OnMove event: {:?}", e);
@@ -130,18 +191,7 @@ impl EventHandler for DumbJumpMessageHandler {
                     }
                 }
             }
-            Event::OnTyped(msg) => {
-                let lines = tokio::spawn(handle_dumb_jump_message(msg, false))
-                    .await
-                    .unwrap_or_else(|e| {
-                        log::error!(
-                            "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                            e
-                        );
-                        Default::default()
-                    });
-                self.lines = lines;
-            }
+            Event::OnTyped(msg) => self.handle_dumb_jump_message(msg).await,
         }
         Ok(())
     }

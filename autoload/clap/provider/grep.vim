@@ -302,7 +302,9 @@ let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_move = function('s:grep_on_move')
 
 function! s:grep.on_move_async() abort
-  call clap#client#call_on_move('on_move', function('clap#impl#on_move#handler'))
+  let enable_icon = s:grep_enable_icon ? v:true : v:false
+  call clap#client#call_on_move(
+        \ 'on_move', function('clap#impl#on_move#handler'), {'enable_icon': enable_icon})
 endfunction
 
 let s:grep.on_exit = function('s:grep_exit')

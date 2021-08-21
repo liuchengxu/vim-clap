@@ -1,7 +1,7 @@
 //! Wrapper of std `Command` with some optimization about the output.
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 
 use anyhow::{anyhow, Result};
 
@@ -177,17 +177,16 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Collect the output of command, exit directly if any error happened.
-    fn output(&mut self) -> Result<Output> {
-        let cmd_output = self.cmd.output()?;
-
-        // vim-clap does not handle the stderr stream, we just pass the error info via stdout.
-        if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
-            let error = format!("{}", String::from_utf8_lossy(&cmd_output.stderr));
-            println_json!(error);
-            std::process::exit(1);
+    fn collect_stdout(&mut self) -> Result<Vec<u8>> {
+        match crate::process::rstd::collect_stdout(&mut self.cmd) {
+            Ok(stdout) => Ok(stdout),
+            Err(e) => {
+                // vim-clap does not handle the stderr stream, we just pass the error info via stdout.
+                let error = e.to_string();
+                println_json!(error);
+                Err(e)
+            }
         }
-
-        Ok(cmd_output)
     }
 
     /// Normally we only care about the top N items and number of total results if it's not a
@@ -273,12 +272,11 @@ impl<'a> LightCommand<'a> {
     pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         self.env.dir = Some(base_cmd.cwd.clone());
 
-        let cmd_output = self.output()?;
-        let cmd_stdout = &cmd_output.stdout;
+        let cmd_stdout = self.collect_stdout()?;
 
-        self.env.total = bytecount::count(cmd_stdout, b'\n');
+        self.env.total = bytecount::count(&cmd_stdout, b'\n');
 
-        if let Ok(executed_info) = self.minimalize_job_overhead(cmd_stdout) {
+        if let Ok(executed_info) = self.minimalize_job_overhead(&cmd_stdout) {
             return Ok(executed_info);
         }
 

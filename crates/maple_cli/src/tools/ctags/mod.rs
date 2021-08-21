@@ -5,8 +5,6 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-use filter::subprocess;
-
 use crate::process::BaseCommand;
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
@@ -23,10 +21,9 @@ impl CtagsCommand {
 
     /// Returns an iterator of raw line of ctags output.
     fn run(&self) -> Result<impl Iterator<Item = String>> {
-        let stdout_stream = subprocess::Exec::shell(&self.inner.command)
-            .cwd(&self.inner.cwd)
-            .stream_stdout()?;
-        Ok(BufReader::new(stdout_stream).lines().flatten())
+        Ok(BufReader::new(self.inner.stream_stdout()?)
+            .lines()
+            .flatten())
     }
 
     /// Returns an iterator of tag line in a formatted form.
@@ -121,7 +118,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_ctags_line() {
+    fn test_deserialize_ctags_line() {
         let data = r#"{"_type": "tag", "name": "Exec", "path": "crates/maple_cli/src/cmd/exec.rs", "pattern": "/^pub struct Exec {$/", "line": 10, "kind": "struct"}"#;
         let tag: TagInfo = serde_json::from_str(&data).unwrap();
         assert_eq!(

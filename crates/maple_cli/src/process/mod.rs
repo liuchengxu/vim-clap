@@ -93,6 +93,15 @@ impl BaseCommand {
             .map(|d| (d.total, d.cached_path.clone()))
     }
 
+    /// Executes and returns an value that implements `Read` trait.
+    pub fn stream_stdout(&self) -> Result<impl std::io::Read> {
+        let stdout_stream = filter::subprocess::Exec::shell(&self.command)
+            .cwd(&self.cwd)
+            .stream_stdout()?;
+
+        Ok(stdout_stream)
+    }
+
     /// Writes the whole stdout `cmd_stdout` to a cache file.
     fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;

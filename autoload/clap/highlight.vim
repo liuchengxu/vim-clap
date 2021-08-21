@@ -96,7 +96,11 @@ endfunction
 
 " Used by the async job.
 function! clap#highlight#add_fuzzy_async(hl_lines) abort
-  call s:apply_add_highlight(a:hl_lines)
+  try
+    call s:apply_add_highlight(a:hl_lines)
+  catch
+    return
+  endtry
 endfunction
 
 function! clap#highlight#fg_only(group_name, cermfg, guifg) abort
