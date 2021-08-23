@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use chrono::prelude::*;
+use matcher::Bonus;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
@@ -96,6 +97,15 @@ impl FrecentEntry {
             self.visits / 4
         };
     }
+
+    /// Add a bonus score based on cwd.
+    pub fn adjusted_score(&self, cwd: &str) -> u64 {
+        if self.fpath.starts_with(cwd) {
+            self.frecent_score * 2
+        } else {
+            self.frecent_score
+        }
+    }
 }
 
 /// In memory version of sorted recent files.
@@ -139,8 +149,20 @@ impl SortedRecentFiles {
         self.entries.len()
     }
 
-    pub fn filter_on_query(&self, query: &str) -> Vec<filter::FilteredItem> {
-        filter::simple_run(self.entries.iter().map(|entry| entry.fpath.as_str()), query)
+    pub fn sort_by_cwd(&mut self, cwd: &str) {
+        self.entries.sort_unstable_by(|a, b| {
+            b.adjusted_score(cwd)
+                .partial_cmp(&a.adjusted_score(cwd))
+                .unwrap()
+        });
+    }
+
+    pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::FilteredItem> {
+        filter::simple_run(
+            self.entries.iter().map(|entry| entry.fpath.as_str()),
+            query,
+            Some(vec![Bonus::cwd(cwd)]),
+        )
     }
 
     /// Updates or inserts a new entry in a sorted way.

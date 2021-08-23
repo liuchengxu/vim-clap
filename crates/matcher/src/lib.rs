@@ -27,6 +27,7 @@ mod algo;
 mod bonus;
 
 pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
+pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
 // Re-export types

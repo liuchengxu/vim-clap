@@ -1,11 +1,14 @@
+pub mod cwd;
 pub mod language;
 pub mod recent_files;
 
 use types::SourceItem;
 
+use self::cwd::Cwd;
+use self::language::Language;
+use self::recent_files::RecentFiles;
+
 use crate::Score;
-use language::Language;
-use recent_files::RecentFiles;
 
 /// Tweak the matching score calculated by the base match algorithm.
 #[derive(Debug, Clone)]
@@ -20,6 +23,9 @@ pub enum Bonus {
 
     /// Give a bonus if the item is in the list of recently opened files.
     RecentFiles(RecentFiles),
+
+    /// Give a bonus if the entry is an absolute file path and matches the cwd.
+    Cwd(Cwd),
 
     /// No additional bonus.
     None,
@@ -68,6 +74,10 @@ fn bonus_for_filename(item: &SourceItem, score: Score, indices: &[usize]) -> Sco
 }
 
 impl Bonus {
+    pub fn cwd(abs_path: String) -> Self {
+        Self::Cwd(abs_path.into())
+    }
+
     /// Calculates the bonus score given the match result of base algorithm.
     pub fn bonus_for(&self, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
         // Ignore the long line.
@@ -76,10 +86,11 @@ impl Bonus {
         }
 
         match self {
-            Bonus::FileName => bonus_for_filename(item, score, indices),
-            Bonus::RecentFiles(recent_files) => recent_files.calc_bonus(item, score),
-            Bonus::Language(language) => language.calc_bonus(item, score),
-            Bonus::None => 0,
+            Self::FileName => bonus_for_filename(item, score, indices),
+            Self::RecentFiles(recent_files) => recent_files.calc_bonus(item, score),
+            Self::Language(language) => language.calc_bonus(item, score),
+            Self::Cwd(cwd) => cwd.calc_bonus(item, score),
+            Self::None => 0,
         }
     }
 }

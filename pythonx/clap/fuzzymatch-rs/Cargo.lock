@@ -320,6 +320,7 @@ dependencies = [
  "anyhow",
  "extracted_fzy",
  "fuzzy-matcher",
+ "log",
  "pattern",
  "structopt",
  "types",

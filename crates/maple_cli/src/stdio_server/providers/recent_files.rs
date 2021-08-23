@@ -6,6 +6,8 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
+use filter::FilteredItem;
+
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::event_handlers::OnMoveHandler;
 use crate::stdio_server::{
@@ -16,6 +18,7 @@ use crate::stdio_server::{
 pub async fn handle_recent_files_message(
     msg: Message,
     winwidth: u64,
+    cwd: String,
     force_execute: bool,
 ) -> Vec<filter::FilteredItem> {
     let msg_id = msg.id;
@@ -33,8 +36,25 @@ pub async fn handle_recent_files_message(
         lnum,
     } = msg.deserialize_params_unsafe();
 
-    let recent_files = RECENT_FILES_IN_MEMORY.lock();
-    let ranked = recent_files.filter_on_query(&query);
+    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+
+    let ranked = if query.is_empty() || force_execute {
+        // Sort the initial list according to cwd.
+        recent_files.sort_by_cwd(&cwd);
+        recent_files
+            .entries
+            .iter()
+            .map(|entry| {
+                FilteredItem::new(
+                    entry.fpath.clone(),
+                    entry.frecent_score as i64,
+                    Default::default(),
+                )
+            })
+            .collect::<Vec<_>>()
+    } else {
+        recent_files.filter_on_query(&query, cwd)
+    };
     let initial_size = recent_files.len();
 
     let total = ranked.len();
@@ -126,15 +146,17 @@ impl EventHandler for RecentFilesMessageHandler {
             }
             Event::OnTyped(msg) => {
                 let winwidth = context.display_winwidth;
-                let new_lines = tokio::spawn(handle_recent_files_message(msg, winwidth, false))
-                    .await
-                    .unwrap_or_else(|e| {
-                        log::error!(
-                            "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                            e
-                        );
-                        Default::default()
-                    });
+                let cwd = context.cwd.to_string_lossy().to_string();
+                let new_lines =
+                    tokio::spawn(handle_recent_files_message(msg, winwidth, cwd, false))
+                        .await
+                        .unwrap_or_else(|e| {
+                            log::error!(
+                                "Failed to spawn a task for handle_dumb_jump_message: {:?}",
+                                e
+                            );
+                            Default::default()
+                        });
 
                 let mut lines = self.lines.lock();
                 *lines = new_lines;
@@ -155,11 +177,12 @@ impl NewSession for RecentFilesSession {
         let (session, session_sender) = Session::new(msg.clone(), handler);
 
         let winwidth = session.context.display_winwidth;
+        let cwd = session.context.cwd.to_string_lossy().to_string();
 
         session.start_event_loop()?;
 
         tokio::spawn(async move {
-            let initial_lines = handle_recent_files_message(msg, winwidth, true).await;
+            let initial_lines = handle_recent_files_message(msg, winwidth, cwd, true).await;
 
             let mut lines = lines_clone.lock();
             *lines = initial_lines;
