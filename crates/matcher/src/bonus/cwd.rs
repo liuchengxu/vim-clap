@@ -21,11 +21,6 @@ impl From<String> for Cwd {
 
 impl Cwd {
     pub fn calc_bonus(&self, item: &SourceItem, base_score: Score) -> Score {
-        log::debug!(
-            "---- matching item: {:?}, abs_path: {:?}",
-            item,
-            self.abs_path
-        );
         if item.raw.starts_with(&self.abs_path) {
             base_score / 2
         } else {
