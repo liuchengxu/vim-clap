@@ -149,6 +149,7 @@ impl SortedRecentFiles {
         self.entries.len()
     }
 
+    /// Sort the entries by adding a bonus score given `cwd`.
     pub fn sort_by_cwd(&mut self, cwd: &str) {
         self.entries.sort_unstable_by(|a, b| {
             b.adjusted_score(cwd)

@@ -20,7 +20,7 @@ pub async fn handle_recent_files_message(
     winwidth: u64,
     cwd: String,
     force_execute: bool,
-) -> Vec<filter::FilteredItem> {
+) -> Vec<FilteredItem> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -39,7 +39,7 @@ pub async fn handle_recent_files_message(
     let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
     let ranked = if query.is_empty() || force_execute {
-        // Sort the initial list according to cwd.
+        // Sort the initial list according to the cwd.
         recent_files.sort_by_cwd(&cwd);
         recent_files
             .entries
@@ -118,7 +118,7 @@ pub async fn handle_recent_files_message(
 
 #[derive(Debug, Clone, Default)]
 pub struct RecentFilesMessageHandler {
-    lines: Arc<Mutex<Vec<filter::FilteredItem>>>,
+    lines: Arc<Mutex<Vec<FilteredItem>>>,
 }
 
 #[async_trait::async_trait]
