@@ -1,4 +1,5 @@
 use std::path::{self, Path};
+use std::sync::Arc;
 use std::{fs, io};
 
 use anyhow::Result;
@@ -85,7 +86,7 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
+    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 #[derive(serde::Deserialize)]

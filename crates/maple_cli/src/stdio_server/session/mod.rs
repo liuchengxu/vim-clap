@@ -1,6 +1,8 @@
 mod context;
 mod manager;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
@@ -21,13 +23,13 @@ pub enum Event {
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
     /// Use the mutable self so that we can cache some info inside the handler.
-    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()>;
+    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
 pub struct Session<T> {
     pub session_id: u64,
-    pub context: SessionContext,
+    pub context: Arc<SessionContext>,
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
@@ -56,7 +58,7 @@ impl<T: EventHandler> Session<T> {
 
         let session = Session {
             session_id: msg.session_id,
-            context: msg.into(),
+            context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
         };
@@ -115,7 +117,6 @@ impl<T: EventHandler> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
-                                // TODO: use Arc::new(self.context)
                                 if let Err(e) = self
                                     .event_handler
                                     .handle(Event::OnMove(msg), self.context.clone())

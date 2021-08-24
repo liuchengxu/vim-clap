@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
@@ -174,7 +175,7 @@ pub struct DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
+    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;

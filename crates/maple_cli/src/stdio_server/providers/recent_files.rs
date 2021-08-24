@@ -123,7 +123,7 @@ pub struct RecentFilesMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for RecentFilesMessageHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
+    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;

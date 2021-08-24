@@ -4,6 +4,8 @@ pub mod on_init;
 pub mod on_move;
 pub mod on_typed;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use serde_json::json;
 
@@ -19,7 +21,7 @@ pub struct DefaultEventHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for DefaultEventHandler {
-    async fn handle(&mut self, event: Event, context: SessionContext) -> Result<()> {
+    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()> {
         match event {
             Event::OnMove(msg) => {
                 let msg_id = msg.id;
