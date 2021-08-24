@@ -41,6 +41,8 @@ pub async fn handle_recent_files_message(
 
     let ranked = if query.is_empty() || force_execute {
         // Sort the initial list according to the cwd.
+        //
+        // This changes the order of existing recent file entries.
         recent_files.sort_by_cwd(&cwd);
         recent_files
             .entries
