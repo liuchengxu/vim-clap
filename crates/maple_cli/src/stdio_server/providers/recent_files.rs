@@ -17,11 +17,12 @@ use crate::stdio_server::{
 
 pub async fn handle_recent_files_message(
     msg: Message,
-    winwidth: u64,
-    cwd: String,
+    context: Arc<SessionContext>,
     force_execute: bool,
 ) -> Vec<FilteredItem> {
     let msg_id = msg.id;
+
+    let cwd = context.cwd.to_string_lossy().to_string();
 
     #[derive(Deserialize)]
     struct Params {
@@ -61,11 +62,17 @@ pub async fn handle_recent_files_message(
 
     let mut preview = None;
 
+    let winwidth = context.display_winwidth as usize;
+
     if let Some(lnum) = lnum {
         // process the new preview
         if let Some(new_entry) = ranked.get(lnum as usize - 1) {
             let new_curline = new_entry.display_text();
-            if let Ok((lines, fname)) = crate::previewer::preview_file(new_curline, 100, 80) {
+            if let Ok((lines, fname)) = crate::previewer::preview_file(
+                new_curline,
+                context.sensible_preview_size(),
+                winwidth,
+            ) {
                 preview = Some(json!({
                   "lines": lines,
                   "fname": fname
@@ -77,7 +84,7 @@ pub async fn handle_recent_files_message(
     // Take the first 200 entries and add an icon to each of them.
     let (lines, indices, truncated_map) = printer::process_top_items(
         ranked.iter().take(200).cloned().collect(),
-        winwidth as usize,
+        winwidth,
         if enable_icon.unwrap_or(true) {
             Some(icon::IconPainter::File)
         } else {
@@ -145,18 +152,15 @@ impl EventHandler for RecentFilesMessageHandler {
                 }
             }
             Event::OnTyped(msg) => {
-                let winwidth = context.display_winwidth;
-                let cwd = context.cwd.to_string_lossy().to_string();
-                let new_lines =
-                    tokio::spawn(handle_recent_files_message(msg, winwidth, cwd, false))
-                        .await
-                        .unwrap_or_else(|e| {
-                            log::error!(
-                                "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                                e
-                            );
-                            Default::default()
-                        });
+                let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::error!(
+                            "Failed to spawn a task for handle_dumb_jump_message: {:?}",
+                            e
+                        );
+                        Default::default()
+                    });
 
                 let mut lines = self.lines.lock();
                 *lines = new_lines;
@@ -176,13 +180,12 @@ impl NewSession for RecentFilesSession {
 
         let (session, session_sender) = Session::new(msg.clone(), handler);
 
-        let winwidth = session.context.display_winwidth;
-        let cwd = session.context.cwd.to_string_lossy().to_string();
+        let context_clone = session.context.clone();
 
         session.start_event_loop()?;
 
         tokio::spawn(async move {
-            let initial_lines = handle_recent_files_message(msg, winwidth, cwd, true).await;
+            let initial_lines = handle_recent_files_message(msg, context_clone, true).await;
 
             let mut lines = lines_clone.lock();
             *lines = initial_lines;
