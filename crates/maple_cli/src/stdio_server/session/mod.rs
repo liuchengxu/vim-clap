@@ -115,6 +115,7 @@ impl<T: EventHandler> Session<T> {
                                 return;
                             }
                             SessionEvent::OnMove(msg) => {
+                                // TODO: use Arc::new(self.context)
                                 if let Err(e) = self
                                     .event_handler
                                     .handle(Event::OnMove(msg), self.context.clone())
