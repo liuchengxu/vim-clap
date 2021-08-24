@@ -528,11 +528,7 @@ function! s:init_provider() abort
     let provider_info = self._()
     " Catch any exceptions and show them in the display window.
     try
-      if has_key(provider_info, 'source')
-        return clap#rooter#run(self._apply_source)
-      else
-        return []
-      endif
+      return has_key(provider_info, 'source') ? clap#rooter#run(self._apply_source) : []
     catch
       call clap#spinner#set_idle()
       let tps = split(v:throwpoint, '\[\d\+\]\zs')

@@ -162,7 +162,7 @@ impl SortedRecentFiles {
         filter::simple_run(
             self.entries.iter().map(|entry| entry.fpath.as_str()),
             query,
-            Some(vec![Bonus::cwd(cwd)]),
+            Some(vec![Bonus::cwd(cwd), Bonus::FileName]),
         )
     }
 

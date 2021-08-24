@@ -27,7 +27,6 @@ function! clap#cache#directory() abort
   if !isdirectory(s:clap_cache_directory)
     call mkdir(s:clap_cache_directory, 'p')
   endif
-
   return s:clap_cache_directory
 endf
 
