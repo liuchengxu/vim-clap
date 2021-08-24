@@ -1,10 +1,12 @@
 pub mod cwd;
+pub mod filename;
 pub mod language;
 pub mod recent_files;
 
 use types::SourceItem;
 
 use self::cwd::Cwd;
+use self::filename::calc_bonus_filename;
 use self::language::Language;
 use self::recent_files::RecentFiles;
 
@@ -59,21 +61,8 @@ impl From<&String> for Bonus {
     }
 }
 
-fn bonus_for_filename(item: &SourceItem, score: Score, indices: &[usize]) -> Score {
-    if let Some((_, idx)) = pattern::file_name_only(&item.raw) {
-        if item.raw.len() > idx {
-            let hits_filename = indices.iter().filter(|x| **x >= idx).count();
-            // bonus = base_score * len(matched elements in filename) / len(filename)
-            score * hits_filename as i64 / (item.raw.len() - idx) as i64
-        } else {
-            0
-        }
-    } else {
-        0
-    }
-}
-
 impl Bonus {
+    /// Constructs a new instance of [`Bonus::Cwd`].
     pub fn cwd(abs_path: String) -> Self {
         Self::Cwd(abs_path.into())
     }
@@ -86,7 +75,7 @@ impl Bonus {
         }
 
         match self {
-            Self::FileName => bonus_for_filename(item, score, indices),
+            Self::FileName => calc_bonus_filename(item, score, indices),
             Self::RecentFiles(recent_files) => recent_files.calc_bonus(item, score),
             Self::Language(language) => language.calc_bonus(item, score),
             Self::Cwd(cwd) => cwd.calc_bonus(item, score),
