@@ -23,10 +23,12 @@ pub struct Lines {
 }
 
 impl Lines {
+    /// Constructs a new instance of [`Lines`].
     pub fn new(lines: Vec<String>, indices: Vec<Vec<usize>>) -> Self {
         Self { lines, indices }
     }
 
+    /// Prints the lines info to stdout.
     pub fn print(&self) {
         let total = self.lines.len();
         let Self { lines, indices } = self;
