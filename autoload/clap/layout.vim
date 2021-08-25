@@ -105,7 +105,6 @@ if s:is_nvim
       let opts = {'relative': 'win', 'win': g:clap.start.winid}
       call s:adjust_indicator_width()
     endif
-
     return extend(opts, {
           \ 'width': s:calc(width, layout.width),
           \ 'height': s:calc(height, layout.height),

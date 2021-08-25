@@ -162,7 +162,7 @@ impl SortedRecentFiles {
         filter::simple_run(
             self.entries.iter().map(|entry| entry.fpath.as_str()),
             query,
-            Some(vec![Bonus::cwd(cwd)]),
+            Some(vec![Bonus::cwd(cwd), Bonus::FileName]),
         )
     }
 
@@ -191,5 +191,40 @@ impl SortedRecentFiles {
         if let Err(e) = crate::datastore::store_recent_files(self) {
             log::error!("Failed to write the recent files to the disk: {:?}", e);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sort_by_cwd() {
+        let mut sorted_recent_files = SortedRecentFiles::default();
+
+        let entries = vec![
+            "/usr/local/share/test1.txt",
+            "/home/xlc/.vimrc",
+            "/home/xlc/test.txt",
+        ];
+
+        for entry in entries.iter() {
+            sorted_recent_files.upsert(entry.to_string());
+        }
+
+        sorted_recent_files.sort_by_cwd("/usr/local/share");
+
+        assert_eq!(
+            sorted_recent_files
+                .entries
+                .iter()
+                .map(|entry| entry.fpath.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "/usr/local/share/test1.txt",
+                "/home/xlc/test.txt",
+                "/home/xlc/.vimrc",
+            ]
+        );
     }
 }

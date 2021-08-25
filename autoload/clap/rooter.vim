@@ -110,9 +110,7 @@ function! clap#rooter#run_heuristic(Run, ...) abort
 
   if empty(project_root)
     let result = call(a:Run, a:000)
-
   else
-
     let save_cwd = getcwd()
     try
       execute 'lcd' project_root
@@ -126,7 +124,6 @@ function! clap#rooter#run_heuristic(Run, ...) abort
         execute 'lcd' save_cwd
       endif
     endtry
-
   endif
 
   return exists('l:result') ? l:result : []
