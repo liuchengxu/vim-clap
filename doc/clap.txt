@@ -100,11 +100,11 @@ g:clap_layout                                                    *g:clap_layout*
   Type: |Dict|
   Default: `{'width': '67%', 'height': '33%', 'row': '33%', 'col': '17%'}`
 
-  This variable controls the size and position of vim-clap window. The postion
+  This variable controls the size and position of vim-clap display window. The postion
   is relative to the current window by default. The value can be a |Number| which
   means the window size is fixed or use `[number]%` for a relative size.
 
-  If you change the value of  `width`, normally you'll have to tweak `col` too,
+  If you change the value of `width`, normally you'll have to tweak `col` too,
   otherwise the UI could be weired as vim-clap uses multiple floating_win/popups
   at the same time.
 
@@ -113,10 +113,16 @@ g:clap_layout                                                    *g:clap_layout*
 >
   let g:clap_layout = { 'relative': 'editor' }
 <
-  Make the width wider:
+  Make the width wider when |g:clap_preview_direction| is `'UD'`:
 >
   let g:clap_layout = { 'width': '95%', 'col': '5%' }
-
+<
+  Due to the preview window size is binded to the size of display window, when you use
+  `let g:clap_preview_direction = 'LR'`, that means the maximum value of `width` is `50%`,
+  with `col` set to `0%` at the same time.
+>
+  let g:clap_layout = { 'width': '50%', 'col': '0%' }
+<
 
 g:clap_theme                                                      *g:clap_theme*
 
