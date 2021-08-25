@@ -115,9 +115,13 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
 pub fn simple_run<T: Into<SourceItem>>(
     lines: impl Iterator<Item = T>,
     query: &str,
+    bonuses: Option<Vec<Bonus>>,
 ) -> Vec<FilteredItem> {
-    let matcher =
-        matcher::Matcher::with_bonuses(FuzzyAlgorithm::Fzy, MatchType::Full, Default::default());
+    let matcher = matcher::Matcher::with_bonuses(
+        FuzzyAlgorithm::Fzy,
+        MatchType::Full,
+        bonuses.unwrap_or_default(),
+    );
 
     let query: Query = query.into();
     let do_match = |source_item: &SourceItem| matcher.match_query(source_item, &query);
