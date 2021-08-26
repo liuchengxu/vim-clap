@@ -162,7 +162,7 @@ pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> Path
 /// Counts lines in the source `handle`.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let lines: usize = count_lines(std::fs::File::open("Cargo.toml").unwrap()).unwrap();
 /// ```
 ///
