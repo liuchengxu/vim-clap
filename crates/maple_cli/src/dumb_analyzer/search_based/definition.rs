@@ -150,6 +150,7 @@ impl DefinitionRules {
 
 /// Returns the definition rules given `lang`.
 pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
+    /// A map of extension => ripgrep language.
     static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
         Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
