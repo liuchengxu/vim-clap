@@ -6,7 +6,9 @@ use anyhow::Result;
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 
-use super::definition::{get_comments_by_ext, is_comment, DefinitionKind, DefinitionRules};
+use super::definition::{
+    build_full_regexp, get_comments_by_ext, is_comment, DefinitionKind,
+};
 
 /// Executes `command` as a child process.
 ///
@@ -35,23 +37,6 @@ async fn collect_matches(
     }
 }
 
-/// Finds all the occurrences of `word`.
-///
-/// Basically the occurrences are composed of definitions and usages.
-pub async fn find_all_occurrences_by_type(
-    word: &Word,
-    lang_type: &str,
-    dir: &Option<PathBuf>,
-    comments: &[&str],
-) -> Result<Vec<Match>> {
-    let command = format!(
-        "rg --json --word-regexp '{}' --type {}",
-        word.raw, lang_type
-    );
-
-    collect_matches(command, dir, Some(comments)).await
-}
-
 pub async fn naive_grep_fallback(
     word: &Word,
     lang_type: &str,
@@ -73,30 +58,34 @@ pub async fn find_occurrence_matches_by_ext(
 ) -> Result<Vec<Match>> {
     let command = format!("rg --json --word-regexp '{}' -g '*.{}'", word.raw, ext);
     let comments = get_comments_by_ext(ext);
-    let occurrences = collect_matches(command, dir, Some(comments)).await?;
-
-    Ok(occurrences)
+    collect_matches(command, dir, Some(comments)).await
 }
 
-#[allow(unused)]
-pub async fn find_definitions_matches(
-    lang: &str,
-    kind: &DefinitionKind,
+/// Finds all the occurrences of `word`.
+///
+/// Basically the occurrences are composed of definitions and usages.
+pub async fn find_occurrences_by_lang(
     word: &Word,
+    lang_type: &str,
     dir: &Option<PathBuf>,
+    comments: &[&str],
 ) -> Result<Vec<Match>> {
-    let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
-    let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    collect_matches(command, dir, None).await
+    let command = format!(
+        "rg --json --word-regexp '{}' --type {}",
+        word.raw, lang_type
+    );
+
+    collect_matches(command, dir, Some(comments)).await
 }
 
+/// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
 pub async fn find_definition_matches_with_kind(
     lang: &str,
     kind: &DefinitionKind,
     word: &Word,
     dir: &Option<PathBuf>,
 ) -> Result<(DefinitionKind, Vec<Match>)> {
-    let regexp = DefinitionRules::build_full_regexp(lang, kind, word)?;
+    let regexp = build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
     collect_matches(command, dir, None)
         .await

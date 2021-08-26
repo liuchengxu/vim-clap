@@ -10,8 +10,7 @@ use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 use super::runner::{
-    find_all_occurrences_by_type, find_definition_matches_with_kind,
-    naive_grep_fallback,
+    find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
 
 /// A map of the ripgrep language to a set of regular expressions.
@@ -75,11 +74,12 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
         .unwrap_or_else(|| table.get("*").expect("`*` entry exists; qed"))
 }
 
+/// Type of match result of ripgrep.
 #[derive(Clone, Debug, serde::Deserialize, PartialEq, Eq, Hash)]
 pub enum MatchKind {
-    ///
+    /// Results matched from the definition regexp.
     Definition(DefinitionKind),
-    /// Occurrences without definition items included.
+    /// Occurrences with the definition items ignored.
     Reference(&'static str),
     /// Pure grep results.
     Occurrence(&'static str),
@@ -140,23 +140,14 @@ impl DefinitionRegexp {
 pub struct DefinitionRules(HashMap<DefinitionKind, DefinitionRegexp>);
 
 impl DefinitionRules {
-    pub fn kind_rules_for(&self, kind: &DefinitionKind) -> Result<impl Iterator<Item = &str>> {
+    fn kind_rules_for(&self, kind: &DefinitionKind) -> Result<impl Iterator<Item = &str>> {
         self.0
             .get(kind)
             .ok_or_else(|| anyhow!("invalid definition kind {:?} for the rules", kind))
             .map(|x| x.iter().map(|x| x.as_str()))
     }
 
-    pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
-        let regexp = get_definition_rules(lang)?
-            .kind_rules_for(kind)?
-            .map(|x| x.replace("\\\\", "\\"))
-            .map(|x| x.replace("JJJ", &word.raw))
-            .collect::<Vec<_>>()
-            .join("|");
-        Ok(regexp)
-    }
-
+    /// Collects all kinds of definitions concurrently.
     pub async fn all_definitions(
         lang: &str,
         word: &Word,
@@ -172,21 +163,22 @@ impl DefinitionRules {
         Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
     }
 
-    async fn get_occurences_and_definitions(
+    /// Collects the occurrences and all definitions concurrently.
+    async fn definitions_and_occurences(
         word: &Word,
         lang: &str,
         dir: &Option<PathBuf>,
         comments: &[&str],
-    ) -> (Vec<Match>, Vec<(DefinitionKind, Vec<Match>)>) {
-        let (occurrences, definitions) = futures::future::join(
-            find_all_occurrences_by_type(word, lang, dir, comments),
+    ) -> (Vec<(DefinitionKind, Vec<Match>)>, Vec<Match>) {
+        let (definitions, occurrences) = futures::future::join(
             Self::all_definitions(lang, word, dir),
+            find_occurrences_by_lang(word, lang, dir, comments),
         )
         .await;
 
         (
-            occurrences.unwrap_or_default(),
             definitions.unwrap_or_default(),
+            occurrences.unwrap_or_default(),
         )
     }
 
@@ -197,8 +189,8 @@ impl DefinitionRules {
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
-        let (occurrences, definitions) =
-            Self::get_occurences_and_definitions(word, lang, dir, comments).await;
+        let (definitions, occurrences) =
+            Self::definitions_and_occurences(word, lang, dir, comments).await;
 
         let defs = definitions
             .iter()
@@ -260,8 +252,8 @@ impl DefinitionRules {
         dir: &Option<PathBuf>,
         comments: &[&str],
     ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-        let (occurrences, definitions) =
-            Self::get_occurences_and_definitions(word, lang, dir, comments).await;
+        let (definitions, occurrences) =
+            Self::definitions_and_occurences(word, lang, dir, comments).await;
 
         let defs = definitions
             .clone()
@@ -310,7 +302,7 @@ impl DefinitionRules {
     }
 }
 
-///
+/// Returns the definition rules given `lang`.
 pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
     static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
         Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
@@ -327,6 +319,16 @@ pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
                 )
             }),
     }
+}
+
+pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
+    use itertools::Itertools;
+    let regexp = get_definition_rules(lang)?
+        .kind_rules_for(kind)?
+        .map(|x| x.replace("\\\\", "\\"))
+        .map(|x| x.replace("JJJ", &word.raw))
+        .join("|");
+    Ok(regexp)
 }
 
 /// Returns true if the match is from a comment line.

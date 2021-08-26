@@ -12,8 +12,8 @@ mod default_types;
 mod definition;
 mod runner;
 
-pub use self::definition::{get_language_by_ext, get_comments_by_ext, DefinitionRules, MatchKind};
+pub use self::definition::{get_comments_by_ext, get_language_by_ext, DefinitionRules, MatchKind};
 pub use self::runner::{
-    find_all_occurrences_by_type, find_definition_matches_with_kind,
-    find_occurrence_matches_by_ext, naive_grep_fallback,
+    find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
+    naive_grep_fallback,
 };
