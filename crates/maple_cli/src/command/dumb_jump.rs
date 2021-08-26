@@ -9,8 +9,8 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::dumb_analyzer::{
-    find_occurrence_matches_by_ext, get_comments_by_ext, get_language_by_ext, DefinitionRules,
-    MatchKind,
+    definitions_and_references, definitions_and_references_lines, find_occurrence_matches_by_ext,
+    get_comments_by_ext, get_language_by_ext, MatchKind,
 };
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
@@ -37,7 +37,6 @@ impl Lines {
 }
 
 // TODO: a new renderer for dumb jump
-#[allow(unused)]
 fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Vec<usize>)> {
     let mut group_refs = HashMap::new();
 
@@ -51,7 +50,7 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
 
     group_refs
         .values()
-        .map(|lines| {
+        .flat_map(|lines| {
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
             if !kind_inserted {
@@ -65,7 +64,6 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
 
             inner_group
         })
-        .flatten()
         .collect()
 }
 
@@ -113,15 +111,9 @@ impl DumbJump {
         // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        DefinitionRules::definitions_and_references_lines(
-            lang,
-            &word,
-            &self.cmd_dir,
-            comments,
-            &Default::default(),
-        )
-        .await?
-        .print();
+        definitions_and_references_lines(lang, &word, &self.cmd_dir, comments, &Default::default())
+            .await?
+            .print();
 
         Ok(())
     }
@@ -149,19 +141,16 @@ impl DumbJump {
 
         // render the results in group.
         if classify {
-            let res =
-                DefinitionRules::definitions_and_references(lang, &word, &self.cmd_dir, comments)
-                    .await?;
+            let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
                 .into_iter()
-                .map(|(match_kind, matches)| render(matches, &match_kind, &word))
-                .flatten()
+                .flat_map(|(match_kind, matches)| render(matches, &match_kind, &word))
                 .unzip();
 
             Ok(Lines::new(lines, indices))
         } else {
-            DefinitionRules::definitions_and_references_lines(
+            definitions_and_references_lines(
                 lang,
                 &word,
                 &self.cmd_dir,

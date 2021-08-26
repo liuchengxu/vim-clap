@@ -158,3 +158,43 @@ pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> Path
     path.push(curline);
     path
 }
+
+/// Counts lines in the source `handle`.
+///
+/// # Examples
+/// ```ignore
+/// let lines: usize = count_lines(std::fs::File::open("Cargo.toml").unwrap()).unwrap();
+/// ```
+///
+/// Credit: https://github.com/eclarke/linecount/blob/master/src/lib.rs
+#[allow(unused)]
+pub fn count_lines<R: std::io::Read>(handle: R) -> Result<usize, std::io::Error> {
+    use std::io::BufRead;
+
+    let mut reader = std::io::BufReader::with_capacity(1024 * 32, handle);
+    let mut count = 0;
+    loop {
+        let len = {
+            let buf = reader.fill_buf()?;
+            if buf.is_empty() {
+                break;
+            }
+            count += bytecount::count(&buf, b'\n');
+            buf.len()
+        };
+        reader.consume(len);
+    }
+
+    Ok(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_lines() {
+        let f: &[u8] = b"some text\nwith\nfour\nlines\n";
+        assert_eq!(count_lines(f).unwrap(), 4);
+    }
+}

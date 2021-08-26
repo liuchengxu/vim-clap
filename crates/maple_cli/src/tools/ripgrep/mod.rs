@@ -92,16 +92,14 @@ impl Match {
     pub fn match_indices(&self, offset: usize) -> Vec<usize> {
         self.submatches
             .iter()
-            .map(|s| s.match_indices(offset))
-            .flatten()
+            .flat_map(|s| s.match_indices(offset))
             .collect()
     }
 
     pub fn match_indices_for_dumb_jump(&self, offset: usize, search_word: &Word) -> Vec<usize> {
         self.submatches
             .iter()
-            .map(|s| s.match_indices_for_dumb_jump(offset, search_word))
-            .flatten()
+            .flat_map(|s| s.match_indices_for_dumb_jump(offset, search_word))
             .collect()
     }
 }
