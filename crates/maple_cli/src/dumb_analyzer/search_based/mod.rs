@@ -12,7 +12,10 @@ mod default_types;
 mod definition;
 mod runner;
 
-pub use self::definition::{get_comments_by_ext, get_language_by_ext, DefinitionRules, MatchKind};
+pub use self::definition::{
+    definitions_and_references, definitions_and_references_lines, get_comments_by_ext,
+    get_language_by_ext, DefinitionRules, MatchKind,
+};
 pub use self::runner::{
     find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
     naive_grep_fallback,

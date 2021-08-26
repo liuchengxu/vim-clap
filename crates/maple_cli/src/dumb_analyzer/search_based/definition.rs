@@ -146,160 +146,6 @@ impl DefinitionRules {
             .ok_or_else(|| anyhow!("invalid definition kind {:?} for the rules", kind))
             .map(|x| x.iter().map(|x| x.as_str()))
     }
-
-    /// Collects all kinds of definitions concurrently.
-    pub async fn all_definitions(
-        lang: &str,
-        word: &Word,
-        dir: &Option<PathBuf>,
-    ) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
-        let all_def_futures = get_definition_rules(lang)?
-            .0
-            .keys()
-            .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
-
-        let maybe_defs = futures::future::join_all(all_def_futures).await;
-
-        Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
-    }
-
-    /// Collects the occurrences and all definitions concurrently.
-    async fn definitions_and_occurences(
-        word: &Word,
-        lang: &str,
-        dir: &Option<PathBuf>,
-        comments: &[&str],
-    ) -> (Vec<(DefinitionKind, Vec<Match>)>, Vec<Match>) {
-        let (definitions, occurrences) = futures::future::join(
-            Self::all_definitions(lang, word, dir),
-            find_occurrences_by_lang(word, lang, dir, comments),
-        )
-        .await;
-
-        (
-            definitions.unwrap_or_default(),
-            occurrences.unwrap_or_default(),
-        )
-    }
-
-    pub async fn definitions_and_references_lines(
-        lang: &str,
-        word: &Word,
-        dir: &Option<PathBuf>,
-        comments: &[&str],
-        exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<Lines> {
-        let (definitions, occurrences) =
-            Self::definitions_and_occurences(word, lang, dir, comments).await;
-
-        let defs = definitions
-            .iter()
-            .map(|(_, defs)| defs)
-            .flatten()
-            .collect::<Vec<_>>();
-
-        // There are some negative definitions we need to filter them out, e.g., the word
-        // is a subtring in some identifer but we consider every word is a valid identifer.
-        let positive_defs = defs
-            .iter()
-            .filter(|def| occurrences.contains(def))
-            .collect::<Vec<_>>();
-
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
-            .iter()
-            .flat_map(|(kind, lines)| {
-                lines
-                    .iter()
-                    .filter_map(|ref line| {
-                        if positive_defs.contains(&line) {
-                            exact_or_inverse_terms
-                                .check_jump_line(line.build_jump_line(kind.as_ref(), &word))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .chain(
-                // references are these occurrences not in the definitions.
-                occurrences.iter().filter_map(|ref line| {
-                    if !defs.contains(&line) {
-                        exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
-                    } else {
-                        None
-                    }
-                }),
-            )
-            .unzip();
-
-        if lines.is_empty() {
-            let lines = naive_grep_fallback(word, lang, dir, comments).await?;
-            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
-                .into_iter()
-                .filter_map(|line| {
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
-                })
-                .unzip();
-            return Ok(Lines::new(lines, indices));
-        }
-
-        Ok(Lines::new(lines, indices))
-    }
-
-    pub async fn definitions_and_references(
-        lang: &str,
-        word: &Word,
-        dir: &Option<PathBuf>,
-        comments: &[&str],
-    ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-        let (definitions, occurrences) =
-            Self::definitions_and_occurences(word, lang, dir, comments).await;
-
-        let defs = definitions
-            .clone()
-            .into_iter()
-            .map(|(_, defs)| defs)
-            .flatten()
-            .collect::<Vec<Match>>();
-
-        // There are some negative definitions we need to filter them out, e.g., the word
-        // is a subtring in some identifer but we consider every word is a valid identifer.
-        let positive_defs = defs
-            .iter()
-            .filter(|def| occurrences.contains(def))
-            .collect::<Vec<_>>();
-
-        let res: HashMap<MatchKind, Vec<Match>> = definitions
-            .into_iter()
-            .filter_map(|(kind, lines)| {
-                let defs = lines
-                    .into_iter()
-                    .filter(|ref line| positive_defs.contains(&line))
-                    .collect::<Vec<_>>();
-
-                if defs.is_empty() {
-                    None
-                } else {
-                    Some((kind.into(), defs))
-                }
-            })
-            .chain(std::iter::once((
-                MatchKind::Reference("refs"),
-                occurrences
-                    .into_iter()
-                    .filter(|r| !defs.contains(&r))
-                    .collect::<Vec<_>>(),
-            )))
-            .collect();
-
-        if res.is_empty() {
-            naive_grep_fallback(word, lang, dir, comments)
-                .await
-                .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
-        } else {
-            Ok(res)
-        }
-    }
 }
 
 /// Returns the definition rules given `lang`.
@@ -331,8 +177,160 @@ pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Resu
     Ok(regexp)
 }
 
-/// Returns true if the match is from a comment line.
+/// Returns true if the ripgrep match is a comment line.
 #[inline]
 pub(super) fn is_comment(mat: &Match, comments: &[&str]) -> bool {
     comments.iter().any(|c| mat.line_starts_with(c))
+}
+
+/// Collects all kinds of definitions concurrently.
+pub async fn all_definitions(
+    lang: &str,
+    word: &Word,
+    dir: &Option<PathBuf>,
+) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
+    let all_def_futures = get_definition_rules(lang)?
+        .0
+        .keys()
+        .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
+
+    let maybe_defs = futures::future::join_all(all_def_futures).await;
+
+    Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
+}
+
+/// Collects the occurrences and all definitions concurrently.
+async fn definitions_and_occurences(
+    word: &Word,
+    lang: &str,
+    dir: &Option<PathBuf>,
+    comments: &[&str],
+) -> (Vec<(DefinitionKind, Vec<Match>)>, Vec<Match>) {
+    let (definitions, occurrences) = futures::future::join(
+        all_definitions(lang, word, dir),
+        find_occurrences_by_lang(word, lang, dir, comments),
+    )
+    .await;
+
+    (
+        definitions.unwrap_or_default(),
+        occurrences.unwrap_or_default(),
+    )
+}
+
+pub async fn definitions_and_references_lines(
+    lang: &str,
+    word: &Word,
+    dir: &Option<PathBuf>,
+    comments: &[&str],
+    exact_or_inverse_terms: &ExactOrInverseTerms,
+) -> Result<Lines> {
+    let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
+
+    let defs = definitions
+        .iter()
+        .map(|(_, defs)| defs)
+        .flatten()
+        .collect::<Vec<_>>();
+
+    // There are some negative definitions we need to filter them out, e.g., the word
+    // is a subtring in some identifer but we consider every word is a valid identifer.
+    let positive_defs = defs
+        .iter()
+        .filter(|def| occurrences.contains(def))
+        .collect::<Vec<_>>();
+
+    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
+        .iter()
+        .flat_map(|(kind, lines)| {
+            lines
+                .iter()
+                .filter_map(|ref line| {
+                    if positive_defs.contains(&line) {
+                        exact_or_inverse_terms
+                            .check_jump_line(line.build_jump_line(kind.as_ref(), &word))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .chain(
+            // references are these occurrences not in the definitions.
+            occurrences.iter().filter_map(|ref line| {
+                if !defs.contains(&line) {
+                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+                } else {
+                    None
+                }
+            }),
+        )
+        .unzip();
+
+    if lines.is_empty() {
+        let lines = naive_grep_fallback(word, lang, dir, comments).await?;
+        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+            .into_iter()
+            .filter_map(|line| {
+                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
+            })
+            .unzip();
+        return Ok(Lines::new(lines, indices));
+    }
+
+    Ok(Lines::new(lines, indices))
+}
+
+pub async fn definitions_and_references(
+    lang: &str,
+    word: &Word,
+    dir: &Option<PathBuf>,
+    comments: &[&str],
+) -> Result<HashMap<MatchKind, Vec<Match>>> {
+    let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
+
+    let defs = definitions
+        .clone()
+        .into_iter()
+        .map(|(_, defs)| defs)
+        .flatten()
+        .collect::<Vec<Match>>();
+
+    // There are some negative definitions we need to filter them out, e.g., the word
+    // is a subtring in some identifer but we consider every word is a valid identifer.
+    let positive_defs = defs
+        .iter()
+        .filter(|def| occurrences.contains(def))
+        .collect::<Vec<_>>();
+
+    let res: HashMap<MatchKind, Vec<Match>> = definitions
+        .into_iter()
+        .filter_map(|(kind, lines)| {
+            let defs = lines
+                .into_iter()
+                .filter(|ref line| positive_defs.contains(&line))
+                .collect::<Vec<_>>();
+
+            if defs.is_empty() {
+                None
+            } else {
+                Some((kind.into(), defs))
+            }
+        })
+        .chain(std::iter::once((
+            MatchKind::Reference("refs"),
+            occurrences
+                .into_iter()
+                .filter(|r| !defs.contains(&r))
+                .collect::<Vec<_>>(),
+        )))
+        .collect();
+
+    if res.is_empty() {
+        naive_grep_fallback(word, lang, dir, comments)
+            .await
+            .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
+    } else {
+        Ok(res)
+    }
 }

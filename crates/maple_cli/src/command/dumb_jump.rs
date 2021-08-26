@@ -9,8 +9,8 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::dumb_analyzer::{
-    find_occurrence_matches_by_ext, get_comments_by_ext, get_language_by_ext, DefinitionRules,
-    MatchKind,
+    definitions_and_references, definitions_and_references_lines, find_occurrence_matches_by_ext,
+    get_comments_by_ext, get_language_by_ext, MatchKind,
 };
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
@@ -113,15 +113,9 @@ impl DumbJump {
         // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        DefinitionRules::definitions_and_references_lines(
-            lang,
-            &word,
-            &self.cmd_dir,
-            comments,
-            &Default::default(),
-        )
-        .await?
-        .print();
+        definitions_and_references_lines(lang, &word, &self.cmd_dir, comments, &Default::default())
+            .await?
+            .print();
 
         Ok(())
     }
@@ -149,9 +143,7 @@ impl DumbJump {
 
         // render the results in group.
         if classify {
-            let res =
-                DefinitionRules::definitions_and_references(lang, &word, &self.cmd_dir, comments)
-                    .await?;
+            let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
                 .into_iter()
@@ -161,7 +153,7 @@ impl DumbJump {
 
             Ok(Lines::new(lines, indices))
         } else {
-            DefinitionRules::definitions_and_references_lines(
+            definitions_and_references_lines(
                 lang,
                 &word,
                 &self.cmd_dir,
