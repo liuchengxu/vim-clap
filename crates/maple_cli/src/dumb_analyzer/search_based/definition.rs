@@ -290,12 +290,11 @@ pub async fn definitions_and_references(
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
 
-    let defs = definitions
-        .clone()
-        .into_iter()
-        .map(|(_, defs)| defs)
-        .flatten()
-        .collect::<Vec<Match>>();
+    let defs_count = definitions.iter().map(|(_, items)| items.len()).sum();
+    let mut defs = Vec::with_capacity(defs_count);
+    for (_, items) in definitions.iter() {
+        defs.extend_from_slice(items);
+    }
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
