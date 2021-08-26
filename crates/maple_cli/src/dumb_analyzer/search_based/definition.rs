@@ -219,6 +219,15 @@ async fn definitions_and_occurences(
     )
 }
 
+fn flatten(definitions: &[(DefinitionKind, Vec<Match>)]) -> Vec<Match> {
+    let defs_count = definitions.iter().map(|(_, items)| items.len()).sum();
+    let mut defs = Vec::with_capacity(defs_count);
+    for (_, items) in definitions.iter() {
+        defs.extend_from_slice(items);
+    }
+    defs
+}
+
 pub async fn definitions_and_references_lines(
     lang: &str,
     word: &Word,
@@ -228,11 +237,7 @@ pub async fn definitions_and_references_lines(
 ) -> Result<Lines> {
     let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
 
-    let defs = definitions
-        .iter()
-        .map(|(_, defs)| defs)
-        .flatten()
-        .collect::<Vec<_>>();
+    let defs = flatten(&definitions);
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
@@ -290,11 +295,7 @@ pub async fn definitions_and_references(
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
 
-    let defs_count = definitions.iter().map(|(_, items)| items.len()).sum();
-    let mut defs = Vec::with_capacity(defs_count);
-    for (_, items) in definitions.iter() {
-        defs.extend_from_slice(items);
-    }
+    let defs = flatten(&definitions);
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
