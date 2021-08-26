@@ -51,7 +51,7 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
 
     group_refs
         .values()
-        .map(|lines| {
+        .flat_map(|lines| {
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
             if !kind_inserted {
@@ -65,7 +65,6 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
 
             inner_group
         })
-        .flatten()
         .collect()
 }
 
@@ -147,8 +146,7 @@ impl DumbJump {
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
                 .into_iter()
-                .map(|(match_kind, matches)| render(matches, &match_kind, &word))
-                .flatten()
+                .flat_map(|(match_kind, matches)| render(matches, &match_kind, &word))
                 .unzip();
 
             Ok(Lines::new(lines, indices))

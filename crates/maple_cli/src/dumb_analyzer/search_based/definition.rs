@@ -29,7 +29,7 @@ static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(||
 static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     super::default_types::DEFAULT_TYPES
         .iter()
-        .map(|(lang, values)| {
+        .flat_map(|(lang, values)| {
             values
                 .iter()
                 .filter_map(|v| {
@@ -44,7 +44,6 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
                 })
                 .collect::<Vec<_>>()
         })
-        .flatten()
         .collect()
 });
 
