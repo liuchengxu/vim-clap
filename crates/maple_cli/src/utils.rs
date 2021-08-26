@@ -167,6 +167,7 @@ pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> Path
 /// ```
 ///
 /// Credit: https://github.com/eclarke/linecount/blob/master/src/lib.rs
+#[allow(unused)]
 pub fn count_lines<R: std::io::Read>(handle: R) -> Result<usize, std::io::Error> {
     use std::io::BufRead;
 
