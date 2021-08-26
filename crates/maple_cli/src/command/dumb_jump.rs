@@ -37,7 +37,6 @@ impl Lines {
 }
 
 // TODO: a new renderer for dumb jump
-#[allow(unused)]
 fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Vec<usize>)> {
     let mut group_refs = HashMap::new();
 
