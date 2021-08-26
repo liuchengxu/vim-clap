@@ -293,7 +293,8 @@ pub async fn definitions_and_references(
     dir: &Option<PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
+    let (definitions, mut occurrences) =
+        definitions_and_occurences(word, lang, dir, comments).await;
 
     let defs = flatten(&definitions);
 
@@ -306,25 +307,18 @@ pub async fn definitions_and_references(
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
         .into_iter()
-        .filter_map(|(kind, lines)| {
-            let defs = lines
-                .into_iter()
-                .filter(|ref line| positive_defs.contains(&line))
-                .collect::<Vec<_>>();
-
+        .filter_map(|(kind, mut defs)| {
+            defs.retain(|ref def| positive_defs.contains(&def));
             if defs.is_empty() {
                 None
             } else {
                 Some((kind.into(), defs))
             }
         })
-        .chain(std::iter::once((
-            MatchKind::Reference("refs"),
+        .chain(std::iter::once((MatchKind::Reference("refs"), {
+            occurrences.retain(|r| !defs.contains(&r));
             occurrences
-                .into_iter()
-                .filter(|r| !defs.contains(&r))
-                .collect::<Vec<_>>(),
-        )))
+        })))
         .collect();
 
     if res.is_empty() {
