@@ -54,15 +54,6 @@ function! s:blines.init() abort
   endif
 endfunction
 
-function! s:init_callback(result, error) abort
-  let g:clap.display.initial_size = line_count
-endfunction
-
-function! s:init_async() abort
-  call clap#client#call('blines/init', v:null,
-        \ { 'source_fpath': expand('#'.g:clap.start.bufnr.':p') })
-endfunction
-
 function! s:into_qf_entry(line) abort
   if a:line =~# '^\s*\d\+ '
     let items = matchlist(a:line, '^\s*\(\d\+\) \(.*\)')
