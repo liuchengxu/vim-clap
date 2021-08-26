@@ -1,6 +1,8 @@
-//! This module provides the feature of search based `jump-to-definition`, powered by ripgrep.
+//! This module provides the feature of search based `jump-to-definition`, inspired
+//! by https://github.com/jacktasia/dumb-jump, powered by a set of regular expressions
+//! based on the file extension, using the ripgrep tool.
 //!
-//! Inspired by https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
+//! The matches are run through a shared set of heuristic methods to find the best candidate.
 //!
 //! # Dependency
 //!
@@ -20,16 +22,14 @@ use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 use crate::{command::dumb_jump::Lines, process::AsyncCommand};
 
-/// `jump to definition` powered by a set of regular expressions based on the file extension.
+/// A map of the ripgrep language to a set of regular expressions.
 ///
-/// The matches are run through a shared set of heuristic methods to find the best candidate.
-///
-/// Ref: https://github.com/jacktasia/dumb-jump
+/// Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(
         "../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
     ))
-    .unwrap()
+    .expect("Wrong path for rg_pcre2_regex.json")
 });
 
 /// Map of file extension to ripgrep language.
@@ -74,7 +74,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
         let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
             "../../../../../scripts/dumb_jump/comments_map.json"
         ))
-        .unwrap();
+        .expect("Wrong path for comments_map.json");
         comments
     });
 
@@ -156,7 +156,7 @@ impl DefinitionRules {
     }
 
     pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
-        let regexp = LanguageDefinition::get_rules(lang)?
+        let regexp = get_definition_rules(lang)?
             .kind_rules_for(kind)?
             .map(|x| x.replace("\\\\", "\\"))
             .map(|x| x.replace("JJJ", &word.raw))
@@ -170,7 +170,7 @@ impl DefinitionRules {
         word: &Word,
         dir: &Option<PathBuf>,
     ) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
-        let all_def_futures = LanguageDefinition::get_rules(lang)?
+        let all_def_futures = get_definition_rules(lang)?
             .0
             .keys()
             .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
@@ -318,27 +318,22 @@ impl DefinitionRules {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct LanguageDefinition;
+///
+pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
+    static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
+        Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
-impl LanguageDefinition {
-    ///
-    pub fn get_rules(lang: &str) -> Result<&DefinitionRules> {
-        static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
-            Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
-
-        match RG_PCRE2_REGEX_RULES.get(lang) {
-            Some(rules) => Ok(rules),
-            None => EXTENSION_LANGUAGE_MAP
-                .get(lang)
-                .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
-                .ok_or_else(|| {
-                    anyhow!(
-                        "Language {} can not be found in dumb_jump/rg_pcre2_regex.json",
-                        lang
-                    )
-                }),
-        }
+    match RG_PCRE2_REGEX_RULES.get(lang) {
+        Some(rules) => Ok(rules),
+        None => EXTENSION_LANGUAGE_MAP
+            .get(lang)
+            .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
+            .ok_or_else(|| {
+                anyhow!(
+                    "Language {} can not be found in dumb_jump/rg_pcre2_regex.json",
+                    lang
+                )
+            }),
     }
 }
 
