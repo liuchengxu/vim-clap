@@ -16,6 +16,11 @@ use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 use crate::{command::dumb_jump::Lines, process::AsyncCommand};
 
+/// `jump to definition` powered by a set of regular expressions based on the file extension.
+///
+/// The matches are run through a shared set of heuristic methods to find the best candidate.
+///
+/// Ref: https://github.com/jacktasia/dumb-jump
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(
         "../../../../scripts/dumb_jump/rg_pcre2_regex.json"
@@ -23,12 +28,10 @@ static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(||
     .unwrap()
 });
 
-static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<String, Vec<String>>> = OnceCell::new();
-
-/// Map of file extension to language.
+/// Map of file extension to ripgrep language.
 ///
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
-static LANGUAGE_EXT_TABLE: Lazy<HashMap<String, String>> = Lazy::new(|| {
+static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     default_types::DEFAULT_TYPES
         .iter()
         .map(|(lang, values)| {
@@ -40,7 +43,7 @@ static LANGUAGE_EXT_TABLE: Lazy<HashMap<String, String>> = Lazy::new(|| {
                         if ext.contains('[') || ext.contains('*') {
                             None
                         } else {
-                            Some((ext.into(), String::from(*lang)))
+                            Some((ext, *lang))
                         }
                     })
                 })
@@ -50,18 +53,21 @@ static LANGUAGE_EXT_TABLE: Lazy<HashMap<String, String>> = Lazy::new(|| {
         .collect()
 });
 
-/// Finds the language given the file extension.
-pub fn get_language_by_ext(ext: &str) -> Result<&str> {
-    LANGUAGE_EXT_TABLE
+/// Finds the ripgrep language given the file extension `ext`.
+pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
+    RG_LANGUAGE_EXT_TABLE
         .get(ext)
-        .map(|x| x.as_str())
         .ok_or_else(|| anyhow!("dumb_analyzer is unsupported for {}", ext))
 }
 
+static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<&str, Vec<&str>>> = OnceCell::new();
+
 /// Map of file extension to the comment prefix.
-pub fn get_comments_by_ext(ext: &str) -> &[String] {
+///
+/// Keyed by the extension name.
+pub fn get_comments_by_ext(ext: &str) -> &[&str] {
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
-        let comments: HashMap<String, Vec<String>> = serde_json::from_str(include_str!(
+        let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
             "../../../../scripts/dumb_jump/comments_map.json"
         ))
         .unwrap();
@@ -75,7 +81,9 @@ pub fn get_comments_by_ext(ext: &str) -> &[String] {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub enum MatchKind {
+    ///
     Definition(DefinitionKind),
+    /// Occurrences without definition items included.
     Reference(&'static str),
     /// Pure grep results.
     Occurrence(&'static str),
@@ -172,7 +180,7 @@ impl DefinitionRules {
         word: &Word,
         lang: &str,
         dir: &Option<PathBuf>,
-        comments: &[String],
+        comments: &[&str],
     ) -> (Vec<Match>, Vec<(DefinitionKind, Vec<Match>)>) {
         let (occurrences, definitions) = futures::future::join(
             find_all_occurrences_by_type(word, lang, dir, comments),
@@ -190,7 +198,7 @@ impl DefinitionRules {
         lang: &str,
         word: &Word,
         dir: &Option<PathBuf>,
-        comments: &[String],
+        comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
         let (occurrences, definitions) =
@@ -254,7 +262,7 @@ impl DefinitionRules {
         lang: &str,
         word: &Word,
         dir: &Option<PathBuf>,
-        comments: &[String],
+        comments: &[&str],
     ) -> Result<HashMap<MatchKind, Vec<Match>>> {
         let (occurrences, definitions) =
             Self::get_occurences_and_definitions(word, lang, dir, comments).await;
@@ -310,13 +318,14 @@ impl DefinitionRules {
 pub struct LanguageDefinition;
 
 impl LanguageDefinition {
+    ///
     pub fn get_rules(lang: &str) -> Result<&DefinitionRules> {
-        static EXTION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
+        static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
             Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
         match RG_PCRE2_REGEX_RULES.get(lang) {
             Some(rules) => Ok(rules),
-            None => EXTION_LANGUAGE_MAP
+            None => EXTENSION_LANGUAGE_MAP
                 .get(lang)
                 .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
                 .ok_or_else(|| {
@@ -331,7 +340,7 @@ impl LanguageDefinition {
 
 /// Returns true if the match is from a comment line.
 #[inline]
-fn is_comment(mat: &Match, comments: &[String]) -> bool {
+fn is_comment(mat: &Match, comments: &[&str]) -> bool {
     comments.iter().any(|c| mat.line_starts_with(c))
 }
 
@@ -339,7 +348,7 @@ fn is_comment(mat: &Match, comments: &[String]) -> bool {
 async fn collect_matches(
     command: String,
     dir: &Option<PathBuf>,
-    comments: Option<&[String]>,
+    comments: Option<&[&str]>,
 ) -> Result<Vec<Match>> {
     let mut cmd = AsyncCommand::new(command);
 
@@ -367,7 +376,7 @@ async fn find_all_occurrences_by_type(
     word: &Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
-    comments: &[String],
+    comments: &[&str],
 ) -> Result<Vec<Match>> {
     let command = format!(
         "rg --json --word-regexp '{}' --type {}",
@@ -381,7 +390,7 @@ async fn naive_grep_fallback(
     word: &Word,
     lang_type: &str,
     dir: &Option<PathBuf>,
-    comments: &[String],
+    comments: &[&str],
 ) -> Result<Vec<Match>> {
     let command = format!(
         "rg --json -e '{}' --type {}",
@@ -434,6 +443,6 @@ mod tests {
 
     #[test]
     fn test_ext_table() {
-        println!("{:?}", LANGUAGE_EXT_TABLE.clone());
+        println!("{:?}", RG_LANGUAGE_EXT_TABLE.clone());
     }
 }
