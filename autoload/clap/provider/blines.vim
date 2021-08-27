@@ -41,18 +41,30 @@ function! s:blines.on_enter() abort
   call g:clap.display.setbufvar('&syntax', 'clap_blines')
 endfunction
 
-function! s:blines.init() abort
-  let line_count = g:clap.start.line_count()
-  let g:clap.display.initial_size = line_count
+if clap#maple#is_available()
+  function! clap#provider#blines#initialize() abort
+    if g:clap.display.initial_size < 100000
+      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+      call g:clap#display_win.shrink_if_undersize()
+      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#sign#toggle_cursorline()
+    endif
+  endfunction
+else
+  function! s:blines.init() abort
+    let line_count = g:clap.start.line_count()
+    let g:clap.display.initial_size = line_count
 
-  if line_count > 0 && line_count < 100000
-    let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-    call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
-    call g:clap#display_win.shrink_if_undersize()
-    call clap#indicator#set_matches_number(line_count)
-    call clap#sign#toggle_cursorline()
-  endif
-endfunction
+    if line_count > 0 && line_count < 100000
+      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+      call g:clap#display_win.shrink_if_undersize()
+      call clap#indicator#set_matches_number(line_count)
+      call clap#sign#toggle_cursorline()
+    endif
+  endfunction
+endif
 
 function! s:into_qf_entry(line) abort
   if a:line =~# '^\s*\d\+ '

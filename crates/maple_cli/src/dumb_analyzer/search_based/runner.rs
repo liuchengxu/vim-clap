@@ -6,9 +6,7 @@ use anyhow::Result;
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 
-use super::definition::{
-    build_full_regexp, get_comments_by_ext, is_comment, DefinitionKind,
-};
+use super::definition::{build_full_regexp, get_comments_by_ext, is_comment, DefinitionKind};
 
 /// Executes `command` as a child process.
 ///

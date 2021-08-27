@@ -14,7 +14,7 @@ use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{
     event_handlers::OnMoveHandler,
-    session::{Event, EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
 use crate::utils::ExactOrInverseTerms;
@@ -175,25 +175,26 @@ pub struct DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
-    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()> {
-        match event {
-            Event::OnMove(msg) => {
-                let msg_id = msg.id;
+    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+        let msg_id = msg.id;
 
-                let lnum = msg.get_u64("lnum").expect("lnum exists");
+        let lnum = msg.get_u64("lnum").expect("lnum exists");
 
-                // lnum is 1-indexed
-                if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
-                    if let Err(e) = OnMoveHandler::create(&msg, &context, Some(curline.into()))
-                        .map(|x| x.handle())
-                    {
-                        log::error!("Failed to handle OnMove event: {:?}", e);
-                        write_response(json!({"error": e.to_string(), "id": msg_id }));
-                    }
-                }
+        // lnum is 1-indexed
+        if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
+            if let Err(e) =
+                OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
+            {
+                log::error!("Failed to handle OnMove event: {:?}", e);
+                write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
-            Event::OnTyped(msg) => self.handle_dumb_jump_message(msg).await,
         }
+
+        Ok(())
+    }
+
+    async fn handle_on_typed(&mut self, msg: Message, _context: Arc<SessionContext>) -> Result<()> {
+        self.handle_dumb_jump_message(msg).await;
         Ok(())
     }
 }

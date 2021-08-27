@@ -8,8 +8,20 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
+function! s:set_total_size(msg) abort
+  let g:clap.display.initial_size = a:msg.total
+  if g:clap.provider.id ==# 'blines'
+    call clap#provider#blines#initialize()
+  endif
+endfunction
+
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
+
+  if has_key(decoded, 'method')
+    call call(decoded.method, [decoded])
+    return
+  endif
 
   if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
     let Handler = remove(s:handlers, decoded.id)

@@ -46,6 +46,7 @@ impl AsyncCommand {
         self
     }
 
+    #[allow(unused)]
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         self.0.lines()
     }
