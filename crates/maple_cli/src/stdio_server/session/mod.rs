@@ -14,16 +14,10 @@ pub use self::manager::{NewSession, SessionManager};
 
 pub type SessionId = u64;
 
-#[derive(Debug)]
-pub enum Event {
-    OnMove(Message),
-    OnTyped(Message),
-}
-
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
-    /// Use the mutable self so that we can cache some info inside the handler.
-    async fn handle(&mut self, event: Event, context: Arc<SessionContext>) -> Result<()>;
+    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
+    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -119,7 +113,7 @@ impl<T: EventHandler> Session<T> {
                             SessionEvent::OnMove(msg) => {
                                 if let Err(e) = self
                                     .event_handler
-                                    .handle(Event::OnMove(msg), self.context.clone())
+                                    .handle_on_move(msg, self.context.clone())
                                     .await
                                 {
                                     debug!("Error occurrred when handling OnMove event: {:?}", e);
@@ -128,7 +122,7 @@ impl<T: EventHandler> Session<T> {
                             SessionEvent::OnTyped(msg) => {
                                 if let Err(e) = self
                                     .event_handler
-                                    .handle(Event::OnTyped(msg), self.context.clone())
+                                    .handle_on_typed(msg, self.context.clone())
                                     .await
                                 {
                                     debug!("Error occurrred when handling OnTyped event: {:?}", e);

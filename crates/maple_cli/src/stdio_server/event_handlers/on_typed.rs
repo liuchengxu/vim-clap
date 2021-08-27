@@ -5,7 +5,7 @@ use filter::matcher::{Bonus, FuzzyAlgorithm, MatchType};
 
 use crate::stdio_server::{session::SessionContext, write_response, Message};
 
-pub fn handle_on_typed(msg: Message, context: &SessionContext) {
+pub fn handle_on_typed(msg: Message, context: std::sync::Arc<SessionContext>) {
     if msg.get_provider_id().as_str() == "filer" {
         // let _ = self._handle_filer_impl(msg);
         return;
