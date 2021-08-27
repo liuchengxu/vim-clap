@@ -83,7 +83,7 @@ impl<T: EventHandler> Session<T> {
     async fn handle_create(&mut self) {
         let context_clone = self.context.clone();
 
-        match tokio::spawn(async move {
+        let on_create_with_timeout_future = async move {
             match tokio::time::timeout(
                 std::time::Duration::from_millis(300),
                 on_create(context_clone),
@@ -93,9 +93,9 @@ impl<T: EventHandler> Session<T> {
                 Ok(scale) => Some(scale),
                 Err(_) => None, // timeout
             }
-        })
-        .await
-        {
+        };
+
+        match tokio::spawn(on_create_with_timeout_future).await {
             Ok(Some(Ok(scale))) => {
                 if let Some(total) = scale.total() {
                     let method = "s:set_total_size";
