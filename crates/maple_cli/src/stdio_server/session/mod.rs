@@ -83,9 +83,11 @@ impl<T: EventHandler> Session<T> {
     async fn handle_create(&mut self) {
         let context_clone = self.context.clone();
 
+        const TIMEOUT: u64 = 300;
+
         let on_create_with_timeout_future = async move {
             match tokio::time::timeout(
-                std::time::Duration::from_millis(300),
+                std::time::Duration::from_millis(TIMEOUT),
                 on_create(context_clone),
             )
             .await
@@ -107,7 +109,7 @@ impl<T: EventHandler> Session<T> {
                 log::error!("Error occurrred inside on_create(): {:?}", e);
             }
             Ok(None) => {
-                log::debug!("Did not receive value with 300 ms, keep the large scale");
+                log::debug!("Did not receive value with {} ms", TIMEOUT);
             }
             Err(e) => {
                 log::error!("Error from the Timeout future: {:?}", e)
