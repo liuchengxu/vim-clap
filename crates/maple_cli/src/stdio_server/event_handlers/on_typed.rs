@@ -14,7 +14,7 @@ pub fn handle_on_typed(msg: Message, context: std::sync::Arc<SessionContext>) {
     let msg_id = msg.id;
     let query = msg.get_query();
 
-    let source_list = context.source_list.lock().unwrap();
+    let source_list = context.source_list.lock();
 
     // TODO: sync for 100000, dyn for 100000+
     if let Some(ref source_list) = *source_list {

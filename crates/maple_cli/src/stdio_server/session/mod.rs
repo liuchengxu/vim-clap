@@ -7,9 +7,10 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
 
+use crate::stdio_server::event_handlers::on_init::on_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
-pub use self::context::SessionContext;
+pub use self::context::{Scale, SessionContext};
 pub use self::manager::{NewSession, SessionManager};
 
 pub type SessionId = u64;
@@ -27,12 +28,14 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
+    pub source_scale: Scale,
 }
 
 #[derive(Debug, Clone)]
 pub enum SessionEvent {
     OnTyped(Message),
     OnMove(Message),
+    Create,
     Terminate,
 }
 
@@ -41,6 +44,7 @@ impl SessionEvent {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
             Self::OnMove(msg) => format!("OnMove, msg id: {}", msg.id),
+            Self::Create => "Create".into(),
             Self::Terminate => "Terminate".into(),
         }
     }
@@ -55,6 +59,7 @@ impl<T: EventHandler> Session<T> {
             context: Arc::new(msg.into()),
             event_handler,
             event_recv: session_receiver,
+            source_scale: Scale::Indefinite,
         };
 
         (session, session_sender)
@@ -62,7 +67,7 @@ impl<T: EventHandler> Session<T> {
 
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
-        let mut val = self.context.is_running.lock().unwrap();
+        let mut val = self.context.is_running.lock();
         *val.get_mut() = false;
         debug!(
             "session-{}-{} terminated",
@@ -71,24 +76,43 @@ impl<T: EventHandler> Session<T> {
         );
     }
 
-    /// This session is still running, hasn't received Terminate event.
-    pub fn is_running(&self) -> bool {
-        self.context
-            .is_running
-            .lock()
-            .unwrap()
-            .load(std::sync::atomic::Ordering::Relaxed)
-    }
-
-    /// Saves the forerunner result.
-    /// TODO: Store full lines, or a cached file?
-    pub fn set_source_list(&mut self, lines: Vec<String>) {
-        let mut source_list = self.context.source_list.lock().unwrap();
-        *source_list = Some(lines);
-    }
-
     pub fn provider_id(&self) -> &ProviderId {
         &self.context.provider_id
+    }
+
+    async fn handle_create(&mut self) {
+        let context_clone = self.context.clone();
+
+        match tokio::spawn(async move {
+            match tokio::time::timeout(
+                std::time::Duration::from_millis(300),
+                on_create(context_clone),
+            )
+            .await
+            {
+                Ok(scale) => Some(scale),
+                Err(_) => None, // timeout
+            }
+        })
+        .await
+        {
+            Ok(Some(Ok(scale))) => {
+                if let Some(total) = scale.total() {
+                    let method = "s:set_total_size";
+                    utility::println_json_with_length!(total, method);
+                }
+                self.source_scale = scale;
+            }
+            Ok(Some(Err(e))) => {
+                log::error!("Error occurrred inside on_create(): {:?}", e);
+            }
+            Ok(None) => {
+                log::debug!("Did not receive value with 300 ms, keep the large scale");
+            }
+            Err(e) => {
+                log::error!("Error from the Timeout future: {:?}", e)
+            }
+        }
     }
 
     pub fn start_event_loop(mut self) -> Result<()> {
@@ -110,6 +134,7 @@ impl<T: EventHandler> Session<T> {
                                 self.handle_terminate();
                                 return;
                             }
+                            SessionEvent::Create => self.handle_create().await,
                             SessionEvent::OnMove(msg) => {
                                 if let Err(e) = self
                                     .event_handler

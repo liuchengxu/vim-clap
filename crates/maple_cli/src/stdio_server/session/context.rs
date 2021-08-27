@@ -1,7 +1,8 @@
 use std::path::PathBuf;
-use std::sync::{atomic::AtomicBool, Arc, Mutex};
+use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use serde::Deserialize;
 
 use crate::stdio_server::{types::ProviderId, Message};
@@ -9,6 +10,32 @@ use crate::stdio_server::{types::ProviderId, Message};
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
 const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
+
+/// This type represents the scale of filtering source.
+#[derive(Debug, Clone)]
+pub enum Scale {
+    /// We do not know the exact total number of source items.
+    Indefinite,
+    /// Large scale.
+    Large(usize),
+    /// Small scale.
+    Small(usize),
+}
+
+impl Default for Scale {
+    fn default() -> Self {
+        Self::Indefinite
+    }
+}
+
+impl Scale {
+    pub fn total(&self) -> Option<usize> {
+        match self {
+            Self::Large(total) | Self::Small(total) => Some(*total),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SessionContext {
@@ -18,6 +45,7 @@ pub struct SessionContext {
     pub display_winwidth: u64,
     pub preview_winheight: u64,
     pub source_cmd: Option<String>,
+    pub scale: Arc<Mutex<Scale>>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
     pub source_list: Arc<Mutex<Option<Vec<String>>>>,
@@ -72,6 +100,7 @@ impl From<Message> for SessionContext {
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             source_cmd,
             runtimepath,
+            scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
             source_list: Arc::new(Mutex::new(None)),
         }
