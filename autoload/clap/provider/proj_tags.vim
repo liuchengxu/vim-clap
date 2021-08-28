@@ -39,7 +39,7 @@ else
       call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
     endif
   endfunction
-endfunction
+endif
 
 function! s:extract(tag_row) abort
   let lnum = matchstr(a:tag_row, '^.*:\zs\(\d\+\)')
