@@ -151,7 +151,7 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match(&self, item: &SourceItem, query: &str) -> MatchResult {
+    fn fuzzy_match<'a, T: MatchTextFor<'a>>(&self, item: &T, query: &str) -> MatchResult {
         self.fuzzy_algo.fuzzy_match(query, item, &self.match_type)
     }
 
@@ -167,7 +167,7 @@ impl Matcher {
     pub fn match_query(&self, item: &SourceItem, query: &Query) -> MatchResult {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.match_source_item(item) {
+            if inverse_term.match_full_line(&item.raw) {
                 return None;
             }
         }
@@ -282,7 +282,8 @@ mod tests {
         let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
         let query = "fil";
         for line in lines {
-            let (base_score, indices1) = matcher.fuzzy_match(&line.into(), query).unwrap();
+            let (base_score, indices1) =
+                matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
             let (score_with_bonus, indices2) =
                 matcher.match_query(&line.into(), &query.into()).unwrap();
             assert!(indices1 == indices2);

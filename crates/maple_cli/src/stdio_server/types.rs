@@ -81,10 +81,6 @@ impl Message {
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 
-    pub fn get_provider_id(&self) -> ProviderId {
-        self.get_string_unsafe("provider_id").into()
-    }
-
     pub fn get_query(&self) -> String {
         self.get_string_unsafe("query")
     }

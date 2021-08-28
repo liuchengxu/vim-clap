@@ -50,6 +50,12 @@ impl<'a> MatchTextFor<'a> for SourceItem {
     }
 }
 
+impl<'a> MatchTextFor<'a> for &'a str {
+    fn match_text_for(&self, _match_type: &MatchType) -> Option<MatchText> {
+        Some((self, 0))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SourceItem {
     /// Raw line content of the input stream.

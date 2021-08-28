@@ -10,7 +10,7 @@ use log::debug;
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
-pub use self::context::{Scale, SessionContext};
+pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
 
 pub type SessionId = u64;

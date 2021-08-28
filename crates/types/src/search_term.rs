@@ -1,5 +1,3 @@
-use crate::source_item::SourceItem;
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExactTermType {
     /// exact-match.
@@ -55,6 +53,7 @@ impl InverseTerm {
         Self { ty, word }
     }
 
+    /// Returns true if the full line of given `item` matches the inverse term.
     pub fn match_full_line(&self, full_search_line: &str) -> bool {
         let query = self.word.as_str();
         let trimmed = full_search_line.trim();
@@ -63,11 +62,6 @@ impl InverseTerm {
             InverseTermType::InversePrefixExact => trimmed.starts_with(query),
             InverseTermType::InverseSuffixExact => trimmed.ends_with(query),
         }
-    }
-
-    /// Returns true if given `item` matches the inverse term.
-    pub fn match_source_item(&self, item: &SourceItem) -> bool {
-        self.match_full_line(&item.raw)
     }
 }
 

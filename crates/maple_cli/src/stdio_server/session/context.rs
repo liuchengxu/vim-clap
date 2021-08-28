@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use icon::IconPainter;
+use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
@@ -42,6 +44,14 @@ impl Scale {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SyncFilterResults {
+    pub total: usize,
+    pub lines: Vec<String>,
+    pub indices: Vec<Vec<usize>>,
+    pub truncated_map: printer::LinesTruncatedMap,
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
@@ -69,6 +79,57 @@ impl SessionContext {
             self.provider_id.get_preview_size(),
             (self.preview_winheight / 2) as usize,
         )
+    }
+
+    pub fn match_type(&self) -> MatchType {
+        match self.provider_id.as_str() {
+            "proj_tags" => MatchType::TagName,
+            "grep" | "grep2" => MatchType::IgnoreFilePath,
+            _ => MatchType::Full,
+        }
+    }
+
+    pub fn icon_painter(&self) -> Option<IconPainter> {
+        if !self.enable_icon {
+            return None;
+        }
+
+        match self.provider_id.as_str() {
+            "proj_tags" => Some(IconPainter::ProjTags),
+            "grep" | "grep2" => Some(IconPainter::Grep),
+            _ => None,
+        }
+    }
+
+    // TODO: optimize as_str().into(), clone happens there.
+    pub fn sync_filter(
+        &self,
+        query: &str,
+        lines: impl Iterator<Item = types::SourceItem>,
+    ) -> Result<SyncFilterResults> {
+        let ranked = filter::sync_run(
+            query,
+            filter::Source::List(lines),
+            matcher::FuzzyAlgorithm::Fzy,
+            self.match_type(),
+            Vec::new(),
+        )?;
+
+        let total = ranked.len();
+
+        // Take the first 200 entries and add an icon to each of them.
+        let (lines, indices, truncated_map) = printer::process_top_items(
+            ranked.iter().take(200).cloned().collect(),
+            self.display_winwidth as usize,
+            self.icon_painter(),
+        );
+
+        Ok(SyncFilterResults {
+            total,
+            lines,
+            indices,
+            truncated_map,
+        })
     }
 }
 
