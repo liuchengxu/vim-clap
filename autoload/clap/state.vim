@@ -11,12 +11,8 @@ function! clap#state#refresh_matches_count(cnt) abort
   call clap#sign#reset_to_first_line()
 endfunction
 
-function! clap#state#handle_message(msg) abort
-  let decoded = json_decode(a:msg)
-
-  if type(decoded) != v:t_dict
-    return
-  endif
+function! clap#state#process_filter_message(decoded_msg) abort
+  let decoded = a:decoded_msg
 
   if has_key(decoded, 'total')
     if decoded.total == 0 && exists('g:__clap_lines_truncated_map')
@@ -46,6 +42,16 @@ function! clap#state#handle_message(msg) abort
       return
     endtry
   endif
+endfunction
+
+function! clap#state#process_raw_message(msg) abort
+  let decoded = json_decode(a:msg)
+
+  if type(decoded) != v:t_dict
+    return
+  endif
+
+  call clap#state#process_filter_message(decoded)
 endfunction
 
 function! clap#state#process_preview_result(result) abort
@@ -154,6 +160,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_match_type_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
+  let g:clap.display.initial_size = -1
   call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile

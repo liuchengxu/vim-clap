@@ -564,6 +564,16 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.init_default_impl() abort
+    " TODO: remove the forerunner job
+    if g:__clap_development
+      let return_directly = self.is_pure_async()
+            \ || self.source_type == g:__t_string
+            \ || self.source_type == g:__t_func_string
+      if return_directly
+        return
+      endif
+    endif
+
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
@@ -606,7 +616,17 @@ function! s:init_provider() abort
     let s:pure_rust_backed = ['filer', 'dumb_jump', 'recent_files']
     " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
     if clap#maple#is_available() && index(s:pure_rust_backed, self.id) == -1
-      call clap#client#notify_on_init('on_init')
+      let extra = {}
+      if g:__clap_development
+        if has_key(self, 'source_type') && has_key(self, 'source')
+          if self.source_type == g:__t_string
+            let extra = { 'source_cmd': self._().source }
+          elseif self.source_type == g:__t_func_string
+            let extra = { 'source_cmd': self._().source() }
+          endif
+        endif
+      endif
+      call clap#client#notify_on_init('on_init', extra)
     endif
     " Try to fill the preview window.
     if clap#preview#is_enabled()

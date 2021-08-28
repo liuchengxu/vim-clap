@@ -7,7 +7,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
 
-use crate::stdio_server::event_handlers::on_init::on_create;
+use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
 pub use self::context::{Scale, SessionContext};
@@ -40,6 +40,7 @@ pub enum SessionEvent {
 }
 
 impl SessionEvent {
+    /// Simplified display of session event.
     pub fn short_display(&self) -> String {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg id: {}", msg.id),
@@ -88,7 +89,7 @@ impl<T: EventHandler> Session<T> {
         let on_create_with_timeout_future = async move {
             match tokio::time::timeout(
                 std::time::Duration::from_millis(TIMEOUT),
-                on_create(context_clone),
+                on_session_create(context_clone),
             )
             .await
             {
@@ -103,10 +104,18 @@ impl<T: EventHandler> Session<T> {
                     let method = "s:set_total_size";
                     utility::println_json_with_length!(total, method);
                 }
-                self.source_scale = scale;
+
+                if let Scale::Small { ref lines, .. } = scale {
+                    let lines = lines.iter().take(200).cloned().collect::<Vec<_>>();
+                    let method = "s:init_display";
+                    utility::println_json_with_length!(lines, method);
+                }
+
+                let mut val = self.context.scale.lock();
+                *val = scale;
             }
             Ok(Some(Err(e))) => {
-                log::error!("Error occurrred inside on_create(): {:?}", e);
+                log::error!("Error occurrred inside on_session_create(): {:?}", e);
             }
             Ok(None) => {
                 log::debug!("Did not receive value with {} ms", TIMEOUT);
@@ -120,7 +129,7 @@ impl<T: EventHandler> Session<T> {
     pub fn start_event_loop(mut self) -> Result<()> {
         tokio::spawn(async move {
             debug!(
-                "spawn a new task for session-{}-{}",
+                "Spawning a new task for session-{}-{}",
                 self.session_id,
                 self.provider_id()
             );
@@ -128,7 +137,7 @@ impl<T: EventHandler> Session<T> {
                 match self.event_recv.recv() {
                     Ok(event) => {
                         debug!(
-                            "Event(in) receive a session event: {:?}",
+                            "Event(in) received a session event: {}",
                             event.short_display()
                         );
                         match event {

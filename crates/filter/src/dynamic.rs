@@ -116,47 +116,67 @@ fn find_best_score_idx(top_scores: &[Score; ITEMS_TO_SHOW], score: Score) -> Opt
         .map(|(idx, _)| idx)
 }
 
-/// Returns the new freshed time when the new top scored items were sent to the client.
-///
-/// # NOTE
-///
-/// Printing to stdout is to send the content to the client.
-fn try_notify_top_results(
-    icon_painter: &Option<IconPainter>,
+/// Watch and send the dynamic filtering progress when neccessary.
+#[derive(Clone, Debug)]
+pub struct Watcher {
+    /// Time of last notification.
+    past: Instant,
+    /// Number of total matched items.
     total: usize,
-    past: &Instant,
-    top_results_len: usize,
-    top_results: &[usize; ITEMS_TO_SHOW],
-    buffer: &[FilteredItem],
-    last_lines: &[String],
-) -> std::result::Result<(Instant, Option<Vec<String>>), ()> {
-    if total % 16 == 0 {
-        let now = Instant::now();
-        if now > *past + UPDATE_INTERVAL {
-            let mut indices = Vec::with_capacity(top_results_len);
-            let mut lines = Vec::with_capacity(top_results_len);
-            for &idx in top_results.iter() {
-                let filtered_item = std::ops::Index::index(buffer, idx);
-                let text = if let Some(painter) = icon_painter {
-                    indices.push(filtered_item.shifted_indices(ICON_LEN));
-                    painter.paint(filtered_item.display_text())
-                } else {
-                    indices.push(filtered_item.match_indices.clone());
-                    filtered_item.display_text().to_owned()
-                };
-                lines.push(text);
-            }
+    /// icon painter.
+    icon_painter: Option<IconPainter>,
+    /// Lines we sent last time.
+    last_lines: Vec<String>,
+}
 
-            if last_lines != lines.as_slice() {
-                println_json_with_length!(total, lines, indices);
-                return Ok((now, Some(lines)));
-            } else {
-                println_json_with_length!(total);
-                return Ok((now, None));
+impl Watcher {
+    pub fn new(initial_total: usize, icon_painter: Option<IconPainter>) -> Self {
+        Self {
+            past: Instant::now(),
+            total: initial_total,
+            icon_painter,
+            last_lines: Vec::with_capacity(ITEMS_TO_SHOW),
+        }
+    }
+
+    /// Send the current best results periodically.
+    ///
+    /// # NOTE
+    ///
+    /// Printing to stdout is to send the content to the client.
+    pub fn maybe_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[FilteredItem]) {
+        if self.total % 16 == 0 {
+            let now = Instant::now();
+            if now > self.past + UPDATE_INTERVAL {
+                let mut indices = Vec::with_capacity(ITEMS_TO_SHOW);
+                let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
+                for &idx in top_results.iter() {
+                    let filtered_item = std::ops::Index::index(buffer, idx);
+                    let text = if let Some(ref painter) = self.icon_painter {
+                        indices.push(filtered_item.shifted_indices(ICON_LEN));
+                        painter.paint(filtered_item.display_text())
+                    } else {
+                        indices.push(filtered_item.match_indices.clone());
+                        filtered_item.display_text().to_owned()
+                    };
+                    lines.push(text);
+                }
+
+                let total = self.total;
+
+                #[allow(non_upper_case_globals)]
+                const method: &str = "s:process_filter_message";
+                if self.last_lines != lines.as_slice() {
+                    println_json_with_length!(total, lines, indices, method);
+                    self.past = now;
+                    self.last_lines = lines;
+                } else {
+                    self.past = now;
+                    println_json_with_length!(total, method);
+                }
             }
         }
     }
-    Err(())
 }
 
 /// To get dynamic updates, not so much should be changed, actually.
@@ -187,16 +207,15 @@ fn dyn_collect_all(
 
     let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let (mut total, mut top_scores, mut top_results) = match top_selected_result {
+    let (total, mut top_scores, mut top_results) = match top_selected_result {
         Ok(_) => return buffer,
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut last_lines = Vec::with_capacity(top_results.len());
+    let mut watcher = Watcher::new(total, icon_painter.clone());
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
-    let mut past = std::time::Instant::now();
     iter.for_each(|item| {
         let score = item.score;
 
@@ -204,22 +223,9 @@ fn dyn_collect_all(
 
         insert_both!(pop; idx, score, item => buffer, top_results, top_scores);
 
-        total = total.wrapping_add(1);
+        watcher.total += 1;
 
-        if let Ok((now, new_lines)) = try_notify_top_results(
-            &icon_painter,
-            total,
-            &past,
-            top_results.len(),
-            &top_results,
-            &buffer,
-            &last_lines,
-        ) {
-            past = now;
-            if let Some(lines) = new_lines {
-                last_lines = lines;
-            }
-        }
+        watcher.maybe_notify(&top_results, &buffer);
     });
 
     buffer
@@ -247,38 +253,24 @@ fn dyn_collect_number(
 
     let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
-    let (mut total, mut top_scores, mut top_results) = match top_selected_result {
+    let (total, mut top_scores, mut top_results) = match top_selected_result {
         Ok(t) => return (t, buffer),
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut last_lines = Vec::with_capacity(top_results.len());
+    let mut watcher = Watcher::new(total, icon_painter.clone());
 
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
-    let mut past = std::time::Instant::now();
     iter.for_each(|filtered_item| {
         let score = filtered_item.score;
         let idx = find_best_score_idx(&top_scores, score);
 
         insert_both!(pop; idx, score, filtered_item => buffer, top_results, top_scores);
 
-        total += 1;
+        watcher.total += 1;
 
-        if let Ok((now, new_lines)) = try_notify_top_results(
-            &icon_painter,
-            total,
-            &past,
-            top_results.len(),
-            &top_results,
-            &buffer,
-            &last_lines,
-        ) {
-            past = now;
-            if let Some(lines) = new_lines {
-                last_lines = lines;
-            }
-        }
+        watcher.maybe_notify(&top_results, &buffer);
 
         if buffer.len() == buffer.capacity() {
             buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
@@ -293,7 +285,7 @@ fn dyn_collect_number(
         }
     });
 
-    (total, buffer)
+    (watcher.total, buffer)
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.

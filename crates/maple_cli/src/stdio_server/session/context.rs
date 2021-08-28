@@ -16,10 +16,15 @@ const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 pub enum Scale {
     /// We do not know the exact total number of source items.
     Indefinite,
+
     /// Large scale.
+    ///
+    /// The number of total source items is already known, but that's
+    /// too many for the synchorous filtering.
     Large(usize),
-    /// Small scale.
-    Small(usize),
+
+    /// Small scale, in which case we do not have to use the dynamic filtering.
+    Small { total: usize, lines: Vec<String> },
 }
 
 impl Default for Scale {
@@ -31,7 +36,7 @@ impl Default for Scale {
 impl Scale {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Large(total) | Self::Small(total) => Some(*total),
+            Self::Large(total) | Self::Small { total, .. } => Some(*total),
             _ => None,
         }
     }
@@ -48,7 +53,7 @@ pub struct SessionContext {
     pub scale: Arc<Mutex<Scale>>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
-    pub source_list: Arc<Mutex<Option<Vec<String>>>>,
+    pub enable_icon: bool,
 }
 
 impl SessionContext {
@@ -80,6 +85,7 @@ impl From<Message> for SessionContext {
             preview_winheight: Option<u64>,
             source_cmd: Option<String>,
             runtimepath: Option<String>,
+            enable_icon: Option<bool>,
         }
 
         let Params {
@@ -90,6 +96,7 @@ impl From<Message> for SessionContext {
             preview_winheight,
             source_cmd,
             runtimepath,
+            enable_icon,
         } = msg.deserialize_params_unsafe();
 
         Self {
@@ -98,11 +105,11 @@ impl From<Message> for SessionContext {
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
+            enable_icon: enable_icon.unwrap_or(false),
             source_cmd,
             runtimepath,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
-            source_list: Arc::new(Mutex::new(None)),
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use structopt::StructOpt;
 
@@ -29,6 +31,19 @@ pub struct RecursiveTags {
     /// Shared parameters arouns ctags.
     #[structopt(flatten)]
     shared: SharedParams,
+}
+
+pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
+    use itertools::Itertools;
+
+    let exclude = super::EXCLUDE
+        .split(",")
+        .map(|x| format!("--exclude={}", x))
+        .join(" ");
+
+    let command = format!("{} {}", BASE_TAGS_CMD, exclude);
+
+    CtagsCommand::new(BaseCommand::new(command, cwd))
 }
 
 impl RecursiveTags {

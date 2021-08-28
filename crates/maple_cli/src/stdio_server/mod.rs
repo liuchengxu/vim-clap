@@ -1,4 +1,3 @@
-pub mod event_handlers;
 pub mod message_handlers;
 mod providers;
 mod session;
@@ -16,7 +15,7 @@ use serde_json::json;
 use self::providers::{
     dumb_jump,
     filer::{self, FilerSession},
-    quickfix, recent_files, GeneralSession,
+    quickfix, recent_files, BuiltinSession,
 };
 use self::session::{SessionEvent, SessionManager};
 use self::types::{GlobalEnv, Message};
@@ -113,7 +112,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 "filer/on_init" => manager.new_session::<FilerSession>(msg),
                 "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                "on_init" => manager.new_session::<GeneralSession>(msg),
+                "on_init" => manager.new_session::<BuiltinSession>(msg),
                 "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                 "on_move" => manager.send(msg.session_id, OnMove(msg)),
                 "exit" => manager.terminate(msg.session_id),
