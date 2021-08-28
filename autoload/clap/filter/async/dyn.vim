@@ -13,7 +13,7 @@ function! s:handle_message(msg) abort
     return
   endif
 
-  call clap#state#handle_message(a:msg)
+  call clap#state#process_raw_message(a:msg)
   call clap#preview#async_open_with_delay()
 endfunction
 

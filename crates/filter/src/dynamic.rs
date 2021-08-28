@@ -116,6 +116,7 @@ fn find_best_score_idx(top_scores: &[Score; ITEMS_TO_SHOW], score: Score) -> Opt
         .map(|(idx, _)| idx)
 }
 
+/// Watch and send the dynamic filtering progress when neccessary.
 #[derive(Clone, Debug)]
 pub struct Watcher {
     /// Time of last notification.
@@ -147,8 +148,6 @@ impl Watcher {
         if self.total % 16 == 0 {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
-                // TODO: inplace update in order to allocate only once?.
-
                 let mut indices = Vec::with_capacity(ITEMS_TO_SHOW);
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
@@ -165,13 +164,15 @@ impl Watcher {
 
                 let total = self.total;
 
+                #[allow(non_upper_case_globals)]
+                const method: &str = "s:process_filter_message";
                 if self.last_lines != lines.as_slice() {
-                    println_json_with_length!(total, lines, indices);
+                    println_json_with_length!(total, lines, indices, method);
                     self.past = now;
                     self.last_lines = lines;
                 } else {
                     self.past = now;
-                    println_json_with_length!(total);
+                    println_json_with_length!(total, method);
                 }
             }
         }

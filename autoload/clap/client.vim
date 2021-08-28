@@ -15,6 +15,14 @@ function! s:set_total_size(msg) abort
   endif
 endfunction
 
+function! s:process_filter_message(msg) abort
+  if g:clap.display.win_is_valid()
+    if !has_key(a:msg, 'query') || a:msg.query ==# g:clap.input.get()
+      call clap#state#process_filter_message(a:msg)
+    endif
+  endif
+endfunction
+
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
