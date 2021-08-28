@@ -102,14 +102,14 @@ impl SessionContext {
     }
 
     // TODO: optimize as_str().into(), clone happens there.
-    pub fn sync_filter(
+    pub fn sync_filter<'a>(
         &self,
-        query: &str,
-        lines: impl Iterator<Item = types::SourceItem>,
+        query: &'a str,
+        lines: impl Iterator<Item = &'a str>,
     ) -> Result<SyncFilterResults> {
-        let ranked = filter::sync_run(
+        let ranked = filter::sync_run_on_slice(
             query,
-            filter::Source::List(lines),
+            lines,
             matcher::FuzzyAlgorithm::Fzy,
             self.match_type(),
             Vec::new(),

@@ -1,7 +1,5 @@
 //! Add a bonus score for the file matching current working directory.
 
-use types::SourceItem;
-
 use crate::Score;
 
 /// Used for recent_files provider.
@@ -20,8 +18,8 @@ impl From<String> for Cwd {
 }
 
 impl Cwd {
-    pub fn calc_bonus(&self, item: &SourceItem, base_score: Score) -> Score {
-        if item.raw.starts_with(&self.abs_path) {
+    pub fn calc_bonus(&self, full_line: &str, base_score: Score) -> Score {
+        if full_line.starts_with(&self.abs_path) {
             base_score / 2
         } else {
             0

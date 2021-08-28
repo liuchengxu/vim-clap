@@ -156,10 +156,10 @@ impl Matcher {
     }
 
     /// Returns the sum of bonus score.
-    fn calc_bonus(&self, item: &SourceItem, base_score: Score, base_indices: &[usize]) -> Score {
+    fn calc_bonus(&self, full_line: &str, base_score: Score, base_indices: &[usize]) -> Score {
         self.bonuses
             .iter()
-            .map(|b| b.bonus_for(item, base_score, base_indices))
+            .map(|b| b.bonus_for(full_line, base_score, base_indices))
             .sum()
     }
 
@@ -194,7 +194,7 @@ impl Matcher {
         }
 
         if fuzzy_indices.is_empty() {
-            let bonus_score = self.calc_bonus(item, exact_score, &indices);
+            let bonus_score = self.calc_bonus(&item.raw, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
@@ -204,7 +204,57 @@ impl Matcher {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
 
-            let bonus_score = self.calc_bonus(item, fuzzy_score, &fuzzy_indices);
+            let bonus_score = self.calc_bonus(&item.raw, fuzzy_score, &fuzzy_indices);
+
+            indices.extend_from_slice(fuzzy_indices.as_slice());
+            indices.sort_unstable();
+            indices.dedup();
+
+            Some((exact_score + bonus_score + fuzzy_score, indices))
+        }
+    }
+
+    /// Actually performs the matching algorithm.
+    pub fn match_line(&self, line: &str, query: &Query) -> MatchResult {
+        // Try the inverse terms against the full search line.
+        for inverse_term in query.inverse_terms.iter() {
+            if inverse_term.match_full_line(line) {
+                return None;
+            }
+        }
+
+        // Try the exact terms against the full search line.
+        let (exact_score, mut indices) = match search_exact_terms(query.exact_terms.iter(), line) {
+            Some(ret) => ret,
+            None => return None,
+        };
+
+        // Try the fuzzy terms against the matched text.
+        let mut fuzzy_indices = Vec::<usize>::new();
+        let mut fuzzy_score = Score::default();
+
+        for term in query.fuzzy_terms.iter() {
+            let query = &term.word;
+            if let Some((score, sub_indices)) = self.fuzzy_match(&line, query) {
+                fuzzy_indices.extend_from_slice(&sub_indices);
+                fuzzy_score += score;
+            } else {
+                return None;
+            }
+        }
+
+        if fuzzy_indices.is_empty() {
+            let bonus_score = self.calc_bonus(line, exact_score, &indices);
+
+            indices.sort_unstable();
+            indices.dedup();
+
+            Some((exact_score + bonus_score, indices))
+        } else {
+            fuzzy_indices.sort_unstable();
+            fuzzy_indices.dedup();
+
+            let bonus_score = self.calc_bonus(line, fuzzy_score, &fuzzy_indices);
 
             indices.extend_from_slice(fuzzy_indices.as_slice());
             indices.sort_unstable();

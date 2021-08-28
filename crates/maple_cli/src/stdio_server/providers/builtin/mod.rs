@@ -53,7 +53,7 @@ impl EventHandler for BuiltinEventHandler {
                     lines,
                     indices,
                     truncated_map,
-                } = context.sync_filter(&query, lines.iter().map(|s| s.as_str().into()))?;
+                } = context.sync_filter(&query, lines.iter().map(|s| s.as_str()))?;
 
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(total, lines, indices, truncated_map, method);

@@ -112,6 +112,25 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     Ok(ranked)
 }
 
+// TODO: optimize
+pub fn sync_run_on_slice<'a>(
+    query: &'a str,
+    source: impl Iterator<Item = &'a str>,
+    algo: FuzzyAlgorithm,
+    match_type: MatchType,
+    bonuses: Vec<Bonus>,
+) -> Result<Vec<FilteredItem>> {
+    let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
+    let query: Query = query.into();
+    let scorer = |line: &str| matcher.match_line(line, &query);
+    let filtered = source
+        .filter_map(|line| scorer(line).map(|(score, indices)| (line.to_string(), score, indices)))
+        .map(Into::into)
+        .collect();
+    let ranked = sort_initial_filtered(filtered);
+    Ok(ranked)
+}
+
 pub fn simple_run<T: Into<SourceItem>>(
     lines: impl Iterator<Item = T>,
     query: &str,

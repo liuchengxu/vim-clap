@@ -68,17 +68,17 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_for(&self, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
+    pub fn bonus_for(&self, full_line: &str, score: Score, indices: &[usize]) -> Score {
         // Ignore the long line.
-        if item.raw.len() > 1024 {
+        if full_line.len() > 1024 {
             return 0;
         }
 
         match self {
-            Self::FileName => calc_bonus_filename(item, score, indices),
-            Self::RecentFiles(recent_files) => recent_files.calc_bonus(item, score),
-            Self::Language(language) => language.calc_bonus(item, score),
-            Self::Cwd(cwd) => cwd.calc_bonus(item, score),
+            Self::FileName => calc_bonus_filename(full_line, score, indices),
+            Self::RecentFiles(recent_files) => recent_files.calc_bonus(full_line, score),
+            Self::Language(language) => language.calc_bonus(full_line, score),
+            Self::Cwd(cwd) => cwd.calc_bonus(full_line, score),
             Self::None => 0,
         }
     }
