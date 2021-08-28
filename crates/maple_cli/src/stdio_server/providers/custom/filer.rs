@@ -9,7 +9,7 @@ use serde_json::json;
 
 use icon::prepend_filer_icon;
 
-use crate::stdio_server::event_handlers::{OnMove, OnMoveHandler};
+use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,

@@ -7,7 +7,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
 
-use crate::stdio_server::event_handlers::on_init::on_create;
+use crate::stdio_server::providers::builtin::on_init::on_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
 pub use self::context::{Scale, SessionContext};

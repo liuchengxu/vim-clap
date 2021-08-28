@@ -9,7 +9,7 @@ use serde_json::json;
 use filter::FilteredItem;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::event_handlers::OnMoveHandler;
+use crate::stdio_server::providers::builtin::OnMoveHandler;
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, Message,
