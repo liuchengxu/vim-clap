@@ -104,7 +104,15 @@ impl<T: EventHandler> Session<T> {
                     let method = "s:set_total_size";
                     utility::println_json_with_length!(total, method);
                 }
-                self.source_scale = scale;
+
+                if let Scale::Small { ref lines, .. } = scale {
+                    let lines = lines.iter().take(200).cloned().collect::<Vec<_>>();
+                    let method = "s:init_display";
+                    utility::println_json_with_length!(lines, method);
+                }
+
+                let mut val = self.context.scale.lock();
+                *val = scale;
             }
             Ok(Some(Err(e))) => {
                 log::error!("Error occurrred inside on_session_create(): {:?}", e);

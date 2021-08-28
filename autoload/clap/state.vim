@@ -160,6 +160,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_match_type_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
+  let g:clap.display.initial_size = -1
   call clap#indicator#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile

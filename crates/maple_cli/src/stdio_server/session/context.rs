@@ -53,6 +53,7 @@ pub struct SessionContext {
     pub scale: Arc<Mutex<Scale>>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
+    pub enable_icon: bool,
 }
 
 impl SessionContext {
@@ -84,6 +85,7 @@ impl From<Message> for SessionContext {
             preview_winheight: Option<u64>,
             source_cmd: Option<String>,
             runtimepath: Option<String>,
+            enable_icon: Option<bool>,
         }
 
         let Params {
@@ -94,6 +96,7 @@ impl From<Message> for SessionContext {
             preview_winheight,
             source_cmd,
             runtimepath,
+            enable_icon,
         } = msg.deserialize_params_unsafe();
 
         Self {
@@ -102,6 +105,7 @@ impl From<Message> for SessionContext {
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
+            enable_icon: enable_icon.unwrap_or(false),
             source_cmd,
             runtimepath,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),

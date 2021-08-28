@@ -19,20 +19,21 @@ if !s:support_json_format
 endif
 
 function! s:proj_tags.on_typed() abort
-  if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-  else
-    call clap#filter#async#dyn#start_directly(
-          \ clap#maple#build_cmd('ctags', 'recursive-tags --dir', clap#rooter#working_dir(), '--query', g:clap.input.get()))
-  endif
+  call clap#client#notify('on_typed', {'query': g:clap.input.get()})
+  " if exists('g:__clap_forerunner_tempfile')
+    " call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+  " else
+    " call clap#filter#async#dyn#start_directly(
+          " \ clap#maple#build_cmd('ctags', 'recursive-tags --dir', clap#rooter#working_dir(), '--query', g:clap.input.get()))
+  " endif
 endfunction
 
 function! s:proj_tags.init() abort
-  let g:__clap_match_type_enum = 'TagName'
-  if clap#maple#is_available()
-    call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
-  endif
+  " let g:__clap_match_type_enum = 'TagName'
+  " if clap#maple#is_available()
+    " call clap#rooter#try_set_cwd()
+    " call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
+  " endif
 endfunction
 
 function! s:extract(tag_row) abort

@@ -568,10 +568,11 @@ function! s:init_provider() abort
     if self.is_pure_async()
       return
     elseif self.source_type == g:__t_string
-      call clap#job#regular#forerunner#start(self._().source)
       return
+      " call clap#job#regular#forerunner#start(self._().source)
+      " return
     elseif self.source_type == g:__t_func_string
-      call clap#job#regular#forerunner#start(self._().source())
+      " call clap#job#regular#forerunner#start(self._().source())
       return
     endif
 
@@ -607,12 +608,13 @@ function! s:init_provider() abort
     let s:pure_rust_backed = ['filer', 'dumb_jump', 'recent_files']
     " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
     if clap#maple#is_available() && index(s:pure_rust_backed, self.id) == -1
-      if self.source_type == g:__t_string
-        let extra = { 'source_cmd': self._().source }
-      elseif self.source_type == g:__t_func_string
-        let extra = { 'source_cmd': self._().source() }
-      else
-        let extra = {}
+      let extra = {}
+      if has_key(self, 'source_type') && has_key(self, 'source')
+        if self.source_type == g:__t_string
+          let extra = { 'source_cmd': self._().source }
+        elseif self.source_type == g:__t_func_string
+          let extra = { 'source_cmd': self._().source() }
+        endif
       endif
       call clap#client#notify_on_init('on_init', extra)
     endif

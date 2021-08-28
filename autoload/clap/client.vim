@@ -15,6 +15,19 @@ function! s:set_total_size(msg) abort
   endif
 endfunction
 
+function! s:init_display(msg) abort
+  if empty(g:clap.input.get())
+    call g:clap.display.set_lines_lazy(a:msg.lines)
+    call g:clap#display_win.shrink_if_undersize()
+  endif
+
+  call clap#indicator#update_matches_on_forerunner_done()
+
+  let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  call clap#spinner#refresh()
+  call clap#preview#async_open_with_delay()
+endfunction
+
 function! s:process_filter_message(msg) abort
   if g:clap.display.win_is_valid()
     if !has_key(a:msg, 'query') || a:msg.query ==# g:clap.input.get()
@@ -53,6 +66,7 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
+        \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
         \   'provider_id': g:clap.provider.id,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
