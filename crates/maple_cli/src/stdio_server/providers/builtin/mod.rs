@@ -1,6 +1,4 @@
-pub mod on_init;
 pub mod on_move;
-pub mod on_typed;
 
 use std::sync::Arc;
 
@@ -9,7 +7,7 @@ use crossbeam_channel::Sender;
 use serde_json::json;
 
 use crate::stdio_server::{
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent},
     write_response, Message,
 };
 
@@ -40,7 +38,27 @@ impl EventHandler for BuiltinEventHandler {
     }
 
     async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
-        on_typed::handle_on_typed(msg, context);
+        // todo!()
         Ok(())
     }
+}
+
+/// Performs the initialization like collecting the source and total number of source items.
+pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
+    if context.provider_id.as_str() == "blines" {
+        let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
+
+        let scale = if total > 200_000 {
+            Scale::Large(total)
+        } else {
+            Scale::Small {
+                total,
+                lines: Vec::new(),
+            }
+        };
+
+        return Ok(scale);
+    }
+
+    Ok(Scale::Indefinite)
 }

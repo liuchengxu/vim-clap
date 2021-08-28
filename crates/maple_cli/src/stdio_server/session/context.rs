@@ -16,10 +16,15 @@ const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 pub enum Scale {
     /// We do not know the exact total number of source items.
     Indefinite,
+
     /// Large scale.
+    ///
+    /// The number of total source items is already known, but that's
+    /// too many for the synchorous filtering.
     Large(usize),
-    /// Small scale.
-    Small(usize),
+
+    /// Small scale, in which case we do not have to use the dynamic filtering.
+    Small { total: usize, lines: Vec<String> },
 }
 
 impl Default for Scale {
@@ -31,7 +36,7 @@ impl Default for Scale {
 impl Scale {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Large(total) | Self::Small(total) => Some(*total),
+            Self::Large(total) | Self::Small { total, .. } => Some(*total),
             _ => None,
         }
     }
@@ -48,7 +53,6 @@ pub struct SessionContext {
     pub scale: Arc<Mutex<Scale>>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
-    pub source_list: Arc<Mutex<Option<Vec<String>>>>,
 }
 
 impl SessionContext {
@@ -102,7 +106,6 @@ impl From<Message> for SessionContext {
             runtimepath,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
-            source_list: Arc::new(Mutex::new(None)),
         }
     }
 }
