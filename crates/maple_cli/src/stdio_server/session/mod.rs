@@ -166,10 +166,10 @@ impl<T: EventHandler> Session<T> {
                             }
                         }
                     }
-                    Err(err) => debug!(
-                        "The channel is possibly disconnected, session recv error: {:?}",
-                        err
-                    ),
+                    Err(err) => {
+                        debug!("The channel is possibly broken, error: {:?}", err);
+                        break;
+                    }
                 }
             }
         });
