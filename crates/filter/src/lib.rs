@@ -112,17 +112,14 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     Ok(ranked)
 }
 
-// TODO: optimize
-pub fn sync_run_on_slice<'a>(
+/// Performs the synchorous filtering on a small scale of source.
+pub fn sync_run_on_small_scale<'a>(
     query: &'a str,
     source: impl Iterator<Item = &'a str>,
-    algo: FuzzyAlgorithm,
-    match_type: MatchType,
-    bonuses: Vec<Bonus>,
+    fuzzy_matcher: Matcher,
 ) -> Result<Vec<FilteredItem>> {
-    let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
     let query: Query = query.into();
-    let scorer = |line: &str| matcher.match_query(&line, &query);
+    let scorer = |line: &str| fuzzy_matcher.match_query(&line, &query);
     let mut filtered = source
         .filter_map(|line| scorer(line).map(|(score, indices)| (line, score, indices)))
         .collect::<Vec<_>>();

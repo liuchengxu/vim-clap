@@ -18,8 +18,8 @@ impl From<String> for Cwd {
 }
 
 impl Cwd {
-    pub fn calc_bonus(&self, full_line: &str, base_score: Score) -> Score {
-        if full_line.starts_with(&self.abs_path) {
+    pub fn calc_bonus(&self, bonus_text: &str, base_score: Score) -> Score {
+        if bonus_text.starts_with(&self.abs_path) {
             base_score / 2
         } else {
             0

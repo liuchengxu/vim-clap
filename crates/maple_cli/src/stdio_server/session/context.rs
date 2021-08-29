@@ -107,13 +107,12 @@ impl SessionContext {
         query: &'a str,
         lines: impl Iterator<Item = &'a str>,
     ) -> Result<SyncFilterResults> {
-        let ranked = filter::sync_run_on_slice(
-            query,
-            lines,
+        let fuzzy_matcher = matcher::Matcher::with_bonuses(
             matcher::FuzzyAlgorithm::Fzy,
             self.match_type(),
             Vec::new(),
-        )?;
+        );
+        let ranked = filter::sync_run_on_small_scale(query, lines, fuzzy_matcher)?;
 
         let total = ranked.len();
 

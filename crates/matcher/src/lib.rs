@@ -156,10 +156,15 @@ impl Matcher {
     }
 
     /// Returns the sum of bonus score.
-    fn calc_bonus(&self, full_line: &str, base_score: Score, base_indices: &[usize]) -> Score {
+    fn calc_bonus<'a, T: MatchingText<'a>>(
+        &self,
+        item: &T,
+        base_score: Score,
+        base_indices: &[usize],
+    ) -> Score {
         self.bonuses
             .iter()
-            .map(|b| b.bonus_for(full_line, base_score, base_indices))
+            .map(|b| b.bonus_for(item, base_score, base_indices))
             .sum()
     }
 
@@ -194,7 +199,7 @@ impl Matcher {
         }
 
         if fuzzy_indices.is_empty() {
-            let bonus_score = self.calc_bonus(item.full_text(), exact_score, &indices);
+            let bonus_score = self.calc_bonus(item, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
@@ -204,7 +209,7 @@ impl Matcher {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
 
-            let bonus_score = self.calc_bonus(item.full_text(), fuzzy_score, &fuzzy_indices);
+            let bonus_score = self.calc_bonus(item, fuzzy_score, &fuzzy_indices);
 
             indices.extend_from_slice(fuzzy_indices.as_slice());
             indices.sort_unstable();

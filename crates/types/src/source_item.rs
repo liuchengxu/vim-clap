@@ -41,7 +41,15 @@ impl From<&str> for MatchType {
 
 /// Text used in the matching algorithm.
 pub trait MatchingText<'a> {
+    /// Initial full text.
     fn full_text(&self) -> &str;
+
+    /// Text for calculating the bonus score.
+    fn bonus_text(&self) -> &str {
+        self.full_text()
+    }
+
+    /// Text for the fuzzy match algorithm.
     fn matching_text(&self, match_ty: &MatchType) -> Option<MatchText>;
 }
 

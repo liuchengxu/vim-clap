@@ -48,8 +48,8 @@ fn calc_bonus_per_item(
 }
 
 impl Language {
-    pub fn calc_bonus(&self, full_line: &str, base_score: Score) -> Score {
-        let trimmed = full_line.trim_start();
+    pub fn calc_bonus(&self, bonus_text: &str, base_score: Score) -> Score {
+        let trimmed = bonus_text.trim_start();
         match self.0.as_str() {
             "vim" => {
                 let calc_bonus = |item: Option<&str>| {
