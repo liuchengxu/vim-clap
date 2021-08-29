@@ -61,7 +61,7 @@ impl<'a> MatchingText<'a> for SourceItem {
     }
 
     fn fuzzy_text(&self, match_type: &MatchType) -> Option<FuzzyText> {
-        self.fuzzy_text(match_type)
+        self.get_fuzzy_text(match_type)
     }
 }
 
@@ -91,11 +91,7 @@ pub struct SourceItem {
 // NOTE: do not use it when you are dealing with a large number of items.
 impl From<&str> for SourceItem {
     fn from(s: &str) -> Self {
-        Self {
-            raw: s.into(),
-            fuzzy_text: None,
-            display_text: None,
-        }
+        String::from(s).into()
     }
 }
 
@@ -139,7 +135,7 @@ impl SourceItem {
         }
     }
 
-    pub fn fuzzy_text(&self, match_ty: &MatchType) -> Option<FuzzyText> {
+    pub fn get_fuzzy_text(&self, match_ty: &MatchType) -> Option<FuzzyText> {
         if let Some((ref text, offset)) = self.fuzzy_text {
             return Some((text, offset));
         }
