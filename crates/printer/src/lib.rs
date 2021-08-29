@@ -163,12 +163,64 @@ pub fn truncate_grep_lines(
     (lines, indices, truncated_map)
 }
 
+/// 1. Truncate the line.
+/// 2. Add an icon.
+#[derive(Debug, Clone)]
+pub struct DecoratedLines {
+    /// Maybe truncated.
+    pub lines: Vec<String>,
+    pub indices: Vec<Vec<usize>>,
+    pub truncated_map: LinesTruncatedMap,
+}
+
+impl From<(Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap)> for DecoratedLines {
+    fn from(
+        (lines, indices, truncated_map): (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap),
+    ) -> Self {
+        Self {
+            lines,
+            indices,
+            truncated_map,
+        }
+    }
+}
+
+impl DecoratedLines {
+    pub fn print_json_with_length(&self, total: Option<usize>) {
+        let Self {
+            lines,
+            indices,
+            truncated_map,
+        } = self;
+
+        if let Some(total) = total {
+            println_json_with_length!(lines, indices, total, truncated_map);
+        } else {
+            println_json_with_length!(lines, indices, truncated_map);
+        }
+    }
+
+    pub fn print_json(&self, total: Option<usize>) {
+        let Self {
+            lines,
+            indices,
+            truncated_map,
+        } = self;
+
+        if let Some(total) = total {
+            println_json!(lines, indices, total, truncated_map);
+        } else {
+            println_json!(lines, indices, truncated_map);
+        }
+    }
+}
+
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn process_top_items<T>(
+pub fn decorate_lines<T>(
     mut top_list: Vec<FilteredItem<T>>,
     winwidth: usize,
     icon_painter: Option<IconPainter>,
-) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
+) -> DecoratedLines {
     let truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon_painter {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
@@ -185,7 +237,7 @@ pub fn process_top_items<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map)
+        (lines, indices, truncated_map).into()
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
@@ -197,7 +249,7 @@ pub fn process_top_items<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map)
+        (lines, indices, truncated_map).into()
     }
 }
 
@@ -212,12 +264,8 @@ pub fn print_sync_filter_results(
         let total = ranked.len();
         let mut ranked = ranked;
         ranked.truncate(number);
-        let (lines, indices, truncated_map) = process_top_items(ranked, winwidth, icon_painter);
-        if truncated_map.is_empty() {
-            println_json!(total, lines, indices);
-        } else {
-            println_json!(total, lines, indices, truncated_map);
-        }
+        let decorated_lines = decorate_lines(ranked, winwidth, icon_painter);
+        decorated_lines.print_json(Some(total));
     } else {
         for FilteredItem {
             source_item,
@@ -241,17 +289,12 @@ pub fn print_dyn_filter_results(
     winwidth: usize,
     icon_painter: Option<IconPainter>,
 ) {
-    let (lines, indices, truncated_map) = process_top_items(
+    let decorated_lines = decorate_lines(
         ranked.into_iter().take(number).collect(),
         winwidth,
         icon_painter,
     );
-
-    if truncated_map.is_empty() {
-        println_json_with_length!(total, lines, indices);
-    } else {
-        println_json_with_length!(total, lines, indices, truncated_map);
-    }
+    decorated_lines.print_json_with_length(Some(total));
 }
 
 #[cfg(test)]

@@ -50,9 +50,12 @@ impl EventHandler for BuiltinEventHandler {
             Scale::Small { ref lines, .. } => {
                 let SyncFilterResults {
                     total,
-                    lines,
-                    indices,
-                    truncated_map,
+                    decorated_lines:
+                        printer::DecoratedLines {
+                            lines,
+                            indices,
+                            truncated_map,
+                        },
                 } = context.sync_filter_source_item(&query, lines.iter().map(|s| s.as_str()))?;
 
                 let method = "s:process_filter_message";

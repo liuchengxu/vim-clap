@@ -22,6 +22,7 @@ function! s:init_display(msg) abort
   endif
 
   call clap#indicator#update_matches_on_forerunner_done()
+  call clap#sign#ensure_exists()
 
   let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   call clap#spinner#refresh()

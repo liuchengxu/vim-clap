@@ -106,9 +106,18 @@ impl<T: EventHandler> Session<T> {
                 }
 
                 if let Scale::Small { ref lines, .. } = scale {
-                    let lines = lines.iter().take(200).cloned().collect::<Vec<_>>();
+                    let printer::DecoratedLines {
+                        lines,
+                        truncated_map,
+                        ..
+                    } = printer::decorate_lines::<i64>(
+                        lines.iter().take(200).map(|s| s.as_str().into()).collect(),
+                        self.context.display_winwidth as usize,
+                        self.context.icon.clone().into(),
+                    );
+
                     let method = "s:init_display";
-                    utility::println_json_with_length!(lines, method);
+                    utility::println_json_with_length!(lines, truncated_map, method);
                 }
 
                 let mut val = self.context.scale.lock();

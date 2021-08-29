@@ -47,9 +47,7 @@ impl Scale {
 #[derive(Clone, Debug)]
 pub struct SyncFilterResults {
     pub total: usize,
-    pub lines: Vec<String>,
-    pub indices: Vec<Vec<usize>>,
-    pub truncated_map: printer::LinesTruncatedMap,
+    pub decorated_lines: printer::DecoratedLines,
 }
 
 #[derive(Clone, Debug)]
@@ -112,18 +110,17 @@ impl SessionContext {
 
         let total = ranked.len();
 
+        let maybe_icon = self.icon.clone().into();
         // Take the first 200 entries and add an icon to each of them.
-        let (lines, indices, truncated_map) = printer::process_top_items(
+        let decorated_lines = printer::decorate_lines(
             ranked.iter().take(200).cloned().collect(),
             self.display_winwidth as usize,
-            self.icon.clone().into(),
+            maybe_icon,
         );
 
         Ok(SyncFilterResults {
             total,
-            lines,
-            indices,
-            truncated_map,
+            decorated_lines,
         })
     }
 
@@ -144,7 +141,7 @@ impl SessionContext {
         let total = ranked.len();
 
         // Take the first 200 entries and add an icon to each of them.
-        let (lines, indices, truncated_map) = printer::process_top_items(
+        let decorated_lines = printer::decorate_lines(
             ranked.iter().take(200).cloned().collect(),
             self.display_winwidth as usize,
             self.icon.clone().into(),
@@ -152,9 +149,7 @@ impl SessionContext {
 
         Ok(SyncFilterResults {
             total,
-            lines,
-            indices,
-            truncated_map,
+            decorated_lines,
         })
     }
 }

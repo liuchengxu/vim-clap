@@ -148,6 +148,10 @@ function! clap#preview#async_open_with_delay() abort
   let s:preview_timer = timer_start(s:preview_delay, { -> clap#impl#on_move#invoke_async()})
 endfunction
 
+function! clap#preview#clear() abort
+  let s:last_preview_line = ''
+endfunction
+
 function! clap#preview#maple_opts(extra) abort
   let opts = {
         \ 'fpath': fnamemodify(fnameescape(g:clap.display.getcurline()), ':p'),

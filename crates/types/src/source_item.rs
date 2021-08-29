@@ -176,6 +176,17 @@ impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
     }
 }
 
+impl<I: Into<SourceItem>, T: Default> From<I> for FilteredItem<T> {
+    fn from(item: I) -> Self {
+        Self {
+            source_item: item.into(),
+            score: Default::default(),
+            match_indices: Default::default(),
+            display_text: None,
+        }
+    }
+}
+
 impl<T> FilteredItem<T> {
     pub fn new<I: Into<SourceItem>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
         (item, score, match_indices).into()
