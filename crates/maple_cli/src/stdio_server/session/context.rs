@@ -191,6 +191,7 @@ impl From<Message> for SessionContext {
             match provider_id.as_str() {
                 "tags" | "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
                 "grep" | "grep2" => Icon::Enabled(IconPainter::Grep),
+                "files" => Icon::Enabled(IconPainter::File),
                 _ => Icon::Disabled,
             }
         } else {

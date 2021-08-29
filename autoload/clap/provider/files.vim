@@ -71,6 +71,12 @@ function! s:files.on_exit() abort
   endif
 endfunction
 
+if g:__clap_development
+  function! s:files.on_typed() abort
+    call clap#client#notify('on_typed', {'query': g:clap.input.get()})
+  endfunction
+endif
+
 let s:files.sink = function('clap#provider#files#sink_impl')
 let s:files['sink*'] = function('clap#provider#files#sink_star_impl')
 let s:files.on_move = function('clap#provider#files#on_move_impl')
