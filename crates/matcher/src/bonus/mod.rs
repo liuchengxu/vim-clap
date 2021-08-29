@@ -3,7 +3,7 @@ pub mod filename;
 pub mod language;
 pub mod recent_files;
 
-use types::SourceItem;
+use types::MatchingText;
 
 use self::cwd::Cwd;
 use self::filename::calc_bonus_filename;
@@ -68,17 +68,24 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_for(&self, item: &SourceItem, score: Score, indices: &[usize]) -> Score {
+    pub fn bonus_for<'a, T: MatchingText<'a>>(
+        &self,
+        item: &T,
+        score: Score,
+        indices: &[usize],
+    ) -> Score {
         // Ignore the long line.
-        if item.raw.len() > 1024 {
+        if item.full_text().len() > 1024 {
             return 0;
         }
 
+        let bonus_text = item.bonus_text();
+
         match self {
-            Self::FileName => calc_bonus_filename(item, score, indices),
-            Self::RecentFiles(recent_files) => recent_files.calc_bonus(item, score),
-            Self::Language(language) => language.calc_bonus(item, score),
-            Self::Cwd(cwd) => cwd.calc_bonus(item, score),
+            Self::FileName => calc_bonus_filename(bonus_text, score, indices),
+            Self::RecentFiles(recent_files) => recent_files.calc_bonus(bonus_text, score),
+            Self::Language(language) => language.calc_bonus(bonus_text, score),
+            Self::Cwd(cwd) => cwd.calc_bonus(bonus_text, score),
             Self::None => 0,
         }
     }

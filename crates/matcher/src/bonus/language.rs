@@ -2,8 +2,6 @@
 //!
 //! Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el
 
-use types::SourceItem;
-
 use crate::Score;
 
 pub type FileExtension = String;
@@ -50,8 +48,8 @@ fn calc_bonus_per_item(
 }
 
 impl Language {
-    pub fn calc_bonus(&self, item: &SourceItem, base_score: Score) -> Score {
-        let trimmed = item.raw.trim_start();
+    pub fn calc_bonus(&self, bonus_text: &str, base_score: Score) -> Score {
+        let trimmed = bonus_text.trim_start();
         match self.0.as_str() {
             "vim" => {
                 let calc_bonus = |item: Option<&str>| {

@@ -121,7 +121,7 @@ pub fn truncate_long_matched_lines<T>(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, filtered_item)| {
-        let line = filtered_item.display_text_before_truncated();
+        let line = filtered_item.source_item_display_text();
 
         if let Some((truncated, truncated_indices)) =
             truncate_line_impl(winwidth, &line, &filtered_item.match_indices, skipped)
@@ -320,7 +320,9 @@ mod tests {
 
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-        let (_source_item, _score, truncated_indices) = ranked[0].clone().deconstruct();
+        let FilteredItem { match_indices, .. } = ranked[0].clone();
+
+        let truncated_indices = match_indices;
 
         let truncated_text_got = ranked[0].display_text();
 
