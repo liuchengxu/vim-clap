@@ -128,6 +128,7 @@ impl SessionContext {
     }
 
     // TODO: optimize as_str().into(), clone happens there.
+    #[allow(unused)]
     pub fn sync_filter_full_line<'a>(
         &self,
         query: &'a str,
@@ -193,7 +194,7 @@ impl From<Message> for SessionContext {
 
         let icon = if enable_icon.unwrap_or(false) {
             match provider_id.as_str() {
-                "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
+                "tags" | "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
                 "grep" | "grep2" => Icon::Enabled(IconPainter::Grep),
                 _ => Icon::Disabled,
             }
