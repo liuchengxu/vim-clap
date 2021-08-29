@@ -324,7 +324,7 @@ mod tests {
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -340,7 +340,7 @@ mod tests {
         let query: Query = ".rs$".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -351,7 +351,7 @@ mod tests {
         let query: Query = "py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -367,7 +367,7 @@ mod tests {
         let query: Query = "'py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
