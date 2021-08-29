@@ -115,6 +115,8 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         .flatten()
         .collect::<Vec<_>>();
 
+        log::debug!("---------------------- size: {}", lines.len());
+
         return Ok(to_scale(lines));
     }
 

@@ -94,7 +94,10 @@ impl<T: EventHandler> Session<T> {
             .await
             {
                 Ok(scale) => Some(scale),
-                Err(_) => None, // timeout
+                Err(_) => {
+                    log::debug!("------------------------ Why no timeout?");
+                    None // timeout
+                }
             }
         };
 
