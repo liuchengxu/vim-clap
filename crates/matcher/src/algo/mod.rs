@@ -32,7 +32,7 @@ impl FuzzyAlgorithm {
         item: &T,
         match_type: &MatchType,
     ) -> MatchResult {
-        item.matching_text(match_type).and_then(|(text, offset)| {
+        item.fuzzy_text(match_type).and_then(|(text, offset)| {
             let res = match self {
                 Self::Fzy => fzy::fuzzy_indices(text, query),
                 Self::Skim => skim::fuzzy_indices(text, query),
