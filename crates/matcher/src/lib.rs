@@ -32,7 +32,7 @@ pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
 // Re-export types
 pub use types::{
-    ExactTerm, ExactTermType, FuzzyTermType, MatchTextFor, MatchType, Query, SearchTerm,
+    ExactTerm, ExactTermType, FuzzyTermType, MatchType, MatchingText, Query, SearchTerm,
     SourceItem, TermType,
 };
 
@@ -120,6 +120,7 @@ pub fn search_exact_terms<'a>(
 ///   * `match_type`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
+#[derive(Debug, Clone)]
 pub struct Matcher {
     fuzzy_algo: FuzzyAlgorithm,
     match_type: MatchType,
@@ -151,12 +152,17 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match(&self, item: &SourceItem, query: &str) -> MatchResult {
+    fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> MatchResult {
         self.fuzzy_algo.fuzzy_match(query, item, &self.match_type)
     }
 
     /// Returns the sum of bonus score.
-    fn calc_bonus(&self, item: &SourceItem, base_score: Score, base_indices: &[usize]) -> Score {
+    fn calc_bonus<'a, T: MatchingText<'a>>(
+        &self,
+        item: &T,
+        base_score: Score,
+        base_indices: &[usize],
+    ) -> Score {
         self.bonuses
             .iter()
             .map(|b| b.bonus_for(item, base_score, base_indices))
@@ -164,17 +170,17 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query(&self, item: &SourceItem, query: &Query) -> MatchResult {
+    pub fn match_query<'a, T: MatchingText<'a>>(&self, item: &T, query: &Query) -> MatchResult {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.match_source_item(item) {
+            if inverse_term.match_full_line(item.full_text()) {
                 return None;
             }
         }
 
         // Try the exact terms against the full search line.
         let (exact_score, mut indices) =
-            match search_exact_terms(query.exact_terms.iter(), &item.raw) {
+            match search_exact_terms(query.exact_terms.iter(), item.full_text()) {
                 Some(ret) => ret,
                 None => return None,
             };
@@ -282,9 +288,9 @@ mod tests {
         let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
         let query = "fil";
         for line in lines {
-            let (base_score, indices1) = matcher.fuzzy_match(&line.into(), query).unwrap();
-            let (score_with_bonus, indices2) =
-                matcher.match_query(&line.into(), &query.into()).unwrap();
+            let (base_score, indices1) =
+                matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
+            let (score_with_bonus, indices2) = matcher.match_query(&line, &query.into()).unwrap();
             assert!(indices1 == indices2);
             assert!(score_with_bonus > base_score);
         }
@@ -299,8 +305,8 @@ mod tests {
             Bonus::Language("vim".into()),
         );
         let query: Query = "fo".into();
-        let (score_1, indices1) = matcher.match_query(&lines[0].into(), &query).unwrap();
-        let (score_2, indices2) = matcher.match_query(&lines[1].into(), &query).unwrap();
+        let (score_1, indices1) = matcher.match_query(&lines[0], &query).unwrap();
+        let (score_2, indices2) = matcher.match_query(&lines[1], &query).unwrap();
         assert!(indices1 == indices2);
         assert!(score_1 < score_2);
     }
@@ -319,7 +325,7 @@ mod tests {
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -335,7 +341,7 @@ mod tests {
         let query: Query = ".rs$".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -346,7 +352,7 @@ mod tests {
         let query: Query = "py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(
@@ -362,7 +368,7 @@ mod tests {
         let query: Query = "'py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(&item, &query))
+            .map(|item| matcher.match_query(item, &query))
             .collect();
 
         assert_eq!(

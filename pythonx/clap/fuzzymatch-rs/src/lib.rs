@@ -88,10 +88,10 @@ fn fuzzy_match(
         if enable_icon {
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
-                .match_query(&line[4..].into(), &query)
+                .match_query(&&line[4..], &query)
                 .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
         } else {
-            matcher.match_query(&line.into(), &query)
+            matcher.match_query(&line, &query)
         }
     };
 
