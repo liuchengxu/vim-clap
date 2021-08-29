@@ -120,6 +120,7 @@ pub fn search_exact_terms<'a>(
 ///   * `match_type`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
+#[derive(Debug, Clone)]
 pub struct Matcher {
     fuzzy_algo: FuzzyAlgorithm,
     match_type: MatchType,

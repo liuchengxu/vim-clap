@@ -112,6 +112,7 @@ impl SessionContext {
             self.match_type(),
             Vec::new(),
         );
+        log::debug!("------------- fuzzy matcher: {:?}", fuzzy_matcher);
         let ranked = filter::sync_run_on_small_scale(query, lines, fuzzy_matcher)?;
 
         let total = ranked.len();
