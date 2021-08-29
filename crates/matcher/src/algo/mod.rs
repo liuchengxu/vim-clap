@@ -4,7 +4,7 @@ pub mod substring;
 
 use structopt::clap::arg_enum;
 
-use types::{MatchTextFor, MatchType};
+use types::{MatchType, MatchingText};
 
 use crate::MatchResult;
 
@@ -26,13 +26,13 @@ impl Default for FuzzyAlgorithm {
 
 impl FuzzyAlgorithm {
     /// Does the fuzzy match against the match text.
-    pub fn fuzzy_match<'a, T: MatchTextFor<'a>>(
+    pub fn fuzzy_match<'a, T: MatchingText<'a>>(
         &self,
         query: &str,
         item: &T,
         match_type: &MatchType,
     ) -> MatchResult {
-        item.match_text_for(match_type).and_then(|(text, offset)| {
+        item.matching_text(match_type).and_then(|(text, offset)| {
             let res = match self {
                 Self::Fzy => fzy::fuzzy_indices(text, query),
                 Self::Skim => skim::fuzzy_indices(text, query),

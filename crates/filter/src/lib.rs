@@ -122,13 +122,14 @@ pub fn sync_run_on_slice<'a>(
 ) -> Result<Vec<FilteredItem>> {
     let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
     let query: Query = query.into();
-    let scorer = |line: &str| matcher.match_line(line, &query);
-    let filtered = source
-        .filter_map(|line| scorer(line).map(|(score, indices)| (line.to_string(), score, indices)))
-        .map(Into::into)
-        .collect();
-    let ranked = sort_initial_filtered(filtered);
-    Ok(ranked)
+    let scorer = |line: &str| matcher.match_query(&line, &query);
+    let mut filtered = source
+        .filter_map(|line| scorer(line).map(|(score, indices)| (line, score, indices)))
+        .collect::<Vec<_>>();
+    filtered.par_sort_unstable_by(|(_, score1, _), (_, score2, _)| {
+        score2.partial_cmp(&score1).unwrap()
+    });
+    Ok(filtered.into_iter().map(Into::into).collect())
 }
 
 pub fn simple_run<T: Into<SourceItem>>(

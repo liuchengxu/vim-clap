@@ -2,8 +2,6 @@
 //!
 //! Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el
 
-use types::SourceItem;
-
 use crate::Score;
 
 pub type FileExtension = String;

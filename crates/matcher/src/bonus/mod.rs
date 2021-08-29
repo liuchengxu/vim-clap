@@ -3,8 +3,6 @@ pub mod filename;
 pub mod language;
 pub mod recent_files;
 
-use types::SourceItem;
-
 use self::cwd::Cwd;
 use self::filename::calc_bonus_filename;
 use self::language::Language;

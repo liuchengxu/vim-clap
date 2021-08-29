@@ -39,28 +39,37 @@ impl From<&str> for MatchType {
     }
 }
 
-/// Extracts the text for running the matcher.
-pub trait MatchTextFor<'a> {
-    fn match_text_for(&self, match_ty: &MatchType) -> Option<MatchText>;
+/// Text used in the matching algorithm.
+pub trait MatchingText<'a> {
+    fn full_text(&self) -> &str;
+    fn matching_text(&self, match_ty: &MatchType) -> Option<MatchText>;
 }
 
-impl<'a> MatchTextFor<'a> for SourceItem {
-    fn match_text_for(&self, match_type: &MatchType) -> Option<MatchText> {
-        self.match_text_for(match_type)
+impl<'a> MatchingText<'a> for SourceItem {
+    fn full_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn matching_text(&self, match_type: &MatchType) -> Option<MatchText> {
+        self.matching_text(match_type)
     }
 }
 
-impl<'a> MatchTextFor<'a> for &'a str {
-    fn match_text_for(&self, _match_type: &MatchType) -> Option<MatchText> {
+impl<'a> MatchingText<'a> for &'a str {
+    fn full_text(&self) -> &str {
+        self
+    }
+
+    fn matching_text(&self, _match_type: &MatchType) -> Option<MatchText> {
         Some((self, 0))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct SourceItem {
-    /// Raw line content of the input stream.
+    /// Raw line from the initial input stream.
     pub raw: String,
-    /// Text for matching.
+    /// Text for matching, initialized on creating a new [`SourceItem`].
     pub match_text: Option<(String, usize)>,
     /// The display text can be built when creating a new source item.
     pub display_text: Option<String>,
@@ -116,7 +125,7 @@ impl SourceItem {
         }
     }
 
-    pub fn match_text_for(&self, match_ty: &MatchType) -> Option<MatchText> {
+    pub fn matching_text(&self, match_ty: &MatchType) -> Option<MatchText> {
         if let Some((ref text, offset)) = self.match_text {
             return Some((text, offset));
         }
@@ -144,21 +153,10 @@ pub struct FilteredItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<T> From<(SourceItem, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((source_item, score, match_indices): (SourceItem, T, Vec<usize>)) -> Self {
+impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
+    fn from((item, score, match_indices): (I, T, Vec<usize>)) -> Self {
         Self {
-            source_item,
-            score,
-            match_indices,
-            display_text: None,
-        }
-    }
-}
-
-impl<T> From<(String, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((text, score, match_indices): (String, T, Vec<usize>)) -> Self {
-        Self {
-            source_item: text.into(),
+            source_item: item.into(),
             score,
             match_indices,
             display_text: None,

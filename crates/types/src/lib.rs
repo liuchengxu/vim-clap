@@ -7,4 +7,6 @@ pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,
     TermType,
 };
-pub use self::source_item::{FilteredItem, MatchText, MatchTextFor, MatchType, SourceItem};
+pub use self::source_item::{
+    FilteredItem, MatchText, MatchType, MatchingText, SourceItem,
+};
