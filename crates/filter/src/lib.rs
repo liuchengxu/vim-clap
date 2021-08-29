@@ -113,6 +113,8 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
 }
 
 /// Performs the synchorous filtering on a small scale of source.
+///
+/// Only works for the items whose match type is [`MatchType::Full`].
 pub fn sync_run_on_small_scale<'a>(
     query: &'a str,
     source: impl Iterator<Item = &'a str>,

@@ -52,6 +52,21 @@ pub struct SyncFilterResults {
     pub truncated_map: printer::LinesTruncatedMap,
 }
 
+#[derive(Clone, Debug)]
+pub enum Icon {
+    Disabled,
+    Enabled(IconPainter),
+}
+
+impl From<Icon> for Option<IconPainter> {
+    fn from(icon: Icon) -> Self {
+        match icon {
+            Icon::Disabled => None,
+            Icon::Enabled(icon) => Some(icon),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
@@ -59,11 +74,12 @@ pub struct SessionContext {
     pub start_buffer_path: PathBuf,
     pub display_winwidth: u64,
     pub preview_winheight: u64,
-    pub source_cmd: Option<String>,
+    pub icon: Icon,
+    pub match_type: MatchType,
     pub scale: Arc<Mutex<Scale>>,
+    pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
-    pub enable_icon: bool,
 }
 
 impl SessionContext {
@@ -81,38 +97,47 @@ impl SessionContext {
         )
     }
 
-    pub fn match_type(&self) -> MatchType {
-        match self.provider_id.as_str() {
-            "proj_tags" => MatchType::TagName,
-            "grep" | "grep2" => MatchType::IgnoreFilePath,
-            _ => MatchType::Full,
-        }
-    }
+    pub fn sync_filter_source_item<'a>(
+        &self,
+        query: &str,
+        lines: impl Iterator<Item = &'a str>,
+    ) -> Result<SyncFilterResults> {
+        let ranked = filter::sync_run(
+            query,
+            filter::Source::List(lines.map(Into::into)), // TODO: optimize as_str().into(), clone happens there.
+            matcher::FuzzyAlgorithm::Fzy,
+            self.match_type.clone(),
+            Vec::new(),
+        )?;
 
-    pub fn icon_painter(&self) -> Option<IconPainter> {
-        if !self.enable_icon {
-            return None;
-        }
+        let total = ranked.len();
 
-        match self.provider_id.as_str() {
-            "proj_tags" => Some(IconPainter::ProjTags),
-            "grep" | "grep2" => Some(IconPainter::Grep),
-            _ => None,
-        }
+        // Take the first 200 entries and add an icon to each of them.
+        let (lines, indices, truncated_map) = printer::process_top_items(
+            ranked.iter().take(200).cloned().collect(),
+            self.display_winwidth as usize,
+            self.icon.clone().into(),
+        );
+
+        Ok(SyncFilterResults {
+            total,
+            lines,
+            indices,
+            truncated_map,
+        })
     }
 
     // TODO: optimize as_str().into(), clone happens there.
-    pub fn sync_filter<'a>(
+    pub fn sync_filter_full_line<'a>(
         &self,
         query: &'a str,
         lines: impl Iterator<Item = &'a str>,
     ) -> Result<SyncFilterResults> {
         let fuzzy_matcher = matcher::Matcher::with_bonuses(
             matcher::FuzzyAlgorithm::Fzy,
-            self.match_type(),
+            self.match_type.clone(),
             Vec::new(),
         );
-        log::debug!("------------- fuzzy matcher: {:?}", fuzzy_matcher);
         let ranked = filter::sync_run_on_small_scale(query, lines, fuzzy_matcher)?;
 
         let total = ranked.len();
@@ -121,7 +146,7 @@ impl SessionContext {
         let (lines, indices, truncated_map) = printer::process_top_items(
             ranked.iter().take(200).cloned().collect(),
             self.display_winwidth as usize,
-            self.icon_painter(),
+            self.icon.clone().into(),
         );
 
         Ok(SyncFilterResults {
@@ -160,15 +185,32 @@ impl From<Message> for SessionContext {
             enable_icon,
         } = msg.deserialize_params_unsafe();
 
+        let match_type = match provider_id.as_str() {
+            "tags" | "proj_tags" => MatchType::TagName,
+            "grep" | "grep2" => MatchType::IgnoreFilePath,
+            _ => MatchType::Full,
+        };
+
+        let icon = if enable_icon.unwrap_or(false) {
+            match provider_id.as_str() {
+                "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
+                "grep" | "grep2" => Icon::Enabled(IconPainter::Grep),
+                _ => Icon::Disabled,
+            }
+        } else {
+            Icon::Disabled
+        };
+
         Self {
             provider_id,
             cwd,
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
-            enable_icon: enable_icon.unwrap_or(false),
             source_cmd,
             runtimepath,
+            match_type,
+            icon,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
         }
