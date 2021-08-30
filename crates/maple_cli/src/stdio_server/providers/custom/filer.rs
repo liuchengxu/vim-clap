@@ -28,7 +28,7 @@ impl<P: AsRef<Path>> DisplayPath<P> {
     }
 
     #[inline]
-    fn to_str_file_name(&self) -> Option<&str> {
+    fn as_file_name(&self) -> Option<&str> {
         self.inner
             .as_ref()
             .file_name()
@@ -47,15 +47,10 @@ impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
         };
 
         if self.inner.as_ref().is_dir() {
-            let path = format!(
-                "{}{}",
-                self.to_str_file_name().unwrap(),
-                path::MAIN_SEPARATOR
-            );
-
+            let path = format!("{}{}", self.as_file_name().unwrap(), path::MAIN_SEPARATOR);
             write_with_icon(&path)
         } else {
-            write_with_icon(self.to_str_file_name().unwrap())
+            write_with_icon(self.as_file_name().unwrap())
         }
     }
 }
@@ -105,7 +100,7 @@ impl EventHandler for FilerMessageHandler {
             expected_line: None,
         };
         if let Err(err) = on_move_handler.handle() {
-            log::error!("Failed to handle filer OnMove: {:?}", err);
+            log::error!("Failed to handle filer OnMove: {:?}, path: {:?}", err, path);
             let error = json!({"message": err.to_string(), "dir": path});
             let res = json!({ "id": msg_id, "provider_id": "filer", "error": error });
             write_response(res);
