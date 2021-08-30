@@ -27,7 +27,6 @@ function! s:init_ext2ft() abort
 endfunction
 
 function! clap#ext#set(decoded) abort
-  echom string(a:decoded)
   let s:ext2ft = a:decoded['ext_map']
 endfunction
 
