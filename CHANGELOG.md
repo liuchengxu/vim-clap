@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.29] 2021-08-30
 ## Added
 
 - Support fzf-like search syntax. #738
