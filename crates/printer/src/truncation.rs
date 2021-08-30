@@ -28,7 +28,7 @@ const WINWIDTH_OFFSET: usize = 0;
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
-fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
+pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
     line.chars().take(end).skip(start).collect()
 }
 

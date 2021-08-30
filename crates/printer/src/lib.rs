@@ -3,11 +3,13 @@
 
 mod truncation;
 
-pub use self::truncation::{truncate_grep_lines, truncate_long_matched_lines, LinesTruncatedMap};
-
 use icon::{IconPainter, ICON_LEN};
 use types::FilteredItem;
 use utility::{println_json, println_json_with_length};
+
+pub use self::truncation::{
+    truncate_grep_lines, truncate_long_matched_lines, utf8_str_slice, LinesTruncatedMap,
+};
 
 /// 1. Truncate the line.
 /// 2. Add an icon.
