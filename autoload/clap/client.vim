@@ -137,7 +137,9 @@ endfunction
 
 function! clap#client#call(method, callback, params) abort
   call clap#client#notify(a:method, a:params)
-  let s:handlers[s:req_id] = a:callback
+  if a:callback isnot v:null
+    let s:handlers[s:req_id] = a:callback
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

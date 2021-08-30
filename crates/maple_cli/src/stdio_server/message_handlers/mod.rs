@@ -29,10 +29,8 @@ pub fn parse_filetypedetect(msg: Message) {
         .map(|(ext, ft)| (ext, ft))
         .collect();
 
-    let result =
-        json!({ "id": msg.id, "force_execute": true, "result": json!({"ext_map": ext_map}) });
-
-    write_response(result);
+    let method = "clap#ext#set";
+    utility::println_json_with_length!(ext_map, method);
 }
 
 async fn preview_file_impl(msg: Message) -> Result<()> {
