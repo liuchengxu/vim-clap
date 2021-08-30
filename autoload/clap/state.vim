@@ -162,6 +162,7 @@ function! clap#state#clear_pre() abort
         \ ])
   let g:clap.display.initial_size = -1
   call clap#indicator#clear()
+  call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile
   endif

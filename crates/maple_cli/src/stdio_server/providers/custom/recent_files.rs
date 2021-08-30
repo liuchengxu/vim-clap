@@ -84,7 +84,11 @@ pub async fn handle_recent_files_message(
     }
 
     // Take the first 200 entries and add an icon to each of them.
-    let (lines, indices, truncated_map) = printer::process_top_items(
+    let printer::DecoratedLines {
+        lines,
+        indices,
+        truncated_map,
+    } = printer::decorate_lines(
         ranked.iter().take(200).cloned().collect(),
         winwidth,
         if enable_icon.unwrap_or(true) {

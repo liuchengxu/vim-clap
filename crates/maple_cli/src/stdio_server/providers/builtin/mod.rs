@@ -57,7 +57,11 @@ impl EventHandler for BuiltinEventHandler {
                 let total = ranked.len();
 
                 // Take the first 200 entries and add an icon to each of them.
-                let (lines, indices, truncated_map) = printer::process_top_items(
+                let printer::DecoratedLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                } = printer::decorate_lines(
                     ranked.iter().take(200).cloned().collect(),
                     context.display_winwidth as usize,
                     if context.enable_icon {
@@ -68,17 +72,7 @@ impl EventHandler for BuiltinEventHandler {
                 );
 
                 let method = "s:process_filter_message";
-                if truncated_map.is_empty() {
-                    utility::println_json_with_length!(total, lines, indices, method);
-                } else {
-                    utility::println_json_with_length!(
-                        total,
-                        lines,
-                        indices,
-                        truncated_map,
-                        method
-                    );
-                }
+                utility::println_json_with_length!(total, lines, indices, truncated_map, method);
             }
             _ => {}
         }

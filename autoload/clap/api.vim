@@ -618,7 +618,7 @@ function! s:init_provider() abort
     if clap#maple#is_available() && index(s:pure_rust_backed, self.id) == -1
       let extra = {}
       if g:__clap_development
-        if has_key(self, 'source_type') && has_key(self, 'source')
+        if has_key(self, 'source_type') && has_key(self._(), 'source')
           if self.source_type == g:__t_string
             let extra = { 'source_cmd': self._().source }
           elseif self.source_type == g:__t_func_string
