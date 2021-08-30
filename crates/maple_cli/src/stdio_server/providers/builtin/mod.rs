@@ -8,6 +8,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use serde_json::json;
 
+use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     session::{
         EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
@@ -104,18 +105,15 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
     }
 
     if let Some(ref source_cmd) = context.source_cmd {
-        // TODO: reuse the cache? in case of you run `fd --type f` under /
-        let lines = BufReader::with_capacity(
-            30 * 1024,
-            filter::subprocess::Exec::shell(source_cmd)
-                .cwd(&context.cwd)
-                .stream_stdout()?,
-        )
-        .lines()
-        .flatten()
-        .collect::<Vec<_>>();
+        // TODO: check cache
 
-        log::debug!("---------------------- size: {}", lines.len());
+        // Can not use subprocess::Exec::shell here.
+        //
+        // Must use TokioCommand otherwise the timeout may not work.
+        let lines = TokioCommand::new(source_cmd.clone())
+            .current_dir(&context.cwd)
+            .lines()
+            .await?;
 
         return Ok(to_scale(lines));
     }
