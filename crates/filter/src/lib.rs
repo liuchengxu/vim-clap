@@ -121,7 +121,7 @@ pub fn par_filter_on_list(
     let query: Query = query.into();
     let mut filtered = source::par_filter(source_list, fuzzy_matcher, &query);
     filtered.par_sort_unstable_by(|item1, item2| item2.score.partial_cmp(&item1.score).unwrap());
-    Ok(filtered.into_iter().map(Into::into).collect())
+    Ok(filtered.into_par_iter().map(Into::into).collect())
 }
 
 pub fn simple_run<T: Into<SourceItem>>(
