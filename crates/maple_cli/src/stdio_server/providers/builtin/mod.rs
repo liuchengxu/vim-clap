@@ -110,7 +110,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         // Can not use subprocess::Exec::shell here.
         //
         // Must use TokioCommand otherwise the timeout may not work.
-        let lines = TokioCommand::new(source_cmd.clone())
+        let lines = TokioCommand::new(source_cmd)
             .current_dir(&context.cwd)
             .lines()
             .await?;

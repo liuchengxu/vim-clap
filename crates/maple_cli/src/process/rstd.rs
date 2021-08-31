@@ -32,7 +32,7 @@ pub fn build_command(inner_cmd: &str) -> Command {
     }
 }
 
-/// Unit type wrapper for std command.
+/// Unit type wrapper for [`std::process::Command`].
 #[derive(Debug)]
 pub struct StdCommand(Command);
 
