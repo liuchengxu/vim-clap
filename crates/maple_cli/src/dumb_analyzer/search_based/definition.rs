@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
+use rayon::prelude::*;
 use serde::Deserialize;
 
 use crate::command::dumb_jump::Lines;
@@ -28,10 +29,10 @@ static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(||
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
 static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     super::default_types::DEFAULT_TYPES
-        .iter()
+        .par_iter()
         .flat_map(|(lang, values)| {
             values
-                .iter()
+                .par_iter()
                 .filter_map(|v| {
                     v.split('.').last().and_then(|ext| {
                         // Simply ignore the abnormal cases.
@@ -196,7 +197,10 @@ pub async fn all_definitions(
 
     let maybe_defs = futures::future::join_all(all_def_futures).await;
 
-    Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
+    Ok(maybe_defs
+        .into_par_iter()
+        .filter_map(|def| def.ok())
+        .collect())
 }
 
 /// Collects the occurrences and all definitions concurrently.
@@ -241,15 +245,15 @@ pub async fn definitions_and_references_lines(
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
     let positive_defs = defs
-        .iter()
+        .par_iter()
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
-        .iter()
+        .par_iter()
         .flat_map(|(kind, lines)| {
             lines
-                .iter()
+                .par_iter()
                 .filter_map(|ref line| {
                     if positive_defs.contains(&line) {
                         exact_or_inverse_terms
@@ -262,7 +266,7 @@ pub async fn definitions_and_references_lines(
         })
         .chain(
             // references are these occurrences not in the definitions.
-            occurrences.iter().filter_map(|ref line| {
+            occurrences.par_iter().filter_map(|ref line| {
                 if !defs.contains(&line) {
                     exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
                 } else {
@@ -275,7 +279,7 @@ pub async fn definitions_and_references_lines(
     if lines.is_empty() {
         let lines = naive_grep_fallback(word, lang, dir, comments).await?;
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
-            .into_iter()
+            .into_par_iter()
             .filter_map(|line| {
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
             })
@@ -300,12 +304,12 @@ pub async fn definitions_and_references(
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
     let positive_defs = defs
-        .iter()
+        .par_iter()
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
-        .into_iter()
+        .into_par_iter()
         .filter_map(|(kind, mut defs)| {
             defs.retain(|ref def| positive_defs.contains(&def));
             if defs.is_empty() {
@@ -314,7 +318,7 @@ pub async fn definitions_and_references(
                 Some((kind.into(), defs))
             }
         })
-        .chain(std::iter::once((MatchKind::Reference("refs"), {
+        .chain(rayon::iter::once((MatchKind::Reference("refs"), {
             occurrences.retain(|r| !defs.contains(&r));
             occurrences
         })))

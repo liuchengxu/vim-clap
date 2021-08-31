@@ -54,7 +54,6 @@ impl TokioCommand {
         super::process_output(output)
     }
 
-    #[allow(unused)]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
@@ -72,5 +71,5 @@ async fn test_tokio_command() {
             .unwrap()
     )
     .into();
-    assert_eq!(vec!["Cargo.toml", "src"], tokio_cmd.lines().await.unwrap());
+    assert_eq!(vec!["Cargo.toml", "benches", "src"], tokio_cmd.lines().await.unwrap());
 }

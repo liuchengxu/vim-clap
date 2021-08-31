@@ -189,7 +189,7 @@ impl NewSession for DumbJumpSession {
         let (session, session_sender) =
             Session::new(msg.clone(), DumbJumpMessageHandler::default());
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         tokio::spawn(async move {
             handle_dumb_jump_message(msg, true).await;

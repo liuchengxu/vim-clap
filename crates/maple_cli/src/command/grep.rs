@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use rayon::prelude::*;
 use structopt::StructOpt;
 
 use filter::{
@@ -150,7 +151,7 @@ impl Grep {
 
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
-            .iter()
+            .par_iter()
             .filter_map(|s| Match::try_from(s.as_str()).ok())
             .map(|mat| mat.build_grep_line(enable_icon))
             .unzip();

@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use rayon::prelude::*;
 
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
@@ -22,16 +23,22 @@ async fn collect_matches(
         cmd.current_dir(dir);
     }
 
+    let stdout = cmd.stdout()?;
+
     if let Some(comments) = comments {
-        cmd.execute_and_filter_map(|s| {
-            Match::try_from(s)
-                .ok()
-                .filter(|mat| !is_comment(&mat, comments))
-        })
-        .await
+        Ok(stdout
+            .par_split(|x| x == &b'\n')
+            .filter_map(|s| {
+                Match::try_from(s)
+                    .ok()
+                    .filter(|mat| !is_comment(&mat, comments))
+            })
+            .collect())
     } else {
-        cmd.execute_and_filter_map(|s| Match::try_from(s).ok())
-            .await
+        Ok(stdout
+            .par_split(|x| x == &b'\n')
+            .filter_map(|s| Match::try_from(s).ok())
+            .collect())
     }
 }
 

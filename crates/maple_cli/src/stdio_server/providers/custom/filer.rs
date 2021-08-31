@@ -126,7 +126,7 @@ impl NewSession for FilerSession {
         // Handle the on_init message.
         handle_filer_message(msg);
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         Ok(session_sender)
     }
@@ -173,6 +173,6 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(entries, vec!["Cargo.toml", "src/"]);
+        assert_eq!(entries, vec!["Cargo.toml", "benches/", "src/"]);
     }
 }

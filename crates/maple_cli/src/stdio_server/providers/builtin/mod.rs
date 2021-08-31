@@ -1,6 +1,5 @@
 pub mod on_move;
 
-use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -23,7 +22,7 @@ pub struct BuiltinSession;
 impl NewSession for BuiltinSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) = Session::new(msg, BuiltinEventHandler);
-        session.start_event_loop()?;
+        session.start_event_loop();
         Ok(session_sender)
     }
 }

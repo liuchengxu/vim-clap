@@ -125,7 +125,7 @@ impl<T: EventHandler> Session<T> {
         }
     }
 
-    pub fn start_event_loop(mut self) -> Result<()> {
+    pub fn start_event_loop(mut self) {
         tokio::spawn(async move {
             debug!(
                 "Spawning a new task for session-{}-{}",
@@ -172,7 +172,5 @@ impl<T: EventHandler> Session<T> {
                 }
             }
         });
-
-        Ok(())
     }
 }
