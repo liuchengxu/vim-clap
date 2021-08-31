@@ -54,7 +54,6 @@ impl TokioCommand {
         super::process_output(output)
     }
 
-    #[allow(unused)]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self

@@ -29,10 +29,10 @@ static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(||
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
 static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     super::default_types::DEFAULT_TYPES
-        .iter()
+        .par_iter()
         .flat_map(|(lang, values)| {
             values
-                .iter()
+                .par_iter()
                 .filter_map(|v| {
                     v.split('.').last().and_then(|ext| {
                         // Simply ignore the abnormal cases.
@@ -197,7 +197,10 @@ pub async fn all_definitions(
 
     let maybe_defs = futures::future::join_all(all_def_futures).await;
 
-    Ok(maybe_defs.into_iter().filter_map(|def| def.ok()).collect())
+    Ok(maybe_defs
+        .into_par_iter()
+        .filter_map(|def| def.ok())
+        .collect())
 }
 
 /// Collects the occurrences and all definitions concurrently.
