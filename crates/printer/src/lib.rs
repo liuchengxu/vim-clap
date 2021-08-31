@@ -61,6 +61,16 @@ impl DecoratedLines {
             println_json!(lines, indices, truncated_map);
         }
     }
+
+    pub fn print_on_session_create(&self) {
+        let Self {
+            lines,
+            truncated_map,
+            ..
+        } = self;
+        let method = "s:init_display";
+        println_json_with_length!(lines, truncated_map, method);
+    }
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
