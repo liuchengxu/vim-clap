@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -14,7 +15,7 @@ pub fn parse_filetypedetect(msg: Message) {
     tokio::spawn(async move {
         let output = msg.get_string_unsafe("autocmd_filetypedetect");
         let ext_map: HashMap<&str, &str> = output
-            .split('\n')
+            .par_split(|x| x == '\n')
             .filter(|s| s.contains("setf"))
             .filter_map(|s| {
                 // *.mkiv    setf context
@@ -26,7 +27,7 @@ pub fn parse_filetypedetect(msg: Message) {
                     items[0].split('.').last().map(|ext| (ext, items[2]))
                 }
             })
-            .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim")].into_iter())
+            .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim")].into_par_iter())
             .map(|(ext, ft)| (ext, ft))
             .collect();
 
