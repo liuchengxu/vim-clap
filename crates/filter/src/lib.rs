@@ -113,8 +113,8 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
-pub fn par_filter_on_list<'a>(
-    query: &'a str,
+pub fn par_filter_on_list(
+    query: impl Into<Query>,
     source_list: Vec<SourceItem>,
     fuzzy_matcher: &Matcher,
 ) -> Result<Vec<FilteredItem>> {

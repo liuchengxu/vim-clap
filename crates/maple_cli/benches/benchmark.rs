@@ -35,15 +35,50 @@ fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Fi
 
 fn bench_filter(c: &mut Criterion) {
     let source_items = prepare_source_items();
+
+    let source_items_10k = source_items
+        .iter()
+        .take(10_000)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let source_items_100k = source_items
+        .iter()
+        .take(100_000)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let source_items_1m = source_items
+        .iter()
+        .take(1_000_000)
+        .cloned()
+        .collect::<Vec<_>>();
+
     let matcher = matcher::Matcher::with_bonuses(FuzzyAlgorithm::Fzy, MatchType::Full, Vec::new());
     let query: Query = "executor".into();
 
-    c.bench_function("filter", |b| {
-        b.iter(|| filter(black_box(source_items.clone()), &matcher, &query))
+    c.bench_function("filter 10k", |b| {
+        b.iter(|| filter(black_box(source_items_10k.clone()), &matcher, &query))
     });
 
-    c.bench_function("par filter", |b| {
-        b.iter(|| par_filter(black_box(source_items.clone()), &matcher, &query))
+    c.bench_function("par filter 10k", |b| {
+        b.iter(|| par_filter(black_box(source_items_10k.clone()), &matcher, &query))
+    });
+
+    c.bench_function("filter 100k", |b| {
+        b.iter(|| filter(black_box(source_items_100k.clone()), &matcher, &query))
+    });
+
+    c.bench_function("par filter 100k", |b| {
+        b.iter(|| par_filter(black_box(source_items_100k.clone()), &matcher, &query))
+    });
+
+    c.bench_function("filter 1m", |b| {
+        b.iter(|| filter(black_box(source_items_1m.clone()), &matcher, &query))
+    });
+
+    c.bench_function("par filter 1m", |b| {
+        b.iter(|| par_filter(black_box(source_items_1m.clone()), &matcher, &query))
     });
 }
 
