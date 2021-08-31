@@ -245,15 +245,15 @@ pub async fn definitions_and_references_lines(
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
     let positive_defs = defs
-        .iter()
+        .par_iter()
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
-        .iter()
+        .par_iter()
         .flat_map(|(kind, lines)| {
             lines
-                .iter()
+                .par_iter()
                 .filter_map(|ref line| {
                     if positive_defs.contains(&line) {
                         exact_or_inverse_terms
@@ -266,7 +266,7 @@ pub async fn definitions_and_references_lines(
         })
         .chain(
             // references are these occurrences not in the definitions.
-            occurrences.iter().filter_map(|ref line| {
+            occurrences.par_iter().filter_map(|ref line| {
                 if !defs.contains(&line) {
                     exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
                 } else {
@@ -279,7 +279,7 @@ pub async fn definitions_and_references_lines(
     if lines.is_empty() {
         let lines = naive_grep_fallback(word, lang, dir, comments).await?;
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
-            .into_iter()
+            .into_par_iter()
             .filter_map(|line| {
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
             })
@@ -304,7 +304,7 @@ pub async fn definitions_and_references(
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
     let positive_defs = defs
-        .iter()
+        .par_iter()
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
