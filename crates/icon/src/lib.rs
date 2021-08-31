@@ -14,6 +14,12 @@ pub const DEFAULT_FILER_ICON: char = '';
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
 
+#[derive(Debug, Clone)]
+pub enum Icon {
+    Null,
+    Enabled(IconPainter),
+}
+
 /// The type used to represent icons.
 ///
 /// This could be changed into different type later,

@@ -95,17 +95,23 @@ impl SessionContext {
         )
     }
 
+    fn fuzzy_matcher(&self) -> matcher::Matcher {
+        matcher::Matcher::with_bonuses(
+            matcher::FuzzyAlgorithm::Fzy,
+            self.match_type.clone(),
+            Vec::new(), // TODO: bonuses
+        )
+    }
+
     pub fn sync_filter_source_item<'a>(
         &self,
         query: &str,
         lines: impl Iterator<Item = &'a str>,
     ) -> Result<SyncFilterResults> {
-        let ranked = filter::sync_run(
+        let ranked = filter::par_filter_on_list(
             query,
-            filter::Source::List(lines.map(Into::into)), // TODO: optimize as_str().into(), clone happens there.
-            matcher::FuzzyAlgorithm::Fzy,
-            self.match_type.clone(),
-            Vec::new(),
+            lines.map(Into::into).collect(),
+            &self.fuzzy_matcher(),
         )?;
 
         let total = ranked.len();
@@ -116,35 +122,6 @@ impl SessionContext {
             ranked.iter().take(200).cloned().collect(),
             self.display_winwidth as usize,
             maybe_icon,
-        );
-
-        Ok(SyncFilterResults {
-            total,
-            decorated_lines,
-        })
-    }
-
-    // TODO: optimize as_str().into(), clone happens there.
-    #[allow(unused)]
-    pub fn sync_filter_full_line<'a>(
-        &self,
-        query: &'a str,
-        lines: impl Iterator<Item = &'a str>,
-    ) -> Result<SyncFilterResults> {
-        let fuzzy_matcher = matcher::Matcher::with_bonuses(
-            matcher::FuzzyAlgorithm::Fzy,
-            self.match_type.clone(),
-            Vec::new(),
-        );
-        let ranked = filter::sync_run_on_small_scale(query, lines, fuzzy_matcher)?;
-
-        let total = ranked.len();
-
-        // Take the first 200 entries and add an icon to each of them.
-        let decorated_lines = printer::decorate_lines(
-            ranked.iter().take(200).cloned().collect(),
-            self.display_winwidth as usize,
-            self.icon.clone().into(),
         );
 
         Ok(SyncFilterResults {

@@ -112,22 +112,15 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     Ok(ranked)
 }
 
-/// Performs the synchorous filtering on a small scale of source.
-///
-/// Only works for the items whose match type is [`MatchType::Full`].
-pub fn sync_run_on_small_scale<'a>(
-    query: &'a str,
-    source: impl Iterator<Item = &'a str>,
-    fuzzy_matcher: Matcher,
+/// Performs the synchorous filtering on a small scale of source in parallel.
+pub fn par_filter_on_list(
+    query: impl Into<Query>,
+    source_list: Vec<SourceItem>,
+    fuzzy_matcher: &Matcher,
 ) -> Result<Vec<FilteredItem>> {
     let query: Query = query.into();
-    let scorer = |line: &str| fuzzy_matcher.match_query(&line, &query);
-    let mut filtered = source
-        .filter_map(|line| scorer(line).map(|(score, indices)| (line, score, indices)))
-        .collect::<Vec<_>>();
-    filtered.par_sort_unstable_by(|(_, score1, _), (_, score2, _)| {
-        score2.partial_cmp(&score1).unwrap()
-    });
+    let mut filtered = source::par_filter(source_list, fuzzy_matcher, &query);
+    filtered.par_sort_unstable_by(|item1, item2| item2.score.partial_cmp(&item1.score).unwrap());
     Ok(filtered.into_iter().map(Into::into).collect())
 }
 

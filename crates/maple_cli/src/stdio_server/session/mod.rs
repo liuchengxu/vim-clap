@@ -88,18 +88,12 @@ impl<T: EventHandler> Session<T> {
         }
 
         if let Scale::Small { ref lines, .. } = scale {
-            let printer::DecoratedLines {
-                lines,
-                truncated_map,
-                ..
-            } = printer::decorate_lines::<i64>(
+            printer::decorate_lines::<i64>(
                 lines.iter().take(200).map(|s| s.as_str().into()).collect(),
                 self.context.display_winwidth as usize,
                 self.context.icon.clone().into(),
-            );
-
-            let method = "s:init_display";
-            utility::println_json_with_length!(lines, truncated_map, method);
+            )
+            .print_on_session_create();
         }
 
         let mut val = self.context.scale.lock();
@@ -135,10 +129,7 @@ impl<T: EventHandler> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!(
-                            "Event(in) received a session event: {}",
-                            event.short_display()
-                        );
+                        debug!("Received an event: {}", event.short_display());
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
