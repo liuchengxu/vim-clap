@@ -51,11 +51,8 @@ impl AsyncCommand {
         self.0.lines()
     }
 
-    pub async fn execute_and_filter_map<B>(
-        &mut self,
-        f: impl FnMut(&[u8]) -> Option<B>,
-    ) -> Result<Vec<B>> {
-        self.0.filter_map_byte_line(f)
+    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+        self.0.stdout()
     }
 }
 
