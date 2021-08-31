@@ -32,7 +32,7 @@ pub fn build_command(inner_cmd: &str) -> Command {
     }
 }
 
-/// Unit type wrapper for std command.
+/// Unit type wrapper for [`std::process::Command`].
 #[derive(Debug)]
 pub struct StdCommand(Command);
 
@@ -79,15 +79,13 @@ impl StdCommand {
         self._lines()
     }
 
-    /// Executes the inner command and applies the predicate
-    /// same with `filter_map` on each of stream line.
-    pub fn filter_map_byte_line<B>(&mut self, f: impl FnMut(&[u8]) -> Option<B>) -> Result<Vec<B>> {
+    pub fn stdout(&mut self) -> Result<Vec<u8>> {
         let output = self.0.output()?;
 
         if !output.status.success() && !output.stderr.is_empty() {
             return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
         }
 
-        Ok(output.stdout.split(|x| x == &b'\n').filter_map(f).collect())
+        Ok(output.stdout)
     }
 }

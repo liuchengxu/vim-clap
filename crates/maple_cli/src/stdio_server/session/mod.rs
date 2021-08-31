@@ -126,7 +126,7 @@ impl<T: EventHandler> Session<T> {
         }
     }
 
-    pub fn start_event_loop(mut self) -> Result<()> {
+    pub fn start_event_loop(mut self) {
         tokio::spawn(async move {
             debug!(
                 "Spawning a new task for session-{}-{}",
@@ -166,14 +166,12 @@ impl<T: EventHandler> Session<T> {
                             }
                         }
                     }
-                    Err(err) => debug!(
-                        "The channel is possibly disconnected, session recv error: {:?}",
-                        err
-                    ),
+                    Err(err) => {
+                        debug!("The channel is possibly broken, error: {:?}", err);
+                        break;
+                    }
                 }
             }
         });
-
-        Ok(())
     }
 }

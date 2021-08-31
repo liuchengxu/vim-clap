@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## Improved
+
+- Improve the overal performance by using rayon. #754
 
 ## [0.29] 2021-08-30
+
 ## Added
 
 - Support fzf-like search syntax. #738

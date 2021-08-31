@@ -40,3 +40,10 @@ printer = { path = "../printer" }
 types = { path = "../types" }
 upgrade = { path = "../upgrade" }
 utility = { path = "../utility" }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false

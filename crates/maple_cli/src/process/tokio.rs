@@ -8,7 +8,7 @@ use tokio::process::Command;
 /// Builds `Command` from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-pub fn build_command(inner_cmd: &str) -> Command {
+fn build_command(inner_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", inner_cmd]);
@@ -20,7 +20,7 @@ pub fn build_command(inner_cmd: &str) -> Command {
     }
 }
 
-/// Unit type wrapper for std command.
+/// Unit type wrapper for [`tokio::process::Command`].
 #[derive(Debug)]
 pub struct TokioCommand(Command);
 
@@ -37,12 +37,10 @@ impl From<String> for TokioCommand {
 }
 
 impl TokioCommand {
-    #[allow(unused)]
-    pub fn new(cmd: String) -> Self {
-        cmd.into()
+    pub fn new(cmd: impl AsRef<str>) -> Self {
+        cmd.as_ref().into()
     }
 
-    #[allow(unused)]
     pub async fn lines(&mut self) -> Result<Vec<String>> {
         // Calling `output()` or `spawn().wait_with_output()` directly does not
         // work for Vim.
@@ -56,7 +54,6 @@ impl TokioCommand {
         super::process_output(output)
     }
 
-    #[allow(unused)]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
@@ -74,5 +71,5 @@ async fn test_tokio_command() {
             .unwrap()
     )
     .into();
-    assert_eq!(vec!["Cargo.toml", "src"], tokio_cmd.lines().await.unwrap());
+    assert_eq!(vec!["Cargo.toml", "benches", "src"], tokio_cmd.lines().await.unwrap());
 }

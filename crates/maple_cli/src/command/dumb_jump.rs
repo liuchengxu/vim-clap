@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use rayon::prelude::*;
 use structopt::StructOpt;
 
 use crate::dumb_analyzer::{
@@ -144,7 +145,7 @@ impl DumbJump {
             let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
 
             let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
-                .into_iter()
+                .into_par_iter()
                 .flat_map(|(match_kind, matches)| render(matches, &match_kind, &word))
                 .unzip();
 

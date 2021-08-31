@@ -161,10 +161,7 @@ impl EventHandler for RecentFilesMessageHandler {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
-                log::error!(
-                    "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                    e
-                );
+                log::error!("Failed to spawn task handle_dumb_jump_message: {:?}", e);
                 Default::default()
             });
 
@@ -186,7 +183,7 @@ impl NewSession for RecentFilesSession {
 
         let context_clone = session.context.clone();
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         tokio::spawn(async move {
             let initial_lines = handle_recent_files_message(msg, context_clone, true).await;

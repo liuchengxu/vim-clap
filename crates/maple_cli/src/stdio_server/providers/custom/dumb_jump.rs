@@ -43,24 +43,6 @@ async fn search_tags(dir: &PathBuf, query: &str) -> Result<Vec<String>> {
     }
 }
 
-impl DumbJumpMessageHandler {
-    async fn handle_dumb_jump_message(&mut self, msg: Message) {
-        // TODO: try refilter
-
-        let results = tokio::spawn(handle_dumb_jump_message(msg, false))
-            .await
-            .unwrap_or_else(|e| {
-                log::error!(
-                    "Failed to spawn a task for handle_dumb_jump_message: {:?}",
-                    e
-                );
-                Default::default()
-            });
-
-        self.results = results;
-    }
-}
-
 pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> SearchResults {
     let msg_id = msg.id;
 
@@ -122,7 +104,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
     };
 
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
-    let result = match dumb_jump
+    match dumb_jump
         .references_or_occurrences(false, &exact_or_inverse_terms)
         .await
     {
@@ -130,40 +112,36 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
             let total_lines = lines;
             let total = total_lines.len();
             // Only show the top 200 items.
-            let lines = total_lines.iter().take(200).clone().collect::<Vec<_>>();
+            let lines = total_lines.iter().take(200).collect::<Vec<_>>();
             indices.truncate(200);
-            let result = json!({
-            "lines": lines,
-            "indices": indices,
-            "total": total,
-            });
 
             let result = json!({
               "id": msg_id,
               "force_execute": force_execute,
               "provider_id": "dumb_jump",
-              "result": result,
+              "result": { "lines": lines, "indices": indices, "total": total },
             });
 
             write_response(result);
 
-            return SearchResults {
+            SearchResults {
                 lines: total_lines,
                 query: last_query,
-            };
+            }
         }
         Err(e) => {
             error!("Error when running dumb_jump: {:?}", e);
-            let error = json!({"message": e.to_string()});
-            json!({ "id": msg_id, "provider_id": "dumb_jump", "error": error })
+            let result = json!({
+                "id": msg_id,
+                "provider_id": "dumb_jump",
+                "error": { "message": e.to_string() }
+            });
+            write_response(result);
+            SearchResults {
+                lines: Default::default(),
+                query: last_query,
+            }
         }
-    };
-
-    write_response(result);
-
-    SearchResults {
-        lines: Default::default(),
-        query: last_query,
     }
 }
 
@@ -194,7 +172,13 @@ impl EventHandler for DumbJumpMessageHandler {
     }
 
     async fn handle_on_typed(&mut self, msg: Message, _context: Arc<SessionContext>) -> Result<()> {
-        self.handle_dumb_jump_message(msg).await;
+        let results = tokio::spawn(handle_dumb_jump_message(msg, false))
+            .await
+            .unwrap_or_else(|e| {
+                log::error!("Failed to spawn task handle_dumb_jump_message: {:?}", e);
+                Default::default()
+            });
+        self.results = results;
         Ok(())
     }
 }
@@ -206,7 +190,7 @@ impl NewSession for DumbJumpSession {
         let (session, session_sender) =
             Session::new(msg.clone(), DumbJumpMessageHandler::default());
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         tokio::spawn(async move {
             handle_dumb_jump_message(msg, true).await;
