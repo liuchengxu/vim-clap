@@ -14,17 +14,23 @@ pub const DEFAULT_FILER_ICON: char = '';
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
 
+#[derive(Debug, Clone)]
+pub enum Icon {
+    Null,
+    Enabled(IconPainter),
+}
+
 /// The type used to represent icons.
 ///
 /// This could be changed into different type later,
 /// so functions take and return this type, not `char` or `&str` directly.
-type Icon = char;
+type IconType = char;
 
 /// Return appropriate icon for the path. If no icon matched, return the specified default one.
 ///
 /// Try matching the exactmatch map against the file name, and then the extension map.
 #[inline]
-pub fn get_icon_or<P: AsRef<Path>>(path: P, default: Icon) -> Icon {
+pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
     path.as_ref()
         .file_name()
         .and_then(std::ffi::OsStr::to_str)
@@ -44,7 +50,7 @@ pub fn get_icon_or<P: AsRef<Path>>(path: P, default: Icon) -> Icon {
         })
 }
 
-pub fn icon_for(line: &str) -> Icon {
+pub fn icon_for(line: &str) -> IconType {
     let path = Path::new(line);
     get_icon_or(&path, DEFAULT_ICON)
 }
@@ -54,7 +60,7 @@ pub fn prepend_icon(line: &str) -> String {
 }
 
 #[inline]
-pub fn icon_for_filer<P: AsRef<Path>>(path: P) -> Icon {
+pub fn icon_for_filer<P: AsRef<Path>>(path: P) -> IconType {
     if path.as_ref().is_dir() {
         FOLDER_ICON
     } else {
@@ -66,7 +72,7 @@ pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: &str) -> String {
     format!("{} {}", icon_for_filer(path), line)
 }
 
-fn get_tagkind_icon(line: &str) -> Icon {
+fn get_tagkind_icon(line: &str) -> IconType {
     pattern::extract_proj_tags_kind(line)
         .and_then(|kind| {
             bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
@@ -75,7 +81,7 @@ fn get_tagkind_icon(line: &str) -> Icon {
 }
 
 #[inline]
-fn grep_icon_for(line: &str) -> Icon {
+fn grep_icon_for(line: &str) -> IconType {
     pattern::extract_fpath_from_grep_line(line)
         .map(|fpath| icon_for(fpath))
         .unwrap_or(DEFAULT_ICON)
@@ -111,7 +117,7 @@ impl IconPainter {
     }
 
     /// Returns appropriate icon for the given text.
-    pub fn get_icon(&self, text: &str) -> Icon {
+    pub fn get_icon(&self, text: &str) -> IconType {
         match *self {
             Self::File => icon_for(text),
             Self::Grep => grep_icon_for(text),

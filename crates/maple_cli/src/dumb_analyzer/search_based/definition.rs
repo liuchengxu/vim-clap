@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
+use rayon::prelude::*;
 use serde::Deserialize;
 
 use crate::command::dumb_jump::Lines;
@@ -305,7 +306,7 @@ pub async fn definitions_and_references(
         .collect::<Vec<_>>();
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
-        .into_iter()
+        .into_par_iter()
         .filter_map(|(kind, mut defs)| {
             defs.retain(|ref def| positive_defs.contains(&def));
             if defs.is_empty() {
@@ -314,7 +315,7 @@ pub async fn definitions_and_references(
                 Some((kind.into(), defs))
             }
         })
-        .chain(std::iter::once((MatchKind::Reference("refs"), {
+        .chain(rayon::iter::once((MatchKind::Reference("refs"), {
             occurrences.retain(|r| !defs.contains(&r));
             occurrences
         })))
