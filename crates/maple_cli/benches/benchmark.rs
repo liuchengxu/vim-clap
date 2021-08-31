@@ -7,7 +7,7 @@ fn prepare_source_items() -> Vec<SourceItem> {
     use std::io::BufRead;
 
     std::io::BufReader::new(
-        std::fs::File::open("/home/xlc/.cache/vimclap/17131070373568728185").unwrap(),
+        std::fs::File::open("/home/xlc/.cache/vimclap/17131070373568728185").unwrap(), // 1 million +
     )
     .lines()
     .filter_map(|x| x.ok().map(Into::<SourceItem>::into))

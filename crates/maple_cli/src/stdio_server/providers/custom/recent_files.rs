@@ -183,7 +183,7 @@ impl NewSession for RecentFilesSession {
 
         let context_clone = session.context.clone();
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         tokio::spawn(async move {
             let initial_lines = handle_recent_files_message(msg, context_clone, true).await;

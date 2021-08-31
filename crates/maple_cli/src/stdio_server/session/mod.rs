@@ -125,7 +125,7 @@ impl<T: EventHandler> Session<T> {
         }
     }
 
-    pub fn start_event_loop(mut self) -> Result<()> {
+    pub fn start_event_loop(mut self) {
         tokio::spawn(async move {
             debug!(
                 "Spawning a new task for session-{}-{}",
@@ -135,10 +135,7 @@ impl<T: EventHandler> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!(
-                            "Event(in) received a session event: {}",
-                            event.short_display()
-                        );
+                        debug!("Received an event: {}", event.short_display());
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();
@@ -172,7 +169,5 @@ impl<T: EventHandler> Session<T> {
                 }
             }
         });
-
-        Ok(())
     }
 }

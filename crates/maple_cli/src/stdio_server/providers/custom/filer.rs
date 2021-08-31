@@ -126,7 +126,7 @@ impl NewSession for FilerSession {
         // Handle the on_init message.
         handle_filer_message(msg);
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         Ok(session_sender)
     }
