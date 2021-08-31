@@ -75,6 +75,7 @@ impl<'a> MatchingText<'a> for &'a str {
     }
 }
 
+/// This type represents the item for doing the filtering pipeline.
 #[derive(Debug, Clone)]
 pub struct SourceItem {
     /// Raw line from the initial input stream.
@@ -87,6 +88,7 @@ pub struct SourceItem {
     pub display_text: Option<String>,
 }
 
+// NOTE: do not use it when you are dealing with a large number of items.
 impl From<&str> for SourceItem {
     fn from(s: &str) -> Self {
         String::from(s).into()
@@ -169,6 +171,17 @@ impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
             source_item: item.into(),
             score,
             match_indices,
+            display_text: None,
+        }
+    }
+}
+
+impl<I: Into<SourceItem>, T: Default> From<I> for FilteredItem<T> {
+    fn from(item: I) -> Self {
+        Self {
+            source_item: item.into(),
+            score: Default::default(),
+            match_indices: Default::default(),
             display_text: None,
         }
     }

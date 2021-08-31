@@ -10,7 +10,7 @@ use log::debug;
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
-pub use self::context::{Scale, SessionContext};
+pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
 
 pub type SessionId = u64;
@@ -81,48 +81,41 @@ impl<T: EventHandler> Session<T> {
         &self.context.provider_id
     }
 
+    fn process_source_scale(&self, scale: Scale) {
+        if let Some(total) = scale.total() {
+            let method = "s:set_total_size";
+            utility::println_json_with_length!(total, method);
+        }
+
+        if let Scale::Small { ref lines, .. } = scale {
+            printer::decorate_lines::<i64>(
+                lines.iter().take(200).map(|s| s.as_str().into()).collect(),
+                self.context.display_winwidth as usize,
+                self.context.icon.clone().into(),
+            )
+            .print_on_session_create();
+        }
+
+        let mut val = self.context.scale.lock();
+        *val = scale;
+    }
+
     async fn handle_create(&mut self) {
         let context_clone = self.context.clone();
 
         const TIMEOUT: u64 = 300;
 
-        let on_create_with_timeout_future = async move {
-            match tokio::time::timeout(
-                std::time::Duration::from_millis(TIMEOUT),
-                on_session_create(context_clone),
-            )
-            .await
-            {
-                Ok(scale) => Some(scale),
-                Err(_) => None, // timeout
-            }
-        };
-
-        match tokio::spawn(on_create_with_timeout_future).await {
-            Ok(Some(Ok(scale))) => {
-                if let Some(total) = scale.total() {
-                    let method = "s:set_total_size";
-                    utility::println_json_with_length!(total, method);
-                }
-
-                if let Scale::Small { ref lines, .. } = scale {
-                    let lines = lines.iter().take(200).cloned().collect::<Vec<_>>();
-                    let method = "s:init_display";
-                    utility::println_json_with_length!(lines, method);
-                }
-
-                let mut val = self.context.scale.lock();
-                *val = scale;
-            }
-            Ok(Some(Err(e))) => {
-                log::error!("Error occurrred inside on_session_create(): {:?}", e);
-            }
-            Ok(None) => {
-                log::debug!("Did not receive value with {} ms", TIMEOUT);
-            }
-            Err(e) => {
-                log::error!("Error from the Timeout future: {:?}", e)
-            }
+        match tokio::time::timeout(
+            std::time::Duration::from_millis(TIMEOUT),
+            on_session_create(context_clone),
+        )
+        .await
+        {
+            Ok(scale_result) => match scale_result {
+                Ok(scale) => self.process_source_scale(scale),
+                Err(e) => log::error!("Error occurred on session create: {:?}", e),
+            },
+            Err(_) => log::debug!("Did not receive value with {} ms", TIMEOUT),
         }
     }
 
@@ -136,10 +129,7 @@ impl<T: EventHandler> Session<T> {
             loop {
                 match self.event_recv.recv() {
                     Ok(event) => {
-                        debug!(
-                            "Event(in) received a session event: {}",
-                            event.short_display()
-                        );
+                        debug!("Received an event: {}", event.short_display());
                         match event {
                             SessionEvent::Terminate => {
                                 self.handle_terminate();

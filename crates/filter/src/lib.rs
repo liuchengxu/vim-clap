@@ -112,6 +112,18 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     Ok(ranked)
 }
 
+/// Performs the synchorous filtering on a small scale of source in parallel.
+pub fn par_filter_on_list(
+    query: impl Into<Query>,
+    source_list: Vec<SourceItem>,
+    fuzzy_matcher: &Matcher,
+) -> Result<Vec<FilteredItem>> {
+    let query: Query = query.into();
+    let mut filtered = source::par_filter(source_list, fuzzy_matcher, &query);
+    filtered.par_sort_unstable_by(|item1, item2| item2.score.partial_cmp(&item1.score).unwrap());
+    Ok(filtered.into_par_iter().map(Into::into).collect())
+}
+
 pub fn simple_run<T: Into<SourceItem>>(
     lines: impl Iterator<Item = T>,
     query: &str,

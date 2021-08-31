@@ -123,7 +123,6 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
             });
 
             write_response(result);
-
             SearchResults {
                 lines: total_lines,
                 query: last_query,

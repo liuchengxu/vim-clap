@@ -9,7 +9,9 @@ use serde_json::json;
 
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
-    session::{EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent},
+    session::{
+        EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
+    },
     write_response, Message,
 };
 
@@ -46,30 +48,15 @@ impl EventHandler for BuiltinEventHandler {
 
         match scale.deref() {
             Scale::Small { ref lines, .. } => {
-                let ranked = filter::sync_run(
-                    &query,
-                    filter::Source::List(lines.iter().map(|s| s.as_str().into())), // TODO: optimize as_str().into(), clone happens there.
-                    matcher::FuzzyAlgorithm::Fzy,
-                    matcher::MatchType::TagName,
-                    Vec::new(),
-                )?;
-
-                let total = ranked.len();
-
-                // Take the first 200 entries and add an icon to each of them.
-                let printer::DecoratedLines {
-                    lines,
-                    indices,
-                    truncated_map,
-                } = printer::decorate_lines(
-                    ranked.iter().take(200).cloned().collect(),
-                    context.display_winwidth as usize,
-                    if context.enable_icon {
-                        Some(icon::IconPainter::ProjTags)
-                    } else {
-                        None
-                    },
-                );
+                let SyncFilterResults {
+                    total,
+                    decorated_lines:
+                        printer::DecoratedLines {
+                            lines,
+                            indices,
+                            truncated_map,
+                        },
+                } = context.sync_filter_source_item(&query, lines.iter().map(|s| s.as_str()))?;
 
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(total, lines, indices, truncated_map, method);

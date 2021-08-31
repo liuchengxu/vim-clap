@@ -161,7 +161,7 @@ impl EventHandler for RecentFilesMessageHandler {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
-                log::error!("Failed to spawn task handle_dumb_jump_message: {:?}", e);
+                log::error!("Failed to spawn task handle_recent_files_message: {:?}", e);
                 Default::default()
             });
 

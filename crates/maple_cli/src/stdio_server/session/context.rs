@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use icon::IconPainter;
+use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
@@ -42,6 +44,27 @@ impl Scale {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SyncFilterResults {
+    pub total: usize,
+    pub decorated_lines: printer::DecoratedLines,
+}
+
+#[derive(Clone, Debug)]
+pub enum Icon {
+    Disabled,
+    Enabled(IconPainter),
+}
+
+impl From<Icon> for Option<IconPainter> {
+    fn from(icon: Icon) -> Self {
+        match icon {
+            Icon::Disabled => None,
+            Icon::Enabled(icon) => Some(icon),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
@@ -49,11 +72,12 @@ pub struct SessionContext {
     pub start_buffer_path: PathBuf,
     pub display_winwidth: u64,
     pub preview_winheight: u64,
-    pub source_cmd: Option<String>,
+    pub icon: Icon,
+    pub match_type: MatchType,
     pub scale: Arc<Mutex<Scale>>,
+    pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
-    pub enable_icon: bool,
 }
 
 impl SessionContext {
@@ -69,6 +93,41 @@ impl SessionContext {
             self.provider_id.get_preview_size(),
             (self.preview_winheight / 2) as usize,
         )
+    }
+
+    fn fuzzy_matcher(&self) -> matcher::Matcher {
+        matcher::Matcher::with_bonuses(
+            matcher::FuzzyAlgorithm::Fzy,
+            self.match_type.clone(),
+            Vec::new(), // TODO: bonuses
+        )
+    }
+
+    pub fn sync_filter_source_item<'a>(
+        &self,
+        query: &str,
+        lines: impl Iterator<Item = &'a str>,
+    ) -> Result<SyncFilterResults> {
+        let ranked = filter::par_filter_on_list(
+            query,
+            lines.map(Into::into).collect(),
+            &self.fuzzy_matcher(),
+        )?;
+
+        let total = ranked.len();
+
+        let maybe_icon = self.icon.clone().into();
+        // Take the first 200 entries and add an icon to each of them.
+        let decorated_lines = printer::decorate_lines(
+            ranked.iter().take(200).cloned().collect(),
+            self.display_winwidth as usize,
+            maybe_icon,
+        );
+
+        Ok(SyncFilterResults {
+            total,
+            decorated_lines,
+        })
     }
 }
 
@@ -99,15 +158,33 @@ impl From<Message> for SessionContext {
             enable_icon,
         } = msg.deserialize_params_unsafe();
 
+        let match_type = match provider_id.as_str() {
+            "tags" | "proj_tags" => MatchType::TagName,
+            "grep" | "grep2" => MatchType::IgnoreFilePath,
+            _ => MatchType::Full,
+        };
+
+        let icon = if enable_icon.unwrap_or(false) {
+            match provider_id.as_str() {
+                "tags" | "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
+                "grep" | "grep2" => Icon::Enabled(IconPainter::Grep),
+                "files" => Icon::Enabled(IconPainter::File),
+                _ => Icon::Disabled,
+            }
+        } else {
+            Icon::Disabled
+        };
+
         Self {
             provider_id,
             cwd,
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
-            enable_icon: enable_icon.unwrap_or(false),
             source_cmd,
             runtimepath,
+            match_type,
+            icon,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
         }
