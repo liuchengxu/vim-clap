@@ -71,5 +71,5 @@ async fn test_tokio_command() {
             .unwrap()
     )
     .into();
-    assert_eq!(vec!["Cargo.toml", "src"], tokio_cmd.lines().await.unwrap());
+    assert_eq!(vec!["Cargo.toml", "benches", "src"], tokio_cmd.lines().await.unwrap());
 }

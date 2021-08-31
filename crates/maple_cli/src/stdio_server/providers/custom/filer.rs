@@ -173,6 +173,6 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(entries, vec!["Cargo.toml", "benches", "src/"]);
+        assert_eq!(entries, vec!["Cargo.toml", "benches/", "src/"]);
     }
 }
