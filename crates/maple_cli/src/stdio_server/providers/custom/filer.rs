@@ -101,8 +101,11 @@ impl EventHandler for FilerMessageHandler {
         };
         if let Err(err) = on_move_handler.handle() {
             log::error!("Failed to handle filer OnMove: {:?}, path: {:?}", err, path);
-            let error = json!({"message": err.to_string(), "dir": path});
-            let res = json!({ "id": msg_id, "provider_id": "filer", "error": error });
+            let res = json!({
+              "id": msg_id,
+              "provider_id": "filer",
+              "error": { "message": err.to_string(), "dir": path }
+            });
             write_response(res);
         }
         Ok(())
@@ -123,7 +126,7 @@ impl NewSession for FilerSession {
         // Handle the on_init message.
         handle_filer_message(msg);
 
-        session.start_event_loop()?;
+        session.start_event_loop();
 
         Ok(session_sender)
     }

@@ -4,7 +4,7 @@ pub mod tokio;
 
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use self::rstd::StdCommand;
@@ -17,7 +17,7 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 /// Remove the last line if it's empty.
 pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
-        return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
+        return Err(anyhow!("Error in output: {:?}", output.stderr));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -51,11 +51,8 @@ impl AsyncCommand {
         self.0.lines()
     }
 
-    pub async fn execute_and_filter_map<B>(
-        &mut self,
-        f: impl FnMut(&[u8]) -> Option<B>,
-    ) -> Result<Vec<B>> {
-        self.0.filter_map_byte_line(f)
+    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+        self.0.stdout()
     }
 }
 

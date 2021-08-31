@@ -1,6 +1,5 @@
 pub mod on_move;
 
-use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -8,6 +7,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use serde_json::json;
 
+use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent},
     write_response, Message,
@@ -20,7 +20,7 @@ pub struct BuiltinSession;
 impl NewSession for BuiltinSession {
     fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) = Session::new(msg, BuiltinEventHandler);
-        session.start_event_loop()?;
+        session.start_event_loop();
         Ok(session_sender)
     }
 }
@@ -117,16 +117,15 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
     }
 
     if let Some(ref source_cmd) = context.source_cmd {
-        // TODO: reuse the cache? in case of you run `fd --type f` under /
-        let lines = BufReader::with_capacity(
-            30 * 1024,
-            filter::subprocess::Exec::shell(source_cmd)
-                .cwd(&context.cwd)
-                .stream_stdout()?,
-        )
-        .lines()
-        .flatten()
-        .collect::<Vec<_>>();
+        // TODO: check cache
+
+        // Can not use subprocess::Exec::shell here.
+        //
+        // Must use TokioCommand otherwise the timeout may not work.
+        let lines = TokioCommand::new(source_cmd)
+            .current_dir(&context.cwd)
+            .lines()
+            .await?;
 
         return Ok(to_scale(lines));
     }
