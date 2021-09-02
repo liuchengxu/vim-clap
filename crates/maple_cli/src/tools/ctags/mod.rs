@@ -75,7 +75,7 @@ impl CtagsCommand {
         self.inner.cached_info()
     }
 
-    /// Runs the command and writes the cache to the disk.
+    /// Parallel version of [`create_cache`].
     pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
         use itertools::Itertools;
 
