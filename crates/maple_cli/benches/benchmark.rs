@@ -3,6 +3,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use filter::{FilteredItem, Query, SourceItem};
 use matcher::{FuzzyAlgorithm, MatchType, Matcher};
 
+use maple_cli::command::ctags::recursive::build_recursive_ctags_cmd;
+
 fn prepare_source_items() -> Vec<SourceItem> {
     use std::io::BufRead;
 
@@ -76,6 +78,17 @@ fn bench_filter(c: &mut Criterion) {
 
     c.bench_function("par filter 1m", |b| {
         b.iter(|| par_filter(black_box(source_items_1m.clone()), &matcher, &query))
+    });
+
+    let ctags_cmd =
+        build_recursive_ctags_cmd("/home/xlc/src/github.com/paritytech/substrate".into());
+
+    c.bench_function("parallel recursive ctags", |b| {
+        b.iter(|| ctags_cmd.par_formatted_lines())
+    });
+
+    c.bench_function("recursive ctags", |b| {
+        b.iter(|| ctags_cmd.formatted_lines())
     });
 }
 

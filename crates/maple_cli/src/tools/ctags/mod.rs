@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
+use crate::process::rstd::StdCommand;
 use crate::process::BaseCommand;
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
@@ -24,6 +25,38 @@ impl CtagsCommand {
         Ok(BufReader::new(self.inner.stream_stdout()?)
             .lines()
             .flatten())
+    }
+
+    /// Parallel version of [`formatted_lines`].
+    pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
+        use rayon::prelude::*;
+
+        let stdout = StdCommand::new(self.inner.command.clone()).stdout()?;
+
+        Ok(stdout
+            .par_split(|x| x == &b'\n')
+            .filter_map(|tag| {
+                if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
+                    Some(tag.display_line())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>())
+    }
+
+    /// Returns an iterator of tag line in a formatted form.
+    pub fn formatted_lines(&self) -> Result<Vec<String>> {
+        Ok(self
+            .run()?
+            .filter_map(|tag| {
+                if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
+                    Some(tag.display_line())
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     /// Returns an iterator of tag line in a formatted form.
