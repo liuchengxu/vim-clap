@@ -95,7 +95,7 @@ impl RecursiveTags {
                 } else {
                     Default::default()
                 },
-                Source::List(ctags_cmd.formatted_tags_stream()?.map(Into::into)),
+                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
                 FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;

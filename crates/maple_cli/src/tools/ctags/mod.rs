@@ -60,7 +60,7 @@ impl CtagsCommand {
     }
 
     /// Returns an iterator of tag line in a formatted form.
-    pub fn formatted_tags_stream(&self) -> Result<impl Iterator<Item = String>> {
+    pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
                 Some(tag.display_line())
@@ -80,11 +80,11 @@ impl CtagsCommand {
         use itertools::Itertools;
 
         let mut total = 0usize;
-        let mut formatted_tags_stream = self.formatted_tags_stream()?.map(|x| {
+        let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
             total += 1;
             x
         });
-        let lines = formatted_tags_stream.join("\n");
+        let lines = formatted_tags_iter.join("\n");
 
         let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
 

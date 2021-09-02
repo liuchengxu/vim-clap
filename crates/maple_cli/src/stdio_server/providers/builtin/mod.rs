@@ -99,7 +99,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
     if context.provider_id.as_str() == "proj_tags" {
         let ctags_cmd =
             crate::command::ctags::recursive::build_recursive_ctags_cmd(context.cwd.to_path_buf());
-        let lines = ctags_cmd.formatted_tags_stream()?.collect::<Vec<_>>();
+        let lines = ctags_cmd.formatted_tags_iter()?.collect::<Vec<_>>();
         return Ok(to_scale(lines));
     }
 
