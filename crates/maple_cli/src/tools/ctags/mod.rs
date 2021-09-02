@@ -76,6 +76,19 @@ impl CtagsCommand {
     }
 
     /// Runs the command and writes the cache to the disk.
+    pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
+        use itertools::Itertools;
+
+        let lines = self.par_formatted_lines()?;
+        let total = lines.len();
+        let lines = lines.into_iter().join("\n");
+
+        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+
+        Ok((total, cache_path))
+    }
+
+    /// Runs the command and writes the cache to the disk.
     pub fn create_cache(&self) -> Result<(usize, PathBuf)> {
         use itertools::Itertools;
 

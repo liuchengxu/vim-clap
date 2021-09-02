@@ -80,11 +80,11 @@ impl RecursiveTags {
 
         if self.forerunner {
             let (total, cache) = if no_cache {
-                ctags_cmd.create_cache()?
+                ctags_cmd.par_create_cache()?
             } else if let Some((total, cache_path)) = ctags_cmd.get_ctags_cache() {
                 (total, cache_path)
             } else {
-                ctags_cmd.create_cache()?
+                ctags_cmd.par_create_cache()?
             };
             send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
