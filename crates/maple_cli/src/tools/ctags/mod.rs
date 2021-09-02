@@ -31,7 +31,7 @@ impl CtagsCommand {
     pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
         use rayon::prelude::*;
 
-        let stdout = StdCommand::new(self.inner.command.clone()).stdout()?;
+        let stdout = StdCommand::new(&self.inner.command).stdout()?;
 
         Ok(stdout
             .par_split(|x| x == &b'\n')
