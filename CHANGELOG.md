@@ -6,6 +6,10 @@
 
 - Improve the overal performance by using rayon. #754
 
+## Fixed
+
+- Error when using `clap#preview#file()` with `g:clap_preview_direction = 'UD'`. #756
+
 ## [0.29] 2021-08-30
 
 ## Added
