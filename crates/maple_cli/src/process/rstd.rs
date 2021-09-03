@@ -1,4 +1,4 @@
-//! Wrapper of std `Command`.
+//! Wrapper of [`std::process::Command`].
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -17,10 +17,10 @@ pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
     Ok(cmd_output.stdout)
 }
 
-/// Builds `Command` from a cmd string which can use pipe.
+/// Builds [`std::process::Command`] from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-pub fn build_command(inner_cmd: &str) -> Command {
+fn build_command(inner_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", inner_cmd]);
@@ -49,10 +49,9 @@ impl From<String> for StdCommand {
 }
 
 impl StdCommand {
-    /// Constructs a `StdCommand` given the command String.
-    #[allow(unused)]
-    pub fn new(spawned_cmd: String) -> Self {
-        Self(build_command(&spawned_cmd))
+    /// Constructs a new [`StdCommand`].
+    pub fn new(cmd: impl AsRef<str>) -> Self {
+        cmd.as_ref().into()
     }
 
     /// Sets the working directory for the inner `Command`.
@@ -69,23 +68,33 @@ impl StdCommand {
         self
     }
 
-    /// Executes the command and consume the stdout as a stream of utf8 lines.
-    fn _lines(&mut self) -> Result<Vec<String>> {
+    /// Executes the command and collect the stdout in lines.
+    pub fn lines(&mut self) -> Result<Vec<String>> {
         let output = self.0.output()?;
         super::process_output(output)
     }
 
-    pub fn lines(&mut self) -> Result<Vec<String>> {
-        self._lines()
-    }
-
+    /// Returns the stdout of inner command.
     pub fn stdout(&mut self) -> Result<Vec<u8>> {
         let output = self.0.output()?;
 
         if !output.status.success() && !output.stderr.is_empty() {
-            return Err(anyhow::anyhow!("an error occured: {:?}", output.stderr));
+            return Err(anyhow!("an error occured: {:?}", output.stderr));
         }
 
         Ok(output.stdout)
+    }
+
+    pub fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<std::ffi::OsStr>,
+    {
+        self.0.args(args);
+        self
+    }
+
+    pub fn into_inner(self) -> Command {
+        self.0
     }
 }

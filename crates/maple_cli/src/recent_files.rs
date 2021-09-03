@@ -2,7 +2,8 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use chrono::prelude::*;
-use matcher::Bonus;
+use filter::SourceItem;
+use matcher::{Bonus, FuzzyAlgorithm, MatchType};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
@@ -159,11 +160,19 @@ impl SortedRecentFiles {
     }
 
     pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::FilteredItem> {
-        filter::simple_run(
-            self.entries.iter().map(|entry| entry.fpath.as_str()),
-            query,
-            Some(vec![Bonus::cwd(cwd), Bonus::FileName]),
-        )
+        let source_items: Vec<SourceItem> = self
+            .entries
+            .iter()
+            .map(|entry| entry.fpath.as_str().into())
+            .collect();
+
+        let matcher = matcher::Matcher::with_bonuses(
+            FuzzyAlgorithm::Fzy,
+            MatchType::Full,
+            vec![Bonus::cwd(cwd), Bonus::FileName],
+        );
+
+        filter::par_filter(query, source_items, &matcher)
     }
 
     /// Updates or inserts a new entry in a sorted way.

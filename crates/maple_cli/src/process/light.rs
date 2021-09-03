@@ -1,6 +1,6 @@
-//! Wrapper of std `Command` with some optimization about the output.
+//! Wrapper of [`std::process::Command`] with some optimization about the output.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
@@ -21,19 +21,6 @@ fn trim_trailing(lines: &mut Vec<String>) {
         // " " len is 4.
         if last_line.is_empty() || last_line.len() == 4 {
             lines.remove(lines.len() - 1);
-        }
-    }
-}
-
-pub fn set_current_dir<P: AsRef<Path>>(cmd: &mut Command, cmd_dir: Option<P>) {
-    if let Some(cmd_dir) = cmd_dir {
-        // If cmd_dir is not a directory, use its parent as current dir.
-        if cmd_dir.as_ref().is_dir() {
-            cmd.current_dir(cmd_dir);
-        } else {
-            let mut cmd_dir: PathBuf = cmd_dir.as_ref().into();
-            cmd_dir.pop();
-            cmd.current_dir(cmd_dir);
         }
     }
 }

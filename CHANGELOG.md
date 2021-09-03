@@ -5,6 +5,7 @@
 ## Improved
 
 - Improve the overal performance by using rayon. #754
+- Parallel recursive ctags creation, 30x faster on my machine. #755
 
 ## Fixed
 

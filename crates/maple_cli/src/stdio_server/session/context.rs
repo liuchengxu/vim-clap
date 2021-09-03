@@ -108,11 +108,11 @@ impl SessionContext {
         query: &str,
         lines: impl Iterator<Item = &'a str>,
     ) -> Result<SyncFilterResults> {
-        let ranked = filter::par_filter_on_list(
+        let ranked = filter::par_filter(
             query,
             lines.map(Into::into).collect(),
             &self.fuzzy_matcher(),
-        )?;
+        );
 
         let total = ranked.len();
 

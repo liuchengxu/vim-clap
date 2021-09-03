@@ -5,10 +5,7 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::app::Params;
-use crate::process::{
-    light::{set_current_dir, LightCommand},
-    BaseCommand,
-};
+use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
 
 /// Execute the shell command
 #[derive(StructOpt, Debug, Clone)]
@@ -29,11 +26,13 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = crate::process::rstd::build_command(&self.cmd);
+        let mut cmd = StdCommand::from(self.cmd.as_str());
 
-        set_current_dir(&mut cmd, self.cmd_dir.as_ref());
+        if let Some(ref cmd_dir) = self.cmd_dir {
+            cmd.current_dir(cmd_dir);
+        }
 
-        cmd
+        cmd.into_inner()
     }
 
     pub fn run(

@@ -80,11 +80,11 @@ impl RecursiveTags {
 
         if self.forerunner {
             let (total, cache) = if no_cache {
-                ctags_cmd.create_cache()?
-            } else if let Some((total, cache_path)) = ctags_cmd.get_ctags_cache() {
+                ctags_cmd.par_create_cache()?
+            } else if let Some((total, cache_path)) = ctags_cmd.ctags_cache() {
                 (total, cache_path)
             } else {
-                ctags_cmd.create_cache()?
+                ctags_cmd.par_create_cache()?
             };
             send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
             return Ok(());
@@ -95,7 +95,7 @@ impl RecursiveTags {
                 } else {
                     Default::default()
                 },
-                Source::List(ctags_cmd.formatted_tags_stream()?.map(Into::into)),
+                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
                 FilterContext::new(None, Some(30), None, icon_painter, MatchType::TagName),
                 vec![Bonus::None],
             )?;

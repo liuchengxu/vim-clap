@@ -1,4 +1,4 @@
-//! Wrapper of tokio `Command`.
+//! Wrapper of [`tokio::process::Command`].
 
 use std::path::Path;
 
@@ -37,6 +37,7 @@ impl From<String> for TokioCommand {
 }
 
 impl TokioCommand {
+    /// Constructs a new instance of [`TokioCommand`].
     pub fn new(cmd: impl AsRef<str>) -> Self {
         cmd.as_ref().into()
     }
@@ -71,5 +72,8 @@ async fn test_tokio_command() {
             .unwrap()
     )
     .into();
-    assert_eq!(vec!["Cargo.toml", "benches", "src"], tokio_cmd.lines().await.unwrap());
+    assert_eq!(
+        vec!["Cargo.toml", "benches", "src"],
+        tokio_cmd.lines().await.unwrap()
+    );
 }

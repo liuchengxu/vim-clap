@@ -15,10 +15,7 @@ use icon::IconPainter;
 use utility::is_git_repo;
 
 use crate::app::Params;
-use crate::process::{
-    light::{set_current_dir, LightCommand},
-    BaseCommand,
-};
+use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
 use crate::tools::ripgrep::Match;
 use crate::utils::{send_response_from_cache, SendResponse};
 
@@ -91,11 +88,13 @@ fn prepare_sync_grep_cmd<P: AsRef<Path>>(
         .chain(std::iter::once("--json")) // Force using json format.
         .collect::<Vec<&str>>();
 
-    let mut cmd = Command::new(args[0]);
+    let mut std_cmd = StdCommand::new(args[0]);
 
-    set_current_dir(&mut cmd, cmd_dir);
+    if let Some(ref dir) = cmd_dir {
+        std_cmd.current_dir(dir);
+    }
 
-    (cmd, args)
+    (std_cmd.into_inner(), args)
 }
 
 impl Grep {
@@ -275,11 +274,15 @@ impl RipGrepForerunner {
             return Ok(());
         }
 
-        let mut cmd = Command::new(RG_ARGS[0]);
+        let mut std_cmd = StdCommand::new(RG_ARGS[0]);
         // Do not use --vimgrep here.
-        cmd.args(&RG_ARGS[1..]);
+        std_cmd.args(&RG_ARGS[1..]);
 
-        set_current_dir(&mut cmd, self.cmd_dir.clone());
+        if let Some(ref dir) = self.cmd_dir {
+            std_cmd.current_dir(dir);
+        }
+
+        let mut cmd = std_cmd.into_inner();
 
         let mut light_cmd = LightCommand::new_grep(
             &mut cmd,
