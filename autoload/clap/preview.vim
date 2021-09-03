@@ -8,7 +8,11 @@ let s:path_seperator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
 function! s:peek_file(fname, fpath) abort
-  let size = max([2 * s:default_size, winheight(g:clap.preview.winid)])
+  if has_key(g:clap.preview, 'winid')
+    let size = max([2 * s:default_size, winheight(g:clap.preview.winid)])
+  else
+    let size = 2 * s:default_size
+  endif
   let lines = readfile(a:fpath, '', size)
   call insert(lines, a:fpath)
   call g:clap.preview.show(lines)
