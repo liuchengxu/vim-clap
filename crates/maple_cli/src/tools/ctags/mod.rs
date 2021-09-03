@@ -2,7 +2,9 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use once_cell::sync::OnceCell;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::process::rstd::StdCommand;
@@ -20,31 +22,6 @@ impl CtagsCommand {
         Self { inner }
     }
 
-    /// Returns an iterator of raw line of ctags output.
-    fn run(&self) -> Result<impl Iterator<Item = String>> {
-        Ok(BufReader::new(self.inner.stream_stdout()?)
-            .lines()
-            .flatten())
-    }
-
-    /// Parallel version of [`formatted_lines`].
-    pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
-        use rayon::prelude::*;
-
-        let stdout = StdCommand::new(&self.inner.command).stdout()?;
-
-        Ok(stdout
-            .par_split(|x| x == &b'\n')
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
-                    Some(tag.display_line())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>())
-    }
-
     /// Returns an iterator of tag line in a formatted form.
     pub fn formatted_lines(&self) -> Result<Vec<String>> {
         Ok(self
@@ -59,6 +36,29 @@ impl CtagsCommand {
             .collect())
     }
 
+    /// Parallel version of [`formatted_lines`].
+    pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
+        let stdout = StdCommand::new(&self.inner.command).stdout()?;
+
+        Ok(stdout
+            .par_split(|x| x == &b'\n')
+            .filter_map(|tag| {
+                if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
+                    Some(tag.display_line())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>())
+    }
+
+    /// Returns an iterator of raw line of ctags output.
+    fn run(&self) -> Result<impl Iterator<Item = String>> {
+        Ok(BufReader::new(self.inner.stream_stdout()?)
+            .lines()
+            .flatten())
+    }
+
     /// Returns an iterator of tag line in a formatted form.
     pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
@@ -71,33 +71,29 @@ impl CtagsCommand {
     }
 
     /// Returns a tuple of (total, cache_path) if the cache exists.
-    pub fn get_ctags_cache(&self) -> Option<(usize, PathBuf)> {
+    pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
         self.inner.cached_info()
-    }
-
-    /// Parallel version of [`create_cache`].
-    pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
-        use itertools::Itertools;
-
-        let lines = self.par_formatted_lines()?;
-        let total = lines.len();
-        let lines = lines.into_iter().join("\n");
-
-        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
-
-        Ok((total, cache_path))
     }
 
     /// Runs the command and writes the cache to the disk.
     pub fn create_cache(&self) -> Result<(usize, PathBuf)> {
-        use itertools::Itertools;
-
         let mut total = 0usize;
         let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
             total += 1;
             x
         });
         let lines = formatted_tags_iter.join("\n");
+
+        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+
+        Ok((total, cache_path))
+    }
+
+    /// Parallel version of [`create_cache`].
+    pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
+        let lines = self.par_formatted_lines()?;
+        let total = lines.len();
+        let lines = lines.into_iter().join("\n");
 
         let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
 
