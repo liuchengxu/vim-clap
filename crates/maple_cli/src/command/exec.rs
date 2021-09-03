@@ -5,11 +5,7 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 use crate::app::Params;
-use crate::process::{
-    light::LightCommand,
-    rstd::StdCommand,
-    BaseCommand,
-};
+use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
 
 /// Execute the shell command
 #[derive(StructOpt, Debug, Clone)]
