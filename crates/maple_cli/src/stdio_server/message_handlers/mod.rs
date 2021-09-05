@@ -42,15 +42,27 @@ async fn preview_file_impl(msg: Message) -> Result<()> {
     #[derive(Deserialize)]
     struct Params {
         fpath: String,
-        preview_width: usize,
-        preview_height: usize,
+        display_width: usize,
+        display_height: usize,
+        preview_width: Option<usize>,
+        preview_height: Option<usize>,
+        preview_direction: String,
     }
 
     let Params {
         fpath,
+        display_width,
+        display_height,
         preview_width,
         preview_height,
+        preview_direction,
     } = msg.deserialize_params()?;
+
+    let (preview_height, preview_width) = if preview_direction.to_uppercase().as_str() == "UD" {
+        (preview_height.unwrap_or(display_height), display_width)
+    } else {
+        (display_height, preview_width.unwrap_or(display_width))
+    };
 
     let (lines, fname) = previewer::preview_file(fpath, preview_height, preview_width)?;
 

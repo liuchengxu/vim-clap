@@ -159,9 +159,16 @@ endfunction
 function! clap#preview#maple_opts(extra) abort
   let opts = {
         \ 'fpath': fnamemodify(fnameescape(g:clap.display.getcurline()), ':p'),
+        \ 'display_width': winwidth(g:clap.display.winid),
+        \ 'display_height': winheight(g:clap.display.winid),
+        \ 'preview_direction': g:clap_preview_direction,
+        \ }
+  if has_key(g:clap.preview, 'winid')
+    call extend(opts, {
         \ 'preview_width': winwidth(g:clap.preview.winid),
         \ 'preview_height': winheight(g:clap.preview.winid),
-        \ }
+        \ })
+  endif
   return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
 endfunction
 
