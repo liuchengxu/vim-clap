@@ -54,13 +54,13 @@ impl Scale {
         }
     }
 
-    pub fn initial_lines(&self) -> Option<Vec<FilteredItem>> {
+    pub fn initial_lines(&self, n: usize) -> Option<Vec<FilteredItem>> {
         match self {
             Self::Small { ref lines, .. } => {
-                Some(lines.iter().take(200).map(|s| s.as_str().into()).collect())
+                Some(lines.iter().take(n).map(|s| s.as_str().into()).collect())
             }
             Self::Cache { ref path, .. } => {
-                if let Ok(lines_iter) = utility::read_first_lines(path, 100) {
+                if let Ok(lines_iter) = utility::read_first_lines(path, n) {
                     Some(lines_iter.map(Into::into).collect::<Vec<_>>())
                 } else {
                     None
