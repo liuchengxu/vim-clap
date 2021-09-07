@@ -229,6 +229,23 @@ pub struct RipGrepForerunner {
     output_threshold: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct RgBaseCommand {
+    pub inner: BaseCommand,
+}
+
+impl RgBaseCommand {
+    pub fn new(dir: PathBuf) -> Self {
+        let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir);
+
+        Self { inner }
+    }
+
+    pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
+        self.inner.cache_info()
+    }
+}
+
 impl RipGrepForerunner {
     /// Skip the forerunner job if `cmd_dir` is not a git repo.
     ///
@@ -258,7 +275,7 @@ impl RipGrepForerunner {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some((total, cache)) = base_cmd.cached_info() {
+                if let Some((total, cache)) = base_cmd.cache_info() {
                     send_response_from_cache(
                         &cache,
                         total as usize,

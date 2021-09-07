@@ -88,7 +88,7 @@ impl BaseCommand {
         info.find_digest_usable(self).map(|d| d.cached_path.clone())
     }
 
-    pub fn cached_info(&self) -> Option<(usize, PathBuf)> {
+    pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
         let mut info = CACHE_INFO_IN_MEMORY.lock();
         info.find_digest_usable(&self)
             .map(|d| (d.total, d.cached_path.clone()))

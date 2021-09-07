@@ -72,7 +72,7 @@ impl CtagsCommand {
 
     /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
-        self.inner.cached_info()
+        self.inner.cache_info()
     }
 
     /// Runs the command and writes the cache to the disk.

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use filter::FilteredItem;
 use icon::IconPainter;
 use matcher::MatchType;
 use parking_lot::Mutex;
@@ -26,7 +27,15 @@ pub enum Scale {
     Large(usize),
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
-    Small { total: usize, lines: Vec<String> },
+    Small {
+        total: usize,
+        lines: Vec<String>,
+    },
+
+    Cache {
+        total: usize,
+        path: PathBuf,
+    },
 }
 
 impl Default for Scale {
@@ -38,7 +47,25 @@ impl Default for Scale {
 impl Scale {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Large(total) | Self::Small { total, .. } => Some(*total),
+            Self::Large(total) | Self::Small { total, .. } | Self::Cache { total, .. } => {
+                Some(*total)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn initial_lines(&self) -> Option<Vec<FilteredItem>> {
+        match self {
+            Self::Small { ref lines, .. } => {
+                Some(lines.iter().take(200).map(|s| s.as_str().into()).collect())
+            }
+            Self::Cache { ref path, .. } => {
+                if let Ok(lines_iter) = utility::read_first_lines(path, 100) {
+                    Some(lines_iter.map(Into::into).collect::<Vec<_>>())
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }

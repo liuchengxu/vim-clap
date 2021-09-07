@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use itertools::Itertools;
 use serde_json::json;
 
 use crate::process::tokio::TokioCommand;
@@ -83,24 +84,59 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         }
     };
 
-    if context.provider_id.as_str() == "blines" {
-        let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-        let scale = if total > LARGE_SCALE {
-            Scale::Large(total)
-        } else {
-            Scale::Small {
-                total,
-                lines: Vec::new(),
-            }
-        };
-        return Ok(scale);
-    }
+    match context.provider_id.as_str() {
+        "blines" => {
+            let total =
+                crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
+            let scale = if total > LARGE_SCALE {
+                Scale::Large(total)
+            } else {
+                Scale::Small {
+                    total,
+                    lines: Vec::new(),
+                }
+            };
+            return Ok(scale);
+        }
+        "proj_tags" => {
+            let ctags_cmd = crate::command::ctags::recursive::build_recursive_ctags_cmd(
+                context.cwd.to_path_buf(),
+            );
+            let lines = ctags_cmd.formatted_tags_iter()?.collect::<Vec<_>>();
+            return Ok(to_scale(lines));
+        }
+        "grep2" => {
+            let rg_cmd = crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
 
-    if context.provider_id.as_str() == "proj_tags" {
-        let ctags_cmd =
-            crate::command::ctags::recursive::build_recursive_ctags_cmd(context.cwd.to_path_buf());
-        let lines = ctags_cmd.formatted_tags_iter()?.collect::<Vec<_>>();
-        return Ok(to_scale(lines));
+            if let Some((total, path)) = rg_cmd.cache_info() {
+                let method = "clap#state#set_variable";
+                let name = "g:__clap_forerunner_tempfile";
+                let value = path.clone();
+                utility::println_json_with_length!(name, value, method);
+                return Ok(Scale::Cache { total, path });
+            } else {
+                let lines = TokioCommand::new(&rg_cmd.inner.command)
+                    .current_dir(&context.cwd)
+                    .lines()
+                    .await?;
+
+                let total = lines.len();
+                let lines = lines.into_iter().join("\n");
+
+                let cache_path = rg_cmd.inner.create_cache(total, lines.as_bytes())?;
+
+                let method = "clap#state#set_variable";
+                let name = "g:__clap_forerunner_tempfile";
+                let value = cache_path.clone();
+                utility::println_json_with_length!(name, value, method);
+
+                return Ok(Scale::Cache {
+                    total,
+                    path: cache_path,
+                });
+            }
+        }
+        _ => {}
     }
 
     if let Some(ref source_cmd) = context.source_cmd {

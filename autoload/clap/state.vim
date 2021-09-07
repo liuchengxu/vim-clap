@@ -11,6 +11,10 @@ function! clap#state#refresh_matches_count(cnt) abort
   call clap#sign#reset_to_first_line()
 endfunction
 
+function! clap#state#set_variable(res) abort
+  execute 'let '.a:res['name'].' = "'.a:res['value'].'"'
+endfunction
+
 function! clap#state#process_filter_message(decoded_msg) abort
   let decoded = a:decoded_msg
 

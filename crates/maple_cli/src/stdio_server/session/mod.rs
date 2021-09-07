@@ -87,9 +87,9 @@ impl<T: EventHandler> Session<T> {
             utility::println_json_with_length!(total, method);
         }
 
-        if let Scale::Small { ref lines, .. } = scale {
+        if let Some(lines) = scale.initial_lines() {
             printer::decorate_lines::<i64>(
-                lines.iter().take(200).map(|s| s.as_str().into()).collect(),
+                lines,
                 self.context.display_winwidth as usize,
                 self.context.icon.clone().into(),
             )

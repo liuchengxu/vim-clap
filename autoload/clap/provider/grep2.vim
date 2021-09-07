@@ -22,10 +22,13 @@ endfunction
 function! s:grep2.init() abort
   let g:__clap_match_type_enum = 'IgnoreFilePath'
   call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
-  if clap#maple#is_available()
-    call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#command#ripgrep_forerunner())
-  endif
+  call clap#rooter#try_set_cwd()
+  call clap#client#call_on_init('on_init', function('clap#state#handle_response_on_typed'), {
+        \ 'provider_id': g:clap.provider.id,
+        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
+        \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+        \ 'cwd': clap#rooter#working_dir(),
+        \ })
 endfunction
 
 function! s:grep2.exit() abort
