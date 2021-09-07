@@ -108,10 +108,9 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         "grep2" => {
             let rg_cmd = crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
 
-            let send_response = |path: std::path::PathBuf| {
+            let send_response = |value: std::path::PathBuf| {
                 let method = "clap#state#set_variable_string";
                 let name = "g:__clap_forerunner_tempfile";
-                let value = path.clone();
                 utility::println_json_with_length!(name, value, method);
             };
 

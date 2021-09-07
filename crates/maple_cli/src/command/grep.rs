@@ -237,7 +237,6 @@ pub struct RgBaseCommand {
 impl RgBaseCommand {
     pub fn new(dir: PathBuf) -> Self {
         let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir);
-
         Self { inner }
     }
 
