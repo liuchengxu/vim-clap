@@ -6,6 +6,7 @@
 
 - Improve the overal performance by using rayon. #754
 - Parallel recursive ctags creation, 30x faster on my machine. #755
+- Support expanding `~` in file path when using `preview/file`.
 
 ## Fixed
 
