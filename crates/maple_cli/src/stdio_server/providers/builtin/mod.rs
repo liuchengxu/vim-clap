@@ -108,11 +108,15 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         "grep2" => {
             let rg_cmd = crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
 
-            if let Some((total, path)) = rg_cmd.cache_info() {
+            let send_response = |path: std::path::PathBuf| {
                 let method = "clap#state#set_variable_string";
                 let name = "g:__clap_forerunner_tempfile";
                 let value = path.clone();
                 utility::println_json_with_length!(name, value, method);
+            };
+
+            if let Some((total, path)) = rg_cmd.cache_info() {
+                send_response(path.clone());
                 return Ok(Scale::Cache { total, path });
             } else {
                 let lines = TokioCommand::new(&rg_cmd.inner.command)
@@ -125,10 +129,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
 
                 let cache_path = rg_cmd.inner.create_cache(total, lines.as_bytes())?;
 
-                let method = "clap#state#set_variable_string";
-                let name = "g:__clap_forerunner_tempfile";
-                let value = cache_path.clone();
-                utility::println_json_with_length!(name, value, method);
+                send_response(cache_path.clone());
 
                 return Ok(Scale::Cache {
                     total,
