@@ -11,7 +11,7 @@ function! clap#state#refresh_matches_count(cnt) abort
   call clap#sign#reset_to_first_line()
 endfunction
 
-function! clap#state#set_variable(res) abort
+function! clap#state#set_variable_string(res) abort
   execute 'let '.a:res['name'].' = "'.a:res['value'].'"'
 endfunction
 

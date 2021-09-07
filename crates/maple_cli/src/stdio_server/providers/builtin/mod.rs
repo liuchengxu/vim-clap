@@ -109,7 +109,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
             let rg_cmd = crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
 
             if let Some((total, path)) = rg_cmd.cache_info() {
-                let method = "clap#state#set_variable";
+                let method = "clap#state#set_variable_string";
                 let name = "g:__clap_forerunner_tempfile";
                 let value = path.clone();
                 utility::println_json_with_length!(name, value, method);
@@ -125,7 +125,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
 
                 let cache_path = rg_cmd.inner.create_cache(total, lines.as_bytes())?;
 
-                let method = "clap#state#set_variable";
+                let method = "clap#state#set_variable_string";
                 let name = "g:__clap_forerunner_tempfile";
                 let value = cache_path.clone();
                 utility::println_json_with_length!(name, value, method);
