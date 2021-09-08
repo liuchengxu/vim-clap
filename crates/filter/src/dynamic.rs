@@ -11,7 +11,7 @@ use super::*;
 use crate::FilteredItem;
 
 /// The constant to define the length of `top_` queues.
-const ITEMS_TO_SHOW: usize = 30;
+const ITEMS_TO_SHOW: usize = 40;
 
 const MAX_IDX: usize = ITEMS_TO_SHOW - 1;
 
