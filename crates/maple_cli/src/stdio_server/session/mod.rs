@@ -115,7 +115,10 @@ impl<T: EventHandler> Session<T> {
                 Ok(scale) => self.process_source_scale(scale),
                 Err(e) => log::error!("Error occurred on session create: {:?}", e),
             },
-            Err(_) => log::debug!("Did not receive value with {} ms", TIMEOUT),
+            Err(_) => {
+                // TODO: spawn a background task
+                log::debug!("Did not receive value with {} ms", TIMEOUT);
+            }
         }
     }
 

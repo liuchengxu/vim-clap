@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use itertools::Itertools;
 use serde_json::json;
 
 use crate::process::tokio::TokioCommand;
@@ -118,22 +117,9 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
                 send_response(path.clone());
                 return Ok(Scale::Cache { total, path });
             } else {
-                let lines = TokioCommand::new(&rg_cmd.inner.command)
-                    .current_dir(&context.cwd)
-                    .lines()
-                    .await?;
-
-                let total = lines.len();
-                let lines = lines.into_iter().join("\n");
-
-                let cache_path = rg_cmd.inner.create_cache(total, lines.as_bytes())?;
-
-                send_response(cache_path.clone());
-
-                return Ok(Scale::Cache {
-                    total,
-                    path: cache_path,
-                });
+                let (total, path) = rg_cmd.create_cache().await?;
+                send_response(path.clone());
+                return Ok(Scale::Cache { total, path });
             }
         }
         _ => {}

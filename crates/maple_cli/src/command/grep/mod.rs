@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use itertools::Itertools;
 use rayon::prelude::*;
 use structopt::StructOpt;
 
@@ -19,6 +20,7 @@ use icon::IconPainter;
 use utility::is_git_repo;
 
 use crate::app::Params;
+use crate::process::tokio::TokioCommand;
 use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
 use crate::tools::ripgrep::Match;
 use crate::utils::{send_response_from_cache, SendResponse};
@@ -235,6 +237,20 @@ impl RgBaseCommand {
 
     pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
         self.inner.cache_info()
+    }
+
+    pub async fn create_cache(self) -> Result<(usize, PathBuf)> {
+        let lines = TokioCommand::new(&self.inner.command)
+            .current_dir(&self.inner.cwd)
+            .lines()
+            .await?;
+
+        let total = lines.len();
+        let lines = lines.into_iter().join("\n");
+
+        let cache_path = self.inner.create_cache(total, lines.as_bytes())?;
+
+        Ok((total, cache_path))
     }
 }
 
