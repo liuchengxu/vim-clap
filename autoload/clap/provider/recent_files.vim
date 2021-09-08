@@ -20,12 +20,8 @@ function! s:recent_files.on_move_async() abort
 endfunction
 
 function! s:recent_files.init() abort
-  call clap#client#call_on_init('recent_files/on_init', function('clap#state#handle_response_on_typed'), {
-        \ 'provider_id': g:clap.provider.id,
-        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
-        \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \ 'cwd': clap#rooter#working_dir(),
-        \ })
+  call clap#client#call_on_init(
+        \ 'recent_files/on_init', function('clap#state#handle_response_on_typed'), clap#client#init_params(v:null))
 endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')

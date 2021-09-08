@@ -38,13 +38,8 @@ endfunction
 
 function! s:dumb_jump.init() abort
   let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  call clap#client#call_on_init('dumb_jump/on_init', function('clap#state#handle_response_on_typed'), {
-        \ 'provider_id': g:clap.provider.id,
-        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
-        \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \ 'extension': extension,
-        \ 'cwd': clap#rooter#working_dir(),
-        \ })
+  call clap#client#call_on_init(
+        \ 'dumb_jump/on_init', function('clap#state#handle_response_on_typed'), clap#client#init_params({'extension': extension}))
 endfunction
 
 function! s:dumb_jump.on_move_async() abort
