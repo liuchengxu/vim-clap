@@ -1,17 +1,23 @@
 mod context;
 mod manager;
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::debug;
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::types::{Message, ProviderId};
 
 pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
+
+static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
 
 pub type SessionId = u64;
 
@@ -116,8 +122,35 @@ impl<T: EventHandler> Session<T> {
                 Err(e) => log::error!("Error occurred on session create: {:?}", e),
             },
             Err(_) => {
-                // TODO: spawn a background task
                 log::debug!("Did not receive value with {} ms", TIMEOUT);
+                match self.context.provider_id.as_str() {
+                    "grep" | "grep2" => {
+                        let rg_cmd = crate::command::grep::RgBaseCommand::new(
+                            self.context.cwd.to_path_buf(),
+                        );
+                        let job_id = utility::calculate_hash(&rg_cmd.inner);
+                        let mut background_jobs = BACKGROUND_JOBS.lock();
+                        log::debug!("---- background jobs: {:?}", background_jobs);
+                        if background_jobs.contains(&job_id) {
+                            log::debug!("An existing job({}) for grep/grep2", job_id);
+                        } else {
+                            log::debug!("Spawning a background job {} for grep/grep2", job_id);
+                            background_jobs.insert(job_id);
+
+                            tokio::spawn(async move {
+                                let res = rg_cmd.create_cache().await;
+                                let mut background_jobs = BACKGROUND_JOBS.lock();
+                                background_jobs.remove(&job_id);
+                                log::debug!(
+                                    "The background job {} is done, result: {:?}",
+                                    job_id,
+                                    res
+                                );
+                            });
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
     }

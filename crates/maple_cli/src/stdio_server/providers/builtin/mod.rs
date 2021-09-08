@@ -113,6 +113,8 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
                 utility::println_json_with_length!(name, value, method);
             };
 
+            log::debug!("----------- grep2 cache info: {:?}", rg_cmd.cache_info());
+
             if let Some((total, path)) = rg_cmd.cache_info() {
                 send_response(path.clone());
                 return Ok(Scale::Cache { total, path });

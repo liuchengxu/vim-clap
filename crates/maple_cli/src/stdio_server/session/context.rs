@@ -27,15 +27,10 @@ pub enum Scale {
     Large(usize),
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
-    Small {
-        total: usize,
-        lines: Vec<String>,
-    },
+    Small { total: usize, lines: Vec<String> },
 
-    Cache {
-        total: usize,
-        path: PathBuf,
-    },
+    /// Unknown scale, but the cache exists.
+    Cache { total: usize, path: PathBuf },
 }
 
 impl Default for Scale {
