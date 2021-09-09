@@ -101,7 +101,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
             let ctags_cmd = crate::command::ctags::recursive::build_recursive_ctags_cmd(
                 context.cwd.to_path_buf(),
             );
-            let lines = ctags_cmd.formatted_tags_iter()?.collect::<Vec<_>>();
+            let lines = ctags_cmd.par_formatted_lines()?;
             return Ok(to_scale(lines));
         }
         "grep2" => {
