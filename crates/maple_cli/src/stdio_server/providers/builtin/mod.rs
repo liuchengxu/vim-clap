@@ -7,6 +7,8 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use serde_json::json;
 
+use crate::command::ctags::recursive::build_recursive_ctags_cmd;
+use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     session::{
@@ -98,31 +100,21 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
             return Ok(scale);
         }
         "proj_tags" => {
-            let ctags_cmd = crate::command::ctags::recursive::build_recursive_ctags_cmd(
-                context.cwd.to_path_buf(),
-            );
+            let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
             let lines = ctags_cmd.par_formatted_lines()?;
             return Ok(to_scale(lines));
         }
         "grep2" => {
-            let rg_cmd = crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
-
-            let send_response = |value: std::path::PathBuf| {
-                let method = "clap#state#set_variable_string";
-                let name = "g:__clap_forerunner_tempfile";
-                utility::println_json_with_length!(name, value, method);
+            let rg_cmd = RgBaseCommand::new(context.cwd.to_path_buf());
+            let (total, path) = match rg_cmd.cache_info() {
+                Some(cache) => cache,
+                None => rg_cmd.create_cache().await?,
             };
-
-            log::debug!("----------- grep2 cache info: {:?}", rg_cmd.cache_info());
-
-            if let Some((total, path)) = rg_cmd.cache_info() {
-                send_response(path.clone());
-                return Ok(Scale::Cache { total, path });
-            } else {
-                let (total, path) = rg_cmd.create_cache().await?;
-                send_response(path.clone());
-                return Ok(Scale::Cache { total, path });
-            }
+            let method = "clap#state#set_variable_string";
+            let name = "g:__clap_forerunner_tempfile";
+            let value = &path;
+            utility::println_json_with_length!(method, name, value);
+            return Ok(Scale::Cache { total, path });
         }
         _ => {}
     }

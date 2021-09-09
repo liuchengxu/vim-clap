@@ -38,7 +38,7 @@ impl CtagsCommand {
 
     /// Parallel version of [`formatted_lines`].
     pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
-        let stdout = StdCommand::new(&self.inner.command).stdout()?;
+        let stdout = StdCommand::new(&self.inner.command).current_dir(&self.inner.cwd).stdout()?;
 
         Ok(stdout
             .par_split(|x| x == &b'\n')

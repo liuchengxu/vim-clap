@@ -182,6 +182,8 @@ impl<T: EventHandler> Session<T> {
                                 }
                             }
                             SessionEvent::OnTyped(msg) => {
+                                // TODO: use a buffered channel here, do not process on every
+                                // single char change.
                                 if let Err(e) = self
                                     .event_handler
                                     .handle_on_typed(msg, self.context.clone())
