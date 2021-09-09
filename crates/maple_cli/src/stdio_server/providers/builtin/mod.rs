@@ -106,15 +106,10 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         "blines" => {
             let total =
                 crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-            let scale = if total > LARGE_SCALE {
-                Scale::Large(total)
-            } else {
-                Scale::Small {
-                    total,
-                    lines: Vec::new(),
-                }
-            };
-            return Ok(scale);
+            return Ok(Scale::Cache {
+                total,
+                path: context.start_buffer_path.to_path_buf(),
+            });
         }
         "proj_tags" => {
             let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
