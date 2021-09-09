@@ -73,6 +73,12 @@ impl OnMove {
                     let (fpath, lnum, _col, expected_line) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
 
+                    let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
+                        stripped.to_path_buf()
+                    } else {
+                        fpath
+                    };
+
                     line_content = Some(expected_line.into());
 
                     let mut path: PathBuf = context.cwd.clone();
