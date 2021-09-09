@@ -56,13 +56,7 @@ impl OnMove {
             "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
                 if curline.starts_with('~') {
-                    // I know std::env::home_dir() is incorrect in some rare cases[1], but dirs crate has been archived.
-                    //
-                    // [1] https://www.reddit.com/r/rust/comments/ga7f56/why_dirs_and_directories_repositories_have_been/fsjbsac/
-                    #[allow(deprecated)]
-                    let mut path = std::env::home_dir().context("failed to get home_dir")?;
-                    path.push(&curline[2..]);
-                    Self::History(path)
+                    Self::History(crate::utils::expand_tilde(curline)?)
                 } else {
                     Self::History(build_abs_path(&context.cwd, &curline))
                 }

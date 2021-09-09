@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
@@ -58,18 +58,7 @@ async fn preview_file_impl(msg: Message) -> Result<()> {
         preview_direction,
     } = msg.deserialize_params()?;
 
-    let home_prefix: String = format!("~{}", std::path::MAIN_SEPARATOR);
-
-    let fpath = if let Some(stripped) = fpath.strip_prefix(&home_prefix) {
-        let mut home_dir = directories::BaseDirs::new()
-            .ok_or(anyhow!("Failed to construct BaseDirs"))?
-            .home_dir()
-            .to_path_buf();
-        home_dir.push(stripped);
-        home_dir
-    } else {
-        fpath.into()
-    };
+    let fpath = crate::utils::expand_tilde(fpath)?;
 
     let (preview_height, preview_width) = if preview_direction.to_uppercase().as_str() == "UD" {
         (preview_height.unwrap_or(display_height), display_width)

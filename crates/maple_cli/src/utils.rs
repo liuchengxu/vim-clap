@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use chrono::prelude::*;
+use once_cell::sync::Lazy;
 
 use icon::IconPainter;
 use types::{ExactTerm, InverseTerm};
@@ -152,6 +153,23 @@ pub fn send_response_from_cache(
     }
 }
 
+pub(crate) fn expand_tilde(path: impl AsRef<str>) -> Result<PathBuf> {
+    static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
+
+    let fpath = if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
+        let mut home_dir = directories::BaseDirs::new()
+            .ok_or(anyhow!("Failed to construct BaseDirs"))?
+            .home_dir()
+            .to_path_buf();
+        home_dir.push(stripped);
+        home_dir
+    } else {
+        path.as_ref().into()
+    };
+
+    Ok(fpath)
+}
+
 /// Build the absolute path using cwd and relative path.
 pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> PathBuf {
     let mut path: PathBuf = cwd.as_ref().into();
@@ -167,7 +185,6 @@ pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> Path
 /// ```
 ///
 /// Credit: https://github.com/eclarke/linecount/blob/master/src/lib.rs
-#[allow(unused)]
 pub fn count_lines<R: std::io::Read>(handle: R) -> Result<usize, std::io::Error> {
     use std::io::BufRead;
 

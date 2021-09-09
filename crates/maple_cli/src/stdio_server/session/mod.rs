@@ -130,7 +130,6 @@ impl<T: EventHandler> Session<T> {
                         );
                         let job_id = utility::calculate_hash(&rg_cmd.inner);
                         let mut background_jobs = BACKGROUND_JOBS.lock();
-                        log::debug!("---- background jobs: {:?}", background_jobs);
                         if background_jobs.contains(&job_id) {
                             log::debug!("An existing job({}) for grep/grep2", job_id);
                         } else {
