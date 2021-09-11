@@ -75,7 +75,7 @@ impl EventHandler for BuiltinEventHandler {
                         context.icon.clone().into(),
                         context.match_type.clone(),
                     ),
-                    vec![],
+                    context.match_bonuses.clone(),
                 ) {
                     log::error!("Error occured when filtering the cache source: {:?}", e);
                 }

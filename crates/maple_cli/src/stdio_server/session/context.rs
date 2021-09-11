@@ -96,6 +96,7 @@ pub struct SessionContext {
     pub preview_winheight: u64,
     pub icon: Icon,
     pub match_type: MatchType,
+    pub match_bonuses: Vec<matcher::Bonus>,
     pub scale: Arc<Mutex<Scale>>,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
@@ -197,6 +198,11 @@ impl From<Message> for SessionContext {
             Icon::Disabled
         };
 
+        let match_bonuses = match provider_id.as_str() {
+            "files" | "git_files" | "filer" => vec![matcher::Bonus::FileName],
+            _ => vec![],
+        };
+
         Self {
             provider_id,
             cwd,
@@ -206,6 +212,7 @@ impl From<Message> for SessionContext {
             source_cmd,
             runtimepath,
             match_type,
+            match_bonuses,
             icon,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
