@@ -41,10 +41,12 @@ impl DecoratedLines {
             truncated_map,
         } = self;
 
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
         if let Some(total) = total {
-            println_json_with_length!(lines, indices, total, truncated_map);
+            println_json_with_length!(method, lines, indices, total, truncated_map);
         } else {
-            println_json_with_length!(lines, indices, truncated_map);
+            println_json_with_length!(method, lines, indices, truncated_map);
         }
     }
 

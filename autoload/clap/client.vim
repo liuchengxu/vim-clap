@@ -85,9 +85,21 @@ function! clap#client#notify_on_init(method, ...) abort
   call clap#client#notify(a:method, params)
 endfunction
 
+function! clap#client#init_params(extra) abort
+  let opts = {
+        \ 'provider_id': g:clap.provider.id,
+        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
+        \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+        \ 'cwd': clap#rooter#working_dir(),
+        \ }
+  return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
+endfunction
+
 function! clap#client#call_on_init(method, callback, ...) abort
   call call(function('clap#client#notify_on_init'), [a:method] + a:000)
-  let s:handlers[s:req_id] = a:callback
+  if a:callback isnot v:null
+    let s:handlers[s:req_id] = a:callback
+  endif
 endfunction
 
 " One optional argument: Dict, extra params

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use filter::FilteredItem;
 use icon::IconPainter;
 use matcher::MatchType;
 use parking_lot::Mutex;
@@ -27,6 +28,9 @@ pub enum Scale {
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     Small { total: usize, lines: Vec<String> },
+
+    /// Unknown scale, but the cache exists.
+    Cache { total: usize, path: PathBuf },
 }
 
 impl Default for Scale {
@@ -38,7 +42,25 @@ impl Default for Scale {
 impl Scale {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Large(total) | Self::Small { total, .. } => Some(*total),
+            Self::Large(total) | Self::Small { total, .. } | Self::Cache { total, .. } => {
+                Some(*total)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn initial_lines(&self, n: usize) -> Option<Vec<FilteredItem>> {
+        match self {
+            Self::Small { ref lines, .. } => {
+                Some(lines.iter().take(n).map(|s| s.as_str().into()).collect())
+            }
+            Self::Cache { ref path, .. } => {
+                if let Ok(lines_iter) = utility::read_first_lines(path, n) {
+                    Some(lines_iter.map(Into::into).collect::<Vec<_>>())
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -74,6 +96,7 @@ pub struct SessionContext {
     pub preview_winheight: u64,
     pub icon: Icon,
     pub match_type: MatchType,
+    pub match_bonuses: Vec<matcher::Bonus>,
     pub scale: Arc<Mutex<Scale>>,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
@@ -175,6 +198,11 @@ impl From<Message> for SessionContext {
             Icon::Disabled
         };
 
+        let match_bonuses = match provider_id.as_str() {
+            "files" | "git_files" | "filer" => vec![matcher::Bonus::FileName],
+            _ => vec![],
+        };
+
         Self {
             provider_id,
             cwd,
@@ -184,6 +212,7 @@ impl From<Message> for SessionContext {
             source_cmd,
             runtimepath,
             match_type,
+            match_bonuses,
             icon,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),

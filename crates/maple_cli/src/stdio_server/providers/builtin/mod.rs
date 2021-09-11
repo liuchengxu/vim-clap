@@ -5,8 +5,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use filter::FilterContext;
 use serde_json::json;
 
+use crate::command::ctags::recursive::build_recursive_ctags_cmd;
+use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     session::{
@@ -61,6 +64,22 @@ impl EventHandler for BuiltinEventHandler {
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(total, lines, indices, truncated_map, method);
             }
+            Scale::Cache { ref path, .. } => {
+                if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(
+                    &query,
+                    path.clone().into(),
+                    FilterContext::new(
+                        None,
+                        Some(40),
+                        Some(context.display_winwidth as usize),
+                        context.icon.clone().into(),
+                        context.match_type.clone(),
+                    ),
+                    context.match_bonuses.clone(),
+                ) {
+                    log::error!("Error occured when filtering the cache source: {:?}", e);
+                }
+            }
             _ => {}
         }
 
@@ -83,24 +102,40 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         }
     };
 
-    if context.provider_id.as_str() == "blines" {
-        let total = crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-        let scale = if total > LARGE_SCALE {
-            Scale::Large(total)
-        } else {
-            Scale::Small {
+    match context.provider_id.as_str() {
+        "blines" => {
+            let total =
+                crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
+            return Ok(Scale::Cache {
                 total,
-                lines: Vec::new(),
-            }
-        };
-        return Ok(scale);
-    }
-
-    if context.provider_id.as_str() == "proj_tags" {
-        let ctags_cmd =
-            crate::command::ctags::recursive::build_recursive_ctags_cmd(context.cwd.to_path_buf());
-        let lines = ctags_cmd.formatted_tags_iter()?.collect::<Vec<_>>();
-        return Ok(to_scale(lines));
+                path: context.start_buffer_path.to_path_buf(),
+            });
+        }
+        "proj_tags" => {
+            let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
+            let scale = match ctags_cmd.ctags_cache() {
+                Some((total, path)) => Scale::Cache { total, path },
+                None => {
+                    let lines = ctags_cmd.par_formatted_lines()?;
+                    ctags_cmd.create_cache_async(lines.clone()).await?;
+                    to_scale(lines)
+                }
+            };
+            return Ok(scale);
+        }
+        "grep2" => {
+            let rg_cmd = RgBaseCommand::new(context.cwd.to_path_buf());
+            let (total, path) = match rg_cmd.cache_info() {
+                Some(cache) => cache,
+                None => rg_cmd.create_cache().await?,
+            };
+            let method = "clap#state#set_variable_string";
+            let name = "g:__clap_forerunner_tempfile";
+            let value = &path;
+            utility::println_json_with_length!(method, name, value);
+            return Ok(Scale::Cache { total, path });
+        }
+        _ => {}
     }
 
     if let Some(ref source_cmd) = context.source_cmd {

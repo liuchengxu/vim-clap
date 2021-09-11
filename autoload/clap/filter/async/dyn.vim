@@ -5,7 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 " Currently this is not configurable.
-let s:DYN_ITEMS_TO_SHOW = 30
+let s:DYN_ITEMS_TO_SHOW = 40
 
 function! s:handle_message(msg) abort
   if !g:clap.display.win_is_valid()

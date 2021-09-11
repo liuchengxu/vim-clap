@@ -68,7 +68,7 @@ impl Digest {
 
         // TODO: when the preview content mismatches the line, the cache is outdated and should be updated.
 
-        true
+        self.cached_path.exists()
     }
 }
 
