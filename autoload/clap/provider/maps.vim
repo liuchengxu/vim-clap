@@ -37,15 +37,14 @@ function! s:maps_source() abort
   for line in split(cout, "\n")
     if line =~# "^\t"
       let src = '  '.join(reverse(reverse(split(split(line)[-1], '/'))[0:2]), '/')
-      call add(list, printf('%s %s', curr, src))
+      let list[-1] = printf('%s %s', curr, src)
       let curr = ''
     else
       let curr = line[3:]
+      call add(list, printf('%s', curr))
     endif
   endfor
-  if !empty(curr)
-    call add(list, curr)
-  endif
+
   return sort(s:align_pairs(list))
 endfunction
 
