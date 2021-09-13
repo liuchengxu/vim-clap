@@ -108,8 +108,10 @@ impl Grep {
         grep_cmd.push_str(&self.grep_query);
 
         // currently vim-clap only supports rg.
+        // Ref https://github.com/liuchengxu/vim-clap/pull/60
         grep_cmd.push_str(" .");
 
+        // Shell command avoids https://github.com/liuchengxu/vim-clap/issues/595
         let mut std_cmd = StdCommand::new(&grep_cmd);
 
         if let Some(ref dir) = self.cmd_dir {
