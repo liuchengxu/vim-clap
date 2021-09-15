@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 fuzzy-matcher = "0.3"
-structopt = "0.3"
 
 extracted_fzy = { path = "extracted_fzy" }
 pattern = { path = "../pattern" }

@@ -69,7 +69,7 @@ impl EventHandler for BuiltinEventHandler {
                     &query,
                     path.clone().into(),
                     FilterContext::new(
-                        None,
+                        Default::default(),
                         Some(40),
                         Some(context.display_winwidth as usize),
                         context.icon.clone().into(),

@@ -902,7 +902,6 @@ dependencies = [
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",
- "structopt",
  "types",
 ]
 
@@ -1882,7 +1881,6 @@ name = "types"
 version = "0.1.0"
 dependencies = [
  "pattern",
- "structopt",
 ]
 
 [[package]]

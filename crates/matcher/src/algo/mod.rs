@@ -2,20 +2,32 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use structopt::clap::arg_enum;
-
 use types::{MatchType, MatchingText};
 
 use crate::MatchResult;
 
-// Implement arg_enum for using it in the command line arguments.
-arg_enum! {
-  /// Supported fuzzy match algorithm.
-  #[derive(Debug, Clone)]
-  pub enum FuzzyAlgorithm {
-      Skim,
-      Fzy,
-  }
+/// Supported fuzzy match algorithm.
+#[derive(Debug, Clone)]
+pub enum FuzzyAlgorithm {
+    Skim,
+    Fzy,
+}
+
+impl std::str::FromStr for FuzzyAlgorithm {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
+    }
+}
+
+impl<T: AsRef<str>> From<T> for FuzzyAlgorithm {
+    fn from(algo: T) -> Self {
+        match algo.as_ref().to_lowercase().as_str() {
+            "skim" => Self::Skim,
+            "fzy" => Self::Fzy,
+            _ => Self::Fzy,
+        }
+    }
 }
 
 impl Default for FuzzyAlgorithm {

@@ -169,7 +169,7 @@ impl Grep {
                 &self.grep_query,
                 source,
                 FilterContext::new(
-                    None,
+                    Default::default(),
                     number,
                     winwidth,
                     icon_painter,
