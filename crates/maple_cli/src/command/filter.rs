@@ -28,9 +28,9 @@ pub struct Filter {
     #[structopt(index = 1, long)]
     query: String,
 
-    /// Filter algorithm
-    #[structopt(long, possible_values = &FuzzyAlgorithm::variants(), case_insensitive = true)]
-    algo: Option<FuzzyAlgorithm>,
+    /// Fuzzy matching algorithm
+    #[structopt(long, parse(from_str), default_value = "fzy")]
+    algo: FuzzyAlgorithm,
 
     /// Shell command to produce the whole dataset that query is applied on.
     #[structopt(long)]
@@ -49,12 +49,12 @@ pub struct Filter {
     input: Option<AbsPathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[structopt(long, possible_values = &MatchType::variants(), case_insensitive = true)]
-    match_type: Option<MatchType>,
+    #[structopt(long, parse(from_str), default_value = "full")]
+    match_type: MatchType,
 
     /// Add a bonus to the score of base matching algorithm.
-    #[structopt(long, parse(from_str = parse_bonus))]
-    bonus: Option<Bonus>,
+    #[structopt(long, parse(from_str = parse_bonus), default_value = "none")]
+    bonus: Bonus,
 
     /// Synchronous filtering, returns after the input stream is complete.
     #[structopt(long)]
@@ -81,7 +81,7 @@ impl Filter {
     fn get_bonuses(&self) -> Vec<Bonus> {
         use std::io::BufRead;
 
-        let mut bonuses = vec![self.bonus.clone().unwrap_or_default()];
+        let mut bonuses = vec![self.bonus.clone()];
         if let Some(ref recent_files) = self.recent_files {
             // Ignore the error cases.
             if let Ok(file) = std::fs::File::open(recent_files) {
@@ -110,8 +110,8 @@ impl Filter {
         let ranked = filter::sync_run::<std::iter::Empty<_>>(
             &self.query,
             self.generate_source(),
-            self.algo.clone().unwrap_or(FuzzyAlgorithm::Fzy),
-            self.match_type.clone().unwrap_or(MatchType::Full),
+            self.algo.clone(),
+            self.match_type.clone(),
             self.get_bonuses(),
         )?;
 
@@ -138,7 +138,7 @@ impl Filter {
                 number,
                 winwidth,
                 icon_painter,
-                self.match_type.clone().unwrap_or(MatchType::Full),
+                self.match_type.clone(),
             ),
             self.get_bonuses(),
         )

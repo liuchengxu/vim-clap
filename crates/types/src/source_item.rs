@@ -1,35 +1,26 @@
-use structopt::clap::arg_enum;
-
 use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 pub type FuzzyText<'a> = (&'a str, usize);
 
-arg_enum! {
-  #[derive(Debug, Clone)]
-  pub enum MatchType {
-      Full,
-      TagName,
-      FileName,
-      IgnoreFilePath,
-  }
+#[derive(Debug, Clone)]
+pub enum MatchType {
+    Full,
+    TagName,
+    FileName,
+    IgnoreFilePath,
 }
 
-impl From<String> for MatchType {
-    fn from(match_type: String) -> Self {
-        match_type.as_str().into()
+impl std::str::FromStr for MatchType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
     }
 }
 
-impl From<&String> for MatchType {
-    fn from(match_type: &String) -> Self {
-        match_type.as_str().into()
-    }
-}
-
-impl From<&str> for MatchType {
-    fn from(match_type: &str) -> Self {
-        match match_type.to_lowercase().as_str() {
+impl<T: AsRef<str>> From<T> for MatchType {
+    fn from(match_type: T) -> Self {
+        match match_type.as_ref().to_lowercase().as_str() {
             "full" => Self::Full,
             "tagname" => Self::TagName,
             "filename" => Self::FileName,

@@ -71,38 +71,6 @@ pub struct Grep {
     sync: bool,
 }
 
-fn prepare_sync_grep_cmd<P: AsRef<Path>>(
-    cmd_str: &str,
-    cmd_dir: Option<P>,
-) -> (Command, Vec<&str>) {
-    let args = cmd_str
-        .split_whitespace()
-        // If cmd_str contains a quoted option, that's problematic.
-        //
-        // Ref https://github.com/liuchengxu/vim-clap/issues/595
-        .map(|s| {
-            if s.len() > 2 {
-                if s.starts_with('"') && s.chars().nth_back(0).unwrap() == '"' {
-                    &s[1..s.len() - 1]
-                } else {
-                    s
-                }
-            } else {
-                s
-            }
-        })
-        .chain(std::iter::once("--json")) // Force using json format.
-        .collect::<Vec<&str>>();
-
-    let mut std_cmd = StdCommand::new(args[0]);
-
-    if let Some(ref dir) = cmd_dir {
-        std_cmd.current_dir(dir);
-    }
-
-    (std_cmd.into_inner(), args)
-}
-
 impl Grep {
     pub fn run(&self, params: Params) -> Result<()> {
         if self.sync {
@@ -125,27 +93,32 @@ impl Grep {
             ..
         }: Params,
     ) -> Result<()> {
-        let grep_cmd = self
+        let mut grep_cmd = self
             .grep_cmd
             .clone()
             .context("--grep-cmd is required when --sync is on")?;
-        let (mut cmd, mut args) = prepare_sync_grep_cmd(&grep_cmd, self.cmd_dir.as_ref());
-
-        // We split out the grep opts and query in case of the possible escape issue of clap.
-        args.push(&self.grep_query);
 
         if let Some(ref g) = self.glob {
-            args.push("-g");
-            args.push(g);
+            grep_cmd.push_str(" -g ");
+            grep_cmd.push_str(g);
         }
+
+        // Force using json format.
+        grep_cmd.push_str(" --json ");
+        grep_cmd.push_str(&self.grep_query);
 
         // currently vim-clap only supports rg.
         // Ref https://github.com/liuchengxu/vim-clap/pull/60
-        if cfg!(windows) {
-            args.push(".");
+        grep_cmd.push_str(" .");
+
+        // Shell command avoids https://github.com/liuchengxu/vim-clap/issues/595
+        let mut std_cmd = StdCommand::new(&grep_cmd);
+
+        if let Some(ref dir) = self.cmd_dir {
+            std_cmd.current_dir(dir);
         }
 
-        cmd.args(&args[1..]);
+        let mut cmd = std_cmd.into_inner();
 
         let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
 
@@ -196,7 +169,7 @@ impl Grep {
                 &self.grep_query,
                 source,
                 FilterContext::new(
-                    None,
+                    Default::default(),
                     number,
                     winwidth,
                     icon_painter,

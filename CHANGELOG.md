@@ -11,6 +11,7 @@
 ## Fixed
 
 - Error when using `clap#preview#file()` with `g:clap_preview_direction = 'UD'`. #756
+- `maps` provider: missing keybindings for neovim. #762 @ray-x
 
 ## [0.29] 2021-08-30
 

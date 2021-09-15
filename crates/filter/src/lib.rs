@@ -25,7 +25,7 @@ pub use types::{FilteredItem, Query, SourceItem};
 /// Context for running the filter.
 #[derive(Debug, Clone)]
 pub struct FilterContext {
-    algo: Option<FuzzyAlgorithm>,
+    algo: FuzzyAlgorithm,
     number: Option<usize>,
     winwidth: Option<usize>,
     icon_painter: Option<IconPainter>,
@@ -35,7 +35,7 @@ pub struct FilterContext {
 impl Default for FilterContext {
     fn default() -> Self {
         Self {
-            algo: None,
+            algo: Default::default(),
             number: None,
             winwidth: None,
             icon_painter: None,
@@ -46,7 +46,7 @@ impl Default for FilterContext {
 
 impl FilterContext {
     pub fn new(
-        algo: Option<FuzzyAlgorithm>,
+        algo: FuzzyAlgorithm,
         number: Option<usize>,
         winwidth: Option<usize>,
         icon_painter: Option<IconPainter>,
@@ -61,7 +61,7 @@ impl FilterContext {
         }
     }
 
-    pub fn algo(mut self, algo: Option<FuzzyAlgorithm>) -> Self {
+    pub fn algo(mut self, algo: FuzzyAlgorithm) -> Self {
         self.algo = algo;
         self
     }
