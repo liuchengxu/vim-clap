@@ -14,7 +14,7 @@ use structopt::StructOpt;
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess::Exec,
-    FilterContext, Source,
+    Source,
 };
 use icon::Icon;
 use utility::is_git_repo;
@@ -156,26 +156,16 @@ impl Grep {
     /// Runs grep using the dyn filter.
     ///
     /// Firstly try using the cache.
-    fn dyn_run(
-        &self,
-        Params {
-            number,
-            winwidth,
-            icon,
-            no_cache,
-        }: Params,
-    ) -> Result<()> {
+    fn dyn_run(&self, params: Params) -> Result<()> {
+        let no_cache = params.no_cache;
+
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
                 source,
-                FilterContext::new(
-                    Default::default(),
-                    icon,
-                    number,
-                    winwidth,
-                    MatchType::IgnoreFilePath,
-                ),
+                params
+                    .to_filter_context()
+                    .match_type(MatchType::IgnoreFilePath),
                 vec![Bonus::None],
             )
         };

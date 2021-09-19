@@ -56,7 +56,7 @@ pub struct Filter {
     #[structopt(long, parse(from_str = parse_bonus), default_value = "none")]
     bonus: Bonus,
 
-    /// Synchronous filtering, returns after the input stream is complete.
+    /// Synchronous filtering, returns until the input stream is complete.
     #[structopt(long)]
     sync: bool,
 }
@@ -96,9 +96,7 @@ impl Filter {
         bonuses
     }
 
-    /// Returns the results until the input stream is complete.
-    #[inline]
-    fn sync_run(
+    pub fn run(
         &self,
         Params {
             number,
@@ -107,48 +105,23 @@ impl Filter {
             ..
         }: Params,
     ) -> Result<()> {
-        let ranked = filter::sync_run::<std::iter::Empty<_>>(
-            &self.query,
-            self.generate_source(),
-            self.algo.clone(),
-            self.match_type.clone(),
-            self.get_bonuses(),
-        )?;
-
-        printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
-
-        Ok(())
-    }
-
-    #[inline]
-    fn dyn_run(
-        &self,
-        Params {
-            number,
-            winwidth,
-            icon,
-            ..
-        }: Params,
-    ) -> Result<()> {
-        filter::dyn_run::<std::iter::Empty<_>>(
-            &self.query,
-            self.generate_source(),
-            FilterContext::new(
-                self.algo.clone(),
-                icon,
-                number,
-                winwidth,
-                self.match_type.clone(),
-            ),
-            self.get_bonuses(),
-        )
-    }
-
-    pub fn run(&self, params: Params) -> Result<()> {
         if self.sync {
-            self.sync_run(params)?;
+            let ranked = filter::sync_run::<std::iter::Empty<_>>(
+                &self.query,
+                self.generate_source(),
+                self.algo,
+                self.match_type,
+                self.get_bonuses(),
+            )?;
+
+            printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else {
-            self.dyn_run(params)?;
+            filter::dyn_run::<std::iter::Empty<_>>(
+                &self.query,
+                self.generate_source(),
+                FilterContext::new(self.algo, icon, number, winwidth, self.match_type),
+                self.get_bonuses(),
+            )?;
         }
         Ok(())
     }
