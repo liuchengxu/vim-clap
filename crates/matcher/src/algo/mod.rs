@@ -7,7 +7,7 @@ use types::{MatchType, MatchingText};
 use crate::MatchResult;
 
 /// Supported fuzzy match algorithm.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum FuzzyAlgorithm {
     Skim,
     Fzy,

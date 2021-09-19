@@ -12,7 +12,7 @@ mod source;
 use anyhow::Result;
 use rayon::prelude::*;
 
-use icon::IconPainter;
+use icon::Icon;
 use matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher};
 
 pub use self::dynamic::dyn_run;
@@ -26,9 +26,9 @@ pub use types::{FilteredItem, Query, SourceItem};
 #[derive(Debug, Clone)]
 pub struct FilterContext {
     algo: FuzzyAlgorithm,
+    icon: Icon,
     number: Option<usize>,
     winwidth: Option<usize>,
-    icon_painter: Option<IconPainter>,
     match_type: MatchType,
 }
 
@@ -36,9 +36,9 @@ impl Default for FilterContext {
     fn default() -> Self {
         Self {
             algo: Default::default(),
+            icon: Default::default(),
             number: None,
             winwidth: None,
-            icon_painter: None,
             match_type: MatchType::Full,
         }
     }
@@ -47,16 +47,16 @@ impl Default for FilterContext {
 impl FilterContext {
     pub fn new(
         algo: FuzzyAlgorithm,
+        icon: Icon,
         number: Option<usize>,
         winwidth: Option<usize>,
-        icon_painter: Option<IconPainter>,
         match_type: MatchType,
     ) -> Self {
         Self {
             algo,
+            icon,
             number,
             winwidth,
-            icon_painter,
             match_type,
         }
     }
@@ -76,8 +76,8 @@ impl FilterContext {
         self
     }
 
-    pub fn icon_painter(mut self, icon_painter: Option<IconPainter>) -> Self {
-        self.icon_painter = icon_painter;
+    pub fn icon(mut self, icon: Icon) -> Self {
+        self.icon = icon;
         self
     }
 

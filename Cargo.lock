@@ -652,7 +652,6 @@ dependencies = [
  "itertools",
  "pattern",
  "serde_json",
- "structopt",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use rayon::slice::ParallelSliceMut;
 
-use icon::{IconPainter, ICON_LEN};
+use icon::{Icon, ICON_LEN};
 use matcher::Bonus;
 use utility::{println_json, println_json_with_length};
 
@@ -123,18 +123,18 @@ pub struct Watcher {
     past: Instant,
     /// Number of total matched items.
     total: usize,
-    /// icon painter.
-    icon_painter: Option<IconPainter>,
+    /// Icon.
+    icon: Icon,
     /// Lines we sent last time.
     last_lines: Vec<String>,
 }
 
 impl Watcher {
-    pub fn new(initial_total: usize, icon_painter: Option<IconPainter>) -> Self {
+    pub fn new(initial_total: usize, icon: Icon) -> Self {
         Self {
             past: Instant::now(),
             total: initial_total,
-            icon_painter,
+            icon,
             last_lines: Vec::with_capacity(ITEMS_TO_SHOW),
         }
     }
@@ -152,7 +152,7 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let filtered_item = std::ops::Index::index(buffer, idx);
-                    let text = if let Some(ref painter) = self.icon_painter {
+                    let text = if let Some(ref painter) = self.icon.painter() {
                         indices.push(filtered_item.shifted_indices(ICON_LEN));
                         painter.paint(filtered_item.display_text())
                     } else {
@@ -196,10 +196,7 @@ impl Watcher {
 /// VecDeque for this iterator.
 ///
 /// So, this particular function won't work in parallel context at all.
-fn dyn_collect_all(
-    mut iter: impl Iterator<Item = FilteredItem>,
-    icon_painter: &Option<IconPainter>,
-) -> Vec<FilteredItem> {
+fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: Icon) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -212,7 +209,7 @@ fn dyn_collect_all(
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut watcher = Watcher::new(total, icon_painter.clone());
+    let mut watcher = Watcher::new(total, icon);
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
@@ -245,7 +242,7 @@ fn dyn_collect_all(
 fn dyn_collect_number(
     mut iter: impl Iterator<Item = FilteredItem>,
     number: usize,
-    icon_painter: &Option<IconPainter>,
+    icon: Icon,
 ) -> (usize, Vec<FilteredItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
@@ -258,7 +255,7 @@ fn dyn_collect_number(
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut watcher = Watcher::new(total, icon_painter.clone());
+    let mut watcher = Watcher::new(total, icon);
 
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
@@ -294,9 +291,9 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     source: Source<I>,
     FilterContext {
         algo,
+        icon,
         number,
         winwidth,
-        icon_painter,
         match_type,
     }: FilterContext,
     bonuses: Vec<Bonus>,
@@ -306,35 +303,25 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
-            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon_painter),
+            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => {
-                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon_painter)
-            }
+            Source::Exec(exec) => dyn_collect_number(source_iter_exec!(scorer, exec), number, icon),
             Source::File(fpath) => {
-                dyn_collect_number(source_iter_file!(scorer, fpath), number, &icon_painter)
+                dyn_collect_number(source_iter_file!(scorer, fpath), number, icon)
             }
-            Source::List(list) => {
-                dyn_collect_number(source_iter_list!(scorer, list), number, &icon_painter)
-            }
+            Source::List(list) => dyn_collect_number(source_iter_list!(scorer, list), number, icon),
         };
 
         let ranked = sort_initial_filtered(filtered);
 
-        printer::print_dyn_filter_results(
-            ranked,
-            total,
-            number,
-            winwidth.unwrap_or(100),
-            icon_painter,
-        );
+        printer::print_dyn_filter_results(ranked, total, number, winwidth.unwrap_or(100), icon);
     } else {
         let filtered = match source {
-            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon_painter),
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), icon),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon_painter),
-            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon_painter),
-            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon_painter),
+            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), icon),
+            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), icon),
+            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), icon),
         };
 
         let ranked = sort_initial_filtered(filtered);
@@ -416,7 +403,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            FilterContext::new(FuzzyAlgorithm::Fzy, Some(100), None, None, MatchType::Full),
+            FilterContext::default().number(Some(100)),
             vec![Bonus::None],
         )
         .unwrap()

@@ -3,7 +3,7 @@ use pattern::{file_name_only, strip_grep_filepath, tag_name_only};
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 pub type FuzzyText<'a> = (&'a str, usize);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum MatchType {
     Full,
     TagName,
@@ -97,7 +97,7 @@ impl From<String> for SourceItem {
 }
 
 impl SourceItem {
-    /// Constructs `SourceItem`.
+    /// Constructs a new instance of [`SourceItem`].
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,

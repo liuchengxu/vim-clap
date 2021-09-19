@@ -32,7 +32,7 @@ impl RipGrepForerunner {
         self,
         Params {
             number,
-            icon_painter,
+            icon,
             no_cache,
             ..
         }: Params,
@@ -41,12 +41,7 @@ impl RipGrepForerunner {
             if let Some(ref dir) = self.cmd_dir {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
                 if let Some((total, cache)) = base_cmd.cache_info() {
-                    send_response_from_cache(
-                        &cache,
-                        total as usize,
-                        SendResponse::Json,
-                        Some(IconPainter::Grep),
-                    );
+                    send_response_from_cache(&cache, total as usize, SendResponse::Json, icon);
                     return Ok(());
                 }
             }
@@ -70,7 +65,7 @@ impl RipGrepForerunner {
             &mut cmd,
             self.cmd_dir.clone(),
             number,
-            icon_painter,
+            icon,
             Some(self.output_threshold),
         );
 

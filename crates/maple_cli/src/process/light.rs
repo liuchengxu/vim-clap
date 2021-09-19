@@ -5,7 +5,7 @@ use std::process::Command;
 
 use anyhow::{anyhow, Result};
 
-use icon::IconPainter;
+use icon::Icon;
 use utility::{println_json, read_first_lines};
 
 use crate::cache::Digest;
@@ -72,7 +72,7 @@ pub struct CommandEnv {
     pub dir: Option<PathBuf>,
     pub total: usize,
     pub number: Option<usize>,
-    pub icon_painter: Option<IconPainter>,
+    pub icon: Icon,
     pub output_threshold: usize,
 }
 
@@ -82,7 +82,7 @@ impl Default for CommandEnv {
             dir: None,
             total: 0usize,
             number: None,
-            icon_painter: None,
+            icon: Default::default(),
             output_threshold: OUTPUT_THRESHOLD,
         }
     }
@@ -92,13 +92,13 @@ impl CommandEnv {
     pub fn new(
         dir: Option<PathBuf>,
         number: Option<usize>,
-        icon_painter: Option<IconPainter>,
+        icon: Icon,
         output_threshold: Option<usize>,
     ) -> Self {
         Self {
             dir,
             number,
-            icon_painter,
+            icon,
             output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
             ..Default::default()
         }
@@ -109,7 +109,7 @@ impl CommandEnv {
         &self,
         top_n: impl Iterator<Item = std::borrow::Cow<'b, str>>,
     ) -> Vec<String> {
-        if let Some(ref painter) = self.icon_painter {
+        if let Some(ref painter) = self.icon.painter() {
             top_n.map(|x| painter.paint(x)).collect()
         } else {
             top_n.map(Into::into).collect()
@@ -140,12 +140,12 @@ impl<'a> LightCommand<'a> {
     pub fn new(
         cmd: &'a mut Command,
         number: Option<usize>,
-        icon_painter: Option<IconPainter>,
+        icon: Icon,
         output_threshold: usize,
     ) -> Self {
         Self {
             cmd,
-            env: CommandEnv::new(None, number, icon_painter, Some(output_threshold)),
+            env: CommandEnv::new(None, number, icon, Some(output_threshold)),
         }
     }
 
@@ -154,12 +154,12 @@ impl<'a> LightCommand<'a> {
         cmd: &'a mut Command,
         dir: Option<PathBuf>,
         number: Option<usize>,
-        icon_painter: Option<IconPainter>,
+        icon: Icon,
         output_threshold: Option<usize>,
     ) -> Self {
         Self {
             cmd,
-            env: CommandEnv::new(dir, number, icon_painter, output_threshold),
+            env: CommandEnv::new(dir, number, icon, output_threshold),
         }
     }
 
@@ -214,7 +214,7 @@ impl<'a> LightCommand<'a> {
         } = digest;
 
         let lines = if let Ok(iter) = read_first_lines(&cached_path, 100) {
-            if let Some(ref painter) = self.env.icon_painter {
+            if let Some(ref painter) = self.env.icon.painter() {
                 iter.map(|x| painter.paint(&x)).collect()
             } else {
                 iter.collect()

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
 
@@ -17,11 +18,11 @@ pub struct Helptags {
 }
 
 #[inline]
-fn strip_trailing_slash(x: &str) -> String {
+fn strip_trailing_slash(x: &str) -> Cow<str> {
     if x.ends_with('/') {
         let mut x: String = x.into();
         x.pop();
-        x
+        x.into()
     } else {
         x.into()
     }

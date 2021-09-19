@@ -97,7 +97,7 @@ impl<T: EventHandler> Session<T> {
             printer::decorate_lines::<i64>(
                 lines,
                 self.context.display_winwidth as usize,
-                self.context.icon.clone().into(),
+                self.context.icon,
             )
             .print_on_session_create();
         }

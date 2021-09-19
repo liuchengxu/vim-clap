@@ -92,9 +92,9 @@ pub async fn handle_recent_files_message(
         ranked.iter().take(200).cloned().collect(),
         winwidth,
         if enable_icon.unwrap_or(true) {
-            Some(icon::IconPainter::File)
+            icon::Icon::Enabled(icon::IconKind::File)
         } else {
-            None
+            icon::Icon::Null
         },
     );
 

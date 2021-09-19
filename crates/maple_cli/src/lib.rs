@@ -17,6 +17,6 @@ pub use {
     anyhow::{Context, Result},
     app::{Cmd, Maple},
     filter::{subprocess, Source},
-    icon::IconPainter,
+    icon::{Icon, IconKind},
     structopt::StructOpt,
 };

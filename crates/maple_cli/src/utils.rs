@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use chrono::prelude::*;
 use once_cell::sync::Lazy;
 
-use icon::IconPainter;
+use icon::Icon;
 use types::{ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
 
@@ -128,11 +128,11 @@ pub fn send_response_from_cache(
     tempfile: &Path,
     total: usize,
     response_ty: SendResponse,
-    icon_painter: Option<IconPainter>,
+    icon: Icon,
 ) {
     let using_cache = true;
     if let Ok(iter) = read_first_lines(&tempfile, 100) {
-        let lines: Vec<String> = if let Some(painter) = icon_painter {
+        let lines: Vec<String> = if let Some(painter) = icon.painter() {
             iter.map(|x| painter.paint(&x)).collect()
         } else {
             iter.collect()

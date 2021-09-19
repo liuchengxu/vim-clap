@@ -14,9 +14,9 @@ use structopt::StructOpt;
 use filter::{
     matcher::{Bonus, MatchType},
     subprocess::Exec,
-    FilterContext, Source,
+    Source,
 };
-use icon::IconPainter;
+use icon::Icon;
 use utility::is_git_repo;
 
 use crate::app::Params;
@@ -89,7 +89,7 @@ impl Grep {
         Params {
             number,
             winwidth,
-            icon_painter,
+            icon,
             ..
         }: Params,
     ) -> Result<()> {
@@ -120,18 +120,22 @@ impl Grep {
 
         let mut cmd = std_cmd.into_inner();
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
+        let mut light_cmd =
+            LightCommand::new_grep(&mut cmd, None, number, Default::default(), None);
 
         let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
         let execute_info = light_cmd.execute(base_cmd)?;
 
-        let enable_icon = icon_painter.is_some();
+        let enable_icon = !matches!(icon, Icon::Null);
 
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
             .par_iter()
-            .filter_map(|s| Match::try_from(s.as_str()).ok())
-            .map(|mat| mat.build_grep_line(enable_icon))
+            .filter_map(|s| {
+                Match::try_from(s.as_str())
+                    .ok()
+                    .map(|mat| mat.build_grep_line(enable_icon))
+            })
             .unzip();
 
         let total = lines.len();
@@ -155,26 +159,16 @@ impl Grep {
     /// Runs grep using the dyn filter.
     ///
     /// Firstly try using the cache.
-    fn dyn_run(
-        &self,
-        Params {
-            number,
-            winwidth,
-            icon_painter,
-            no_cache,
-        }: Params,
-    ) -> Result<()> {
+    fn dyn_run(&self, params: Params) -> Result<()> {
+        let no_cache = params.no_cache;
+
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
                 source,
-                FilterContext::new(
-                    Default::default(),
-                    number,
-                    winwidth,
-                    icon_painter,
-                    MatchType::IgnoreFilePath,
-                ),
+                params
+                    .to_filter_context()
+                    .match_type(MatchType::IgnoreFilePath),
                 vec![Bonus::None],
             )
         };

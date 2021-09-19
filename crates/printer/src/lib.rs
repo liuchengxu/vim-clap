@@ -3,7 +3,7 @@
 
 mod truncation;
 
-use icon::{IconPainter, ICON_LEN};
+use icon::{Icon, ICON_LEN};
 use types::FilteredItem;
 use utility::{println_json, println_json_with_length};
 
@@ -79,17 +79,17 @@ impl DecoratedLines {
 pub fn decorate_lines<T>(
     mut top_list: Vec<FilteredItem<T>>,
     winwidth: usize,
-    icon_painter: Option<IconPainter>,
+    icon: Icon,
 ) -> DecoratedLines {
     let truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
-    if let Some(painter) = icon_painter {
+    if let Some(painter) = icon.painter() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
             .map(|(idx, filtered_item)| {
                 let text = filtered_item.display_text();
                 let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
-                    format!("{} {}", painter.get_icon(origin_text), text)
+                    format!("{} {}", painter.icon(origin_text), text)
                 } else {
                     painter.paint(&text)
                 };
@@ -118,13 +118,13 @@ pub fn print_sync_filter_results(
     ranked: Vec<FilteredItem>,
     number: Option<usize>,
     winwidth: usize,
-    icon_painter: Option<IconPainter>,
+    icon: Icon,
 ) {
     if let Some(number) = number {
         let total = ranked.len();
         let mut ranked = ranked;
         ranked.truncate(number);
-        decorate_lines(ranked, winwidth, icon_painter).print_json(Some(total));
+        decorate_lines(ranked, winwidth, icon).print_json(Some(total));
     } else {
         for FilteredItem {
             source_item,
@@ -146,14 +146,10 @@ pub fn print_dyn_filter_results(
     total: usize,
     number: usize,
     winwidth: usize,
-    icon_painter: Option<IconPainter>,
+    icon: Icon,
 ) {
-    decorate_lines(
-        ranked.into_iter().take(number).collect(),
-        winwidth,
-        icon_painter,
-    )
-    .print_json_with_length(Some(total));
+    decorate_lines(ranked.into_iter().take(number).collect(), winwidth, icon)
+        .print_json_with_length(Some(total));
 }
 
 #[cfg(test)]
