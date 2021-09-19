@@ -403,13 +403,7 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            FilterContext::new(
-                FuzzyAlgorithm::Fzy,
-                Default::default(),
-                Some(100),
-                None,
-                MatchType::Full,
-            ),
+            FilterContext::default().number(Some(100)),
             vec![Bonus::None],
         )
         .unwrap()
