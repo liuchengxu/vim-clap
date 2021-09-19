@@ -63,4 +63,7 @@ pub fn bsearch_icon_table(c: &str, table: &[(&str, char)]) ->Option<usize> {
     .unwrap();
 
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=exactmatch_map.json");
+    println!("cargo:rerun-if-changed=extension_map.json");
+    println!("cargo:rerun-if-changed=tagkind_map.json");
 }
