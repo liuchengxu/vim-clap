@@ -67,14 +67,11 @@ impl RecursiveTags {
         &self,
         Params {
             no_cache,
-            icon_painter,
+            icon,
             ..
         }: Params,
     ) -> Result<()> {
         ensure_has_json_support()?;
-
-        // In case of passing an invalid icon-painter option.
-        let icon_painter = icon_painter.map(|_| icon::IconPainter::ProjTags);
 
         let ctags_cmd = self.assemble_ctags_cmd()?;
 
@@ -86,7 +83,7 @@ impl RecursiveTags {
             } else {
                 ctags_cmd.par_create_cache()?
             };
-            send_response_from_cache(&cache, total, SendResponse::Json, icon_painter);
+            send_response_from_cache(&cache, total, SendResponse::Json, icon);
             return Ok(());
         } else {
             filter::dyn_run(
@@ -98,9 +95,9 @@ impl RecursiveTags {
                 Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
                 FilterContext::new(
                     Default::default(),
+                    icon,
                     Some(30),
                     None,
-                    icon_painter,
                     MatchType::TagName,
                 ),
                 vec![Bonus::None],

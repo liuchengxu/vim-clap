@@ -157,7 +157,7 @@ impl Match {
         let column = self.column();
 
         let maybe_icon = if enable_icon {
-            format!("{} ", icon::icon_for(&path))
+            format!("{} ", icon::file_icon(&path))
         } else {
             Default::default()
         };

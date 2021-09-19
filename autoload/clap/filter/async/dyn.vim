@@ -38,7 +38,7 @@ endfunction
 
 function! s:prepare_grep_cmd() abort
   let s:last_query = g:clap.input.get()
-  let subcmd = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
+  let subcmd = g:clap_enable_icon ? ['--icon=Grep'] : []
   if has_key(g:clap.context, 'no-cache')
     call add(subcmd, '--no-cache')
   endif

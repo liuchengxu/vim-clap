@@ -103,7 +103,7 @@ impl Filter {
         Params {
             number,
             winwidth,
-            icon_painter,
+            icon,
             ..
         }: Params,
     ) -> Result<()> {
@@ -115,7 +115,7 @@ impl Filter {
             self.get_bonuses(),
         )?;
 
-        printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon_painter);
+        printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
 
         Ok(())
     }
@@ -126,7 +126,7 @@ impl Filter {
         Params {
             number,
             winwidth,
-            icon_painter,
+            icon,
             ..
         }: Params,
     ) -> Result<()> {
@@ -135,9 +135,9 @@ impl Filter {
             self.generate_source(),
             FilterContext::new(
                 self.algo.clone(),
+                icon,
                 number,
                 winwidth,
-                icon_painter,
                 self.match_type.clone(),
             ),
             self.get_bonuses(),

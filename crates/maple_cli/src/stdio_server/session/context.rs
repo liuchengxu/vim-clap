@@ -3,7 +3,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
 use filter::FilteredItem;
-use icon::IconPainter;
+use icon::{Icon, IconKind};
 use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -70,21 +70,6 @@ impl Scale {
 pub struct SyncFilterResults {
     pub total: usize,
     pub decorated_lines: printer::DecoratedLines,
-}
-
-#[derive(Clone, Debug)]
-pub enum Icon {
-    Disabled,
-    Enabled(IconPainter),
-}
-
-impl From<Icon> for Option<IconPainter> {
-    fn from(icon: Icon) -> Self {
-        match icon {
-            Icon::Disabled => None,
-            Icon::Enabled(icon) => Some(icon),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -189,13 +174,13 @@ impl From<Message> for SessionContext {
 
         let icon = if enable_icon.unwrap_or(false) {
             match provider_id.as_str() {
-                "tags" | "proj_tags" => Icon::Enabled(IconPainter::ProjTags),
-                "grep" | "grep2" => Icon::Enabled(IconPainter::Grep),
-                "files" => Icon::Enabled(IconPainter::File),
-                _ => Icon::Disabled,
+                "tags" | "proj_tags" => Icon::Enabled(IconKind::ProjTags),
+                "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
+                "files" => Icon::Enabled(IconKind::File),
+                _ => Icon::Null,
             }
         } else {
-            Icon::Disabled
+            Icon::Null
         };
 
         let match_bonuses = match provider_id.as_str() {

@@ -12,7 +12,7 @@ function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abor
   let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
   if a:enable_icon
-    call add(global_opts, '--icon-painter=Grep')
+    call add(global_opts, '--icon=Grep')
   endif
 
   let subcommand = [
@@ -31,7 +31,7 @@ endfunction
 
 function! clap#maple#command#ripgrep_forerunner() abort
   " TODO: add max_output
-  let global_opts = g:clap_enable_icon ? ['--icon-painter=Grep'] : []
+  let global_opts = g:clap_enable_icon ? ['--icon=Grep'] : []
 
   if has_key(g:clap.context, 'no-cache')
     call add(global_opts, '--no-cache')
@@ -50,9 +50,9 @@ function! s:inject_icon_painter_opt(opts) abort
   let global_opts = a:opts
   if g:clap_enable_icon
     if index(['files', 'git_files'], g:clap.provider.id) > -1
-      call add(global_opts, '--icon-painter=File')
+      call add(global_opts, '--icon=File')
     elseif 'proj_tags' ==# g:clap.provider.id
-      call add(global_opts, '--icon-painter=ProjTags')
+      call add(global_opts, '--icon=ProjTags')
     endif
   endif
   return global_opts
@@ -86,7 +86,7 @@ function! clap#maple#command#filter_sync(query) abort
 
     call add(global_opts, printf('--bonus=%s', clap#filter#get_bonus_type()))
     if g:clap_enable_icon
-      call add(global_opts, '--icon-painter=File')
+      call add(global_opts, '--icon=File')
     endif
   endif
 

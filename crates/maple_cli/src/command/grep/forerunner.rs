@@ -32,7 +32,7 @@ impl RipGrepForerunner {
         self,
         Params {
             number,
-            icon_painter,
+            icon,
             no_cache,
             ..
         }: Params,
@@ -45,7 +45,7 @@ impl RipGrepForerunner {
                         &cache,
                         total as usize,
                         SendResponse::Json,
-                        Some(IconPainter::Grep),
+                        icon
                     );
                     return Ok(());
                 }
@@ -70,7 +70,7 @@ impl RipGrepForerunner {
             &mut cmd,
             self.cmd_dir.clone(),
             number,
-            icon_painter,
+            icon,
             Some(self.output_threshold),
         );
 

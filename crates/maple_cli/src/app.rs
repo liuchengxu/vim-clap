@@ -2,7 +2,7 @@ use anyhow::Result;
 use structopt::{clap::AppSettings, StructOpt};
 
 use filter::FilterContext;
-use icon::IconPainter;
+use icon::Icon;
 
 use crate::command;
 
@@ -80,8 +80,8 @@ pub struct Params {
     pub winwidth: Option<usize>,
 
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long, possible_values = &IconPainter::variants(), case_insensitive = true)]
-    pub icon_painter: Option<IconPainter>,
+    #[structopt(long, parse(from_str), default_value = "unknown")]
+    pub icon: Icon,
 
     /// Do not use the cached file for exec subcommand.
     #[structopt(long)]
@@ -91,9 +91,9 @@ pub struct Params {
 impl Params {
     pub fn into_filter_context(self) -> FilterContext {
         FilterContext::default()
+            .icon(self.icon)
             .number(self.number)
             .winwidth(self.winwidth)
-            .icon_painter(self.icon_painter)
     }
 }
 

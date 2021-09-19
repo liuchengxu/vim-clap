@@ -16,7 +16,7 @@ use filter::{
     subprocess::Exec,
     FilterContext, Source,
 };
-use icon::IconPainter;
+use icon::Icon;
 use utility::is_git_repo;
 
 use crate::app::Params;
@@ -89,7 +89,7 @@ impl Grep {
         Params {
             number,
             winwidth,
-            icon_painter,
+            icon,
             ..
         }: Params,
     ) -> Result<()> {
@@ -120,12 +120,12 @@ impl Grep {
 
         let mut cmd = std_cmd.into_inner();
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, None, None);
+        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, Default::default(), None);
 
         let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
         let execute_info = light_cmd.execute(base_cmd)?;
 
-        let enable_icon = icon_painter.is_some();
+        let enable_icon = !matches!(icon, Icon::Null);
 
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
@@ -160,7 +160,7 @@ impl Grep {
         Params {
             number,
             winwidth,
-            icon_painter,
+            icon,
             no_cache,
         }: Params,
     ) -> Result<()> {
@@ -170,9 +170,9 @@ impl Grep {
                 source,
                 FilterContext::new(
                     Default::default(),
+                    icon,
                     number,
                     winwidth,
-                    icon_painter,
                     MatchType::IgnoreFilePath,
                 ),
                 vec![Bonus::None],
