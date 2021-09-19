@@ -39,25 +39,13 @@ impl Default for Bonus {
     }
 }
 
-impl From<String> for Bonus {
-    fn from(b: String) -> Self {
-        b.as_str().into()
-    }
-}
-
-impl From<&str> for Bonus {
-    fn from(b: &str) -> Self {
-        match b.to_lowercase().as_str() {
+impl<T: AsRef<str>> From<T> for Bonus {
+    fn from(s: T) -> Self {
+        match s.as_ref().to_lowercase().as_str() {
             "none" => Self::None,
             "filename" => Self::FileName,
             _ => Self::None,
         }
-    }
-}
-
-impl From<&String> for Bonus {
-    fn from(b: &String) -> Self {
-        b.as_str().into()
     }
 }
 
@@ -68,7 +56,7 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_for<'a, T: MatchingText<'a>>(
+    pub fn bonus_score<'a, T: MatchingText<'a>>(
         &self,
         item: &T,
         score: Score,

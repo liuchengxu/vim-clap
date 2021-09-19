@@ -165,7 +165,7 @@ impl Matcher {
     ) -> Score {
         self.bonuses
             .iter()
-            .map(|b| b.bonus_for(item, base_score, base_indices))
+            .map(|b| b.bonus_score(item, base_score, base_indices))
             .sum()
     }
 
