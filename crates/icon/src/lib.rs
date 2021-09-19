@@ -1,7 +1,7 @@
-include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 // Now we do not need to genetate the constants module using the Python script.
 // mod constants;
 // pub use constants::*;
+include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
 use std::path::Path;
 
@@ -141,7 +141,7 @@ pub fn prepend_icon(line: &str) -> String {
 }
 
 #[inline]
-pub fn icon_for_filer<P: AsRef<Path>>(path: P) -> IconType {
+pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
     if path.as_ref().is_dir() {
         FOLDER_ICON
     } else {
@@ -150,7 +150,7 @@ pub fn icon_for_filer<P: AsRef<Path>>(path: P) -> IconType {
 }
 
 pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: &str) -> String {
-    format!("{} {}", icon_for_filer(path), line)
+    format!("{} {}", filer_icon(path), line)
 }
 
 fn proj_tags_icon(line: &str) -> IconType {
