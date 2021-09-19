@@ -46,7 +46,7 @@ function! clap#maple#command#ripgrep_forerunner() abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! s:inject_icon_painter_opt(opts) abort
+function! s:inject_icon_opt(opts) abort
   let global_opts = a:opts
   if g:clap_enable_icon
     if index(['files', 'git_files'], g:clap.provider.id) > -1
@@ -60,7 +60,7 @@ endfunction
 
 function! clap#maple#command#exec_forerunner(cmd) abort
   " No global --number option.
-  let global_opts = s:inject_icon_painter_opt([])
+  let global_opts = s:inject_icon_opt([])
 
   if has_key(g:clap.context, 'no-cache')
     call add(global_opts, '--no-cache')
@@ -95,7 +95,7 @@ endfunction
 
 function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
   let global_opts = ['--number', a:dyn_size, '--winwidth', winwidth(g:clap.display.winid)]
-  let global_opts = s:inject_icon_painter_opt(global_opts)
+  let global_opts = s:inject_icon_opt(global_opts)
 
   let subcommand = [
         \ 'filter', g:.clap.input.get(),
@@ -122,7 +122,7 @@ endfunction
 
 function! clap#maple#command#tags(is_forerunner) abort
   let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
-  let global_opts = s:inject_icon_painter_opt(global_opts)
+  let global_opts = s:inject_icon_opt(global_opts)
 
   let subcommand = ['ctags', 'recursive-tags']
 

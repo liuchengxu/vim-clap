@@ -123,7 +123,7 @@ pub struct Watcher {
     past: Instant,
     /// Number of total matched items.
     total: usize,
-    /// icon painter.
+    /// Icon.
     icon: Icon,
     /// Lines we sent last time.
     last_lines: Vec<String>,
