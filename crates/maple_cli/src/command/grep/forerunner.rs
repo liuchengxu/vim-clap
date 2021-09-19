@@ -41,12 +41,7 @@ impl RipGrepForerunner {
             if let Some(ref dir) = self.cmd_dir {
                 let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
                 if let Some((total, cache)) = base_cmd.cache_info() {
-                    send_response_from_cache(
-                        &cache,
-                        total as usize,
-                        SendResponse::Json,
-                        icon
-                    );
+                    send_response_from_cache(&cache, total as usize, SendResponse::Json, icon);
                     return Ok(());
                 }
             }

@@ -120,7 +120,8 @@ impl Grep {
 
         let mut cmd = std_cmd.into_inner();
 
-        let mut light_cmd = LightCommand::new_grep(&mut cmd, None, number, Default::default(), None);
+        let mut light_cmd =
+            LightCommand::new_grep(&mut cmd, None, number, Default::default(), None);
 
         let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
         let execute_info = light_cmd.execute(base_cmd)?;

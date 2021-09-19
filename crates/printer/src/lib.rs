@@ -148,12 +148,8 @@ pub fn print_dyn_filter_results(
     winwidth: usize,
     icon: Icon,
 ) {
-    decorate_lines(
-        ranked.into_iter().take(number).collect(),
-        winwidth,
-        icon,
-    )
-    .print_json_with_length(Some(total));
+    decorate_lines(ranked.into_iter().take(number).collect(), winwidth, icon)
+        .print_json_with_length(Some(total));
 }
 
 #[cfg(test)]

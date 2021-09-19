@@ -19,18 +19,18 @@ pub enum Icon {
 }
 
 impl Default for Icon {
-  fn default() -> Self {
-    Self::Null
-  }
+    fn default() -> Self {
+        Self::Null
+    }
 }
 
 impl Icon {
-  pub fn painter(&self) -> Option<&IconKind> {
-    match self {
-      Self::Null => None,
-      Self::Enabled(icon_kind) => Some(icon_kind)
+    pub fn painter(&self) -> Option<&IconKind> {
+        match self {
+            Self::Null => None,
+            Self::Enabled(icon_kind) => Some(icon_kind),
+        }
     }
-  }
 }
 
 impl std::str::FromStr for Icon {
@@ -86,7 +86,7 @@ impl IconKind {
             Self::File => prepend_icon(raw_str.as_ref()),
             Self::Grep => prepend_grep_icon(raw_str.as_ref()),
             Self::ProjTags => fmt(proj_tags_icon(raw_str.as_ref())),
-            Self::Unknown => fmt(DEFAULT_ICON)
+            Self::Unknown => fmt(DEFAULT_ICON),
         }
     }
 
@@ -96,7 +96,7 @@ impl IconKind {
             Self::File => file_icon(text),
             Self::Grep => grep_icon(text),
             Self::ProjTags => proj_tags_icon(text),
-            Self::Unknown => DEFAULT_ICON
+            Self::Unknown => DEFAULT_ICON,
         }
     }
 }

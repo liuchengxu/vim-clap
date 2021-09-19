@@ -63,14 +63,7 @@ impl RecursiveTags {
         )))
     }
 
-    pub fn run(
-        &self,
-        Params {
-            no_cache,
-            icon,
-            ..
-        }: Params,
-    ) -> Result<()> {
+    pub fn run(&self, Params { no_cache, icon, .. }: Params) -> Result<()> {
         ensure_has_json_support()?;
 
         let ctags_cmd = self.assemble_ctags_cmd()?;
@@ -93,13 +86,7 @@ impl RecursiveTags {
                     Default::default()
                 },
                 Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
-                FilterContext::new(
-                    Default::default(),
-                    icon,
-                    Some(30),
-                    None,
-                    MatchType::TagName,
-                ),
+                FilterContext::new(Default::default(), icon, Some(30), None, MatchType::TagName),
                 vec![Bonus::None],
             )?;
         }

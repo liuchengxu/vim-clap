@@ -196,10 +196,7 @@ impl Watcher {
 /// VecDeque for this iterator.
 ///
 /// So, this particular function won't work in parallel context at all.
-fn dyn_collect_all(
-    mut iter: impl Iterator<Item = FilteredItem>,
-    icon: &Icon,
-) -> Vec<FilteredItem> {
+fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: &Icon) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -321,13 +318,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         let ranked = sort_initial_filtered(filtered);
 
-        printer::print_dyn_filter_results(
-            ranked,
-            total,
-            number,
-            winwidth.unwrap_or(100),
-            icon,
-        );
+        printer::print_dyn_filter_results(ranked, total, number, winwidth.unwrap_or(100), icon);
     } else {
         let filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon),
@@ -416,7 +407,13 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            FilterContext::new(FuzzyAlgorithm::Fzy, Default::default(), Some(100), None, MatchType::Full),
+            FilterContext::new(
+                FuzzyAlgorithm::Fzy,
+                Default::default(),
+                Some(100),
+                None,
+                MatchType::Full,
+            ),
             vec![Bonus::None],
         )
         .unwrap()

@@ -46,8 +46,7 @@ impl Exec {
     ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 
-        let mut light_cmd =
-            LightCommand::new(&mut exec_cmd, number, icon, self.output_threshold);
+        let mut light_cmd = LightCommand::new(&mut exec_cmd, number, icon, self.output_threshold);
 
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),
