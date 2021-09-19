@@ -131,8 +131,11 @@ impl Grep {
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = execute_info
             .lines
             .par_iter()
-            .filter_map(|s| Match::try_from(s.as_str()).ok())
-            .map(|mat| mat.build_grep_line(enable_icon))
+            .filter_map(|s| {
+                Match::try_from(s.as_str())
+                    .ok()
+                    .map(|mat| mat.build_grep_line(enable_icon))
+            })
             .unzip();
 
         let total = lines.len();
