@@ -97,7 +97,7 @@ impl From<String> for SourceItem {
 }
 
 impl SourceItem {
-    /// Constructs `SourceItem`.
+    /// Constructs a new instance of [`SourceItem`].
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,

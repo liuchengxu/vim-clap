@@ -12,7 +12,7 @@ pub const DEFAULT_FILER_ICON: char = '';
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Icon {
     Null,
     Enabled(IconKind),
@@ -52,7 +52,7 @@ impl<T: AsRef<str>> From<T> for Icon {
 }
 
 /// This type represents the kind of various provider line format.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub enum IconKind {
     File,
     Grep,

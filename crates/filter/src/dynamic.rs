@@ -196,7 +196,7 @@ impl Watcher {
 /// VecDeque for this iterator.
 ///
 /// So, this particular function won't work in parallel context at all.
-fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: &Icon) -> Vec<FilteredItem> {
+fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: Icon) -> Vec<FilteredItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -209,7 +209,7 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: &Icon) ->
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut watcher = Watcher::new(total, icon.clone());
+    let mut watcher = Watcher::new(total, icon);
 
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
@@ -242,7 +242,7 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: &Icon) ->
 fn dyn_collect_number(
     mut iter: impl Iterator<Item = FilteredItem>,
     number: usize,
-    icon: &Icon,
+    icon: Icon,
 ) -> (usize, Vec<FilteredItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
@@ -255,7 +255,7 @@ fn dyn_collect_number(
         Err((t, top_scores, top_results)) => (t, top_scores, top_results),
     };
 
-    let mut watcher = Watcher::new(total, icon.clone());
+    let mut watcher = Watcher::new(total, icon);
 
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
@@ -303,17 +303,13 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
-            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, &icon),
+            Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => {
-                dyn_collect_number(source_iter_exec!(scorer, exec), number, &icon)
-            }
+            Source::Exec(exec) => dyn_collect_number(source_iter_exec!(scorer, exec), number, icon),
             Source::File(fpath) => {
-                dyn_collect_number(source_iter_file!(scorer, fpath), number, &icon)
+                dyn_collect_number(source_iter_file!(scorer, fpath), number, icon)
             }
-            Source::List(list) => {
-                dyn_collect_number(source_iter_list!(scorer, list), number, &icon)
-            }
+            Source::List(list) => dyn_collect_number(source_iter_list!(scorer, list), number, icon),
         };
 
         let ranked = sort_initial_filtered(filtered);
@@ -321,11 +317,11 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         printer::print_dyn_filter_results(ranked, total, number, winwidth.unwrap_or(100), icon);
     } else {
         let filtered = match source {
-            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), &icon),
+            Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), icon),
             #[cfg(feature = "enable_dyn")]
-            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), &icon),
-            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), &icon),
-            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), &icon),
+            Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), icon),
+            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), icon),
+            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), icon),
         };
 
         let ranked = sort_initial_filtered(filtered);

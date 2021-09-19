@@ -124,12 +124,11 @@ impl SessionContext {
 
         let total = ranked.len();
 
-        let maybe_icon = self.icon.clone().into();
         // Take the first 200 entries and add an icon to each of them.
         let decorated_lines = printer::decorate_lines(
             ranked.iter().take(200).cloned().collect(),
             self.display_winwidth as usize,
-            maybe_icon,
+            self.icon,
         );
 
         Ok(SyncFilterResults {

@@ -57,7 +57,7 @@ pub struct Maple {
     pub params: Params,
 
     /// Enable the logging system.
-    #[structopt(long = "log", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     pub log: Option<std::path::PathBuf>,
 
     #[structopt(subcommand)]
@@ -89,7 +89,7 @@ pub struct Params {
 }
 
 impl Params {
-    pub fn into_filter_context(self) -> FilterContext {
+    pub fn to_filter_context(self) -> FilterContext {
         FilterContext::default()
             .icon(self.icon)
             .number(self.number)
