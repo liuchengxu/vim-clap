@@ -45,7 +45,7 @@ macro_rules! source_iter_stdin {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::Exec(exec)`].
+/// Generate an iterator of [`FilteredItem`] from [`Source::Exec`].
 #[cfg(feature = "enable_dyn")]
 #[macro_export]
 macro_rules! source_iter_exec {
@@ -62,7 +62,7 @@ macro_rules! source_iter_exec {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::File(fpath)`].
+/// Generate an iterator of [`FilteredItem`] from [`Source::File`].
 #[macro_export]
 macro_rules! source_iter_file {
     ( $scorer:ident, $fpath:ident ) => {

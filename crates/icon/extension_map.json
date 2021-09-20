@@ -1,4 +1,5 @@
 {
+  "adoc": "\uf719",
   "ai": "\ue7b4",
   "awk": "\ue795",
   "bash": "\ue795",
@@ -61,6 +62,7 @@
   "markdown": "\uf48a",
   "md": "\uf48a",
   "mustache": "\ue60f",
+  "nix": "\uf313",
   "php": "\ue608",
   "pl": "\ue769",
   "plist": "\ufa71",
