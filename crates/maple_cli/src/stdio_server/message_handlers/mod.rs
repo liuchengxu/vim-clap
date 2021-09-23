@@ -27,7 +27,7 @@ pub fn parse_filetypedetect(msg: Message) {
                     items[0].split('.').last().map(|ext| (ext, items[2]))
                 }
             })
-            .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim")].into_par_iter())
+            .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim"), ("cc", "cpp")].into_par_iter())
             .map(|(ext, ft)| (ext, ft))
             .collect();
 
