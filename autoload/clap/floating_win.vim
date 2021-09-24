@@ -331,8 +331,8 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:get_config_preview(height) abort
-  let s:preview_direction = clap#preview#direction() 
-  if s:preview_direction ==# 'LR'
+  let preview_direction = clap#preview#direction() 
+  if preview_direction ==# 'LR'
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row -= 1
     let opts.col += opts.width
@@ -346,7 +346,7 @@ function! s:get_config_preview(height) abort
 
   if s:has_nvim_0_5 && g:clap_popup_border !=? 'nil'
     let opts.border = g:clap_popup_border
-    if s:preview_direction ==# 'UD'
+    if preview_direction ==# 'UD'
       let opts.width -= 2
     else " preview_direction ==# 'UD'
       let opts.height -= 2
