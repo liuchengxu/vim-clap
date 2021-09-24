@@ -107,7 +107,7 @@ endfunction
 
 function! clap#preview#get_range(origin_lnum) abort
   let size = clap#preview#size_of(g:clap.provider.id)
-  if g:clap_preview_direction ==# 'LR'
+  if clap#calculate_preview_direction() ==# 'LR'
     let size = max([size, winheight(g:clap.display.winid) / 2])
   endif
   return clap#preview#get_line_range(a:origin_lnum, size)
@@ -161,7 +161,7 @@ function! clap#preview#maple_opts(extra) abort
         \ 'fpath': fnamemodify(fnameescape(g:clap.display.getcurline()), ':p'),
         \ 'display_width': winwidth(g:clap.display.winid),
         \ 'display_height': winheight(g:clap.display.winid),
-        \ 'preview_direction': g:clap_preview_direction,
+        \ 'preview_direction': clap#calculate_preview_direction(),
         \ }
   if has_key(g:clap.preview, 'winid')
     call extend(opts, {

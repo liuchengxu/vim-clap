@@ -64,7 +64,7 @@ let g:clap#popup#display.open = function('s:create_display')
 
 function! g:clap#popup#display.shrink_if_undersize() abort
   if !clap#preview#is_always_open()
-    if g:clap_preview_direction !=# 'LR'
+    if clap#calculate_preview_direction() !=# 'LR'
       let pos = popup_getpos(s:display_winid)
       let line_count = g:clap.display.line_count()
       if line_count < s:display_opts.height
@@ -115,7 +115,7 @@ function! s:create_preview() abort
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
-    if g:clap_preview_direction ==# 'LR'
+    if clap#calculate_preview_direction() ==# 'LR'
       let preview_opts['line'] = pos.line - 1
       let preview_opts['height'] = pos.height
       let preview_opts['col'] = pos.col + pos.width
@@ -140,7 +140,7 @@ function! s:create_preview() abort
     endif
     let s:preview_winid = popup_create([], preview_opts)
     call setwinvar(s:preview_winid, '&spell', 0)
-    if g:clap_preview_direction !=# 'LR'
+    if clap#calculate_preview_direction() !=# 'LR'
       call popup_hide(s:preview_winid)
     endif
     call win_execute(s:preview_winid, 'setlocal nonumber')
@@ -306,7 +306,7 @@ function! g:clap#popup#preview.show(lines) abort
     return
   endif
 
-  if g:clap_preview_direction !=# 'LR'
+  if clap#calculate_preview_direction() !=# 'LR'
     let display_pos = popup_getpos(s:display_winid)
     let col = display_pos.col
     let line = display_pos.line + display_pos.height

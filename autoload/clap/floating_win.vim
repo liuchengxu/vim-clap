@@ -331,12 +331,14 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:get_config_preview(height) abort
-  if g:clap_preview_direction ==# 'LR'
+  let s:preview_direction = clap#calculate_preview_direction() 
+  if s:preview_direction ==# 'LR'
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row -= 1
     let opts.col += opts.width
     let opts.height += 1
-  else
+  endif
+  if s:preview_direction ==# 'UD'
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row += opts.height
     let opts.height = a:height
@@ -345,9 +347,10 @@ function! s:get_config_preview(height) abort
 
   if s:has_nvim_0_5 && g:clap_popup_border !=? 'nil'
     let opts.border = g:clap_popup_border
-    if g:clap_preview_direction ==# 'UD'
+    if s:preview_direction ==# 'UD'
       let opts.width -= 2
-    else
+    endif
+    if s:preview_direction ==# 'LR'
       let opts.height -= 2
     endif
   endif
@@ -375,7 +378,7 @@ function! s:create_preview_win(height) abort
 endfunction
 
 function! s:max_preview_size() abort
-  if g:clap_preview_direction ==# 'LR'
+  if clap#calculate_preview_direction() ==# 'LR'
     return s:display_opts.height
   else
     let max_size = &lines - s:display_opts.row - s:display_opts.height - &cmdheight
@@ -398,7 +401,7 @@ function! clap#floating_win#preview.show(lines) abort
   if !exists('s:preview_winid')
     call s:create_preview_win(height)
   else
-    if g:clap_preview_direction !=# 'LR'
+    if clap#calculate_preview_direction() !=# 'LR'
       let opts = nvim_win_get_config(s:preview_winid)
       if opts.height != height
         let opts.height = height
@@ -458,7 +461,7 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  if clap#preview#is_enabled() && g:clap_preview_direction ==# 'LR'
+  if clap#preview#is_enabled() && clap#calculate_preview_direction() ==# 'LR'
     call s:create_preview_win(s:display_opts.height)
   endif
 
