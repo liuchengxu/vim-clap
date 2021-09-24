@@ -7,13 +7,12 @@ set cpoptions&vim
 let s:path_seperator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
-function! clap#preview#direction()
+function! clap#preview#direction() abort
   if g:clap_preview_direction ==# 'AUTO' 
-    let s:preview_direction = &columns < 80 ? 'UD' : 'LR'
+    return &columns < 80 ? 'UD' : 'LR'
   else 
-    let s:preview_direction = g:clap_preview_direction
+    return g:clap_preview_direction
   endif
-  return s:preview_direction
 endfunction
 
 function! s:peek_file(fname, fpath) abort
