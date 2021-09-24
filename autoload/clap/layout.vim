@@ -14,7 +14,7 @@ if !clap#preview#is_enabled()
             \ 'row': '25%',
             \ 'col': '15%',
             \ }
-elseif clap#calculate_preview_direction() ==# 'LR'
+elseif clap#preview#direction() ==# 'LR'
   let s:default_layout = {
             \ 'width': '40%',
             \ 'height': '67%',
@@ -83,7 +83,7 @@ function! clap#layout#indicator_width() abort
     let width = winwidth(g:clap.start.winid)
   endif
 
-  if clap#calculate_preview_direction() ==# 'LR'
+  if clap#preview#direction() ==# 'LR'
     let width = width / 2
   endif
 

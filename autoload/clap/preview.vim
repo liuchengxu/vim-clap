@@ -7,6 +7,15 @@ set cpoptions&vim
 let s:path_seperator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
+function! clap#preview#direction()
+  if g:clap_preview_direction ==# 'AUTO' 
+    let s:preview_direction = &columns < 80 ? 'UD' : 'LR'
+  else 
+    let s:preview_direction = g:clap_preview_direction
+  endif
+  return s:preview_direction
+endfunction
+
 function! s:peek_file(fname, fpath) abort
   if has_key(g:clap.preview, 'winid')
     let size = max([2 * s:default_size, winheight(g:clap.preview.winid)])
@@ -107,7 +116,7 @@ endfunction
 
 function! clap#preview#get_range(origin_lnum) abort
   let size = clap#preview#size_of(g:clap.provider.id)
-  if clap#calculate_preview_direction() ==# 'LR'
+  if clap#preview#direction() ==# 'LR'
     let size = max([size, winheight(g:clap.display.winid) / 2])
   endif
   return clap#preview#get_line_range(a:origin_lnum, size)
@@ -161,7 +170,7 @@ function! clap#preview#maple_opts(extra) abort
         \ 'fpath': fnamemodify(fnameescape(g:clap.display.getcurline()), ':p'),
         \ 'display_width': winwidth(g:clap.display.winid),
         \ 'display_height': winheight(g:clap.display.winid),
-        \ 'preview_direction': clap#calculate_preview_direction(),
+        \ 'preview_direction': clap#preview#direction(),
         \ }
   if has_key(g:clap.preview, 'winid')
     call extend(opts, {
