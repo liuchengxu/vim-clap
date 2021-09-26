@@ -630,7 +630,7 @@ function! s:init_provider() abort
     endif
     " Try to fill the preview window.
     if clap#preview#is_enabled()
-      call timer_start(30, { -> clap#impl#on_move#invoke_async() })
+      call timer_start(30, { -> clap#impl#on_move#invoke() })
     endif
   endfunction
 

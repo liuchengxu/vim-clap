@@ -366,10 +366,13 @@ g:clap_preview_delay                                     *g:clap_preview_delay*
 g:clap_preview_direction                             *g:clap_preview_direction*
 
   Type: |String|
-  Default: `'LR'`
+  Default: `'AUTO'`
 
   This variable controls the direction of the display window to the preview
-  window, currently there are only `LR` and `UD` options:
+  window, the following options exist:
+
+  - `AUTO` means the direction will be calculated by the number of available
+    columns.
 
   - `LR` means the display window is on the left and the preview window
   is on th right.

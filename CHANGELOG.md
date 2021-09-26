@@ -7,11 +7,14 @@
 - Improve the overal performance by using rayon. #754
 - Parallel recursive ctags creation, 30x faster on my machine. #755
 - Support expanding `~` in file path when using `preview/file`.
+- Add `'AUTO'` option for `g:clap_preview_direction`. #767 @goolord
 
 ## Fixed
 
 - Error when using `clap#preview#file()` with `g:clap_preview_direction = 'UD'`. #756
 - `maps` provider: missing keybindings for neovim. #762 @ray-x
+- `.cc` file preview not highlighted. #736
+- Invoke `on_move` as well when initializing the display window. #768
 
 ## [0.29] 2021-08-30
 
