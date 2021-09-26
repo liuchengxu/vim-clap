@@ -10,8 +10,7 @@ pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
     let cmd_output = cmd.output()?;
 
     if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
-        let e = String::from_utf8_lossy(cmd_output.stderr.as_slice()).to_string();
-        return Err(anyhow!(e));
+        return Err(anyhow!("an error occured: {:?}", cmd_output.stderr));
     }
 
     Ok(cmd_output.stdout)
@@ -20,14 +19,14 @@ pub fn collect_stdout(cmd: &mut Command) -> Result<Vec<u8>> {
 /// Builds [`std::process::Command`] from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-fn build_command(inner_cmd: &str) -> Command {
+fn build_command(shell_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
-        cmd.args(&["/C", inner_cmd]);
+        cmd.args(&["/C", shell_cmd]);
         cmd
     } else {
         let mut cmd = Command::new("bash");
-        cmd.arg("-c").arg(inner_cmd);
+        cmd.arg("-c").arg(shell_cmd);
         cmd
     }
 }
@@ -36,15 +35,9 @@ fn build_command(inner_cmd: &str) -> Command {
 #[derive(Debug)]
 pub struct StdCommand(Command);
 
-impl From<&str> for StdCommand {
-    fn from(cmd: &str) -> Self {
-        Self(build_command(cmd))
-    }
-}
-
-impl From<String> for StdCommand {
-    fn from(cmd: String) -> Self {
-        cmd.as_str().into()
+impl<T: AsRef<str>> From<T> for StdCommand {
+    fn from(cmd: T) -> Self {
+        Self(build_command(cmd.as_ref()))
     }
 }
 
@@ -76,13 +69,7 @@ impl StdCommand {
 
     /// Returns the stdout of inner command.
     pub fn stdout(&mut self) -> Result<Vec<u8>> {
-        let output = self.0.output()?;
-
-        if !output.status.success() && !output.stderr.is_empty() {
-            return Err(anyhow!("an error occured: {:?}", output.stderr));
-        }
-
-        Ok(output.stdout)
+        collect_stdout(&mut self.0)
     }
 
     pub fn args<I, S>(&mut self, args: I) -> &mut Self

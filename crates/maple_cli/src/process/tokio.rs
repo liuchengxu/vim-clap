@@ -8,14 +8,14 @@ use tokio::process::Command;
 /// Builds `Command` from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-fn build_command(inner_cmd: &str) -> Command {
+fn build_command(shell_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
-        cmd.args(&["/C", inner_cmd]);
+        cmd.args(&["/C", shell_cmd]);
         cmd
     } else {
         let mut cmd = Command::new("bash");
-        cmd.arg("-c").arg(inner_cmd);
+        cmd.arg("-c").arg(shell_cmd);
         cmd
     }
 }
@@ -24,15 +24,9 @@ fn build_command(inner_cmd: &str) -> Command {
 #[derive(Debug)]
 pub struct TokioCommand(Command);
 
-impl From<&str> for TokioCommand {
-    fn from(cmd: &str) -> Self {
-        Self(build_command(cmd))
-    }
-}
-
-impl From<String> for TokioCommand {
-    fn from(cmd: String) -> Self {
-        cmd.as_str().into()
+impl<T: AsRef<str>> From<T> for TokioCommand {
+    fn from(cmd: T) -> Self {
+        Self(build_command(cmd.as_ref()))
     }
 }
 
@@ -61,19 +55,24 @@ impl TokioCommand {
     }
 }
 
-#[tokio::test]
-async fn test_tokio_command() {
-    let mut tokio_cmd: TokioCommand = format!(
-        "ls {}",
-        std::env::current_dir()
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap()
-    )
-    .into();
-    assert_eq!(
-        vec!["Cargo.toml", "benches", "src"],
-        tokio_cmd.lines().await.unwrap()
-    );
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_tokio_command() {
+        let mut tokio_cmd: TokioCommand = format!(
+            "ls {}",
+            std::env::current_dir()
+                .unwrap()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+        )
+        .into();
+        assert_eq!(
+            vec!["Cargo.toml", "benches", "src"],
+            tokio_cmd.lines().await.unwrap()
+        );
+    }
 }

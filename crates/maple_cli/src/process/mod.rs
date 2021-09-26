@@ -35,13 +35,13 @@ pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
     Ok(lines)
 }
 
-/// Wrapper type of `StdCommand`.
+/// Wrapper type of [`StdCommand`].
 #[derive(Debug)]
 pub struct AsyncCommand(StdCommand);
 
 impl AsyncCommand {
-    pub fn new(command: String) -> Self {
-        Self(command.into())
+    pub fn new(command: impl AsRef<str>) -> Self {
+        Self(command.as_ref().into())
     }
 
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
