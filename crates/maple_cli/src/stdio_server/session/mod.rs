@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::stdio_server::providers::builtin::on_session_create;
-use crate::stdio_server::types::{MethodCall, ProviderId};
+use crate::stdio_server::{types::ProviderId, MethodCall};
 
 pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
@@ -23,8 +23,13 @@ pub type SessionId = u64;
 
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
-    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
-    async fn handle_on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
+    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>)
+        -> Result<()>;
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]

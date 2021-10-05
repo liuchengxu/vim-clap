@@ -9,7 +9,7 @@ use serde_json::json;
 use pattern::*;
 
 use crate::previewer::{self, vim_help::HelpTagPreview};
-use crate::stdio_server::{filer, global, session::SessionContext, types::MethodCall, write_response};
+use crate::stdio_server::{filer, global, session::SessionContext, write_response, MethodCall};
 use crate::utils::build_abs_path;
 
 static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));

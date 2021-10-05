@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::previewer;
-use crate::stdio_server::{types::MethodCall, write_response};
+use crate::stdio_server::{MethodCall, write_response};
 
 pub fn parse_filetypedetect(msg: MethodCall) {
     tokio::spawn(async move {

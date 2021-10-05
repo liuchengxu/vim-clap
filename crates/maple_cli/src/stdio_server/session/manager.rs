@@ -4,7 +4,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
 
-use crate::stdio_server::{session::SessionId, types::MethodCall, SessionEvent};
+use crate::stdio_server::{session::SessionId, MethodCall, SessionEvent};
 
 /// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]

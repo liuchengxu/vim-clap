@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::previewer::{preview_file, preview_file_at};
-use crate::stdio_server::{types::MethodCall, write_response};
+use crate::stdio_server::{write_response, MethodCall};
 
 pub fn preview_quickfix_entry(msg: MethodCall) {
     tokio::spawn(async move { preview_quickfix_entry_impl(msg).await });

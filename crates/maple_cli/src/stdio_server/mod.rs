@@ -1,7 +1,9 @@
 pub mod message_handlers;
+mod method_call;
 mod notification;
 mod providers;
 mod session;
+mod session_client;
 mod types;
 
 use std::io::prelude::*;
@@ -13,13 +15,14 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
 
+pub use self::method_call::MethodCall;
 use self::providers::{
     dumb_jump,
     filer::{self, FilerSession},
     quickfix, recent_files, BuiltinSession,
 };
 use self::session::{SessionEvent, SessionManager};
-use self::types::{GlobalEnv, MethodCall, RawMessage};
+use self::types::{Call, GlobalEnv};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -67,16 +70,16 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
-        if let Ok(raw_message) = serde_json::from_str::<RawMessage>(&msg.trim()) {
-            match raw_message {
-                RawMessage::Notification(notification) => {
+        if let Ok(call) = serde_json::from_str::<Call>(&msg.trim()) {
+            match call {
+                Call::Notification(notification) => {
                     tokio::spawn(async move {
                         if let Err(e) = notification.handle().await {
                             error!("Error occurred when handling notification: {:?}", e)
                         }
                     });
                 }
-                RawMessage::MethodCall(method_call) => {
+                Call::MethodCall(method_call) => {
                     let msg = method_call;
 
                     if msg.method != "init_ext_map" {
