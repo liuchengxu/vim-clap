@@ -1,6 +1,7 @@
 pub mod message_handlers;
 mod method_call;
 mod notification;
+mod rpc_client;
 mod providers;
 mod session;
 mod session_client;

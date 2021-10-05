@@ -79,7 +79,63 @@ pub enum Call {
 pub enum RawMessage {
     MethodCall(crate::stdio_server::method_call::MethodCall),
     Notification(crate::stdio_server::notification::Notification),
-    Output(jsonrpc_core::Output),
+    Output(Output),
+}
+
+type Id = u64;
+
+/// Successful response
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Success {
+    /// Result
+    pub result: Value,
+    /// Correlation id
+    pub id: Id,
+}
+
+/// Unsuccessful response
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Failure {
+    /// Error
+    pub error: Error,
+    /// Correlation id
+    pub id: Id,
+}
+
+/// Error object as defined in Spec
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Error {
+    /// Code
+    pub code: jsonrpc_core::ErrorCode,
+    /// Message
+    pub message: String,
+    /// Optional data
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
+}
+
+/// Represents output - failure or success
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+pub enum Output {
+    /// Success
+    Success(Success),
+    /// Failure
+    Failure(Failure),
+}
+
+impl Output {
+    /// Get the correlation id.
+    pub fn id(&self) -> &Id {
+        match self {
+            Self::Success(ref s) => &s.id,
+            Self::Failure(ref f) => &f.id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
