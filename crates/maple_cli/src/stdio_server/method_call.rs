@@ -134,7 +134,7 @@ impl MethodCall {
         Ok(value)
     }
 
-    fn parse_filetypedetect(self) -> Value {
+    pub fn parse_filetypedetect(self) -> Value {
         let msg = self;
         let output = msg.get_string_unsafe("autocmd_filetypedetect");
         let ext_map: HashMap<&str, &str> = output
@@ -159,7 +159,7 @@ impl MethodCall {
         json!({"method": "clap#ext#set", "ext_map": ext_map})
     }
 
-    async fn preview_file(self) -> Result<Value> {
+    pub async fn preview_file(self) -> Result<Value> {
         let msg_id = self.id;
 
         #[derive(Deserialize)]

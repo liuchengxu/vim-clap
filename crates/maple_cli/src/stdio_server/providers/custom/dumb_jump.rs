@@ -152,7 +152,11 @@ pub struct DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
-    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum exists");
@@ -170,7 +174,11 @@ impl EventHandler for DumbJumpMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        _context: Arc<SessionContext>,
+    ) -> Result<()> {
         let results = tokio::spawn(handle_dumb_jump_message(msg, false))
             .await
             .unwrap_or_else(|e| {

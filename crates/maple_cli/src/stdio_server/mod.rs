@@ -1,23 +1,23 @@
 pub mod message_handlers;
 mod method_call;
-mod vim;
-mod state;
 mod notification;
 mod providers;
 mod rpc_client;
 mod session;
 mod session_client;
+mod state;
 mod types;
+mod vim;
 
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::ops::Deref;
 use std::sync::Arc;
 
+use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use once_cell::sync::OnceCell;
-use anyhow::Result;
 use serde::Serialize;
 use serde_json::json;
 
@@ -28,10 +28,10 @@ use self::providers::{
     quickfix, recent_files, BuiltinSession,
 };
 use self::rpc_client::RpcClient;
-use self::state::State;
 use self::session::{SessionEvent, SessionManager};
-use self::types::{Call, GlobalEnv};
 use self::session_client::SessionClient;
+use self::state::State;
+use self::types::{Call, GlobalEnv};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -141,7 +141,7 @@ where
 }
 
 /// Starts and keep running the server on top of stdio.
-pub fn start() -> Result<()>{
+pub fn start() -> Result<()> {
     let (call_tx, call_rx) = crossbeam_channel::unbounded();
 
     let rpc_client = Arc::new(RpcClient::new(

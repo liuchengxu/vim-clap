@@ -35,7 +35,11 @@ pub struct BuiltinEventHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for BuiltinEventHandler {
-    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let msg_id = msg.id;
         if let Err(e) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle()) {
             log::error!("Failed to handle OnMove event: {:?}", e);
@@ -44,7 +48,11 @@ impl EventHandler for BuiltinEventHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let query = msg.get_query();
 
         let scale = context.scale.lock();

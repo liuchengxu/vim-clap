@@ -4,19 +4,25 @@ use anyhow::Result;
 use crossbeam_channel::Receiver;
 use log::{debug, error};
 use parking_lot::Mutex;
+use serde_json::{json, Value};
 
+use crate::stdio_server::method_call::MethodCall;
 use crate::stdio_server::state::State;
 use crate::stdio_server::types::Call;
+
+use super::session::SessionManager;
 
 #[derive(Clone)]
 pub struct SessionClient {
     pub state_mutex: Arc<Mutex<State>>,
+    pub session_manager: Arc<Mutex<SessionManager>>,
 }
 
 impl SessionClient {
     pub fn new(state: State) -> Self {
         Self {
             state_mutex: Arc::new(Mutex::new(state)),
+            session_manager: Arc::new(Mutex::new(SessionManager::default())),
         }
     }
 
@@ -42,11 +48,55 @@ impl SessionClient {
             }
             Call::MethodCall(method_call) => {
                 let id = method_call.id;
-                let result = method_call.handle().await;
-                let state = self.state_mutex.lock();
-                state.vim.rpc_client.output(id, result)?;
+                let maybe_result = self.handle_method_call(method_call).await?;
+                if let Some(result) = maybe_result {
+                    let state = self.state_mutex.lock();
+                    state.vim.rpc_client.output(id, Ok(result))?;
+                }
             }
         }
         Ok(())
+    }
+
+    async fn handle_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
+        use super::dumb_jump::DumbJumpSession;
+        use super::recent_files::RecentFilesSession;
+        use super::SessionEvent::*;
+
+        let msg = method_call;
+
+        if msg.method != "init_ext_map" {
+            log::debug!("==> stdio message(in): {:?}", msg);
+        }
+
+        let value = match msg.method.as_str() {
+            "init_ext_map" => Some(msg.parse_filetypedetect()),
+            "preview/file" => Some(msg.preview_file().await?),
+            // "quickfix" => super::quickfix::preview_quickfix_entry(msg),
+
+            /*
+            "dumb_jump/on_init" => self.session_manager.new_session::<DumbJumpSession>(msg),
+            "dumb_jump/on_typed" => self.session_manager.send(msg.session_id, OnTyped(msg)),
+            "dumb_jump/on_move" => self.session_manager.send(msg.session_id, OnMove(msg)),
+
+            "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
+            "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+            "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+            "filer" => filer::handle_filer_message(msg),
+            "filer/on_init" => manager.new_session::<FilerSession>(msg),
+            "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+            "on_init" => manager.new_session::<BuiltinSession>(msg),
+            "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+            "on_move" => manager.send(msg.session_id, OnMove(msg)),
+            "exit" => manager.terminate(msg.session_id),
+            */
+            _ => Some(json!({
+                "error": format!("unknown method: {}", msg.method)
+            })),
+        };
+
+        Ok(value)
     }
 }

@@ -81,7 +81,11 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         #[derive(serde::Deserialize)]
         struct Params {
             // curline: String,
@@ -111,7 +115,11 @@ impl EventHandler for FilerMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        _context: Arc<SessionContext>,
+    ) -> Result<()> {
         handle_filer_message(msg);
         Ok(())
     }
