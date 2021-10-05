@@ -7,7 +7,7 @@ use std::io::prelude::*;
 use std::ops::Deref;
 
 use crossbeam_channel::{Receiver, Sender};
-use log::{debug, error};
+use log::{debug, error, warn};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -93,7 +93,24 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     for msg in rx.iter() {
         if let Ok(raw_message) = serde_json::from_str::<RawMessage>(&msg.trim()) {
             match raw_message {
-                RawMessage::Notification(notification) => {}
+                RawMessage::Notification(notification) => {
+                    debug!("------------- receive notification: {:?}", notification);
+                    let job_future = match notification.method.as_str() {
+                        "note_recent_files" => {
+                            message_handlers::handle_note_recent_file(notification)
+                        }
+                        _ => {
+                            warn!("Unknown notification: {:?}", notification);
+                            continue;
+                        }
+                    };
+
+                    tokio::spawn(async move {
+                        if let Err(e) = job_future.await {
+                            error!("Error occurred when handling notification: {:?}", e)
+                        }
+                    });
+                }
                 RawMessage::MethodCall(method_call) => {
                     let msg = method_call;
 
@@ -105,7 +122,6 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                         "preview/file" => message_handlers::preview_file(msg),
                         "quickfix" => quickfix::preview_quickfix_entry(msg),
-                        "note_recent_files" => message_handlers::note_recent_file(msg),
 
                         "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
