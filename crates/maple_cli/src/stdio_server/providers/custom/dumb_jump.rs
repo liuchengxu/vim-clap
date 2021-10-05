@@ -57,7 +57,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
         cwd,
         query,
         extension,
-    } = msg.deserialize_params_unsafe();
+    } = msg.parse_unsafe();
 
     if query.is_empty() {
         return Default::default();

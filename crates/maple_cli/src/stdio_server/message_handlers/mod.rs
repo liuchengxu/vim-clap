@@ -58,7 +58,7 @@ async fn preview_file_impl(msg: MethodCall) -> Result<()> {
         preview_width,
         preview_height,
         preview_direction,
-    } = msg.deserialize_params()?;
+    } = msg.parse()?;
 
     let fpath = crate::utils::expand_tilde(fpath)?;
 

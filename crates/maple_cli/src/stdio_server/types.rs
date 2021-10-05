@@ -62,6 +62,13 @@ impl GlobalEnv {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum RawMessage {
+    MethodCall(MethodCall),
+    Notification(Notification),
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Notification {
     pub method: String,
@@ -72,18 +79,18 @@ pub struct Notification {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct MethodCall {
+    pub id: u64,
     pub method: String,
     pub params: Params,
-    pub id: u64,
     pub session_id: u64,
 }
 
 impl MethodCall {
-    pub fn deserialize_params<T: DeserializeOwned>(self) -> anyhow::Result<T> {
+    pub fn parse<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         self.params.parse().map_err(Into::into)
     }
 
-    pub fn deserialize_params_unsafe<T: DeserializeOwned>(self) -> T {
+    pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
         self.params
             .parse()
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))

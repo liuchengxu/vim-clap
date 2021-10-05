@@ -163,7 +163,7 @@ impl From<MethodCall> for SessionContext {
             source_cmd,
             runtimepath,
             enable_icon,
-        } = msg.deserialize_params_unsafe();
+        } = msg.parse_unsafe();
 
         let match_type = match provider_id.as_str() {
             "tags" | "proj_tags" => MatchType::TagName,

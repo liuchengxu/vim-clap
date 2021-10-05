@@ -27,7 +27,7 @@ async fn preview_quickfix_entry_impl(msg: MethodCall) -> Result<()> {
         curline,
         winwidth,
         winheight,
-    } = msg.deserialize_params()?;
+    } = msg.parse()?;
 
     let (p, lnum) = parse_quickfix_entry(curline.as_str())?;
 

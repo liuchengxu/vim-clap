@@ -90,7 +90,7 @@ impl EventHandler for FilerMessageHandler {
         let msg_id = msg.id;
         // Do not use curline directly.
         let curline = msg.get_curline(&context.provider_id)?;
-        let Params { cwd } = msg.deserialize_params_unsafe();
+        let Params { cwd } = msg.parse_unsafe();
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
             msg_id,

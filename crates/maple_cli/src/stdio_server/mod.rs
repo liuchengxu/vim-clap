@@ -18,7 +18,7 @@ use self::providers::{
     quickfix, recent_files, BuiltinSession,
 };
 use self::session::{SessionEvent, SessionManager};
-use self::types::{GlobalEnv, MethodCall};
+use self::types::{GlobalEnv, MethodCall, RawMessage};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -44,7 +44,7 @@ fn initialize_global(msg: MethodCall) {
         is_nvim,
         enable_icon,
         clap_preview_size,
-    } = msg.deserialize_params_unsafe();
+    } = msg.parse_unsafe();
 
     let is_nvim = is_nvim.unwrap_or(false);
     let enable_icon = enable_icon.unwrap_or(false);
@@ -91,37 +91,44 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
-        if let Ok(msg) = serde_json::from_str::<MethodCall>(&msg.trim()) {
-            if msg.method != "init_ext_map" {
-                debug!("==> stdio message(in): {:?}", msg);
-            }
-            match &msg.method[..] {
-                "initialize_global_env" => initialize_global(msg), // should be called only once.
-                "init_ext_map" => message_handlers::parse_filetypedetect(msg),
-                "preview/file" => message_handlers::preview_file(msg),
-                "quickfix" => quickfix::preview_quickfix_entry(msg),
-                "note_recent_files" => message_handlers::note_recent_file(msg),
+        if let Ok(raw_message) = serde_json::from_str::<RawMessage>(&msg.trim()) {
+            match raw_message {
+                RawMessage::Notification(notification) => {}
+                RawMessage::MethodCall(method_call) => {
+                    let msg = method_call;
 
-                "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
-                "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-                "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+                    if msg.method != "init_ext_map" {
+                        debug!("==> stdio message(in): {:?}", msg);
+                    }
+                    match &msg.method[..] {
+                        "initialize_global_env" => initialize_global(msg), // should be called only once.
+                        "init_ext_map" => message_handlers::parse_filetypedetect(msg),
+                        "preview/file" => message_handlers::preview_file(msg),
+                        "quickfix" => quickfix::preview_quickfix_entry(msg),
+                        "note_recent_files" => message_handlers::note_recent_file(msg),
 
-                "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
-                "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-                "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
+                        "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
+                        "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                        "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                "filer" => filer::handle_filer_message(msg),
-                "filer/on_init" => manager.new_session::<FilerSession>(msg),
-                "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+                        "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
+                        "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                        "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                "on_init" => manager.new_session::<BuiltinSession>(msg),
-                "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-                "on_move" => manager.send(msg.session_id, OnMove(msg)),
-                "exit" => manager.terminate(msg.session_id),
+                        "filer" => filer::handle_filer_message(msg),
+                        "filer/on_init" => manager.new_session::<FilerSession>(msg),
+                        "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                _ => write_response(
-                    json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
-                ),
+                        "on_init" => manager.new_session::<BuiltinSession>(msg),
+                        "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                        "on_move" => manager.send(msg.session_id, OnMove(msg)),
+                        "exit" => manager.terminate(msg.session_id),
+
+                        _ => write_response(
+                            json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
+                        ),
+                    }
+                }
             }
         } else {
             error!("Invalid message: {:?}", msg);

@@ -35,7 +35,7 @@ pub async fn handle_recent_files_message(
         query,
         enable_icon,
         lnum,
-    } = msg.deserialize_params_unsafe();
+    } = msg.parse_unsafe();
 
     let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
