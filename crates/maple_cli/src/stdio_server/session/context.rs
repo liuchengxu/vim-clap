@@ -8,7 +8,7 @@ use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
-use crate::stdio_server::{types::ProviderId, Message};
+use crate::stdio_server::{types::ProviderId, MethodCall};
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
@@ -138,8 +138,8 @@ impl SessionContext {
     }
 }
 
-impl From<Message> for SessionContext {
-    fn from(msg: Message) -> Self {
+impl From<MethodCall> for SessionContext {
+    fn from(msg: MethodCall) -> Self {
         log::debug!("Creating a new SessionContext from: {:?}", msg);
 
         #[derive(Deserialize)]

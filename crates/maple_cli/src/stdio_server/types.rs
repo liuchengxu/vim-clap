@@ -63,14 +63,22 @@ impl GlobalEnv {
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Message {
+pub struct Notification {
+    pub method: String,
+    pub params: Params,
+    pub session_id: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct MethodCall {
     pub method: String,
     pub params: Params,
     pub id: u64,
     pub session_id: u64,
 }
 
-impl Message {
+impl MethodCall {
     pub fn deserialize_params<T: DeserializeOwned>(self) -> anyhow::Result<T> {
         self.params.parse().map_err(Into::into)
     }

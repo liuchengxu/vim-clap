@@ -12,11 +12,11 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::providers::builtin::OnMoveHandler;
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
-    write_response, Message,
+    write_response, MethodCall,
 };
 
 pub async fn handle_recent_files_message(
-    msg: Message,
+    msg: MethodCall,
     context: Arc<SessionContext>,
     force_execute: bool,
 ) -> Vec<FilteredItem> {
@@ -136,7 +136,7 @@ pub struct RecentFilesMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for RecentFilesMessageHandler {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
@@ -157,7 +157,7 @@ impl EventHandler for RecentFilesMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
@@ -175,7 +175,7 @@ impl EventHandler for RecentFilesMessageHandler {
 pub struct RecentFilesSession;
 
 impl NewSession for RecentFilesSession {
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
         let handler = RecentFilesMessageHandler::default();
         let lines_clone = handler.lines.clone();
 

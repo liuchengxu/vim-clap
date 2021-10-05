@@ -15,7 +15,7 @@ use crate::stdio_server::{
     session::{
         EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
     },
-    write_response, Message,
+    write_response, MethodCall,
 };
 
 pub use on_move::{OnMove, OnMoveHandler};
@@ -23,7 +23,7 @@ pub use on_move::{OnMove, OnMoveHandler};
 pub struct BuiltinSession;
 
 impl NewSession for BuiltinSession {
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) = Session::new(msg, BuiltinEventHandler);
         session.start_event_loop();
         Ok(session_sender)
@@ -35,7 +35,7 @@ pub struct BuiltinEventHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for BuiltinEventHandler {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
         if let Err(e) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle()) {
             log::error!("Failed to handle OnMove event: {:?}", e);
@@ -44,7 +44,7 @@ impl EventHandler for BuiltinEventHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let query = msg.get_query();
 
         let scale = context.scale.lock();

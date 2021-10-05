@@ -18,7 +18,7 @@ use self::providers::{
     quickfix, recent_files, BuiltinSession,
 };
 use self::session::{SessionEvent, SessionManager};
-use self::types::{GlobalEnv, Message};
+use self::types::{GlobalEnv, MethodCall};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -33,7 +33,7 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
     }
 }
 
-fn initialize_global(msg: Message) {
+fn initialize_global(msg: MethodCall) {
     #[derive(Deserialize)]
     struct Params {
         is_nvim: Option<bool>,
@@ -91,7 +91,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
-        if let Ok(msg) = serde_json::from_str::<Message>(&msg.trim()) {
+        if let Ok(msg) = serde_json::from_str::<MethodCall>(&msg.trim()) {
             if msg.method != "init_ext_map" {
                 debug!("==> stdio message(in): {:?}", msg);
             }

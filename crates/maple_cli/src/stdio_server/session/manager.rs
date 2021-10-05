@@ -4,7 +4,7 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
 
-use crate::stdio_server::{session::SessionId, types::Message, SessionEvent};
+use crate::stdio_server::{session::SessionId, types::MethodCall, SessionEvent};
 
 /// A small wrapper of Sender<SessionEvent> for logging on send error.
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl SessionEventSender {
 /// Creates a new session with a context built from the message `msg`.
 pub trait NewSession {
     /// Spawns a new session thread given `msg`.
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>>;
+    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>>;
 }
 
 /// This structs manages all the created sessions tracked by the session id.
@@ -47,7 +47,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Starts a session in a new thread given the init message.
-    pub fn new_session<T: NewSession>(&mut self, msg: Message) {
+    pub fn new_session<T: NewSession>(&mut self, msg: MethodCall) {
         let session_id = msg.session_id;
         if self.exists(session_id) {
             error!("Skipped as session {} already exists", msg.session_id);
