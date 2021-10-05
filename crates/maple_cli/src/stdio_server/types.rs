@@ -65,15 +65,7 @@ impl GlobalEnv {
 #[serde(untagged)]
 pub enum RawMessage {
     MethodCall(MethodCall),
-    Notification(Notification),
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Notification {
-    pub method: String,
-    pub params: Params,
-    pub session_id: u64,
+    Notification(crate::stdio_server::notification::Notification),
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]

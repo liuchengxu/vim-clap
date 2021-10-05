@@ -7,9 +7,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::previewer;
-use crate::stdio_server::{types::{Notification, MethodCall}, write_response};
+use crate::stdio_server::{types::MethodCall, write_response};
 
 pub fn parse_filetypedetect(msg: MethodCall) {
     tokio::spawn(async move {
@@ -83,22 +82,4 @@ pub fn preview_file(msg: MethodCall) {
             log::error!("Error when previewing the file: {}", e);
         }
     });
-}
-
-pub async fn handle_note_recent_file(notification: Notification) -> Result<()> {
-    #[derive(serde::Deserialize)]
-    struct Params {
-        file: String,
-    }
-
-    let Params { file } = notification.params.parse()?;
-
-    if file.is_empty() || !std::path::Path::new(&file).exists() {
-        return Ok(());
-    }
-
-    let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
-    recent_files.upsert(file);
-
-    Ok(())
 }

@@ -46,6 +46,7 @@ pub struct TagsFile {
 
     /// Search the tag case insensitively
     #[structopt(long)]
+    #[allow(unused)]
     ignorecase: bool,
 }
 

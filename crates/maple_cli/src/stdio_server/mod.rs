@@ -1,4 +1,5 @@
 pub mod message_handlers;
+mod notification;
 mod providers;
 mod session;
 mod types;
@@ -94,19 +95,8 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
         if let Ok(raw_message) = serde_json::from_str::<RawMessage>(&msg.trim()) {
             match raw_message {
                 RawMessage::Notification(notification) => {
-                    debug!("------------- receive notification: {:?}", notification);
-                    let job_future = match notification.method.as_str() {
-                        "note_recent_files" => {
-                            message_handlers::handle_note_recent_file(notification)
-                        }
-                        _ => {
-                            warn!("Unknown notification: {:?}", notification);
-                            continue;
-                        }
-                    };
-
                     tokio::spawn(async move {
-                        if let Err(e) = job_future.await {
+                        if let Err(e) = notification.handle().await {
                             error!("Error occurred when handling notification: {:?}", e)
                         }
                     });
