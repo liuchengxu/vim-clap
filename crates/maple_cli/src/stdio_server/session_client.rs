@@ -1,13 +1,25 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use crossbeam_channel::Receiver;
-use log::error;
+use log::{debug, error};
+use parking_lot::Mutex;
 
+use crate::stdio_server::state::State;
 use crate::stdio_server::types::Call;
 
 #[derive(Clone)]
-pub struct SessionClient;
+pub struct SessionClient {
+    pub state_mutex: Arc<Mutex<State>>,
+}
 
 impl SessionClient {
+    pub fn new(state: State) -> Self {
+        Self {
+            state_mutex: Arc::new(Mutex::new(state)),
+        }
+    }
+
     pub fn loop_call(&self, rx: &Receiver<Call>) {
         for call in rx.iter() {
             let session_client = self.clone();
@@ -28,7 +40,12 @@ impl SessionClient {
                     }
                 });
             }
-            Call::MethodCall(method_call) => {}
+            Call::MethodCall(method_call) => {
+                let id = method_call.id;
+                let result = method_call.handle();
+                let state = self.state_mutex.lock();
+                state.vim.rpc_client.output(id, result)?;
+            }
         }
         Ok(())
     }

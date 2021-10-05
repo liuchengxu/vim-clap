@@ -1,6 +1,6 @@
 use jsonrpc_core::Params;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::stdio_server::types::ProviderId;
 
@@ -88,5 +88,47 @@ impl MethodCall {
             .get(key)
             .and_then(|x| x.as_bool())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
+    }
+}
+
+impl MethodCall {
+    pub fn handle(self) -> anyhow::Result<Value> {
+        use super::dumb_jump::DumbJumpSession;
+        use super::recent_files::RecentFilesSession;
+        use super::SessionEvent::*;
+
+        let msg = self;
+
+        if msg.method != "init_ext_map" {
+            log::debug!("==> stdio message(in): {:?}", msg);
+        }
+
+        let value = match &msg.method[..] {
+            // "init_ext_map" => super::message_handlers::parse_filetypedetect(msg),
+            // "preview/file" => super::message_handlers::preview_file(msg),
+            // "quickfix" => super::quickfix::preview_quickfix_entry(msg),
+
+            /*
+            "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
+            "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+            "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+            "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
+            "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+            "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+            "filer" => filer::handle_filer_message(msg),
+            "filer/on_init" => manager.new_session::<FilerSession>(msg),
+            "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+
+            "on_init" => manager.new_session::<BuiltinSession>(msg),
+            "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+            "on_move" => manager.send(msg.session_id, OnMove(msg)),
+            "exit" => manager.terminate(msg.session_id),
+            */
+            _ => json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
+        };
+
+        Ok(value)
     }
 }

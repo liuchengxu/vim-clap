@@ -1,5 +1,7 @@
 pub mod message_handlers;
 mod method_call;
+mod vim;
+mod state;
 mod notification;
 mod providers;
 mod rpc_client;
@@ -26,8 +28,10 @@ use self::providers::{
     quickfix, recent_files, BuiltinSession,
 };
 use self::rpc_client::RpcClient;
+use self::state::State;
 use self::session::{SessionEvent, SessionManager};
 use self::types::{Call, GlobalEnv};
+use self::session_client::SessionClient;
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
@@ -145,6 +149,10 @@ pub fn start() -> Result<()>{
         BufWriter::new(std::io::stdout()),
         call_tx.clone(),
     )?);
+
+    let state = State::new(call_tx, rpc_client);
+    let session_client = SessionClient::new(state);
+    session_client.loop_call(&call_rx);
 
     Ok(())
 }

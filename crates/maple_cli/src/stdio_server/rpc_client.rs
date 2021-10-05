@@ -53,7 +53,7 @@ impl RpcClient {
             })?;
 
         Ok(Self {
-            id: AtomicU64::default(),
+            id: Default::default(),
             output_reader_tx,
             output_writer_tx,
         })
@@ -72,7 +72,7 @@ impl RpcClient {
             id,
             method: method.as_ref().to_owned(),
             params: to_params(params)?,
-            session_id: 888u64,
+            session_id: 888u64, // FIXME
         };
         let (tx, rx) = bounded(1);
         self.output_reader_tx.send((id, tx))?;
@@ -90,7 +90,7 @@ impl RpcClient {
         let msg = Notification {
             method: method.to_owned(),
             params: to_params(params)?,
-            session_id: 888u64,
+            session_id: 888u64, // FIXME
         };
 
         self.output_writer_tx.send(RawMessage::Notification(msg))?;
@@ -181,6 +181,7 @@ fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
         write!(writer, "Content-Length: {}\n\n{}\n", s.len(), s)?;
         writer.flush()?;
     }
+
     Ok(())
 }
 
