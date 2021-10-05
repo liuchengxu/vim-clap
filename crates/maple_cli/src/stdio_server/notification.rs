@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Result};
 use jsonrpc_core::Params;
+use log::debug;
 use serde::{Deserialize, Serialize};
 
+use super::types::GlobalEnv;
+use super::GLOBAL_ENV;
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -13,22 +16,48 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub async fn handle(&self) -> Result<()> {
+    pub async fn handle(self) -> Result<()> {
         match self.method.as_str() {
-            "note_recent_files" => self.handle_note_recent_file().await,
-            _ => {
-                Err(anyhow!("Unknown notification: {:?}", self))
-            }
+            "initialize_global_env" => self.initialize_global_env(), // should be called only once.
+            "note_recent_files" => self.note_recent_file().await,
+            _ => Err(anyhow!("Unknown notification: {:?}", self)),
         }
     }
 
-    async fn handle_note_recent_file(&self) -> Result<()> {
-        #[derive(serde::Deserialize)]
+    fn initialize_global_env(self) -> Result<()> {
+        #[derive(Deserialize)]
+        struct InnerParams {
+            is_nvim: Option<bool>,
+            enable_icon: Option<bool>,
+            clap_preview_size: serde_json::Value,
+        }
+        let InnerParams {
+            is_nvim,
+            enable_icon,
+            clap_preview_size,
+        } = self.params.parse()?;
+
+        let is_nvim = is_nvim.unwrap_or(false);
+        let enable_icon = enable_icon.unwrap_or(false);
+
+        let global_env = GlobalEnv::new(is_nvim, enable_icon, clap_preview_size.into());
+
+        if let Err(e) = GLOBAL_ENV.set(global_env) {
+            debug!("failed to initialized GLOBAL_ENV, error: {:?}", e);
+        } else {
+            debug!("GLOBAL_ENV initialized successfully");
+        }
+
+        Ok(())
+    }
+
+    async fn note_recent_file(self) -> Result<()> {
+        #[derive(Deserialize)]
         struct InnerParams {
             file: String,
         }
 
-        let InnerParams { file } = self.params.clone().parse()?;
+        let InnerParams { file } = self.params.parse()?;
 
         if file.is_empty() || !std::path::Path::new(&file).exists() {
             return Ok(());

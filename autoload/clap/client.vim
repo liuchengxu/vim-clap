@@ -148,6 +148,10 @@ function! s:send_notification(method, params) abort
         \ }))
 endfunction
 
+function! clap#client#send_notification(method, params) abort
+  call s:send_notification(a:method, a:params)
+endfunction
+
 function! s:send_method_call(method, params) abort
   let s:req_id += 1
   call clap#job#daemon#send_message(json_encode({

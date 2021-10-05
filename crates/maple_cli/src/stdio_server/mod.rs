@@ -8,9 +8,9 @@ use std::io::prelude::*;
 use std::ops::Deref;
 
 use crossbeam_channel::{Receiver, Sender};
-use log::{debug, error, warn};
+use log::{debug, error};
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::json;
 
 use self::providers::{
@@ -31,31 +31,6 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
         panic!("Uninitalized static: GLOBAL_ENV")
     } else {
         unreachable!("Never forget to intialize before using it!")
-    }
-}
-
-fn initialize_global(msg: MethodCall) {
-    #[derive(Deserialize)]
-    struct Params {
-        is_nvim: Option<bool>,
-        enable_icon: Option<bool>,
-        clap_preview_size: serde_json::Value,
-    }
-    let Params {
-        is_nvim,
-        enable_icon,
-        clap_preview_size,
-    } = msg.parse_unsafe();
-
-    let is_nvim = is_nvim.unwrap_or(false);
-    let enable_icon = enable_icon.unwrap_or(false);
-
-    let global_env = GlobalEnv::new(is_nvim, enable_icon, clap_preview_size.into());
-
-    if let Err(e) = GLOBAL_ENV.set(global_env) {
-        debug!("failed to initialized GLOBAL_ENV, error: {:?}", e);
-    } else {
-        debug!("GLOBAL_ENV initialized successfully");
     }
 }
 
@@ -108,7 +83,6 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         debug!("==> stdio message(in): {:?}", msg);
                     }
                     match &msg.method[..] {
-                        "initialize_global_env" => initialize_global(msg), // should be called only once.
                         "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                         "preview/file" => message_handlers::preview_file(msg),
                         "quickfix" => quickfix::preview_quickfix_entry(msg),
