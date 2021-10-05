@@ -1,18 +1,21 @@
 pub mod message_handlers;
 mod method_call;
 mod notification;
-mod rpc_client;
 mod providers;
+mod rpc_client;
 mod session;
 mod session_client;
 mod types;
 
 use std::io::prelude::*;
+use std::io::{BufReader, BufWriter};
 use std::ops::Deref;
+use std::sync::Arc;
 
 use crossbeam_channel::{Receiver, Sender};
 use log::{debug, error};
 use once_cell::sync::OnceCell;
+use anyhow::Result;
 use serde::Serialize;
 use serde_json::json;
 
@@ -22,6 +25,7 @@ use self::providers::{
     filer::{self, FilerSession},
     quickfix, recent_files, BuiltinSession,
 };
+use self::rpc_client::RpcClient;
 use self::session::{SessionEvent, SessionManager};
 use self::types::{Call, GlobalEnv};
 
@@ -130,4 +134,17 @@ where
     });
 
     loop_handle_rpc_message(&rx);
+}
+
+/// Starts and keep running the server on top of stdio.
+pub fn start() -> Result<()>{
+    let (call_tx, call_rx) = crossbeam_channel::unbounded();
+
+    let rpc_client = Arc::new(RpcClient::new(
+        BufReader::new(std::io::stdin()),
+        BufWriter::new(std::io::stdout()),
+        call_tx.clone(),
+    )?);
+
+    Ok(())
 }

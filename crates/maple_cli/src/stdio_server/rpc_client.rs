@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{anyhow, Result};
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use jsonrpc_core::Params;
 use log::error;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::Value;
 
-use crate::stdio_server::types::{Call, Output, RawMessage};
+use super::method_call::MethodCall;
+use super::notification::Notification;
+use crate::stdio_server::types::{Call, Error, Failure, Output, RawMessage, Success};
 
 #[derive(Serialize)]
 pub struct RpcClient {
@@ -53,6 +57,67 @@ impl RpcClient {
             output_reader_tx,
             output_writer_tx,
         })
+    }
+
+    /// Calls into Vim.
+    ///
+    /// Wait for the Vim response until the timeout.
+    pub fn call<R: DeserializeOwned>(
+        &self,
+        method: impl AsRef<str>,
+        params: impl Serialize,
+    ) -> Result<R> {
+        let id = self.id.fetch_add(1, Ordering::SeqCst);
+        let msg = MethodCall {
+            id,
+            method: method.as_ref().to_owned(),
+            params: to_params(params)?,
+            session_id: 888u64,
+        };
+        let (tx, rx) = bounded(1);
+        self.output_reader_tx.send((id, tx))?;
+        self.output_writer_tx.send(RawMessage::MethodCall(msg))?;
+        match rx.recv_timeout(std::time::Duration::from_secs(60))? {
+            Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
+            Output::Failure(err) => Err(anyhow!("Error: {:?}", err)),
+        }
+    }
+
+    /// Sends a notification message to Vim.
+    pub fn notify(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
+        let method = method.as_ref();
+
+        let msg = Notification {
+            method: method.to_owned(),
+            params: to_params(params)?,
+            session_id: 888u64,
+        };
+
+        self.output_writer_tx.send(RawMessage::Notification(msg))?;
+
+        Ok(())
+    }
+
+    /// Sends the response from Rust to Vim.
+    pub fn output(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
+        let output = match output_result {
+            Ok(ok) => Output::Success(Success {
+                id,
+                result: serde_json::to_value(ok)?,
+            }),
+            Err(err) => Output::Failure(Failure {
+                id,
+                error: Error {
+                    code: jsonrpc_core::ErrorCode::InternalError,
+                    message: err.to_string(),
+                    data: None,
+                },
+            }),
+        };
+
+        self.output_writer_tx.send(RawMessage::Output(output))?;
+
+        Ok(())
     }
 }
 
@@ -117,4 +182,17 @@ fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
         writer.flush()?;
     }
     Ok(())
+}
+
+fn to_params(v: impl Serialize) -> Result<Params> {
+    let json_value = serde_json::to_value(v)?;
+
+    let params = match json_value {
+        Value::Null => Params::None,
+        Value::Bool(_) | Value::Number(_) | Value::String(_) => Params::Array(vec![json_value]),
+        Value::Array(vec) => Params::Array(vec),
+        Value::Object(map) => Params::Map(map),
+    };
+
+    Ok(params)
 }
