@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use jsonrpc_core::Params;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
@@ -64,20 +65,19 @@ impl GlobalEnv {
 #[serde(deny_unknown_fields)]
 pub struct Message {
     pub method: String,
-    pub params: serde_json::Map<String, Value>,
+    pub params: Params,
     pub id: u64,
     pub session_id: u64,
 }
 
 impl Message {
     pub fn deserialize_params<T: DeserializeOwned>(self) -> anyhow::Result<T> {
-        let json_value = serde_json::Value::Object(self.params);
-        serde_json::from_value(json_value).map_err(Into::into)
+        self.params.parse().map_err(Into::into)
     }
 
     pub fn deserialize_params_unsafe<T: DeserializeOwned>(self) -> T {
-        let json_value = serde_json::Value::Object(self.params);
-        serde_json::from_value(json_value)
+        self.params
+            .parse()
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 
@@ -108,16 +108,24 @@ impl Message {
         Ok(curline)
     }
 
+    fn map_params(&self) -> anyhow::Result<&serde_json::Map<String, Value>> {
+        match &self.params {
+            Params::None => Err(anyhow::anyhow!("None params unsupported")),
+            Params::Array(_) => Err(anyhow::anyhow!("Array params unsupported")),
+            Params::Map(map) => Ok(map),
+        }
+    }
+
     #[allow(unused)]
     pub fn get_u64(&self, key: &str) -> anyhow::Result<u64> {
-        self.params
+        self.map_params()?
             .get(key)
             .and_then(|x| x.as_u64())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
     }
 
     pub fn get_str(&self, key: &str) -> anyhow::Result<&str> {
-        self.params
+        self.map_params()?
             .get(key)
             .and_then(|x| x.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
@@ -133,7 +141,7 @@ impl Message {
     }
 
     pub fn get_bool(&self, key: &str) -> anyhow::Result<bool> {
-        self.params
+        self.map_params()?
             .get(key)
             .and_then(|x| x.as_bool())
             .ok_or_else(|| anyhow::anyhow!("Missing {} in msg.params", key))
