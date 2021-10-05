@@ -117,7 +117,8 @@ impl Maple {
                     crate::logger::init(log_path)?;
                 }
 
-                crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+                // crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+                crate::stdio_server::start()?;
             }
         };
         Ok(())

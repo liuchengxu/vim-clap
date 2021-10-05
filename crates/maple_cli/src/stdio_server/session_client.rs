@@ -23,15 +23,15 @@ impl SessionClient {
     pub fn loop_call(&self, rx: &Receiver<Call>) {
         for call in rx.iter() {
             let session_client = self.clone();
-            std::thread::spawn(move || {
-                if let Err(e) = session_client.handle_call(call) {
+            tokio::spawn(async move {
+                if let Err(e) = session_client.handle_call(call).await {
                     error!("Error handling request: {:?}", e);
                 }
             });
         }
     }
 
-    pub fn handle_call(self, call: Call) -> Result<()> {
+    pub async fn handle_call(self, call: Call) -> Result<()> {
         match call {
             Call::Notification(notification) => {
                 tokio::spawn(async move {
@@ -42,7 +42,7 @@ impl SessionClient {
             }
             Call::MethodCall(method_call) => {
                 let id = method_call.id;
-                let result = method_call.handle();
+                let result = method_call.handle().await;
                 let state = self.state_mutex.lock();
                 state.vim.rpc_client.output(id, result)?;
             }

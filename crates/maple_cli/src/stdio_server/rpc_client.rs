@@ -173,12 +173,13 @@ fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
     let mut writer = writer;
 
     for msg in rx.iter() {
+        log::debug!("------------ sending back: {:?}", msg);
         let s = serde_json::to_string(&msg)?;
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim
         // receives `content`.
         // 2. Without last line ending, vim output handler won't be triggered.
-        write!(writer, "Content-Length: {}\n\n{}\n", s.len(), s)?;
+        write!(writer, "Content-length: {}\n\n{}\n", s.len(), s)?;
         writer.flush()?;
     }
 
