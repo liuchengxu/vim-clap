@@ -3,9 +3,9 @@ use jsonrpc_core::Params;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
-use super::types::GlobalEnv;
-use super::GLOBAL_ENV;
 use crate::datastore::RECENT_FILES_IN_MEMORY;
+use crate::stdio_server::types::GlobalEnv;
+use crate::stdio_server::GLOBAL_ENV;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
