@@ -35,13 +35,16 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     for msg in rx.iter() {
         if let Ok(call) = serde_json::from_str::<Call>(&msg.trim()) {
             match call {
-                Call::Notification(notification) => {
-                    tokio::spawn(async move {
-                        if let Err(e) = notification.handle().await {
-                            error!("Error occurred when handling notification: {:?}", e)
-                        }
-                    });
-                }
+                Call::Notification(notification) => match notification.method.as_str() {
+                    "exit" => manager.terminate(notification.session_id),
+                    _ => {
+                        tokio::spawn(async move {
+                            if let Err(e) = notification.handle().await {
+                                error!("Error occurred when handling notification: {:?}", e)
+                            }
+                        });
+                    }
+                },
                 Call::MethodCall(method_call) => {
                     let msg = method_call;
 
@@ -68,7 +71,6 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "on_init" => manager.new_session::<BuiltinSession>(msg),
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "on_move" => manager.send(msg.session_id, OnMove(msg)),
-                        "exit" => manager.terminate(msg.session_id),
 
                         _ => write_response(
                             json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
