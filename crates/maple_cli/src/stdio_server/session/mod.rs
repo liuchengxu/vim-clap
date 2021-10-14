@@ -16,6 +16,8 @@ use crate::stdio_server::{types::ProviderId, MethodCall};
 pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
 
+use super::types::Call;
+
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
 
@@ -63,12 +65,12 @@ impl SessionEvent {
 }
 
 impl<T: EventHandler> Session<T> {
-    pub fn new(msg: MethodCall, event_handler: T) -> (Self, Sender<SessionEvent>) {
+    pub fn new(call: Call, event_handler: T) -> (Self, Sender<SessionEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {
-            session_id: msg.session_id,
-            context: Arc::new(msg.into()),
+            session_id: call.session_id(),
+            context: Arc::new(call.into()),
             event_handler,
             event_recv: session_receiver,
             source_scale: Scale::Indefinite,

@@ -10,6 +10,7 @@ use serde_json::json;
 use icon::prepend_filer_icon;
 
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
+use crate::stdio_server::types::Call;
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
@@ -128,11 +129,11 @@ impl EventHandler for FilerMessageHandler {
 pub struct FilerSession;
 
 impl NewSession for FilerSession {
-    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(msg.clone(), FilerMessageHandler);
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
+        let (session, session_sender) = Session::new(call.clone(), FilerMessageHandler);
 
         // Handle the on_init message.
-        handle_filer_message(msg);
+        handle_filer_message(call.unwrap_method_call());
 
         session.start_event_loop();
 

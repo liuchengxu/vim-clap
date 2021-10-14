@@ -33,8 +33,10 @@ use self::state::State;
 use self::types::{Call, GlobalEnv};
 
 pub use self::deprecated_runner::{run_forever, write_response};
-pub use self::messages::method_call::MethodCall;
-pub use self::messages::{method_call, notification};
+pub use self::messages::{
+    method_call::{self, MethodCall},
+    notification::{self, Notification},
+};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 

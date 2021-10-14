@@ -11,6 +11,7 @@ use serde_json::json;
 use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
+use crate::stdio_server::types::Call;
 use crate::stdio_server::{
     session::{
         EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
@@ -23,8 +24,8 @@ pub use on_move::{OnMove, OnMoveHandler};
 pub struct BuiltinSession;
 
 impl NewSession for BuiltinSession {
-    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(msg, BuiltinEventHandler);
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
+        let (session, session_sender) = Session::new(call, BuiltinEventHandler);
         session.start_event_loop();
         Ok(session_sender)
     }

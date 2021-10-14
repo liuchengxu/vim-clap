@@ -10,6 +10,7 @@ use filter::FilteredItem;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::types::Call;
 use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
@@ -183,18 +184,19 @@ impl EventHandler for RecentFilesMessageHandler {
 pub struct RecentFilesSession;
 
 impl NewSession for RecentFilesSession {
-    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let handler = RecentFilesMessageHandler::default();
         let lines_clone = handler.lines.clone();
 
-        let (session, session_sender) = Session::new(msg.clone(), handler);
+        let (session, session_sender) = Session::new(call.clone(), handler);
 
         let context_clone = session.context.clone();
 
         session.start_event_loop();
 
         tokio::spawn(async move {
-            let initial_lines = handle_recent_files_message(msg, context_clone, true).await;
+            let initial_lines =
+                handle_recent_files_message(call.unwrap_method_call(), context_clone, true).await;
 
             let mut lines = lines_clone.lock();
             *lines = initial_lines;

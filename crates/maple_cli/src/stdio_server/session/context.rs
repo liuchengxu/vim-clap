@@ -4,11 +4,15 @@ use std::sync::{atomic::AtomicBool, Arc};
 use anyhow::Result;
 use filter::FilteredItem;
 use icon::{Icon, IconKind};
+use jsonrpc_core::Params;
 use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
-use crate::stdio_server::{types::ProviderId, MethodCall};
+use crate::stdio_server::{
+    types::{Call, ProviderId},
+    MethodCall, Notification,
+};
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
@@ -136,14 +140,10 @@ impl SessionContext {
             decorated_lines,
         })
     }
-}
 
-impl From<MethodCall> for SessionContext {
-    fn from(msg: MethodCall) -> Self {
-        log::debug!("Creating a new SessionContext from: {:?}", msg);
-
+    fn from_params(params: Params) -> Self {
         #[derive(Deserialize)]
-        struct Params {
+        struct InnerParams {
             provider_id: ProviderId,
             cwd: PathBuf,
             source_fpath: PathBuf,
@@ -154,7 +154,7 @@ impl From<MethodCall> for SessionContext {
             enable_icon: Option<bool>,
         }
 
-        let Params {
+        let InnerParams {
             provider_id,
             cwd,
             source_fpath,
@@ -163,7 +163,9 @@ impl From<MethodCall> for SessionContext {
             source_cmd,
             runtimepath,
             enable_icon,
-        } = msg.parse_unsafe();
+        } = params
+            .parse()
+            .expect("Failed to deserialize SessionContext");
 
         let match_type = match provider_id.as_str() {
             "tags" | "proj_tags" => MatchType::TagName,
@@ -200,6 +202,28 @@ impl From<MethodCall> for SessionContext {
             icon,
             scale: Arc::new(Mutex::new(Scale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
+        }
+    }
+}
+
+impl From<MethodCall> for SessionContext {
+    fn from(method_call: MethodCall) -> Self {
+        Self::from_params(method_call.params)
+    }
+}
+
+impl From<Notification> for SessionContext {
+    fn from(notification: Notification) -> Self {
+        Self::from_params(notification.params)
+    }
+}
+
+impl From<Call> for SessionContext {
+    fn from(call: Call) -> Self {
+        log::debug!("Creating a new SessionContext from: {:?}", call);
+        match call {
+            Call::MethodCall(method_call) => method_call.into(),
+            Call::Notification(notification) => notification.into(),
         }
     }
 }

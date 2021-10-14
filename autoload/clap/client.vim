@@ -82,7 +82,7 @@ function! clap#client#notify_on_init(method, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#notify(a:method, params)
+  call s:send_notification(a:method, params)
 endfunction
 
 function! clap#client#init_params(extra) abort

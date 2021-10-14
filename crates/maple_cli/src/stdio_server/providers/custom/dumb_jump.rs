@@ -12,6 +12,7 @@ use filter::Query;
 
 use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::{DumbJump, Lines};
+use crate::stdio_server::types::Call;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
@@ -193,14 +194,14 @@ impl EventHandler for DumbJumpMessageHandler {
 pub struct DumbJumpSession;
 
 impl NewSession for DumbJumpSession {
-    fn spawn(msg: MethodCall) -> Result<Sender<SessionEvent>> {
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) =
-            Session::new(msg.clone(), DumbJumpMessageHandler::default());
+            Session::new(call.clone(), DumbJumpMessageHandler::default());
 
         session.start_event_loop();
 
         tokio::spawn(async move {
-            handle_dumb_jump_message(msg, true).await;
+            handle_dumb_jump_message(call.unwrap_method_call(), true).await;
         });
 
         Ok(session_sender)

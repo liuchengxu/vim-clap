@@ -34,9 +34,11 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
         if let Ok(call) = serde_json::from_str::<Call>(&msg.trim()) {
-            match call {
+            // TODO: fix the clone
+            match call.clone() {
                 Call::Notification(notification) => match notification.method.as_str() {
                     "exit" => manager.terminate(notification.session_id),
+                    "on_init" => manager.new_session::<BuiltinSession>(call),
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.handle().await {
@@ -56,19 +58,18 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "preview/file" => message_handlers::preview_file(msg),
                         "quickfix" => quickfix::preview_quickfix_entry(msg),
 
-                        "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
+                        "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(call),
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
+                        "recent_files/on_init" => manager.new_session::<RecentFilesSession>(call),
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "filer" => filer::handle_filer_message(msg),
-                        "filer/on_init" => manager.new_session::<FilerSession>(msg),
+                        "filer/on_init" => manager.new_session::<FilerSession>(call),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "on_init" => manager.new_session::<BuiltinSession>(msg),
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "on_move" => manager.send(msg.session_id, OnMove(msg)),
 

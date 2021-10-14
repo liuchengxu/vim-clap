@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use jsonrpc_core::Params;
 use log::debug;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::types::GlobalEnv;
@@ -22,6 +22,16 @@ impl Notification {
             "note_recent_files" => self.note_recent_file().await,
             _ => Err(anyhow!("Unknown notification: {:?}", self)),
         }
+    }
+
+    pub fn parse<T: DeserializeOwned>(self) -> Result<T> {
+        self.params.parse().map_err(Into::into)
+    }
+
+    pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
+        self.params
+            .parse()
+            .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 
     fn initialize_global_env(self) -> Result<()> {
