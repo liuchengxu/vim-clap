@@ -20,7 +20,7 @@ endif
 
 if g:__clap_development
   function! s:proj_tags.on_typed() abort
-    call clap#client#notify('on_typed', {'query': g:clap.input.get()})
+    call clap#client#call('on_typed', v:null, {'query': g:clap.input.get()})
   endfunction
 else
   function! s:proj_tags.on_typed() abort
