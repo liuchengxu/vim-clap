@@ -32,14 +32,15 @@ impl SessionClient {
         for call in rx.iter() {
             let session_client = self.clone();
             tokio::spawn(async move {
-                if let Err(e) = session_client.handle_call(call).await {
+                if let Err(e) = session_client.handle_vim_message(call).await {
                     error!("Error handling request: {:?}", e);
                 }
             });
         }
     }
 
-    async fn handle_call(self, call: Call) -> Result<()> {
+    /// Handle the message actively initiated from Vim.
+    async fn handle_vim_message(self, call: Call) -> Result<()> {
         match call {
             Call::Notification(notification) => {
                 if let Err(e) = notification.process().await {

@@ -53,6 +53,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     if msg.method != "init_ext_map" {
                         debug!("==> stdio message(in): {:?}", msg);
                     }
+
                     match &msg.method[..] {
                         "init_ext_map" => message_handlers::parse_filetypedetect(msg),
                         "preview/file" => message_handlers::preview_file(msg),
