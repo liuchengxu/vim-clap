@@ -1,4 +1,5 @@
 mod types;
+mod messages;
 
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
@@ -11,9 +12,8 @@ use log::error;
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
 use serde_json::Value;
 
-use super::method_call::MethodCall;
-use super::notification::Notification;
-
+pub use self::messages::method_call::MethodCall;
+pub use self::messages::notification::Notification;
 pub use self::types::{Call, Error, Failure, Output, RawMessage, Success};
 
 #[derive(Serialize)]

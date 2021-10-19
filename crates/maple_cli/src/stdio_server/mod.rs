@@ -1,6 +1,5 @@
 mod deprecated_runner;
 pub mod message_handlers;
-mod messages;
 mod providers;
 mod rpc;
 mod session;
@@ -33,10 +32,7 @@ use self::state::State;
 use self::types::GlobalEnv;
 
 pub use self::deprecated_runner::{run_forever, write_response};
-pub use self::messages::{
-    method_call::{self, MethodCall},
-    notification::{self, Notification},
-};
+pub use self::rpc::{MethodCall, Notification};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 

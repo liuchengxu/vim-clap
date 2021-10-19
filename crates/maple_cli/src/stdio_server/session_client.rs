@@ -6,9 +6,8 @@ use log::{debug, error};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 
-use crate::stdio_server::method_call::MethodCall;
 use crate::stdio_server::state::State;
-use crate::stdio_server::rpc::Call;
+use crate::stdio_server::rpc::{MethodCall, Call};
 
 use super::session::SessionManager;
 

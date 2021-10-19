@@ -1,14 +1,16 @@
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 
+use super::{MethodCall, Notification};
+
 /// Request message actively sent from the Vim side.
 ///
 /// Message sent via `clap#client#notify` or `clap#client#call`.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Call {
-    MethodCall(crate::stdio_server::method_call::MethodCall),
-    Notification(crate::stdio_server::notification::Notification),
+    MethodCall(MethodCall),
+    Notification(Notification),
 }
 
 impl Call {
@@ -19,7 +21,7 @@ impl Call {
         }
     }
 
-    pub fn unwrap_method_call(self) -> crate::stdio_server::method_call::MethodCall {
+    pub fn unwrap_method_call(self) -> MethodCall {
         match self {
             Self::MethodCall(method_call) => method_call,
             _ => unreachable!("Unwrapping MethodCall but met Notification"),
@@ -34,8 +36,8 @@ impl Call {
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum RawMessage {
-    MethodCall(crate::stdio_server::method_call::MethodCall),
-    Notification(crate::stdio_server::notification::Notification),
+    MethodCall(MethodCall),
+    Notification(Notification),
     /// Response of a message requested from Rust.
     Output(Output),
 }
