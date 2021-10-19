@@ -20,6 +20,7 @@ pub struct RpcClient {
     /// Sender for sending message from Rust to Vim.
     #[serde(skip_serializing)]
     output_writer_tx: Sender<RawMessage>,
+    /// Sender for passing the Vim response of request initiated from Rust.
     #[serde(skip_serializing)]
     output_reader_tx: Sender<(u64, Sender<Output>)>,
 }
