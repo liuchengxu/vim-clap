@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.30] 2021-10-19
 ## Improved
 
 - Improve the overal performance by using rayon. #754
