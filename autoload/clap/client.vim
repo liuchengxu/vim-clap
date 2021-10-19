@@ -63,8 +63,7 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! clap#client#notify_on_init(method, ...) abort
-  let s:session_id += 1
+function! s:base_params() abort
   let params = {
         \   'cwd': clap#rooter#working_dir(),
         \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
@@ -79,10 +78,28 @@ function! clap#client#notify_on_init(method, ...) abort
   if g:clap.provider.id ==# 'help_tags'
     let params['runtimepath'] = &runtimepath
   endif
+  return params
+endfunction
+
+function! clap#client#notify_on_init(method, ...) abort
+  let s:session_id += 1
+  let params = s:base_params()
   if a:0 > 0
     call extend(params, a:1)
   endif
   call s:send_notification(a:method, params)
+endfunction
+
+function! clap#client#call_on_init(method, callback, ...) abort
+  let s:session_id += 1
+  let params = s:base_params()
+  if a:0 > 0
+    call extend(params, a:1)
+  endif
+  call s:send_method_call(a:method, params)
+  if a:callback isnot v:null
+    let s:handlers[s:req_id] = a:callback
+  endif
 endfunction
 
 function! clap#client#init_params(extra) abort
@@ -93,13 +110,6 @@ function! clap#client#init_params(extra) abort
         \ 'cwd': clap#rooter#working_dir(),
         \ }
   return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
-endfunction
-
-function! clap#client#call_on_init(method, callback, ...) abort
-  call call(function('clap#client#notify_on_init'), [a:method] + a:000)
-  if a:callback isnot v:null
-    let s:handlers[s:req_id] = a:callback
-  endif
 endfunction
 
 " One optional argument: Dict, extra params
@@ -128,16 +138,6 @@ endfunction
 
 function! clap#client#call_preview_file(extra) abort
   call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
-endfunction
-
-function! clap#client#notify(method, params) abort
-  let s:req_id += 1
-  call clap#job#daemon#send_message(json_encode({
-        \ 'id': s:req_id,
-        \ 'session_id': s:session_id,
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ }))
 endfunction
 
 function! s:send_notification(method, params) abort
