@@ -112,6 +112,42 @@ function! clap#client#init_params(extra) abort
   return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
 endfunction
 
+function! s:send_notification(method, params) abort
+  call clap#job#daemon#send_message(json_encode({
+        \ 'method': a:method,
+        \ 'params': a:params,
+        \ 'session_id': s:session_id,
+        \ }))
+endfunction
+
+function! s:send_method_call(method, params) abort
+  let s:req_id += 1
+  call clap#job#daemon#send_message(json_encode({
+        \ 'id': s:req_id,
+        \ 'method': a:method,
+        \ 'params': a:params,
+        \ 'session_id': s:session_id,
+        \ }))
+endfunction
+
+function! clap#client#notify_recent_file() abort
+  if &buftype ==# 'nofile'
+    return
+  endif
+  call s:send_notification('note_recent_files', {'file': expand(expand('<afile>:p'))})
+endfunction
+
+function! clap#client#notify(method, params) abort
+  call s:send_notification(a:method, a:params)
+endfunction
+
+function! clap#client#call(method, callback, params) abort
+  call s:send_method_call(a:method, a:params)
+  if a:callback isnot v:null
+    let s:handlers[s:req_id] = a:callback
+  endif
+endfunction
+
 " One optional argument: Dict, extra params
 function! clap#client#call_on_move(method, callback, ...) abort
   let curline = g:clap.display.getcurline()
@@ -138,42 +174,6 @@ endfunction
 
 function! clap#client#call_preview_file(extra) abort
   call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
-endfunction
-
-function! s:send_notification(method, params) abort
-  call clap#job#daemon#send_message(json_encode({
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
-endfunction
-
-function! clap#client#send_notification(method, params) abort
-  call s:send_notification(a:method, a:params)
-endfunction
-
-function! s:send_method_call(method, params) abort
-  let s:req_id += 1
-  call clap#job#daemon#send_message(json_encode({
-        \ 'id': s:req_id,
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
-endfunction
-
-function! clap#client#notify_recent_file() abort
-  if &buftype ==# 'nofile'
-    return
-  endif
-  call s:send_notification('note_recent_files', {'file': expand(expand('<afile>:p'))})
-endfunction
-
-function! clap#client#call(method, callback, params) abort
-  call s:send_method_call(a:method, a:params)
-  if a:callback isnot v:null
-    let s:handlers[s:req_id] = a:callback
-  endif
 endfunction
 
 let &cpoptions = s:save_cpo
