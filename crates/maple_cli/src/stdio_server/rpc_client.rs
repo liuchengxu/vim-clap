@@ -17,6 +17,7 @@ use crate::stdio_server::types::{Call, Error, Failure, Output, RawMessage, Succe
 pub struct RpcClient {
     #[serde(skip_serializing)]
     id: AtomicU64,
+    /// Sender for sending message from Rust to Vim.
     #[serde(skip_serializing)]
     output_writer_tx: Sender<RawMessage>,
     #[serde(skip_serializing)]
@@ -24,39 +25,37 @@ pub struct RpcClient {
 }
 
 impl RpcClient {
-    /// * reader: stdin
-    /// * writer: stdout
+    /// Creates a new instance of [`RpcClient`].
+    ///
+    /// # Arguments
+    ///
+    /// * `reader`: a buffer reader on top of [`std::io::Stdin`].
+    /// * `writer`: a buffer writer on top of [`std::io::Stdout`].
     pub fn new(
         reader: impl BufRead + Send + 'static,
         writer: impl Write + Send + 'static,
         sink: Sender<Call>,
-    ) -> Result<Self> {
+    ) -> Self {
         // Channel for passing through the response from Vim.
         let (output_reader_tx, output_reader_rx): (Sender<(u64, Sender<Output>)>, _) = unbounded();
-
-        std::thread::Builder::new()
-            .name("stdio-reader".into())
-            .spawn(move || {
-                if let Err(err) = loop_read(reader, output_reader_rx, &sink) {
-                    error!("Thread stdio-reader exited with error: {:?}", err);
-                }
-            })?;
+        tokio::spawn(async move {
+            if let Err(err) = loop_read(reader, output_reader_rx, &sink) {
+                error!("Thread stdio-reader exited with error: {:?}", err);
+            }
+        });
 
         let (output_writer_tx, output_writer_rx) = unbounded();
+        tokio::spawn(async move {
+            if let Err(err) = loop_write(writer, &output_writer_rx) {
+                error!("Thread stdio-writer exited with error: {:?}", err);
+            }
+        });
 
-        std::thread::Builder::new()
-            .name("stdio-writer".into())
-            .spawn(move || {
-                if let Err(err) = loop_write(writer, &output_writer_rx) {
-                    error!("Thread stdio-writer exited with error: {:?}", err);
-                }
-            })?;
-
-        Ok(Self {
+        Self {
             id: Default::default(),
             output_reader_tx,
             output_writer_tx,
-        })
+        }
     }
 
     /// Calls into Vim.
@@ -68,7 +67,7 @@ impl RpcClient {
         params: impl Serialize,
     ) -> Result<R> {
         let id = self.id.fetch_add(1, Ordering::SeqCst);
-        let msg = MethodCall {
+        let method_call = MethodCall {
             id,
             method: method.as_ref().to_owned(),
             params: to_params(params)?,
@@ -76,7 +75,8 @@ impl RpcClient {
         };
         let (tx, rx) = bounded(1);
         self.output_reader_tx.send((id, tx))?;
-        self.output_writer_tx.send(RawMessage::MethodCall(msg))?;
+        self.output_writer_tx
+            .send(RawMessage::MethodCall(method_call))?;
         match rx.recv_timeout(std::time::Duration::from_secs(60))? {
             Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
             Output::Failure(err) => Err(anyhow!("Error: {:?}", err)),
@@ -85,15 +85,14 @@ impl RpcClient {
 
     /// Sends a notification message to Vim.
     pub fn notify(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
-        let method = method.as_ref();
-
-        let msg = Notification {
-            method: method.to_owned(),
+        let notification = Notification {
+            method: method.as_ref().to_owned(),
             params: to_params(params)?,
             session_id: 888u64, // FIXME
         };
 
-        self.output_writer_tx.send(RawMessage::Notification(msg))?;
+        self.output_writer_tx
+            .send(RawMessage::Notification(notification))?;
 
         Ok(())
     }
@@ -186,8 +185,8 @@ fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
     Ok(())
 }
 
-fn to_params(v: impl Serialize) -> Result<Params> {
-    let json_value = serde_json::to_value(v)?;
+fn to_params(value: impl Serialize) -> Result<Params> {
+    let json_value = serde_json::to_value(value)?;
 
     let params = match json_value {
         Value::Null => Params::None,

@@ -23,8 +23,7 @@ impl MethodCall {
     }
 
     pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
-        self.params
-            .parse()
+        self.parse()
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 

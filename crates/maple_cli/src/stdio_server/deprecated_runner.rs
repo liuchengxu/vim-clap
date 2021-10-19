@@ -41,7 +41,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     "on_init" => manager.new_session::<BuiltinSession>(call),
                     _ => {
                         tokio::spawn(async move {
-                            if let Err(e) = notification.handle().await {
+                            if let Err(e) = notification.process().await {
                                 error!("Error occurred when handling notification: {:?}", e)
                             }
                         });

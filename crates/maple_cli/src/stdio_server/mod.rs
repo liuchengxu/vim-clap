@@ -59,7 +59,7 @@ pub fn start() -> Result<()> {
         BufReader::new(std::io::stdin()),
         BufWriter::new(std::io::stdout()),
         call_tx.clone(),
-    )?);
+    ));
 
     let state = State::new(call_tx, rpc_client);
     let session_client = SessionClient::new(state);

@@ -16,7 +16,8 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub async fn handle(self) -> Result<()> {
+    /// Process the notification message from Vim.
+    pub async fn process(self) -> Result<()> {
         match self.method.as_str() {
             "initialize_global_env" => self.initialize_global_env(), // should be called only once.
             "note_recent_files" => self.note_recent_file().await,
@@ -29,8 +30,7 @@ impl Notification {
     }
 
     pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
-        self.params
-            .parse()
+        self.parse()
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 

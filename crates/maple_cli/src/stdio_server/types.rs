@@ -95,6 +95,7 @@ impl Call {
 pub enum RawMessage {
     MethodCall(crate::stdio_server::method_call::MethodCall),
     Notification(crate::stdio_server::notification::Notification),
+    /// Response of a message requested from Rust.
     Output(Output),
 }
 

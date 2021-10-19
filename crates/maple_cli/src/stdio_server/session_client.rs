@@ -19,6 +19,7 @@ pub struct SessionClient {
 }
 
 impl SessionClient {
+    /// Creates a new instnace of [`SessionClient`].
     pub fn new(state: State) -> Self {
         Self {
             state_mutex: Arc::new(Mutex::new(state)),
@@ -26,6 +27,7 @@ impl SessionClient {
         }
     }
 
+    /// Entry of the bridge between Vim and Rust.
     pub fn loop_call(&self, rx: &Receiver<Call>) {
         for call in rx.iter() {
             let session_client = self.clone();
@@ -37,18 +39,17 @@ impl SessionClient {
         }
     }
 
-    pub async fn handle_call(self, call: Call) -> Result<()> {
+    async fn handle_call(self, call: Call) -> Result<()> {
         match call {
             Call::Notification(notification) => {
-                tokio::spawn(async move {
-                    if let Err(e) = notification.handle().await {
-                        error!("Error occurred when handling notification: {:?}", e)
-                    }
-                });
+                if let Err(e) = notification.process().await {
+                    error!("Error occurred when handling notification: {:?}", e);
+                }
             }
             Call::MethodCall(method_call) => {
                 let id = method_call.id;
-                let maybe_result = self.handle_method_call(method_call).await?;
+                let maybe_result = self.process_method_call(method_call).await?;
+                // Send back the result of method call.
                 if let Some(result) = maybe_result {
                     let state = self.state_mutex.lock();
                     state.vim.rpc_client.output(id, Ok(result))?;
@@ -58,7 +59,8 @@ impl SessionClient {
         Ok(())
     }
 
-    async fn handle_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
+    /// Process the method call message from Vim.
+    async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
         use super::dumb_jump::DumbJumpSession;
         use super::recent_files::RecentFilesSession;
         use super::SessionEvent::*;
@@ -93,7 +95,7 @@ impl SessionClient {
             "exit" => manager.terminate(msg.session_id),
             */
             _ => Some(json!({
-                "error": format!("unknown method: {}", msg.method)
+                "error": format!("Unknown method call: {}", msg.method)
             })),
         };
 
