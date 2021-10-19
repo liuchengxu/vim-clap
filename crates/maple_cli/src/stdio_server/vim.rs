@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 
-use crate::stdio_server::rpc_client::RpcClient;
+use crate::stdio_server::rpc::RpcClient;
 
 #[derive(Clone)]
 pub struct Vim {

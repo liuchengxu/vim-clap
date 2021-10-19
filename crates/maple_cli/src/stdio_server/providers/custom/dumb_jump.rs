@@ -12,9 +12,9 @@ use filter::Query;
 
 use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::{DumbJump, Lines};
-use crate::stdio_server::types::Call;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };

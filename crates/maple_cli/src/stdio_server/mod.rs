@@ -2,7 +2,7 @@ mod deprecated_runner;
 pub mod message_handlers;
 mod messages;
 mod providers;
-mod rpc_client;
+mod rpc;
 mod session;
 mod session_client;
 mod state;
@@ -26,11 +26,11 @@ use self::providers::{
     filer::{self, FilerSession},
     quickfix, recent_files, BuiltinSession,
 };
-use self::rpc_client::RpcClient;
+use self::rpc::{Call, RpcClient};
 use self::session::{SessionEvent, SessionManager};
 use self::session_client::SessionClient;
 use self::state::State;
-use self::types::{Call, GlobalEnv};
+use self::types::GlobalEnv;
 
 pub use self::deprecated_runner::{run_forever, write_response};
 pub use self::messages::{

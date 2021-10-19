@@ -9,9 +9,9 @@ use serde_json::json;
 use filter::FilteredItem;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::providers::builtin::OnMoveHandler;
-use crate::stdio_server::types::Call;
 use crate::stdio_server::{
+    providers::builtin::OnMoveHandler,
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };

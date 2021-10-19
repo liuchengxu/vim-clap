@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 
 use crate::stdio_server::method_call::MethodCall;
 use crate::stdio_server::state::State;
-use crate::stdio_server::types::Call;
+use crate::stdio_server::rpc::Call;
 
 use super::session::SessionManager;
 

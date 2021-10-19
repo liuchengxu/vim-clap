@@ -1,3 +1,5 @@
+mod types;
+
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -6,12 +8,13 @@ use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use jsonrpc_core::Params;
 use log::error;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Serialize, Deserialize};
 use serde_json::Value;
 
 use super::method_call::MethodCall;
 use super::notification::Notification;
-use crate::stdio_server::types::{Call, Error, Failure, Output, RawMessage, Success};
+
+pub use self::types::{Call, Error, Failure, Output, RawMessage, Success};
 
 #[derive(Serialize)]
 pub struct RpcClient {

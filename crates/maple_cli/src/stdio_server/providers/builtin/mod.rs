@@ -11,8 +11,8 @@ use serde_json::json;
 use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
-use crate::stdio_server::types::Call;
 use crate::stdio_server::{
+    rpc::Call,
     session::{
         EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
     },

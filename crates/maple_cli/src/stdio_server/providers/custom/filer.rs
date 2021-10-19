@@ -10,8 +10,8 @@ use serde_json::json;
 use icon::prepend_filer_icon;
 
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
-use crate::stdio_server::types::Call;
 use crate::stdio_server::{
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };

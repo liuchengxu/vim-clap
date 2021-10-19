@@ -11,12 +11,10 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::stdio_server::providers::builtin::on_session_create;
-use crate::stdio_server::{types::ProviderId, MethodCall};
+use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
 pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
-
-use super::types::Call;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
