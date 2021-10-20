@@ -1,5 +1,5 @@
-mod types;
 mod messages;
+mod types;
 
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use jsonrpc_core::Params;
 use log::error;
-use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
 pub use self::messages::method_call::MethodCall;
@@ -18,6 +18,7 @@ pub use self::types::{Call, Error, Failure, Output, RawMessage, Success};
 
 #[derive(Serialize)]
 pub struct RpcClient {
+    /// Id of request to Vim created from the Rust side.
     #[serde(skip_serializing)]
     id: AtomicU64,
     /// Sender for sending message from Rust to Vim.

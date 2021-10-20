@@ -9,7 +9,10 @@ use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
-use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall, Notification};
+use crate::stdio_server::{
+    rpc::{Call, MethodCall, Notification},
+    types::ProviderId,
+};
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 

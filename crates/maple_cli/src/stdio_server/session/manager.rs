@@ -6,7 +6,7 @@ use log::error;
 
 use crate::stdio_server::{session::SessionId, rpc::Call, MethodCall, SessionEvent};
 
-/// A small wrapper of Sender<SessionEvent> for logging on send error.
+/// A small wrapper of Sender<SessionEvent> for logging on sending error.
 #[derive(Debug)]
 pub struct SessionEventSender {
     pub sender: Sender<SessionEvent>,
@@ -46,7 +46,7 @@ pub struct SessionManager {
 }
 
 impl SessionManager {
-    /// Starts a session in a new thread given the init message.
+    /// Starts a session in a background task.
     pub fn new_session<T: NewSession>(&mut self, call: Call) {
         let session_id = call.session_id();
         if self.exists(session_id) {
@@ -61,7 +61,7 @@ impl SessionManager {
                         .insert(session_id, SessionEventSender::new(sender, session_id));
                 }
                 Err(e) => {
-                    error!("Could not spawn new session, error:{:?}", e);
+                    error!("Could not spawn a new session, error: {:?}", e);
                 }
             }
         }
@@ -72,14 +72,14 @@ impl SessionManager {
         self.sessions.contains_key(&session_id)
     }
 
-    /// Stop the session thread by sending [`SessionEvent::Terminate`].
+    /// Stop the session task by sending [`SessionEvent::Terminate`].
     pub fn terminate(&mut self, session_id: SessionId) {
         if let Some(sender) = self.sessions.remove(&session_id) {
             sender.send(SessionEvent::Terminate);
         }
     }
 
-    /// Dispatch the session event to the session thread accordingly.
+    /// Dispatch the session event to the background session task accordingly.
     pub fn send(&self, session_id: SessionId, event: SessionEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);
