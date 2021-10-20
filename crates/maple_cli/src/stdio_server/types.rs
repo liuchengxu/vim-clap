@@ -91,15 +91,9 @@ impl ProviderId {
     }
 }
 
-impl From<String> for ProviderId {
-    fn from(p: String) -> Self {
-        Self(p)
-    }
-}
-
-impl From<&str> for ProviderId {
-    fn from(p: &str) -> Self {
-        Self(p.into())
+impl<T: AsRef<str>> From<T> for ProviderId {
+    fn from(s: T) -> Self {
+        Self(s.as_ref().to_owned())
     }
 }
 
