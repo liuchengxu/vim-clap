@@ -37,14 +37,12 @@ endfunction
 
 function! s:registers.on_move() abort
   let curline = g:clap.display.getcurline()
-  if strlen(curline) > winwidth(g:clap.display.winid)
-    let reg = s:extract_reg(curline)
-    if !empty(reg)
-      let lines = split(eval('@'.reg), "\n")
-      call g:clap.preview.show(lines)
-    endif
-  else
-    call g:clap.preview.hide()
+  let reg = s:extract_reg(curline)
+  if !empty(reg)
+    let lines = split(eval('@'.reg), "\n")
+    let preview_title = 'Content for register ['.s:extract_reg(curline).']:'
+    call g:clap.preview.show([preview_title] + lines)
+    call clap#preview#highlight_header()
   endif
 endfunction
 
