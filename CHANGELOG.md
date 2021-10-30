@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## Improved
+
+- Always update the preview for `registers` otherwise the preview content could be outdated and add a preview title.
 
 ## [0.30] 2021-10-19
+
 ## Improved
 
 - Improve the overal performance by using rayon. #754
