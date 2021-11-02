@@ -161,7 +161,7 @@ endfunction
 function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
   let s:MessageHandler = a:MessageHandler
 
-  let filter_cmd = g:clap_enable_icon ? ['--icon=File'] : []
+  let filter_cmd = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? ['--icon=File'] : []
   let filter_cmd += ['--number', '100', '--winwidth', winwidth(g:clap.display.winid), 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir()]
 
   call s:start_service_job(clap#maple#build_cmd_list(filter_cmd))
