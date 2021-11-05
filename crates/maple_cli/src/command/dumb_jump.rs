@@ -77,7 +77,7 @@ fn render_jump_line(
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
         .into_iter()
         .filter_map(|line| {
-            exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, &word))
+            exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word))
         })
         .unzip();
 
@@ -133,7 +133,7 @@ impl DumbJump {
                     find_occurrence_matches_by_ext(&word, &self.extension, &self.cmd_dir).await?,
                     "refs",
                     &word,
-                    &exact_or_inverse_terms,
+                    exact_or_inverse_terms,
                 ));
             }
         };
