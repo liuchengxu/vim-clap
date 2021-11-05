@@ -49,7 +49,7 @@ async fn preview_quickfix_entry_impl(msg: MethodCall) -> Result<()> {
     Ok(())
 }
 
-fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
+pub(crate) fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
     let mut splitted = line.split('|');
     let fpath = splitted
         .next()

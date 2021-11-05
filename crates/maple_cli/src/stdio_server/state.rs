@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crossbeam_channel::Sender;
 use serde::Serialize;
 
-use crate::stdio_server::rpc::{RpcClient, Call};
+use crate::stdio_server::rpc::{Call, RpcClient};
 use crate::stdio_server::vim::Vim;
 
 /// Current State of Vim/NeoVim client.

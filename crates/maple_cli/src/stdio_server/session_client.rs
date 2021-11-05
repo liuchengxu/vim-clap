@@ -6,8 +6,8 @@ use log::{debug, error};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 
+use crate::stdio_server::rpc::{Call, MethodCall};
 use crate::stdio_server::state::State;
-use crate::stdio_server::rpc::{MethodCall, Call};
 
 use super::session::SessionManager;
 
@@ -74,7 +74,7 @@ impl SessionClient {
         let value = match msg.method.as_str() {
             "init_ext_map" => Some(msg.parse_filetypedetect()),
             "preview/file" => Some(msg.preview_file().await?),
-            // "quickfix" => super::quickfix::preview_quickfix_entry(msg),
+            "quickfix" => Some(msg.preview_quickfix().await?),
 
             /*
             "dumb_jump/on_init" => self.session_manager.new_session::<DumbJumpSession>(msg),

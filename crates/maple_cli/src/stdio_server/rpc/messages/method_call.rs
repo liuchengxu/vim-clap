@@ -194,4 +194,46 @@ impl MethodCall {
 
         Ok(value)
     }
+
+    pub async fn preview_quickfix(self) -> Result<Value> {
+        use crate::previewer::{preview_file, preview_file_at};
+        use crate::stdio_server::providers::custom::quickfix::parse_quickfix_entry;
+        use std::path::PathBuf;
+
+        let msg_id = self.id;
+
+        #[derive(Deserialize)]
+        struct InnerParams {
+            cwd: String,
+            curline: String,
+            winwidth: u64,
+            winheight: u64,
+        }
+
+        let InnerParams {
+            cwd,
+            curline,
+            winwidth,
+            winheight,
+        } = self.params.parse()?;
+
+        let (p, lnum) = parse_quickfix_entry(curline.as_str())?;
+
+        let mut fpath: PathBuf = cwd.into();
+        fpath.push(p);
+
+        let result = if lnum == 0 {
+            let size = (winheight + 5) as usize;
+            let (lines, _) = preview_file(fpath.as_path(), size, winwidth as usize)?;
+            json!({ "event": "on_move", "lines": lines, "fname": fpath })
+        } else {
+            let size = (winheight / 2) as usize;
+            let (lines, hi_lnum) = preview_file_at(fpath.as_path(), size, winwidth as usize, lnum)?;
+            json!({ "event": "on_move", "lines": lines, "fname": fpath, "hi_lnum": hi_lnum })
+        };
+
+        let value = json!({ "id": msg_id, "provider_id": "quickfix", "result": result });
+
+        Ok(value)
+    }
 }
