@@ -33,7 +33,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
-        if let Ok(call) = serde_json::from_str::<Call>(&msg.trim()) {
+        if let Ok(call) = serde_json::from_str::<Call>(msg.trim()) {
             // TODO: fix the clone
             match call.clone() {
                 Call::Notification(notification) => match notification.method.as_str() {

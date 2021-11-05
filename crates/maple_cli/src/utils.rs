@@ -27,11 +27,11 @@ impl Default for ExactOrInverseTerms {
 impl ExactOrInverseTerms {
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
-        if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), &line) {
+        if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), line) {
             let should_retain = !self
                 .inverse_terms
                 .iter()
-                .any(|term| term.match_full_line(&line));
+                .any(|term| term.match_full_line(line));
 
             if should_retain {
                 Some(indices)
@@ -158,7 +158,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> Result<PathBuf> {
 
     let fpath = if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
         let mut home_dir = directories::BaseDirs::new()
-            .ok_or(anyhow!("Failed to construct BaseDirs"))?
+            .ok_or_else(|| anyhow!("Failed to construct BaseDirs"))?
             .home_dir()
             .to_path_buf();
         home_dir.push(stripped);
@@ -196,7 +196,7 @@ pub fn count_lines<R: std::io::Read>(handle: R) -> Result<usize, std::io::Error>
             if buf.is_empty() {
                 break;
             }
-            count += bytecount::count(&buf, b'\n');
+            count += bytecount::count(buf, b'\n');
             buf.len()
         };
         reader.consume(len);

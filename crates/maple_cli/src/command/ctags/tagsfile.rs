@@ -109,7 +109,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             files: Default::default(),
             dir,
             exclude_opt: super::EXCLUDE
-                .split(",")
+                .split(',')
                 .map(|x| format!("--exclude={}", x))
                 .join(" "),
         }
@@ -143,7 +143,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
 
         // pass the input files.
         if !self.files.is_empty() {
-            cmd.push_str(" ");
+            cmd.push(' ');
             cmd.push_str(&self.files.iter().map(|f| f.display()).join(" "));
         }
 
