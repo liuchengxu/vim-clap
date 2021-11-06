@@ -2,7 +2,7 @@
 name = "printer"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"

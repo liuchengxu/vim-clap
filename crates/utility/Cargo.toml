@@ -2,7 +2,7 @@
 name = "utility"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
