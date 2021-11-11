@@ -193,7 +193,7 @@ pub async fn all_definitions(
     let all_def_futures = get_definition_rules(lang)?
         .0
         .keys()
-        .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
+        .map(|kind| find_definition_matches_with_kind(lang, kind, word, dir));
 
     let maybe_defs = futures::future::join_all(all_def_futures).await;
 
@@ -254,10 +254,10 @@ pub async fn definitions_and_references_lines(
         .flat_map(|(kind, lines)| {
             lines
                 .par_iter()
-                .filter_map(|ref line| {
+                .filter_map(|line| {
                     if positive_defs.contains(&line) {
                         exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line(kind.as_ref(), &word))
+                            .check_jump_line(line.build_jump_line(kind.as_ref(), word))
                     } else {
                         None
                     }
@@ -266,9 +266,9 @@ pub async fn definitions_and_references_lines(
         })
         .chain(
             // references are these occurrences not in the definitions.
-            occurrences.par_iter().filter_map(|ref line| {
-                if !defs.contains(&line) {
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+            occurrences.par_iter().filter_map(|line| {
+                if !defs.contains(line) {
+                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", word))
                 } else {
                     None
                 }
@@ -281,7 +281,7 @@ pub async fn definitions_and_references_lines(
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
             .into_par_iter()
             .filter_map(|line| {
-                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
+                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
             })
             .unzip();
         return Ok(Lines::new(lines, indices));
@@ -311,7 +311,7 @@ pub async fn definitions_and_references(
     let res: HashMap<MatchKind, Vec<Match>> = definitions
         .into_par_iter()
         .filter_map(|(kind, mut defs)| {
-            defs.retain(|ref def| positive_defs.contains(&def));
+            defs.retain(|ref def| positive_defs.contains(def));
             if defs.is_empty() {
                 None
             } else {
@@ -319,7 +319,7 @@ pub async fn definitions_and_references(
             }
         })
         .chain(rayon::iter::once((MatchKind::Reference("refs"), {
-            occurrences.retain(|r| !defs.contains(&r));
+            occurrences.retain(|r| !defs.contains(r));
             occurrences
         })))
         .collect();

@@ -76,9 +76,7 @@ fn render_jump_line(
 ) -> Lines {
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
         .into_iter()
-        .filter_map(|line| {
-            exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word))
-        })
+        .filter_map(|line| exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word)))
         .unzip();
 
     Lines::new(lines, indices)

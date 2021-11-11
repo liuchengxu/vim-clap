@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -32,7 +32,7 @@ pub struct SearchResults {
 }
 
 #[allow(unused)]
-async fn search_tags(dir: &PathBuf, query: &str) -> Result<Vec<String>> {
+async fn search_tags(dir: &Path, query: &str) -> Result<Vec<String>> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
     if tags.exists() {
         for line in tags.readtags(query)?.collect::<Vec<_>>() {

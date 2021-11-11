@@ -47,7 +47,7 @@ pub enum OnMove {
 }
 
 impl OnMove {
-    pub fn new<'a>(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
+    pub fn new(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
         let mut line_content = None;
         let context = match context.provider_id.as_str() {
             "filer" => unreachable!("filer has been handled ahead"),
@@ -187,7 +187,7 @@ impl<'a> OnMoveHandler<'a> {
             | Grep(CertainLine { path, lnum })
             | ProjTags(CertainLine { path, lnum })
             | BufferTags(CertainLine { path, lnum }) => {
-                self.preview_file_at(&path, *lnum);
+                self.preview_file_at(path, *lnum);
             }
             HelpTags {
                 subject,
@@ -282,7 +282,7 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn preview_file_at(&self, path: &PathBuf, lnum: usize) {
+    fn preview_file_at(&self, path: &Path, lnum: usize) {
         debug!("Try to preview file: {}, lnum: {}", path.display(), lnum);
 
         match utility::read_preview_lines(path, lnum, self.size) {
