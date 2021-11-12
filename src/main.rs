@@ -6,14 +6,11 @@ pub mod built_info {
 
 fn version() {
     println!(
-        "{}",
-        format!(
-            "version {}{}, built for {} by {}.",
-            built_info::PKG_VERSION,
-            built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
-            built_info::TARGET,
-            built_info::RUSTC_VERSION
-        )
+        "version {}{}, built for {} by {}.",
+        built_info::PKG_VERSION,
+        built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+        built_info::TARGET,
+        built_info::RUSTC_VERSION
     );
 }
 
