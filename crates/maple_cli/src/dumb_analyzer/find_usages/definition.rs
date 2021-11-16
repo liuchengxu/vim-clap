@@ -10,7 +10,7 @@ use crate::command::dumb_jump::Lines;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::runner::{
+use super::search::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
 

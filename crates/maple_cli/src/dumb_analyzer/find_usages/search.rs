@@ -31,7 +31,7 @@ async fn collect_matches(
             .filter_map(|s| {
                 Match::try_from(s)
                     .ok()
-                    .filter(|mat| !is_comment(&mat, comments))
+                    .filter(|mat| !is_comment(mat, comments))
             })
             .collect())
     } else {
