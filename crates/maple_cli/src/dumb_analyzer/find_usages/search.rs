@@ -12,7 +12,7 @@ use super::definition::{build_full_regexp, get_comments_by_ext, is_comment, Defi
 /// Executes `command` as a child process.
 ///
 /// Convert the entire output into a stream of ripgrep `Match`.
-async fn collect_matches(
+async fn find_matches(
     command: String,
     dir: &Option<PathBuf>,
     comments: Option<&[&str]>,
@@ -53,7 +53,7 @@ pub async fn naive_grep_fallback(
         word.raw.replace(char::is_whitespace, ".*"),
         lang_type
     );
-    collect_matches(command, dir, Some(comments)).await
+    find_matches(command, dir, Some(comments)).await
 }
 
 pub async fn find_occurrence_matches_by_ext(
@@ -63,7 +63,7 @@ pub async fn find_occurrence_matches_by_ext(
 ) -> Result<Vec<Match>> {
     let command = format!("rg --json --word-regexp '{}' -g '*.{}'", word.raw, ext);
     let comments = get_comments_by_ext(ext);
-    collect_matches(command, dir, Some(comments)).await
+    find_matches(command, dir, Some(comments)).await
 }
 
 /// Finds all the occurrences of `word`.
@@ -80,7 +80,7 @@ pub async fn find_occurrences_by_lang(
         word.raw, lang_type
     );
 
-    collect_matches(command, dir, Some(comments)).await
+    find_matches(command, dir, Some(comments)).await
 }
 
 /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
@@ -92,7 +92,7 @@ pub async fn find_definition_matches_with_kind(
 ) -> Result<(DefinitionKind, Vec<Match>)> {
     let regexp = build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);
-    collect_matches(command, dir, None)
+    find_matches(command, dir, None)
         .await
         .map(|defs| (kind.clone(), defs))
 }

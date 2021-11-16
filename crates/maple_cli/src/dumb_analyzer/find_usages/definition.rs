@@ -1,3 +1,4 @@
+use std::array::IntoIter;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
@@ -10,6 +11,7 @@ use crate::command::dumb_jump::Lines;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
+use super::FindUsages;
 use super::search::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
@@ -137,7 +139,7 @@ impl DefinitionRegexp {
 
 /// Definition rules of a language.
 #[derive(Clone, Debug, Deserialize)]
-pub struct DefinitionRules(HashMap<DefinitionKind, DefinitionRegexp>);
+pub struct DefinitionRules(pub HashMap<DefinitionKind, DefinitionRegexp>);
 
 impl DefinitionRules {
     fn kind_rules_for(&self, kind: &DefinitionKind) -> Result<impl Iterator<Item = &str>> {
@@ -184,51 +186,59 @@ pub(super) fn is_comment(mat: &Match, comments: &[&str]) -> bool {
     comments.iter().any(|c| mat.line_starts_with(c))
 }
 
-/// Collects all kinds of definitions concurrently.
-pub async fn all_definitions(
-    lang: &str,
-    word: &Word,
-    dir: &Option<PathBuf>,
-) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
-    let all_def_futures = get_definition_rules(lang)?
-        .0
-        .keys()
-        .map(|kind| find_definition_matches_with_kind(lang, kind, word, dir));
-
-    let maybe_defs = futures::future::join_all(all_def_futures).await;
-
-    Ok(maybe_defs
-        .into_par_iter()
-        .filter_map(|def| def.ok())
-        .collect())
+/// Search results of a specific definition kind.
+#[derive(Debug, Clone)]
+pub struct DefinitionSearchResult {
+    pub kind: DefinitionKind,
+    pub matches: Vec<Match>,
 }
 
-/// Collects the occurrences and all definitions concurrently.
-async fn definitions_and_occurences(
-    word: &Word,
-    lang: &str,
-    dir: &Option<PathBuf>,
-    comments: &[&str],
-) -> (Vec<(DefinitionKind, Vec<Match>)>, Vec<Match>) {
-    let (definitions, occurrences) = futures::future::join(
-        all_definitions(lang, word, dir),
-        find_occurrences_by_lang(word, lang, dir, comments),
-    )
-    .await;
-
-    (
-        definitions.unwrap_or_default(),
-        occurrences.unwrap_or_default(),
-    )
+#[derive(Debug, Clone)]
+pub struct Definitions {
+    pub defs: Vec<DefinitionSearchResult>,
 }
 
-fn flatten(definitions: &[(DefinitionKind, Vec<Match>)]) -> Vec<Match> {
-    let defs_count = definitions.iter().map(|(_, items)| items.len()).sum();
-    let mut defs = Vec::with_capacity(defs_count);
-    for (_, items) in definitions.iter() {
-        defs.extend_from_slice(items);
+impl Definitions {
+    pub fn flatten(&self) -> Vec<Match> {
+        let defs_count = self.defs.iter().map(|def| def.matches.len()).sum();
+        let mut defs = Vec::with_capacity(defs_count);
+        for DefinitionSearchResult { matches, .. } in self.defs.iter() {
+            defs.extend_from_slice(matches);
+        }
+        defs
     }
-    defs
+
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, DefinitionSearchResult> {
+        self.defs.par_iter()
+    }
+
+    pub fn into_par_iter(self) -> rayon::vec::IntoIter<DefinitionSearchResult> {
+        self.defs.into_par_iter()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Occurrences(pub Vec<Match>);
+
+impl Occurrences {
+    pub fn contains(&self, m: &Match) -> bool {
+        self.0.contains(m)
+    }
+
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, Match> {
+        self.0.par_iter()
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Match) -> bool,
+    {
+        self.0.retain(f)
+    }
+
+    pub fn into_inner(self) -> Vec<Match> {
+        self.0
+    }
 }
 
 pub async fn definitions_and_references_lines(
@@ -238,9 +248,9 @@ pub async fn definitions_and_references_lines(
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Result<Lines> {
-    let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
+    let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
-    let defs = flatten(&definitions);
+    let defs = definitions.flatten();
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
@@ -251,8 +261,8 @@ pub async fn definitions_and_references_lines(
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
         .par_iter()
-        .flat_map(|(kind, lines)| {
-            lines
+        .flat_map(|DefinitionSearchResult { kind, matches }| {
+            matches
                 .par_iter()
                 .filter_map(|line| {
                     if positive_defs.contains(&line) {
@@ -296,10 +306,9 @@ pub async fn definitions_and_references(
     dir: &Option<PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) =
-        definitions_and_occurences(word, lang, dir, comments).await;
+    let (definitions, mut occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
-    let defs = flatten(&definitions);
+    let defs = definitions.flatten();
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
@@ -310,17 +319,17 @@ pub async fn definitions_and_references(
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
         .into_par_iter()
-        .filter_map(|(kind, mut defs)| {
-            defs.retain(|ref def| positive_defs.contains(def));
-            if defs.is_empty() {
+        .filter_map(|DefinitionSearchResult { kind, mut matches }| {
+            matches.retain(|ref def| positive_defs.contains(def));
+            if matches.is_empty() {
                 None
             } else {
-                Some((kind.into(), defs))
+                Some((kind.into(), matches))
             }
         })
         .chain(rayon::iter::once((MatchKind::Reference("refs"), {
             occurrences.retain(|r| !defs.contains(r));
-            occurrences
+            occurrences.into_inner()
         })))
         .collect();
 
