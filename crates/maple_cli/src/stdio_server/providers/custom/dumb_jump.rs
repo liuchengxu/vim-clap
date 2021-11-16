@@ -44,6 +44,41 @@ async fn search_tags(dir: &Path, query: &str) -> Result<Vec<String>> {
     }
 }
 
+/// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
+fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
+    let Query {
+        exact_terms,
+        inverse_terms,
+        fuzzy_terms,
+    } = Query::from(query);
+
+    // If there is no fuzzy term, use the full query as the identifier,
+    // otherwise restore the fuzzy query as the identifier we are going to search.
+    let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
+        if !exact_terms.is_empty() {
+            (
+                exact_terms[0].word.clone(),
+                ExactOrInverseTerms {
+                    exact_terms,
+                    inverse_terms,
+                },
+            )
+        } else {
+            (query.into(), ExactOrInverseTerms::default())
+        }
+    } else {
+        (
+            fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            ExactOrInverseTerms {
+                exact_terms,
+                inverse_terms,
+            },
+        )
+    };
+
+    (identifier, exact_or_inverse_terms)
+}
+
 pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> SearchResults {
     let msg_id = msg.id;
 
@@ -64,38 +99,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
         return Default::default();
     }
 
-    let last_query = query.clone();
-
-    // When we use the dumb_jump, the search query should be `identifier(s) ++ exact_term/inverse_term`
-    let Query {
-        exact_terms,
-        inverse_terms,
-        fuzzy_terms,
-    } = Query::from(query.as_str());
-
-    // If there is no fuzzy term, use the full query as the identifier,
-    // otherwise restore the fuzzy query as the identifier we are going to search.
-    let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
-        if !exact_terms.is_empty() {
-            (
-                exact_terms[0].word.clone(),
-                ExactOrInverseTerms {
-                    exact_terms,
-                    inverse_terms,
-                },
-            )
-        } else {
-            (query, ExactOrInverseTerms::default())
-        }
-    } else {
-        (
-            fuzzy_terms.iter().map(|term| &term.word).join(" "),
-            ExactOrInverseTerms {
-                exact_terms,
-                inverse_terms,
-            },
-        )
-    };
+    let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
     let dumb_jump = DumbJump {
         word: identifier,
@@ -126,7 +130,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
             write_response(result);
             SearchResults {
                 lines: total_lines,
-                query: last_query,
+                query,
             }
         }
         Err(e) => {
@@ -139,7 +143,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
             write_response(result);
             SearchResults {
                 lines: Default::default(),
-                query: last_query,
+                query,
             }
         }
     }
