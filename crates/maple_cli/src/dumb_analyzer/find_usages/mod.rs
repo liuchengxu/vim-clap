@@ -73,7 +73,8 @@ impl<'a> FindUsages<'a> {
     }
 
     /// Returns all the occurrences.
-    pub async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
+    #[inline]
+    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
         find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
     }
 }

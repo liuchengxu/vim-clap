@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -11,10 +12,10 @@ use crate::command::dumb_jump::Lines;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::FindUsages;
 use super::search::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
+use super::FindUsages;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -81,28 +82,18 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 pub enum MatchKind {
     /// Results matched from the definition regexp.
     Definition(DefinitionKind),
-    /// Occurrences with the definition items ignored.
-    Reference(&'static str),
-    /// Pure grep results.
-    Occurrence(&'static str),
+    /// Occurrences with the definition items excluded.
+    Reference,
+    /// Pure text matching results on top of ripgrep.
+    Occurrence,
 }
 
 impl Display for MatchKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Definition(def_kind) => write!(f, "{}", def_kind.as_ref()),
-            Self::Reference(ref_kind) => write!(f, "{}", ref_kind),
-            Self::Occurrence(grep_kind) => write!(f, "{}", grep_kind),
-        }
-    }
-}
-
-impl AsRef<str> for MatchKind {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Definition(def_kind) => def_kind.as_ref(),
-            Self::Reference(ref_kind) => ref_kind,
-            Self::Occurrence(grep_kind) => grep_kind,
+            Self::Reference => write!(f, "refs"),
+            Self::Occurrence => write!(f, "grep"),
         }
     }
 }
@@ -171,7 +162,6 @@ pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
 }
 
 pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
-    use itertools::Itertools;
     let regexp = get_definition_rules(lang)?
         .kind_rules_for(kind)?
         .map(|x| x.replace("\\\\", "\\"))
@@ -327,7 +317,7 @@ pub async fn definitions_and_references(
                 Some((kind.into(), matches))
             }
         })
-        .chain(rayon::iter::once((MatchKind::Reference("refs"), {
+        .chain(rayon::iter::once((MatchKind::Reference, {
             occurrences.retain(|r| !defs.contains(r));
             occurrences.into_inner()
         })))
@@ -336,7 +326,7 @@ pub async fn definitions_and_references(
     if res.is_empty() {
         naive_grep_fallback(word, lang, dir, comments)
             .await
-            .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
+            .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {
         Ok(res)
     }
