@@ -9,14 +9,15 @@ use serde_json::json;
 use filter::FilteredItem;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::providers::builtin::OnMoveHandler;
 use crate::stdio_server::{
+    providers::builtin::OnMoveHandler,
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
-    write_response, Message,
+    write_response, MethodCall,
 };
 
 pub async fn handle_recent_files_message(
-    msg: Message,
+    msg: MethodCall,
     context: Arc<SessionContext>,
     force_execute: bool,
 ) -> Vec<FilteredItem> {
@@ -35,7 +36,7 @@ pub async fn handle_recent_files_message(
         query,
         enable_icon,
         lnum,
-    } = msg.deserialize_params_unsafe();
+    } = msg.parse_unsafe();
 
     let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
@@ -136,7 +137,11 @@ pub struct RecentFilesMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for RecentFilesMessageHandler {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
@@ -157,7 +162,11 @@ impl EventHandler for RecentFilesMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
@@ -175,18 +184,19 @@ impl EventHandler for RecentFilesMessageHandler {
 pub struct RecentFilesSession;
 
 impl NewSession for RecentFilesSession {
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let handler = RecentFilesMessageHandler::default();
         let lines_clone = handler.lines.clone();
 
-        let (session, session_sender) = Session::new(msg.clone(), handler);
+        let (session, session_sender) = Session::new(call.clone(), handler);
 
         let context_clone = session.context.clone();
 
         session.start_event_loop();
 
         tokio::spawn(async move {
-            let initial_lines = handle_recent_files_message(msg, context_clone, true).await;
+            let initial_lines =
+                handle_recent_files_message(call.unwrap_method_call(), context_clone, true).await;
 
             let mut lines = lines_clone.lock();
             *lines = initial_lines;

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -14,8 +14,9 @@ use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::{DumbJump, Lines};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
-    write_response, Message,
+    write_response, MethodCall,
 };
 use crate::utils::ExactOrInverseTerms;
 
@@ -31,7 +32,7 @@ pub struct SearchResults {
 }
 
 #[allow(unused)]
-async fn search_tags(dir: &PathBuf, query: &str) -> Result<Vec<String>> {
+async fn search_tags(dir: &Path, query: &str) -> Result<Vec<String>> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
     if tags.exists() {
         for line in tags.readtags(query)?.collect::<Vec<_>>() {
@@ -43,34 +44,13 @@ async fn search_tags(dir: &PathBuf, query: &str) -> Result<Vec<String>> {
     }
 }
 
-pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> SearchResults {
-    let msg_id = msg.id;
-
-    #[derive(Deserialize)]
-    struct Params {
-        cwd: String,
-        query: String,
-        extension: String,
-    }
-
-    let Params {
-        cwd,
-        query,
-        extension,
-    } = msg.deserialize_params_unsafe();
-
-    if query.is_empty() {
-        return Default::default();
-    }
-
-    let last_query = query.clone();
-
-    // When we use the dumb_jump, the search query should be `identifier(s) ++ exact_term/inverse_term`
+/// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
+fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
     let Query {
         exact_terms,
         inverse_terms,
         fuzzy_terms,
-    } = Query::from(query.as_str());
+    } = Query::from(query);
 
     // If there is no fuzzy term, use the full query as the identifier,
     // otherwise restore the fuzzy query as the identifier we are going to search.
@@ -84,7 +64,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
                 },
             )
         } else {
-            (query, ExactOrInverseTerms::default())
+            (query.into(), ExactOrInverseTerms::default())
         }
     } else {
         (
@@ -95,6 +75,31 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
             },
         )
     };
+
+    (identifier, exact_or_inverse_terms)
+}
+
+pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> SearchResults {
+    let msg_id = msg.id;
+
+    #[derive(Deserialize)]
+    struct Params {
+        cwd: String,
+        query: String,
+        extension: String,
+    }
+
+    let Params {
+        cwd,
+        query,
+        extension,
+    } = msg.parse_unsafe();
+
+    if query.is_empty() {
+        return Default::default();
+    }
+
+    let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
     let dumb_jump = DumbJump {
         word: identifier,
@@ -125,7 +130,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
             write_response(result);
             SearchResults {
                 lines: total_lines,
-                query: last_query,
+                query,
             }
         }
         Err(e) => {
@@ -138,7 +143,7 @@ pub async fn handle_dumb_jump_message(msg: Message, force_execute: bool) -> Sear
             write_response(result);
             SearchResults {
                 lines: Default::default(),
-                query: last_query,
+                query,
             }
         }
     }
@@ -152,7 +157,11 @@ pub struct DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl EventHandler for DumbJumpMessageHandler {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum exists");
@@ -170,7 +179,11 @@ impl EventHandler for DumbJumpMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, _context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        _context: Arc<SessionContext>,
+    ) -> Result<()> {
         let results = tokio::spawn(handle_dumb_jump_message(msg, false))
             .await
             .unwrap_or_else(|e| {
@@ -185,14 +198,14 @@ impl EventHandler for DumbJumpMessageHandler {
 pub struct DumbJumpSession;
 
 impl NewSession for DumbJumpSession {
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) =
-            Session::new(msg.clone(), DumbJumpMessageHandler::default());
+            Session::new(call.clone(), DumbJumpMessageHandler::default());
 
         session.start_event_loop();
 
         tokio::spawn(async move {
-            handle_dumb_jump_message(msg, true).await;
+            handle_dumb_jump_message(call.unwrap_method_call(), true).await;
         });
 
         Ok(session_sender)

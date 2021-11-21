@@ -1,7 +1,9 @@
+use std::array::IntoIter;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -10,9 +12,10 @@ use crate::command::dumb_jump::Lines;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::runner::{
+use super::search::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
+use super::FindUsages;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -79,28 +82,18 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 pub enum MatchKind {
     /// Results matched from the definition regexp.
     Definition(DefinitionKind),
-    /// Occurrences with the definition items ignored.
-    Reference(&'static str),
-    /// Pure grep results.
-    Occurrence(&'static str),
+    /// Occurrences with the definition items excluded.
+    Reference,
+    /// Pure text matching results on top of ripgrep.
+    Occurrence,
 }
 
 impl Display for MatchKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Definition(def_kind) => write!(f, "{}", def_kind.as_ref()),
-            Self::Reference(ref_kind) => write!(f, "{}", ref_kind),
-            Self::Occurrence(grep_kind) => write!(f, "{}", grep_kind),
-        }
-    }
-}
-
-impl AsRef<str> for MatchKind {
-    fn as_ref(&self) -> &str {
-        match self {
-            Self::Definition(def_kind) => def_kind.as_ref(),
-            Self::Reference(ref_kind) => ref_kind,
-            Self::Occurrence(grep_kind) => grep_kind,
+            Self::Reference => write!(f, "refs"),
+            Self::Occurrence => write!(f, "grep"),
         }
     }
 }
@@ -137,7 +130,7 @@ impl DefinitionRegexp {
 
 /// Definition rules of a language.
 #[derive(Clone, Debug, Deserialize)]
-pub struct DefinitionRules(HashMap<DefinitionKind, DefinitionRegexp>);
+pub struct DefinitionRules(pub HashMap<DefinitionKind, DefinitionRegexp>);
 
 impl DefinitionRules {
     fn kind_rules_for(&self, kind: &DefinitionKind) -> Result<impl Iterator<Item = &str>> {
@@ -169,7 +162,6 @@ pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
 }
 
 pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
-    use itertools::Itertools;
     let regexp = get_definition_rules(lang)?
         .kind_rules_for(kind)?
         .map(|x| x.replace("\\\\", "\\"))
@@ -184,51 +176,59 @@ pub(super) fn is_comment(mat: &Match, comments: &[&str]) -> bool {
     comments.iter().any(|c| mat.line_starts_with(c))
 }
 
-/// Collects all kinds of definitions concurrently.
-pub async fn all_definitions(
-    lang: &str,
-    word: &Word,
-    dir: &Option<PathBuf>,
-) -> Result<Vec<(DefinitionKind, Vec<Match>)>> {
-    let all_def_futures = get_definition_rules(lang)?
-        .0
-        .keys()
-        .map(|kind| find_definition_matches_with_kind(lang, kind, &word, dir));
-
-    let maybe_defs = futures::future::join_all(all_def_futures).await;
-
-    Ok(maybe_defs
-        .into_par_iter()
-        .filter_map(|def| def.ok())
-        .collect())
+/// Search results of a specific definition kind.
+#[derive(Debug, Clone)]
+pub struct DefinitionSearchResult {
+    pub kind: DefinitionKind,
+    pub matches: Vec<Match>,
 }
 
-/// Collects the occurrences and all definitions concurrently.
-async fn definitions_and_occurences(
-    word: &Word,
-    lang: &str,
-    dir: &Option<PathBuf>,
-    comments: &[&str],
-) -> (Vec<(DefinitionKind, Vec<Match>)>, Vec<Match>) {
-    let (definitions, occurrences) = futures::future::join(
-        all_definitions(lang, word, dir),
-        find_occurrences_by_lang(word, lang, dir, comments),
-    )
-    .await;
-
-    (
-        definitions.unwrap_or_default(),
-        occurrences.unwrap_or_default(),
-    )
+#[derive(Debug, Clone)]
+pub struct Definitions {
+    pub defs: Vec<DefinitionSearchResult>,
 }
 
-fn flatten(definitions: &[(DefinitionKind, Vec<Match>)]) -> Vec<Match> {
-    let defs_count = definitions.iter().map(|(_, items)| items.len()).sum();
-    let mut defs = Vec::with_capacity(defs_count);
-    for (_, items) in definitions.iter() {
-        defs.extend_from_slice(items);
+impl Definitions {
+    pub fn flatten(&self) -> Vec<Match> {
+        let defs_count = self.defs.iter().map(|def| def.matches.len()).sum();
+        let mut defs = Vec::with_capacity(defs_count);
+        for DefinitionSearchResult { matches, .. } in self.defs.iter() {
+            defs.extend_from_slice(matches);
+        }
+        defs
     }
-    defs
+
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, DefinitionSearchResult> {
+        self.defs.par_iter()
+    }
+
+    pub fn into_par_iter(self) -> rayon::vec::IntoIter<DefinitionSearchResult> {
+        self.defs.into_par_iter()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Occurrences(pub Vec<Match>);
+
+impl Occurrences {
+    pub fn contains(&self, m: &Match) -> bool {
+        self.0.contains(m)
+    }
+
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, Match> {
+        self.0.par_iter()
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Match) -> bool,
+    {
+        self.0.retain(f)
+    }
+
+    pub fn into_inner(self) -> Vec<Match> {
+        self.0
+    }
 }
 
 pub async fn definitions_and_references_lines(
@@ -238,9 +238,9 @@ pub async fn definitions_and_references_lines(
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Result<Lines> {
-    let (definitions, occurrences) = definitions_and_occurences(word, lang, dir, comments).await;
+    let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
-    let defs = flatten(&definitions);
+    let defs = definitions.flatten();
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
@@ -251,13 +251,13 @@ pub async fn definitions_and_references_lines(
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
         .par_iter()
-        .flat_map(|(kind, lines)| {
-            lines
+        .flat_map(|DefinitionSearchResult { kind, matches }| {
+            matches
                 .par_iter()
-                .filter_map(|ref line| {
+                .filter_map(|line| {
                     if positive_defs.contains(&line) {
                         exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line(kind.as_ref(), &word))
+                            .check_jump_line(line.build_jump_line(kind.as_ref(), word))
                     } else {
                         None
                     }
@@ -266,9 +266,9 @@ pub async fn definitions_and_references_lines(
         })
         .chain(
             // references are these occurrences not in the definitions.
-            occurrences.par_iter().filter_map(|ref line| {
-                if !defs.contains(&line) {
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+            occurrences.par_iter().filter_map(|line| {
+                if !defs.contains(line) {
+                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", word))
                 } else {
                     None
                 }
@@ -281,7 +281,7 @@ pub async fn definitions_and_references_lines(
         let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
             .into_par_iter()
             .filter_map(|line| {
-                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", &word))
+                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
             })
             .unzip();
         return Ok(Lines::new(lines, indices));
@@ -296,10 +296,9 @@ pub async fn definitions_and_references(
     dir: &Option<PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) =
-        definitions_and_occurences(word, lang, dir, comments).await;
+    let (definitions, mut occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
-    let defs = flatten(&definitions);
+    let defs = definitions.flatten();
 
     // There are some negative definitions we need to filter them out, e.g., the word
     // is a subtring in some identifer but we consider every word is a valid identifer.
@@ -310,24 +309,24 @@ pub async fn definitions_and_references(
 
     let res: HashMap<MatchKind, Vec<Match>> = definitions
         .into_par_iter()
-        .filter_map(|(kind, mut defs)| {
-            defs.retain(|ref def| positive_defs.contains(&def));
-            if defs.is_empty() {
+        .filter_map(|DefinitionSearchResult { kind, mut matches }| {
+            matches.retain(|ref def| positive_defs.contains(def));
+            if matches.is_empty() {
                 None
             } else {
-                Some((kind.into(), defs))
+                Some((kind.into(), matches))
             }
         })
-        .chain(rayon::iter::once((MatchKind::Reference("refs"), {
-            occurrences.retain(|r| !defs.contains(&r));
-            occurrences
+        .chain(rayon::iter::once((MatchKind::Reference, {
+            occurrences.retain(|r| !defs.contains(r));
+            occurrences.into_inner()
         })))
         .collect();
 
     if res.is_empty() {
         naive_grep_fallback(word, lang, dir, comments)
             .await
-            .map(|results| std::iter::once((MatchKind::Occurrence("plain"), results)).collect())
+            .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {
         Ok(res)
     }

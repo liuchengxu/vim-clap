@@ -15,8 +15,6 @@ use self::bytelines::ByteLines;
 pub mod bytelines;
 mod macros;
 
-pub const CLAP_CACHE: &str = "vim.clap";
-
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
     let entries = read_dir(target_dir)?;

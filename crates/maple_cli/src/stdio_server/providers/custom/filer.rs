@@ -11,8 +11,9 @@ use icon::prepend_filer_icon;
 
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
+    rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
-    write_response, Message,
+    write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
 
@@ -81,7 +82,11 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_move(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()> {
         #[derive(serde::Deserialize)]
         struct Params {
             // curline: String,
@@ -90,7 +95,7 @@ impl EventHandler for FilerMessageHandler {
         let msg_id = msg.id;
         // Do not use curline directly.
         let curline = msg.get_curline(&context.provider_id)?;
-        let Params { cwd } = msg.deserialize_params_unsafe();
+        let Params { cwd } = msg.parse_unsafe();
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
             msg_id,
@@ -111,7 +116,11 @@ impl EventHandler for FilerMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(&mut self, msg: Message, _context: Arc<SessionContext>) -> Result<()> {
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        _context: Arc<SessionContext>,
+    ) -> Result<()> {
         handle_filer_message(msg);
         Ok(())
     }
@@ -120,11 +129,11 @@ impl EventHandler for FilerMessageHandler {
 pub struct FilerSession;
 
 impl NewSession for FilerSession {
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(msg.clone(), FilerMessageHandler);
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
+        let (session, session_sender) = Session::new(call.clone(), FilerMessageHandler);
 
         // Handle the on_init message.
-        handle_filer_message(msg);
+        handle_filer_message(call.unwrap_method_call());
 
         session.start_event_loop();
 
@@ -132,7 +141,7 @@ impl NewSession for FilerSession {
     }
 }
 
-pub fn handle_filer_message(msg: Message) {
+pub fn handle_filer_message(msg: MethodCall) {
     let cwd = msg.get_cwd();
     debug!("Recv filer params: cwd:{}", cwd);
 

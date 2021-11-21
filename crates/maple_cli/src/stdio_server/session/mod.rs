@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::stdio_server::providers::builtin::on_session_create;
-use crate::stdio_server::types::{Message, ProviderId};
+use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
 pub use self::context::{Scale, SessionContext, SyncFilterResults};
 pub use self::manager::{NewSession, SessionManager};
@@ -23,8 +23,13 @@ pub type SessionId = u64;
 
 #[async_trait::async_trait]
 pub trait EventHandler: Send + Sync + 'static {
-    async fn handle_on_move(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
-    async fn handle_on_typed(&mut self, msg: Message, context: Arc<SessionContext>) -> Result<()>;
+    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>)
+        -> Result<()>;
+    async fn handle_on_typed(
+        &mut self,
+        msg: MethodCall,
+        context: Arc<SessionContext>,
+    ) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -39,8 +44,8 @@ pub struct Session<T> {
 
 #[derive(Debug, Clone)]
 pub enum SessionEvent {
-    OnTyped(Message),
-    OnMove(Message),
+    OnTyped(MethodCall),
+    OnMove(MethodCall),
     Create,
     Terminate,
 }
@@ -58,12 +63,12 @@ impl SessionEvent {
 }
 
 impl<T: EventHandler> Session<T> {
-    pub fn new(msg: Message, event_handler: T) -> (Self, Sender<SessionEvent>) {
+    pub fn new(call: Call, event_handler: T) -> (Self, Sender<SessionEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {
-            session_id: msg.session_id,
-            context: Arc::new(msg.into()),
+            session_id: call.session_id(),
+            context: Arc::new(call.into()),
             event_handler,
             event_recv: session_receiver,
             source_scale: Scale::Indefinite,

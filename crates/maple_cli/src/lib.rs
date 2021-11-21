@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod app;
 mod cache;
 mod datastore;

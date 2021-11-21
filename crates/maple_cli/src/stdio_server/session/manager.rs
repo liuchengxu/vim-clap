@@ -4,9 +4,9 @@ use anyhow::Result;
 use crossbeam_channel::Sender;
 use log::error;
 
-use crate::stdio_server::{session::SessionId, types::Message, SessionEvent};
+use crate::stdio_server::{rpc::Call, session::SessionId, MethodCall, SessionEvent};
 
-/// A small wrapper of Sender<SessionEvent> for logging on send error.
+/// A small wrapper of Sender<SessionEvent> for logging on sending error.
 #[derive(Debug)]
 pub struct SessionEventSender {
     pub sender: Sender<SessionEvent>,
@@ -36,7 +36,7 @@ impl SessionEventSender {
 /// Creates a new session with a context built from the message `msg`.
 pub trait NewSession {
     /// Spawns a new session thread given `msg`.
-    fn spawn(msg: Message) -> Result<Sender<SessionEvent>>;
+    fn spawn(call: Call) -> Result<Sender<SessionEvent>>;
 }
 
 /// This structs manages all the created sessions tracked by the session id.
@@ -46,13 +46,13 @@ pub struct SessionManager {
 }
 
 impl SessionManager {
-    /// Starts a session in a new thread given the init message.
-    pub fn new_session<T: NewSession>(&mut self, msg: Message) {
-        let session_id = msg.session_id;
+    /// Starts a session in a background task.
+    pub fn new_session<T: NewSession>(&mut self, call: Call) {
+        let session_id = call.session_id();
         if self.exists(session_id) {
-            error!("Skipped as session {} already exists", msg.session_id);
+            error!("Skipped as session {} already exists", session_id);
         } else {
-            match T::spawn(msg) {
+            match T::spawn(call) {
                 Ok(sender) => {
                     sender
                         .send(SessionEvent::Create)
@@ -61,7 +61,7 @@ impl SessionManager {
                         .insert(session_id, SessionEventSender::new(sender, session_id));
                 }
                 Err(e) => {
-                    error!("Could not spawn new session, error:{:?}", e);
+                    error!("Could not spawn a new session, error: {:?}", e);
                 }
             }
         }
@@ -72,14 +72,14 @@ impl SessionManager {
         self.sessions.contains_key(&session_id)
     }
 
-    /// Stop the session thread by sending [`SessionEvent::Terminate`].
+    /// Stop the session task by sending [`SessionEvent::Terminate`].
     pub fn terminate(&mut self, session_id: SessionId) {
         if let Some(sender) = self.sessions.remove(&session_id) {
             sender.send(SessionEvent::Terminate);
         }
     }
 
-    /// Dispatch the session event to the session thread accordingly.
+    /// Dispatch the session event to the background session task accordingly.
     pub fn send(&self, session_id: SessionId, event: SessionEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);

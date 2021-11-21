@@ -7,11 +7,10 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::previewer;
-use crate::stdio_server::{types::Message, write_response};
+use crate::stdio_server::{write_response, MethodCall};
 
-pub fn parse_filetypedetect(msg: Message) {
+pub fn parse_filetypedetect(msg: MethodCall) {
     tokio::spawn(async move {
         let output = msg.get_string_unsafe("autocmd_filetypedetect");
         let ext_map: HashMap<&str, &str> = output
@@ -27,7 +26,9 @@ pub fn parse_filetypedetect(msg: Message) {
                     items[0].split('.').last().map(|ext| (ext, items[2]))
                 }
             })
-            .chain(vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim"), ("cc", "cpp")].into_par_iter())
+            .chain(
+                vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim"), ("cc", "cpp")].into_par_iter(),
+            )
             .map(|(ext, ft)| (ext, ft))
             .collect();
 
@@ -36,7 +37,7 @@ pub fn parse_filetypedetect(msg: Message) {
     });
 }
 
-async fn preview_file_impl(msg: Message) -> Result<()> {
+async fn preview_file_impl(msg: MethodCall) -> Result<()> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -56,7 +57,7 @@ async fn preview_file_impl(msg: Message) -> Result<()> {
         preview_width,
         preview_height,
         preview_direction,
-    } = msg.deserialize_params()?;
+    } = msg.parse()?;
 
     let fpath = crate::utils::expand_tilde(fpath)?;
 
@@ -75,24 +76,10 @@ async fn preview_file_impl(msg: Message) -> Result<()> {
     Ok(())
 }
 
-pub fn preview_file(msg: Message) {
+pub fn preview_file(msg: MethodCall) {
     tokio::spawn(async move {
         if let Err(e) = preview_file_impl(msg).await {
             log::error!("Error when previewing the file: {}", e);
         }
-    });
-}
-
-pub fn note_recent_file(msg: Message) {
-    // Use a buffered channel?
-    tokio::spawn(async move {
-        let file = msg.get_string_unsafe("file");
-
-        if file.is_empty() || !std::path::Path::new(&file).exists() {
-            return;
-        }
-
-        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
-        recent_files.upsert(file);
     });
 }

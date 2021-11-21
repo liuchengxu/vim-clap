@@ -5,13 +5,13 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::previewer::{preview_file, preview_file_at};
-use crate::stdio_server::{types::Message, write_response};
+use crate::stdio_server::{write_response, MethodCall};
 
-pub fn preview_quickfix_entry(msg: Message) {
+pub fn preview_quickfix_entry(msg: MethodCall) {
     tokio::spawn(async move { preview_quickfix_entry_impl(msg).await });
 }
 
-async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
+async fn preview_quickfix_entry_impl(msg: MethodCall) -> Result<()> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -27,7 +27,7 @@ async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
         curline,
         winwidth,
         winheight,
-    } = msg.deserialize_params()?;
+    } = msg.parse()?;
 
     let (p, lnum) = parse_quickfix_entry(curline.as_str())?;
 
@@ -49,7 +49,7 @@ async fn preview_quickfix_entry_impl(msg: Message) -> Result<()> {
     Ok(())
 }
 
-fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
+pub(crate) fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
     let mut splitted = line.split('|');
     let fpath = splitted
         .next()

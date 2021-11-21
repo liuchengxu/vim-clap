@@ -2,7 +2,7 @@
 name = "maple_cli"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 publish = false
 homepage = "https://github.com/liuchengxu/vim-clap"
@@ -20,6 +20,7 @@ directories = "3.0"
 futures = "0.3"
 indicatif = "0.14.0"
 itertools = "0.10"
+jsonrpc-core = "18.0.0"
 tokio = { version = "1.10", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
 log = "0.4"
 log4rs = "1.0"
