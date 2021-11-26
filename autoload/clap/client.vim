@@ -68,6 +68,7 @@ function! s:base_params() abort
         \   'cwd': clap#rooter#working_dir(),
         \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
         \   'provider_id': g:clap.provider.id,
+        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
         \ }

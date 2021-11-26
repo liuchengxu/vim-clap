@@ -82,7 +82,7 @@ impl EventHandler for BuiltinEventHandler {
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        context.match_type.clone(),
+                        context.match_type,
                     ),
                     context.match_bonuses.clone(),
                 ) {
@@ -134,9 +134,13 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         }
         "grep2" => {
             let rg_cmd = RgBaseCommand::new(context.cwd.to_path_buf());
-            let (total, path) = match rg_cmd.cache_info() {
-                Some(cache) => cache,
-                None => rg_cmd.create_cache().await?,
+            let (total, path) = if context.no_cache {
+                rg_cmd.create_cache().await?
+            } else {
+                match rg_cmd.cache_info() {
+                    Some(cache) => cache,
+                    None => rg_cmd.create_cache().await?,
+                }
             };
             let method = "clap#state#set_variable_string";
             let name = "g:__clap_forerunner_tempfile";
