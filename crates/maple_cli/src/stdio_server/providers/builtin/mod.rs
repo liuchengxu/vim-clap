@@ -122,12 +122,18 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         }
         "proj_tags" => {
             let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
-            let scale = match ctags_cmd.ctags_cache() {
-                Some((total, path)) => Scale::Cache { total, path },
-                None => {
-                    let lines = ctags_cmd.par_formatted_lines()?;
-                    ctags_cmd.create_cache_async(lines.clone()).await?;
-                    to_scale(lines)
+            let scale = if context.no_cache {
+                let lines = ctags_cmd.par_formatted_lines()?;
+                ctags_cmd.create_cache_async(lines.clone()).await?;
+                to_scale(lines)
+            } else {
+                match ctags_cmd.ctags_cache() {
+                    Some((total, path)) => Scale::Cache { total, path },
+                    None => {
+                        let lines = ctags_cmd.par_formatted_lines()?;
+                        ctags_cmd.create_cache_async(lines.clone()).await?;
+                        to_scale(lines)
+                    }
                 }
             };
             return Ok(scale);
