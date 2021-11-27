@@ -1,5 +1,4 @@
 mod deprecated_runner;
-pub mod message_handlers;
 mod providers;
 mod rpc;
 mod session;
