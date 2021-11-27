@@ -56,19 +56,22 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
                     match &msg.method[..] {
                         "init_ext_map" => {
-                            msg.parse_filetypedetect();
+                            let res = msg.parse_filetypedetect();
+                            write_response(res);
                         }
                         "preview/file" => {
                             tokio::spawn(async move {
-                                if let Err(e) = msg.preview_file().await {
-                                    log::error!("Failed to preview file: {:?}", e);
+                                match msg.preview_file().await {
+                                    Ok(res) => write_response(res),
+                                    Err(e) => log::error!("Failed to preview file: {:?}", e),
                                 }
                             });
                         }
                         "quickfix" => {
                             tokio::spawn(async move {
-                                if let Err(e) = msg.preview_quickfix().await {
-                                    log::error!("Failed to preview quickfix: {:?}", e);
+                                match msg.preview_quickfix().await {
+                                    Ok(res) => write_response(res),
+                                    Err(e) => log::error!("Failed to preview quickfix: {:?}", e),
                                 }
                             });
                         }
