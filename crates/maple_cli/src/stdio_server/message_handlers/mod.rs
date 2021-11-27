@@ -10,33 +10,6 @@ use serde_json::json;
 use crate::previewer;
 use crate::stdio_server::{write_response, MethodCall};
 
-pub fn parse_filetypedetect(msg: MethodCall) {
-    tokio::spawn(async move {
-        let output = msg.get_string_unsafe("autocmd_filetypedetect");
-        let ext_map: HashMap<&str, &str> = output
-            .par_split(|x| x == '\n')
-            .filter(|s| s.contains("setf"))
-            .filter_map(|s| {
-                // *.mkiv    setf context
-                let items = s.split_whitespace().collect::<Vec<_>>();
-                if items.len() != 3 {
-                    None
-                } else {
-                    // (mkiv, context)
-                    items[0].split('.').last().map(|ext| (ext, items[2]))
-                }
-            })
-            .chain(
-                vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim"), ("cc", "cpp")].into_par_iter(),
-            )
-            .map(|(ext, ft)| (ext, ft))
-            .collect();
-
-        let method = "clap#ext#set";
-        utility::println_json_with_length!(ext_map, method);
-    });
-}
-
 async fn preview_file_impl(msg: MethodCall) -> Result<()> {
     let msg_id = msg.id;
 

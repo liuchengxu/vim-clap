@@ -55,9 +55,23 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     }
 
                     match &msg.method[..] {
-                        "init_ext_map" => message_handlers::parse_filetypedetect(msg),
-                        "preview/file" => message_handlers::preview_file(msg),
-                        "quickfix" => quickfix::preview_quickfix_entry(msg),
+                        "init_ext_map" => {
+                            msg.parse_filetypedetect();
+                        }
+                        "preview/file" => {
+                            tokio::spawn(async move {
+                                if let Err(e) = msg.preview_file().await {
+                                    log::error!("Failed to preview file: {:?}", e);
+                                }
+                            });
+                        }
+                        "quickfix" => {
+                            tokio::spawn(async move {
+                                if let Err(e) = msg.preview_quickfix().await {
+                                    log::error!("Failed to preview quickfix: {:?}", e);
+                                }
+                            });
+                        }
 
                         "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(call),
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
@@ -86,10 +100,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     }
 }
 
-pub fn run_forever<R>(reader: R)
-where
-    R: BufRead + Send + 'static,
-{
+pub fn run_forever(reader: impl BufRead + Send + 'static) {
     let (tx, rx) = crossbeam_channel::unbounded();
     tokio::spawn(async move {
         loop_read_rpc_message(reader, &tx);
