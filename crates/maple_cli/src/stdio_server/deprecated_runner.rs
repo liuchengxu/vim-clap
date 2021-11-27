@@ -56,8 +56,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
                     match &msg.method[..] {
                         "init_ext_map" => {
-                            let res = msg.parse_filetypedetect();
-                            write_response(res);
+                            write_response(msg.parse_filetypedetect());
                         }
                         "preview/file" => {
                             tokio::spawn(async move {
