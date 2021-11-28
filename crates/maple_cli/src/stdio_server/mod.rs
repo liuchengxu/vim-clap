@@ -14,7 +14,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
-use log::{debug, error};
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;

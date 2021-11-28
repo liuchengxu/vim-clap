@@ -42,7 +42,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.process().await {
-                                error!("Error occurred when handling notification: {:?}", e)
+                                tracing::error!(?e, "Error occurred when handling notification")
                             }
                         });
                     }
@@ -51,7 +51,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     let msg = method_call;
 
                     if msg.method != "init_ext_map" {
-                        debug!("==> stdio message(in): {:?}", msg);
+                        tracing::debug!(?msg, "==> stdio message(in)");
                     }
 
                     match &msg.method[..] {
@@ -62,7 +62,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                             tokio::spawn(async move {
                                 match msg.preview_file().await {
                                     Ok(res) => write_response(res),
-                                    Err(e) => log::error!("Failed to preview file: {:?}", e),
+                                    Err(e) => tracing::error!(?e, "Failed to preview file"),
                                 }
                             });
                         }
@@ -70,7 +70,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                             tokio::spawn(async move {
                                 match msg.preview_quickfix().await {
                                     Ok(res) => write_response(res),
-                                    Err(e) => log::error!("Failed to preview quickfix: {:?}", e),
+                                    Err(e) => tracing::error!(?e, "Failed to preview quickfix"),
                                 }
                             });
                         }
@@ -97,7 +97,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                 }
             }
         } else {
-            error!("Invalid message: {:?}", msg);
+            tracing::error!(?msg, "Invalid message");
         }
     }
 }

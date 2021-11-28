@@ -4,7 +4,6 @@ use std::{fs, io};
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use log::debug;
 use serde_json::json;
 
 use icon::prepend_filer_icon;
@@ -105,7 +104,7 @@ impl EventHandler for FilerMessageHandler {
             expected_line: None,
         };
         if let Err(err) = on_move_handler.handle() {
-            log::error!("Failed to handle filer OnMove: {:?}, path: {:?}", err, path);
+            tracing::error!(?err, ?path, "Failed to handle filer OnMove");
             let res = json!({
               "id": msg_id,
               "provider_id": "filer",
@@ -143,7 +142,7 @@ impl NewSession for FilerSession {
 
 pub fn handle_filer_message(msg: MethodCall) {
     let cwd = msg.get_cwd();
-    debug!("Recv filer params: cwd:{}", cwd);
+    tracing::debug!(?cwd, "Recv filer params");
 
     let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
         Ok(entries) => {
@@ -155,7 +154,7 @@ pub fn handle_filer_message(msg: MethodCall) {
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
         }
         Err(err) => {
-            log::error!("Failed to read directory entries, cwd: {:?}", cwd);
+            tracing::error!(?cwd, "Failed to read directory entries");
             let error = json!({"message": err.to_string(), "dir": cwd});
             json!({ "id": msg.id, "provider_id": "filer", "error": error })
         }

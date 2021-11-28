@@ -42,9 +42,10 @@ impl EventHandler for BuiltinEventHandler {
         context: Arc<SessionContext>,
     ) -> Result<()> {
         let msg_id = msg.id;
-        if let Err(e) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle()) {
-            log::error!("Failed to handle OnMove event: {:?}", e);
-            write_response(json!({"error": e.to_string(), "id": msg_id }));
+        if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
+        {
+            tracing::error!(?error, "Failed to handle OnMove event");
+            write_response(json!({"error": error.to_string(), "id": msg_id }));
         }
         Ok(())
     }
@@ -86,7 +87,7 @@ impl EventHandler for BuiltinEventHandler {
                     ),
                     context.match_bonuses.clone(),
                 ) {
-                    log::error!("Error occured when filtering the cache source: {:?}", e);
+                    tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }
             }
             _ => {}

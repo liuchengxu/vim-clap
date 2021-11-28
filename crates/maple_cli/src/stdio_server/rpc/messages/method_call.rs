@@ -101,7 +101,7 @@ impl MethodCall {
         use crate::stdio_server::session::SessionEvent::*;
 
         if self.method != "init_ext_map" {
-            log::debug!("==> stdio message(in): {:?}", self);
+            tracing::debug!(message = ?self, "==> stdio message(in)");
         }
 
         let value = match self.method.as_str() {

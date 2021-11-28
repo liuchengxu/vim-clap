@@ -109,8 +109,8 @@ impl CacheInfo {
                     // FIXME: save the latest state?
                     Some(d.clone())
                 } else {
-                    if let Err(e) = self.prune_stale(index) {
-                        log::error!("Failed to prune the stale cache digest: {:?}", e);
+                    if let Err(err) = self.prune_stale(index) {
+                        tracing::error!(?err, "Failed to prune the stale cache digest");
                     }
                     None
                 }
@@ -161,7 +161,7 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
     let mut cache_info_cloned = cache_info.clone();
     tokio::spawn(async move {
         if let Err(e) = cache_info_cloned.limited_push(digest) {
-            log::error!("Failed to push the cache digest: {:?}", e);
+            tracing::error!(?e, "Failed to push the cache digest");
         }
     });
 

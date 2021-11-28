@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
-use log::error;
 
 use crate::stdio_server::{rpc::Call, session::SessionId, MethodCall, SessionEvent};
 
@@ -27,8 +26,8 @@ impl std::fmt::Display for SessionEventSender {
 
 impl SessionEventSender {
     pub fn send(&self, event: SessionEvent) {
-        if let Err(e) = self.sender.send(event) {
-            error!("Failed to send session event, error: {:?}", e);
+        if let Err(error) = self.sender.send(event) {
+            tracing::error!(?error, "Failed to send session event");
         }
     }
 }
@@ -50,7 +49,7 @@ impl SessionManager {
     pub fn new_session<T: NewSession>(&mut self, call: Call) {
         let session_id = call.session_id();
         if self.exists(session_id) {
-            error!("Skipped as session {} already exists", session_id);
+            tracing::error!(session_id, "Skipped as given session already exists");
         } else {
             match T::spawn(call) {
                 Ok(sender) => {
@@ -60,8 +59,8 @@ impl SessionManager {
                     self.sessions
                         .insert(session_id, SessionEventSender::new(sender, session_id));
                 }
-                Err(e) => {
-                    error!("Could not spawn a new session, error: {:?}", e);
+                Err(error) => {
+                    tracing::error!(?error, "Failed not spawn a new session");
                 }
             }
         }
@@ -84,10 +83,10 @@ impl SessionManager {
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);
         } else {
-            error!(
-                "Couldn't find `session_id`: {}, current available sessions: {:?}",
+            tracing::error!(
                 session_id,
-                self.sessions.keys()
+                sessions = ?self.sessions.keys(),
+                "Couldn't find the sender for given session",
             );
         }
     }

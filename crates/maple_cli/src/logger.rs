@@ -1,14 +1,13 @@
 use std::path::Path;
 
 use anyhow::Result;
-use log::{debug, LevelFilter};
 use log4rs::{
     append::file::FileAppender,
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
 
-pub fn init<P: AsRef<Path>>(log_path: P) -> Result<()> {
+pub fn init<P: AsRef<Path> + std::fmt::Debug>(log_path: P) -> Result<()> {
     let encoder = PatternEncoder::new(
         "{date(%Y-%m-%d %H:%M:%S)} {level} {thread} {file}:{line} {message}{n}",
     );
@@ -27,7 +26,7 @@ pub fn init<P: AsRef<Path>>(log_path: P) -> Result<()> {
         .build(
             Root::builder()
                 .appender("vim-clap")
-                .build(LevelFilter::Debug),
+                .build(log::LevelFilter::Debug),
         )?;
 
     // Use this to change log levels at runtime.
@@ -35,9 +34,6 @@ pub fn init<P: AsRef<Path>>(log_path: P) -> Result<()> {
     // if you are trying to debug an issue and need more logs on then turn it off
     // once you are done.
     let _handle = log4rs::init_config(config)?;
-    debug!(
-        "Initialize the logging system, log file: {}",
-        log_path.as_ref().display()
-    );
+    tracing::debug!(?log_path, "Logging system initialized");
     Ok(())
 }

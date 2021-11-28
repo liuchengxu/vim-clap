@@ -3,7 +3,6 @@ pub mod vim_help;
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
-use log::debug;
 
 use utility::{read_first_lines, read_preview_lines};
 
@@ -54,17 +53,13 @@ pub fn preview_file<P: AsRef<Path>>(
     Ok((lines, abs_path))
 }
 
-pub fn preview_file_at<P: AsRef<Path>>(
+pub fn preview_file_at<P: AsRef<Path> + std::fmt::Debug>(
     path: P,
     half_size: usize,
     max_width: usize,
     lnum: usize,
 ) -> Result<(Vec<String>, usize)> {
-    debug!(
-        "Try to preview the file, path: {}, lnum: {}",
-        path.as_ref().display(),
-        lnum
-    );
+    tracing::debug!(?path, lnum, "Previewing file");
 
     let (lines_iter, hi_lnum) = read_preview_lines(path.as_ref(), lnum, half_size)?;
     let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))

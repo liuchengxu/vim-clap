@@ -904,6 +904,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "tokio 1.11.0",
+ "tracing",
  "types",
  "upgrade",
  "utility",
@@ -1848,7 +1849,19 @@ dependencies = [
  "cfg-if 1.0.0",
  "log",
  "pin-project-lite 0.2.7",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4f480b8f81512e825f337ad51e94c1eb5d3bbdf2b363dcd01e2b19a9ffe3f8e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

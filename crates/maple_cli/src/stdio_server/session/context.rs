@@ -224,7 +224,7 @@ impl From<Notification> for SessionContext {
 
 impl From<Call> for SessionContext {
     fn from(call: Call) -> Self {
-        log::debug!("Creating a new SessionContext from: {:?}", call);
+        tracing::debug!(?call, "Creating a new SessionContext from given call");
         match call {
             Call::MethodCall(method_call) => method_call.into(),
             Call::Notification(notification) => notification.into(),
