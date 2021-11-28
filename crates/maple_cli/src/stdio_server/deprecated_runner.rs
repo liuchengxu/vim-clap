@@ -54,7 +54,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         tracing::debug!(?msg, "==> stdio message(in)");
                     }
 
-                    match &msg.method[..] {
+                    match msg.method.as_str() {
                         "init_ext_map" => {
                             write_response(msg.parse_filetypedetect());
                         }
