@@ -83,7 +83,14 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "filer" => filer::handle_filer_message(msg),
+                        "filer" => {
+                            tokio::spawn(async move {
+                                write_response(
+                                    filer::handle_filer_message(msg)
+                                        .expect("Both Success and Error are returned"),
+                                );
+                            });
+                        }
                         "filer/on_init" => manager.new_session::<FilerSession>(call),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 

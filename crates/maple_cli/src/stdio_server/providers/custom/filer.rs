@@ -4,6 +4,7 @@ use std::{fs, io};
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use jsonrpc_core::Value;
 use serde_json::json;
 
 use icon::prepend_filer_icon;
@@ -140,27 +141,24 @@ impl NewSession for FilerSession {
     }
 }
 
-pub fn handle_filer_message(msg: MethodCall) {
+pub fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
     let cwd = msg.get_cwd();
     tracing::debug!(?cwd, "Recv filer params");
 
-    let result = match read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None) {
-        Ok(entries) => {
+    read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
+        .map(|entries| {
             let result = json!({
             "entries": entries,
             "dir": cwd,
             "total": entries.len(),
             });
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
-        }
-        Err(err) => {
+        })
+        .map_err(|err| {
             tracing::error!(?cwd, "Failed to read directory entries");
             let error = json!({"message": err.to_string(), "dir": cwd});
             json!({ "id": msg.id, "provider_id": "filer", "error": error })
-        }
-    };
-
-    write_response(result);
+        })
 }
 
 #[cfg(test)]
