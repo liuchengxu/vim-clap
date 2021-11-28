@@ -8,6 +8,8 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
+let s:last_recent_file = v:null
+
 function! s:set_total_size(msg) abort
   let g:clap.display.initial_size = a:msg.total
   if g:clap.provider.id ==# 'blines'
@@ -135,7 +137,12 @@ function! clap#client#notify_recent_file() abort
   if &buftype ==# 'nofile'
     return
   endif
-  call s:send_notification('note_recent_files', {'file': expand(expand('<afile>:p'))})
+  let file = expand(expand('<afile>:p'))
+  if s:last_recent_file isnot v:null && s:last_recent_file == file
+    return
+  endif
+  call s:send_notification('note_recent_files', {'file': file})
+  let s:last_recent_file = file
 endfunction
 
 function! clap#client#notify(method, params) abort
