@@ -83,7 +83,7 @@ impl<T: EventHandler> Session<T> {
         *val.get_mut() = false;
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = self.provider_id().as_str(),
+            provider_id = %self.provider_id(),
             "Session terminated",
         );
     }
@@ -183,7 +183,7 @@ impl<T: EventHandler> Session<T> {
         tokio::spawn(async move {
             tracing::debug!(
                 session_id = self.session_id,
-                provider_id = self.provider_id().as_str(),
+                provider_id = %self.provider_id(),
                 "Spawning a new session task",
             );
             loop {

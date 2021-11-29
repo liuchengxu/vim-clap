@@ -133,7 +133,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
             }
         }
         Err(e) => {
-            tracing::error!(error =?e, "Error when running dumb_jump");
+            tracing::error!(error = ?e, "Error when running dumb_jump");
             let result = json!({
                 "id": msg_id,
                 "provider_id": "dumb_jump",
@@ -167,11 +167,11 @@ impl EventHandler for DumbJumpMessageHandler {
 
         // lnum is 1-indexed
         if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
-            if let Err(e) =
+            if let Err(error) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {
-                tracing::error!(error =?e, "Failed to handle OnMove event");
-                write_response(json!({"error": e.to_string(), "id": msg_id }));
+                tracing::error!(?error, "Failed to handle OnMove event");
+                write_response(json!({"error": error.to_string(), "id": msg_id }));
             }
         }
 

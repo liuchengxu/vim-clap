@@ -295,7 +295,7 @@ impl<'a> OnMoveHandler<'a> {
 
                 tracing::debug!(
                     msg_id = self.msg_id,
-                    provider_id = self.context.provider_id.as_str(),
+                    provider_id = %self.context.provider_id,
                     lines_len = lines.len(),
                     "<== message(out) sending event",
                 );
@@ -310,7 +310,7 @@ impl<'a> OnMoveHandler<'a> {
             Err(err) => {
                 tracing::error!(
                     ?path,
-                    provider_id = self.context.provider_id.as_str(),
+                    provider_id = %self.context.provider_id,
                     ?err,
                     "Couldn't read first lines",
                 );
