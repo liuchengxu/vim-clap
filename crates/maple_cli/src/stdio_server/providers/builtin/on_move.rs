@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{anyhow, Context, Result};
-use log::{debug, error};
 use once_cell::sync::Lazy;
 use serde_json::json;
 
@@ -245,13 +244,13 @@ impl<'a> OnMoveHandler<'a> {
               "fname": fname
             }));
         } else {
-            debug!("Can not find the preview help lines for {:?}", preview_tag);
+            tracing::debug!(?preview_tag, "Can not find the preview help lines");
         }
     }
 
     fn try_refresh_cache(&self, highlight_line: &str) {
         if IS_FERESHING_CACHE.load(Ordering::Relaxed) {
-            debug!(
+            tracing::debug!(
                 "Skipping the cache refreshing as there is already one that is running or waitting"
             );
             return;
@@ -259,21 +258,19 @@ impl<'a> OnMoveHandler<'a> {
         if self.context.provider_id.as_str() == "grep2" {
             if let Some(ref expected) = self.expected_line {
                 if !expected.eq(highlight_line) {
-                    log::debug!(
-                        "The cache might be oudated, expected:`{}`, got:`{}`",
-                        expected,
-                        highlight_line
-                    );
+                    tracing::debug!(?expected, got = ?highlight_line, "The cache might be oudated");
                     let dir = self.context.cwd.clone();
                     IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
                     // Spawn a future in the background
                     tokio::spawn(async move {
-                        log::debug!("Attempting to refresh the grep2 for `{}`", dir.display());
+                        tracing::debug!(?dir, "Attempting to refresh grep2 cache");
                         match crate::command::grep::refresh_cache(dir) {
                             Ok(total) => {
-                                debug!("Refresh the grep2 cache successfully, total: {}", total);
+                                tracing::debug!(total, "Refresh the grep2 cache successfully");
                             }
-                            Err(e) => error!("Failed to refresh the grep2 cache: {:?}", e),
+                            Err(e) => {
+                                tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
+                            }
                         }
                         IS_FERESHING_CACHE.store(false, Ordering::Relaxed);
                     });
@@ -283,7 +280,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_file_at(&self, path: &Path, lnum: usize) {
-        debug!("Try to preview file: {}, lnum: {}", path.display(), lnum);
+        tracing::debug!(?path, lnum, "Previewing file");
 
         match utility::read_preview_lines(path, lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
@@ -296,9 +293,11 @@ impl<'a> OnMoveHandler<'a> {
                     self.try_refresh_cache(got);
                 }
 
-                debug!(
-                    "<== message(out) sending event: on_move, msg_id:{}, provider_id:{}, lines len: {:?}",
-                    self.msg_id, self.context.provider_id, lines.len()
+                tracing::debug!(
+                    msg_id = self.msg_id,
+                    provider_id = %self.context.provider_id,
+                    lines_len = lines.len(),
+                    "<== message(out) sending event",
                 );
 
                 self.send_response(json!({
@@ -309,11 +308,11 @@ impl<'a> OnMoveHandler<'a> {
                 }));
             }
             Err(err) => {
-                error!(
-                    "[{}]Couldn't read first lines of {}, error: {:?}",
-                    self.context.provider_id,
-                    path.display(),
-                    err
+                tracing::error!(
+                    ?path,
+                    provider_id = %self.context.provider_id,
+                    ?err,
+                    "Couldn't read first lines",
                 );
             }
         }

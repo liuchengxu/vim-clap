@@ -198,7 +198,7 @@ impl SortedRecentFiles {
 
         // Write back to the disk.
         if let Err(e) = crate::datastore::store_recent_files(self) {
-            log::error!("Failed to write the recent files to the disk: {:?}", e);
+            tracing::error!(?e, "Failed to write the recent files to the disk");
         }
     }
 }

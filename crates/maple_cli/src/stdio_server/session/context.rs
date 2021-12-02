@@ -80,6 +80,7 @@ pub struct SyncFilterResults {
 pub struct SessionContext {
     pub provider_id: ProviderId,
     pub cwd: PathBuf,
+    pub no_cache: bool,
     pub start_buffer_path: PathBuf,
     pub display_winwidth: u64,
     pub preview_winheight: u64,
@@ -110,7 +111,7 @@ impl SessionContext {
     fn fuzzy_matcher(&self) -> matcher::Matcher {
         matcher::Matcher::with_bonuses(
             matcher::FuzzyAlgorithm::Fzy,
-            self.match_type.clone(),
+            self.match_type,
             Vec::new(), // TODO: bonuses
         )
     }
@@ -146,6 +147,7 @@ impl SessionContext {
         struct InnerParams {
             provider_id: ProviderId,
             cwd: PathBuf,
+            no_cache: bool,
             source_fpath: PathBuf,
             display_winwidth: Option<u64>,
             preview_winheight: Option<u64>,
@@ -157,6 +159,7 @@ impl SessionContext {
         let InnerParams {
             provider_id,
             cwd,
+            no_cache,
             source_fpath,
             display_winwidth,
             preview_winheight,
@@ -192,6 +195,7 @@ impl SessionContext {
         Self {
             provider_id,
             cwd,
+            no_cache,
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
@@ -220,7 +224,7 @@ impl From<Notification> for SessionContext {
 
 impl From<Call> for SessionContext {
     fn from(call: Call) -> Self {
-        log::debug!("Creating a new SessionContext from: {:?}", call);
+        tracing::debug!(?call, "Creating a new SessionContext from given call");
         match call {
             Call::MethodCall(method_call) => method_call.into(),
             Call::Notification(notification) => notification.into(),

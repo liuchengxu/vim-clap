@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use jsonrpc_core::Params;
-use log::error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 
@@ -44,15 +43,15 @@ impl RpcClient {
         // Channel for passing through the response from Vim.
         let (output_reader_tx, output_reader_rx): (Sender<(u64, Sender<Output>)>, _) = unbounded();
         tokio::spawn(async move {
-            if let Err(err) = loop_read(reader, output_reader_rx, &sink) {
-                error!("Thread stdio-reader exited with error: {:?}", err);
+            if let Err(error) = loop_read(reader, output_reader_rx, &sink) {
+                tracing::error!(?error, "Thread stdio-reader exited");
             }
         });
 
         let (output_writer_tx, output_writer_rx) = unbounded();
         tokio::spawn(async move {
-            if let Err(err) = loop_write(writer, &output_writer_rx) {
-                error!("Thread stdio-writer exited with error: {:?}", err);
+            if let Err(error) = loop_write(writer, &output_writer_rx) {
+                tracing::error!(?error, "Thread stdio-writer exited");
             }
         });
 
@@ -160,7 +159,7 @@ fn loop_read(
                             }
                         },
                         Err(e) => {
-                            error!("Invalid raw message: {:?}", line);
+                            tracing::error!(?line, "Invalid raw message");
                         }
                     }
                 } else {
@@ -177,7 +176,7 @@ fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
     let mut writer = writer;
 
     for msg in rx.iter() {
-        log::debug!("------------ sending back: {:?}", msg);
+        tracing::debug!(?msg, "Sending back to the Vim side");
         let s = serde_json::to_string(&msg)?;
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim

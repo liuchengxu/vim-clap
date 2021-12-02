@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Receiver;
-use log::{debug, error};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 
@@ -32,7 +31,7 @@ impl SessionClient {
             let session_client = self.clone();
             tokio::spawn(async move {
                 if let Err(e) = session_client.handle_vim_message(call).await {
-                    error!("Error handling request: {:?}", e);
+                    tracing::error!(?e, "Error handling request");
                 }
             });
         }
@@ -43,7 +42,7 @@ impl SessionClient {
         match call {
             Call::Notification(notification) => {
                 if let Err(e) = notification.process().await {
-                    error!("Error occurred when handling notification: {:?}", e);
+                    tracing::error!(?e, "Error when handling notification");
                 }
             }
             Call::MethodCall(method_call) => {
@@ -68,7 +67,7 @@ impl SessionClient {
         let msg = method_call;
 
         if msg.method != "init_ext_map" {
-            log::debug!("==> stdio message(in): {:?}", msg);
+            tracing::debug!(?msg, "==> stdio message(in)");
         }
 
         let value = match msg.method.as_str() {

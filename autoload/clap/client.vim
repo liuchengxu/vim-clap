@@ -8,6 +8,8 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 
+let s:last_recent_file = v:null
+
 function! s:set_total_size(msg) abort
   let g:clap.display.initial_size = a:msg.total
   if g:clap.provider.id ==# 'blines'
@@ -68,6 +70,7 @@ function! s:base_params() abort
         \   'cwd': clap#rooter#working_dir(),
         \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
         \   'provider_id': g:clap.provider.id,
+        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
         \ }
@@ -134,7 +137,12 @@ function! clap#client#notify_recent_file() abort
   if &buftype ==# 'nofile'
     return
   endif
-  call s:send_notification('note_recent_files', {'file': expand(expand('<afile>:p'))})
+  let file = expand(expand('<afile>:p'))
+  if s:last_recent_file isnot v:null && s:last_recent_file == file
+    return
+  endif
+  call s:send_notification('note_recent_files', {'file': file})
+  let s:last_recent_file = file
 endfunction
 
 function! clap#client#notify(method, params) abort

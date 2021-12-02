@@ -155,7 +155,7 @@ impl EventHandler for RecentFilesMessageHandler {
             if let Err(e) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {
-                log::error!("Failed to handle OnMove event: {:?}", e);
+                tracing::error!(error = ?e, "Failed to handle OnMove event");
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }
         }
@@ -170,7 +170,7 @@ impl EventHandler for RecentFilesMessageHandler {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
-                log::error!("Failed to spawn task handle_recent_files_message: {:?}", e);
+                tracing::error!(error = ?e, "Failed to spawn task handle_recent_files_message");
                 Default::default()
             });
 

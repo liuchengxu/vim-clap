@@ -101,7 +101,7 @@ impl MethodCall {
         use crate::stdio_server::session::SessionEvent::*;
 
         if self.method != "init_ext_map" {
-            log::debug!("==> stdio message(in): {:?}", self);
+            tracing::debug!(message = ?self, "==> stdio message(in)");
         }
 
         let value = match self.method.as_str() {
@@ -190,7 +190,7 @@ impl MethodCall {
 
         let (lines, fname) = crate::previewer::preview_file(fpath, preview_height, preview_width)?;
 
-        let value = json!({"lines": lines, "fname": fname});
+        let value = json!({"id": msg_id, "result": json!({"lines": lines, "fname": fname})});
 
         Ok(value)
     }

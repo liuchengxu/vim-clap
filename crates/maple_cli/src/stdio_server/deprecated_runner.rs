@@ -42,7 +42,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.process().await {
-                                error!("Error occurred when handling notification: {:?}", e)
+                                tracing::error!(?e, "Error occurred when handling notification")
                             }
                         });
                     }
@@ -51,13 +51,29 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     let msg = method_call;
 
                     if msg.method != "init_ext_map" {
-                        debug!("==> stdio message(in): {:?}", msg);
+                        tracing::debug!(?msg, "==> stdio message(in)");
                     }
 
-                    match &msg.method[..] {
-                        "init_ext_map" => message_handlers::parse_filetypedetect(msg),
-                        "preview/file" => message_handlers::preview_file(msg),
-                        "quickfix" => quickfix::preview_quickfix_entry(msg),
+                    match msg.method.as_str() {
+                        "init_ext_map" => {
+                            write_response(msg.parse_filetypedetect());
+                        }
+                        "preview/file" => {
+                            tokio::spawn(async move {
+                                match msg.preview_file().await {
+                                    Ok(res) => write_response(res),
+                                    Err(e) => tracing::error!(?e, "Failed to preview file"),
+                                }
+                            });
+                        }
+                        "quickfix" => {
+                            tokio::spawn(async move {
+                                match msg.preview_quickfix().await {
+                                    Ok(res) => write_response(res),
+                                    Err(e) => tracing::error!(?e, "Failed to preview quickfix"),
+                                }
+                            });
+                        }
 
                         "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(call),
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
@@ -67,29 +83,33 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "filer" => filer::handle_filer_message(msg),
+                        "filer" => {
+                            tokio::spawn(async move {
+                                write_response(
+                                    filer::handle_filer_message(msg)
+                                        .expect("Both Success and Error are returned"),
+                                );
+                            });
+                        }
                         "filer/on_init" => manager.new_session::<FilerSession>(call),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        _ => write_response(
-                            json!({ "error": format!("unknown method: {}", &msg.method[..]), "id": msg.id }),
+                        method @ _ => write_response(
+                            json!({ "error": format!("unknown method: {}", method), "id": msg.id }),
                         ),
                     }
                 }
             }
         } else {
-            error!("Invalid message: {:?}", msg);
+            tracing::error!(?msg, "Invalid message");
         }
     }
 }
 
-pub fn run_forever<R>(reader: R)
-where
-    R: BufRead + Send + 'static,
-{
+pub fn run_forever(reader: impl BufRead + Send + 'static) {
     let (tx, rx) = crossbeam_channel::unbounded();
     tokio::spawn(async move {
         loop_read_rpc_message(reader, &tx);

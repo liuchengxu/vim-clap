@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 use jsonrpc_core::Params;
-use log::debug;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
@@ -53,9 +52,9 @@ impl Notification {
         let global_env = GlobalEnv::new(is_nvim, enable_icon, clap_preview_size.into());
 
         if let Err(e) = GLOBAL_ENV.set(global_env) {
-            debug!("failed to initialized GLOBAL_ENV, error: {:?}", e);
+            tracing::debug!(error = ?e, "Failed to initialized GLOBAL_ENV");
         } else {
-            debug!("GLOBAL_ENV initialized successfully");
+            tracing::debug!("GLOBAL_ENV initialized successfully");
         }
 
         Ok(())
@@ -69,6 +68,7 @@ impl Notification {
 
         let InnerParams { file } = self.params.parse()?;
 
+        tracing::debug!(?file, "Receive a recent file");
         if file.is_empty() || !std::path::Path::new(&file).exists() {
             return Ok(());
         }

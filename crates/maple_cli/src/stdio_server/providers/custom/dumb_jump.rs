@@ -4,7 +4,6 @@ use std::sync::Arc;
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use itertools::Itertools;
-use log::error;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -134,7 +133,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
             }
         }
         Err(e) => {
-            error!("Error when running dumb_jump: {:?}", e);
+            tracing::error!(error = ?e, "Error when running dumb_jump");
             let result = json!({
                 "id": msg_id,
                 "provider_id": "dumb_jump",
@@ -168,11 +167,11 @@ impl EventHandler for DumbJumpMessageHandler {
 
         // lnum is 1-indexed
         if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
-            if let Err(e) =
+            if let Err(error) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {
-                log::error!("Failed to handle OnMove event: {:?}", e);
-                write_response(json!({"error": e.to_string(), "id": msg_id }));
+                tracing::error!(?error, "Failed to handle OnMove event");
+                write_response(json!({"error": error.to_string(), "id": msg_id }));
             }
         }
 
@@ -187,7 +186,7 @@ impl EventHandler for DumbJumpMessageHandler {
         let results = tokio::spawn(handle_dumb_jump_message(msg, false))
             .await
             .unwrap_or_else(|e| {
-                log::error!("Failed to spawn task handle_dumb_jump_message: {:?}", e);
+                tracing::error!(?e, "Failed to spawn task handle_dumb_jump_message");
                 Default::default()
             });
         self.results = results;

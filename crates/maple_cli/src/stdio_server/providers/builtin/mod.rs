@@ -42,9 +42,10 @@ impl EventHandler for BuiltinEventHandler {
         context: Arc<SessionContext>,
     ) -> Result<()> {
         let msg_id = msg.id;
-        if let Err(e) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle()) {
-            log::error!("Failed to handle OnMove event: {:?}", e);
-            write_response(json!({"error": e.to_string(), "id": msg_id }));
+        if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
+        {
+            tracing::error!(?error, "Failed to handle OnMove event");
+            write_response(json!({"error": error.to_string(), "id": msg_id }));
         }
         Ok(())
     }
@@ -82,11 +83,11 @@ impl EventHandler for BuiltinEventHandler {
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        context.match_type.clone(),
+                        context.match_type,
                     ),
                     context.match_bonuses.clone(),
                 ) {
-                    log::error!("Error occured when filtering the cache source: {:?}", e);
+                    tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }
             }
             _ => {}
@@ -122,21 +123,31 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         }
         "proj_tags" => {
             let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
-            let scale = match ctags_cmd.ctags_cache() {
-                Some((total, path)) => Scale::Cache { total, path },
-                None => {
-                    let lines = ctags_cmd.par_formatted_lines()?;
-                    ctags_cmd.create_cache_async(lines.clone()).await?;
-                    to_scale(lines)
+            let scale = if context.no_cache {
+                let lines = ctags_cmd.par_formatted_lines()?;
+                ctags_cmd.create_cache_async(lines.clone()).await?;
+                to_scale(lines)
+            } else {
+                match ctags_cmd.ctags_cache() {
+                    Some((total, path)) => Scale::Cache { total, path },
+                    None => {
+                        let lines = ctags_cmd.par_formatted_lines()?;
+                        ctags_cmd.create_cache_async(lines.clone()).await?;
+                        to_scale(lines)
+                    }
                 }
             };
             return Ok(scale);
         }
         "grep2" => {
             let rg_cmd = RgBaseCommand::new(context.cwd.to_path_buf());
-            let (total, path) = match rg_cmd.cache_info() {
-                Some(cache) => cache,
-                None => rg_cmd.create_cache().await?,
+            let (total, path) = if context.no_cache {
+                rg_cmd.create_cache().await?
+            } else {
+                match rg_cmd.cache_info() {
+                    Some(cache) => cache,
+                    None => rg_cmd.create_cache().await?,
+                }
             };
             let method = "clap#state#set_variable_string";
             let name = "g:__clap_forerunner_tempfile";
