@@ -1,8 +1,9 @@
 on:
-  push:
+  [push]
+  # push:
     # Sequence of patterns matched against refs/tags
-    tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+    # tags:
+      # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 name: Create Release
 
@@ -51,13 +52,13 @@ jobs:
             artifact_name: maple
             asset_name: maple-x86_64-unknown-linux-musl
 
-          - os: windows-latest
-            artifact_name: maple.exe
-            asset_name: maple-x86_64-pc-windows-msvc
+          # - os: windows-latest
+            # artifact_name: maple.exe
+            # asset_name: maple-x86_64-pc-windows-msvc
 
-          - os: macos-latest
-            artifact_name: maple
-            asset_name: maple-x86_64-apple-darwin
+          # - os: macos-latest
+            # artifact_name: maple
+            # asset_name: maple-x86_64-apple-darwin
 
     steps:
     - uses: hecrj/setup-rust-action@master
