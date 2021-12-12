@@ -14,6 +14,8 @@ docker run -v $PWD:/volume --rm -t clux/muslrust cargo build --release --locked
 
 mkdir -p target/release
 ls target
-mv target/x86_64-unknown-linux-musl/release/maple target/release/maple
+./target/x86_64-unknown-linux-musl/release/maple version
+
+cp target/x86_64-unknown-linux-musl/release/maple target/release/maple
 
 ./target/release/maple version
