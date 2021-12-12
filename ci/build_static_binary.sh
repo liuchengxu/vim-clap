@@ -9,11 +9,10 @@ sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 docker --version
 
-# Build the static binary image based on ekidd/rust-musl-builder
-docker build -t build-maple-static-binary-image .
-docker run --name build-maple-static-binary build-maple-static-binary-image
+docker pull clux/muslrust
+docker run -v $PWD:/volume --rm -t clux/muslrust cargo build --release --locked
 
-# Move the compiled binary to local fs.
-mkdir -p target/release/
-docker cp build-maple-static-binary:/home/rust/src/target/x86_64-unknown-linux-musl/release/maple ./target/release/maple
+mkdir -p target/release
+sudo cp target/x86_64-unknown-linux-musl/release/maple target/release/maple
+
 ./target/release/maple version
