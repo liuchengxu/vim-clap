@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.31] 2021-12-12
 ## Improved
 
 - Always update the preview for `registers` otherwise the preview content could be outdated and add a preview title.
