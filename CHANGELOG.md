@@ -4,9 +4,14 @@
 
 
 ## [0.31] 2021-12-12
+
 ## Improved
 
 - Always update the preview for `registers` otherwise the preview content could be outdated and add a preview title.
+
+## Fixed
+
+- Fix static binary build on ubuntu after upgrading to edition 2021(#785)
 
 ## [0.30] 2021-10-19
 
