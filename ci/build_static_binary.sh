@@ -16,6 +16,6 @@ mkdir -p target/release
 ls target
 ./target/x86_64-unknown-linux-musl/release/maple version
 
-cp target/x86_64-unknown-linux-musl/release/maple target/release/maple
+sudo cp target/x86_64-unknown-linux-musl/release/maple target/release/maple
 
 ./target/release/maple version
