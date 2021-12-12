@@ -1,43 +1,42 @@
 on:
-  [push]
-  # push:
+  push:
     # Sequence of patterns matched against refs/tags
-    # tags:
-      # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 name: Create Release
 
 jobs:
 
-  # release:
-    # name: Create Release
-    # runs-on: ubuntu-latest
-    # steps:
-      # - name: Checkout code
-        # uses: actions/checkout@master
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
 
-      # - name: Get the version
-        # id: get_version
-        # run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
-      # - name: Get changelog
-        # id: changelog
-        # shell: bash
-        # run: |
-          # bash ci/get_changelog.sh ${{ steps.get_version.outputs.VERSION }}
+      - name: Get changelog
+        id: changelog
+        shell: bash
+        run: |
+          bash ci/get_changelog.sh ${{ steps.get_version.outputs.VERSION }}
 
-      # - name: Create Release
-        # id: create_release
-        # uses: actions/create-release@v1
-        # env:
-          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        # with:
-          # tag_name: ${{ github.ref }}
-          # release_name: Release ${{ github.ref }}
-          # body: |
-            # ${{ steps.changelog.outputs.log }}
-          # draft: false
-          # prerelease: false
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ${{ steps.changelog.outputs.log }}
+          draft: false
+          prerelease: false
 
   publish:
     name: Publish for ${{ matrix.os }}
@@ -52,13 +51,13 @@ jobs:
             artifact_name: maple
             asset_name: maple-x86_64-unknown-linux-musl
 
-          # - os: windows-latest
-            # artifact_name: maple.exe
-            # asset_name: maple-x86_64-pc-windows-msvc
+          - os: windows-latest
+            artifact_name: maple.exe
+            asset_name: maple-x86_64-pc-windows-msvc
 
-          # - os: macos-latest
-            # artifact_name: maple
-            # asset_name: maple-x86_64-apple-darwin
+          - os: macos-latest
+            artifact_name: maple
+            asset_name: maple-x86_64-apple-darwin
 
     steps:
     - uses: hecrj/setup-rust-action@master
@@ -67,18 +66,18 @@ jobs:
 
     - uses: actions/checkout@v1
 
-    # - name: Build
-      # if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
-      # run: cargo build --release --locked
+    - name: Build
+      if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
+      run: cargo build --release --locked
 
     - name: Build static binary
       if: matrix.os == 'ubuntu-latest'
       run: bash ci/build_static_binary.sh
 
-    # - name: Upload binaries to release
-      # uses: svenstaro/upload-release-action@v1-release
-      # with:
-        # repo_token: ${{ secrets.GITHUB_TOKEN }}
-        # file: target/release/${{ matrix.artifact_name }}
-        # asset_name: ${{ matrix.asset_name }}
-        # tag: ${{ github.ref }}
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: target/release/${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
