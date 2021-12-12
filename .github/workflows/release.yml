@@ -67,9 +67,9 @@ jobs:
 
     - uses: actions/checkout@v1
 
-    - name: Build
-      if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
-      run: cargo build --release --locked
+    # - name: Build
+      # if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
+      # run: cargo build --release --locked
 
     - name: Build static binary
       if: matrix.os == 'ubuntu-latest'
