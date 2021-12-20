@@ -12,7 +12,7 @@ categories = ["command-line-utilities"]
 description = "Rust backend for the vim plugin vim-clap"
 
 [dependencies]
-tokio = { version = "1.9", features = ["rt"] }
+tokio = { version = "1.15", features = ["rt"] }
 
 maple_cli = { path = "crates/maple_cli" }
 
