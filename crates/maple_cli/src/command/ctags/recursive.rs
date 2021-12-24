@@ -37,7 +37,7 @@ pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
     use itertools::Itertools;
 
     let exclude = super::EXCLUDE
-        .split(",")
+        .split(',')
         .map(|x| format!("--exclude={}", x))
         .join(" ");
 

@@ -138,7 +138,7 @@ fn loop_read(
         match reader.read_line(&mut line) {
             Ok(number) => {
                 if number > 0 {
-                    match serde_json::from_str::<RawMessage>(&line.trim()) {
+                    match serde_json::from_str::<RawMessage>(line.trim()) {
                         Ok(raw_message) => match raw_message {
                             RawMessage::MethodCall(method_call) => {
                                 sink.send(Call::MethodCall(method_call))?;

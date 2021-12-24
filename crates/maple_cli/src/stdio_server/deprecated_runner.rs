@@ -97,7 +97,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        method @ _ => write_response(
+                        method => write_response(
                             json!({ "error": format!("unknown method: {}", method), "id": msg.id }),
                         ),
                     }

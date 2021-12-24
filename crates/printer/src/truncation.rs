@@ -61,9 +61,9 @@ fn truncate_line_impl(
         let end = line.len();
         let left_truncated = if let Some(n) = skipped {
             let icon: String = line.chars().take(n).collect();
-            format!("{}{}{}", icon, DOTS, utf8_str_slice(&line, start, end))
+            format!("{}{}{}", icon, DOTS, utf8_str_slice(line, start, end))
         } else {
-            format!("{}{}", DOTS, utf8_str_slice(&line, start, end))
+            format!("{}{}", DOTS, utf8_str_slice(line, start, end))
         };
 
         let offset = line_len.saturating_sub(left_truncated.len());
@@ -119,7 +119,7 @@ pub fn truncate_long_matched_lines<T>(
         let line = filtered_item.source_item_display_text();
 
         if let Some((truncated, truncated_indices)) =
-            truncate_line_impl(winwidth, &line, &filtered_item.match_indices, skipped)
+            truncate_line_impl(winwidth, line, &filtered_item.match_indices, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 

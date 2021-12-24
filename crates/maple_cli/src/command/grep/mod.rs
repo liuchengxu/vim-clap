@@ -167,7 +167,7 @@ impl Grep {
                 &self.grep_query,
                 source,
                 params
-                    .to_filter_context()
+                    .into_filter_context()
                     .match_type(MatchType::IgnoreFilePath),
                 vec![Bonus::None],
             )

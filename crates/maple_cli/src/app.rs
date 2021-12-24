@@ -89,7 +89,7 @@ pub struct Params {
 }
 
 impl Params {
-    pub fn to_filter_context(self) -> FilterContext {
+    pub fn into_filter_context(self) -> FilterContext {
         FilterContext::default()
             .icon(self.icon)
             .number(self.number)

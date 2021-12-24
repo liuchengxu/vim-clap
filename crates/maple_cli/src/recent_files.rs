@@ -33,7 +33,7 @@ impl Default for SortPreference {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FrecentEntry {
     /// Absolute file path.
     pub fpath: String,
@@ -51,6 +51,8 @@ impl PartialEq for FrecentEntry {
     }
 }
 
+impl Eq for FrecentEntry {}
+
 impl PartialOrd for FrecentEntry {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some((self.frecent_score, self.visits, self.last_visit).cmp(&(
@@ -58,6 +60,12 @@ impl PartialOrd for FrecentEntry {
             other.visits,
             other.last_visit,
         )))
+    }
+}
+
+impl Ord for FrecentEntry {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -180,7 +188,7 @@ impl SortedRecentFiles {
         match self
             .entries
             .iter()
-            .position(|ref entry| entry.fpath.as_str() == file.as_str())
+            .position(|entry| entry.fpath.as_str() == file.as_str())
         {
             Some(pos) => FrecentEntry::refresh_now(&mut self.entries[pos]),
             None => {

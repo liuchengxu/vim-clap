@@ -48,7 +48,7 @@ fn unordered_substr_indices_impl(haystack: &str, niddle: &str) -> Option<(f64, V
     let mut total_score = 0f64;
     let mut positions = Vec::new();
     for sub_niddle in niddle.split_whitespace() {
-        if let Some((score, indices)) = _substr_indices_impl(haystack, &sub_niddle) {
+        if let Some((score, indices)) = _substr_indices_impl(haystack, sub_niddle) {
             total_score += score;
             positions.extend_from_slice(&indices);
         } else {

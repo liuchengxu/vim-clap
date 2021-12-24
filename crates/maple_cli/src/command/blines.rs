@@ -30,7 +30,7 @@ impl Blines {
                     .map(|(idx, item)| format!("{} {}", idx + 1, item))
                     .map(Into::into),
             ),
-            params.to_filter_context(),
+            params.into_filter_context(),
             vec![Bonus::None],
         )
     }

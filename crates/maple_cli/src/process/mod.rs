@@ -85,13 +85,13 @@ impl BaseCommand {
 
     pub fn cache_file(&self) -> Option<PathBuf> {
         let mut info = CACHE_INFO_IN_MEMORY.lock();
-        info.find_digest_usable(self).map(|d| d.cached_path.clone())
+        info.find_digest_usable(self).map(|d| d.cached_path)
     }
 
     pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
         let mut info = CACHE_INFO_IN_MEMORY.lock();
-        info.find_digest_usable(&self)
-            .map(|d| (d.total, d.cached_path.clone()))
+        info.find_digest_usable(self)
+            .map(|d| (d.total, d.cached_path))
     }
 
     /// Executes and returns an value that implements `Read` trait.

@@ -109,7 +109,7 @@ impl CommandEnv {
         &self,
         top_n: impl Iterator<Item = std::borrow::Cow<'b, str>>,
     ) -> Vec<String> {
-        if let Some(ref painter) = self.icon.painter() {
+        if let Some(painter) = self.icon.painter() {
             top_n.map(|x| painter.paint(x)).collect()
         } else {
             top_n.map(Into::into).collect()
@@ -214,7 +214,7 @@ impl<'a> LightCommand<'a> {
         } = digest;
 
         let lines = if let Ok(iter) = read_first_lines(&cached_path, 100) {
-            if let Some(ref painter) = self.env.icon.painter() {
+            if let Some(painter) = self.env.icon.painter() {
                 iter.map(|x| painter.paint(&x)).collect()
             } else {
                 iter.collect()

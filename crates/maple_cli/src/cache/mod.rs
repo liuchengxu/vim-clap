@@ -133,8 +133,7 @@ impl CacheInfo {
             self.digests.push(digest);
 
             if self.digests.len() > MAX_DIGESTS {
-                self.digests
-                    .sort_unstable_by(|a, b| a.stale_score().cmp(&b.stale_score()));
+                self.digests.sort_unstable_by_key(|k| k.stale_score());
                 self.digests.pop();
             }
         }
