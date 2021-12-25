@@ -58,18 +58,17 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> (String, usize) {
     }
 }
 
-/// "smartly" calculate the "start" position of the string in order to show the matched contents
-/// for example, if the match appear in the end of a long string, we need to show the right part.
+/// Trim the left and right of origin text accordingly to make it fit into the container.
+///
+/// For example, if the match appear in the end of a long string, we need to show the right part.
 ///
 /// ```text
 /// xxxxxxxxxxxxxxxxxxxxxxxxxxMMxxxxxMxxxxx
 ///               shift ->|               |
 /// ```
 ///
-/// return (left_shift, full_print_width)
-///
 /// container_width = winwidth - prefix_length
-pub fn new_truncation(
+pub fn trim_text(
     text: &str,
     indices: &[usize],
     container_width: usize,
@@ -124,7 +123,6 @@ pub fn new_truncation(
         let (text, _) = trim_right(text, container_width - 2, tabstop);
 
         let text = format!("{}..", text);
-
         let indices = indices
             .iter()
             .filter(|x| *x + 2 < container_width)
@@ -138,7 +136,6 @@ pub fn new_truncation(
         let (text, _) = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
         let text = format!("..{}..", text);
-
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)
@@ -278,9 +275,8 @@ mod tests {
             println!("\n   container_width: {}", "─".repeat(container_width));
             println!("    origin display: {}", wrap_matches(text, &match_indices));
 
-            let (display_line_got, indices_post) =
-                new_truncation(text, &match_indices, container_width)
-                    .unwrap_or((text.into(), match_indices.clone()));
+            let (display_line_got, indices_post) = trim_text(text, &match_indices, container_width)
+                .unwrap_or((text.into(), match_indices.clone()));
 
             let truncated_text_got = display_line_got.clone();
 

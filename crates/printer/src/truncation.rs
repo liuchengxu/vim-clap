@@ -17,7 +17,7 @@ pub type VimLineNumber = usize;
 ///
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
-// sign column width 2
+/// sign column width 2
 #[cfg(not(test))]
 const WINWIDTH_OFFSET: usize = 4;
 
@@ -50,11 +50,11 @@ fn truncate_line_impl(
             .sum();
         let container_width = winwidth - skipped_width;
         let text = line.chars().skip(skipped).collect::<String>();
-        crate::printer::new_truncation(&text, indices, container_width)
+        crate::printer::trim_text(&text, indices, container_width)
     } else {
         let container_width = winwidth;
         let text = line;
-        crate::printer::new_truncation(text, indices, container_width)
+        crate::printer::trim_text(text, indices, container_width)
     }
 }
 
