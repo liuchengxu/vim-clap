@@ -36,10 +36,21 @@ fn truncate_line_impl(
     winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
+    use unicode_width::UnicodeWidthChar;
+
+    if line.is_empty() || indices.is_empty() {
+        return None;
+    }
+
     if let Some(skipped) = skipped {
-        let container_width = winwidth - skipped;
-        let text = &line[skipped..];
-        crate::printer::new_truncation(text, indices, container_width)
+        let skipped_width: usize = line
+            .chars()
+            .take(skipped)
+            .map(|c| c.width().unwrap_or(2))
+            .sum();
+        let container_width = winwidth - skipped_width;
+        let text = line.chars().skip(skipped).collect::<String>();
+        crate::printer::new_truncation(&text, indices, container_width)
     } else {
         let container_width = winwidth;
         let text = line;

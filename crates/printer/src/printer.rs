@@ -60,18 +60,22 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> (String, usize) {
 
 /// "smartly" calculate the "start" position of the string in order to show the matched contents
 /// for example, if the match appear in the end of a long string, we need to show the right part.
+///
 /// ```text
 /// xxxxxxxxxxxxxxxxxxxxxxxxxxMMxxxxxMxxxxx
 ///               shift ->|               |
 /// ```
 ///
 /// return (left_shift, full_print_width)
-fn reshape_string(
+///
+/// container_width = winwidth - prefix_length
+pub fn new_truncation(
     text: &str,
     indices: &[usize],
     container_width: usize,
-    tabstop: usize,
-) -> (String, Vec<usize>) {
+) -> Option<(String, Vec<usize>)> {
+    const tabstop: usize = 4;
+
     let match_start = indices[0];
     let match_end = *indices
         .last()
@@ -85,7 +89,7 @@ fn reshape_string(
         .expect("`acc_width` is non-empty as text is not empty; qed");
 
     if full_width <= container_width {
-        return (text.into(), indices.to_vec());
+        return None;
     }
 
     // w1, w2, w3 = len_before_matched, len_matched, len_after_matched
@@ -114,10 +118,12 @@ fn reshape_string(
             .filter(|x| *x > 1)
             .collect();
 
-        (text, indices)
+        Some((text, indices))
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let (text, _) = trim_right(text, container_width, tabstop);
+        let (text, _) = trim_right(text, container_width - 2, tabstop);
+
+        let text = format!("{}..", text);
 
         let indices = indices
             .iter()
@@ -125,7 +131,7 @@ fn reshape_string(
             .copied()
             .collect::<Vec<_>>();
 
-        (text, indices)
+        Some((text, indices))
     } else {
         // left-right, ..Stri..
         let left_truncated_text = &text[match_start..];
@@ -139,21 +145,8 @@ fn reshape_string(
             .filter(|x| *x + 2 < container_width)
             .collect::<Vec<_>>();
 
-        (text, indices)
+        Some((text, indices))
     }
-}
-
-// container_width = winwidth - prefix_length
-pub fn new_truncation(
-    text: &str,
-    indices: &[usize],
-    container_width: usize,
-) -> Option<(String, Vec<usize>)> {
-    if indices.is_empty() || text.is_empty() {
-        return None;
-    }
-
-    Some(reshape_string(text, indices, container_width, 4))
 }
 
 #[cfg(test)]
