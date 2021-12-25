@@ -2,6 +2,7 @@
 //! by printing them to stdout in JSON format.
 
 mod truncation;
+mod printer;
 
 use icon::{Icon, ICON_LEN};
 use types::FilteredItem;
@@ -224,14 +225,21 @@ mod tests {
 
         let truncated_text_got = ranked[0].display_text();
 
-        assert_eq!(truncated_text, ranked[0].display_text());
+        println!("truncated_text:{}", truncated_text);
+        println!("  display_text:{}", ranked[0].display_text());
+        // assert_eq!(truncated_text, ranked[0].display_text());
 
         let highlighted_got = truncated_indices
             .iter()
             .filter_map(|i| truncated_text_got.chars().nth(*i))
             .collect::<String>();
 
-        assert_eq!(highlighted, highlighted_got);
+        if highlighted != highlighted_got {
+          println!("ERROR highlight");
+          println!("highlighted:{}", highlighted);
+          println!("        got:{}", highlighted_got);
+        }
+        // assert_eq!(highlighted, highlighted_got);
 
         println!("\n   winwidth: {}", "─".repeat(winwidth));
         println!(

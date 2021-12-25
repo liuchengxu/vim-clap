@@ -38,6 +38,16 @@ fn truncate_line_impl(
     indices: &[usize],
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
+    if let Some(skipped) = skipped {
+        let container_width = winwidth - skipped;
+        let text = &line[skipped..];
+        return crate::printer::new_truncation(text, container_width, indices);
+    } else {
+        let container_width = winwidth;
+        let text = line;
+        return crate::printer::new_truncation(text, container_width, indices);
+    };
+
     let last_idx = indices.last()?;
     if *last_idx > winwidth {
         let mut start = *last_idx - winwidth;
