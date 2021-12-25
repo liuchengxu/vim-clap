@@ -1,8 +1,21 @@
 use unicode_width::UnicodeWidthChar;
 
-/// return an array, arr[i] store the display width till char[i]
-pub fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
-    let mut ret = Vec::new();
+/// Returns the displayed width in columns of a `text`.
+fn display_width(text: &str, tabstop: usize) -> usize {
+    let mut w = 0;
+    for ch in text.chars() {
+        w += if ch == '\t' {
+            tabstop - (w % tabstop)
+        } else {
+            ch.width().unwrap_or(2)
+        };
+    }
+    w
+}
+
+/// Return an array in which arr[i] stores the display width till char[i] for `text`.
+fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
+    let mut ret = Vec::with_capacity(text.chars().count());
     let mut w = 0;
     for ch in text.chars() {
         w += if ch == '\t' {
@@ -15,18 +28,34 @@ pub fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
     ret
 }
 
-fn display_width(text: &str) -> usize {
-    let tabstop = 4;
+fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
+    // Assume each char takes at least one column
+    let (mut text, mut trimmed) = if text.chars().count() > width + 2 {
+        let diff = text.chars().count() - width - 2;
+        (String::from(&text[diff..]), diff)
+    } else {
+        (text.into(), 0)
+    };
 
-    let mut w = 0;
-    for ch in text.chars() {
-        w += if ch == '\t' {
-            tabstop - (w % tabstop)
-        } else {
-            ch.width().unwrap_or(2)
-        };
+    let mut current_width = display_width(&text, tabstop);
+
+    while current_width > width && !text.is_empty() {
+        text = text.chars().skip(1).collect();
+        trimmed += 1;
+        current_width = display_width(&text, tabstop);
     }
-    w
+
+    (text, trimmed)
+}
+
+fn trim_right(text: &str, width: usize, tabstop: usize) -> (String, usize) {
+    let current_width = display_width(text, tabstop);
+
+    if current_width > width {
+        (String::from(&text[..width]), current_width - width)
+    } else {
+        (text.into(), 0)
+    }
 }
 
 /// "smartly" calculate the "start" position of the string in order to show the matched contents
@@ -37,26 +66,26 @@ fn display_width(text: &str) -> usize {
 /// ```
 ///
 /// return (left_shift, full_print_width)
-pub fn reshape_string(
+fn reshape_string(
     text: &str,
     container_width: usize,
     indices: &[usize],
     tabstop: usize,
-) -> Option<(String, Vec<usize>)> {
-    if text.is_empty() {
-        return Some((Default::default(), Default::default()));
-    }
-
+) -> (String, Vec<usize>) {
     let match_start = indices[0];
-    let match_end = *indices.last().expect("Non empty");
+    let match_end = *indices
+        .last()
+        .expect("Last element exists as the array is non empty; qed");
 
     let acc_width = accumulate_text_width(text, tabstop);
 
     // Width for diplaying the whole text.
-    let full_width = acc_width[acc_width.len() - 1];
+    let full_width = *acc_width
+        .last()
+        .expect("`acc_width` is non-empty as text is not empty; qed");
 
     if full_width <= container_width {
-        return Some((text.into(), indices.to_vec()));
+        return (text.into(), indices.to_vec());
     }
 
     // w1, w2, w3 = len_before_matched, len_matched, len_after_matched
@@ -75,8 +104,8 @@ pub fn reshape_string(
     let w3 = full_width - w1 - w2;
 
     if (w1 > w3 && w2 + w3 <= container_width) || (w3 <= 2) {
-        // right-fixed
-        let (text, trimmed) = trim_left(text, container_width - 2);
+        // right-fixed, ..ring
+        let (text, trimmed) = trim_left(text, container_width - 2, tabstop);
 
         let text = format!("..{}", text);
         let indices = indices
@@ -85,10 +114,10 @@ pub fn reshape_string(
             .filter(|x| *x > 1)
             .collect();
 
-        Some((text, indices))
+        (text, indices)
     } else if w1 <= w3 && w1 + w2 <= container_width {
-        // left-fixed
-        let (text, _) = trim_right(text, container_width);
+        // left-fixed, Stri..
+        let (text, _) = trim_right(text, container_width, tabstop);
 
         let indices = indices
             .iter()
@@ -96,11 +125,11 @@ pub fn reshape_string(
             .copied()
             .collect::<Vec<_>>();
 
-        Some((text, indices))
+        (text, indices)
     } else {
-        // left-right
+        // left-right, ..Stri..
         let left_truncated_text = &text[match_start..];
-        let (text, _) = trim_right(left_truncated_text, container_width - 2 - 2);
+        let (text, _) = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
         let text = format!("..{}..", text);
 
@@ -110,37 +139,7 @@ pub fn reshape_string(
             .filter(|x| *x + 2 < container_width)
             .collect::<Vec<_>>();
 
-        Some((text, indices))
-    }
-}
-
-fn trim_left(text: &str, width: usize) -> (String, usize) {
-    // Assume each char takes at least one column
-    let (mut text, mut trimmed) = if text.chars().count() > width + 2 {
-        let diff = text.chars().count() - width - 2;
-        (String::from(&text[diff..]), diff)
-    } else {
-        (text.into(), 0)
-    };
-
-    let mut current_width = display_width(&text);
-
-    while current_width > width && !text.is_empty() {
-        text = text.chars().skip(1).collect();
-        trimmed += 1;
-        current_width = display_width(&text);
-    }
-
-    (text, trimmed)
-}
-
-fn trim_right(text: &str, width: usize) -> (String, usize) {
-    let current_width = display_width(text);
-
-    if current_width > width {
-        (String::from(&text[..width]), current_width - width)
-    } else {
-        (text.into(), 0)
+        (text, indices)
     }
 }
 
@@ -154,7 +153,7 @@ pub fn new_truncation(
         return None;
     }
 
-    reshape_string(text, container_width, indices, 4)
+    Some(reshape_string(text, container_width, indices, 4))
 }
 
 #[cfg(test)]
@@ -198,7 +197,7 @@ mod tests {
     fn test_trim_left() {
         let text = "0123456789abcdef";
         let width = 5;
-        let (trimmed, offset) = trim_left(text, width);
+        let (trimmed, offset) = trim_left(text, width, 4);
         println!("trimmed: {}", trimmed);
         println!("offset: {}", offset);
     }
@@ -207,7 +206,7 @@ mod tests {
     fn test_trim_right() {
         let text = "0123456789abcdef";
         let width = 5;
-        let (trimmed, offset) = trim_right(text, width);
+        let (trimmed, offset) = trim_right(text, width, 4);
         println!("trimmed: {}", trimmed);
         println!("offset: {}", offset);
     }

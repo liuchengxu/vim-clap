@@ -1,8 +1,8 @@
 //! This crate provides the feature of diplaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
-mod truncation;
 mod printer;
+mod truncation;
 
 use icon::{Icon, ICON_LEN};
 use types::FilteredItem;
@@ -235,9 +235,9 @@ mod tests {
             .collect::<String>();
 
         if highlighted != highlighted_got {
-          println!("ERROR highlight");
-          println!("highlighted:{}", highlighted);
-          println!("        got:{}", highlighted_got);
+            println!("ERROR highlight");
+            println!("highlighted:{}", highlighted);
+            println!("        got:{}", highlighted_got);
         }
         // assert_eq!(highlighted, highlighted_got);
 
