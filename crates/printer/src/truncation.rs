@@ -31,19 +31,19 @@ pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 }
 
 fn truncate_line_impl(
-    winwidth: usize,
     line: &str,
     indices: &[usize],
+    winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
     if let Some(skipped) = skipped {
         let container_width = winwidth - skipped;
         let text = &line[skipped..];
-        crate::printer::new_truncation(text, container_width, indices)
+        crate::printer::new_truncation(text, indices, container_width)
     } else {
         let container_width = winwidth;
         let text = line;
-        crate::printer::new_truncation(text, container_width, indices)
+        crate::printer::new_truncation(text, indices, container_width)
     }
 }
 
@@ -64,7 +64,7 @@ pub fn truncate_long_matched_lines<T>(
         let line = filtered_item.source_item_display_text();
 
         if let Some((truncated, truncated_indices)) =
-            truncate_line_impl(winwidth, line, &filtered_item.match_indices, skipped)
+            truncate_line_impl(line, &filtered_item.match_indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 
@@ -91,7 +91,7 @@ pub fn truncate_grep_lines(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(winwidth, &line, &indices, skipped)
+                truncate_line_impl(&line, &indices, winwidth, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, truncated_indices)

@@ -68,8 +68,8 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> (String, usize) {
 /// return (left_shift, full_print_width)
 fn reshape_string(
     text: &str,
-    container_width: usize,
     indices: &[usize],
+    container_width: usize,
     tabstop: usize,
 ) -> (String, Vec<usize>) {
     let match_start = indices[0];
@@ -146,14 +146,14 @@ fn reshape_string(
 // container_width = winwidth - prefix_length
 pub fn new_truncation(
     text: &str,
-    container_width: usize,
     indices: &[usize],
+    container_width: usize,
 ) -> Option<(String, Vec<usize>)> {
     if indices.is_empty() || text.is_empty() {
         return None;
     }
 
-    Some(reshape_string(text, container_width, indices, 4))
+    Some(reshape_string(text, indices, container_width, 4))
 }
 
 #[cfg(test)]
@@ -286,7 +286,7 @@ mod tests {
             println!("    origin display: {}", wrap_matches(text, &match_indices));
 
             let (display_line_got, indices_post) =
-                new_truncation(text, container_width, &match_indices)
+                new_truncation(text, &match_indices, container_width)
                     .unwrap_or((text.into(), match_indices.clone()));
 
             let truncated_text_got = display_line_got.clone();
