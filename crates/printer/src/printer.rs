@@ -1,9 +1,5 @@
 use unicode_width::UnicodeWidthChar;
 
-use crate::truncation::utf8_str_slice;
-
-pub const DOTS: &str = "..";
-
 /// return an array, arr[i] store the display width till char[i]
 pub fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
     let mut ret = Vec::new();
@@ -56,7 +52,7 @@ pub fn reshape_string(
 
     let acc_width = accumulate_text_width(text, tabstop);
 
-    /// Width for diplaying the whole text.
+    // Width for diplaying the whole text.
     let full_width = acc_width[acc_width.len() - 1];
 
     if full_width <= container_width {
@@ -80,16 +76,13 @@ pub fn reshape_string(
 
     if (w1 > w3 && w2 + w3 <= container_width) || (w3 <= 2) {
         // right-fixed
-        //(right_fixed(&acc_width, container_width), full_width)
-
-        // full_width - container_width
-
         let (text, trimmed) = trim_left(text, container_width - 2);
 
         let text = format!("..{}", text);
         let indices = indices
             .iter()
             .filter_map(|x| (x + 2).checked_sub(trimmed))
+            .filter(|x| *x > 1)
             .collect();
 
         Some((text, indices))
@@ -97,47 +90,28 @@ pub fn reshape_string(
         // left-fixed
         let (text, _) = trim_right(text, container_width);
 
-        // TODO: optimize the useless indices
+        let indices = indices
+            .iter()
+            .filter(|x| *x + 2 < container_width)
+            .copied()
+            .collect::<Vec<_>>();
 
-        Some((text, indices.to_vec()))
+        Some((text, indices))
     } else {
-        let text = &text[match_start..];
+        // left-right
+        let left_truncated_text = &text[match_start..];
+        let (text, _) = trim_right(left_truncated_text, container_width - 2 - 2);
+
+        let text = format!("..{}..", text);
 
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)
+            .filter(|x| *x + 2 < container_width)
             .collect::<Vec<_>>();
 
-        let (text, _) = trim_right(text, container_width - 2 - 2);
-
-        let text = format!("..{}..", text);
-
-        Some((text, indices))
-
-        // left-right
-        // acc_width[match_end] - container_width + 2
-    }
-
-    /*
-    if left_shift == 0 {
-        let (trimmed, offset) = trim_right(text, container_width);
-
-        if offset == 0 {
-            None
-        } else {
-            Some((trimmed.into(), indices.to_vec()))
-        }
-    } else {
-        let (text, offset) = trim_left(text, container_width);
-
-        let text = format!("..{}", text);
-        let indices = indices.iter().map(|x| x + offset + 2).collect::<Vec<_>>();
-
         Some((text, indices))
     }
-    */
-
-    // (left_shift, full_width)
 }
 
 fn trim_left(text: &str, width: usize) -> (String, usize) {
@@ -150,7 +124,6 @@ fn trim_left(text: &str, width: usize) -> (String, usize) {
     };
 
     let mut current_width = display_width(&text);
-    let mut width = width;
 
     while current_width > width && !text.is_empty() {
         text = text.chars().skip(1).collect();
@@ -180,8 +153,6 @@ pub fn new_truncation(
     if indices.is_empty() || text.is_empty() {
         return None;
     }
-
-    let display_width = accumulate_text_width(text, 4);
 
     reshape_string(text, container_width, indices, 4)
 }
@@ -291,12 +262,12 @@ mod tests {
           ),
             (
               "crates/readtags/sys/libreadtags/autom4te.cache/requests",
-              "srlisrs", "srlis", 42usize,
+              "srlisrs", "lisrs", 42usize,
               "../sys/libreadtags/autom4te.cache/requests"
             ),
               (
               "crates/maple_cli/src/dumb_analyzer/find_usages/default_types.rs",
-              "srlisrs", "srlis", 42usize,
+              "srlisrs", "lisrs", 42usize,
               "..mb_analyzer/find_usages/default_types.rs"
               )
         ];
@@ -315,29 +286,25 @@ mod tests {
             println!("\n   container_width: {}", "─".repeat(container_width));
             println!("    origin display: {}", wrap_matches(text, &match_indices));
 
-            let (text_post, indices_post) = new_truncation(text, container_width, &match_indices)
-                .unwrap_or((text.into(), match_indices.clone()));
+            let (display_line_got, indices_post) =
+                new_truncation(text, container_width, &match_indices)
+                    .unwrap_or((text.into(), match_indices.clone()));
 
-            let truncated_text_got = text_post.clone();
+            let truncated_text_got = display_line_got.clone();
 
             let highlighted_got = indices_post
                 .iter()
                 .filter_map(|i| truncated_text_got.chars().nth(*i))
                 .collect::<String>();
 
-            // dbg!(match_indices, indices_post.clone());
-            // dbg!(query);
-            // dbg!(highlighted_got);
+            assert_eq!(display_line, display_line_got);
+            assert_eq!(highlighted, highlighted_got);
 
-            if display_line != text_post {
-                eprintln!("ERROR, display_line != text_post");
-
-                println!("\n   container_width: {}", "─".repeat(container_width));
-                println!(
-                    "    actual display: {}",
-                    wrap_matches(&truncated_text_got, &indices_post)
-                );
-            }
+            println!("\n   container_width: {}", "─".repeat(container_width));
+            println!(
+                "    actual display: {}",
+                wrap_matches(&truncated_text_got, &indices_post)
+            );
         }
     }
 }
