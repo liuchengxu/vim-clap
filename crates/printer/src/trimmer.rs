@@ -113,7 +113,7 @@ pub fn trim_text(
         let indices = indices
             .iter()
             .filter_map(|x| (x + 2).checked_sub(trimmed_len))
-            .filter(|x| *x > 1)
+            .filter(|x| *x > 1) // Ignore the highlights in `..`
             .collect();
 
         Some((text, indices))
@@ -124,7 +124,7 @@ pub fn trim_text(
         let text = format!("{}..", trimmed_text);
         let indices = indices
             .iter()
-            .filter(|x| *x + 2 < container_width)
+            .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .copied()
             .collect::<Vec<_>>();
 
@@ -138,7 +138,7 @@ pub fn trim_text(
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)
-            .filter(|x| *x + 2 < container_width)
+            .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
         Some((text, indices))
@@ -187,21 +187,20 @@ mod tests {
         let text = "0123456789abcdef";
         let width = 5;
         let (trimmed, offset) = trim_left(text, width, 4);
-        println!("trimmed: {}", trimmed);
-        println!("offset: {}", offset);
+        assert_eq!(trimmed, "bcdef");
+        assert_eq!(offset, 11);
     }
 
     #[test]
     fn test_trim_right() {
         let text = "0123456789abcdef";
         let width = 5;
-        let (trimmed, offset) = trim_right(text, width, 4);
-        println!("trimmed: {}", trimmed);
-        println!("offset: {}", offset);
+        let (trimmed, _offset) = trim_right(text, width, 4);
+        assert_eq!(trimmed, "01234");
     }
 
     #[test]
-    fn test_new_truncation() {
+    fn test_trim_text() {
         let test_cases = vec![(
             // raw_line, query, highlighted, container_width, display_line
             "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
@@ -271,9 +270,6 @@ mod tests {
 
             let FilteredItem { match_indices, .. } = ranked[0].clone();
 
-            println!("\n   container_width: {}", "─".repeat(container_width));
-            println!("    origin display: {}", wrap_matches(text, &match_indices));
-
             let (display_line_got, indices_post) =
                 trim_text(text, &match_indices, container_width, 4)
                     .unwrap_or((text.into(), match_indices.clone()));
@@ -287,12 +283,6 @@ mod tests {
 
             assert_eq!(display_line, display_line_got);
             assert_eq!(highlighted, highlighted_got);
-
-            println!("\n   container_width: {}", "─".repeat(container_width));
-            println!(
-                "    actual display: {}",
-                wrap_matches(&truncated_text_got, &indices_post)
-            );
         }
     }
 }
