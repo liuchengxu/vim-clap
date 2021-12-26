@@ -48,13 +48,13 @@ fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
     (text, trimmed)
 }
 
-fn trim_right(text: &str, width: usize, tabstop: usize) -> (String, usize) {
+fn trim_right(text: &str, width: usize, tabstop: usize) -> (&str, usize) {
     let current_width = display_width(text, tabstop);
 
     if current_width > width {
-        (String::from(&text[..width]), current_width - width)
+        (&text[..width], current_width - width)
     } else {
-        (text.into(), 0)
+        (text, 0)
     }
 }
 
