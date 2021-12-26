@@ -72,9 +72,8 @@ pub fn trim_text(
     text: &str,
     indices: &[usize],
     container_width: usize,
+    tabstop: usize,
 ) -> Option<(String, Vec<usize>)> {
-    const tabstop: usize = 4;
-
     let match_start = indices[0];
     let match_end = *indices
         .last()
@@ -275,8 +274,9 @@ mod tests {
             println!("\n   container_width: {}", "─".repeat(container_width));
             println!("    origin display: {}", wrap_matches(text, &match_indices));
 
-            let (display_line_got, indices_post) = trim_text(text, &match_indices, container_width)
-                .unwrap_or((text.into(), match_indices.clone()));
+            let (display_line_got, indices_post) =
+                trim_text(text, &match_indices, container_width, 4)
+                    .unwrap_or((text.into(), match_indices.clone()));
 
             let truncated_text_got = display_line_got.clone();
 

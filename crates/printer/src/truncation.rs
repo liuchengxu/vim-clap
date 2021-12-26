@@ -44,9 +44,8 @@ fn truncate_line_impl(
         let container_width = winwidth - skipped;
 
         let text = line.chars().skip(skipped).collect::<String>();
-        // let indices = indices.iter().map(|x| x + skipped).collect::<Vec<_>>();
 
-        crate::printer::trim_text(&text, indices, container_width).map(|(text, indices)| {
+        crate::printer::trim_text(&text, indices, container_width, 4).map(|(text, indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
                 indices,
@@ -55,7 +54,7 @@ fn truncate_line_impl(
     } else {
         let container_width = winwidth;
         let text = line;
-        crate::printer::trim_text(text, indices, container_width)
+        crate::printer::trim_text(text, indices, container_width, 4)
     }
 }
 
