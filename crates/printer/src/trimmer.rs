@@ -31,8 +31,9 @@ fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
 /// `String` -> `..ring`.
 fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
     // Assume each char takes at least one column
-    let (mut text, mut trimmed_len) = if text.chars().count() > width + 2 {
-        let diff = text.chars().count() - width - 2;
+    let chars_count = text.chars().count();
+    let (mut text, mut trimmed_len) = if chars_count > width + 2 {
+        let diff = chars_count - width - 2;
         (String::from(&text[diff..]), diff)
     } else {
         (text.into(), 0)
@@ -77,16 +78,12 @@ pub fn trim_text(
     tabstop: usize,
 ) -> Option<(String, Vec<usize>)> {
     let match_start = indices[0];
-    let match_end = *indices
-        .last()
-        .expect("Last element exists as the array is non empty; qed");
+    let match_end = *indices.last().expect("indices are non empty; qed");
 
     let acc_width = accumulate_text_width(text, tabstop);
 
     // Width for diplaying the whole text.
-    let full_width = *acc_width
-        .last()
-        .expect("`acc_width` is non-empty as text is not empty; qed");
+    let full_width = *acc_width.last().expect("`acc_width` is not empty; qed");
 
     if full_width <= container_width {
         return None;
