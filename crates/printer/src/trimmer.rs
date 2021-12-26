@@ -147,39 +147,8 @@ pub fn trim_text(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filter::{
-        matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
-        FilteredItem, Source,
-    };
-    use rayon::prelude::*;
-
-    fn wrap_matches(line: &str, indices: &[usize]) -> String {
-        let mut ret = String::new();
-        let mut peekable = indices.iter().peekable();
-        for (idx, ch) in line.chars().enumerate() {
-            let next_id = **peekable.peek().unwrap_or(&&line.len());
-            if next_id == idx {
-                #[cfg(not(target_os = "windows"))]
-                {
-                    ret.push_str(
-                        format!("{}{}{}", termion::style::Invert, ch, termion::style::Reset)
-                            .as_str(),
-                    );
-                }
-
-                #[cfg(target_os = "windows")]
-                {
-                    ret.push_str(format!("~{}~", ch).as_str());
-                }
-
-                peekable.next();
-            } else {
-                ret.push(ch);
-            }
-        }
-
-        ret
-    }
+    use crate::tests::{filter_single_line, wrap_matches};
+    use types::FilteredItem;
 
     #[test]
     fn test_trim_left() {
@@ -259,13 +228,7 @@ mod tests {
         ];
 
         for (text, query, highlighted, container_width, display_line) in test_cases {
-            let source = Source::List(std::iter::once(text.into()));
-
-            let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
-            let mut ranked = source
-                .filter_and_collect(matcher, &query.clone().into())
-                .unwrap();
-            ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+            let ranked = filter_single_line(text, query);
 
             let FilteredItem { match_indices, .. } = ranked[0].clone();
 
