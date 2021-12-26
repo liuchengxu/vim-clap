@@ -28,9 +28,10 @@ fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
     ret
 }
 
+/// `String` -> `..ring`.
 fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
     // Assume each char takes at least one column
-    let (mut text, mut trimmed) = if text.chars().count() > width + 2 {
+    let (mut text, mut trimmed_len) = if text.chars().count() > width + 2 {
         let diff = text.chars().count() - width - 2;
         (String::from(&text[diff..]), diff)
     } else {
@@ -41,20 +42,21 @@ fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
 
     while current_width > width && !text.is_empty() {
         text = text.chars().skip(1).collect();
-        trimmed += 1;
+        trimmed_len += 1;
         current_width = display_width(&text, tabstop);
     }
 
-    (text, trimmed)
+    (text, trimmed_len)
 }
 
-fn trim_right(text: &str, width: usize, tabstop: usize) -> (&str, usize) {
+/// `String` -> `Stri..`.
+fn trim_right(text: &str, width: usize, tabstop: usize) -> &str {
     let current_width = display_width(text, tabstop);
 
     if current_width > width {
-        (&text[..width], current_width - width)
+        &text[..width]
     } else {
-        (text, 0)
+        text
     }
 }
 
@@ -119,7 +121,7 @@ pub fn trim_text(
         Some((text, indices))
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let (trimmed_text, _) = trim_right(text, container_width - 2, tabstop);
+        let trimmed_text = trim_right(text, container_width - 2, tabstop);
 
         let text = format!("{}..", trimmed_text);
         let indices = indices
@@ -132,7 +134,7 @@ pub fn trim_text(
     } else {
         // left-right, ..Stri..
         let left_truncated_text = &text[match_start..];
-        let (trimmed_text, _) = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
+        let trimmed_text = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
         let text = format!("..{}..", trimmed_text);
         let indices = indices
@@ -195,7 +197,7 @@ mod tests {
     fn test_trim_right() {
         let text = "0123456789abcdef";
         let width = 5;
-        let (trimmed, _offset) = trim_right(text, width, 4);
+        let trimmed = trim_right(text, width, 4);
         assert_eq!(trimmed, "01234");
     }
 
