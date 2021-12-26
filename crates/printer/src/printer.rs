@@ -107,21 +107,21 @@ pub fn trim_text(
 
     if (w1 > w3 && w2 + w3 <= container_width) || (w3 <= 2) {
         // right-fixed, ..ring
-        let (text, trimmed) = trim_left(text, container_width - 2, tabstop);
+        let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
 
-        let text = format!("..{}", text);
+        let text = format!("..{}", trimmed_text);
         let indices = indices
             .iter()
-            .filter_map(|x| (x + 2).checked_sub(trimmed))
+            .filter_map(|x| (x + 2).checked_sub(trimmed_len))
             .filter(|x| *x > 1)
             .collect();
 
         Some((text, indices))
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let (text, _) = trim_right(text, container_width - 2, tabstop);
+        let (trimmed_text, _) = trim_right(text, container_width - 2, tabstop);
 
-        let text = format!("{}..", text);
+        let text = format!("{}..", trimmed_text);
         let indices = indices
             .iter()
             .filter(|x| *x + 2 < container_width)
@@ -132,9 +132,9 @@ pub fn trim_text(
     } else {
         // left-right, ..Stri..
         let left_truncated_text = &text[match_start..];
-        let (text, _) = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
+        let (trimmed_text, _) = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
-        let text = format!("..{}..", text);
+        let text = format!("..{}..", trimmed_text);
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)
