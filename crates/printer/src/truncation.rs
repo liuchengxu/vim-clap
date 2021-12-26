@@ -3,6 +3,8 @@ use std::slice::IterMut;
 
 use types::FilteredItem;
 
+use crate::trimmer::trim_text;
+
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
 
@@ -45,16 +47,14 @@ fn truncate_line_impl(
 
         let text = line.chars().skip(skipped).collect::<String>();
 
-        crate::printer::trim_text(&text, indices, container_width, 4).map(|(text, indices)| {
+        trim_text(&text, indices, container_width, 4).map(|(text, indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
                 indices,
             )
         })
     } else {
-        let container_width = winwidth;
-        let text = line;
-        crate::printer::trim_text(text, indices, container_width, 4)
+        trim_text(line, indices, winwidth, 4)
     }
 }
 

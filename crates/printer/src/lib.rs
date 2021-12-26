@@ -1,7 +1,7 @@
 //! This crate provides the feature of diplaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
-mod printer;
+mod trimmer;
 mod truncation;
 
 use icon::{Icon, ICON_LEN};
