@@ -225,22 +225,18 @@ pub(crate) mod tests {
         } = params;
 
         let mut ranked = filter_single_line(text, &query);
-
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
         let FilteredItem { match_indices, .. } = ranked[0].clone();
-
         let truncated_indices = match_indices;
 
         let truncated_text_got = ranked[0].display_text();
-
         assert_eq!(truncated_text, truncated_text_got);
 
         let highlighted_got = truncated_indices
             .iter()
             .filter_map(|i| truncated_text_got.chars().nth(*i))
             .collect::<String>();
-
         assert_eq!(highlighted, highlighted_got);
 
         println!("\n      winwidth: {}", "─".repeat(winwidth));

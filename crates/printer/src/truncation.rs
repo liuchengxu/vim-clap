@@ -43,6 +43,7 @@ fn truncate_line_impl(
     }
 
     if let Some(skipped) = skipped {
+        // TODO: too many `collect` in this branch.
         let container_width = winwidth - skipped;
         let text = line.chars().skip(skipped).collect::<String>();
         let indices = indices.iter().map(|x| x - 2).collect::<Vec<_>>();
