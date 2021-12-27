@@ -234,21 +234,14 @@ pub(crate) mod tests {
 
         let truncated_text_got = ranked[0].display_text();
 
-        println!("truncated_text: {}", truncated_text);
-        println!("  display_text: {}", ranked[0].display_text());
-        // assert_eq!(truncated_text, truncated_text_got);
+        assert_eq!(truncated_text, truncated_text_got);
 
         let highlighted_got = truncated_indices
             .iter()
             .filter_map(|i| truncated_text_got.chars().nth(*i))
             .collect::<String>();
 
-        if highlighted != highlighted_got {
-            println!("ERROR highlight");
-            println!("highlighted: {}", highlighted);
-            println!("        got: {}", highlighted_got);
-        }
-        // assert_eq!(highlighted, highlighted_got);
+        assert_eq!(highlighted, highlighted_got);
 
         println!("\n      winwidth: {}", "─".repeat(winwidth));
         println!(
@@ -294,7 +287,7 @@ pub(crate) mod tests {
 
         test_printer!(
             " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-            " ..fuzzy_filter/target/debug/deps/librustversio..",
+            " ..s/fuzzy_filter/target/debug/deps/librustvers..",
             (QUERY, "srlisr", Some(2), 50)
         );
 

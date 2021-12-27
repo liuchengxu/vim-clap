@@ -45,10 +45,11 @@ fn truncate_line_impl(
     if let Some(skipped) = skipped {
         let container_width = winwidth - skipped;
         let text = line.chars().skip(skipped).collect::<String>();
-        trim_text(&text, indices, container_width, 4).map(|(text, indices)| {
+        let indices = indices.iter().map(|x| x - 2).collect::<Vec<_>>();
+        trim_text(&text, &indices, container_width, 4).map(|(text, indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
-                indices,
+                indices.iter().map(|x| x + 2).collect::<Vec<_>>(),
             )
         })
     } else {
