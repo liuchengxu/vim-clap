@@ -34,7 +34,7 @@ pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 
 fn truncate_line_impl(
     line: &str,
-    indices: &[usize],
+    indices: &mut [usize],
     winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
@@ -43,14 +43,16 @@ fn truncate_line_impl(
     }
 
     if let Some(skipped) = skipped {
-        // TODO: too many `collect` in this branch.
         let container_width = winwidth - skipped;
         let text = line.chars().skip(skipped).collect::<String>();
-        let indices = indices.iter().map(|x| x - 2).collect::<Vec<_>>();
-        trim_text(&text, &indices, container_width, 4).map(|(text, indices)| {
+        indices.iter_mut().for_each(|x| *x -= 2);
+        trim_text(&text, indices, container_width, 4).map(|(text, mut indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
-                indices.iter().map(|x| x + 2).collect::<Vec<_>>(),
+                {
+                    indices.iter_mut().for_each(|x| *x += 2);
+                    indices
+                },
             )
         })
     } else {
@@ -71,13 +73,15 @@ pub fn truncate_long_matched_lines<T>(
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
-    items.enumerate().for_each(|(lnum, filtered_item)| {
-        let line = filtered_item.source_item_display_text();
-
-        if let Some((truncated, truncated_indices)) =
-            truncate_line_impl(line, &filtered_item.match_indices, winwidth, skipped)
-        {
-            truncated_map.insert(lnum + 1, line.to_string());
+    items.enumerate().for_each(|(lnum, mut filtered_item)| {
+        let source_item = &filtered_item.source_item;
+        if let Some((truncated, truncated_indices)) = truncate_line_impl(
+            source_item.display_text(),
+            &mut filtered_item.match_indices,
+            winwidth,
+            skipped,
+        ) {
+            truncated_map.insert(lnum + 1, source_item.display_text().to_string());
 
             filtered_item.display_text = Some(truncated);
             filtered_item.match_indices = truncated_indices;
@@ -98,11 +102,11 @@ pub fn truncate_grep_lines(
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
         .into_iter()
         .zip(indices.into_iter())
-        .map(|(line, indices)| {
+        .map(|(line, mut indices)| {
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(&line, &indices, winwidth, skipped)
+                truncate_line_impl(&line, &mut indices, winwidth, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, truncated_indices)

@@ -147,7 +147,7 @@ pub fn trim_text(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{filter_single_line, wrap_matches};
+    use crate::tests::filter_single_line;
     use types::FilteredItem;
 
     #[test]
