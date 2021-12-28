@@ -19,8 +19,10 @@ endfunction
 
 function! s:init_display(msg) abort
   if empty(g:clap.input.get())
-    call g:clap.display.set_lines_lazy(a:msg.lines)
-    call g:clap#display_win.shrink_if_undersize()
+    if g:clap.provider.id !=# 'blines'
+      call g:clap.display.set_lines_lazy(a:msg.lines)
+      call g:clap#display_win.shrink_if_undersize()
+    endif
   endif
 
   call clap#indicator#update_matches_on_forerunner_done()
