@@ -152,7 +152,7 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let filtered_item = std::ops::Index::index(buffer, idx);
-                    let text = if let Some(ref painter) = self.icon.painter() {
+                    let text = if let Some(painter) = self.icon.painter() {
                         indices.push(filtered_item.shifted_indices(ICON_LEN));
                         painter.paint(filtered_item.display_text())
                     } else {
@@ -304,7 +304,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
-            #[cfg(feature = "enable_dyn")]
+            #[cfg(feature = "dyn-filtering")]
             Source::Exec(exec) => dyn_collect_number(source_iter_exec!(scorer, exec), number, icon),
             Source::File(fpath) => {
                 dyn_collect_number(source_iter_file!(scorer, fpath), number, icon)
@@ -318,7 +318,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     } else {
         let filtered = match source {
             Source::Stdin => dyn_collect_all(source_iter_stdin!(scorer), icon),
-            #[cfg(feature = "enable_dyn")]
+            #[cfg(feature = "dyn-filtering")]
             Source::Exec(exec) => dyn_collect_all(source_iter_exec!(scorer, exec), icon),
             Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), icon),
             Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), icon),

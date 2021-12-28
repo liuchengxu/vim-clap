@@ -18,7 +18,7 @@ use matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher};
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
-#[cfg(feature = "enable_dyn")]
+#[cfg(feature = "dyn-filtering")]
 pub use subprocess;
 pub use types::{FilteredItem, Query, SourceItem};
 
