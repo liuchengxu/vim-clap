@@ -19,7 +19,7 @@ pub type VimLineNumber = usize;
 ///
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
-// sign column width 2
+/// sign column width 2
 #[cfg(not(test))]
 const WINWIDTH_OFFSET: usize = 4;
 
@@ -33,9 +33,9 @@ pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
 }
 
 fn truncate_line_impl(
-    winwidth: usize,
     line: &str,
     indices: &[usize],
+    winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
     let last_idx = indices.last()?;
@@ -119,7 +119,7 @@ pub fn truncate_long_matched_lines<T>(
         let line = filtered_item.source_item_display_text();
 
         if let Some((truncated, truncated_indices)) =
-            truncate_line_impl(winwidth, line, &filtered_item.match_indices, skipped)
+            truncate_line_impl(line, &filtered_item.match_indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 
@@ -146,7 +146,7 @@ pub fn truncate_grep_lines(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(winwidth, &line, &indices, skipped)
+                truncate_line_impl(&line, &indices, winwidth, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, truncated_indices)

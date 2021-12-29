@@ -49,7 +49,10 @@ impl FuzzyAlgorithm {
                 Self::Fzy => fzy::fuzzy_indices(text, query),
                 Self::Skim => skim::fuzzy_indices(text, query),
             };
-            res.map(|(score, indices)| (score, indices.into_iter().map(|x| x + offset).collect()))
+            res.map(|(score, mut indices)| {
+                indices.iter_mut().for_each(|x| *x += offset);
+                (score, indices)
+            })
         })
     }
 }

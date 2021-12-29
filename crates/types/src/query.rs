@@ -7,8 +7,10 @@ pub struct Query {
     pub inverse_terms: Vec<InverseTerm>,
 }
 
-impl From<&str> for Query {
-    fn from(query: &str) -> Self {
+impl<T: AsRef<str>> From<T> for Query {
+    fn from(query: T) -> Self {
+        let query = query.as_ref();
+
         let mut fuzzy_terms = Vec::new();
         let mut exact_terms = Vec::new();
         let mut inverse_terms = Vec::new();
@@ -28,11 +30,5 @@ impl From<&str> for Query {
             exact_terms,
             inverse_terms,
         }
-    }
-}
-
-impl From<String> for Query {
-    fn from(s: String) -> Self {
-        s.as_str().into()
     }
 }
