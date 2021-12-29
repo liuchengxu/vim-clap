@@ -10,7 +10,7 @@ use utility::{println_json, println_json_with_length};
 
 pub use self::truncation::{
     truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
-    utf8_str_slice, LinesTruncatedMap,
+    LinesTruncatedMap,
 };
 
 /// 1. Truncate the line.

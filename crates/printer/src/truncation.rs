@@ -26,12 +26,6 @@ const WINWIDTH_OFFSET: usize = 4;
 #[cfg(test)]
 const WINWIDTH_OFFSET: usize = 0;
 
-// https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
-#[inline]
-pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
-    line.chars().take(end).skip(start).collect()
-}
-
 fn truncate_line_impl(
     line: &str,
     indices: &mut [usize],
