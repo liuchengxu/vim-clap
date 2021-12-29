@@ -306,13 +306,4 @@ pub(crate) mod tests {
             (QUERY, "srlis", None, 50)
         );
     }
-
-    #[test]
-    fn test_print_multibyte_string_slice() {
-        let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
-        let start = 33;
-        let end = 300;
-        let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
-        assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
-    }
 }

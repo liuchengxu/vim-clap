@@ -10,7 +10,7 @@ const DOTS: &str = "..";
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
-pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
+fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
     line.chars().take(end).skip(start).collect()
 }
 
@@ -84,5 +84,19 @@ pub fn trim_text(
         Some((truncated, truncated_indices))
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::utf8_str_slice;
+
+    #[test]
+    fn test_print_multibyte_string_slice() {
+        let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
+        let start = 33;
+        let end = 300;
+        let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
+        assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
     }
 }
