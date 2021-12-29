@@ -3,7 +3,7 @@ use std::slice::IterMut;
 
 use types::FilteredItem;
 
-use crate::trimmer::trim_text;
+use crate::trimmer::v1::trim_text;
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
@@ -82,6 +82,28 @@ pub fn truncate_long_matched_lines<T>(
             skipped,
         ) {
             truncated_map.insert(lnum + 1, source_item.display_text().to_string());
+
+            filtered_item.display_text = Some(truncated);
+            filtered_item.match_indices = truncated_indices;
+        }
+    });
+    truncated_map
+}
+
+pub fn truncate_long_matched_lines_v0<T>(
+    items: IterMut<FilteredItem<T>>,
+    winwidth: usize,
+    skipped: Option<usize>,
+) -> LinesTruncatedMap {
+    let mut truncated_map = HashMap::new();
+    let winwidth = winwidth - WINWIDTH_OFFSET;
+    items.enumerate().for_each(|(lnum, filtered_item)| {
+        let line = filtered_item.source_item_display_text();
+
+        if let Some((truncated, truncated_indices)) =
+            crate::trimmer::v0::trim_text(line, &filtered_item.match_indices, winwidth, skipped)
+        {
+            truncated_map.insert(lnum + 1, line.to_string());
 
             filtered_item.display_text = Some(truncated);
             filtered_item.match_indices = truncated_indices;

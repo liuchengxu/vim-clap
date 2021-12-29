@@ -6,7 +6,7 @@ use filter::{
     matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
     FilteredItem, Query, SourceItem,
 };
-use printer::truncate_long_matched_lines;
+use printer::truncate_long_matched_lines_v0;
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -107,7 +107,7 @@ fn fuzzy_match(
 
     // 2 = chars(icon)
     let skipped = if enable_icon { Some(2) } else { None };
-    let truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
+    let truncated_map = truncate_long_matched_lines_v0(ranked.iter_mut(), winwidth, skipped);
 
     let (filtered, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
