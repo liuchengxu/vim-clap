@@ -3,8 +3,6 @@ use std::slice::IterMut;
 
 use types::FilteredItem;
 
-use crate::trimmer::v1::trim_text;
-
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
 
@@ -26,18 +24,14 @@ const WINWIDTH_OFFSET: usize = 4;
 #[cfg(test)]
 const WINWIDTH_OFFSET: usize = 0;
 
-// https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
-#[inline]
-pub fn utf8_str_slice(line: &str, start: usize, end: usize) -> String {
-    line.chars().take(end).skip(start).collect()
-}
-
-fn truncate_line_impl(
+fn truncate_line_v1(
     line: &str,
     indices: &mut [usize],
     winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
+    use crate::trimmer::v1::trim_text;
+
     if line.is_empty() || indices.is_empty() {
         return None;
     }
@@ -75,7 +69,7 @@ pub fn truncate_long_matched_lines<T>(
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut filtered_item)| {
         let source_item = &filtered_item.source_item;
-        if let Some((truncated, truncated_indices)) = truncate_line_impl(
+        if let Some((truncated, truncated_indices)) = truncate_line_v1(
             source_item.display_text(),
             &mut filtered_item.match_indices,
             winwidth,
@@ -128,7 +122,7 @@ pub fn truncate_grep_lines(
             lnum += 1;
 
             if let Some((truncated, truncated_indices)) =
-                truncate_line_impl(&line, &mut indices, winwidth, skipped)
+                truncate_line_v1(&line, &mut indices, winwidth, skipped)
             {
                 truncated_map.insert(lnum, line);
                 (truncated, truncated_indices)

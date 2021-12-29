@@ -1,3 +1,11 @@
+/// This implementation has been deprecated, but still used in the Python
+/// binding due to an unknown issue with the v1 implementation, to reproduce:
+///
+/// 1. `let g:clap_force_python = 1`.
+/// 2. open https://github.com/subspace/subspace/blob/c50bec907ab8ade923a2a0b4888f43bfc47e8a7f/polkadot/node/collation-generation/src/lib.rs
+/// 3. Type `sr` and then you'll see Neovim hang forever, have no idea&time to fix it
+/// properly therefore the old implementation are just kept.
+
 const DOTS: &str = "..";
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
@@ -47,7 +55,10 @@ pub fn trim_text(
         let (truncated, max_index) = if left_truncated_len > container_width {
             if left_truncated_len == container_width + 1 {
                 (
-                    format!("{}.", utf8_str_slice(&left_truncated, 0, container_width - 1)),
+                    format!(
+                        "{}.",
+                        utf8_str_slice(&left_truncated, 0, container_width - 1)
+                    ),
                     container_width - 1,
                 )
             } else {
