@@ -308,8 +308,26 @@ impl FromStr for TagLine {
 }
 
 impl TagLine {
-    pub fn grep_format(&self) -> String {
-        format!("[ctags]{}:{}:1:{}", self.path, self.line, self.pattern)
+    pub fn grep_format(&self, query: &str, ignorecase: bool) -> (String, Option<Vec<usize>>) {
+        let mut formatted = format!("[ctags]{}:{}:1:", self.path, self.line);
+
+        let found = if ignorecase {
+            self.pattern.to_lowercase().find(&query.to_lowercase())
+        } else {
+            self.pattern.find(query)
+        };
+
+        let indices = if let Some(idx) = found {
+            let start = formatted.len() + idx;
+            let end = start + query.len();
+            Some((start..end).into_iter().collect())
+        } else {
+            None
+        };
+
+        formatted.push_str(&self.pattern);
+
+        (formatted, indices)
     }
 }
 

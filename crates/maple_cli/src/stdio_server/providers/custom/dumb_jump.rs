@@ -39,14 +39,14 @@ fn search_tags(
 ) -> Result<Lines> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
 
+    let ignorecase = query.chars().all(char::is_lowercase);
+
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = tags
         .search(query, true)?
         .into_iter()
         .filter_map(|tag_line| {
-            let line = tag_line.grep_format();
-            // TODO: indices
-            let indices = Vec::new();
-            exact_or_inverse_terms.check_jump_line((line, indices))
+            let (line, indices) = tag_line.grep_format(query, ignorecase);
+            exact_or_inverse_terms.check_jump_line((line, indices.unwrap_or_default()))
         })
         .unzip();
 
@@ -150,8 +150,8 @@ async fn handle_dumb_jump_message(
                 indices.truncate(200);
                 json!({
                   "id": msg_id,
-                  "force_execute": force_execute,
                   "provider_id": "dumb_jump",
+                  "force_execute": force_execute,
                   "result": { "lines": lines, "indices": indices, "total": total },
                 })
             };
@@ -255,13 +255,12 @@ impl NewSession for DumbJumpSession {
     fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let mut handler = DumbJumpMessageHandler::default();
         let (session, session_sender) = Session::new(call.clone(), handler.clone());
-
         session.start_event_loop();
 
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
-        let dir = params.cwd.clone();
-        tokio::task::spawn_blocking(move || {
-            handler.regenerate_tags(&dir);
+        tokio::task::spawn_blocking({
+            let dir = params.cwd.clone();
+            move || handler.regenerate_tags(&dir)
         });
         tokio::spawn(async move {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, true).await;
