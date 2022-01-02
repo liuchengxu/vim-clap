@@ -1,6 +1,7 @@
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -44,6 +45,10 @@ pub struct TagsFile {
     #[structopt(long)]
     query: Option<String>,
 
+    /// Generate the tags file whether the tags file exists or not.
+    #[structopt(long)]
+    force_generate: bool,
+
     /// Search the tag case insensitively
     #[structopt(long)]
     #[allow(unused)]
@@ -52,7 +57,7 @@ pub struct TagsFile {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TagsConfig<'a, P> {
-    languages: Option<&'a String>,
+    languages: Option<&'a str>,
     kinds_all: &'a str,
     fields: &'a str,
     extras: &'a str,
@@ -81,7 +86,7 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
 impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     pub fn new(
-        languages: Option<&'a String>,
+        languages: Option<&'a str>,
         kinds_all: &'a str,
         fields: &'a str,
         extras: &'a str,
@@ -151,7 +156,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     }
 
     /// Executes the command to generate the tags file.
-    fn create(&self) -> Result<()> {
+    fn generate_tags(&self) -> Result<()> {
         let command = self.build_command();
         let exit_status = Exec::shell(&command).cwd(self.dir.as_ref()).join()?;
 
@@ -175,7 +180,7 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
     }
 
     pub fn create(&self) -> Result<()> {
-        self.config.create()
+        self.config.generate_tags()
     }
 
     pub fn readtags(&self, query: &str) -> Result<impl Iterator<Item = String>> {
@@ -183,16 +188,86 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
 
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let stdout = Exec::cmd("readtags")
-            .arg("-t")
+            .arg("--tag-file")
             .arg(&self.tags_path)
-            .arg("-p")
-            .arg("-i")
+            .arg("--prefix-match")
+            .arg("--icase-match")
+            .arg("-E")
             .arg("-ne")
             .arg("-")
             .arg(query)
             .stream_stdout()?;
 
         Ok(std::io::BufReader::new(stdout).lines().flatten())
+    }
+
+    pub fn search(&self, query: &str, force_generate: bool) -> Result<Vec<TagLine>> {
+        if force_generate || !self.exists() {
+            self.create()?;
+        }
+
+        Ok(self
+            .readtags(query)?
+            .filter_map(|line| line.parse::<TagLine>().ok())
+            .collect())
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct TagLine {
+    pub name: String,
+    pub path: String,
+    pub pattern: String,
+    pub kind: String,
+    pub language: String,
+    pub scope: Option<String>,
+    pub line: u64,
+}
+
+impl FromStr for TagLine {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut items = s.split('\t');
+
+        tracing::debug!("Parsing TagLine: {:?}", items.clone().collect::<Vec<_>>());
+
+        let mut l = TagLine {
+            name: items.next().ok_or(())?.into(),
+            path: items.next().ok_or(())?.into(),
+            ..Default::default()
+        };
+
+        if let Some(p) = items.clone().peekable().peek() {
+            if p.len() > 6 && p.starts_with("/^") && p.ends_with("$/;\"") {
+                let pat = items.next().ok_or(())?;
+                let pat_len = pat.len();
+                l.pattern = String::from(&pat[2..pat_len - 4]);
+            }
+        }
+
+        for item in items {
+            if let Some((k, v)) = item.split_once(':') {
+                match k {
+                    "kind" => l.kind = v.into(),
+                    "language" => l.language = v.into(),
+                    "roles" => {}
+                    "scope" => l.scope = Some(v.into()),
+                    "line" => l.line = v.parse().expect("line is an integer"),
+                    unknown => {
+                        tracing::debug!(line = %s, "Unknown field: {}", unknown);
+                    }
+                }
+            }
+        }
+
+        Ok(l)
+    }
+}
+
+impl TagLine {
+    pub fn grep_format(&self) -> String {
+        format!("[ctags]{}:{}:1:{}", self.path, self.line, self.pattern)
     }
 }
 
@@ -201,7 +276,7 @@ impl TagsFile {
         let dir = self.shared.dir()?;
 
         let config = TagsConfig::new(
-            self.shared.languages.as_ref(),
+            self.shared.languages.as_ref().map(|l| l.as_ref()),
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
@@ -212,14 +287,9 @@ impl TagsFile {
 
         let tags = Tags::new(config);
 
-        if !tags.exists() {
-            tags.create()?;
-        }
-
         if let Some(ref query) = self.query {
-            for line in tags.readtags(query)?.collect::<Vec<_>>() {
-                println!("{}", line);
-            }
+            let results = tags.search(query, self.force_generate)?;
+            println!("{:?}", results);
         }
 
         Ok(())

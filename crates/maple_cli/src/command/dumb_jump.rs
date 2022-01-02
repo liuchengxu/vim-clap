@@ -17,7 +17,7 @@ use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Lines {
     pub lines: Vec<String>,
     pub indices: Vec<Vec<usize>>,

@@ -31,13 +31,15 @@ pub struct SearchResults {
 }
 
 #[allow(unused)]
-async fn search_tags(dir: &Path, query: &str) -> Result<Vec<String>> {
+async fn search_tags(dir: &Path, query: &str) -> Result<Lines> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
     if tags.exists() {
-        for line in tags.readtags(query)?.collect::<Vec<_>>() {
-            println!("{}", line);
-        }
-        todo!()
+        let lines = tags
+            .search(query, true)?
+            .into_iter()
+            .map(|l| l.grep_format())
+            .collect();
+        Ok(Lines::new(lines, Vec::new()))
     } else {
         Ok(Default::default())
     }
@@ -100,6 +102,9 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
 
     let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
+    let dir = cwd.clone();
+    let dir = Path::new(&dir);
+
     let dumb_jump = DumbJump {
         word: identifier,
         extension,
@@ -108,10 +113,11 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
     };
 
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
-    match dumb_jump
-        .references_or_occurrences(false, &exact_or_inverse_terms)
-        .await
-    {
+    // match dumb_jump
+    // .references_or_occurrences(false, &exact_or_inverse_terms)
+    // .await
+
+    match search_tags(&dir, &query).await {
         Ok(Lines { lines, mut indices }) => {
             let total_lines = lines;
             let total = total_lines.len();

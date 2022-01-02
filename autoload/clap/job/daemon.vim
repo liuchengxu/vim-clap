@@ -6,6 +6,12 @@ set cpoptions&vim
 
 let s:job_id = -1
 
+let s:log_file = expand('~/vim_clap.error')
+
+function! s:log_error(...) abort
+  call writefile([strftime('%Y-%m-%d %H:%M:%S ').json_encode(a:000)], s:log_file, 'a')
+endfunction
+
 if has('nvim')
 
   let s:round_message = ''
@@ -62,6 +68,7 @@ if has('nvim')
         return
       endif
       call clap#helper#echo_error('on_event:'.string(a:data))
+      call s:log_error(a:data)
     endif
   endfunction
 
