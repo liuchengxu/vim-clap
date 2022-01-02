@@ -1,9 +1,11 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use itertools::Itertools;
+use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -30,15 +32,25 @@ pub struct SearchResults {
     pub query: String,
 }
 
-#[allow(unused)]
-async fn search_tags(dir: &Path, query: &str) -> Result<Lines> {
+fn search_tags(
+    dir: &Path,
+    query: &str,
+    exact_or_inverse_terms: &ExactOrInverseTerms,
+) -> Result<Lines> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
-    let lines = tags
+
+    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = tags
         .search(query, true)?
         .into_iter()
-        .map(|l| l.grep_format())
-        .collect();
-    Ok(Lines::new(lines, Vec::new()))
+        .filter_map(|tag_line| {
+            let line = tag_line.grep_format();
+            // TODO: indices
+            let indices = Vec::new();
+            exact_or_inverse_terms.check_jump_line((line, indices))
+        })
+        .unzip();
+
+    Ok(Lines::new(lines, indices))
 }
 
 /// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
@@ -76,21 +88,34 @@ fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
     (identifier, exact_or_inverse_terms)
 }
 
-pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> SearchResults {
-    let msg_id = msg.id;
+#[derive(Deserialize)]
+struct Params {
+    cwd: String,
+    query: String,
+    extension: String,
+}
 
-    #[derive(Deserialize)]
-    struct Params {
-        cwd: String,
-        query: String,
-        extension: String,
-    }
+#[inline]
+fn parse_msg(msg: MethodCall) -> (u64, Params) {
+    (msg.id, msg.parse_unsafe())
+}
 
+enum SearchEngine {
+    Ctags,
+    Regex,
+}
+
+async fn handle_dumb_jump_message(
+    msg_id: u64,
+    params: Params,
+    search_engine: SearchEngine,
+    force_execute: bool,
+) -> SearchResults {
     let Params {
         cwd,
         query,
         extension,
-    } = msg.parse_unsafe();
+    } = params;
 
     if query.is_empty() {
         return Default::default();
@@ -98,62 +123,76 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
 
     let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
-    let dir = cwd.clone();
-    let dir = Path::new(&dir);
-
-    let dumb_jump = DumbJump {
-        word: identifier,
-        extension,
-        kind: None,
-        cmd_dir: Some(cwd.into()),
+    let search_results = match search_engine {
+        SearchEngine::Ctags => search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms),
+        SearchEngine::Regex => {
+            // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
+            let dumb_jump = DumbJump {
+                word: identifier,
+                extension,
+                kind: None,
+                cmd_dir: Some(cwd.into()),
+            };
+            dumb_jump
+                .references_or_occurrences(false, &exact_or_inverse_terms)
+                .await
+        }
     };
 
-    // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
-    // match dumb_jump
-    // .references_or_occurrences(false, &exact_or_inverse_terms)
-    // .await
-
-    match search_tags(dir, &query).await {
+    let (response, lines) = match search_results {
         Ok(Lines { lines, mut indices }) => {
             let total_lines = lines;
-            let total = total_lines.len();
-            // Only show the top 200 items.
-            let lines = total_lines.iter().take(200).collect::<Vec<_>>();
-            indices.truncate(200);
 
-            let result = json!({
-              "id": msg_id,
-              "force_execute": force_execute,
-              "provider_id": "dumb_jump",
-              "result": { "lines": lines, "indices": indices, "total": total },
-            });
+            let response = {
+                let total = total_lines.len();
+                // Only show the top 200 items.
+                let lines = total_lines.iter().take(200).collect::<Vec<_>>();
+                indices.truncate(200);
+                json!({
+                  "id": msg_id,
+                  "force_execute": force_execute,
+                  "provider_id": "dumb_jump",
+                  "result": { "lines": lines, "indices": indices, "total": total },
+                })
+            };
 
-            write_response(result);
-            SearchResults {
-                lines: total_lines,
-                query,
-            }
+            (response, total_lines)
         }
         Err(e) => {
-            tracing::error!(error = ?e, "Error when running dumb_jump");
-            let result = json!({
+            tracing::error!(error = ?e, "Error at running dumb_jump");
+            let response = json!({
                 "id": msg_id,
                 "provider_id": "dumb_jump",
                 "error": { "message": e.to_string() }
             });
-            write_response(result);
-            SearchResults {
-                lines: Default::default(),
-                query,
-            }
+            (response, Default::default())
         }
-    }
+    };
+    write_response(response);
+    SearchResults { lines, query }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DumbJumpMessageHandler {
     /// Last/Latest search results.
     results: SearchResults,
+    /// Whether the tags file has been (re)-created.
+    tags_regenerated: Arc<Mutex<AtomicBool>>,
+}
+
+impl DumbJumpMessageHandler {
+    fn regenerate_tags(&mut self, dir: &str) {
+        let tags = Tags::new(TagsConfig::with_dir(dir));
+        match tags.create() {
+            Ok(()) => {
+                let mut tags_regenerated = self.tags_regenerated.lock();
+                *tags_regenerated.get_mut() = true;
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
+            }
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -165,7 +204,9 @@ impl EventHandler for DumbJumpMessageHandler {
     ) -> Result<()> {
         let msg_id = msg.id;
 
-        let lnum = msg.get_u64("lnum").expect("lnum exists");
+        let lnum = msg
+            .get_u64("lnum")
+            .map_err(|_| anyhow::anyhow!("Missing `lnum` in {:?}", msg))?;
 
         // lnum is 1-indexed
         if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
@@ -185,12 +226,24 @@ impl EventHandler for DumbJumpMessageHandler {
         msg: MethodCall,
         _context: Arc<SessionContext>,
     ) -> Result<()> {
-        let results = tokio::spawn(handle_dumb_jump_message(msg, false))
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!(?e, "Failed to spawn task handle_dumb_jump_message");
-                Default::default()
-            });
+        let (msg_id, params) = parse_msg(msg);
+
+        let tags_regenerated = self
+            .tags_regenerated
+            .try_lock()
+            .map(|b| b.load(Ordering::SeqCst))
+            .unwrap_or(false);
+
+        let job_future = if tags_regenerated {
+            handle_dumb_jump_message(msg_id, params, SearchEngine::Ctags, false)
+        } else {
+            handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, false)
+        };
+
+        let results = tokio::spawn(job_future).await.unwrap_or_else(|e| {
+            tracing::error!(?e, "Failed to spawn task handle_dumb_jump_message");
+            Default::default()
+        });
         self.results = results;
         Ok(())
     }
@@ -200,13 +253,18 @@ pub struct DumbJumpSession;
 
 impl NewSession for DumbJumpSession {
     fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) =
-            Session::new(call.clone(), DumbJumpMessageHandler::default());
+        let mut handler = DumbJumpMessageHandler::default();
+        let (session, session_sender) = Session::new(call.clone(), handler.clone());
 
         session.start_event_loop();
 
+        let (msg_id, params) = parse_msg(call.unwrap_method_call());
+        let dir = params.cwd.clone();
+        tokio::task::spawn_blocking(move || {
+            handler.regenerate_tags(&dir);
+        });
         tokio::spawn(async move {
-            handle_dumb_jump_message(call.unwrap_method_call(), true).await;
+            handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, true).await;
         });
 
         Ok(session_sender)
