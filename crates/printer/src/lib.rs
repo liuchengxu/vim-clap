@@ -1,6 +1,7 @@
 //! This crate provides the feature of diplaying the information of filtered lines
 //! by printing them to stdout in JSON format.
 
+mod trimmer;
 mod truncation;
 
 use icon::{Icon, ICON_LEN};
@@ -8,7 +9,8 @@ use types::FilteredItem;
 use utility::{println_json, println_json_with_length};
 
 pub use self::truncation::{
-    truncate_grep_lines, truncate_long_matched_lines, utf8_str_slice, LinesTruncatedMap,
+    truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
+    LinesTruncatedMap,
 };
 
 /// 1. Truncate the line.
@@ -153,15 +155,16 @@ pub fn print_dyn_filter_results(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use filter::{
         matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
-        Source,
+        Source, SourceItem,
     };
     use rayon::prelude::*;
+    use types::Query;
 
-    fn wrap_matches(line: &str, indices: &[usize]) -> String {
+    pub(crate) fn wrap_matches(line: &str, indices: &[usize]) -> String {
         let mut ret = String::new();
         let mut peekable = indices.iter().peekable();
         for (idx, ch) in line.chars().enumerate() {
@@ -198,6 +201,20 @@ mod tests {
         winwidth: usize,
     }
 
+    pub(crate) fn filter_single_line(
+        line: impl Into<SourceItem>,
+        query: impl Into<Query>,
+    ) -> Vec<FilteredItem> {
+        let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
+
+        let mut ranked = Source::List(std::iter::once(line.into()))
+            .filter_and_collect(matcher, &query.into())
+            .unwrap();
+        ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+
+        ranked
+    }
+
     fn run(params: TestParams) {
         let TestParams {
             text,
@@ -208,34 +225,24 @@ mod tests {
             winwidth,
         } = params;
 
-        let source = Source::List(std::iter::once(text.into()));
-
-        let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
-        let mut ranked = source
-            .filter_and_collect(matcher, &query.clone().into())
-            .unwrap();
-        ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-
+        let mut ranked = filter_single_line(text, &query);
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
         let FilteredItem { match_indices, .. } = ranked[0].clone();
-
         let truncated_indices = match_indices;
 
         let truncated_text_got = ranked[0].display_text();
-
-        assert_eq!(truncated_text, ranked[0].display_text());
+        assert_eq!(truncated_text, truncated_text_got);
 
         let highlighted_got = truncated_indices
             .iter()
             .filter_map(|i| truncated_text_got.chars().nth(*i))
             .collect::<String>();
-
         assert_eq!(highlighted, highlighted_got);
 
-        println!("\n   winwidth: {}", "─".repeat(winwidth));
+        println!("\n      winwidth: {}", "─".repeat(winwidth));
         println!(
-            "    display: {}",
+            "       display: {}",
             wrap_matches(&truncated_text_got, &truncated_indices)
         );
         // The highlighted result can be case insensitive.
@@ -263,73 +270,10 @@ mod tests {
     }
 
     #[test]
-    fn test_printer_basics() {
-        test_printer!(
-            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.scss",
-            "..he/matched/items/will/be/invisible/file.scss",
-            ("files", "files", None, 50usize)
-        );
-
-        test_printer!(
-            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
-            "..ed/items/will/be/invisible/another-file.scss",
-            ("files", "files", None, 50usize)
-        );
-
-        test_printer!(
-            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
-            "..then/the/matched/items/will/be/invisible/file.js",
-            ("files", "files", None, 50usize)
-        );
-
-        test_printer!(
-            "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
-            "../matched/items/will/be/invisible/another-file.js",
-            ("files", "files", None, 50usize)
-        );
-
-        test_printer!(
-            "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
-            "..s/Homebrew/universal-ctags--git/Units/afl-fuzz..",
-            ("srcggithub", "srcg", None, 50usize)
-        );
-
-        test_printer!(
-            "        // Wait until propagation delay period after block we plan to mine on",
-            "..pagation delay period after block we plan to mine on",
-            ("bmine", "bmine", None, 58usize)
-        );
-
-        test_printer!(
-          "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
-          "..stversion-b273394e6c9c64f6.dylib.dSYM/Contents..",
-          ("srlisresource", "srlis", None, 50usize)
-        );
-
-        test_printer!(
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
-          "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
-          ("srlisresource", "srli", None, 50usize)
-        );
-
-        test_printer!(
-          "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
-          "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
-          ("srlisresource", "srli", None, 50usize)
-        );
-
-        test_printer!(
-          "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-          "..stversion-15764ff2535f190d.dylib.dSYM/Contents..",
-          ("srlisresource", "srlis", None, 50usize)
-        );
-    }
-
-    #[test]
     fn test_grep_line() {
         test_printer!(
             " bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}",
-            " ..       let PartialComponents { client, task_manager, ..}",
+            " ..           let PartialComponents { client, task_manager, ..}",
             ("PartialComponents", "PartialComponents", Some(2), 64)
         );
     }
@@ -361,14 +305,5 @@ mod tests {
           "..s/fuzzy_filter/target/debug/deps/libstructopt_..",
             (QUERY, "srlis", None, 50)
         );
-    }
-
-    #[test]
-    fn test_print_multibyte_string_slice() {
-        let multibyte_str = "README.md:23:1:Gourinath Banda. “Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
-        let start = 33;
-        let end = 300;
-        let expected = "Scalable Real-Time Kernel for Small Embedded Systems”. En- glish. PhD thesis. Denmark: University of Southern Denmark, June 2003. URL: http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=84D11348847CDC13691DFAED09883FCB?doi=10.1.1.118.1909&rep=rep1&type=pdf.";
-        assert_eq!(expected, utf8_str_slice(multibyte_str, start, end));
     }
 }

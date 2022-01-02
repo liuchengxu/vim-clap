@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+## [Improved]
+
+- Rework the truncation of long lines. #788
 
 ## [0.31] 2021-12-12
 
