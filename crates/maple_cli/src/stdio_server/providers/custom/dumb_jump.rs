@@ -33,16 +33,12 @@ pub struct SearchResults {
 #[allow(unused)]
 async fn search_tags(dir: &Path, query: &str) -> Result<Lines> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
-    if tags.exists() {
-        let lines = tags
-            .search(query, true)?
-            .into_iter()
-            .map(|l| l.grep_format())
-            .collect();
-        Ok(Lines::new(lines, Vec::new()))
-    } else {
-        Ok(Default::default())
-    }
+    let lines = tags
+        .search(query, true)?
+        .into_iter()
+        .map(|l| l.grep_format())
+        .collect();
+    Ok(Lines::new(lines, Vec::new()))
 }
 
 /// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
@@ -117,7 +113,7 @@ pub async fn handle_dumb_jump_message(msg: MethodCall, force_execute: bool) -> S
     // .references_or_occurrences(false, &exact_or_inverse_terms)
     // .await
 
-    match search_tags(&dir, &query).await {
+    match search_tags(dir, &query).await {
         Ok(Lines { lines, mut indices }) => {
             let total_lines = lines;
             let total = total_lines.len();
