@@ -52,6 +52,24 @@ fn search_tags(
     Ok(Lines::new(lines, indices))
 }
 
+async fn search_regex(
+    word: String,
+    extension: String,
+    cwd: String,
+    exact_or_inverse_terms: &ExactOrInverseTerms,
+) -> Result<Lines> {
+    // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
+    let dumb_jump = DumbJump {
+        word,
+        extension,
+        kind: None,
+        cmd_dir: Some(cwd.into()),
+    };
+    dumb_jump
+        .references_or_occurrences(false, exact_or_inverse_terms)
+        .await
+}
+
 /// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
 fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
     let Query {
@@ -123,18 +141,17 @@ async fn handle_dumb_jump_message(
     let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
     let search_results = match search_engine {
-        SearchEngine::Ctags => search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms),
+        SearchEngine::Ctags => {
+            let results = search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms);
+            // tags might be incomplete, try the regex way if no results from the tags file.
+            if results.as_ref().map(|r| r.is_empty()).unwrap_or(false) {
+                search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
+            } else {
+                results
+            }
+        }
         SearchEngine::Regex => {
-            // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
-            let dumb_jump = DumbJump {
-                word: identifier,
-                extension,
-                kind: None,
-                cmd_dir: Some(cwd.into()),
-            };
-            dumb_jump
-                .references_or_occurrences(false, &exact_or_inverse_terms)
-                .await
+            search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
         }
     };
 

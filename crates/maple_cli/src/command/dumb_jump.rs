@@ -35,6 +35,10 @@ impl Lines {
         let Self { lines, indices } = self;
         utility::println_json_with_length!(total, lines, indices);
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty()
+    }
 }
 
 // TODO: a new renderer for dumb jump

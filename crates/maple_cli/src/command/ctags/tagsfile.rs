@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use structopt::StructOpt;
 
 use filter::subprocess::Exec;
@@ -14,6 +13,7 @@ use super::SharedParams;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
+use crate::tools::ctags::TAGS_DIR;
 
 #[derive(StructOpt, Debug, Clone)]
 struct TagsFileParams {
@@ -72,17 +72,6 @@ pub struct Tags<'a, P> {
     config: TagsConfig<'a, P>,
     tags_path: PathBuf,
 }
-
-pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let proj_dirs = directories::ProjectDirs::from("org", "vim", "Vim Clap")
-        .expect("Couldn't create project directory for vim-clap");
-
-    let mut tags_dir = proj_dirs.data_dir().to_path_buf();
-    tags_dir.push("tags");
-    std::fs::create_dir_all(&tags_dir).expect("Couldn't create data directory for vim-clap");
-
-    tags_dir
-});
 
 impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     pub fn new(

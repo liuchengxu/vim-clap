@@ -3,12 +3,25 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::process::rstd::StdCommand;
 use crate::process::BaseCommand;
+
+/// Directory for the `tags` files.
+pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
+    let proj_dirs = directories::ProjectDirs::from("org", "vim", "Vim Clap")
+        .expect("Couldn't create project directory for vim-clap");
+
+    let mut tags_dir = proj_dirs.data_dir().to_path_buf();
+    tags_dir.push("tags");
+    std::fs::create_dir_all(&tags_dir).expect("Couldn't create data directory for vim-clap");
+
+    tags_dir
+});
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
 #[derive(Debug, Clone)]
