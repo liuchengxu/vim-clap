@@ -43,7 +43,6 @@ fn search_tags(
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = tags
         .search(query, true)?
-        .into_iter()
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
             exact_or_inverse_terms.check_jump_line((line, indices.unwrap_or_default()))

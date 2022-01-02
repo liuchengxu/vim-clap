@@ -158,6 +158,17 @@ function! clap#client#call(method, callback, params) abort
   endif
 endfunction
 
+let s:call_timer = -1
+let s:call_delay = 150
+
+function! clap#client#call_with_delay(method, callback, params) abort
+  if s:call_timer != -1
+    call timer_stop(s:call_timer)
+  endif
+
+  let s:call_timer = timer_start(s:call_delay, { -> clap#client#call(a:method, a:callback, a:params) })
+endfunction
+
 " One optional argument: Dict, extra params
 function! clap#client#call_on_move(method, callback, ...) abort
   let curline = g:clap.display.getcurline()

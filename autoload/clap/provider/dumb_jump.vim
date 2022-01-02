@@ -32,7 +32,7 @@ function! s:dumb_jump.on_typed() abort
     call clap#highlight#clear()
     return
   endif
-  call clap#client#call('dumb_jump/on_typed', function('clap#state#handle_response_on_typed'), {
+  call clap#client#call_with_delay('dumb_jump/on_typed', function('clap#state#handle_response_on_typed'), {
         \ 'provider_id': g:clap.provider.id,
         \ 'query': query,
         \ 'extension': fnamemodify(bufname(g:clap.start.bufnr), ':e'),

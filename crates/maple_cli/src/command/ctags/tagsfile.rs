@@ -215,7 +215,11 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
         }
     }
 
-    pub fn search(&self, query: &str, force_generate: bool) -> Result<Vec<TagLine>> {
+    pub fn search(
+        &self,
+        query: &str,
+        force_generate: bool,
+    ) -> Result<impl Iterator<Item = TagLine>> {
         use std::io::BufRead;
 
         if force_generate || !self.exists() {
@@ -229,8 +233,7 @@ impl<'a, P: AsRef<Path> + Hash> Tags<'a, P> {
         Ok(std::io::BufReader::new(stdout)
             .lines()
             .flatten()
-            .filter_map(|line| line.parse::<TagLine>().ok())
-            .collect())
+            .filter_map(|line| line.parse::<TagLine>().ok()))
     }
 }
 
