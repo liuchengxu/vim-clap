@@ -27,11 +27,15 @@ function! s:dumb_jump_sink_star(lines) abort
 endfunction
 
 function! s:dumb_jump.on_typed() abort
-  let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
+  let query = g:clap.input.get()
+  if empty(query)
+    call clap#highlight#clear()
+    return
+  endif
   call clap#client#call('dumb_jump/on_typed', function('clap#state#handle_response_on_typed'), {
         \ 'provider_id': g:clap.provider.id,
-        \ 'query': g:clap.input.get(),
-        \ 'extension': extension,
+        \ 'query': query,
+        \ 'extension': fnamemodify(bufname(g:clap.start.bufnr), ':e'),
         \ 'cwd': clap#rooter#working_dir(),
         \ })
 endfunction
