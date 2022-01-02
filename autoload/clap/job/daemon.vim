@@ -68,7 +68,7 @@ if has('nvim')
         return
       endif
       call clap#helper#echo_error('on_event:'.string(a:data))
-      call s:log_error(a:data)
+      " call s:log_error(a:data)
     endif
   endfunction
 
