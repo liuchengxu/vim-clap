@@ -5,6 +5,13 @@
 ## [Improved]
 
 - Rework the truncation of long lines. #788
+- Support searching the definition/declaration in the `tags` file using `readtags` for `dumb_jump` provider. #789
+
+  Aside from the previous regex searching, the results from the tags searching will be displayed first. You can control the
+  tags searching scheme by adding `*` in the end:
+
+  - `hel`: match the tags that starts with `hel`.
+  - `hel*`: match the tags that contain `hel`.
 
 ## [0.31] 2021-12-12
 
