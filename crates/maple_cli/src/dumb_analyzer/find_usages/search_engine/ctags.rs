@@ -33,6 +33,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
         self.tags_path.exists()
     }
 
+    /// Generate the `tags` file.
     pub fn generate_tags(&self) -> Result<()> {
         self.config.generate_tags()
     }
@@ -119,6 +120,8 @@ impl FromStr for TagLine {
             if search_pattern_used {
                 let pat = items.next().ok_or(())?;
                 let pat_len = pat.len();
+                // forward search: `/^foo$/`
+                // backward search: `?^foo$?`
                 if p.starts_with("/^") || p.starts_with("?^") {
                     if p.ends_with("$/") || p.ends_with("$?") {
                         l.pattern = String::from(&pat[2..pat_len - 4]);
