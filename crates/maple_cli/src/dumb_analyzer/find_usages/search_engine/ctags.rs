@@ -7,10 +7,11 @@ use filter::subprocess::Exec;
 
 use crate::tools::ctags::TagsConfig;
 
-#[allow(unused)]
-enum Filtering {
+#[derive(Clone, Debug)]
+pub enum Filtering {
     StartWith,
     Contain,
+    #[allow(unused)]
     Inherit,
 }
 
@@ -65,6 +66,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
     pub fn search(
         &self,
         query: &str,
+        filtering: Filtering,
         force_generate: bool,
     ) -> Result<impl Iterator<Item = TagLine>> {
         use std::io::BufRead;
@@ -73,9 +75,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
             self.generate_tags()?;
         }
 
-        let stdout = self
-            .build_exec(query, Filtering::StartWith)
-            .stream_stdout()?;
+        let stdout = self.build_exec(query, filtering).stream_stdout()?;
 
         Ok(std::io::BufReader::new(stdout)
             .lines()

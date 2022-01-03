@@ -10,7 +10,7 @@ use serde_json::json;
 
 use filter::Query;
 
-use crate::dumb_analyzer::{RegexSearcher, TagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{Filtering, RegexSearcher, TagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -33,8 +33,14 @@ fn search_tags(
         tags_config.languages(language.into());
     }
 
+    let (query, filtering) = if let Some(stripped) = query.strip_suffix('*') {
+        (stripped, Filtering::Contain)
+    } else {
+        (query, Filtering::StartWith)
+    };
+
     let usages = TagsSearcher::new(tags_config)
-        .search(query, true)?
+        .search(query, filtering, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
             exact_or_inverse_terms

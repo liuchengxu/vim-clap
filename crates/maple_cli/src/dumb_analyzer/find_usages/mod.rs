@@ -2,7 +2,7 @@ mod search_engine;
 
 use rayon::prelude::*;
 
-pub use self::search_engine::ctags::TagsSearcher;
+pub use self::search_engine::ctags::{Filtering, TagsSearcher};
 pub use self::search_engine::regex::RegexSearcher;
 
 #[derive(Clone, Debug, Default)]
