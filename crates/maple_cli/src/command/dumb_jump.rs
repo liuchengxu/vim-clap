@@ -72,18 +72,58 @@ fn render(matches: Vec<Match>, kind: &MatchKind, word: &Word) -> Vec<(String, Ve
         .collect()
 }
 
-fn render_jump_line(
-    matches: Vec<Match>,
-    kind: &str,
-    word: &Word,
-    exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Lines {
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = matches
-        .into_iter()
-        .filter_map(|line| exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word)))
-        .unzip();
+struct RegexSearcher {
+    word: String,
+    extension: String,
+    dir: Option<PathBuf>,
+}
 
-    Lines::new(lines, indices)
+impl RegexSearcher {
+    async fn search_references_or_occurrences(
+        self,
+        classify: bool,
+        exact_or_inverse_terms: &ExactOrInverseTerms,
+    ) -> Result<Lines> {
+        let Self {
+            word,
+            extension,
+            dir,
+        } = self;
+
+        let word = Word::new(word)?;
+
+        let lang = match get_language_by_ext(&extension) {
+            Ok(lang) => lang,
+            Err(_) => {
+                // Search the occurrences if no language detected.
+                let occurrences = find_occurrence_matches_by_ext(&word, &extension, &dir).await?;
+                let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = occurrences
+                    .into_par_iter()
+                    .filter_map(|line| {
+                        exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+                    })
+                    .unzip();
+                return Ok(Lines::new(lines, indices));
+            }
+        };
+
+        let comments = get_comments_by_ext(&extension);
+
+        // render the results in group.
+        if classify {
+            let res = definitions_and_references(lang, &word, &dir, comments).await?;
+
+            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+                .into_par_iter()
+                .flat_map(|(match_kind, matches)| render(matches, &match_kind, &word))
+                .unzip();
+
+            Ok(Lines::new(lines, indices))
+        } else {
+            definitions_and_references_lines(lang, &word, &dir, comments, exact_or_inverse_terms)
+                .await
+        }
+    }
 }
 
 /// Search-based jump.
@@ -126,41 +166,13 @@ impl DumbJump {
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Lines> {
-        let word = Word::new(self.word.to_string())?;
-
-        let lang = match get_language_by_ext(&self.extension) {
-            Ok(lang) => lang,
-            Err(_) => {
-                return Ok(render_jump_line(
-                    find_occurrence_matches_by_ext(&word, &self.extension, &self.cmd_dir).await?,
-                    "refs",
-                    &word,
-                    exact_or_inverse_terms,
-                ));
-            }
+        let searcher = RegexSearcher {
+            word: self.word.to_string(),
+            extension: self.extension.to_string(),
+            dir: self.cmd_dir.clone(),
         };
-
-        let comments = get_comments_by_ext(&self.extension);
-
-        // render the results in group.
-        if classify {
-            let res = definitions_and_references(lang, &word, &self.cmd_dir, comments).await?;
-
-            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
-                .into_par_iter()
-                .flat_map(|(match_kind, matches)| render(matches, &match_kind, &word))
-                .unzip();
-
-            Ok(Lines::new(lines, indices))
-        } else {
-            definitions_and_references_lines(
-                lang,
-                &word,
-                &self.cmd_dir,
-                comments,
-                exact_or_inverse_terms,
-            )
+        searcher
+            .search_references_or_occurrences(classify, exact_or_inverse_terms)
             .await
-        }
     }
 }
