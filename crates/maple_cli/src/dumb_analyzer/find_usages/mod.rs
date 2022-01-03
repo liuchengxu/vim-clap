@@ -17,6 +17,14 @@ impl Usage {
     }
 }
 
+impl PartialEq for Usage {
+    fn eq(&self, other: &Self) -> bool {
+        self.line == other.line
+    }
+}
+
+impl Eq for Usage {}
+
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug, Default)]
 pub struct Usages(Vec<Usage>);
@@ -44,5 +52,21 @@ impl Usages {
             .into_par_iter()
             .map(|usage| (usage.line, usage.indices))
             .unzip()
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Usage) -> bool,
+    {
+        self.0.retain(f);
+    }
+
+    pub fn contains(&self, ele: &Usage) -> bool {
+        self.0.contains(ele)
+    }
+
+    pub fn append(&mut self, other: Self) {
+        let mut other_usages = other.0;
+        self.0.append(&mut other_usages);
     }
 }

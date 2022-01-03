@@ -54,6 +54,14 @@ async fn search_regex(
     searcher.search_usages(false, exact_or_inverse_terms).await
 }
 
+fn combine(regex_results: Usages, tag_results: Usages) -> Usages {
+    let mut regex_results = regex_results;
+    regex_results.retain(|r| !tag_results.contains(r));
+    let mut tag_results = tag_results;
+    tag_results.append(regex_results);
+    tag_results
+}
+
 /// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
 fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
     let Query {
@@ -115,6 +123,7 @@ fn parse_msg(msg: MethodCall) -> (u64, Params) {
 enum SearchEngine {
     Ctags,
     Regex,
+    Both,
 }
 
 async fn handle_dumb_jump_message(
@@ -150,12 +159,27 @@ async fn handle_dumb_jump_message(
         SearchEngine::Regex => {
             search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
         }
+        SearchEngine::Both => {
+            let tags_future = {
+                let cwd = cwd.clone();
+                let identifier = identifier.clone();
+                let exact_or_inverse_terms = exact_or_inverse_terms.clone();
+                async move { search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms) }
+            };
+            let regex_future = search_regex(identifier, extension, cwd, &exact_or_inverse_terms);
+
+            let (tags_results, regex_results) =
+                futures::future::join(tags_future, regex_future).await;
+            Ok(combine(
+                regex_results.unwrap_or_default(),
+                tags_results.unwrap_or_default(),
+            ))
+        }
     };
 
     let (response, lines) = match usages_result {
         Ok(usages) => {
-            let (lines, mut indices) = usages.deconstruct();
-            let total_lines = lines;
+            let (total_lines, mut indices) = usages.deconstruct();
 
             let response = {
                 let total = total_lines.len();
@@ -242,7 +266,7 @@ impl EventHandler for DumbJumpMessageHandler {
         let (msg_id, params) = parse_msg(msg);
 
         let job_future = if self.tags_regenerated.load(Ordering::Relaxed) {
-            handle_dumb_jump_message(msg_id, params, SearchEngine::Ctags, false)
+            handle_dumb_jump_message(msg_id, params, SearchEngine::Both, false)
         } else {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, false)
         };

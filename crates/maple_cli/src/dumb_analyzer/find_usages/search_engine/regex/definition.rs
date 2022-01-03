@@ -129,7 +129,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 }
 
 /// Type of match result of ripgrep.
-#[derive(Clone, Debug, serde::Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub enum MatchKind {
     /// Results matched from the definition regexp.
     Definition(DefinitionKind),
@@ -212,11 +212,10 @@ pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
     }
 }
 
-pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
+pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
     let regexp = get_definition_rules(lang)?
         .kind_rules_for(kind)?
-        .map(|x| x.replace("\\\\", "\\"))
-        .map(|x| x.replace("JJJ", &word.raw))
+        .map(|x| x.replace("\\\\", "\\").replace("JJJ", &word.raw))
         .join("|");
     Ok(regexp)
 }
@@ -282,7 +281,7 @@ impl Occurrences {
     }
 }
 
-pub async fn search_usages_impl(
+pub(super) async fn search_usages_impl(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
@@ -343,7 +342,7 @@ pub async fn search_usages_impl(
     Ok(usages.into())
 }
 
-pub async fn definitions_and_references(
+pub(super) async fn definitions_and_references(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
