@@ -90,8 +90,8 @@ pub struct TagLine {
     pub name: String,
     pub path: String,
     pub pattern: String,
-    pub kind: String,
     pub language: String,
+    pub kind: Option<String>,
     pub scope: Option<String>,
     pub line: u64,
 }
@@ -144,7 +144,7 @@ impl FromStr for TagLine {
                     continue;
                 }
                 match k {
-                    "kind" => l.kind = v.into(),
+                    "kind" => l.kind = Some(v.into()),
                     "language" => l.language = v.into(),
                     "scope" => l.scope = Some(v.into()),
                     "line" => l.line = v.parse().expect("line is an integer"),
@@ -162,7 +162,12 @@ impl FromStr for TagLine {
 
 impl TagLine {
     pub fn grep_format(&self, query: &str, ignorecase: bool) -> (String, Option<Vec<usize>>) {
-        let mut formatted = format!("[tags]{}:{}:1:", self.path, self.line);
+        let mut formatted = format!(
+            "[{}]{}:{}:1:",
+            self.kind.as_ref().map(|s| s.as_ref()).unwrap_or("tags"),
+            self.path,
+            self.line
+        );
 
         let found = if ignorecase {
             self.pattern.to_lowercase().find(&query.to_lowercase())
