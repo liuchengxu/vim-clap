@@ -3,7 +3,7 @@ use structopt::StructOpt;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::{Filtering, TagsSearcher};
+use crate::dumb_analyzer::{Filtering, TagSearcher};
 use crate::tools::ctags::TagsConfig;
 
 #[derive(StructOpt, Debug, Clone)]
@@ -39,10 +39,6 @@ pub struct TagsFile {
     /// Generate the tags file whether the tags file exists or not.
     #[structopt(long)]
     force_generate: bool,
-
-    /// Search the tag case insensitively
-    #[structopt(long)]
-    ignorecase: bool,
 }
 
 impl TagsFile {
@@ -59,7 +55,7 @@ impl TagsFile {
             self.shared.exclude_opt(),
         );
 
-        let tags_searcher = TagsSearcher::new(config);
+        let tags_searcher = TagSearcher::new(config);
 
         if let Some(ref query) = self.query {
             let results = tags_searcher.search(query, Filtering::StartWith, self.force_generate)?;

@@ -10,7 +10,7 @@ use serde_json::json;
 
 use filter::Query;
 
-use crate::dumb_analyzer::{Filtering, RegexSearcher, TagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -39,7 +39,7 @@ fn search_tags(
         (query, Filtering::StartWith)
     };
 
-    let usages = TagsSearcher::new(tags_config)
+    let usages = TagSearcher::new(tags_config)
         .search(query, filtering, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
@@ -255,7 +255,7 @@ impl DumbJumpMessageHandler {
             tags_config.languages(language.into());
         }
 
-        let tags_searcher = TagsSearcher::new(tags_config);
+        let tags_searcher = TagSearcher::new(tags_config);
         match tags_searcher.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
