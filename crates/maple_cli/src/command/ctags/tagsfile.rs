@@ -1,16 +1,10 @@
-use std::hash::Hash;
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
+use std::path::PathBuf;
 
 use anyhow::Result;
-use itertools::Itertools;
+use filter::subprocess::Exec;
 use structopt::StructOpt;
 
-use filter::subprocess::Exec;
-
 use super::SharedParams;
-
 use crate::app::Params;
 use crate::dumb_analyzer::Readtags;
 use crate::tools::ctags::{TagsConfig, TAGS_DIR};

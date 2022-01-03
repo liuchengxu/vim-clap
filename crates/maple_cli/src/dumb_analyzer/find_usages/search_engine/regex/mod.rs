@@ -37,6 +37,20 @@ pub struct RegexSearcher {
 }
 
 impl RegexSearcher {
+    pub async fn print_usages(self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
+        let lang = get_language_by_ext(&self.extension)?;
+        let comments = get_comments_by_ext(&self.extension);
+
+        // TODO: also take word as query?
+        let word = Word::new(self.word)?;
+
+        search_usages_impl(lang, &word, &self.dir, comments, exact_or_inverse_terms)
+            .await?
+            .print();
+
+        Ok(())
+    }
+
     /// Search the definitions and references if language type is detected, otherwise
     /// search the occurrences.
     pub async fn search_usages(

@@ -35,19 +35,13 @@ pub struct DumbJump {
 
 impl DumbJump {
     pub async fn run(self) -> Result<()> {
-        /* FIXME
-          let lang = get_language_by_ext(&self.extension)?;
-          let comments = get_comments_by_ext(&self.extension);
-
-          // TODO: also take word as query?
-          let word = Word::new(self.word)?;
-
-          definitions_and_references_lines(lang, &word, &self.cmd_dir, comments, &Default::default())
-              .await?
-              .print();
-        */
-
-        Ok(())
+        RegexSearcher {
+            word: self.word.to_string(),
+            extension: self.extension.to_string(),
+            dir: self.cmd_dir.clone(),
+        }
+        .print_usages(&Default::default())
+        .await
     }
 
     pub async fn references_or_occurrences(
