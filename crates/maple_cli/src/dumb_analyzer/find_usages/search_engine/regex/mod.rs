@@ -25,7 +25,7 @@ use self::definition::{
 use self::worker::{
     find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
 };
-use crate::dumb_analyzer::find_usages::UsagesInfo;
+use crate::dumb_analyzer::find_usages::Usages;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
@@ -57,7 +57,7 @@ impl RegexSearcher {
         self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<UsagesInfo> {
+    ) -> Result<Usages> {
         let Self {
             word,
             extension,
@@ -77,7 +77,7 @@ impl RegexSearcher {
                         exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
                     })
                     .unzip();
-                return Ok(UsagesInfo::new(lines, indices));
+                return Ok(Usages::new(lines, indices));
             }
         };
 
@@ -92,7 +92,7 @@ impl RegexSearcher {
                 .flat_map(|(match_kind, matches)| render_classify(matches, &match_kind, &word))
                 .unzip();
 
-            Ok(UsagesInfo::new(lines, indices))
+            Ok(Usages::new(lines, indices))
         } else {
             search_usages_impl(lang, &word, &dir, comments, exact_or_inverse_terms).await
         }

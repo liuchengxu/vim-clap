@@ -9,8 +9,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 use structopt::StructOpt;
 
-use crate::dumb_analyzer::{RegexSearcher, UsagesInfo};
-use crate::tools::ripgrep::{Match, Word};
+use crate::dumb_analyzer::{RegexSearcher, Usages};
 use crate::utils::ExactOrInverseTerms;
 
 /// Search-based jump.
@@ -48,7 +47,7 @@ impl DumbJump {
         &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<UsagesInfo> {
+    ) -> Result<Usages> {
         let searcher = RegexSearcher {
             word: self.word.to_string(),
             extension: self.extension.to_string(),

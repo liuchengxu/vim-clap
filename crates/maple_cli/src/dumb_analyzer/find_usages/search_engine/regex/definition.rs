@@ -8,7 +8,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::dumb_analyzer::find_usages::UsagesInfo;
+use crate::dumb_analyzer::find_usages::Usages;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
@@ -288,7 +288,7 @@ pub async fn search_usages_impl(
     dir: &Option<PathBuf>,
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<UsagesInfo> {
+) -> Result<Usages> {
     let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
     let defs = definitions.flatten();
@@ -335,10 +335,10 @@ pub async fn search_usages_impl(
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
             })
             .unzip();
-        return Ok(UsagesInfo::new(lines, indices));
+        return Ok(Usages::new(lines, indices));
     }
 
-    Ok(UsagesInfo::new(lines, indices))
+    Ok(Usages::new(lines, indices))
 }
 
 pub async fn definitions_and_references(

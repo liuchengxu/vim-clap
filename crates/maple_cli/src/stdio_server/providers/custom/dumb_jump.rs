@@ -10,8 +10,7 @@ use serde_json::json;
 
 use filter::Query;
 
-use crate::command::dumb_jump::DumbJump;
-use crate::dumb_analyzer::{Readtags, UsagesInfo};
+use crate::dumb_analyzer::{Readtags, RegexSearcher, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -25,7 +24,7 @@ fn search_tags(
     dir: &Path,
     query: &str,
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<UsagesInfo> {
+) -> Result<Usages> {
     let ignorecase = query.chars().all(char::is_lowercase);
 
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = Readtags::new(TagsConfig::with_dir(dir))
@@ -36,7 +35,7 @@ fn search_tags(
         })
         .unzip();
 
-    Ok(UsagesInfo::new(lines, indices))
+    Ok(Usages::new(lines, indices))
 }
 
 async fn search_regex(
@@ -44,17 +43,13 @@ async fn search_regex(
     extension: String,
     cwd: String,
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<UsagesInfo> {
-    // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
-    let dumb_jump = DumbJump {
+) -> Result<Usages> {
+    let searcher = RegexSearcher {
         word,
         extension,
-        kind: None,
-        cmd_dir: Some(cwd.into()),
+        dir: Some(cwd.into()),
     };
-    dumb_jump
-        .references_or_occurrences(false, exact_or_inverse_terms)
-        .await
+    searcher.search_usages(false, exact_or_inverse_terms).await
 }
 
 /// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
@@ -156,7 +151,7 @@ async fn handle_dumb_jump_message(
     };
 
     let (response, lines) = match usages {
-        Ok(UsagesInfo { lines, mut indices }) => {
+        Ok(Usages { lines, mut indices }) => {
             let total_lines = lines;
 
             let response = {
@@ -199,7 +194,7 @@ pub struct DumbJumpMessageHandler {
 impl DumbJumpMessageHandler {
     fn regenerate_tags(&mut self, dir: &str) {
         let readtags = Readtags::new(TagsConfig::with_dir(dir));
-        match readtags.create() {
+        match readtags.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
             }

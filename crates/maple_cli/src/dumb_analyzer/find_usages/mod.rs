@@ -5,13 +5,13 @@ pub use self::search_engine::regex::RegexSearcher;
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug, Default)]
-pub struct UsagesInfo {
+pub struct Usages {
     pub lines: Vec<String>,
     pub indices: Vec<Vec<usize>>,
 }
 
-impl UsagesInfo {
-    /// Constructs a new instance of [`UsagesInfo`].
+impl Usages {
+    /// Constructs a new instance of [`Usages`].
     pub fn new(lines: Vec<String>, indices: Vec<Vec<usize>>) -> Self {
         Self { lines, indices }
     }

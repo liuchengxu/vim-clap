@@ -30,11 +30,11 @@ impl<'a, P: AsRef<Path> + Hash> Readtags<'a, P> {
     }
 
     /// Returns `true` if the tags file already exists.
-    pub fn exists(&self) -> bool {
+    pub fn tags_exists(&self) -> bool {
         self.tags_path.exists()
     }
 
-    pub fn create(&self) -> Result<()> {
+    pub fn generate_tags(&self) -> Result<()> {
         self.config.generate_tags()
     }
 
@@ -71,8 +71,8 @@ impl<'a, P: AsRef<Path> + Hash> Readtags<'a, P> {
     ) -> Result<impl Iterator<Item = TagLine>> {
         use std::io::BufRead;
 
-        if force_generate || !self.exists() {
-            self.create()?;
+        if force_generate || !self.tags_exists() {
+            self.generate_tags()?;
         }
 
         let stdout = self
