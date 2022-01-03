@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use crossbeam_channel::Sender;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -17,17 +17,23 @@ use crate::stdio_server::{
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
-use crate::tools::ctags::TagsConfig;
+use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
 fn search_tags(
     dir: &Path,
+    extension: &str,
     query: &str,
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Result<Usages> {
     let ignorecase = query.chars().all(char::is_lowercase);
 
-    let usages = TagsSearcher::new(TagsConfig::with_dir(dir))
+    let mut tags_config = TagsConfig::with_dir(dir);
+    if let Some(language) = get_language(&extension) {
+        tags_config.languages(language.into());
+    }
+
+    let usages = TagsSearcher::new(tags_config)
         .search(query, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
@@ -146,7 +152,12 @@ async fn handle_dumb_jump_message(
 
     let usages_result = match search_engine {
         SearchEngine::Ctags => {
-            let results = search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms);
+            let results = search_tags(
+                Path::new(&cwd),
+                &extension,
+                &identifier,
+                &exact_or_inverse_terms,
+            );
             // tags might be incomplete, try the regex way if no results from the tags file.
             let try_regex =
                 results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
@@ -163,8 +174,16 @@ async fn handle_dumb_jump_message(
             let tags_future = {
                 let cwd = cwd.clone();
                 let identifier = identifier.clone();
+                let extension = extension.clone();
                 let exact_or_inverse_terms = exact_or_inverse_terms.clone();
-                async move { search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms) }
+                async move {
+                    search_tags(
+                        Path::new(&cwd),
+                        &extension,
+                        &identifier,
+                        &exact_or_inverse_terms,
+                    )
+                }
             };
             let regex_future = search_regex(identifier, extension, cwd, &exact_or_inverse_terms);
 
@@ -220,8 +239,13 @@ pub struct DumbJumpMessageHandler {
 }
 
 impl DumbJumpMessageHandler {
-    fn regenerate_tags(&mut self, dir: &str) {
-        let tags_searcher = TagsSearcher::new(TagsConfig::with_dir(dir));
+    fn regenerate_tags(&mut self, dir: &str, extension: String) {
+        let mut tags_config = TagsConfig::with_dir(dir);
+        if let Some(language) = get_language(&extension) {
+            tags_config.languages(language.into());
+        }
+
+        let tags_searcher = TagsSearcher::new(tags_config);
         match tags_searcher.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
@@ -244,7 +268,7 @@ impl EventHandler for DumbJumpMessageHandler {
 
         let lnum = msg
             .get_u64("lnum")
-            .map_err(|_| anyhow::anyhow!("Missing `lnum` in {:?}", msg))?;
+            .map_err(|_| anyhow!("Missing `lnum` in {:?}", msg))?;
 
         // lnum is 1-indexed
         if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
@@ -292,7 +316,8 @@ impl NewSession for DumbJumpSession {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
         tokio::task::spawn_blocking({
             let dir = params.cwd.clone();
-            move || handler.regenerate_tags(&dir)
+            let extension = params.extension.clone();
+            move || handler.regenerate_tags(&dir, extension)
         });
         tokio::spawn(async move {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, true).await;

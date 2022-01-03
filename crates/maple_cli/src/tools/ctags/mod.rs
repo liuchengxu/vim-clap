@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
@@ -27,9 +28,17 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     tags_dir
 });
 
+/// Used to specify the language when working with `readtags`.
+pub static LANG_MAPS: Lazy<HashMap<String, String>> =
+    Lazy::new(|| generate_lang_maps().expect("Failed to process the output of `--list-maps`"));
+
+pub fn get_language(extension: &str) -> Option<&str> {
+    LANG_MAPS.get(extension).map(AsRef::as_ref)
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TagsConfig<'a, P> {
-    languages: Option<&'a str>,
+    languages: Option<String>,
     kinds_all: &'a str,
     fields: &'a str,
     extras: &'a str,
@@ -40,7 +49,7 @@ pub struct TagsConfig<'a, P> {
 
 impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     pub fn new(
-        languages: Option<&'a str>,
+        languages: Option<String>,
         kinds_all: &'a str,
         fields: &'a str,
         extras: &'a str,
@@ -74,6 +83,10 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         }
     }
 
+    pub fn languages(&mut self, languages: String) {
+        self.languages = Some(languages);
+    }
+
     /// Returns the path of tags file.
     ///
     /// The file path of generated tags is determined by the hash of command itself.
@@ -87,6 +100,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         // TODO: detect the languages by dir if not explicitly specified?
         let languages_opt = self
             .languages
+            .as_ref()
             .map(|v| format!("--languages={}", v))
             .unwrap_or_default();
 
@@ -233,6 +247,30 @@ fn detect_json_feature() -> Result<bool> {
     } else {
         Err(anyhow!("ctags executable has no +json feature"))
     }
+}
+
+fn generate_lang_maps() -> Result<HashMap<String, String>> {
+    let output = std::process::Command::new("ctags")
+        .arg("--list-maps")
+        .stderr(std::process::Stdio::inherit())
+        .output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+
+    let mut lang_maps = HashMap::new();
+    for line in stdout.split('\n') {
+        let items = line.split_whitespace().collect::<Vec<_>>();
+        if items.len() < 2 {
+            continue;
+        }
+        let lang = String::from(items[0]);
+        for ext in &items[1..] {
+            if let Some(stripped) = ext.strip_prefix("*.") {
+                lang_maps.insert(stripped.to_string(), lang.clone());
+            }
+        }
+    }
+
+    Ok(lang_maps)
 }
 
 /// Returns true if the ctags executable is compiled with +json feature.

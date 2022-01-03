@@ -54,7 +54,7 @@ impl TagsFile {
         let dir = self.shared.dir()?;
 
         let config = TagsConfig::new(
-            self.shared.languages.as_ref().map(|l| l.as_ref()),
+            self.shared.languages.clone(),
             &self.inner.kinds_all,
             &self.inner.fields,
             &self.inner.extras,
