@@ -5,21 +5,20 @@ use std::sync::Arc;
 use anyhow::Result;
 use crossbeam_channel::Sender;
 use itertools::Itertools;
-use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::json;
 
 use filter::Query;
 
-use crate::command::ctags::tagsfile::{Tags, TagsConfig};
 use crate::command::dumb_jump::DumbJump;
-use crate::dumb_analyzer::UsagesInfo;
+use crate::dumb_analyzer::{Readtags, UsagesInfo};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
     session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
+use crate::tools::ctags::TagsConfig;
 use crate::utils::ExactOrInverseTerms;
 
 fn search_tags(
@@ -27,11 +26,9 @@ fn search_tags(
     query: &str,
     exact_or_inverse_terms: &ExactOrInverseTerms,
 ) -> Result<UsagesInfo> {
-    let tags = Tags::new(TagsConfig::with_dir(dir));
-
     let ignorecase = query.chars().all(char::is_lowercase);
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = tags
+    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = Readtags::new(TagsConfig::with_dir(dir))
         .search(query, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
@@ -201,8 +198,8 @@ pub struct DumbJumpMessageHandler {
 
 impl DumbJumpMessageHandler {
     fn regenerate_tags(&mut self, dir: &str) {
-        let tags = Tags::new(TagsConfig::with_dir(dir));
-        match tags.create() {
+        let readtags = Readtags::new(TagsConfig::with_dir(dir));
+        match readtags.create() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
             }

@@ -1,5 +1,6 @@
 mod search_engine;
 
+pub use self::search_engine::ctags::Readtags;
 pub use self::search_engine::regex::RegexSearcher;
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.

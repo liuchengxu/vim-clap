@@ -12,7 +12,7 @@ use crate::dumb_analyzer::find_usages::UsagesInfo;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::search::{
+use super::worker::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
 

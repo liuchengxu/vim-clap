@@ -10,7 +10,7 @@
 
 mod default_types;
 mod definition;
-mod search;
+mod worker;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ use self::definition::{
     definitions_and_references, get_comments_by_ext, get_language_by_ext, search_usages_impl,
     MatchKind,
 };
-use self::search::{
+use self::worker::{
     find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
 };
 use crate::dumb_analyzer::find_usages::UsagesInfo;

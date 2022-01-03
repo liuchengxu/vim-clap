@@ -1,15 +1,19 @@
+use std::hash::Hash;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
+use filter::subprocess::Exec;
 use itertools::Itertools;
-use once_cell::sync::Lazy;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::process::rstd::StdCommand;
-use crate::process::BaseCommand;
+use crate::paths::AbsPathBuf;
+use crate::process::{rstd::StdCommand, BaseCommand};
+
+pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
 
 /// Directory for the `tags` files.
 pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
@@ -22,6 +26,101 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
     tags_dir
 });
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct TagsConfig<'a, P> {
+    languages: Option<&'a str>,
+    kinds_all: &'a str,
+    fields: &'a str,
+    extras: &'a str,
+    exclude_opt: String,
+    files: &'a [AbsPathBuf],
+    dir: P,
+}
+
+impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
+    pub fn new(
+        languages: Option<&'a str>,
+        kinds_all: &'a str,
+        fields: &'a str,
+        extras: &'a str,
+        files: &'a [AbsPathBuf],
+        dir: P,
+        exclude_opt: String,
+    ) -> Self {
+        Self {
+            languages,
+            kinds_all,
+            fields,
+            extras,
+            files,
+            dir,
+            exclude_opt,
+        }
+    }
+
+    pub fn with_dir(dir: P) -> Self {
+        Self {
+            languages: None,
+            kinds_all: "*",
+            fields: "*",
+            extras: "*",
+            files: Default::default(),
+            dir,
+            exclude_opt: EXCLUDE
+                .split(',')
+                .map(|x| format!("--exclude={}", x))
+                .join(" "),
+        }
+    }
+
+    /// Returns the path of tags file.
+    ///
+    /// The file path of generated tags is determined by the hash of command itself.
+    pub fn tags_path(&self) -> PathBuf {
+        let mut tags_path = TAGS_DIR.deref().clone();
+        tags_path.push(utility::calculate_hash(self).to_string());
+        tags_path
+    }
+
+    fn build_command(&self) -> String {
+        // TODO: detect the languages by dir if not explicitly specified?
+        let languages_opt = self
+            .languages
+            .map(|v| format!("--languages={}", v))
+            .unwrap_or_default();
+
+        let mut cmd = format!(
+            "ctags {} --kinds-all='{}' --fields='{}' --extras='{}' {} -f '{}' -R",
+            languages_opt,
+            self.kinds_all,
+            self.fields,
+            self.extras,
+            self.exclude_opt,
+            self.tags_path().display()
+        );
+
+        // pass the input files.
+        if !self.files.is_empty() {
+            cmd.push(' ');
+            cmd.push_str(&self.files.iter().map(|f| f.display()).join(" "));
+        }
+
+        cmd
+    }
+
+    /// Executes the command to generate the tags file.
+    pub fn generate_tags(&self) -> Result<()> {
+        let command = self.build_command();
+        let exit_status = Exec::shell(&command).cwd(self.dir.as_ref()).join()?;
+
+        if !exit_status.success() {
+            return Err(anyhow!("Error occured when creating tags file"));
+        }
+
+        Ok(())
+    }
+}
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
 #[derive(Debug, Clone)]
