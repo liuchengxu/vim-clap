@@ -111,11 +111,13 @@ fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
 
 #[derive(Debug, Clone, Default)]
 pub struct SearchResults {
-    /// When passing the line content from Vim to Rust, for
-    /// these lines that are extremely long, the performance
-    /// of Vim can become very bad, we cache the display lines
-    /// on Rust to pass the line number instead.
-    pub lines: Vec<String>,
+    /// Last searching results.
+    ///
+    /// When passing the line content from Vim to Rust, the performance
+    /// of Vim can become very bad because some lines are extremely long,
+    /// we cache the last results on Rust to allow passing the line number
+    /// from Vim later instead.
+    pub usages: Usages,
     /// Last query.
     pub query: String,
 }
@@ -204,15 +206,16 @@ async fn handle_dumb_jump_message(
         }
     };
 
-    let (response, lines) = match usages_result {
+    let (response, usages) = match usages_result {
         Ok(usages) => {
-            let (total_lines, mut indices) = usages.deconstruct();
-
             let response = {
-                let total = total_lines.len();
+                let total = usages.len();
                 // Only show the top 200 items.
-                let lines = total_lines.iter().take(200).collect::<Vec<_>>();
-                indices.truncate(200);
+                let (lines, indices): (Vec<_>, Vec<_>) = usages
+                    .iter()
+                    .take(200)
+                    .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+                    .unzip();
                 json!({
                   "id": msg_id,
                   "provider_id": "dumb_jump",
@@ -221,7 +224,7 @@ async fn handle_dumb_jump_message(
                 })
             };
 
-            (response, total_lines)
+            (response, usages)
         }
         Err(e) => {
             tracing::error!(error = ?e, "Error at running dumb_jump");
@@ -234,7 +237,7 @@ async fn handle_dumb_jump_message(
         }
     };
     write_response(response);
-    SearchResults { lines, query }
+    SearchResults { usages, query }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -278,7 +281,7 @@ impl EventHandler for DumbJumpMessageHandler {
             .map_err(|_| anyhow!("Missing `lnum` in {:?}", msg))?;
 
         // lnum is 1-indexed
-        if let Some(curline) = self.results.lines.get((lnum - 1) as usize) {
+        if let Some(curline) = self.results.usages.get_line((lnum - 1) as usize) {
             if let Err(error) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {

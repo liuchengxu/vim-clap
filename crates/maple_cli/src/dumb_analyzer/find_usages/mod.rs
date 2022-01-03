@@ -56,6 +56,18 @@ impl Usages {
         self.0.contains(ele)
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Usage> {
+        self.0.iter()
+    }
+
+    pub fn get_line(&self, index: usize) -> Option<&str> {
+        self.0.get(index).map(|usage| usage.line.as_str())
+    }
+
     pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Usage) -> bool,
