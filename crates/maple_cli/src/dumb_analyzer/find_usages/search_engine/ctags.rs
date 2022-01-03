@@ -16,14 +16,14 @@ enum FilteringType {
     Inherit,
 }
 
-/// Represents the manager of tags file.
+/// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Readtags<'a, P> {
+pub struct TagsSearcher<'a, P> {
     config: TagsConfig<'a, P>,
     tags_path: PathBuf,
 }
 
-impl<'a, P: AsRef<Path> + Hash> Readtags<'a, P> {
+impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
     pub fn new(config: TagsConfig<'a, P>) -> Self {
         let tags_path = config.tags_path();
         Self { config, tags_path }

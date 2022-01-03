@@ -8,7 +8,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::dumb_analyzer::find_usages::Usages;
+use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
@@ -300,7 +300,7 @@ pub async fn search_usages_impl(
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
+    let usages = definitions
         .par_iter()
         .flat_map(|DefinitionSearchResult { kind, matches }| {
             matches
@@ -325,20 +325,22 @@ pub async fn search_usages_impl(
                 }
             }),
         )
-        .unzip();
+        .map(|(line, indices)| Usage::new(line, indices))
+        .collect::<Vec<_>>();
 
-    if lines.is_empty() {
+    if usages.is_empty() {
         let lines = naive_grep_fallback(word, lang, dir, comments).await?;
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+        let usages = lines
             .into_par_iter()
             .filter_map(|line| {
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
             })
-            .unzip();
-        return Ok(Usages::new(lines, indices));
+            .map(|(line, indices)| Usage::new(line, indices))
+            .collect::<Vec<_>>();
+        return Ok(usages.into());
     }
 
-    Ok(Usages::new(lines, indices))
+    Ok(usages.into())
 }
 
 pub async fn definitions_and_references(

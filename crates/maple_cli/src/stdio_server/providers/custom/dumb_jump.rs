@@ -10,7 +10,7 @@ use serde_json::json;
 
 use filter::Query;
 
-use crate::dumb_analyzer::{Readtags, RegexSearcher, Usages};
+use crate::dumb_analyzer::{RegexSearcher, TagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -27,15 +27,17 @@ fn search_tags(
 ) -> Result<Usages> {
     let ignorecase = query.chars().all(char::is_lowercase);
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = Readtags::new(TagsConfig::with_dir(dir))
+    let usages = TagsSearcher::new(TagsConfig::with_dir(dir))
         .search(query, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
-            exact_or_inverse_terms.check_jump_line((line, indices.unwrap_or_default()))
+            exact_or_inverse_terms
+                .check_jump_line((line, indices.unwrap_or_default()))
+                .map(|(line, indices)| Usage::new(line, indices))
         })
-        .unzip();
+        .collect::<Vec<_>>();
 
-    Ok(Usages::new(lines, indices))
+    Ok(usages.into())
 }
 
 async fn search_regex(
@@ -133,7 +135,7 @@ async fn handle_dumb_jump_message(
 
     let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
-    let usages = match search_engine {
+    let usages_result = match search_engine {
         SearchEngine::Ctags => {
             let results = search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms);
             // tags might be incomplete, try the regex way if no results from the tags file.
@@ -150,8 +152,9 @@ async fn handle_dumb_jump_message(
         }
     };
 
-    let (response, lines) = match usages {
-        Ok(Usages { lines, mut indices }) => {
+    let (response, lines) = match usages_result {
+        Ok(usages) => {
+            let (lines, mut indices) = usages.deconstruct();
             let total_lines = lines;
 
             let response = {
@@ -193,8 +196,8 @@ pub struct DumbJumpMessageHandler {
 
 impl DumbJumpMessageHandler {
     fn regenerate_tags(&mut self, dir: &str) {
-        let readtags = Readtags::new(TagsConfig::with_dir(dir));
-        match readtags.generate_tags() {
+        let tags_searcher = TagsSearcher::new(TagsConfig::with_dir(dir));
+        match tags_searcher.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
             }

@@ -6,7 +6,7 @@ use structopt::StructOpt;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::Readtags;
+use crate::dumb_analyzer::TagsSearcher;
 use crate::tools::ctags::{TagsConfig, TAGS_DIR};
 
 #[derive(StructOpt, Debug, Clone)]
@@ -63,10 +63,10 @@ impl TagsFile {
             self.shared.exclude_opt(),
         );
 
-        let readtags = Readtags::new(config);
+        let tags_searcher = TagsSearcher::new(config);
 
         if let Some(ref query) = self.query {
-            let results = readtags.search(query, self.force_generate)?;
+            let results = tags_searcher.search(query, self.force_generate)?;
             for line in results {
                 println!("{:?}", line);
             }

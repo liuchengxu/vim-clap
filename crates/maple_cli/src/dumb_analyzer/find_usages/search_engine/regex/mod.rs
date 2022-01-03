@@ -25,7 +25,7 @@ use self::definition::{
 use self::worker::{
     find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
 };
-use crate::dumb_analyzer::find_usages::Usages;
+use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
@@ -71,13 +71,15 @@ impl RegexSearcher {
             Err(_) => {
                 // Search the occurrences if no language detected.
                 let occurrences = find_occurrence_matches_by_ext(&word, &extension, &dir).await?;
-                let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = occurrences
+                let usages = occurrences
                     .into_par_iter()
                     .filter_map(|line| {
-                        exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+                        exact_or_inverse_terms
+                            .check_jump_line(line.build_jump_line("refs", &word))
+                            .map(|(line, indices)| Usage::new(line, indices))
                     })
-                    .unzip();
-                return Ok(Usages::new(lines, indices));
+                    .collect::<Vec<_>>();
+                return Ok(usages.into());
             }
         };
 
@@ -87,12 +89,13 @@ impl RegexSearcher {
         if classify {
             let res = definitions_and_references(lang, &word, &dir, comments).await?;
 
-            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+            let usages = res
                 .into_par_iter()
                 .flat_map(|(match_kind, matches)| render_classify(matches, &match_kind, &word))
-                .unzip();
+                .map(|(line, indices)| Usage::new(line, indices))
+                .collect::<Vec<_>>();
 
-            Ok(Usages::new(lines, indices))
+            Ok(usages.into())
         } else {
             search_usages_impl(lang, &word, &dir, comments, exact_or_inverse_terms).await
         }
