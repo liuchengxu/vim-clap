@@ -161,7 +161,7 @@ impl FromStr for TagLine {
 
 impl TagLine {
     pub fn grep_format(&self, query: &str, ignorecase: bool) -> (String, Option<Vec<usize>>) {
-        let mut formatted = format!("[ctags]{}:{}:1:", self.path, self.line);
+        let mut formatted = format!("[tags]{}:{}:1:", self.path, self.line);
 
         let found = if ignorecase {
             self.pattern.to_lowercase().find(&query.to_lowercase())

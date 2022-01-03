@@ -19,7 +19,20 @@ impl Usage {
 
 impl PartialEq for Usage {
     fn eq(&self, other: &Self) -> bool {
-        self.line == other.line
+        // Equal if the path and lnum are the same.
+        // [tags]crates/readtags/sys/libreadtags/Makefile:388:1:srcdir
+        match (self.line.split_once(']'), other.line.split_once(']')) {
+            (Some((_, l1)), Some((_, l2))) => match (l1.split_once(':'), l2.split_once(':')) {
+                (Some((l_path, l_1)), Some((r_path, r_1))) if l_path == r_path => {
+                    matches!(
+                      (l_1.split_once(':'), r_1.split_once(':')),
+                      (Some((l_lnum, _)), Some((r_lnum, _))) if l_lnum == r_lnum
+                    )
+                }
+                _ => false,
+            },
+            _ => false,
+        }
     }
 }
 

@@ -54,7 +54,7 @@ async fn search_regex(
     searcher.search_usages(false, exact_or_inverse_terms).await
 }
 
-fn combine(regex_results: Usages, tag_results: Usages) -> Usages {
+fn combine(tag_results: Usages, regex_results: Usages) -> Usages {
     let mut regex_results = regex_results;
     regex_results.retain(|r| !tag_results.contains(r));
     let mut tag_results = tag_results;
@@ -170,9 +170,10 @@ async fn handle_dumb_jump_message(
 
             let (tags_results, regex_results) =
                 futures::future::join(tags_future, regex_future).await;
+
             Ok(combine(
-                regex_results.unwrap_or_default(),
                 tags_results.unwrap_or_default(),
+                regex_results.unwrap_or_default(),
             ))
         }
     };

@@ -12,9 +12,7 @@ use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::worker::{
-    find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
-};
+use super::worker::{find_definition_matches_with_kind, find_occurrences_by_lang, search_regexp};
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -299,20 +297,17 @@ pub(super) async fn search_usages_impl(
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
-    let usages = definitions
+    let regex_usages = definitions
         .par_iter()
         .flat_map(|DefinitionSearchResult { kind, matches }| {
-            matches
-                .par_iter()
-                .filter_map(|line| {
-                    if positive_defs.contains(&line) {
-                        exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line(kind.as_ref(), word))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
+            matches.par_iter().filter_map(|line| {
+                if positive_defs.contains(&line) {
+                    exact_or_inverse_terms
+                        .check_jump_line(line.build_jump_line(kind.as_ref(), word))
+                } else {
+                    None
+                }
+            })
         })
         .chain(
             // references are these occurrences not in the definitions.
@@ -327,19 +322,20 @@ pub(super) async fn search_usages_impl(
         .map(|(line, indices)| Usage::new(line, indices))
         .collect::<Vec<_>>();
 
-    if usages.is_empty() {
-        let lines = naive_grep_fallback(word, lang, dir, comments).await?;
-        let usages = lines
+    if regex_usages.is_empty() {
+        let lines = search_regexp(word, lang, dir, comments).await?;
+        let grep_usages = lines
             .into_par_iter()
             .filter_map(|line| {
-                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
+                exact_or_inverse_terms
+                    .check_jump_line(line.build_jump_line("grep", word))
+                    .map(|(line, indices)| Usage::new(line, indices))
             })
-            .map(|(line, indices)| Usage::new(line, indices))
             .collect::<Vec<_>>();
-        return Ok(usages.into());
+        return Ok(grep_usages.into());
     }
 
-    Ok(usages.into())
+    Ok(regex_usages.into())
 }
 
 pub(super) async fn definitions_and_references(
@@ -376,7 +372,7 @@ pub(super) async fn definitions_and_references(
         .collect();
 
     if res.is_empty() {
-        naive_grep_fallback(word, lang, dir, comments)
+        search_regexp(word, lang, dir, comments)
             .await
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {
