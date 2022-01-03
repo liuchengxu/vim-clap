@@ -21,17 +21,6 @@ use crate::stdio_server::{
 };
 use crate::utils::ExactOrInverseTerms;
 
-#[derive(Debug, Clone, Default)]
-pub struct SearchResults {
-    /// When passing the line content from Vim to Rust, for
-    /// these lines that are extremely long, the performance
-    /// of Vim can become very bad, we cache the display lines
-    /// on Rust to pass the line number instead.
-    pub lines: Vec<String>,
-    /// Last query.
-    pub query: String,
-}
-
 fn search_tags(
     dir: &Path,
     query: &str,
@@ -105,6 +94,17 @@ fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
     (identifier, exact_or_inverse_terms)
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SearchResults {
+    /// When passing the line content from Vim to Rust, for
+    /// these lines that are extremely long, the performance
+    /// of Vim can become very bad, we cache the display lines
+    /// on Rust to pass the line number instead.
+    pub lines: Vec<String>,
+    /// Last query.
+    pub query: String,
+}
+
 #[derive(Deserialize)]
 struct Params {
     cwd: String,
@@ -144,7 +144,9 @@ async fn handle_dumb_jump_message(
         SearchEngine::Ctags => {
             let results = search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms);
             // tags might be incomplete, try the regex way if no results from the tags file.
-            if results.as_ref().map(|r| r.is_empty()).unwrap_or(false) {
+            let try_regex =
+                results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
+            if try_regex {
                 search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
             } else {
                 results
@@ -193,7 +195,7 @@ pub struct DumbJumpMessageHandler {
     /// Last/Latest search results.
     results: SearchResults,
     /// Whether the tags file has been (re)-created.
-    tags_regenerated: Arc<Mutex<AtomicBool>>,
+    tags_regenerated: Arc<AtomicBool>,
 }
 
 impl DumbJumpMessageHandler {
@@ -201,8 +203,7 @@ impl DumbJumpMessageHandler {
         let tags = Tags::new(TagsConfig::with_dir(dir));
         match tags.create() {
             Ok(()) => {
-                let mut tags_regenerated = self.tags_regenerated.lock();
-                *tags_regenerated.get_mut() = true;
+                self.tags_regenerated.store(true, Ordering::Relaxed);
             }
             Err(e) => {
                 tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
@@ -244,13 +245,7 @@ impl EventHandler for DumbJumpMessageHandler {
     ) -> Result<()> {
         let (msg_id, params) = parse_msg(msg);
 
-        let tags_regenerated = self
-            .tags_regenerated
-            .try_lock()
-            .map(|b| b.load(Ordering::SeqCst))
-            .unwrap_or(false);
-
-        let job_future = if tags_regenerated {
+        let job_future = if self.tags_regenerated.load(Ordering::Relaxed) {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Ctags, false)
         } else {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, false)
