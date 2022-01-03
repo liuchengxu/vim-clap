@@ -1,4 +1,3 @@
-use std::array::IntoIter;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
@@ -267,7 +266,7 @@ impl Occurrences {
         self.0.par_iter()
     }
 
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Match) -> bool,
     {

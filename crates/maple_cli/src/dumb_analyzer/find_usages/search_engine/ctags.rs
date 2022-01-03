@@ -1,15 +1,13 @@
 use std::hash::Hash;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::Result;
 use filter::subprocess::Exec;
-use itertools::Itertools;
 
-use crate::paths::AbsPathBuf;
-use crate::tools::ctags::{TagsConfig, EXCLUDE, TAGS_DIR};
+use crate::tools::ctags::TagsConfig;
 
+#[allow(unused)]
 enum Filtering {
     StartWith,
     Contain,

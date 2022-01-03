@@ -1,13 +1,10 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
-use filter::subprocess::Exec;
 use structopt::StructOpt;
 
 use super::SharedParams;
 use crate::app::Params;
 use crate::dumb_analyzer::TagsSearcher;
-use crate::tools::ctags::{TagsConfig, TAGS_DIR};
+use crate::tools::ctags::TagsConfig;
 
 #[derive(StructOpt, Debug, Clone)]
 struct TagsFileParams {
@@ -45,7 +42,6 @@ pub struct TagsFile {
 
     /// Search the tag case insensitively
     #[structopt(long)]
-    #[allow(unused)]
     ignorecase: bool,
 }
 

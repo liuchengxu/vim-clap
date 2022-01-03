@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
 
-pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
+pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 
 /// Directory for the `tags` files.
 pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {

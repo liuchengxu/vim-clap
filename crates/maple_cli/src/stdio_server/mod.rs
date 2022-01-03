@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod deprecated_runner;
 mod providers;
 mod rpc;

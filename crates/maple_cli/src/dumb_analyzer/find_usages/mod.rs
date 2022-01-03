@@ -57,7 +57,7 @@ impl Usages {
         self.0.contains(ele)
     }
 
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Usage) -> bool,
     {

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -29,7 +29,7 @@ fn search_tags(
     let ignorecase = query.chars().all(char::is_lowercase);
 
     let mut tags_config = TagsConfig::with_dir(dir);
-    if let Some(language) = get_language(&extension) {
+    if let Some(language) = get_language(extension) {
         tags_config.languages(language.into());
     }
 
@@ -126,6 +126,7 @@ fn parse_msg(msg: MethodCall) -> (u64, Params) {
     (msg.id, msg.parse_unsafe())
 }
 
+#[allow(unused)]
 enum SearchEngine {
     Ctags,
     Regex,

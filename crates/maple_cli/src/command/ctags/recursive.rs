@@ -12,7 +12,7 @@ use super::SharedParams;
 
 use crate::app::Params;
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, EXCLUDE};
 use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -36,7 +36,7 @@ pub struct RecursiveTags {
 pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
     use itertools::Itertools;
 
-    let exclude = super::EXCLUDE
+    let exclude = EXCLUDE
         .split(',')
         .map(|x| format!("--exclude={}", x))
         .join(" ");

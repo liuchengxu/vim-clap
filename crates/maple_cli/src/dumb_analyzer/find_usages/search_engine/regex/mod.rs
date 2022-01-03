@@ -22,7 +22,7 @@ use self::definition::{
     definitions_and_references, do_search_usages, get_comments_by_ext, get_language_by_ext,
     MatchKind,
 };
-use self::worker::{find_definitions_with_kind, find_occurrences_by_ext, find_occurrences_by_lang};
+use self::worker::find_occurrences_by_ext;
 use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;

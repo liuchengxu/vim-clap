@@ -2,11 +2,9 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use rayon::prelude::*;
 use structopt::StructOpt;
 
 use crate::dumb_analyzer::{RegexSearcher, Usages};
