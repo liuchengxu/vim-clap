@@ -16,6 +16,13 @@ use crate::process::{rstd::StdCommand, BaseCommand};
 
 pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 
+pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
+    EXCLUDE
+        .split(',')
+        .map(|x| format!("--exclude={}", x))
+        .join(" ")
+});
+
 /// Directory for the `tags` files.
 pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let proj_dirs = directories::ProjectDirs::from("org", "vim", "Vim Clap")
@@ -42,7 +49,7 @@ pub struct TagsConfig<'a, P> {
     kinds_all: &'a str,
     fields: &'a str,
     extras: &'a str,
-    exclude_opt: String,
+    exclude_opt: &'a str,
     files: &'a [AbsPathBuf],
     dir: P,
 }
@@ -55,7 +62,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         extras: &'a str,
         files: &'a [AbsPathBuf],
         dir: P,
-        exclude_opt: String,
+        exclude_opt: &'a str,
     ) -> Self {
         Self {
             languages,
@@ -76,10 +83,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             extras: "*",
             files: Default::default(),
             dir,
-            exclude_opt: EXCLUDE
-                .split(',')
-                .map(|x| format!("--exclude={}", x))
-                .join(" "),
+            exclude_opt: DEFAULT_EXCLUDE_OPT.deref(),
         }
     }
 

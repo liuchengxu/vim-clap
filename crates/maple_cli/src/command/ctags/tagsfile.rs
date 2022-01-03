@@ -45,6 +45,7 @@ impl TagsFile {
     pub fn run(&self, _params: Params) -> Result<()> {
         let dir = self.shared.dir()?;
 
+        let exclude_opt = self.shared.exclude_opt();
         let config = TagsConfig::new(
             self.shared.languages.clone(),
             &self.inner.kinds_all,
@@ -52,7 +53,7 @@ impl TagsFile {
             &self.inner.extras,
             &self.shared.files,
             &dir,
-            self.shared.exclude_opt(),
+            &exclude_opt,
         );
 
         let tags_searcher = TagSearcher::new(config);
