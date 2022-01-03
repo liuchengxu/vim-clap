@@ -8,14 +8,13 @@ use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::command::dumb_jump::Lines;
+use crate::dumb_analyzer::find_usages::UsagesInfo;
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 use super::search::{
     find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
 };
-use super::FindUsages;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -50,6 +49,58 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         })
         .collect()
 });
+
+/// Usages consists of [`Definitions`] and [`Occurrences`].
+#[derive(Debug, Clone)]
+struct FindUsages<'a> {
+    lang: &'a str,
+    word: &'a Word,
+    dir: &'a Option<PathBuf>,
+}
+
+impl<'a> FindUsages<'a> {
+    /// Constructs a new instance of [`FindUsages`].
+    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
+        Self { lang, word, dir }
+    }
+
+    /// Finds the occurrences and all definitions concurrently.
+    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
+        let (definitions, occurrences) =
+            futures::future::join(self.definitions(), self.occurrences(comments)).await;
+
+        (
+            Definitions {
+                defs: definitions.unwrap_or_default(),
+            },
+            Occurrences(occurrences.unwrap_or_default()),
+        )
+    }
+
+    /// Returns all kinds of definitions.
+    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
+        let all_def_futures = get_definition_rules(self.lang)?
+            .0
+            .keys()
+            .map(|kind| find_definition_matches_with_kind(self.lang, kind, self.word, self.dir));
+
+        let maybe_defs = futures::future::join_all(all_def_futures).await;
+
+        Ok(maybe_defs
+            .into_par_iter()
+            .filter_map(|def| {
+                def.ok()
+                    .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
+            })
+            .collect())
+    }
+
+    /// Returns all the occurrences.
+    #[inline]
+    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
+        find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
+    }
+}
 
 /// Finds the ripgrep language given the file extension `ext`.
 pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
@@ -231,13 +282,13 @@ impl Occurrences {
     }
 }
 
-pub async fn definitions_and_references_lines(
+pub async fn search_usages_impl(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Lines> {
+) -> Result<UsagesInfo> {
     let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
     let defs = definitions.flatten();
@@ -284,10 +335,10 @@ pub async fn definitions_and_references_lines(
                 exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
             })
             .unzip();
-        return Ok(Lines::new(lines, indices));
+        return Ok(UsagesInfo::new(lines, indices));
     }
 
-    Ok(Lines::new(lines, indices))
+    Ok(UsagesInfo::new(lines, indices))
 }
 
 pub async fn definitions_and_references(

@@ -12,69 +12,110 @@ mod default_types;
 mod definition;
 mod search;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
 use rayon::prelude::*;
 
-use self::definition::{get_definition_rules, DefinitionSearchResult, Definitions, Occurrences};
-use self::search::{find_definition_matches_with_kind, find_occurrences_by_lang};
-use crate::tools::ripgrep::{Match, Word};
-
-pub use self::definition::{
-    definitions_and_references, definitions_and_references_lines, get_comments_by_ext,
-    get_language_by_ext, DefinitionRules, MatchKind,
+use self::definition::{
+    definitions_and_references, get_comments_by_ext, get_language_by_ext, search_usages_impl,
+    MatchKind,
 };
-pub use self::search::find_occurrence_matches_by_ext;
+use self::search::{
+    find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
+};
+use crate::dumb_analyzer::find_usages::UsagesInfo;
+use crate::tools::ripgrep::{Match, Word};
+use crate::utils::ExactOrInverseTerms;
 
-/// Usages consists of [`Definitions`] and [`Occurrences`].
-#[derive(Debug, Clone)]
-pub struct FindUsages<'a> {
-    lang: &'a str,
-    word: &'a Word,
-    dir: &'a Option<PathBuf>,
+#[derive(Clone, Debug)]
+pub struct RegexSearcher {
+    pub word: String,
+    pub extension: String,
+    pub dir: Option<PathBuf>,
 }
 
-impl<'a> FindUsages<'a> {
-    /// Constructs a new instance of [`FindUsages`].
-    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
-        Self { lang, word, dir }
+impl RegexSearcher {
+    /// Search the definitions and references if language type is detected, otherwise
+    /// search the occurrences.
+    pub async fn search_usages(
+        self,
+        classify: bool,
+        exact_or_inverse_terms: &ExactOrInverseTerms,
+    ) -> Result<UsagesInfo> {
+        let Self {
+            word,
+            extension,
+            dir,
+        } = self;
+
+        let word = Word::new(word)?;
+
+        let lang = match get_language_by_ext(&extension) {
+            Ok(lang) => lang,
+            Err(_) => {
+                // Search the occurrences if no language detected.
+                let occurrences = find_occurrence_matches_by_ext(&word, &extension, &dir).await?;
+                let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = occurrences
+                    .into_par_iter()
+                    .filter_map(|line| {
+                        exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", &word))
+                    })
+                    .unzip();
+                return Ok(UsagesInfo::new(lines, indices));
+            }
+        };
+
+        let comments = get_comments_by_ext(&extension);
+
+        // render the results in group.
+        if classify {
+            let res = definitions_and_references(lang, &word, &dir, comments).await?;
+
+            let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = res
+                .into_par_iter()
+                .flat_map(|(match_kind, matches)| render_classify(matches, &match_kind, &word))
+                .unzip();
+
+            Ok(UsagesInfo::new(lines, indices))
+        } else {
+            search_usages_impl(lang, &word, &dir, comments, exact_or_inverse_terms).await
+        }
+    }
+}
+
+// TODO: a new renderer for dumb jump
+fn render_classify(
+    matches: Vec<Match>,
+    kind: &MatchKind,
+    word: &Word,
+) -> Vec<(String, Vec<usize>)> {
+    let mut group_refs = HashMap::new();
+
+    // references are these occurrences not in the definitions.
+    for line in matches.iter() {
+        let group = group_refs.entry(line.path()).or_insert_with(Vec::new);
+        group.push(line);
     }
 
-    /// Finds the occurrences and all definitions concurrently.
-    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
-        let (definitions, occurrences) =
-            futures::future::join(self.definitions(), self.occurrences(comments)).await;
+    let mut kind_inserted = false;
 
-        (
-            Definitions {
-                defs: definitions.unwrap_or_default(),
-            },
-            Occurrences(occurrences.unwrap_or_default()),
-        )
-    }
+    group_refs
+        .values()
+        .flat_map(|lines| {
+            let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
-    /// Returns all kinds of definitions.
-    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        let all_def_futures = get_definition_rules(self.lang)?
-            .0
-            .keys()
-            .map(|kind| find_definition_matches_with_kind(self.lang, kind, self.word, self.dir));
+            if !kind_inserted {
+                inner_group.push((format!("[{}]", kind), vec![]));
+                kind_inserted = true;
+            }
 
-        let maybe_defs = futures::future::join_all(all_def_futures).await;
+            inner_group.push((format!("  {} [{}]", lines[0].path(), lines.len()), vec![]));
 
-        Ok(maybe_defs
-            .into_par_iter()
-            .filter_map(|def| {
-                def.ok()
-                    .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
-            })
-            .collect())
-    }
+            inner_group.extend(lines.iter().map(|line| line.build_jump_line_bare(word)));
 
-    /// Returns all the occurrences.
-    #[inline]
-    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
-        find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
-    }
+            inner_group
+        })
+        .collect()
 }

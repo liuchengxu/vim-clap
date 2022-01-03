@@ -12,7 +12,8 @@ use serde_json::json;
 use filter::Query;
 
 use crate::command::ctags::tagsfile::{Tags, TagsConfig};
-use crate::command::dumb_jump::{DumbJump, Lines};
+use crate::command::dumb_jump::DumbJump;
+use crate::dumb_analyzer::UsagesInfo;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -25,7 +26,7 @@ fn search_tags(
     dir: &Path,
     query: &str,
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Lines> {
+) -> Result<UsagesInfo> {
     let tags = Tags::new(TagsConfig::with_dir(dir));
 
     let ignorecase = query.chars().all(char::is_lowercase);
@@ -38,7 +39,7 @@ fn search_tags(
         })
         .unzip();
 
-    Ok(Lines::new(lines, indices))
+    Ok(UsagesInfo::new(lines, indices))
 }
 
 async fn search_regex(
@@ -46,7 +47,7 @@ async fn search_regex(
     extension: String,
     cwd: String,
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Lines> {
+) -> Result<UsagesInfo> {
     // TODO: not rerun the command but refilter the existing results if the query is just narrowed?
     let dumb_jump = DumbJump {
         word,
@@ -140,7 +141,7 @@ async fn handle_dumb_jump_message(
 
     let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
 
-    let search_results = match search_engine {
+    let usages = match search_engine {
         SearchEngine::Ctags => {
             let results = search_tags(Path::new(&cwd), &identifier, &exact_or_inverse_terms);
             // tags might be incomplete, try the regex way if no results from the tags file.
@@ -157,8 +158,8 @@ async fn handle_dumb_jump_message(
         }
     };
 
-    let (response, lines) = match search_results {
-        Ok(Lines { lines, mut indices }) => {
+    let (response, lines) = match usages {
+        Ok(UsagesInfo { lines, mut indices }) => {
             let total_lines = lines;
 
             let response = {
