@@ -19,12 +19,10 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use self::definition::{
-    definitions_and_references, get_comments_by_ext, get_language_by_ext, search_usages_impl,
+    definitions_and_references, do_search_usages, get_comments_by_ext, get_language_by_ext,
     MatchKind,
 };
-use self::worker::{
-    find_definition_matches_with_kind, find_occurrence_matches_by_ext, find_occurrences_by_lang,
-};
+use self::worker::{find_definitions_with_kind, find_occurrences_by_ext, find_occurrences_by_lang};
 use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
@@ -44,7 +42,7 @@ impl RegexSearcher {
         // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        search_usages_impl(lang, &word, &self.dir, comments, exact_or_inverse_terms)
+        do_search_usages(lang, &word, &self.dir, comments, exact_or_inverse_terms)
             .await?
             .print();
 
@@ -70,7 +68,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = find_occurrence_matches_by_ext(&word, &extension, &dir).await?;
+                let occurrences = find_occurrences_by_ext(&word, &extension, &dir).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|line| {
@@ -97,7 +95,7 @@ impl RegexSearcher {
 
             Ok(usages.into())
         } else {
-            search_usages_impl(lang, &word, &dir, comments, exact_or_inverse_terms).await
+            do_search_usages(lang, &word, &dir, comments, exact_or_inverse_terms).await
         }
     }
 }

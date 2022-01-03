@@ -56,7 +56,7 @@ pub(super) async fn search_regexp(
     find_matches(command, dir, Some(comments))
 }
 
-pub(super) async fn find_occurrence_matches_by_ext(
+pub(super) async fn find_occurrences_by_ext(
     word: &Word,
     ext: &str,
     dir: &Option<PathBuf>,
@@ -84,7 +84,7 @@ pub(super) async fn find_occurrences_by_lang(
 }
 
 /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
-pub(super) async fn find_definition_matches_with_kind(
+pub(super) async fn find_definitions_with_kind(
     lang: &str,
     kind: &DefinitionKind,
     word: &Word,

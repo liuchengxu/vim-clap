@@ -12,7 +12,7 @@ use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::worker::{find_definition_matches_with_kind, find_occurrences_by_lang, search_regexp};
+use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, search_regexp};
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -80,7 +80,7 @@ impl<'a> FindUsages<'a> {
         let all_def_futures = get_definition_rules(self.lang)?
             .0
             .keys()
-            .map(|kind| find_definition_matches_with_kind(self.lang, kind, self.word, self.dir));
+            .map(|kind| find_definitions_with_kind(self.lang, kind, self.word, self.dir));
 
         let maybe_defs = futures::future::join_all(all_def_futures).await;
 
@@ -279,7 +279,7 @@ impl Occurrences {
     }
 }
 
-pub(super) async fn search_usages_impl(
+pub(super) async fn do_search_usages(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,

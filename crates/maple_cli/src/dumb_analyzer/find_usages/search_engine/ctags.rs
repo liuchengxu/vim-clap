@@ -10,7 +10,7 @@ use itertools::Itertools;
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{TagsConfig, EXCLUDE, TAGS_DIR};
 
-enum FilteringType {
+enum Filtering {
     StartWith,
     Contain,
     Inherit,
@@ -38,7 +38,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
         self.config.generate_tags()
     }
 
-    fn build_exec(&self, query: &str, filtering_type: FilteringType) -> Exec {
+    fn build_exec(&self, query: &str, filtering_type: Filtering) -> Exec {
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let cmd = Exec::cmd("readtags")
             .arg("--tag-file")
@@ -53,12 +53,12 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
         };
 
         match filtering_type {
-            FilteringType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
-            FilteringType::Contain => cmd
+            Filtering::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
+            Filtering::Contain => cmd
                 .arg("-Q")
                 .arg(format!("(substr? (downcase $name) \"{}\")", query))
                 .arg("-l"),
-            FilteringType::Inherit => {
+            Filtering::Inherit => {
                 todo!("Inherit")
             }
         }
@@ -76,7 +76,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsSearcher<'a, P> {
         }
 
         let stdout = self
-            .build_exec(query, FilteringType::StartWith)
+            .build_exec(query, Filtering::StartWith)
             .stream_stdout()?;
 
         Ok(std::io::BufReader::new(stdout)
@@ -145,9 +145,9 @@ impl FromStr for TagLine {
                 match k {
                     "kind" => l.kind = v.into(),
                     "language" => l.language = v.into(),
-                    "roles" | "access" => {}
                     "scope" => l.scope = Some(v.into()),
                     "line" => l.line = v.parse().expect("line is an integer"),
+                    "roles" | "access" | "signature" => {}
                     unknown => {
                         tracing::debug!(line = %s, "Unknown field: {}", unknown);
                     }

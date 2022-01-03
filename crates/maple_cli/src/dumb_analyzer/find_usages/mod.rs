@@ -53,6 +53,22 @@ impl Usages {
         self.0.is_empty()
     }
 
+    pub fn contains(&self, ele: &Usage) -> bool {
+        self.0.contains(ele)
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Usage) -> bool,
+    {
+        self.0.retain(f);
+    }
+
+    pub fn append(&mut self, other: Self) {
+        let mut other_usages = other.0;
+        self.0.append(&mut other_usages);
+    }
+
     /// Prints the lines info to stdout.
     pub fn print(self) {
         let total = self.0.len();
@@ -65,21 +81,5 @@ impl Usages {
             .into_par_iter()
             .map(|usage| (usage.line, usage.indices))
             .unzip()
-    }
-
-    pub fn retain<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&Usage) -> bool,
-    {
-        self.0.retain(f);
-    }
-
-    pub fn contains(&self, ele: &Usage) -> bool {
-        self.0.contains(ele)
-    }
-
-    pub fn append(&mut self, other: Self) {
-        let mut other_usages = other.0;
-        self.0.append(&mut other_usages);
     }
 }
