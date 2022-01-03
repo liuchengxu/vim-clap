@@ -22,7 +22,7 @@ use super::FindUsages;
 /// Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(
-        "../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
+        "../../../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
     ))
     .expect("Wrong path for rg_pcre2_regex.json")
 });
@@ -66,7 +66,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
         let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
-            "../../../../../scripts/dumb_jump/comments_map.json"
+            "../../../../../../../scripts/dumb_jump/comments_map.json"
         ))
         .expect("Wrong path for comments_map.json");
         comments
