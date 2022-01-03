@@ -78,7 +78,8 @@ impl<'a, P: AsRef<Path> + Hash> TagSearcher<'a, P> {
 
         let stdout = self.build_exec(query, filtering).stream_stdout()?;
 
-        Ok(std::io::BufReader::new(stdout)
+        // We usually have a decent amount of RAM nowdays.
+        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
             .lines()
             .flatten()
             .filter_map(|line| line.parse::<TagLine>().ok()))
