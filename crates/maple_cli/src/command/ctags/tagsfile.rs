@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use structopt::StructOpt;
+use clap::Parser;
 
 use filter::subprocess::Exec;
 
@@ -14,38 +14,38 @@ use super::SharedParams;
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 struct TagsFileParams {
     /// Same with the `--kinds-all` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     kinds_all: String,
 
     /// Same with the `--fields` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     fields: String,
 
     /// Same with the `--extras` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     extras: String,
 }
 
 /// Manipulate the tags file.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct TagsFile {
     /// Params for creating tags file.
-    #[structopt(flatten)]
+    #[clap(flatten)]
     inner: TagsFileParams,
 
     /// Shared parameters arouns ctags.
-    #[structopt(flatten)]
+    #[clap(flatten)]
     shared: SharedParams,
 
     /// Search the tag matching the given query.
-    #[structopt(long)]
+    #[clap(long)]
     query: Option<String>,
 
     /// Search the tag case insensitively
-    #[structopt(long)]
+    #[clap(long)]
     #[allow(unused)]
     ignorecase: bool,
 }

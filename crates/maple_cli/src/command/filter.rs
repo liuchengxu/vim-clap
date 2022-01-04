@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use filter::{
     matcher::{Bonus, FuzzyAlgorithm, MatchType},
@@ -22,42 +22,42 @@ fn parse_bonus(s: &str) -> Bonus {
 }
 
 /// Execute the shell command
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Filter {
     /// Initial query string
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     query: String,
 
     /// Fuzzy matching algorithm
-    #[structopt(long, parse(from_str), default_value = "fzy")]
+    #[clap(long, parse(from_str), default_value = "fzy")]
     algo: FuzzyAlgorithm,
 
     /// Shell command to produce the whole dataset that query is applied on.
-    #[structopt(long)]
+    #[clap(long)]
     cmd: Option<String>,
 
     /// Working directory of shell command.
-    #[structopt(long)]
+    #[clap(long)]
     cmd_dir: Option<String>,
 
     /// Recently opened file list for adding a bonus to the initial score.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     recent_files: Option<PathBuf>,
 
     /// Read input from a file instead of stdin, only absolute file path is supported.
-    #[structopt(long)]
+    #[clap(long)]
     input: Option<AbsPathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[structopt(long, parse(from_str), default_value = "full")]
+    #[clap(long, parse(from_str), default_value = "full")]
     match_type: MatchType,
 
     /// Add a bonus to the score of base matching algorithm.
-    #[structopt(long, parse(from_str = parse_bonus), default_value = "none")]
+    #[clap(long, parse(from_str = parse_bonus), default_value = "none")]
     bonus: Bonus,
 
     /// Synchronous filtering, returns until the input stream is complete.
-    #[structopt(long)]
+    #[clap(long)]
     sync: bool,
 }
 

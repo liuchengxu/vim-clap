@@ -3,17 +3,17 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use utility::read_lines;
 
 use crate::paths::AbsPathBuf;
 
 /// Parse and display Vim helptags.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Helptags {
     /// Tempfile containing the info of vim helptags.
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     meta_info: AbsPathBuf,
 }
 

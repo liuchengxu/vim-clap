@@ -4,17 +4,17 @@ mod download;
 mod github;
 
 use anyhow::{anyhow, Context, Result};
-use structopt::StructOpt;
+use clap::Parser;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Upgrade {
     /// Download if the local version mismatches the latest remote version.
-    #[structopt(long)]
+    #[clap(long)]
     pub download: bool,
     /// Disable the downloading progress_bar
-    #[structopt(long)]
+    #[clap(long)]
     pub no_progress_bar: bool,
 }
 

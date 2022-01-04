@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use rayon::prelude::*;
-use structopt::StructOpt;
+use clap::Parser;
 
 use crate::dumb_analyzer::{
     definitions_and_references, definitions_and_references_lines, find_occurrence_matches_by_ext,
@@ -83,22 +83,22 @@ fn render_jump_line(
 }
 
 /// Search-based jump.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct DumbJump {
     /// Search term.
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     pub word: String,
 
     /// File extension.
-    #[structopt(index = 2, long)]
+    #[clap(index = 2, long)]
     pub extension: String,
 
     /// Definition kind.
-    #[structopt(long)]
+    #[clap(long)]
     pub kind: Option<String>,
 
     /// Specify the working directory.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     pub cmd_dir: Option<PathBuf>,
 }
 

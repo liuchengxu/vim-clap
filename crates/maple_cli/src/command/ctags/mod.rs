@@ -4,8 +4,8 @@ pub mod tagsfile;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use clap::{Parser, Subcommand};
 use itertools::Itertools;
-use structopt::StructOpt;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -13,20 +13,20 @@ use crate::paths::AbsPathBuf;
 const EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
 
 /// Generate ctags recursively given the directory.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub(self) struct SharedParams {
     /// The directory for executing the ctags command.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     dir: Option<PathBuf>,
 
     /// Specify the language.
-    #[structopt(long)]
+    #[clap(long)]
     languages: Option<String>,
 
     /// Exclude files and directories matching 'pattern'.
     ///
     /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(
+    #[clap(
         long,
         default_value = EXCLUDE,
         use_delimiter = true
@@ -35,7 +35,7 @@ pub(self) struct SharedParams {
 
     /// Specify the input files.
     // - notify the tags update on demand.
-    #[structopt(long)]
+    #[clap(long)]
     files: Vec<AbsPathBuf>,
 }
 
@@ -58,7 +58,7 @@ impl SharedParams {
 }
 
 /// Ctags command.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Ctags {
     RecursiveTags(recursive::RecursiveTags),
     TagsFile(tagsfile::TagsFile),

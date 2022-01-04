@@ -1,70 +1,67 @@
 use anyhow::Result;
-use structopt::{clap::AppSettings, StructOpt};
+use clap::{AppSettings, Parser};
 
 use filter::FilterContext;
 use icon::Icon;
 
 use crate::command;
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub enum Cmd {
     /// Display the current version
-    #[structopt(name = "version")]
+    #[clap(name = "version")]
     Version,
     /// Start the stdio-based service, currently there is only filer support.
-    #[structopt(name = "rpc")]
+    #[clap(name = "rpc")]
     Rpc,
     /// Execute the grep command to avoid the escape issue
-    #[structopt(name = "grep")]
+    #[clap(name = "grep")]
     Grep(command::grep::Grep),
     /// Execute the shell command.
-    #[structopt(name = "exec")]
+    #[clap(name = "exec")]
     Exec(command::exec::Exec),
     /// Dumb jump.
-    #[structopt(name = "dumb-jump")]
+    #[clap(name = "dumb-jump")]
     DumbJump(command::dumb_jump::DumbJump),
     /// Generate the project-wide tags using ctags.
-    #[structopt(name = "ctags")]
+    #[clap(name = "ctags", subcommand)]
     Ctags(command::ctags::Ctags),
     /// Interact with the cache info.
-    #[structopt(name = "cache")]
+    #[clap(name = "cache")]
     Cache(command::cache::Cache),
     /// Fuzzy filter the input.
-    #[structopt(name = "filter")]
+    #[clap(name = "filter")]
     Filter(command::filter::Filter),
     /// Filter against current Vim buffer.
-    #[structopt(name = "blines")]
+    #[clap(name = "blines")]
     Blines(command::blines::Blines),
     /// Generate vim help tags.
-    #[structopt(name = "helptags")]
+    #[clap(name = "helptags")]
     Helptags(command::helptags::Helptags),
     /// Start the forerunner job of grep.
-    #[structopt(name = "ripgrep-forerunner")]
+    #[clap(name = "ripgrep-forerunner")]
     RipGrepForerunner(command::grep::RipGrepForerunner),
     /// Retrive the latest remote release info.
-    #[structopt(name = "upgrade")]
+    #[clap(name = "upgrade")]
     Upgrade(upgrade::Upgrade),
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(
-  name = "maple",
-  no_version,
-  global_settings = &[AppSettings::DisableVersion, AppSettings::ColoredHelp]
-)]
+#[derive(Parser, Debug)]
+#[clap(name = "maple")]
+#[clap(global_setting(AppSettings::DisableVersionFlag))]
 pub struct Maple {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub params: Params,
 
     /// Enable the logging system.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     pub log: Option<std::path::PathBuf>,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub command: Cmd,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct Params {
     /// Print the top NUM of filtered items.
     ///
@@ -72,19 +69,19 @@ pub struct Params {
     ///   - total: total number of initial filtered result set.
     ///   - lines: text lines used for displaying directly.
     ///   - indices: the indices of matched elements per line, used for the highlight purpose.
-    #[structopt(long, name = "NUM")]
+    #[clap(long, name = "NUM")]
     pub number: Option<usize>,
 
     /// Width of clap window.
-    #[structopt(long)]
+    #[clap(long)]
     pub winwidth: Option<usize>,
 
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[structopt(long, parse(from_str), default_value = "unknown")]
+    #[clap(long, parse(from_str), default_value = "unknown")]
     pub icon: Icon,
 
     /// Do not use the cached file for exec subcommand.
-    #[structopt(long)]
+    #[clap(long)]
     pub no_cache: bool,
 }
 

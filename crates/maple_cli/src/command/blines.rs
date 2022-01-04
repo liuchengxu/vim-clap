@@ -1,5 +1,5 @@
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use filter::{matcher::Bonus, Source};
 
@@ -7,14 +7,14 @@ use crate::app::Params;
 use crate::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Blines {
     /// Initial query string
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     query: String,
 
     /// File path of current vim buffer.
-    #[structopt(index = 2, long)]
+    #[clap(index = 2, long)]
     input: AbsPathBuf,
 }
 

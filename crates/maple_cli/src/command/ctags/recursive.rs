@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use filter::{
     matcher::{Bonus, MatchType},
@@ -18,18 +18,18 @@ use crate::utils::{send_response_from_cache, SendResponse};
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct RecursiveTags {
     /// Query content.
-    #[structopt(long)]
+    #[clap(long)]
     query: Option<String>,
 
     /// Runs as the forerunner job, create cache when neccessary.
-    #[structopt(long)]
+    #[clap(long)]
     forerunner: bool,
 
     /// Shared parameters arouns ctags.
-    #[structopt(flatten)]
+    #[clap(flatten)]
     shared: SharedParams,
 }
 

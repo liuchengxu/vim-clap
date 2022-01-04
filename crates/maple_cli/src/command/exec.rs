@@ -2,24 +2,24 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use crate::app::Params;
 use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
 
 /// Execute the shell command
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Exec {
     /// Specify the system command to run.
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     cmd: String,
 
     /// Specify the working directory of CMD
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Specify the threshold for writing the output of command to a tempfile.
-    #[structopt(long, default_value = "100000")]
+    #[clap(long, default_value = "100000")]
     output_threshold: usize,
 }
 

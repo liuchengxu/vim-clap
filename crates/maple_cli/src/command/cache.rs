@@ -3,21 +3,21 @@ use std::io::Write;
 use std::path::{self, Path};
 
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use utility::{clap_cache_dir, remove_dir_contents};
 
 use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// List and remove all the cached contents.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Cache {
     /// List the current cached entries.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     list: bool,
 
     /// Purge all the cached contents.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     purge: bool,
 }
 

@@ -1,4 +1,4 @@
-use maple_cli::{Cmd, Context, Maple, Result, StructOpt};
+use maple_cli::{Cmd, Context, Maple, Result, Parser};
 
 pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -16,7 +16,7 @@ fn version() {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let maple = Maple::from_args();
+    let maple = Maple::parse();
 
     match maple.command {
         Cmd::Version => version(),
