@@ -262,14 +262,14 @@ fn generate_lang_maps() -> Result<HashMap<String, String>> {
 
     let mut lang_maps = HashMap::new();
     for line in stdout.split('\n') {
-        let items = line.split_whitespace().collect::<Vec<_>>();
-        if items.len() < 2 {
-            continue;
-        }
-        let lang = String::from(items[0]);
-        for ext in &items[1..] {
-            if let Some(stripped) = ext.strip_prefix("*.") {
-                lang_maps.insert(stripped.to_string(), lang.clone());
+        let mut items = line.split_whitespace();
+
+        if let Some(lang) = items.next() {
+            for ext in items.into_iter() {
+                // We only take care of the most common cases, `*.rs`.
+                if let Some(stripped) = ext.strip_prefix("*.") {
+                    lang_maps.insert(stripped.to_string(), lang.to_string());
+                }
             }
         }
     }

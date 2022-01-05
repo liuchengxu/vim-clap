@@ -66,6 +66,7 @@ async fn search_regex(
     searcher.search_usages(false, exact_or_inverse_terms).await
 }
 
+// Returns a combo of tag results and regex results, tag results should be displayed first.
 fn combine(tag_results: Usages, regex_results: Usages) -> Usages {
     let mut regex_results = regex_results;
     regex_results.retain(|r| !tag_results.contains(r));
@@ -74,8 +75,14 @@ fn combine(tag_results: Usages, regex_results: Usages) -> Usages {
     tag_results
 }
 
-/// When we invokes the dumb_jump provider, the search query should be `identifier(s) ++ exact_term/inverse_term`.
-fn parse_raw_query(query: &str) -> (String, ExactOrInverseTerms) {
+/// Parses the raw user input and returns the final keyword as well as the constraint terms.
+///
+/// `hel 'fn` => `identifier(s) ++ exact_term/inverse_term`.
+///
+/// # Argument
+///
+/// - `query`: Initial query user typed in the input window.
+fn parse_raw_input(query: &str) -> (String, ExactOrInverseTerms) {
     let Query {
         exact_terms,
         inverse_terms,
@@ -157,7 +164,7 @@ async fn handle_dumb_jump_message(
         return Default::default();
     }
 
-    let (identifier, exact_or_inverse_terms) = parse_raw_query(query.as_ref());
+    let (identifier, exact_or_inverse_terms) = parse_raw_input(query.as_ref());
 
     let usages_result = match search_engine {
         SearchEngine::Ctags => {
@@ -249,6 +256,7 @@ pub struct DumbJumpMessageHandler {
 }
 
 impl DumbJumpMessageHandler {
+    // TODO: smarter strategy to regenerate the tags?
     fn regenerate_tags(&mut self, dir: &str, extension: String) {
         let mut tags_config = TagsConfig::with_dir(dir);
         if let Some(language) = get_language(&extension) {
