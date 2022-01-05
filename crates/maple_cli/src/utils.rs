@@ -43,18 +43,17 @@ impl ExactOrInverseTerms {
         }
     }
 
+    /// The results of applying `other` is a subset of applying `self` on the same source.
     pub fn contains(&self, other: &Self) -> bool {
-        for (local, other) in self.exact_terms.iter().zip(other.exact_terms.iter()) {
-            if !local.contains(other) {
-                return false;
-            }
-        }
-        for (local, other) in self.inverse_terms.iter().zip(other.inverse_terms.iter()) {
-            if !local.contains(other) {
-                return false;
-            }
-        }
-        true
+        self.exact_terms
+            .iter()
+            .zip(other.exact_terms.iter())
+            .all(|(local, other)| local.contains(other))
+            && self
+                .inverse_terms
+                .iter()
+                .zip(other.inverse_terms.iter())
+                .all(|(local, other)| local.contains(other))
     }
 
     pub fn check_jump_line(

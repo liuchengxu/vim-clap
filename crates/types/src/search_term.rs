@@ -31,6 +31,7 @@ impl ExactTerm {
 
         match (&self.ty, &other.ty) {
             (Exact, Exact) | (PrefixExact, PrefixExact) | (SuffixExact, SuffixExact) => {
+                // Comparing with `'hello`, `'he` has more results.
                 other.word.starts_with(&self.word)
             }
             (Exact, PrefixExact) | (Exact, SuffixExact) => true,
@@ -69,6 +70,9 @@ impl InverseTerm {
     /// The results of applying `other` is a subset of applying `self` on the same source.
     pub fn contains(&self, other: &Self) -> bool {
         use InverseTermType::*;
+
+        // Comparing with `!hello`, `!he` has less results.
+        // In order to have a superset results, `self.word` needs to be longer.
 
         match (&self.ty, &other.ty) {
             (InverseExact, InverseExact)

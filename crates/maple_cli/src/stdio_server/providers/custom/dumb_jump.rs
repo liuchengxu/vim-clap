@@ -28,7 +28,18 @@ struct QueryInfo {}
 struct SearchInfo {
     /// Keyword for the tag or regex searching.
     keyword: String,
+    /// Search terms for further filtering.
     filtering_terms: ExactOrInverseTerms,
+}
+
+impl SearchInfo {
+    /// Returns true if the filtered results of `self` is a superset of applying `other` on the same
+    /// source.
+    fn has_superset_results(&self, other: &Self) -> bool {
+        // - the keyword is the same.
+        // - the new query is a subset of last query.
+        self.keyword == other.keyword && self.filtering_terms.contains(&other.filtering_terms)
+    }
 }
 
 fn search_tags(
@@ -325,27 +336,14 @@ impl EventHandler for DumbJumpMessageHandler {
     ) -> Result<()> {
         let (msg_id, params) = parse_msg(msg);
 
-        // TODO: refilter the last results
-        let SearchInfo {
-            keyword,
-            filtering_terms,
-        } = parse_search_info(&params.query);
+        let search_info = parse_search_info(&params.query);
 
-        // Try to refilter the cached results if:
-        // - the keyword is the same.
-        // - the new query is a subset of last query.
-        if self.results.search_info.keyword == keyword
-            && self
-                .results
-                .search_info
-                .filtering_terms
-                .contains(&filtering_terms)
-        {
+        // Try to refilter the cached results.
+        if self.results.search_info.has_superset_results(&search_info) {
             tracing::debug!(
-              last_query = %self.results.raw_query,
-              query = %params.query,
-              %keyword,
-              ?filtering_terms,
+                last_query = %self.results.raw_query,
+                query = %params.query,
+                ?search_info,
                 "============== starting refiltering",
             );
             let refiltered = self
@@ -353,7 +351,9 @@ impl EventHandler for DumbJumpMessageHandler {
                 .usages
                 .iter()
                 .filter_map(|Usage { line, indices }| {
-                    filtering_terms.check_jump_line((line.clone(), indices.clone()))
+                    search_info
+                        .filtering_terms
+                        .check_jump_line((line.clone(), indices.clone()))
                 })
                 .collect::<Vec<_>>();
             tracing::debug!("============== ending refiltering");
