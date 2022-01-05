@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use crossbeam_channel::Sender;
 use itertools::Itertools;
+use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -19,9 +20,6 @@ use crate::stdio_server::{
 };
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
-
-#[derive(Debug, Clone, Default)]
-struct QueryInfo {}
 
 /// Internal reprentation of user input.
 #[derive(Debug, Clone, Default)]
@@ -349,7 +347,7 @@ impl EventHandler for DumbJumpMessageHandler {
             let refiltered = self
                 .results
                 .usages
-                .iter()
+                .par_iter()
                 .filter_map(|Usage { line, indices }| {
                     search_info
                         .filtering_terms
