@@ -24,6 +24,19 @@ impl ExactTerm {
     pub fn new(ty: ExactTermType, word: String) -> Self {
         Self { ty, word }
     }
+
+    /// The results of applying `other` is a subset of applying `self` on the same source.
+    pub fn contains(&self, other: &Self) -> bool {
+        use ExactTermType::*;
+
+        match (&self.ty, &other.ty) {
+            (Exact, Exact) | (PrefixExact, PrefixExact) | (SuffixExact, SuffixExact) => {
+                other.word.starts_with(&self.word)
+            }
+            (Exact, PrefixExact) | (Exact, SuffixExact) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -51,6 +64,19 @@ pub struct InverseTerm {
 impl InverseTerm {
     pub fn new(ty: InverseTermType, word: String) -> Self {
         Self { ty, word }
+    }
+
+    /// The results of applying `other` is a subset of applying `self` on the same source.
+    pub fn contains(&self, other: &Self) -> bool {
+        use InverseTermType::*;
+
+        match (&self.ty, &other.ty) {
+            (InverseExact, InverseExact)
+            | (InversePrefixExact, InversePrefixExact)
+            | (InverseSuffixExact, InverseSuffixExact) => self.word.starts_with(&other.word),
+            (InversePrefixExact, InverseExact) | (InverseSuffixExact, InverseExact) => true,
+            _ => false,
+        }
     }
 
     /// Returns true if the full line of given `item` matches the inverse term.

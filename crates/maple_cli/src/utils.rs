@@ -43,6 +43,20 @@ impl ExactOrInverseTerms {
         }
     }
 
+    pub fn contains(&self, other: &Self) -> bool {
+        for (local, other) in self.exact_terms.iter().zip(other.exact_terms.iter()) {
+            if !local.contains(other) {
+                return false;
+            }
+        }
+        for (local, other) in self.inverse_terms.iter().zip(other.inverse_terms.iter()) {
+            if !local.contains(other) {
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn check_jump_line(
         &self,
         (jump_line, mut indices): (String, Vec<usize>),

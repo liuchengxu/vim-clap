@@ -20,11 +20,22 @@ use crate::stdio_server::{
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
+#[derive(Debug, Clone, Default)]
+struct QueryInfo {}
+
+/// Internal reprentation of user input.
+#[derive(Debug, Clone, Default)]
+struct SearchInfo {
+    /// Keyword for the tag or regex searching.
+    keyword: String,
+    filtering_terms: ExactOrInverseTerms,
+}
+
 fn search_tags(
     dir: &Path,
     extension: &str,
     query: &str,
-    exact_or_inverse_terms: &ExactOrInverseTerms,
+    filtering_terms: &ExactOrInverseTerms,
 ) -> Result<Usages> {
     let ignorecase = query.chars().all(char::is_lowercase);
 
@@ -43,7 +54,7 @@ fn search_tags(
         .search(query, filtering, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format(query, ignorecase);
-            exact_or_inverse_terms
+            filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
                 .map(|(line, indices)| Usage::new(line, indices))
         })
@@ -56,14 +67,14 @@ async fn search_regex(
     word: String,
     extension: String,
     cwd: String,
-    exact_or_inverse_terms: &ExactOrInverseTerms,
+    filtering_terms: &ExactOrInverseTerms,
 ) -> Result<Usages> {
     let searcher = RegexSearcher {
         word,
         extension,
         dir: Some(cwd.into()),
     };
-    searcher.search_usages(false, exact_or_inverse_terms).await
+    searcher.search_usages(false, filtering_terms).await
 }
 
 // Returns a combo of tag results and regex results, tag results should be displayed first.
@@ -76,22 +87,23 @@ fn combine(tag_results: Usages, regex_results: Usages) -> Usages {
 }
 
 /// Parses the raw user input and returns the final keyword as well as the constraint terms.
+/// Currently, only one keyword is supported.
 ///
-/// `hel 'fn` => `identifier(s) ++ exact_term/inverse_term`.
+/// `hel 'fn` => `keyword ++ exact_term/inverse_term`.
 ///
 /// # Argument
 ///
-/// - `query`: Initial query user typed in the input window.
-fn parse_raw_input(query: &str) -> (String, ExactOrInverseTerms) {
+/// - `query`: Initial query typed in the input window.
+fn parse_search_info(query: &str) -> SearchInfo {
     let Query {
         exact_terms,
         inverse_terms,
         fuzzy_terms,
     } = Query::from(query);
 
-    // If there is no fuzzy term, use the full query as the identifier,
-    // otherwise restore the fuzzy query as the identifier we are going to search.
-    let (identifier, exact_or_inverse_terms) = if fuzzy_terms.is_empty() {
+    // If there is no fuzzy term, use the full query as the keyword,
+    // otherwise restore the fuzzy query as the keyword we are going to search.
+    let (keyword, filtering_terms) = if fuzzy_terms.is_empty() {
         if !exact_terms.is_empty() {
             (
                 exact_terms[0].word.clone(),
@@ -113,20 +125,25 @@ fn parse_raw_input(query: &str) -> (String, ExactOrInverseTerms) {
         )
     };
 
-    (identifier, exact_or_inverse_terms)
+    SearchInfo {
+        keyword,
+        filtering_terms,
+    }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SearchResults {
+struct SearchResults {
     /// Last searching results.
     ///
     /// When passing the line content from Vim to Rust, the performance
     /// of Vim can become very bad because some lines are extremely long,
     /// we cache the last results on Rust to allow passing the line number
     /// from Vim later instead.
-    pub usages: Usages,
-    /// Last query.
-    pub query: String,
+    usages: Usages,
+    /// Last raw query.
+    raw_query: String,
+    /// Last parsed search info.
+    search_info: SearchInfo,
 }
 
 #[derive(Deserialize)]
@@ -164,44 +181,35 @@ async fn handle_dumb_jump_message(
         return Default::default();
     }
 
-    let (identifier, exact_or_inverse_terms) = parse_raw_input(query.as_ref());
+    let SearchInfo {
+        keyword,
+        filtering_terms,
+    } = parse_search_info(query.as_ref());
 
     let usages_result = match search_engine {
         SearchEngine::Ctags => {
-            let results = search_tags(
-                Path::new(&cwd),
-                &extension,
-                &identifier,
-                &exact_or_inverse_terms,
-            );
+            let results = search_tags(Path::new(&cwd), &extension, &keyword, &filtering_terms);
             // tags might be incomplete, try the regex way if no results from the tags file.
             let try_regex =
                 results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
             if try_regex {
-                search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
+                search_regex(keyword.clone(), extension, cwd, &filtering_terms).await
             } else {
                 results
             }
         }
         SearchEngine::Regex => {
-            search_regex(identifier, extension, cwd, &exact_or_inverse_terms).await
+            search_regex(keyword.clone(), extension, cwd, &filtering_terms).await
         }
         SearchEngine::Both => {
             let tags_future = {
                 let cwd = cwd.clone();
-                let identifier = identifier.clone();
+                let keyword = keyword.clone();
                 let extension = extension.clone();
-                let exact_or_inverse_terms = exact_or_inverse_terms.clone();
-                async move {
-                    search_tags(
-                        Path::new(&cwd),
-                        &extension,
-                        &identifier,
-                        &exact_or_inverse_terms,
-                    )
-                }
+                let filtering_terms = filtering_terms.clone();
+                async move { search_tags(Path::new(&cwd), &extension, &keyword, &filtering_terms) }
             };
-            let regex_future = search_regex(identifier, extension, cwd, &exact_or_inverse_terms);
+            let regex_future = search_regex(keyword.clone(), extension, cwd, &filtering_terms);
 
             let (tags_results, regex_results) =
                 futures::future::join(tags_future, regex_future).await;
@@ -243,8 +251,17 @@ async fn handle_dumb_jump_message(
             (response, Default::default())
         }
     };
+
     write_response(response);
-    SearchResults { usages, query }
+
+    SearchResults {
+        usages,
+        raw_query: query,
+        search_info: SearchInfo {
+            keyword,
+            filtering_terms,
+        },
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -307,6 +324,50 @@ impl EventHandler for DumbJumpMessageHandler {
         _context: Arc<SessionContext>,
     ) -> Result<()> {
         let (msg_id, params) = parse_msg(msg);
+
+        // TODO: refilter the last results
+        let SearchInfo {
+            keyword,
+            filtering_terms,
+        } = parse_search_info(&params.query);
+
+        // Try to refilter the cached results if:
+        // - the keyword is the same.
+        // - the new query is a subset of last query.
+        if self.results.search_info.keyword == keyword
+            && self
+                .results
+                .search_info
+                .filtering_terms
+                .contains(&filtering_terms)
+        {
+            tracing::debug!(
+              last_query = %self.results.raw_query,
+              query = %params.query,
+              %keyword,
+              ?filtering_terms,
+                "============== starting refiltering",
+            );
+            let refiltered = self
+                .results
+                .usages
+                .iter()
+                .filter_map(|Usage { line, indices }| {
+                    filtering_terms.check_jump_line((line.clone(), indices.clone()))
+                })
+                .collect::<Vec<_>>();
+            tracing::debug!("============== ending refiltering");
+            let total = refiltered.len();
+            let (lines, indices): (Vec<_>, Vec<_>) = refiltered.into_iter().take(200).unzip();
+            let response = json!({
+              "id": msg_id,
+              "provider_id": "dumb_jump",
+              "force_execute": true,
+              "result": { "lines": lines, "indices": indices, "total": total },
+            });
+            write_response(response);
+            return Ok(());
+        }
 
         let job_future = if self.tags_regenerated.load(Ordering::Relaxed) {
             handle_dumb_jump_message(msg_id, params, SearchEngine::Both, false)
