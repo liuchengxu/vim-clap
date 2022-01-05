@@ -351,7 +351,8 @@ impl EventHandler for DumbJumpMessageHandler {
                 .filter_map(|Usage { line, indices }| {
                     search_info
                         .filtering_terms
-                        .check_jump_line((line.clone(), indices.clone()))
+                        .check_usage_line(line, indices.clone())
+                        .map(|indices| (line, indices))
                 })
                 .collect::<Vec<_>>();
             tracing::debug!("============== ending refiltering");

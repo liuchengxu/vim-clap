@@ -69,6 +69,17 @@ impl ExactOrInverseTerms {
             None
         }
     }
+
+    pub fn check_usage_line(&self, line: &str, mut indices: Vec<usize>) -> Option<Vec<usize>> {
+        if let Some(exact_indices) = self.check_terms(line) {
+            indices.extend_from_slice(&exact_indices);
+            indices.sort_unstable();
+            indices.dedup();
+            Some(indices)
+        } else {
+            None
+        }
+    }
 }
 
 pub type UtcTime = DateTime<Utc>;
