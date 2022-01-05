@@ -1,4 +1,3 @@
-use std::array::IntoIter;
 use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
@@ -8,21 +7,18 @@ use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::command::dumb_jump::Lines;
+use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::search::{
-    find_definition_matches_with_kind, find_occurrences_by_lang, naive_grep_fallback,
-};
-use super::FindUsages;
+use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, search_regexp};
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
 /// Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(
-        "../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
+        "../../../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
     ))
     .expect("Wrong path for rg_pcre2_regex.json")
 });
@@ -51,6 +47,58 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         .collect()
 });
 
+/// Usages consists of [`Definitions`] and [`Occurrences`].
+#[derive(Debug, Clone)]
+struct FindUsages<'a> {
+    lang: &'a str,
+    word: &'a Word,
+    dir: &'a Option<PathBuf>,
+}
+
+impl<'a> FindUsages<'a> {
+    /// Constructs a new instance of [`FindUsages`].
+    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
+        Self { lang, word, dir }
+    }
+
+    /// Finds the occurrences and all definitions concurrently.
+    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
+        let (definitions, occurrences) =
+            futures::future::join(self.definitions(), self.occurrences(comments)).await;
+
+        (
+            Definitions {
+                defs: definitions.unwrap_or_default(),
+            },
+            Occurrences(occurrences.unwrap_or_default()),
+        )
+    }
+
+    /// Returns all kinds of definitions.
+    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
+        let all_def_futures = get_definition_rules(self.lang)?
+            .0
+            .keys()
+            .map(|kind| find_definitions_with_kind(self.lang, kind, self.word, self.dir));
+
+        let maybe_defs = futures::future::join_all(all_def_futures).await;
+
+        Ok(maybe_defs
+            .into_par_iter()
+            .filter_map(|def| {
+                def.ok()
+                    .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
+            })
+            .collect())
+    }
+
+    /// Returns all the occurrences.
+    #[inline]
+    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
+        find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
+    }
+}
+
 /// Finds the ripgrep language given the file extension `ext`.
 pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
     RG_LANGUAGE_EXT_TABLE
@@ -66,7 +114,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
         let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
-            "../../../../../scripts/dumb_jump/comments_map.json"
+            "../../../../../../../scripts/dumb_jump/comments_map.json"
         ))
         .expect("Wrong path for comments_map.json");
         comments
@@ -78,7 +126,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 }
 
 /// Type of match result of ripgrep.
-#[derive(Clone, Debug, serde::Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub enum MatchKind {
     /// Results matched from the definition regexp.
     Definition(DefinitionKind),
@@ -161,11 +209,10 @@ pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
     }
 }
 
-pub fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
+pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
     let regexp = get_definition_rules(lang)?
         .kind_rules_for(kind)?
-        .map(|x| x.replace("\\\\", "\\"))
-        .map(|x| x.replace("JJJ", &word.raw))
+        .map(|x| x.replace("\\\\", "\\").replace("JJJ", &word.raw))
         .join("|");
     Ok(regexp)
 }
@@ -219,7 +266,7 @@ impl Occurrences {
         self.0.par_iter()
     }
 
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Match) -> bool,
     {
@@ -231,13 +278,13 @@ impl Occurrences {
     }
 }
 
-pub async fn definitions_and_references_lines(
+pub(super) async fn do_search_usages(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
     comments: &[&str],
     exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Lines> {
+) -> Result<Usages> {
     let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
 
     let defs = definitions.flatten();
@@ -249,20 +296,17 @@ pub async fn definitions_and_references_lines(
         .filter(|def| occurrences.contains(def))
         .collect::<Vec<_>>();
 
-    let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = definitions
+    let regex_usages = definitions
         .par_iter()
         .flat_map(|DefinitionSearchResult { kind, matches }| {
-            matches
-                .par_iter()
-                .filter_map(|line| {
-                    if positive_defs.contains(&line) {
-                        exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line(kind.as_ref(), word))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
+            matches.par_iter().filter_map(|line| {
+                if positive_defs.contains(&line) {
+                    exact_or_inverse_terms
+                        .check_jump_line(line.build_jump_line(kind.as_ref(), word))
+                } else {
+                    None
+                }
+            })
         })
         .chain(
             // references are these occurrences not in the definitions.
@@ -274,23 +318,26 @@ pub async fn definitions_and_references_lines(
                 }
             }),
         )
-        .unzip();
+        .map(|(line, indices)| Usage::new(line, indices))
+        .collect::<Vec<_>>();
 
-    if lines.is_empty() {
-        let lines = naive_grep_fallback(word, lang, dir, comments).await?;
-        let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
+    if regex_usages.is_empty() {
+        let lines = search_regexp(word, lang, dir, comments).await?;
+        let grep_usages = lines
             .into_par_iter()
             .filter_map(|line| {
-                exact_or_inverse_terms.check_jump_line(line.build_jump_line("plain", word))
+                exact_or_inverse_terms
+                    .check_jump_line(line.build_jump_line("grep", word))
+                    .map(|(line, indices)| Usage::new(line, indices))
             })
-            .unzip();
-        return Ok(Lines::new(lines, indices));
+            .collect::<Vec<_>>();
+        return Ok(grep_usages.into());
     }
 
-    Ok(Lines::new(lines, indices))
+    Ok(regex_usages.into())
 }
 
-pub async fn definitions_and_references(
+pub(super) async fn definitions_and_references(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
@@ -324,7 +371,7 @@ pub async fn definitions_and_references(
         .collect();
 
     if res.is_empty() {
-        naive_grep_fallback(word, lang, dir, comments)
+        search_regexp(word, lang, dir, comments)
             .await
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {

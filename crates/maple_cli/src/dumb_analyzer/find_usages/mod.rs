@@ -1,80 +1,96 @@
-//! This module provides the feature of search based `jump-to-definition`, inspired
-//! by https://github.com/jacktasia/dumb-jump, powered by a set of regular expressions
-//! based on the file extension, using the ripgrep tool.
-//!
-//! The matches are run through a shared set of heuristic methods to find the best candidate.
-//!
-//! # Dependency
-//!
-//! The executable rg with `--json` and `--pcre2` is required to be installed on the system.
+mod search_engine;
 
-mod default_types;
-mod definition;
-mod search;
-
-use std::path::PathBuf;
-
-use anyhow::Result;
 use rayon::prelude::*;
 
-use self::definition::{get_definition_rules, DefinitionSearchResult, Definitions, Occurrences};
-use self::search::{find_definition_matches_with_kind, find_occurrences_by_lang};
-use crate::tools::ripgrep::{Match, Word};
+pub use self::search_engine::{Filtering, RegexSearcher, TagSearcher};
 
-pub use self::definition::{
-    definitions_and_references, definitions_and_references_lines, get_comments_by_ext,
-    get_language_by_ext, DefinitionRules, MatchKind,
-};
-pub use self::search::find_occurrence_matches_by_ext;
-
-/// Usages consists of [`Definitions`] and [`Occurrences`].
-#[derive(Debug, Clone)]
-pub struct FindUsages<'a> {
-    lang: &'a str,
-    word: &'a Word,
-    dir: &'a Option<PathBuf>,
+#[derive(Clone, Debug, Default)]
+pub struct Usage {
+    pub line: String,
+    pub indices: Vec<usize>,
 }
 
-impl<'a> FindUsages<'a> {
-    /// Constructs a new instance of [`FindUsages`].
-    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
-        Self { lang, word, dir }
+impl Usage {
+    pub fn new(line: String, indices: Vec<usize>) -> Self {
+        Self { line, indices }
     }
+}
 
-    /// Finds the occurrences and all definitions concurrently.
-    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
-        let (definitions, occurrences) =
-            futures::future::join(self.definitions(), self.occurrences(comments)).await;
-
-        (
-            Definitions {
-                defs: definitions.unwrap_or_default(),
+impl PartialEq for Usage {
+    fn eq(&self, other: &Self) -> bool {
+        // Equal if the path and lnum are the same.
+        // [tags]crates/readtags/sys/libreadtags/Makefile:388:1:srcdir
+        match (self.line.split_once(']'), other.line.split_once(']')) {
+            (Some((_, l1)), Some((_, l2))) => match (l1.split_once(':'), l2.split_once(':')) {
+                (Some((l_path, l_1)), Some((r_path, r_1))) if l_path == r_path => {
+                    matches!(
+                      (l_1.split_once(':'), r_1.split_once(':')),
+                      (Some((l_lnum, _)), Some((r_lnum, _))) if l_lnum == r_lnum
+                    )
+                }
+                _ => false,
             },
-            Occurrences(occurrences.unwrap_or_default()),
-        )
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Usage {}
+
+/// All the lines as well as their match indices that can be sent to the vim side directly.
+#[derive(Clone, Debug, Default)]
+pub struct Usages(Vec<Usage>);
+
+impl From<Vec<Usage>> for Usages {
+    fn from(inner: Vec<Usage>) -> Self {
+        Self(inner)
+    }
+}
+
+impl Usages {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
-    /// Returns all kinds of definitions.
-    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        let all_def_futures = get_definition_rules(self.lang)?
-            .0
-            .keys()
-            .map(|kind| find_definition_matches_with_kind(self.lang, kind, self.word, self.dir));
+    pub fn contains(&self, ele: &Usage) -> bool {
+        self.0.contains(ele)
+    }
 
-        let maybe_defs = futures::future::join_all(all_def_futures).await;
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 
-        Ok(maybe_defs
+    pub fn iter(&self) -> impl Iterator<Item = &Usage> {
+        self.0.iter()
+    }
+
+    pub fn get_line(&self, index: usize) -> Option<&str> {
+        self.0.get(index).map(|usage| usage.line.as_str())
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Usage) -> bool,
+    {
+        self.0.retain(f);
+    }
+
+    pub fn append(&mut self, other: Self) {
+        let mut other_usages = other.0;
+        self.0.append(&mut other_usages);
+    }
+
+    /// Prints the lines info to stdout.
+    pub fn print(self) {
+        let total = self.0.len();
+        let (lines, indices) = self.deconstruct();
+        utility::println_json_with_length!(total, lines, indices);
+    }
+
+    pub fn deconstruct(self) -> (Vec<String>, Vec<Vec<usize>>) {
+        self.0
             .into_par_iter()
-            .filter_map(|def| {
-                def.ok()
-                    .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
-            })
-            .collect())
-    }
-
-    /// Returns all the occurrences.
-    #[inline]
-    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
-        find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
+            .map(|usage| (usage.line, usage.indices))
+            .unzip()
     }
 }

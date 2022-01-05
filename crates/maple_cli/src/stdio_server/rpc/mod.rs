@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use jsonrpc_core::Params;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
 pub use self::messages::method_call::MethodCall;
