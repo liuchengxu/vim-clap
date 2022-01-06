@@ -177,6 +177,7 @@ enum SearchEngine {
 async fn handle_dumb_jump_message(
     msg_id: u64,
     params: Params,
+    search_info: Option<SearchInfo>,
     search_engine: SearchEngine,
     force_execute: bool,
 ) -> SearchResults {
@@ -193,7 +194,7 @@ async fn handle_dumb_jump_message(
     let SearchInfo {
         keyword,
         filtering_terms,
-    } = parse_search_info(query.as_ref());
+    } = search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
 
     let usages_result = match search_engine {
         SearchEngine::Ctags => {
@@ -369,9 +370,15 @@ impl EventHandler for DumbJumpMessageHandler {
         }
 
         let job_future = if self.tags_regenerated.load(Ordering::Relaxed) {
-            handle_dumb_jump_message(msg_id, params, SearchEngine::Both, false)
+            handle_dumb_jump_message(msg_id, params, Some(search_info), SearchEngine::Both, false)
         } else {
-            handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, false)
+            handle_dumb_jump_message(
+                msg_id,
+                params,
+                Some(search_info),
+                SearchEngine::Regex,
+                false,
+            )
         };
 
         let results = tokio::spawn(job_future).await.unwrap_or_else(|e| {
@@ -398,7 +405,7 @@ impl NewSession for DumbJumpSession {
             move || handler.regenerate_tags(&dir, extension)
         });
         tokio::spawn(async move {
-            handle_dumb_jump_message(msg_id, params, SearchEngine::Regex, true).await;
+            handle_dumb_jump_message(msg_id, params, None, SearchEngine::Regex, true).await;
         });
 
         Ok(session_sender)
