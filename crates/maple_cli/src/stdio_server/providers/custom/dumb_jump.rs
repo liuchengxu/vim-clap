@@ -276,8 +276,11 @@ async fn handle_dumb_jump_message(
 
 #[derive(Debug, Clone, Default)]
 pub struct DumbJumpMessageHandler {
-    /// Last/Latest search results.
-    results: SearchResults,
+    /// Results from last searching.
+    /// This might be a superset of searching results for the last query.
+    cached_results: SearchResults,
+    /// Current results from refiltering on `cached_results`.
+    current_usages: Option<Usages>,
     /// Whether the tags file has been (re)-created.
     tags_regenerated: Arc<AtomicBool>,
 }
@@ -316,7 +319,12 @@ impl EventHandler for DumbJumpMessageHandler {
             .map_err(|_| anyhow!("Missing `lnum` in {:?}", msg))?;
 
         // lnum is 1-indexed
-        if let Some(curline) = self.results.usages.get_line((lnum - 1) as usize) {
+        if let Some(curline) = self
+            .current_usages
+            .as_ref()
+            .unwrap_or(&self.cached_results.usages)
+            .get_line((lnum - 1) as usize)
+        {
             if let Err(error) =
                 OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
             {
@@ -338,27 +346,35 @@ impl EventHandler for DumbJumpMessageHandler {
         let search_info = parse_search_info(&params.query);
 
         // Try to refilter the cached results.
-        if self.results.search_info.has_superset_results(&search_info) {
+        if self
+            .cached_results
+            .search_info
+            .has_superset_results(&search_info)
+        {
             tracing::debug!(
-                last_query = %self.results.raw_query,
+                last_query = %self.cached_results.raw_query,
                 query = %params.query,
                 ?search_info,
                 "============== starting refiltering",
             );
             let refiltered = self
-                .results
+                .cached_results
                 .usages
                 .par_iter()
                 .filter_map(|Usage { line, indices }| {
                     search_info
                         .filtering_terms
-                        .check_usage_line(line, indices.clone())
-                        .map(|indices| (line, indices))
+                        .check_jump_line((line.clone(), indices.clone()))
+                        .map(|(line, indices)| Usage::new(line, indices))
                 })
                 .collect::<Vec<_>>();
             tracing::debug!("============== ending refiltering");
             let total = refiltered.len();
-            let (lines, indices): (Vec<_>, Vec<_>) = refiltered.into_iter().take(200).unzip();
+            let (lines, indices): (Vec<&str>, Vec<&[usize]>) = refiltered
+                .iter()
+                .take(200)
+                .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
+                .unzip();
             let response = json!({
               "id": msg_id,
               "provider_id": "dumb_jump",
@@ -366,6 +382,7 @@ impl EventHandler for DumbJumpMessageHandler {
               "result": { "lines": lines, "indices": indices, "total": total },
             });
             write_response(response);
+            self.current_usages.replace(refiltered.into());
             return Ok(());
         }
 
@@ -381,11 +398,12 @@ impl EventHandler for DumbJumpMessageHandler {
             )
         };
 
-        let results = tokio::spawn(job_future).await.unwrap_or_else(|e| {
+        self.cached_results = tokio::spawn(job_future).await.unwrap_or_else(|e| {
             tracing::error!(?e, "Failed to spawn task handle_dumb_jump_message");
             Default::default()
         });
-        self.results = results;
+        self.current_usages.take();
+
         Ok(())
     }
 }
