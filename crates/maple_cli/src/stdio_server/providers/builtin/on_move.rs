@@ -262,7 +262,7 @@ impl<'a> OnMoveHandler<'a> {
                     let dir = self.context.cwd.clone();
                     IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
                     // Spawn a future in the background
-                    tokio::spawn(async move {
+                    tokio::task::spawn_blocking(|| {
                         tracing::debug!(?dir, "Attempting to refresh grep2 cache");
                         match crate::command::grep::refresh_cache(dir) {
                             Ok(total) => {
