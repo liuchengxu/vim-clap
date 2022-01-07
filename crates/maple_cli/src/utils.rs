@@ -184,7 +184,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> Result<PathBuf> {
 }
 
 /// Build the absolute path using cwd and relative path.
-pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> PathBuf {
+pub fn build_abs_path(cwd: impl AsRef<Path>, curline: impl AsRef<Path>) -> PathBuf {
     let mut path: PathBuf = cwd.as_ref().into();
     path.push(curline);
     path
