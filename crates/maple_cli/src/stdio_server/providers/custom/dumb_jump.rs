@@ -31,11 +31,14 @@ struct SearchInfo {
 }
 
 impl SearchInfo {
-    /// Returns true if the filtered results of `self` is a superset of applying `other` on the same
-    /// source.
+    /// Returns true if the filtered results of `self` is a superset of applying `other` on the
+    /// same source.
+    ///
+    /// The rule is as follows:
+    ///
+    /// - the keyword is the same.
+    /// - the new query is a subset of last query.
     fn has_superset_results(&self, other: &Self) -> bool {
-        // - the keyword is the same.
-        // - the new query is a subset of last query.
         self.keyword == other.keyword && self.filtering_terms.contains(&other.filtering_terms)
     }
 }
@@ -174,7 +177,7 @@ enum SearchEngine {
     Both,
 }
 
-async fn handle_dumb_jump_message(
+async fn search_for_usages(
     msg_id: u64,
     params: Params,
     search_info: Option<SearchInfo>,
@@ -303,6 +306,31 @@ impl DumbJumpMessageHandler {
             }
         }
     }
+
+    /// Starts a new searching task.
+    async fn start_search(
+        &self,
+        msg_id: u64,
+        params: Params,
+        search_info: SearchInfo,
+    ) -> SearchResults {
+        let job_future = search_for_usages(
+            msg_id,
+            params,
+            Some(search_info),
+            if self.tags_regenerated.load(Ordering::Relaxed) {
+                SearchEngine::Both
+            } else {
+                SearchEngine::Regex
+            },
+            false,
+        );
+
+        tokio::spawn(job_future).await.unwrap_or_else(|e| {
+            tracing::error!(?e, "Failed to spawn task search_for_usages");
+            Default::default()
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -351,12 +379,6 @@ impl EventHandler for DumbJumpMessageHandler {
             .search_info
             .has_superset_results(&search_info)
         {
-            tracing::debug!(
-                last_query = %self.cached_results.raw_query,
-                query = %params.query,
-                ?search_info,
-                "============== starting refiltering",
-            );
             let refiltered = self
                 .cached_results
                 .usages
@@ -368,7 +390,6 @@ impl EventHandler for DumbJumpMessageHandler {
                         .map(|(line, indices)| Usage::new(line, indices))
                 })
                 .collect::<Vec<_>>();
-            tracing::debug!("============== ending refiltering");
             let total = refiltered.len();
             let (lines, indices): (Vec<&str>, Vec<&[usize]>) = refiltered
                 .iter()
@@ -376,32 +397,17 @@ impl EventHandler for DumbJumpMessageHandler {
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
             let response = json!({
-              "id": msg_id,
-              "provider_id": "dumb_jump",
-              "force_execute": true,
-              "result": { "lines": lines, "indices": indices, "total": total },
+                "id": msg_id,
+                "provider_id": "dumb_jump",
+                "force_execute": true,
+                "result": { "lines": lines, "indices": indices, "total": total },
             });
             write_response(response);
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }
 
-        let job_future = if self.tags_regenerated.load(Ordering::Relaxed) {
-            handle_dumb_jump_message(msg_id, params, Some(search_info), SearchEngine::Both, false)
-        } else {
-            handle_dumb_jump_message(
-                msg_id,
-                params,
-                Some(search_info),
-                SearchEngine::Regex,
-                false,
-            )
-        };
-
-        self.cached_results = tokio::spawn(job_future).await.unwrap_or_else(|e| {
-            tracing::error!(?e, "Failed to spawn task handle_dumb_jump_message");
-            Default::default()
-        });
+        self.cached_results = self.start_search(msg_id, params, search_info).await;
         self.current_usages.take();
 
         Ok(())
@@ -423,7 +429,7 @@ impl NewSession for DumbJumpSession {
             move || handler.regenerate_tags(&dir, extension)
         });
         tokio::spawn(async move {
-            handle_dumb_jump_message(msg_id, params, None, SearchEngine::Regex, true).await;
+            search_for_usages(msg_id, params, None, SearchEngine::Regex, true).await;
         });
 
         Ok(session_sender)
