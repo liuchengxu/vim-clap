@@ -3,7 +3,13 @@ use std::collections::HashMap;
 use anyhow::Result;
 use crossbeam_channel::Sender;
 
-use crate::stdio_server::{rpc::Call, session::SessionId, MethodCall, SessionEvent};
+use crate::stdio_server::{
+    rpc::Call,
+    session::{Session, SessionId},
+    MethodCall, SessionEvent,
+};
+
+use super::EventHandle;
 
 /// A small wrapper of Sender<SessionEvent> for logging on sending error.
 #[derive(Debug)]
@@ -32,12 +38,6 @@ impl SessionEventSender {
     }
 }
 
-/// Creates a new session with a context built from the message `msg`.
-pub trait NewSession {
-    /// Spawns a new session thread given `msg`.
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>>;
-}
-
 /// This structs manages all the created sessions tracked by the session id.
 #[derive(Debug, Default)]
 pub struct SessionManager {
@@ -46,23 +46,22 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Starts a session in a background task.
-    pub fn new_session<T: NewSession>(&mut self, call: Call) {
+    pub fn new_session(&mut self, call: Call, session_event_handle: impl EventHandle) {
         let session_id = call.session_id();
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");
         } else {
-            match T::spawn(call) {
-                Ok(sender) => {
-                    sender
-                        .send(SessionEvent::Create)
-                        .expect("Failed to send Create Event");
-                    self.sessions
-                        .insert(session_id, SessionEventSender::new(sender, session_id));
-                }
-                Err(error) => {
-                    tracing::error!(?error, "Failed not spawn a new session");
-                }
-            }
+            let (session, session_sender) = Session::new(call.clone(), session_event_handle);
+            session.start_event_loop();
+
+            session_sender
+                .send(SessionEvent::Create(call))
+                .expect("Failed to send Create Event");
+
+            self.sessions.insert(
+                session_id,
+                SessionEventSender::new(session_sender, session_id),
+            );
         }
     }
 

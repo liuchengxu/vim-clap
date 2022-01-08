@@ -64,6 +64,10 @@ impl Usages {
         self.0.iter()
     }
 
+    pub fn par_iter(&self) -> rayon::slice::Iter<'_, Usage> {
+        self.0.par_iter()
+    }
+
     pub fn get_line(&self, index: usize) -> Option<&str> {
         self.0.get(index).map(|usage| usage.line.as_str())
     }

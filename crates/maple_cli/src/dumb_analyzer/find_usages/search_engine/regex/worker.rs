@@ -41,7 +41,7 @@ fn find_matches(
     }
 }
 
-pub(super) async fn search_regexp(
+pub(super) async fn regexp_search(
     word: &Word,
     lang_type: &str,
     dir: &Option<PathBuf>,

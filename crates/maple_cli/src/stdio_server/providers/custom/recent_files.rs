@@ -12,11 +12,11 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{EventHandle, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 
-pub async fn handle_recent_files_message(
+async fn handle_recent_files_message(
     msg: MethodCall,
     context: Arc<SessionContext>,
     force_execute: bool,
@@ -76,10 +76,7 @@ pub async fn handle_recent_files_message(
                 context.sensible_preview_size(),
                 winwidth,
             ) {
-                preview = Some(json!({
-                  "lines": lines,
-                  "fname": fname
-                }));
+                preview = Some(json!({ "lines": lines, "fname": fname }));
             }
         }
     }
@@ -101,28 +98,28 @@ pub async fn handle_recent_files_message(
 
     let result = if truncated_map.is_empty() {
         json!({
-        "lines": lines,
-        "indices": indices,
-        "total": total,
-        "initial_size": initial_size,
-        "preview": preview,
+            "lines": lines,
+            "indices": indices,
+            "total": total,
+            "initial_size": initial_size,
+            "preview": preview,
         })
     } else {
         json!({
-        "lines": lines,
-        "indices": indices,
-        "truncated_map": truncated_map,
-        "total": total,
-        "initial_size": initial_size,
-        "preview": preview,
+            "lines": lines,
+            "indices": indices,
+            "truncated_map": truncated_map,
+            "total": total,
+            "initial_size": initial_size,
+            "preview": preview,
         })
     };
 
     let result = json!({
-    "id": msg_id,
-    "force_execute": force_execute,
-    "provider_id": "recent_files",
-    "result": result,
+        "id": msg_id,
+        "force_execute": force_execute,
+        "provider_id": "recent_files",
+        "result": result,
     });
 
     write_response(result);
@@ -131,17 +128,21 @@ pub async fn handle_recent_files_message(
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RecentFilesMessageHandler {
+pub struct RecentFilesHandle {
     lines: Arc<Mutex<Vec<FilteredItem>>>,
 }
 
 #[async_trait::async_trait]
-impl EventHandler for RecentFilesMessageHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl EventHandle for RecentFilesHandle {
+    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+        let initial_lines =
+            handle_recent_files_message(call.unwrap_method_call(), context, true).await;
+
+        let mut lines = self.lines.lock();
+        *lines = initial_lines;
+    }
+
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
@@ -162,11 +163,7 @@ impl EventHandler for RecentFilesMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
@@ -178,30 +175,5 @@ impl EventHandler for RecentFilesMessageHandler {
         *lines = new_lines;
 
         Ok(())
-    }
-}
-
-pub struct RecentFilesSession;
-
-impl NewSession for RecentFilesSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let handler = RecentFilesMessageHandler::default();
-        let lines_clone = handler.lines.clone();
-
-        let (session, session_sender) = Session::new(call.clone(), handler);
-
-        let context_clone = session.context.clone();
-
-        session.start_event_loop();
-
-        tokio::spawn(async move {
-            let initial_lines =
-                handle_recent_files_message(call.unwrap_method_call(), context_clone, true).await;
-
-            let mut lines = lines_clone.lock();
-            *lines = initial_lines;
-        });
-
-        Ok(session_sender)
     }
 }

@@ -1,4 +1,4 @@
-use std::path::{self, Path};
+use std::path::{Path, MAIN_SEPARATOR};
 use std::sync::Arc;
 use std::{fs, io};
 
@@ -12,7 +12,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{EventHandle, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -24,16 +24,17 @@ struct DisplayPath<P> {
 }
 
 impl<P: AsRef<Path>> DisplayPath<P> {
-    pub fn new(inner: P, enable_icon: bool) -> Self {
+    fn new(inner: P, enable_icon: bool) -> Self {
         Self { inner, enable_icon }
     }
 
     #[inline]
-    fn as_file_name(&self) -> Option<&str> {
+    fn as_file_name_unsafe(&self) -> &str {
         self.inner
             .as_ref()
             .file_name()
             .and_then(std::ffi::OsStr::to_str)
+            .expect("Path terminates in `..`")
     }
 }
 
@@ -48,10 +49,10 @@ impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
         };
 
         if self.inner.as_ref().is_dir() {
-            let path = format!("{}{}", self.as_file_name().unwrap(), path::MAIN_SEPARATOR);
+            let path = format!("{}{}", self.as_file_name_unsafe(), MAIN_SEPARATOR);
             write_with_icon(&path)
         } else {
-            write_with_icon(self.as_file_name().unwrap())
+            write_with_icon(self.as_file_name_unsafe())
         }
     }
 }
@@ -78,15 +79,18 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Clone)]
-pub struct FilerMessageHandler;
+pub struct FilerHandle;
 
 #[async_trait::async_trait]
-impl EventHandler for FilerMessageHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl EventHandle for FilerHandle {
+    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+        write_response(
+            handle_filer_message(call.unwrap_method_call())
+                .expect("Both Success and Error are returned"),
+        );
+    }
+
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         #[derive(serde::Deserialize)]
         struct Params {
             // curline: String,
@@ -116,48 +120,24 @@ impl EventHandler for FilerMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        _context: Arc<SessionContext>,
-    ) -> Result<()> {
-        handle_filer_message(msg);
+    async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+        write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
         Ok(())
     }
 }
 
-pub struct FilerSession;
-
-impl NewSession for FilerSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(call.clone(), FilerMessageHandler);
-
-        // Handle the on_init message.
-        handle_filer_message(call.unwrap_method_call());
-
-        session.start_event_loop();
-
-        Ok(session_sender)
-    }
-}
-
-pub fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
+fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
     let cwd = msg.get_cwd();
-    tracing::debug!(?cwd, "Recv filer params");
 
     read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
         .map(|entries| {
-            let result = json!({
-            "entries": entries,
-            "dir": cwd,
-            "total": entries.len(),
-            });
+            let result = json!({ "entries": entries, "dir": cwd, "total": entries.len() });
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
         })
         .map_err(|err| {
             tracing::error!(?cwd, "Failed to read directory entries");
             let error = json!({"message": err.to_string(), "dir": cwd});
-            json!({ "id": msg.id, "provider_id": "filer", "error": error })
+            json!({ "id": msg.id, "provider_id": "filer", "message": error })
         })
 }
 

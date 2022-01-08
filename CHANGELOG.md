@@ -2,7 +2,7 @@
 
 ## [unreleased]
 
-## [Improved]
+## Improved
 
 - Rework the truncation of long lines. #788
 - Support searching the definition/declaration in the `tags` file using `readtags` for `dumb_jump` provider. #789
@@ -12,6 +12,10 @@
 
   - `hel`: match the tags that starts with `hel`.
   - `hel*`: match the tags that contain `hel`.
+
+## Fixed
+
+- Fix the regression that `filer` provider is not properly initialized on the Rust backend. #790
 
 ## [0.31] 2021-12-12
 

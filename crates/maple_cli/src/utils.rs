@@ -43,6 +43,19 @@ impl ExactOrInverseTerms {
         }
     }
 
+    /// The results of applying `other` is a subset of applying `self` on the same source.
+    pub fn contains(&self, other: &Self) -> bool {
+        self.exact_terms
+            .iter()
+            .zip(other.exact_terms.iter())
+            .all(|(local, other)| local.contains(other))
+            && self
+                .inverse_terms
+                .iter()
+                .zip(other.inverse_terms.iter())
+                .all(|(local, other)| local.contains(other))
+    }
+
     pub fn check_jump_line(
         &self,
         (jump_line, mut indices): (String, Vec<usize>),
@@ -171,7 +184,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> Result<PathBuf> {
 }
 
 /// Build the absolute path using cwd and relative path.
-pub fn build_abs_path<P: AsRef<Path>>(cwd: P, curline: impl AsRef<Path>) -> PathBuf {
+pub fn build_abs_path(cwd: impl AsRef<Path>, curline: impl AsRef<Path>) -> PathBuf {
     let mut path: PathBuf = cwd.as_ref().into();
     path.push(curline);
     path

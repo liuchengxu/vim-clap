@@ -11,7 +11,7 @@ use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
-use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, search_regexp};
+use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, regexp_search};
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -322,7 +322,7 @@ pub(super) async fn do_search_usages(
         .collect::<Vec<_>>();
 
     if regex_usages.is_empty() {
-        let lines = search_regexp(word, lang, dir, comments).await?;
+        let lines = regexp_search(word, lang, dir, comments).await?;
         let grep_usages = lines
             .into_par_iter()
             .filter_map(|line| {
@@ -371,7 +371,7 @@ pub(super) async fn definitions_and_references(
         .collect();
 
     if res.is_empty() {
-        search_regexp(word, lang, dir, comments)
+        regexp_search(word, lang, dir, comments)
             .await
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {

@@ -96,8 +96,6 @@ impl MethodCall {
 
 impl MethodCall {
     pub async fn handle(self) -> anyhow::Result<Value> {
-        use crate::stdio_server::providers::dumb_jump::DumbJumpSession;
-        use crate::stdio_server::providers::recent_files::RecentFilesSession;
         use crate::stdio_server::session::SessionEvent::*;
 
         if self.method != "init_ext_map" {

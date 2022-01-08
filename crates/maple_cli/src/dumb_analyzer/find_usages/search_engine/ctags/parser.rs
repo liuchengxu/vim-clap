@@ -9,6 +9,7 @@ fn rs_kind_alias() -> HashMap<&'static str, &'static str> {
     vec![
         ("module", "mod"),
         ("function", "fn"),
+        ("interface", "trait"),
         ("enumerator", "enum"),
         ("implementation", "impl"),
     ]
