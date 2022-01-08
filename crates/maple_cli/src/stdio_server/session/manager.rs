@@ -51,10 +51,10 @@ impl SessionManager {
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");
         } else {
-            match T::spawn(call) {
+            match T::spawn(call.clone()) {
                 Ok(sender) => {
                     sender
-                        .send(SessionEvent::Create)
+                        .send(SessionEvent::Create(call))
                         .expect("Failed to send Create Event");
                     self.sessions
                         .insert(session_id, SessionEventSender::new(sender, session_id));

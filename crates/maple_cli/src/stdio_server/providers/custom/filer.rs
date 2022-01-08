@@ -83,6 +83,13 @@ pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
 impl EventHandler for FilerMessageHandler {
+    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+        write_response(
+            handle_filer_message(call.unwrap_method_call())
+                .expect("Both Success and Error are returned"),
+        );
+    }
+
     async fn handle_on_move(
         &mut self,
         msg: MethodCall,
