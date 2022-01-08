@@ -15,7 +15,7 @@ use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages}
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, EventHandle},
+    session::{EventHandle, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};

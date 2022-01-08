@@ -12,7 +12,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, EventHandle},
+    session::{EventHandle, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -121,12 +121,12 @@ impl EventHandle for FilerHandle {
     }
 
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
-        handle_filer_message(msg);
+        write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
         Ok(())
     }
 }
 
-pub fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
+fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
     let cwd = msg.get_cwd();
 
     read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
@@ -137,7 +137,7 @@ pub fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value
         .map_err(|err| {
             tracing::error!(?cwd, "Failed to read directory entries");
             let error = json!({"message": err.to_string(), "dir": cwd});
-            json!({ "id": msg.id, "provider_id": "filer", "error": error })
+            json!({ "id": msg.id, "provider_id": "filer", "message": error })
         })
 }
 

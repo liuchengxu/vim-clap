@@ -13,9 +13,7 @@ use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     rpc::Call,
-    session::{
-        Scale, Session, SessionContext, SessionEvent, EventHandle, SyncFilterResults,
-    },
+    session::{EventHandle, Scale, Session, SessionContext, SessionEvent, SyncFilterResults},
     write_response, MethodCall,
 };
 

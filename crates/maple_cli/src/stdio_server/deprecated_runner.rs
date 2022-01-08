@@ -1,6 +1,5 @@
 use crate::stdio_server::providers::{
-    dumb_jump::DumbJumpHandle, filer::handle_filer_message, filer::FilerHandle,
-    recent_files::RecentFilesHandle, BuiltinHandle,
+    dumb_jump::DumbJumpHandle, filer::FilerHandle, recent_files::RecentFilesHandle, BuiltinHandle,
 };
 
 use super::*;
@@ -88,15 +87,8 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "filer" => {
-                            tokio::spawn(async move {
-                                write_response(
-                                    handle_filer_message(msg)
-                                        .expect("Both Success and Error are returned"),
-                                );
-                            });
-                        }
                         "filer/on_init" => manager.new_session(call, FilerHandle),
+                        "filer/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),

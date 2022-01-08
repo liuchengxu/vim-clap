@@ -12,7 +12,7 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, EventHandle},
+    session::{EventHandle, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 
