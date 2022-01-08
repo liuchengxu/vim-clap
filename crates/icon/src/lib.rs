@@ -3,7 +3,7 @@
 // pub use constants::*;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-use std::path::Path;
+use std::{fmt::Display, path::Path};
 
 pub const DEFAULT_ICON: char = '';
 pub const FOLDER_ICON: char = '';
@@ -149,7 +149,7 @@ pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
     }
 }
 
-pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: &str) -> String {
+pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: impl Display) -> String {
     format!("{} {}", filer_icon(path), line)
 }
 

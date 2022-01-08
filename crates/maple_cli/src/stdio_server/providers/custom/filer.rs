@@ -1,4 +1,4 @@
-use std::path::{self, Path};
+use std::path::{Path, MAIN_SEPARATOR};
 use std::sync::Arc;
 use std::{fs, io};
 
@@ -24,16 +24,17 @@ struct DisplayPath<P> {
 }
 
 impl<P: AsRef<Path>> DisplayPath<P> {
-    pub fn new(inner: P, enable_icon: bool) -> Self {
+    fn new(inner: P, enable_icon: bool) -> Self {
         Self { inner, enable_icon }
     }
 
     #[inline]
-    fn as_file_name(&self) -> Option<&str> {
+    fn as_file_name_unsafe(&self) -> &str {
         self.inner
             .as_ref()
             .file_name()
             .and_then(std::ffi::OsStr::to_str)
+            .expect("Path terminates in `..`")
     }
 }
 
@@ -48,10 +49,10 @@ impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
         };
 
         if self.inner.as_ref().is_dir() {
-            let path = format!("{}{}", self.as_file_name().unwrap(), path::MAIN_SEPARATOR);
+            let path = format!("{}{}", self.as_file_name_unsafe(), MAIN_SEPARATOR);
             write_with_icon(&path)
         } else {
-            write_with_icon(self.as_file_name().unwrap())
+            write_with_icon(self.as_file_name_unsafe())
         }
     }
 }
@@ -131,11 +132,10 @@ pub struct FilerSession;
 impl NewSession for FilerSession {
     fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
         let (session, session_sender) = Session::new(call.clone(), FilerMessageHandler);
+        session.start_event_loop();
 
         // Handle the on_init message.
         handle_filer_message(call.unwrap_method_call());
-
-        session.start_event_loop();
 
         Ok(session_sender)
     }
@@ -143,15 +143,10 @@ impl NewSession for FilerSession {
 
 pub fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
     let cwd = msg.get_cwd();
-    tracing::debug!(?cwd, "Recv filer params");
 
     read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
         .map(|entries| {
-            let result = json!({
-            "entries": entries,
-            "dir": cwd,
-            "total": entries.len(),
-            });
+            let result = json!({ "entries": entries, "dir": cwd, "total": entries.len() });
             json!({ "id": msg.id, "provider_id": "filer", "result": result })
         })
         .map_err(|err| {

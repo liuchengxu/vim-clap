@@ -153,7 +153,7 @@ impl<'a> OnMoveHandler<'a> {
         msg: &MethodCall,
         context: &'a SessionContext,
         curline: Option<String>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let msg_id = msg.id;
         let curline = match curline {
             Some(line) => line,
@@ -209,11 +209,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn send_response(&self, result: serde_json::value::Value) {
         let provider_id = &self.context.provider_id;
-        write_response(json!({
-                "id": self.msg_id,
-                "provider_id": provider_id,
-                "result": result
-        }));
+        write_response(json!({ "id": self.msg_id, "provider_id": provider_id, "result": result }));
     }
 
     fn show_commit(&self, rev: &str) -> Result<()> {
@@ -223,10 +219,7 @@ impl<'a> OnMoveHandler<'a> {
             .split('\n')
             .take(self.size * 2)
             .collect::<Vec<_>>();
-        self.send_response(json!({
-          "event": "on_move",
-          "lines": lines,
-        }));
+        self.send_response(json!({ "event": "on_move", "lines": lines }));
         Ok(())
     }
 
@@ -284,7 +277,7 @@ impl<'a> OnMoveHandler<'a> {
 
         match utility::read_preview_lines(path, lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
-                let fname = format!("{}", path.display());
+                let fname = path.display().to_string();
                 let lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
@@ -297,7 +290,7 @@ impl<'a> OnMoveHandler<'a> {
                     msg_id = self.msg_id,
                     provider_id = %self.context.provider_id,
                     lines_len = lines.len(),
-                    "<== message(out) sending event",
+                    "<== message(out) preview file content",
                 );
 
                 self.send_response(json!({
@@ -318,7 +311,8 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    /// Truncates the lines that are awfully long as vim can not handle them properly.
+    /// Truncates the lines that are awfully long as vim might have some performence issue with
+    /// them.
     ///
     /// Ref https://github.com/liuchengxu/vim-clap/issues/543
     fn truncate_preview_lines(
@@ -329,28 +323,21 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     /// Returns the maximum line width.
+    #[inline]
     fn max_width(&self) -> usize {
         2 * self.context.display_winwidth as usize
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let (lines, fname) = previewer::preview_file(path, 2 * self.size, self.max_width())?;
-        self.send_response(json!({
-          "event": "on_move",
-          "lines": lines,
-          "fname": fname
-        }));
+        self.send_response(json!({ "event": "on_move", "lines": lines, "fname": fname }));
         Ok(())
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let enable_icon = global().enable_icon;
         let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        self.send_response(json!({
-          "event": "on_move",
-          "lines": lines,
-          "is_dir": true
-        }));
+        self.send_response(json!({ "event": "on_move", "lines": lines, "is_dir": true }));
         Ok(())
     }
 }
