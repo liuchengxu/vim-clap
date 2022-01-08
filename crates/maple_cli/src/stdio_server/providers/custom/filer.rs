@@ -12,7 +12,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, SessionEventHandle},
+    session::{Session, SessionContext, SessionEvent, EventHandle},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -79,10 +79,10 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Clone)]
-pub struct FilerMessageHandler;
+pub struct FilerHandle;
 
 #[async_trait::async_trait]
-impl SessionEventHandle for FilerMessageHandler {
+impl EventHandle for FilerHandle {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
         write_response(
             handle_filer_message(call.unwrap_method_call())

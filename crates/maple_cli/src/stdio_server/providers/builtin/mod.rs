@@ -14,7 +14,7 @@ use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     rpc::Call,
     session::{
-        Scale, Session, SessionContext, SessionEvent, SessionEventHandle, SyncFilterResults,
+        Scale, Session, SessionContext, SessionEvent, EventHandle, SyncFilterResults,
     },
     write_response, MethodCall,
 };
@@ -22,10 +22,10 @@ use crate::stdio_server::{
 pub use on_move::{OnMove, OnMoveHandler};
 
 #[derive(Clone)]
-pub struct BuiltinSessionEventHandle;
+pub struct BuiltinHandle;
 
 #[async_trait::async_trait]
-impl SessionEventHandle for BuiltinSessionEventHandle {
+impl EventHandle for BuiltinHandle {
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
         if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())

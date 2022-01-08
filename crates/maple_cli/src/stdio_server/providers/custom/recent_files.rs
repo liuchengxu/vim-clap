@@ -12,7 +12,7 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, SessionEventHandle},
+    session::{Session, SessionContext, SessionEvent, EventHandle},
     write_response, MethodCall,
 };
 
@@ -128,12 +128,12 @@ async fn handle_recent_files_message(
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RecentFilesMessageHandler {
+pub struct RecentFilesHandle {
     lines: Arc<Mutex<Vec<FilteredItem>>>,
 }
 
 #[async_trait::async_trait]
-impl SessionEventHandle for RecentFilesMessageHandler {
+impl EventHandle for RecentFilesHandle {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
         let lines_clone = self.lines.clone();
 

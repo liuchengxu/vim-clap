@@ -9,7 +9,7 @@ use crate::stdio_server::{
     MethodCall, SessionEvent,
 };
 
-use super::SessionEventHandle;
+use super::EventHandle;
 
 /// A small wrapper of Sender<SessionEvent> for logging on sending error.
 #[derive(Debug)]
@@ -46,7 +46,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Starts a session in a background task.
-    pub fn new_session(&mut self, call: Call, session_event_handle: impl SessionEventHandle) {
+    pub fn new_session(&mut self, call: Call, session_event_handle: impl EventHandle) {
         let session_id = call.session_id();
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");

@@ -38,7 +38,7 @@ fn process_source_scale(scale: Scale, context: Arc<SessionContext>) {
 }
 
 #[async_trait::async_trait]
-pub trait SessionEventHandle: Send + Sync + 'static {
+pub trait EventHandle: Send + Sync + 'static {
     async fn on_create(&mut self, _call: Call, context: Arc<SessionContext>) {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
@@ -114,7 +114,7 @@ impl SessionEvent {
     }
 }
 
-impl<T: SessionEventHandle> Session<T> {
+impl<T: EventHandle> Session<T> {
     pub fn new(call: Call, event_handler: T) -> (Self, Sender<SessionEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 

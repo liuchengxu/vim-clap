@@ -15,7 +15,7 @@ use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages}
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{Session, SessionContext, SessionEvent, SessionEventHandle},
+    session::{Session, SessionContext, SessionEvent, EventHandle},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
@@ -278,7 +278,7 @@ async fn search_for_usages(
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DumbJumpMessageHandler {
+pub struct DumbJumpHandle {
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -288,7 +288,7 @@ pub struct DumbJumpMessageHandler {
     tags_regenerated: Arc<AtomicBool>,
 }
 
-impl DumbJumpMessageHandler {
+impl DumbJumpHandle {
     // TODO: smarter strategy to regenerate the tags?
     fn regenerate_tags(&mut self, dir: &str, extension: String) {
         let mut tags_config = TagsConfig::with_dir(dir);
@@ -334,7 +334,7 @@ impl DumbJumpMessageHandler {
 }
 
 #[async_trait::async_trait]
-impl SessionEventHandle for DumbJumpMessageHandler {
+impl EventHandle for DumbJumpHandle {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
         // Do not have to await.
