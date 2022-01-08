@@ -135,17 +135,11 @@ pub struct RecentFilesHandle {
 #[async_trait::async_trait]
 impl EventHandle for RecentFilesHandle {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
-        let lines_clone = self.lines.clone();
+        let initial_lines =
+            handle_recent_files_message(call.unwrap_method_call(), context, true).await;
 
-        // await is required.
-        tokio::spawn(async move {
-            let initial_lines =
-                handle_recent_files_message(call.unwrap_method_call(), context, true).await;
-
-            let mut lines = lines_clone.lock();
-            *lines = initial_lines;
-        })
-        .await;
+        let mut lines = self.lines.lock();
+        *lines = initial_lines;
     }
 
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
