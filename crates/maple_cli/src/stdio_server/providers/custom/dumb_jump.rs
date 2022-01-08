@@ -15,7 +15,10 @@ use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages}
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{EventHandle, Session, SessionContext, SessionEvent},
+    session::{
+        note_job_is_finished, register_job_successfully, EventHandle, Session, SessionContext,
+        SessionEvent,
+    },
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
@@ -290,12 +293,7 @@ pub struct DumbJumpHandle {
 
 impl DumbJumpHandle {
     // TODO: smarter strategy to regenerate the tags?
-    fn regenerate_tags(&mut self, dir: &str, extension: String) {
-        let mut tags_config = TagsConfig::with_dir(dir);
-        if let Some(language) = get_language(&extension) {
-            tags_config.languages(language.into());
-        }
-
+    fn regenerate_tags(&mut self, tags_config: TagsConfig<String>) {
         let tags_searcher = TagSearcher::new(tags_config);
         match tags_searcher.generate_tags() {
             Ok(()) => {
@@ -337,13 +335,23 @@ impl DumbJumpHandle {
 impl EventHandle for DumbJumpHandle {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
-        // Do not have to await.
-        tokio::task::spawn_blocking({
-            let dir = params.cwd.clone();
-            let extension = params.extension.clone();
-            let mut handler = self.clone();
-            move || handler.regenerate_tags(&dir, extension)
-        });
+
+        let mut tags_config = TagsConfig::with_dir(params.cwd.clone());
+        if let Some(language) = get_language(&params.extension) {
+            tags_config.languages(language.into());
+        }
+        let job_id = utility::calculate_hash(&tags_config);
+
+        if register_job_successfully(job_id) {
+            tokio::task::spawn_blocking({
+                let mut handler = self.clone();
+                move || {
+                    handler.regenerate_tags(tags_config);
+                    note_job_is_finished(job_id);
+                }
+            });
+        }
+
         tokio::spawn(async move {
             search_for_usages(msg_id, params, None, SearchEngine::Regex, true).await;
         });

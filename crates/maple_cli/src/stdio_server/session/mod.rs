@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use crossbeam_channel::Sender;
+use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
@@ -19,6 +20,33 @@ pub use self::manager::SessionManager;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
+
+pub fn spawn_singleton_job(
+    task_future: impl Future<Output = ()> + Send + Sync + 'static,
+    job_id: u64,
+) {
+    if register_job_successfully(job_id) {
+        tokio::spawn(async move {
+            task_future.await;
+            note_job_is_finished(job_id)
+        });
+    }
+}
+
+pub fn register_job_successfully(job_id: u64) -> bool {
+    let mut background_jobs = BACKGROUND_JOBS.lock();
+    if background_jobs.contains(&job_id) {
+        false
+    } else {
+        background_jobs.insert(job_id);
+        true
+    }
+}
+
+pub fn note_job_is_finished(job_id: u64) {
+    let mut background_jobs = BACKGROUND_JOBS.lock();
+    background_jobs.remove(&job_id);
+}
 
 pub type SessionId = u64;
 
@@ -54,24 +82,12 @@ pub trait EventHandle: Send + Sync + 'static {
                         let rg_cmd =
                             crate::command::grep::RgBaseCommand::new(context.cwd.to_path_buf());
                         let job_id = utility::calculate_hash(&rg_cmd.inner);
-                        let mut background_jobs = BACKGROUND_JOBS.lock();
-                        if background_jobs.contains(&job_id) {
-                            tracing::debug!(job_id, "An existing job for grep/grep2");
-                        } else {
-                            tracing::debug!(job_id, "Spawning a background job for grep/grep2");
-                            background_jobs.insert(job_id);
-
-                            tokio::spawn(async move {
-                                let res = rg_cmd.create_cache().await;
-                                let mut background_jobs = BACKGROUND_JOBS.lock();
-                                background_jobs.remove(&job_id);
-                                tracing::debug!(
-                                  job_id,
-                                  result = ?res,
-                                  "The background job is done",
-                                );
-                            });
-                        }
+                        spawn_singleton_job(
+                            async move {
+                                rg_cmd.create_cache().await;
+                            },
+                            job_id,
+                        );
                     }
                     _ => {}
                 }
