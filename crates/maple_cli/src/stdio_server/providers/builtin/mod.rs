@@ -14,7 +14,7 @@ use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     rpc::Call,
     session::{
-        EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
+        SessionEventHandle, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
     },
     write_response, MethodCall,
 };
@@ -25,22 +25,18 @@ pub struct BuiltinSession;
 
 impl NewSession for BuiltinSession {
     fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(call, BuiltinEventHandler);
+        let (session, session_sender) = Session::new(call, BuiltinSessionEventHandle);
         session.start_event_loop();
         Ok(session_sender)
     }
 }
 
 #[derive(Clone)]
-pub struct BuiltinEventHandler;
+pub struct BuiltinSessionEventHandle;
 
 #[async_trait::async_trait]
-impl EventHandler for BuiltinEventHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl SessionEventHandle for BuiltinSessionEventHandle {
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
         if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
         {
@@ -50,11 +46,7 @@ impl EventHandler for BuiltinEventHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let query = msg.get_query();
 
         let scale = context.scale.lock();

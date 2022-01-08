@@ -12,7 +12,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{SessionEventHandle, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -82,7 +82,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 pub struct FilerMessageHandler;
 
 #[async_trait::async_trait]
-impl EventHandler for FilerMessageHandler {
+impl SessionEventHandle for FilerMessageHandler {
     async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
         write_response(
             handle_filer_message(call.unwrap_method_call())
@@ -90,11 +90,7 @@ impl EventHandler for FilerMessageHandler {
         );
     }
 
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         #[derive(serde::Deserialize)]
         struct Params {
             // curline: String,
@@ -124,11 +120,7 @@ impl EventHandler for FilerMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        _context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
         handle_filer_message(msg);
         Ok(())
     }

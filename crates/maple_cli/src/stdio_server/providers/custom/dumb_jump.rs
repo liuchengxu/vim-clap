@@ -15,7 +15,7 @@ use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages}
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{SessionEventHandle, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
@@ -334,12 +334,8 @@ impl DumbJumpMessageHandler {
 }
 
 #[async_trait::async_trait]
-impl EventHandler for DumbJumpMessageHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl SessionEventHandle for DumbJumpMessageHandler {
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg
@@ -364,11 +360,7 @@ impl EventHandler for DumbJumpMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        _context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
         let (msg_id, params) = parse_msg(msg);
 
         let search_info = parse_search_info(&params.query);

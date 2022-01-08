@@ -38,7 +38,7 @@ fn process_source_scale(scale: Scale, context: Arc<SessionContext>) {
 }
 
 #[async_trait::async_trait]
-pub trait EventHandler: Send + Sync + 'static {
+pub trait SessionEventHandle: Send + Sync + 'static {
     async fn on_create(&mut self, _call: Call, context: Arc<SessionContext>) {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
@@ -79,14 +79,9 @@ pub trait EventHandler: Send + Sync + 'static {
         }
     }
 
-    async fn handle_on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>)
-        -> Result<()>;
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()>;
+    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
@@ -119,7 +114,7 @@ impl SessionEvent {
     }
 }
 
-impl<T: EventHandler> Session<T> {
+impl<T: SessionEventHandle> Session<T> {
     pub fn new(call: Call, event_handler: T) -> (Self, Sender<SessionEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
@@ -159,14 +154,14 @@ impl<T: EventHandler> Session<T> {
             }
             SessionEvent::OnMove(msg) => {
                 self.event_handler
-                    .handle_on_move(msg, self.context.clone())
+                    .on_move(msg, self.context.clone())
                     .await?;
             }
             SessionEvent::OnTyped(msg) => {
                 // TODO: use a buffered channel here, do not process on every
                 // single char change.
                 self.event_handler
-                    .handle_on_typed(msg, self.context.clone())
+                    .on_typed(msg, self.context.clone())
                     .await?;
             }
         }

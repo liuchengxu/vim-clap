@@ -12,7 +12,7 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{EventHandler, NewSession, Session, SessionContext, SessionEvent},
+    session::{SessionEventHandle, NewSession, Session, SessionContext, SessionEvent},
     write_response, MethodCall,
 };
 
@@ -136,12 +136,8 @@ pub struct RecentFilesMessageHandler {
 }
 
 #[async_trait::async_trait]
-impl EventHandler for RecentFilesMessageHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl SessionEventHandle for RecentFilesMessageHandler {
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
@@ -162,11 +158,7 @@ impl EventHandler for RecentFilesMessageHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
             .await
             .unwrap_or_else(|e| {
