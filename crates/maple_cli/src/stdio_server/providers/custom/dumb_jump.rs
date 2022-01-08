@@ -15,7 +15,7 @@ use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages}
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{SessionEventHandle, NewSession, Session, SessionContext, SessionEvent},
+    session::{Session, SessionContext, SessionEvent, SessionEventHandle},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
@@ -335,6 +335,20 @@ impl DumbJumpMessageHandler {
 
 #[async_trait::async_trait]
 impl SessionEventHandle for DumbJumpMessageHandler {
+    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+        let (msg_id, params) = parse_msg(call.unwrap_method_call());
+        // Do not have to await.
+        tokio::task::spawn_blocking({
+            let dir = params.cwd.clone();
+            let extension = params.extension.clone();
+            let mut handler = self.clone();
+            move || handler.regenerate_tags(&dir, extension)
+        });
+        tokio::spawn(async move {
+            search_for_usages(msg_id, params, None, SearchEngine::Regex, true).await;
+        });
+    }
+
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
@@ -403,27 +417,5 @@ impl SessionEventHandle for DumbJumpMessageHandler {
         self.current_usages.take();
 
         Ok(())
-    }
-}
-
-pub struct DumbJumpSession;
-
-impl NewSession for DumbJumpSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let mut handler = DumbJumpMessageHandler::default();
-        let (session, session_sender) = Session::new(call.clone(), handler.clone());
-        session.start_event_loop();
-
-        let (msg_id, params) = parse_msg(call.unwrap_method_call());
-        tokio::task::spawn_blocking({
-            let dir = params.cwd.clone();
-            let extension = params.extension.clone();
-            move || handler.regenerate_tags(&dir, extension)
-        });
-        tokio::spawn(async move {
-            search_for_usages(msg_id, params, None, SearchEngine::Regex, true).await;
-        });
-
-        Ok(session_sender)
     }
 }

@@ -12,7 +12,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{SessionEventHandle, NewSession, Session, SessionContext, SessionEvent},
+    session::{Session, SessionContext, SessionEvent, SessionEventHandle},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -123,20 +123,6 @@ impl SessionEventHandle for FilerMessageHandler {
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
         handle_filer_message(msg);
         Ok(())
-    }
-}
-
-pub struct FilerSession;
-
-impl NewSession for FilerSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(call.clone(), FilerMessageHandler);
-        session.start_event_loop();
-
-        // Handle the on_init message.
-        handle_filer_message(call.unwrap_method_call());
-
-        Ok(session_sender)
     }
 }
 

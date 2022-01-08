@@ -14,22 +14,12 @@ use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
     rpc::Call,
     session::{
-        SessionEventHandle, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
+        Scale, Session, SessionContext, SessionEvent, SessionEventHandle, SyncFilterResults,
     },
     write_response, MethodCall,
 };
 
 pub use on_move::{OnMove, OnMoveHandler};
-
-pub struct BuiltinSession;
-
-impl NewSession for BuiltinSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(call, BuiltinSessionEventHandle);
-        session.start_event_loop();
-        Ok(session_sender)
-    }
-}
 
 #[derive(Clone)]
 pub struct BuiltinSessionEventHandle;

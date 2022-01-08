@@ -1,3 +1,8 @@
+use crate::stdio_server::providers::{
+    dumb_jump::DumbJumpMessageHandler, filer::handle_filer_message, filer::FilerMessageHandler,
+    recent_files::RecentFilesMessageHandler, BuiltinSessionEventHandle,
+};
+
 use super::*;
 
 /// Writes the response to stdout.
@@ -27,8 +32,6 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
-    use dumb_jump::DumbJumpSession;
-    use recent_files::RecentFilesSession;
     use SessionEvent::*;
 
     let mut manager = SessionManager::default();
@@ -38,7 +41,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             match call.clone() {
                 Call::Notification(notification) => match notification.method.as_str() {
                     "exit" => manager.terminate(notification.session_id),
-                    "on_init" => manager.new_session::<BuiltinSession>(call),
+                    "on_init" => manager.new_session(call, BuiltinSessionEventHandle),
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.process().await {
@@ -75,23 +78,27 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                             });
                         }
 
-                        "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(call),
+                        "dumb_jump/on_init" => {
+                            manager.new_session(call, DumbJumpMessageHandler::default())
+                        }
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "recent_files/on_init" => manager.new_session::<RecentFilesSession>(call),
+                        "recent_files/on_init" => {
+                            manager.new_session(call, RecentFilesMessageHandler::default())
+                        }
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "filer" => {
                             tokio::spawn(async move {
                                 write_response(
-                                    filer::handle_filer_message(msg)
+                                    handle_filer_message(msg)
                                         .expect("Both Success and Error are returned"),
                                 );
                             });
                         }
-                        "filer/on_init" => manager.new_session::<FilerSession>(call),
+                        "filer/on_init" => manager.new_session(call, FilerMessageHandler),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "on_typed" => manager.send(msg.session_id, OnTyped(msg)),

@@ -60,8 +60,6 @@ impl SessionClient {
 
     /// Process the method call message from Vim.
     async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
-        use super::dumb_jump::DumbJumpSession;
-        use super::recent_files::RecentFilesSession;
         use super::SessionEvent::*;
 
         let msg = method_call;
