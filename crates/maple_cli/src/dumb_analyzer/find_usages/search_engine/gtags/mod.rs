@@ -89,3 +89,24 @@ pub fn search(project_root: PathBuf) -> Result<impl Iterator<Item = String>> {
         .lines()
         .flatten())
 }
+
+#[derive(Default, Debug)]
+pub struct TagInfo {
+    pub path: String,
+    pub pattern: String,
+    pub line: usize,
+}
+
+impl TryFrom<&str> for TagInfo {
+    type Error = ();
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        pattern::parse_gtags(s)
+            .map(|(line, path, pattern)| TagInfo {
+                path: path.into(),
+                pattern: pattern.into(),
+                line,
+            })
+            .ok_or(())
+    }
+}
