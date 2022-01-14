@@ -3,7 +3,7 @@ use structopt::StructOpt;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::{Filtering, CtagsSearcher};
+use crate::dumb_analyzer::{CtagsSearcher, Filtering};
 use crate::tools::ctags::TagsConfig;
 
 #[derive(StructOpt, Debug, Clone)]

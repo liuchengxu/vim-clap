@@ -2,7 +2,7 @@ mod search_engine;
 
 use rayon::prelude::*;
 
-pub use self::search_engine::{Filtering, GtagsSearcher, RegexSearcher, CtagsSearcher};
+pub use self::search_engine::{CtagsSearcher, Filtering, GtagsSearcher, RegexSearcher};
 
 #[derive(Clone, Debug, Default)]
 pub struct Usage {

@@ -7,7 +7,7 @@ mod ctags;
 mod gtags;
 mod regex;
 
-pub use self::ctags::{Filtering, CtagsSearcher};
+pub use self::ctags::{CtagsSearcher, Filtering};
 pub use self::gtags::GtagsSearcher;
 pub use self::regex::RegexSearcher;
 

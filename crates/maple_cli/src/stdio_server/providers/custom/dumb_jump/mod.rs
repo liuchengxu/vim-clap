@@ -16,9 +16,7 @@ use crate::dumb_analyzer::{CtagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{
-        note_job_is_finished, register_job_successfully, EventHandle, SessionContext,
-    },
+    session::{note_job_is_finished, register_job_successfully, EventHandle, SessionContext},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};

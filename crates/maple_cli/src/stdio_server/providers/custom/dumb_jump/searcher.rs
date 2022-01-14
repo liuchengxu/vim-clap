@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::dumb_analyzer::{Filtering, RegexSearcher, CtagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, Filtering, RegexSearcher, Usage, Usages};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
