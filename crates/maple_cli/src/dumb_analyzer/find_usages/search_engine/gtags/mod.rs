@@ -1,7 +1,9 @@
+use std::io::BufRead;
 use std::path::PathBuf;
 use std::path::MAIN_SEPARATOR;
+use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use filter::subprocess::Exec;
 
 use crate::tools::gtags::GTAGS_DIR;
@@ -30,22 +32,48 @@ impl GtagsSearcher {
         }
     }
 
-    // export GTAGSLABEL=native-pygments
-    fn create_or_update_tags(&self) -> Result<Exec> {
-        // Generate or update the tags db.
+    /// Create or update the tags db.
+    pub fn create_or_update_tags(&self) -> Result<()> {
         if self.db_path.exists() {
-            // Update tags files increamentally.
-            Ok(Exec::cmd("global")
-                .env("GTAGSROOT", &self.project_root)
-                .env("GTAGSDBPATH", &self.db_path)
-                .cwd(&self.project_root)
-                .arg("--update"))
+            self.update_tags()
         } else {
-            std::fs::create_dir_all(&self.db_path)?;
-            Ok(Exec::cmd("gtags")
-                .env("GTAGSLABEL", "native-pygments")
-                .cwd(&self.project_root)
-                .arg(&self.db_path))
+            self.create_tags()
+        }
+    }
+
+    pub fn create_tags(&self) -> Result<()> {
+        std::fs::create_dir_all(&self.db_path)?;
+        let exit_status = Exec::cmd("gtags")
+            .env("GTAGSLABEL", "native-pygments")
+            .env("GTAGSROOT", &self.project_root)
+            .env("GTAGSDBPATH", &self.db_path)
+            .cwd(&self.project_root)
+            .arg(&self.db_path)
+            .join()?;
+        if exit_status.success() {
+            Ok(())
+        } else {
+            Err(anyhow!("Process for creating tags exited without success"))
+        }
+    }
+
+    /// Update tags files increamentally.
+    pub fn update_tags(&self) -> Result<()> {
+        // GTAGSLABEL=native-pygments should be enabled.
+        let exit_status = Exec::cmd("global")
+            .env("GTAGSLABEL", "native-pygments")
+            .env("GTAGSROOT", &self.project_root)
+            .env("GTAGSDBPATH", &self.db_path)
+            .cwd(&self.project_root)
+            .arg("--update")
+            .join()?;
+
+        if exit_status.success() {
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "Gtags process for updating tags exited without success"
+            ))
         }
 
         // Search
@@ -54,31 +82,48 @@ impl GtagsSearcher {
     }
 
     /// Search definition tags.
-    fn search_definitions(&self, keyword: &str) {
+    pub fn search_definitions(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
         let cmd = Exec::cmd("global")
-            .env("GTAGSROOTJ", &self.project_root)
+            .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
             .cwd(&self.project_root)
             .arg(keyword)
             .arg("--result")
             .arg("ctags-x");
+
+        let stdout = cmd.stream_stdout()?;
+
+        // We usually have a decent amount of RAM nowdays.
+        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
+            .lines()
+            .flatten()
+            .filter_map(|s| s.parse::<TagInfo>().ok()))
     }
 
     /// Search reference tags.
     ///
     /// Reference means the reference to a symbol which has definitions.
-    fn search_references(&self, keyword: &str) {
+    pub fn search_references(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
         let cmd = Exec::cmd("global")
-            .env("GTAGSROOTJ", &self.project_root)
+            .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
             .cwd(&self.project_root)
             .arg(keyword)
             .arg("--reference")
             .arg("--result")
             .arg("ctags-x");
+
+        let stdout = cmd.stream_stdout()?;
+
+        // We usually have a decent amount of RAM nowdays.
+        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
+            .lines()
+            .flatten()
+            .filter_map(|s| s.parse::<TagInfo>().ok()))
     }
 }
 
+/*
 pub fn search(project_root: PathBuf) -> Result<impl Iterator<Item = String>> {
     use std::io::BufRead;
 
@@ -90,6 +135,7 @@ pub fn search(project_root: PathBuf) -> Result<impl Iterator<Item = String>> {
         .lines()
         .flatten())
 }
+*/
 
 #[derive(Default, Debug)]
 pub struct TagInfo {
@@ -98,10 +144,9 @@ pub struct TagInfo {
     pub line: usize,
 }
 
-impl TryFrom<&str> for TagInfo {
-    type Error = ();
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
+impl FromStr for TagInfo {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         pattern::parse_gtags(s)
             .map(|(line, path, pattern)| TagInfo {
                 path: path.into(),
@@ -109,5 +154,34 @@ impl TryFrom<&str> for TagInfo {
                 line,
             })
             .ok_or(())
+    }
+}
+
+impl TagInfo {
+    pub fn grep_format(
+        &self,
+        query: &str,
+        kind: &str,
+        ignorecase: bool,
+    ) -> (String, Option<Vec<usize>>) {
+        let mut formatted = format!("[{}]{}:{}:1:", kind, self.path, self.line);
+
+        let found = if ignorecase {
+            self.pattern.to_lowercase().find(&query.to_lowercase())
+        } else {
+            self.pattern.find(query)
+        };
+
+        let indices = if let Some(idx) = found {
+            let start = formatted.len() + idx;
+            let end = start + query.len();
+            Some((start..end).into_iter().collect())
+        } else {
+            None
+        };
+
+        formatted.push_str(&self.pattern);
+
+        (formatted, indices)
     }
 }
