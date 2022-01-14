@@ -13,8 +13,9 @@ pub struct GtagsSearcher {
 
 impl GtagsSearcher {
     pub fn new(project_root: PathBuf) -> Self {
-        // Directory for GTAGS, GRTAGS, GPATH
-        // vimclap/gtags/project_root
+        // Directory for GTAGS, GRTAGS, GPATH, e.g.,
+        //
+        // `~/.local/share/vimclap/gtags/project_root`
         let mut db_path = GTAGS_DIR.to_path_buf();
         db_path.push(
             project_root
