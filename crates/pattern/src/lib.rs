@@ -225,6 +225,13 @@ mod tests {
     #[test]
     fn test_gtags() {
         let line = "run               101 crates/maple_cli/src/app.rs pub async fn run(self) -> Result<()> {";
-        println!("{:?}", parse_gtags(line));
+        assert_eq!(
+            parse_gtags(line),
+            Some((
+                101,
+                "crates/maple_cli/src/app.rs",
+                "async fn run(self) -> Result<()> {"
+            ))
+        )
     }
 }
