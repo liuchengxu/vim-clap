@@ -41,12 +41,25 @@ impl GtagsSearcher {
         }
     }
 
-    pub fn create_tags(&self) -> Result<()> {
-        std::fs::create_dir_all(&self.db_path)?;
-        let exit_status = Exec::cmd("gtags")
-            .env("GTAGSLABEL", "native-pygments")
+    /// Contracts a `gtags` command with proper env variables.
+    fn gtags(&self) -> Exec {
+        Exec::cmd("gtags")
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
+    }
+
+    /// Contracts a `global` command with proper env variables.
+    fn global(&self) -> Exec {
+        Exec::cmd("global")
+            .env("GTAGSROOT", &self.project_root)
+            .env("GTAGSDBPATH", &self.db_path)
+    }
+
+    pub fn create_tags(&self) -> Result<()> {
+        std::fs::create_dir_all(&self.db_path)?;
+        let exit_status = self
+            .gtags()
+            .env("GTAGSLABEL", "native-pygments")
             .cwd(&self.project_root)
             .arg(&self.db_path)
             .join()?;
@@ -60,10 +73,9 @@ impl GtagsSearcher {
     /// Update tags files increamentally.
     pub fn update_tags(&self) -> Result<()> {
         // GTAGSLABEL=native-pygments should be enabled.
-        let exit_status = Exec::cmd("global")
+        let exit_status = self
+            .global()
             .env("GTAGSLABEL", "native-pygments")
-            .env("GTAGSROOT", &self.project_root)
-            .env("GTAGSDBPATH", &self.db_path)
             .cwd(&self.project_root)
             .arg("--update")
             .join()?;
@@ -75,67 +87,38 @@ impl GtagsSearcher {
                 "Gtags process for updating tags exited without success"
             ))
         }
-
-        // Search
-        // let query = "foo";
-        // Ok(Exec::cmd("global").cwd(project_root).arg(foo).env("GTAGSROOTJ", project_root).env("GTAGSDBPATH", db_path))
     }
 
-    /// Search definition tags.
+    /// Search definition tags exactly matching `keyword`.
     pub fn search_definitions(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
-        let cmd = Exec::cmd("global")
-            .env("GTAGSROOT", &self.project_root)
-            .env("GTAGSDBPATH", &self.db_path)
+        let cmd = self
+            .global()
             .cwd(&self.project_root)
             .arg(keyword)
             .arg("--result")
             .arg("ctags-x");
 
-        let stdout = cmd.stream_stdout()?;
-
-        // We usually have a decent amount of RAM nowdays.
-        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-            .lines()
-            .flatten()
-            .filter_map(|s| s.parse::<TagInfo>().ok()))
+        execute(cmd)
     }
 
-    /// Search reference tags.
+    /// Search reference tags exactly matching `keyword`.
     ///
     /// Reference means the reference to a symbol which has definitions.
     pub fn search_references(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
-        let cmd = Exec::cmd("global")
-            .env("GTAGSROOT", &self.project_root)
-            .env("GTAGSDBPATH", &self.db_path)
+        let cmd = self
+            .global()
             .cwd(&self.project_root)
             .arg(keyword)
             .arg("--reference")
             .arg("--result")
             .arg("ctags-x");
 
-        let stdout = cmd.stream_stdout()?;
-
-        // We usually have a decent amount of RAM nowdays.
-        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-            .lines()
-            .flatten()
-            .filter_map(|s| s.parse::<TagInfo>().ok()))
+        execute(cmd)
     }
+
+    // TODO prefix matching
+    // GTAGSROOT=$(pwd) GTAGSDBPATH=/home/xlc/.local/share/vimclap/gtags/test/ global -g 'ru(.*)' --result=ctags-x
 }
-
-/*
-pub fn search(project_root: PathBuf) -> Result<impl Iterator<Item = String>> {
-    use std::io::BufRead;
-
-    let gtags_searcher = GtagsSearcher::new(project_root);
-    let stdout = gtags_searcher.create_or_update_tags()?.stream_stdout()?;
-
-    // We usually have a decent amount of RAM nowdays.
-    Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-        .lines()
-        .flatten())
-}
-*/
 
 #[derive(Default, Debug)]
 pub struct TagInfo {
@@ -155,6 +138,17 @@ impl FromStr for TagInfo {
             })
             .ok_or(())
     }
+}
+
+// Returns a stream of tag parsed from the gtags output.
+fn execute(cmd: Exec) -> Result<impl Iterator<Item = TagInfo>> {
+    let stdout = cmd.stream_stdout()?;
+
+    // We usually have a decent amount of RAM nowdays.
+    Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
+        .lines()
+        .flatten()
+        .filter_map(|s| s.parse::<TagInfo>().ok()))
 }
 
 impl TagInfo {
