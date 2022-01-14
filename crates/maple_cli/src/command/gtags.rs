@@ -1,8 +1,6 @@
 use anyhow::Result;
 use structopt::StructOpt;
 
-use filter::{matcher::Bonus, Source};
-
 use crate::app::Params;
 use crate::dumb_analyzer::GtagsSearcher;
 use crate::paths::AbsPathBuf;

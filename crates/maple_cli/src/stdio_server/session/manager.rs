@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
 use crossbeam_channel::Sender;
 
 use crate::stdio_server::{
     rpc::Call,
     session::{Session, SessionId},
-    MethodCall, SessionEvent,
+    SessionEvent,
 };
 
 use super::EventHandle;

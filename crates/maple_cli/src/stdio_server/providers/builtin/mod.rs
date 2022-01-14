@@ -4,7 +4,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use filter::FilterContext;
 use serde_json::json;
 
@@ -12,8 +11,7 @@ use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
-    rpc::Call,
-    session::{EventHandle, Scale, Session, SessionContext, SessionEvent, SyncFilterResults},
+    session::{EventHandle, Scale, SessionContext, SyncFilterResults},
     write_response, MethodCall,
 };
 
