@@ -1,11 +1,10 @@
 use std::io::BufRead;
-use std::path::PathBuf;
-use std::path::MAIN_SEPARATOR;
-use std::str::FromStr;
+use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::{anyhow, Result};
 use filter::subprocess::Exec;
 
+use super::TagInfo;
 use crate::tools::gtags::GTAGS_DIR;
 
 pub struct GtagsSearcher {
@@ -120,26 +119,6 @@ impl GtagsSearcher {
     // GTAGSROOT=$(pwd) GTAGSDBPATH=/home/xlc/.local/share/vimclap/gtags/test/ global -g 'ru(.*)' --result=ctags-x
 }
 
-#[derive(Default, Debug)]
-pub struct TagInfo {
-    pub path: String,
-    pub pattern: String,
-    pub line: usize,
-}
-
-impl FromStr for TagInfo {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        pattern::parse_gtags(s)
-            .map(|(line, path, pattern)| TagInfo {
-                path: path.into(),
-                pattern: pattern.into(),
-                line,
-            })
-            .ok_or(())
-    }
-}
-
 // Returns a stream of tag parsed from the gtags output.
 fn execute(cmd: Exec) -> Result<impl Iterator<Item = TagInfo>> {
     let stdout = cmd.stream_stdout()?;
@@ -148,34 +127,5 @@ fn execute(cmd: Exec) -> Result<impl Iterator<Item = TagInfo>> {
     Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
         .lines()
         .flatten()
-        .filter_map(|s| s.parse::<TagInfo>().ok()))
-}
-
-impl TagInfo {
-    pub fn grep_format(
-        &self,
-        query: &str,
-        kind: &str,
-        ignorecase: bool,
-    ) -> (String, Option<Vec<usize>>) {
-        let mut formatted = format!("[{}]{}:{}:1:", kind, self.path, self.line);
-
-        let found = if ignorecase {
-            self.pattern.to_lowercase().find(&query.to_lowercase())
-        } else {
-            self.pattern.find(query)
-        };
-
-        let indices = if let Some(idx) = found {
-            let start = formatted.len() + idx;
-            let end = start + query.len();
-            Some((start..end).into_iter().collect())
-        } else {
-            None
-        };
-
-        formatted.push_str(&self.pattern);
-
-        (formatted, indices)
-    }
+        .filter_map(|s| TagInfo::from_gtags(&s)))
 }

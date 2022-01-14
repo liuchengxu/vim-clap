@@ -28,7 +28,7 @@ fn search_tags(
     let usages = TagSearcher::new(tags_config)
         .search(query, filtering, true)?
         .filter_map(|tag_line| {
-            let (line, indices) = tag_line.grep_format(query, ignorecase);
+            let (line, indices) = tag_line.grep_format_ctags(query, ignorecase);
             filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
                 .map(|(line, indices)| Usage::new(line, indices))

@@ -1,14 +1,11 @@
-mod parser;
-
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use filter::subprocess::Exec;
 
+use super::TagInfo;
 use crate::tools::ctags::TagsConfig;
-
-pub use self::parser::TagLine;
 
 #[derive(Clone, Debug)]
 pub enum Filtering {
@@ -72,7 +69,7 @@ impl<'a, P: AsRef<Path> + Hash> TagSearcher<'a, P> {
         query: &str,
         filtering: Filtering,
         force_generate: bool,
-    ) -> Result<impl Iterator<Item = TagLine>> {
+    ) -> Result<impl Iterator<Item = TagInfo>> {
         use std::io::BufRead;
 
         if force_generate || !self.tags_exists() {
@@ -85,6 +82,6 @@ impl<'a, P: AsRef<Path> + Hash> TagSearcher<'a, P> {
         Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
             .lines()
             .flatten()
-            .filter_map(|line| line.parse::<TagLine>().ok()))
+            .filter_map(|s| TagInfo::from_ctags(&s)))
     }
 }

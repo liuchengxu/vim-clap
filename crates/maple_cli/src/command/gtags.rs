@@ -29,11 +29,11 @@ impl Gtags {
 
         if self.reference {
             for line in gtags_searcher.search_references(&self.query)? {
-                println!("{:?}", line.grep_format(&self.query, "refs", false));
+                println!("{:?}", line.grep_format_gtags("refs", &self.query, false));
             }
         } else {
             for line in gtags_searcher.search_definitions(&self.query)? {
-                println!("{:?}", line.grep_format(&self.query, "defs", false));
+                println!("{:?}", line.grep_format_gtags("defs", &self.query, false));
             }
         }
 
