@@ -230,7 +230,7 @@ mod tests {
             Some((
                 101,
                 "crates/maple_cli/src/app.rs",
-                "async fn run(self) -> Result<()> {"
+                "pub async fn run(self) -> Result<()> {"
             ))
         )
     }
