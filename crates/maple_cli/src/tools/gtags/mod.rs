@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 
 use crate::utils::PROJECT_DIRS;
 

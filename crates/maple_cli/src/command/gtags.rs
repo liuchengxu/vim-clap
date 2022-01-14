@@ -22,8 +22,7 @@ pub struct Gtags {
 }
 
 impl Gtags {
-    /// Looks for matches of `query` in lines of the current vim buffer.
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub fn run(&self, _params: Params) -> Result<()> {
         let gtags_searcher = GtagsSearcher::new(self.cwd.as_ref().to_path_buf());
 
         gtags_searcher.create_or_update_tags()?;
