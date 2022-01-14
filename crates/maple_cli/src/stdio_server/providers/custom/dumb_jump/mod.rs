@@ -1,9 +1,9 @@
-use std::path::Path;
+mod searcher;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use crossbeam_channel::Sender;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -11,14 +11,12 @@ use serde_json::json;
 
 use filter::Query;
 
-use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages};
+use self::searcher::SearchEngine;
+use crate::dumb_analyzer::{CtagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
-    session::{
-        note_job_is_finished, register_job_successfully, EventHandle, Session, SessionContext,
-        SessionEvent,
-    },
+    session::{note_job_is_finished, register_job_successfully, EventHandle, SessionContext},
     write_response, MethodCall,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
@@ -44,61 +42,6 @@ impl SearchInfo {
     fn has_superset_results(&self, other: &Self) -> bool {
         self.keyword == other.keyword && self.filtering_terms.contains(&other.filtering_terms)
     }
-}
-
-fn search_tags(
-    dir: &Path,
-    extension: &str,
-    query: &str,
-    filtering_terms: &ExactOrInverseTerms,
-) -> Result<Usages> {
-    let ignorecase = query.chars().all(char::is_lowercase);
-
-    let mut tags_config = TagsConfig::with_dir(dir);
-    if let Some(language) = get_language(extension) {
-        tags_config.languages(language.into());
-    }
-
-    let (query, filtering) = if let Some(stripped) = query.strip_suffix('*') {
-        (stripped, Filtering::Contain)
-    } else {
-        (query, Filtering::StartWith)
-    };
-
-    let usages = TagSearcher::new(tags_config)
-        .search(query, filtering, true)?
-        .filter_map(|tag_line| {
-            let (line, indices) = tag_line.grep_format(query, ignorecase);
-            filtering_terms
-                .check_jump_line((line, indices.unwrap_or_default()))
-                .map(|(line, indices)| Usage::new(line, indices))
-        })
-        .collect::<Vec<_>>();
-
-    Ok(usages.into())
-}
-
-async fn search_regex(
-    word: String,
-    extension: String,
-    cwd: String,
-    filtering_terms: &ExactOrInverseTerms,
-) -> Result<Usages> {
-    let searcher = RegexSearcher {
-        word,
-        extension,
-        dir: Some(cwd.into()),
-    };
-    searcher.search_usages(false, filtering_terms).await
-}
-
-// Returns a combo of tag results and regex results, tag results should be displayed first.
-fn combine(tag_results: Usages, regex_results: Usages) -> Usages {
-    let mut regex_results = regex_results;
-    regex_results.retain(|r| !tag_results.contains(r));
-    let mut tag_results = tag_results;
-    tag_results.append(regex_results);
-    tag_results
 }
 
 /// Parses the raw user input and returns the final keyword as well as the constraint terms.
@@ -173,13 +116,6 @@ fn parse_msg(msg: MethodCall) -> (u64, Params) {
     (msg.id, msg.parse_unsafe())
 }
 
-#[allow(unused)]
-enum SearchEngine {
-    Ctags,
-    Regex,
-    Both,
-}
-
 async fn search_for_usages(
     msg_id: u64,
     params: Params,
@@ -202,42 +138,10 @@ async fn search_for_usages(
         filtering_terms,
     } = search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
 
-    let usages_result = match search_engine {
-        SearchEngine::Ctags => {
-            let results = search_tags(Path::new(&cwd), &extension, &keyword, &filtering_terms);
-            // tags might be incomplete, try the regex way if no results from the tags file.
-            let try_regex =
-                results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
-            if try_regex {
-                search_regex(keyword.clone(), extension, cwd, &filtering_terms).await
-            } else {
-                results
-            }
-        }
-        SearchEngine::Regex => {
-            search_regex(keyword.clone(), extension, cwd, &filtering_terms).await
-        }
-        SearchEngine::Both => {
-            let tags_future = {
-                let cwd = cwd.clone();
-                let keyword = keyword.clone();
-                let extension = extension.clone();
-                let filtering_terms = filtering_terms.clone();
-                async move { search_tags(Path::new(&cwd), &extension, &keyword, &filtering_terms) }
-            };
-            let regex_future = search_regex(keyword.clone(), extension, cwd, &filtering_terms);
-
-            let (tags_results, regex_results) =
-                futures::future::join(tags_future, regex_future).await;
-
-            Ok(combine(
-                tags_results.unwrap_or_default(),
-                regex_results.unwrap_or_default(),
-            ))
-        }
-    };
-
-    let (response, usages) = match usages_result {
+    let (response, usages) = match search_engine
+        .search_usages(cwd, extension, keyword.clone(), &filtering_terms)
+        .await
+    {
         Ok(usages) => {
             let response = {
                 let total = usages.len();
@@ -294,7 +198,7 @@ pub struct DumbJumpHandle {
 impl DumbJumpHandle {
     // TODO: smarter strategy to regenerate the tags?
     fn regenerate_tags(&mut self, tags_config: TagsConfig<String>) {
-        let tags_searcher = TagSearcher::new(tags_config);
+        let tags_searcher = CtagsSearcher::new(tags_config);
         match tags_searcher.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);
@@ -333,7 +237,7 @@ impl DumbJumpHandle {
 
 #[async_trait::async_trait]
 impl EventHandle for DumbJumpHandle {
-    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+    async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
 
         let mut tags_config = TagsConfig::with_dir(params.cwd.clone());

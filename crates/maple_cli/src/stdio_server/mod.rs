@@ -20,7 +20,6 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
 
-use self::providers::{dumb_jump, quickfix, recent_files};
 use self::rpc::{Call, RpcClient};
 use self::session::{SessionEvent, SessionManager};
 use self::session_client::SessionClient;

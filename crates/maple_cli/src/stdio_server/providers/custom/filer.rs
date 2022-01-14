@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use jsonrpc_core::Value;
 use serde_json::json;
 
@@ -12,7 +11,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
 use crate::stdio_server::{
     rpc::Call,
-    session::{EventHandle, Session, SessionContext, SessionEvent},
+    session::{EventHandle, SessionContext},
     write_response, MethodCall,
 };
 use crate::utils::build_abs_path;
@@ -83,7 +82,7 @@ pub struct FilerHandle;
 
 #[async_trait::async_trait]
 impl EventHandle for FilerHandle {
-    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+    async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
         write_response(
             handle_filer_message(call.unwrap_method_call())
                 .expect("Both Success and Error are returned"),

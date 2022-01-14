@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
+use crate::utils::PROJECT_DIRS;
 
 pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 
@@ -25,12 +26,10 @@ pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
 
 /// Directory for the `tags` files.
 pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    let proj_dirs = directories::ProjectDirs::from("org", "vim", "Vim Clap")
-        .expect("Couldn't create project directory for vim-clap");
-
-    let mut tags_dir = proj_dirs.data_dir().to_path_buf();
+    let mut tags_dir = PROJECT_DIRS.data_dir().to_path_buf();
     tags_dir.push("tags");
-    std::fs::create_dir_all(&tags_dir).expect("Couldn't create data directory for vim-clap");
+
+    std::fs::create_dir_all(&tags_dir).expect("Couldn't create tags directory for vim-clap");
 
     tags_dir
 });

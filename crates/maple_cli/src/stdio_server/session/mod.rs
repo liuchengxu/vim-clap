@@ -84,7 +84,7 @@ pub trait EventHandle: Send + Sync + 'static {
                         let job_id = utility::calculate_hash(&rg_cmd.inner);
                         spawn_singleton_job(
                             async move {
-                                rg_cmd.create_cache().await;
+                                let _ = rg_cmd.create_cache().await;
                             },
                             job_id,
                         );
