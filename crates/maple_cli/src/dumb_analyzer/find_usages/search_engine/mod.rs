@@ -7,7 +7,7 @@ mod ctags;
 mod gtags;
 mod regex;
 
-pub use self::ctags::{Filtering, TagSearcher};
+pub use self::ctags::{Filtering, CtagsSearcher};
 pub use self::gtags::GtagsSearcher;
 pub use self::regex::RegexSearcher;
 
@@ -54,11 +54,11 @@ pub struct TagInfo {
     pub name: Option<String>,
     pub path: String,
     pub pattern: String,
+    pub line: usize,
     /// ctags only.
     pub kind: Option<String>,
     /// ctags only.
     pub scope: Option<String>,
-    pub line: usize,
 }
 
 impl TagInfo {

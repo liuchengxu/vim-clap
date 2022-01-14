@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::dumb_analyzer::{Filtering, RegexSearcher, TagSearcher, Usage, Usages};
+use crate::dumb_analyzer::{Filtering, RegexSearcher, CtagsSearcher, Usage, Usages};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
@@ -25,7 +25,7 @@ fn search_tags(
         (query, Filtering::StartWith)
     };
 
-    let usages = TagSearcher::new(tags_config)
+    let usages = CtagsSearcher::new(tags_config)
         .search(query, filtering, true)?
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format_ctags(query, ignorecase);

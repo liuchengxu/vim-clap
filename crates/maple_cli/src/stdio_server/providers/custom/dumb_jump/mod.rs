@@ -12,7 +12,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::SearchEngine;
-use crate::dumb_analyzer::{TagSearcher, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -200,7 +200,7 @@ pub struct DumbJumpHandle {
 impl DumbJumpHandle {
     // TODO: smarter strategy to regenerate the tags?
     fn regenerate_tags(&mut self, tags_config: TagsConfig<String>) {
-        let tags_searcher = TagSearcher::new(tags_config);
+        let tags_searcher = CtagsSearcher::new(tags_config);
         match tags_searcher.generate_tags() {
             Ok(()) => {
                 self.tags_regenerated.store(true, Ordering::Relaxed);

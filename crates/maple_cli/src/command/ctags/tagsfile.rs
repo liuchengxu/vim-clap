@@ -3,7 +3,7 @@ use structopt::StructOpt;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::{Filtering, TagSearcher};
+use crate::dumb_analyzer::{Filtering, CtagsSearcher};
 use crate::tools::ctags::TagsConfig;
 
 #[derive(StructOpt, Debug, Clone)]
@@ -56,7 +56,7 @@ impl TagsFile {
             &exclude_opt,
         );
 
-        let tags_searcher = TagSearcher::new(config);
+        let tags_searcher = CtagsSearcher::new(config);
 
         if let Some(ref query) = self.query {
             let results = tags_searcher.search(query, Filtering::StartWith, self.force_generate)?;
