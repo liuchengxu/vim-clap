@@ -195,7 +195,7 @@ impl Match {
         let column = self.column();
 
         let formatted_line = format!(
-            "[{}]{}:{}:{}:{}",
+            "[r{}]{}:{}:{}:{}",
             kind,
             path,
             line_number,
@@ -206,7 +206,7 @@ impl Match {
         let offset = path.len()
             + display_width(line_number as usize)
             + display_width(column)
-            + 5 // [] + 3 `:`
+            + 6 // `[r]` + 3 `:`
             + kind.len();
 
         (formatted_line, offset)

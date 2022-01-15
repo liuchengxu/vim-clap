@@ -12,7 +12,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::SearchEngine;
-use crate::dumb_analyzer::{CtagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -192,23 +192,12 @@ pub struct DumbJumpHandle {
     /// Current results from refiltering on `cached_results`.
     current_usages: Option<Usages>,
     /// Whether the tags file has been (re)-created.
-    tags_regenerated: Arc<AtomicBool>,
+    ctags_regenerated: Arc<AtomicBool>,
+    /// Whether the GTAGS file has been (re)-created.
+    gtags_regenerated: Arc<AtomicBool>,
 }
 
 impl DumbJumpHandle {
-    // TODO: smarter strategy to regenerate the tags?
-    fn regenerate_tags(&mut self, tags_config: TagsConfig<String>) {
-        let tags_searcher = CtagsSearcher::new(tags_config);
-        match tags_searcher.generate_tags() {
-            Ok(()) => {
-                self.tags_regenerated.store(true, Ordering::Relaxed);
-            }
-            Err(e) => {
-                tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
-            }
-        }
-    }
-
     /// Starts a new searching task.
     async fn start_search(
         &self,
@@ -220,8 +209,10 @@ impl DumbJumpHandle {
             msg_id,
             params,
             Some(search_info),
-            if self.tags_regenerated.load(Ordering::Relaxed) {
-                SearchEngine::Both
+            if self.ctags_regenerated.load(Ordering::Relaxed)
+                && self.gtags_regenerated.load(Ordering::Relaxed)
+            {
+                SearchEngine::All
             } else {
                 SearchEngine::Regex
             },
@@ -240,17 +231,44 @@ impl EventHandle for DumbJumpHandle {
     async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
 
-        let mut tags_config = TagsConfig::with_dir(params.cwd.clone());
-        if let Some(language) = get_language(&params.extension) {
-            tags_config.languages(language.into());
-        }
-        let job_id = utility::calculate_hash(&tags_config);
+        let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
 
         if register_job_successfully(job_id) {
-            tokio::task::spawn_blocking({
-                let mut handler = self.clone();
-                move || {
-                    handler.regenerate_tags(tags_config);
+            tokio::task::spawn({
+                let ctags_future = {
+                    let ctags_regenerated = self.ctags_regenerated.clone();
+                    let mut tags_config = TagsConfig::with_dir(params.cwd.clone());
+                    if let Some(language) = get_language(&params.extension) {
+                        tags_config.languages(language.into());
+                    }
+
+                    // TODO: smarter strategy to regenerate the tags?
+                    let ctags_searcher = CtagsSearcher::new(tags_config);
+                    async move {
+                        match ctags_searcher.generate_tags() {
+                            Ok(()) => {
+                                ctags_regenerated.store(true, Ordering::Relaxed);
+                            }
+                            Err(e) => {
+                                tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
+                            }
+                        }
+                    }
+                };
+
+                let gtags_future = {
+                    let gtags_regenerated = self.gtags_regenerated.clone();
+                    let gtags_searcher = GtagsSearcher::new(params.cwd.clone().into());
+                    async move {
+                        if let Err(e) = gtags_searcher.create_or_update_tags() {
+                            tracing::error!(error = ?e, "Error at initializing GTAGS");
+                        }
+                        gtags_regenerated.store(true, Ordering::Relaxed);
+                    }
+                };
+
+                async move {
+                    futures::future::join(ctags_future, gtags_future).await;
                     note_job_is_finished(job_id);
                 }
             });
