@@ -13,6 +13,8 @@
   - `hel`: match the tags that starts with `hel`.
   - `hel*`: match the tags that contain `hel`.
 
+- Add `gtags` support for dumb_jump provider. #792
+
 ## Fixed
 
 - Fix the regression that `filer` provider is not properly initialized on the Rust backend. #790
