@@ -205,19 +205,15 @@ impl DumbJumpHandle {
         params: Params,
         search_info: SearchInfo,
     ) -> SearchResults {
-        let job_future = search_for_usages(
-            msg_id,
-            params,
-            Some(search_info),
-            if self.ctags_regenerated.load(Ordering::Relaxed)
-                && self.gtags_regenerated.load(Ordering::Relaxed)
-            {
-                SearchEngine::All
-            } else {
-                SearchEngine::Regex
-            },
-            false,
-        );
+        let search_engine = match (
+            self.ctags_regenerated.load(Ordering::Relaxed),
+            self.gtags_regenerated.load(Ordering::Relaxed),
+        ) {
+            (true, true) => SearchEngine::All,
+            (true, false) => SearchEngine::CtagsAndRegex,
+            _ => SearchEngine::Regex,
+        };
+        let job_future = search_for_usages(msg_id, params, Some(search_info), search_engine, false);
 
         tokio::spawn(job_future).await.unwrap_or_else(|e| {
             tracing::error!(?e, "Failed to spawn task search_for_usages");

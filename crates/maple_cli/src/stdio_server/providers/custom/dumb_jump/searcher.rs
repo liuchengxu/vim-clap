@@ -66,20 +66,31 @@ async fn search_regex(
 }
 
 // Returns a combo of various results in the order of [ctags, gtags, regex].
-fn merge(ctag_results: Usages, gtags_results: Usages, regex_results: Usages) -> Usages {
+fn merge_all(
+    ctag_results: Usages,
+    maybe_gtags_results: Option<Usages>,
+    regex_results: Usages,
+) -> Usages {
     let mut regex_results = regex_results;
     regex_results.retain(|r| !ctag_results.contains(r));
-    regex_results.retain(|r| !gtags_results.contains(r));
+
     let mut ctag_results = ctag_results;
-    ctag_results.append(gtags_results);
+    if let Some(gtags_results) = maybe_gtags_results {
+        regex_results.retain(|r| !gtags_results.contains(r));
+        ctag_results.append(gtags_results);
+    }
+
     ctag_results.append(regex_results);
     ctag_results
 }
 
+// The initialization of Ctags is normally faster than Gtags.
+// Regex requires no initialization.
 #[derive(Debug, Clone)]
 pub(super) enum SearchEngine {
     Ctags,
     Regex,
+    CtagsAndRegex,
     CtagsElseRegex,
     All,
 }
@@ -92,11 +103,29 @@ impl SearchEngine {
         keyword: String,
         filtering_terms: &ExactOrInverseTerms,
     ) -> Result<Usages> {
+        let ctags_future = {
+            let cwd = cwd.clone();
+            let keyword = keyword.clone();
+            let extension = extension.clone();
+            let filtering_terms = filtering_terms.clone();
+            async move { search_ctags(Path::new(&cwd), &extension, &keyword, &filtering_terms) }
+        };
+
         match self {
             SearchEngine::Ctags => {
                 search_ctags(Path::new(&cwd), &extension, &keyword, filtering_terms)
             }
             SearchEngine::Regex => search_regex(keyword, extension, cwd, filtering_terms).await,
+            SearchEngine::CtagsAndRegex => {
+                let regex_future = search_regex(keyword, extension, cwd, filtering_terms);
+                let (ctags_results, regex_results) = futures::join!(ctags_future, regex_future);
+
+                Ok(merge_all(
+                    ctags_results.unwrap_or_default(),
+                    None,
+                    regex_results.unwrap_or_default(),
+                ))
+            }
             SearchEngine::CtagsElseRegex => {
                 let results = search_ctags(Path::new(&cwd), &extension, &keyword, filtering_terms);
                 // tags might be incomplete, try the regex way if no results from the tags file.
@@ -109,14 +138,6 @@ impl SearchEngine {
                 }
             }
             SearchEngine::All => {
-                let ctags_future = {
-                    let cwd = cwd.clone();
-                    let keyword = keyword.clone();
-                    let extension = extension.clone();
-                    let filtering_terms = filtering_terms.clone();
-                    async move { search_ctags(Path::new(&cwd), &extension, &keyword, &filtering_terms) }
-                };
-
                 let gtags_future = {
                     let cwd = cwd.clone();
                     let keyword = keyword.clone();
@@ -129,9 +150,9 @@ impl SearchEngine {
                 let (ctags_results, gtags_results, regex_results) =
                     futures::join!(ctags_future, gtags_future, regex_future);
 
-                Ok(merge(
+                Ok(merge_all(
                     ctags_results.unwrap_or_default(),
-                    gtags_results.unwrap_or_default(),
+                    gtags_results.ok(),
                     regex_results.unwrap_or_default(),
                 ))
             }
