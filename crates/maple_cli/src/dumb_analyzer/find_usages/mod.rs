@@ -1,5 +1,7 @@
 mod search_engine;
 
+use std::ops::{Index, IndexMut};
+
 use rayon::prelude::*;
 
 pub use self::search_engine::{CtagsSearcher, Filtering, GtagsSearcher, RegexSearcher};
@@ -47,6 +49,19 @@ impl From<Vec<Usage>> for Usages {
     }
 }
 
+impl Index<usize> for Usages {
+    type Output = Usage;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl IndexMut<usize> for Usages {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
 impl Usages {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -62,6 +77,10 @@ impl Usages {
 
     pub fn iter(&self) -> impl Iterator<Item = &Usage> {
         self.0.iter()
+    }
+
+    pub fn into_iter(self) -> std::vec::IntoIter<Usage> {
+        self.0.into_iter()
     }
 
     pub fn par_iter(&self) -> rayon::slice::Iter<'_, Usage> {
