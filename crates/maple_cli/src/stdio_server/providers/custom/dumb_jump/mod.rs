@@ -237,7 +237,8 @@ impl EventHandle for DumbJumpHandle {
             tokio::task::spawn({
                 let ctags_future = {
                     let ctags_regenerated = self.ctags_regenerated.clone();
-                    let mut tags_config = TagsConfig::with_dir(params.cwd.clone());
+                    let cwd = params.cwd.clone();
+                    let mut tags_config = TagsConfig::with_dir(cwd.clone());
                     if let Some(language) = get_language(&params.extension) {
                         tags_config.languages(language.into());
                     }
@@ -245,6 +246,7 @@ impl EventHandle for DumbJumpHandle {
                     // TODO: smarter strategy to regenerate the tags?
                     let ctags_searcher = CtagsSearcher::new(tags_config);
                     async move {
+                        let now = std::time::Instant::now();
                         match ctags_searcher.generate_tags() {
                             Ok(()) => {
                                 ctags_regenerated.store(true, Ordering::Relaxed);
@@ -253,22 +255,28 @@ impl EventHandle for DumbJumpHandle {
                                 tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
                             }
                         }
+                        tracing::debug!(?cwd, "⏱️  Ctags elapsed: {:?}", now.elapsed());
                     }
                 };
 
                 let gtags_future = {
                     let gtags_regenerated = self.gtags_regenerated.clone();
-                    let gtags_searcher = GtagsSearcher::new(params.cwd.clone().into());
+                    let cwd = params.cwd.clone();
+                    let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
                     async move {
+                        let now = std::time::Instant::now();
                         if let Err(e) = gtags_searcher.create_or_update_tags() {
                             tracing::error!(error = ?e, "Error at initializing GTAGS");
                         }
                         gtags_regenerated.store(true, Ordering::Relaxed);
+                        tracing::debug!(?cwd, "⏱️  Gtags elapsed: {:?}", now.elapsed());
                     }
                 };
 
                 async move {
+                    let now = std::time::Instant::now();
                     futures::future::join(ctags_future, gtags_future).await;
+                    tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
                     note_job_is_finished(job_id);
                 }
             });
