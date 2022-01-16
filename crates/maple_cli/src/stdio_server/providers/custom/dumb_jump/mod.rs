@@ -1,8 +1,8 @@
 mod searcher;
 
+use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::ops::Deref;
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -13,7 +13,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::SearchEngine;
-use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, SearchType, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -28,6 +28,8 @@ use crate::utils::ExactOrInverseTerms;
 struct SearchInfo {
     /// Keyword for the tag or regex searching.
     keyword: String,
+    /// Search type for `keyword`.
+    search_type: SearchType,
     /// Search terms for further filtering.
     filtering_terms: ExactOrInverseTerms,
 }
@@ -41,7 +43,9 @@ impl SearchInfo {
     /// - the keyword is the same.
     /// - the new query is a subset of last query.
     fn has_superset_results(&self, other: &Self) -> bool {
-        self.keyword == other.keyword && self.filtering_terms.contains(&other.filtering_terms)
+        self.keyword == other.keyword
+            && self.search_type == other.search_type
+            && self.filtering_terms.contains(&other.filtering_terms)
     }
 }
 
@@ -62,21 +66,27 @@ fn parse_search_info(query: &str) -> SearchInfo {
 
     // If there is no fuzzy term, use the full query as the keyword,
     // otherwise restore the fuzzy query as the keyword we are going to search.
-    let (keyword, filtering_terms) = if fuzzy_terms.is_empty() {
-        if !exact_terms.is_empty() {
+    let (keyword, search_type, filtering_terms) = if fuzzy_terms.is_empty() {
+        if exact_terms.is_empty() {
+            (
+                query.into(),
+                SearchType::StartWith,
+                ExactOrInverseTerms::default(),
+            )
+        } else {
             (
                 exact_terms[0].word.clone(),
+                SearchType::Exact,
                 ExactOrInverseTerms {
                     exact_terms,
                     inverse_terms,
                 },
             )
-        } else {
-            (query.into(), ExactOrInverseTerms::default())
         }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            SearchType::StartWith,
             ExactOrInverseTerms {
                 exact_terms,
                 inverse_terms,
@@ -84,8 +94,22 @@ fn parse_search_info(query: &str) -> SearchInfo {
         )
     };
 
+    // TODO: Search syntax:
+    // - 'foo
+    // - foo*
+    // - foo
+    //
+    // if let Some(stripped) = query.strip_suffix('*') {
+    // (stripped, SearchType::Contain)
+    // } else if let Some(stripped) = query.strip_prefix('\'') {
+    // (stripped, SearchType::Exact)
+    // } else {
+    // (query, SearchType::StartWith)
+    // };
+
     SearchInfo {
         keyword,
+        search_type,
         filtering_terms,
     }
 }
@@ -120,7 +144,7 @@ fn parse_msg(msg: MethodCall) -> (u64, Params) {
 async fn search_for_usages(
     msg_id: u64,
     params: Params,
-    search_info: Option<SearchInfo>,
+    maybe_search_info: Option<SearchInfo>,
     search_engine: SearchEngine,
     force_execute: bool,
 ) -> SearchResults {
@@ -134,13 +158,10 @@ async fn search_for_usages(
         return Default::default();
     }
 
-    let SearchInfo {
-        keyword,
-        filtering_terms,
-    } = search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
+    let search_info = maybe_search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
 
     let (response, usages) = match search_engine
-        .search_usages(cwd, extension, keyword.clone(), &filtering_terms)
+        .search_usages(cwd, extension, &search_info)
         .await
     {
         Ok(usages) => {
@@ -178,10 +199,7 @@ async fn search_for_usages(
     SearchResults {
         usages,
         raw_query: query,
-        search_info: SearchInfo {
-            keyword,
-            filtering_terms,
-        },
+        search_info,
     }
 }
 
@@ -363,5 +381,16 @@ impl EventHandle for DumbJumpHandle {
         self.current_usages.take();
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_search_info() {
+        let search_info = parse_search_info("'foo");
+        println!("{:?}", search_info);
     }
 }

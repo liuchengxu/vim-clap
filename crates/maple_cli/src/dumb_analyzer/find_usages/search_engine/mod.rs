@@ -7,13 +7,33 @@ mod ctags;
 mod gtags;
 mod regex;
 
-pub use self::ctags::{CtagsSearcher, Filtering};
+pub use self::ctags::CtagsSearcher;
 pub use self::gtags::GtagsSearcher;
 pub use self::regex::RegexSearcher;
 
 use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
+
+/// When spawning the ctags/gtags request, we can specify the searching strategy.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(unused)]
+pub enum SearchType {
+    /// Prefix match.
+    StartWith,
+    /// Exact match.
+    Exact,
+    /// Substring match.
+    Contain,
+    ///
+    Inherit,
+}
+
+impl Default for SearchType {
+    fn default() -> Self {
+        Self::Exact
+    }
+}
 
 fn rs_kind_alias() -> HashMap<&'static str, &'static str> {
     vec![
@@ -163,11 +183,8 @@ impl TagInfo {
     }
 
     pub fn grep_format_ctags(&self, query: &str, ignorecase: bool) -> (String, Option<Vec<usize>>) {
-        self.grep_format_inner(
-            self.kind.as_ref().map(|s| s.as_ref()).unwrap_or("tags"),
-            query,
-            ignorecase,
-        )
+        let kind = self.kind.as_ref().map(|s| s.as_ref()).unwrap_or("tags");
+        self.grep_format_inner(kind, query, ignorecase)
     }
 
     pub fn grep_format_gtags(

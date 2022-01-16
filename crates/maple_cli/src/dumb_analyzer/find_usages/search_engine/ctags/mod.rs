@@ -4,16 +4,8 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use filter::subprocess::Exec;
 
-use super::TagInfo;
+use super::{SearchType, TagInfo};
 use crate::tools::ctags::TagsConfig;
-
-#[derive(Clone, Debug)]
-pub enum Filtering {
-    StartWith,
-    Contain,
-    #[allow(unused)]
-    Inherit,
-}
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -38,7 +30,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         self.config.generate_tags()
     }
 
-    fn build_exec(&self, query: &str, filtering_type: Filtering) -> Exec {
+    fn build_exec(&self, query: &str, search_type: SearchType) -> Exec {
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let cmd = Exec::cmd("readtags")
             .arg("--tag-file")
@@ -52,13 +44,17 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             cmd
         };
 
-        match filtering_type {
-            Filtering::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
-            Filtering::Contain => cmd
+        match search_type {
+            SearchType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
+            SearchType::Exact => cmd
+                .arg("-Q")
+                .arg(format!("(eq? (downcase $name) \"{}\")", query))
+                .arg("-l"),
+            SearchType::Contain => cmd
                 .arg("-Q")
                 .arg(format!("(substr? (downcase $name) \"{}\")", query))
                 .arg("-l"),
-            Filtering::Inherit => {
+            SearchType::Inherit => {
                 todo!("Inherit")
             }
         }
@@ -67,7 +63,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     pub fn search(
         &self,
         query: &str,
-        filtering: Filtering,
+        search_type: SearchType,
         force_generate: bool,
     ) -> Result<impl Iterator<Item = TagInfo>> {
         use std::io::BufRead;
@@ -76,7 +72,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             self.generate_tags()?;
         }
 
-        let stdout = self.build_exec(query, filtering).stream_stdout()?;
+        let stdout = self.build_exec(query, search_type).stream_stdout()?;
 
         // We usually have a decent amount of RAM nowdays.
         Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)

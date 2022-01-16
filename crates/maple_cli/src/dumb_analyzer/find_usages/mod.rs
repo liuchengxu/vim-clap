@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut};
 
 use rayon::prelude::*;
 
-pub use self::search_engine::{CtagsSearcher, Filtering, GtagsSearcher, RegexSearcher};
+pub use self::search_engine::{CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType};
 
 #[derive(Clone, Debug, Default)]
 pub struct Usage {
