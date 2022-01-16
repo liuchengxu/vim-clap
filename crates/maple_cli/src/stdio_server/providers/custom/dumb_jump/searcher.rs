@@ -87,7 +87,11 @@ fn merge_all(
     ctag_results
 }
 
-// The initialization of Ctags is normally faster than Gtags.
+// The initialization of Ctags on a new project is normally
+// faster than Gtags, but once Gtags has been initialized,
+// the incremental update of Gtags should be instant enough
+// and is comparable to Ctags regarding the speed.
+//
 // Regex requires no initialization.
 #[derive(Debug, Clone)]
 pub(super) enum SearchEngine {
