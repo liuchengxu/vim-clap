@@ -160,30 +160,6 @@ impl<T: EventHandle> Session<T> {
         &self.context.provider_id
     }
 
-    async fn process_event(&mut self, event: SessionEvent) -> Result<()> {
-        match event {
-            SessionEvent::Terminate => self.handle_terminate(),
-            SessionEvent::Create(call) => {
-                self.event_handler
-                    .on_create(call, self.context.clone())
-                    .await
-            }
-            SessionEvent::OnMove(msg) => {
-                self.event_handler
-                    .on_move(msg, self.context.clone())
-                    .await?;
-            }
-            SessionEvent::OnTyped(msg) => {
-                // TODO: use a buffered channel here, do not process on every
-                // single char change.
-                self.event_handler
-                    .on_typed(msg, self.context.clone())
-                    .await?;
-            }
-        }
-        Ok(())
-    }
-
     pub fn start_event_loop(mut self) {
         use crossbeam_channel::select;
 
