@@ -13,6 +13,8 @@
   - `hel`: match the tags that starts with `hel`.
   - `hel*`: match the tags that contain `hel`.
 
+- Introduce debounce for user typed event. #793
+
 ## Fixed
 
 - Fix the regression that `filer` provider is not properly initialized on the Rust backend. #790
