@@ -161,6 +161,59 @@ impl<T: EventHandle> Session<T> {
     }
 
     pub fn start_event_loop(mut self) {
+        if self.context.debounce {
+            tokio::spawn(async move {
+                self.run_event_loop_with_debounce().await;
+            });
+        } else {
+            tokio::spawn(async move {
+                self.run_event_loop_without_debounce().await;
+            });
+        }
+    }
+
+    async fn process_event(&mut self, event: SessionEvent) -> Result<()> {
+        match event {
+            SessionEvent::Terminate => self.handle_terminate(),
+            SessionEvent::Create(call) => {
+                self.event_handler
+                    .on_create(call, self.context.clone())
+                    .await
+            }
+            SessionEvent::OnMove(msg) => {
+                self.event_handler
+                    .on_move(msg, self.context.clone())
+                    .await?;
+            }
+            SessionEvent::OnTyped(msg) => {
+                // TODO: use a buffered channel here, do not process on every
+                // single char change.
+                self.event_handler
+                    .on_typed(msg, self.context.clone())
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn run_event_loop_without_debounce(mut self) {
+        loop {
+            match self.event_recv.recv() {
+                Ok(event) => {
+                    tracing::debug!(event = ?event.short_display(), "Received an event");
+                    if let Err(err) = self.process_event(event).await {
+                        tracing::debug!(?err, "Error processing SessionEvent");
+                    }
+                }
+                Err(err) => {
+                    tracing::debug!(?err, "The channel is possibly broken");
+                    break;
+                }
+            }
+        }
+    }
+
+    async fn run_event_loop_with_debounce(mut self) {
         use crossbeam_channel::select;
 
         // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
@@ -175,58 +228,56 @@ impl<T: EventHandle> Session<T> {
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
-        tokio::spawn(async move {
-            tracing::debug!(
-                session_id = self.session_id,
-                provider_id = %self.provider_id(),
-                "Spawning a new session task",
-            );
+        tracing::debug!(
+            session_id = self.session_id,
+            provider_id = %self.provider_id(),
+            "Spawning a new session task",
+        );
 
-            let mut pending_on_typed = None;
-            let mut debounce_timer = NEVER;
+        let mut pending_on_typed = None;
+        let mut debounce_timer = NEVER;
 
-            loop {
-                select! {
-                  recv(self.event_recv) -> maybe_event => {
-                      match maybe_event {
-                          Ok(event) => {
-                              tracing::debug!(event = ?event.short_display(), "Received an event");
-                              match event {
-                                  SessionEvent::Terminate => self.handle_terminate(),
-                                  SessionEvent::Create(call) => {
-                                      self.event_handler
-                                          .on_create(call, self.context.clone())
-                                          .await
-                                  }
-                                  SessionEvent::OnMove(msg) => {
-                                      if let Err(err) =
-                                          self.event_handler.on_move(msg, self.context.clone()).await
-                                      {
-                                          tracing::error!(?err, "Error processing SessionEvent::OnMove");
-                                      }
-                                  }
-                                  SessionEvent::OnTyped(msg) => {
-                                      pending_on_typed.replace(msg);
-                                      debounce_timer = DELAY;
+        loop {
+            select! {
+              recv(self.event_recv) -> maybe_event => {
+                  match maybe_event {
+                      Ok(event) => {
+                          tracing::debug!(event = ?event.short_display(), "Received an event");
+                          match event {
+                              SessionEvent::Terminate => self.handle_terminate(),
+                              SessionEvent::Create(call) => {
+                                  self.event_handler
+                                      .on_create(call, self.context.clone())
+                                      .await
+                              }
+                              SessionEvent::OnMove(msg) => {
+                                  if let Err(err) =
+                                      self.event_handler.on_move(msg, self.context.clone()).await
+                                  {
+                                      tracing::error!(?err, "Error processing SessionEvent::OnMove");
                                   }
                               }
-                          }
-                          Err(err) => {
-                              tracing::debug!(?err, "The channel is possibly broken");
-                              return;
-                          }
-                      }
-                  }
-                  default(debounce_timer) => {
-                      debounce_timer = NEVER;
-                      if let Some(msg) = pending_on_typed.take() {
-                          if let Err(err) = self.event_handler.on_typed(msg, self.context.clone()).await {
-                              tracing::error!(?err, "Error processing SessionEvent::OnTyped");
+                              SessionEvent::OnTyped(msg) => {
+                                  pending_on_typed.replace(msg);
+                                  debounce_timer = DELAY;
+                              }
                           }
                       }
+                      Err(err) => {
+                          tracing::debug!(?err, "The channel is possibly broken");
+                          return;
+                      }
                   }
-                }
+              }
+              default(debounce_timer) => {
+                  debounce_timer = NEVER;
+                  if let Some(msg) = pending_on_typed.take() {
+                      if let Err(err) = self.event_handler.on_typed(msg, self.context.clone()).await {
+                          tracing::error!(?err, "Error processing SessionEvent::OnTyped");
+                      }
+                  }
+              }
             }
-        });
+        }
     }
 }
