@@ -13,6 +13,7 @@
   - `hel`: match the tags that starts with `hel`.
   - `hel*`: match the tags that contain `hel`.
 
+- Add `gtags` support for dumb_jump provider. #792
 - Introduce debounce for user typed event. #793
 
 ## Fixed

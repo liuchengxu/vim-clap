@@ -53,7 +53,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     let msg = method_call;
 
                     if msg.method != "init_ext_map" {
-                        tracing::debug!(?msg, "==> stdio message(in)");
+                        tracing::debug!(?msg, "🔽 stdio message(in)");
                     }
 
                     match msg.method.as_str() {

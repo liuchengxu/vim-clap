@@ -1,5 +1,6 @@
 mod searcher;
 
+use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -12,7 +13,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::SearchEngine;
-use crate::dumb_analyzer::{CtagsSearcher, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, SearchType, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -27,6 +28,8 @@ use crate::utils::ExactOrInverseTerms;
 struct SearchInfo {
     /// Keyword for the tag or regex searching.
     keyword: String,
+    /// Search type for `keyword`.
+    search_type: SearchType,
     /// Search terms for further filtering.
     filtering_terms: ExactOrInverseTerms,
 }
@@ -40,7 +43,9 @@ impl SearchInfo {
     /// - the keyword is the same.
     /// - the new query is a subset of last query.
     fn has_superset_results(&self, other: &Self) -> bool {
-        self.keyword == other.keyword && self.filtering_terms.contains(&other.filtering_terms)
+        self.keyword == other.keyword
+            && self.search_type == other.search_type
+            && self.filtering_terms.contains(&other.filtering_terms)
     }
 }
 
@@ -61,21 +66,27 @@ fn parse_search_info(query: &str) -> SearchInfo {
 
     // If there is no fuzzy term, use the full query as the keyword,
     // otherwise restore the fuzzy query as the keyword we are going to search.
-    let (keyword, filtering_terms) = if fuzzy_terms.is_empty() {
-        if !exact_terms.is_empty() {
+    let (keyword, search_type, filtering_terms) = if fuzzy_terms.is_empty() {
+        if exact_terms.is_empty() {
+            (
+                query.into(),
+                SearchType::StartWith,
+                ExactOrInverseTerms::default(),
+            )
+        } else {
             (
                 exact_terms[0].word.clone(),
+                SearchType::Exact,
                 ExactOrInverseTerms {
                     exact_terms,
                     inverse_terms,
                 },
             )
-        } else {
-            (query.into(), ExactOrInverseTerms::default())
         }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            SearchType::StartWith,
             ExactOrInverseTerms {
                 exact_terms,
                 inverse_terms,
@@ -83,8 +94,22 @@ fn parse_search_info(query: &str) -> SearchInfo {
         )
     };
 
+    // TODO: Search syntax:
+    // - 'foo
+    // - foo*
+    // - foo
+    //
+    // if let Some(stripped) = query.strip_suffix('*') {
+    // (stripped, SearchType::Contain)
+    // } else if let Some(stripped) = query.strip_prefix('\'') {
+    // (stripped, SearchType::Exact)
+    // } else {
+    // (query, SearchType::StartWith)
+    // };
+
     SearchInfo {
         keyword,
+        search_type,
         filtering_terms,
     }
 }
@@ -119,7 +144,7 @@ fn parse_msg(msg: MethodCall) -> (u64, Params) {
 async fn search_for_usages(
     msg_id: u64,
     params: Params,
-    search_info: Option<SearchInfo>,
+    maybe_search_info: Option<SearchInfo>,
     search_engine: SearchEngine,
     force_execute: bool,
 ) -> SearchResults {
@@ -133,13 +158,10 @@ async fn search_for_usages(
         return Default::default();
     }
 
-    let SearchInfo {
-        keyword,
-        filtering_terms,
-    } = search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
+    let search_info = maybe_search_info.unwrap_or_else(|| parse_search_info(query.as_ref()));
 
     let (response, usages) = match search_engine
-        .search_usages(cwd, extension, keyword.clone(), &filtering_terms)
+        .search_usages(cwd, extension, &search_info)
         .await
     {
         Ok(usages) => {
@@ -177,10 +199,7 @@ async fn search_for_usages(
     SearchResults {
         usages,
         raw_query: query,
-        search_info: SearchInfo {
-            keyword,
-            filtering_terms,
-        },
+        search_info,
     }
 }
 
@@ -192,23 +211,12 @@ pub struct DumbJumpHandle {
     /// Current results from refiltering on `cached_results`.
     current_usages: Option<Usages>,
     /// Whether the tags file has been (re)-created.
-    tags_regenerated: Arc<AtomicBool>,
+    ctags_regenerated: Arc<AtomicBool>,
+    /// Whether the GTAGS file has been (re)-created.
+    gtags_regenerated: Arc<AtomicBool>,
 }
 
 impl DumbJumpHandle {
-    // TODO: smarter strategy to regenerate the tags?
-    fn regenerate_tags(&mut self, tags_config: TagsConfig<String>) {
-        let tags_searcher = CtagsSearcher::new(tags_config);
-        match tags_searcher.generate_tags() {
-            Ok(()) => {
-                self.tags_regenerated.store(true, Ordering::Relaxed);
-            }
-            Err(e) => {
-                tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
-            }
-        }
-    }
-
     /// Starts a new searching task.
     async fn start_search(
         &self,
@@ -216,17 +224,15 @@ impl DumbJumpHandle {
         params: Params,
         search_info: SearchInfo,
     ) -> SearchResults {
-        let job_future = search_for_usages(
-            msg_id,
-            params,
-            Some(search_info),
-            if self.tags_regenerated.load(Ordering::Relaxed) {
-                SearchEngine::Both
-            } else {
-                SearchEngine::Regex
-            },
-            false,
-        );
+        let search_engine = match (
+            self.ctags_regenerated.load(Ordering::Relaxed),
+            self.gtags_regenerated.load(Ordering::Relaxed),
+        ) {
+            (true, true) => SearchEngine::All,
+            (true, false) => SearchEngine::CtagsAndRegex,
+            _ => SearchEngine::Regex,
+        };
+        let job_future = search_for_usages(msg_id, params, Some(search_info), search_engine, false);
 
         tokio::spawn(job_future).await.unwrap_or_else(|e| {
             tracing::error!(?e, "Failed to spawn task search_for_usages");
@@ -240,20 +246,66 @@ impl EventHandle for DumbJumpHandle {
     async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
         let (msg_id, params) = parse_msg(call.unwrap_method_call());
 
-        let mut tags_config = TagsConfig::with_dir(params.cwd.clone());
-        if let Some(language) = get_language(&params.extension) {
-            tags_config.languages(language.into());
-        }
-        let job_id = utility::calculate_hash(&tags_config);
+        let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
 
         if register_job_successfully(job_id) {
-            tokio::task::spawn_blocking({
-                let mut handler = self.clone();
-                move || {
-                    handler.regenerate_tags(tags_config);
-                    note_job_is_finished(job_id);
+            let ctags_future = {
+                let ctags_regenerated = self.ctags_regenerated.clone();
+                let cwd = params.cwd.clone();
+                let mut tags_config = TagsConfig::with_dir(cwd.clone());
+                if let Some(language) = get_language(&params.extension) {
+                    tags_config.languages(language.into());
                 }
-            });
+
+                // TODO: smarter strategy to regenerate the tags?
+                let ctags_searcher = CtagsSearcher::new(tags_config);
+                async move {
+                    let now = std::time::Instant::now();
+                    match ctags_searcher.generate_tags() {
+                        Ok(()) => {
+                            ctags_regenerated.store(true, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
+                        }
+                    }
+                    tracing::debug!(?cwd, "⏱️  Ctags elapsed: {:?}", now.elapsed());
+                }
+            };
+
+            let gtags_future = {
+                let gtags_regenerated = self.gtags_regenerated.clone();
+                let cwd = params.cwd.clone();
+                let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
+                async move {
+                    let now = std::time::Instant::now();
+                    if let Err(e) = gtags_searcher.create_or_update_tags() {
+                        tracing::error!(error = ?e, "Error at initializing GTAGS");
+                    }
+                    gtags_regenerated.store(true, Ordering::Relaxed);
+                    tracing::debug!(?cwd, "⏱️  Gtags elapsed: {:?}", now.elapsed());
+                }
+            };
+
+            if *crate::tools::gtags::GTAGS_EXISTS.deref() {
+                tokio::task::spawn({
+                    async move {
+                        let now = std::time::Instant::now();
+                        futures::future::join(ctags_future, gtags_future).await;
+                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
+                        note_job_is_finished(job_id);
+                    }
+                });
+            } else {
+                tokio::task::spawn({
+                    async move {
+                        let now = std::time::Instant::now();
+                        ctags_future.await;
+                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
+                        note_job_is_finished(job_id);
+                    }
+                });
+            }
         }
 
         tokio::spawn(async move {
@@ -329,5 +381,16 @@ impl EventHandle for DumbJumpHandle {
         self.current_usages.take();
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_search_info() {
+        let search_info = parse_search_info("'foo");
+        println!("{:?}", search_info);
     }
 }

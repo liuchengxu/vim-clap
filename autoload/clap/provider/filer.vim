@@ -412,7 +412,8 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
   call s:set_prompt()
-  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir})
+  " TODO: reimplement filer on Rust side.
+  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir, 'debounce': v:false})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
