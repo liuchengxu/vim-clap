@@ -4,7 +4,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use filter::FilterContext;
 use serde_json::json;
 
@@ -12,35 +11,18 @@ use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
-    rpc::Call,
-    session::{
-        EventHandler, NewSession, Scale, Session, SessionContext, SessionEvent, SyncFilterResults,
-    },
+    session::{EventHandle, Scale, SessionContext, SyncFilterResults},
     write_response, MethodCall,
 };
 
 pub use on_move::{OnMove, OnMoveHandler};
 
-pub struct BuiltinSession;
-
-impl NewSession for BuiltinSession {
-    fn spawn(call: Call) -> Result<Sender<SessionEvent>> {
-        let (session, session_sender) = Session::new(call, BuiltinEventHandler);
-        session.start_event_loop();
-        Ok(session_sender)
-    }
-}
-
 #[derive(Clone)]
-pub struct BuiltinEventHandler;
+pub struct BuiltinHandle;
 
 #[async_trait::async_trait]
-impl EventHandler for BuiltinEventHandler {
-    async fn handle_on_move(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+impl EventHandle for BuiltinHandle {
+    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
         if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
         {
@@ -50,11 +32,7 @@ impl EventHandler for BuiltinEventHandler {
         Ok(())
     }
 
-    async fn handle_on_typed(
-        &mut self,
-        msg: MethodCall,
-        context: Arc<SessionContext>,
-    ) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let query = msg.get_query();
 
         let scale = context.scale.lock();

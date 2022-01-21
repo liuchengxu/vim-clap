@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -12,7 +13,7 @@ use super::SharedParams;
 
 use crate::app::Params;
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, DEFAULT_EXCLUDE_OPT};
 use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -34,14 +35,7 @@ pub struct RecursiveTags {
 }
 
 pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
-    use itertools::Itertools;
-
-    let exclude = super::EXCLUDE
-        .split(',')
-        .map(|x| format!("--exclude={}", x))
-        .join(" ");
-
-    let command = format!("{} {}", BASE_TAGS_CMD, exclude);
+    let command = format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref());
 
     CtagsCommand::new(BaseCommand::new(command, cwd))
 }

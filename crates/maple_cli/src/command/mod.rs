@@ -5,4 +5,5 @@ pub mod dumb_jump;
 pub mod exec;
 pub mod filter;
 pub mod grep;
+pub mod gtags;
 pub mod helptags;

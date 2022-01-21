@@ -17,6 +17,8 @@ pub enum Cmd {
     /// Execute the grep command to avoid the escape issue
     #[clap(name = "grep")]
     Grep(command::grep::Grep),
+    #[structopt(name = "gtags")]
+    Gtags(command::gtags::Gtags),
     /// Execute the shell command.
     #[clap(name = "exec")]
     Exec(command::exec::Exec),
@@ -101,6 +103,7 @@ impl Maple {
             Cmd::Exec(exec) => exec.run(self.params)?,
             Cmd::Grep(grep) => grep.run(self.params)?,
             Cmd::Ctags(ctags) => ctags.run(self.params)?,
+            Cmd::Gtags(gtags) => gtags.run(self.params)?,
             Cmd::Cache(cache) => cache.run()?,
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,

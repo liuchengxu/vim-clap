@@ -9,8 +9,7 @@ use itertools::Itertools;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
-
-const EXCLUDE: &str = ".git,*.json,node_modules,target,_build";
+use crate::tools::ctags::EXCLUDE;
 
 /// Generate ctags recursively given the directory.
 #[derive(Parser, Debug, Clone)]

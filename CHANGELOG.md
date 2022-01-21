@@ -2,9 +2,25 @@
 
 ## [unreleased]
 
-## [Improved]
+
+## [0.32] 2022-01-21
+## Improved
 
 - Rework the truncation of long lines. #788
+- Support searching the definition/declaration in the `tags` file using `readtags` for `dumb_jump` provider. #789
+
+  Aside from the previous regex searching, the results from the tags searching will be displayed first. You can control the
+  tags searching scheme by adding `*` in the end:
+
+  - `hel`: match the tags that starts with `hel`.
+  - `hel*`: match the tags that contain `hel`.
+
+- Add `gtags` support for dumb_jump provider. #792
+- Introduce debounce for user typed event. #793
+
+## Fixed
+
+- Fix the regression that `filer` provider is not properly initialized on the Rust backend. #790
 
 ## [0.31] 2021-12-12
 

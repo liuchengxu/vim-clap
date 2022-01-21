@@ -24,6 +24,19 @@ static PROJ_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*):(\d+).*\[(.*)@(.
 static COMMIT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap());
 
+static GTAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"(.*)\s+(\d+)\s+(.*)").unwrap());
+
+pub fn parse_gtags(line: &str) -> Option<(usize, &str, &str)> {
+    let cap = GTAGS.captures(line)?;
+    let lnum = cap.get(2).map(|x| x.as_str()).and_then(parse_lnum)?;
+    let path_and_pattern = cap.get(3).map(|x| x.as_str())?;
+    if let Some((path, pattern)) = path_and_pattern.split_once(' ') {
+        Some((lnum, path, pattern))
+    } else {
+        None
+    }
+}
+
 /// Extract tag name from the line in tags provider.
 #[inline]
 pub fn tag_name_only(line: &str) -> Option<&str> {
@@ -207,5 +220,18 @@ mod tests {
         assert_eq!(parse_rev(line), Some("8ed4391"));
         let line = "2019-12-29 3f0d00c Add forerunner job status sign and a delay timer for running maple (#184) (Liu-Cheng Xu)";
         assert_eq!(parse_rev(line), Some("3f0d00c"));
+    }
+
+    #[test]
+    fn test_gtags() {
+        let line = "run               101 crates/maple_cli/src/app.rs pub async fn run(self) -> Result<()> {";
+        assert_eq!(
+            parse_gtags(line),
+            Some((
+                101,
+                "crates/maple_cli/src/app.rs",
+                "pub async fn run(self) -> Result<()> {"
+            ))
+        )
     }
 }

@@ -96,8 +96,6 @@ impl MethodCall {
 
 impl MethodCall {
     pub async fn handle(self) -> anyhow::Result<Value> {
-        use crate::stdio_server::providers::dumb_jump::DumbJumpSession;
-        use crate::stdio_server::providers::recent_files::RecentFilesSession;
         use crate::stdio_server::session::SessionEvent::*;
 
         if self.method != "init_ext_map" {
@@ -197,7 +195,6 @@ impl MethodCall {
 
     pub async fn preview_quickfix(self) -> Result<Value> {
         use crate::previewer::{preview_file, preview_file_at};
-        use crate::stdio_server::providers::custom::quickfix::parse_quickfix_entry;
         use std::path::PathBuf;
 
         let msg_id = self.id;
@@ -235,5 +232,39 @@ impl MethodCall {
         let value = json!({ "id": msg_id, "provider_id": "quickfix", "result": result });
 
         Ok(value)
+    }
+}
+
+fn parse_quickfix_entry(line: &str) -> Result<(&str, usize)> {
+    let mut splitted = line.split('|');
+    let fpath = splitted
+        .next()
+        .ok_or_else(|| anyhow!("Can not find fpath in {}", line))?;
+
+    let mut it = splitted
+        .next()
+        .ok_or_else(|| anyhow!("Can not find lnum and column info in {}", line))?
+        .split("col");
+
+    let lnum = it
+        .next()
+        .ok_or_else(|| anyhow!("Can not find lnum in {}", line))?
+        .trim()
+        .parse::<usize>()?;
+
+    Ok((fpath, lnum))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_quickdix_display_line_works() {
+        let line = "test/bench/python/test_fuzzy_filter.vim|0 col 0| Modified 2月,13 2021 10:58:27 rw-rw-r--";
+        assert_eq!(
+            parse_quickfix_entry(line).unwrap(),
+            ("test/bench/python/test_fuzzy_filter.vim".into(), 0usize)
+        );
     }
 }

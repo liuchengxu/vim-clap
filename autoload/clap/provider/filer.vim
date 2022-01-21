@@ -97,7 +97,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call('filer', function('s:handle_response'), {'cwd': s:current_dir})
+    call clap#client#call('filer/on_typed', function('s:handle_response'), {'cwd': s:current_dir})
   endif
 endfunction
 
@@ -412,7 +412,8 @@ function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
   call s:set_prompt()
-  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir})
+  " TODO: reimplement filer on Rust side.
+  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir, 'debounce': v:false})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')
