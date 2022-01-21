@@ -2,7 +2,7 @@
 name = "maple"
 build = "build.rs"
 edition = "2021"
-version = "0.1.31"
+version = "0.1.32"
 license = "MIT"
 publish = false
 include = ["/Cargo.toml", "src/*.rs"]
