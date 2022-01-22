@@ -21,6 +21,7 @@ function! clap#handler#relaunch_is_ok() abort
   return v:false
 endfunction
 
+" Main entry point for handling the user typing.
 function! clap#handler#on_typed() abort
   " CursorMoved event can be triggered when the floating_win
   " has been created but not visible yet.
@@ -31,6 +32,8 @@ function! clap#handler#on_typed() abort
   if clap#handler#relaunch_is_ok()
     return
   endif
+
+  call clap#provider#input_history#note()
 
   if g:clap.provider.is_rpc_type()
     call g:clap.provider.on_typed()

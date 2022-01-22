@@ -183,6 +183,12 @@ function! clap#_for(provider_id_or_alias) abort
   call clap#for(a:provider_id_or_alias)
 endfunction
 
+function! clap#_for_with_query(provider_id_or_alias, query) abort
+  let g:clap.provider.args = []
+  let g:clap.context['query'] = a:query
+  call clap#for(a:provider_id_or_alias)
+endfunction
+
 " Sometimes we don't need to go back to the start window, hence clap#_exit() is extracted.
 function! clap#exit() abort
   call g:clap.start.goto_win()
@@ -257,11 +263,17 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
+let g:__clap_last_normal_provider = v:null
+
 function! clap#for(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
   else
     let provider_id = a:provider_id_or_alias
+  endif
+
+  if provider_id !=# 'input_history' && provider_id !=# 'providers'
+    let g:__clap_last_normal_provider = provider_id
   endif
 
   let g:clap.provider.id = provider_id
