@@ -24,7 +24,17 @@ pub struct BuiltinHandle;
 impl EventHandle for BuiltinHandle {
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
-        if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
+
+        let scale = context.scale.lock();
+
+        let curline = match (scale.deref(), msg.get_u64("lnum").ok()) {
+            (Scale::Small { ref lines, .. }, Some(lnum)) => lines.get(lnum as usize - 1).cloned(),
+            _ => None,
+        };
+        drop(scale);
+
+        if let Err(error) =
+            on_move::OnMoveHandler::create(&msg, &context, curline).map(|x| x.handle())
         {
             tracing::error!(?error, "Failed to handle OnMove event");
             write_response(json!({"error": error.to_string(), "id": msg_id }));
@@ -97,6 +107,14 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
             return Ok(Scale::Cache {
                 total,
                 path: context.start_buffer_path.to_path_buf(),
+            });
+        }
+        "tags" => {
+            let lines = crate::command::ctags::buffer_tags_lines(&context.start_buffer_path)?;
+
+            return Ok(Scale::Small {
+                total: lines.len(),
+                lines,
             });
         }
         "proj_tags" => {

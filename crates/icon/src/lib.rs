@@ -149,6 +149,12 @@ pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
     }
 }
 
+pub fn tags_kind_icon(kind: &str) -> IconType {
+    bsearch_icon_table(kind, TAGKIND_ICON_TABLE)
+        .map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        .unwrap_or(DEFAULT_ICON)
+}
+
 pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: impl Display) -> String {
     format!("{} {}", filer_icon(path), line)
 }
