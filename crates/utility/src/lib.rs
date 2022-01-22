@@ -102,6 +102,8 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
 }
 
 /// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
+///
+/// Return `Err(_)` if the file is too large.
 pub fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     target_line: usize,
