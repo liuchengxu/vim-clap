@@ -3,11 +3,11 @@ use super::*;
 #[derive(StructOpt, Debug, Clone)]
 pub struct RipGrepForerunner {
     /// Specify the working directory of CMD
-    #[structopt(long = "cmd-dir", parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Specify the threshold for writing the output of command to a tempfile.
-    #[structopt(long = "output-threshold", default_value = "30000")]
+    #[structopt(long, default_value = "30000")]
     output_threshold: usize,
 }
 
