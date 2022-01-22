@@ -45,6 +45,7 @@ impl<T: AsRef<str>> From<T> for Icon {
         match icon.as_ref().to_lowercase().as_str() {
             "file" => Self::Enabled(IconKind::File),
             "grep" => Self::Enabled(IconKind::Grep),
+            "tags" | "buffer_tags" => Self::Enabled(IconKind::BufferTags),
             "projtags" | "proj_tags" => Self::Enabled(IconKind::ProjTags),
             _ => Self::Null,
         }
@@ -57,6 +58,7 @@ pub enum IconKind {
     File,
     Grep,
     ProjTags,
+    BufferTags,
     Unknown,
 }
 
@@ -86,6 +88,7 @@ impl IconKind {
             Self::File => prepend_icon(raw_str.as_ref()),
             Self::Grep => prepend_grep_icon(raw_str.as_ref()),
             Self::ProjTags => fmt(proj_tags_icon(raw_str.as_ref())),
+            Self::BufferTags => fmt(buffer_tags_icon(raw_str.as_ref())),
             Self::Unknown => fmt(DEFAULT_ICON),
         }
     }
@@ -96,6 +99,7 @@ impl IconKind {
             Self::File => file_icon(text),
             Self::Grep => grep_icon(text),
             Self::ProjTags => proj_tags_icon(text),
+            Self::BufferTags => buffer_tags_icon(text),
             Self::Unknown => DEFAULT_ICON,
         }
     }
@@ -152,6 +156,12 @@ pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
 pub fn tags_kind_icon(kind: &str) -> IconType {
     bsearch_icon_table(kind, TAGKIND_ICON_TABLE)
         .map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        .unwrap_or(DEFAULT_ICON)
+}
+
+fn buffer_tags_icon(line: &str) -> IconType {
+    pattern::extract_buffer_tags_kind(line)
+        .map(|kind| tags_kind_icon(kind))
         .unwrap_or(DEFAULT_ICON)
 }
 

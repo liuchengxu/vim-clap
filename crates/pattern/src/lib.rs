@@ -17,7 +17,7 @@ static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:\d+:\d+:").
 // match the tag_name:lnum of tag line.
 static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*:\d+)").unwrap());
 
-static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+)").unwrap());
+static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+).*\[(.*)\]").unwrap());
 
 static PROJ_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap());
 
@@ -128,6 +128,12 @@ pub fn extract_proj_tags(line: &str) -> Option<(usize, &str)> {
 pub fn extract_proj_tags_kind(line: &str) -> Option<&str> {
     let cap = PROJ_TAGS.captures(line)?;
     let kind = cap.get(3).map(|x| x.as_str())?;
+    Some(kind)
+}
+
+pub fn extract_buffer_tags_kind(line: &str) -> Option<&str> {
+    let cap = BUFFER_TAGS.captures(line)?;
+    let kind = cap.get(2).map(|x| x.as_str())?;
     Some(kind)
 }
 

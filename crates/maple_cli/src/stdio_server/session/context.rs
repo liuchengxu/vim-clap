@@ -181,7 +181,8 @@ impl SessionContext {
 
         let icon = if enable_icon.unwrap_or(false) {
             match provider_id.as_str() {
-                "tags" | "proj_tags" => Icon::Enabled(IconKind::ProjTags),
+                "tags" => Icon::Enabled(IconKind::BufferTags),
+                "proj_tags" => Icon::Enabled(IconKind::ProjTags),
                 "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
                 "files" => Icon::Enabled(IconKind::File),
                 _ => Icon::Null,
