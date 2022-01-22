@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+### Internal
+
+- Update to clap v3.0. #794
 
 ## [0.32] 2022-01-21
+
 ## Improved
 
 - Rework the truncation of long lines. #788
