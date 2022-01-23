@@ -70,6 +70,7 @@ pub trait EventHandle: Send + Sync + 'static {
     async fn on_create(&mut self, _call: Call, context: Arc<SessionContext>) {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
+        // TODO: blocking on_create for the swift providers like `tags`.
         match tokio::time::timeout(TIMEOUT, on_session_create(context.clone())).await {
             Ok(scale_result) => match scale_result {
                 Ok(scale) => process_source_scale(scale, context),

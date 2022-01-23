@@ -144,7 +144,7 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap quickfix`                        | Entries of the quickfix list                           | _none_                                                                                 |
 | `Clap loclist`                         | Entries of the location list                           | _none_                                                                                 |
 | `Clap registers`                       | Registers                                              | _none_                                                                                 |
-| `Clap tags`                            | Tags in the current buffer                             | **[vista.vim][vista.vim]**                                                             |
+| `Clap tags`                            | Tags in the current buffer                             | **maple[maple]**/**[vista.vim][vista.vim]**                                            |
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** with JSON output support |
 | `Clap yanks`                           | Yank stack of the current vim session                  | _none_                                                                                 |
 | `Clap filer`                           | Ivy-like file explorer                                 | **[maple][maple]**                                                                     |
