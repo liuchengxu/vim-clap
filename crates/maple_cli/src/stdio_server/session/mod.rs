@@ -15,7 +15,7 @@ use parking_lot::Mutex;
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
-pub use self::context::{SourceScale, SessionContext, SyncFilterResults};
+pub use self::context::{SessionContext, SourceScale, SyncFilterResults};
 pub use self::manager::SessionManager;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =

@@ -87,7 +87,7 @@ struct BufferTagInfo {
 
 impl BufferTagInfo {
     /// Returns the display line for BuiltinHandle, no icon attached.
-    fn display(&self, max_name_len: usize) -> String {
+    fn format_buffer_tags(&self, max_name_len: usize) -> String {
         let pattern_len = self.pattern.len();
 
         let name_line = format!("{}:{}", self.name, self.line);
@@ -101,6 +101,11 @@ impl BufferTagInfo {
             kind_width = 10,
             pattern = self.pattern[2..pattern_len - 2].trim()
         )
+    }
+
+    #[inline]
+    fn from_ctags_json(line: &str) -> Option<Self> {
+        serde_json::from_str::<Self>(line).ok()
     }
 
     // The last scope field is optional.
@@ -156,10 +161,10 @@ fn build_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
 pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String>> {
     if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = build_cmd_in_json_format(file);
-        buffer_tags_lines_inner(cmd, |s: &str| serde_json::from_str::<BufferTagInfo>(s).ok())
+        buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)
     } else {
         let cmd = build_cmd_in_raw_format(file);
-        buffer_tags_lines_inner(cmd, |s: &str| BufferTagInfo::from_ctags_raw(s))
+        buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_raw)
     }
 }
 
@@ -190,7 +195,7 @@ fn buffer_tags_lines_inner(
 
     Ok(tags
         .par_iter()
-        .map(|s| s.display(max_name_len))
+        .map(|s| s.format_buffer_tags(max_name_len))
         .collect::<Vec<_>>())
 }
 
@@ -202,12 +207,10 @@ impl Ctags {
             Self::BufferTags { file, force_raw } => {
                 let lines = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
                     let cmd = build_cmd_in_json_format(file.as_ref());
-                    buffer_tags_lines_inner(cmd, |s: &str| {
-                        serde_json::from_str::<BufferTagInfo>(s).ok()
-                    })?
+                    buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)?
                 } else {
                     let cmd = build_cmd_in_raw_format(file.as_ref());
-                    buffer_tags_lines_inner(cmd, |s: &str| BufferTagInfo::from_ctags_raw(s))?
+                    buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_raw)?
                 };
 
                 for line in lines {
