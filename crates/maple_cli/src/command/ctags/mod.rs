@@ -3,10 +3,12 @@ pub mod tagsfile;
 
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Result;
 use filter::subprocess::Exec;
 use itertools::Itertools;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 
@@ -64,8 +66,8 @@ impl SharedParams {
 pub enum Ctags {
     RecursiveTags(recursive::RecursiveTags),
     TagsFile(tagsfile::TagsFile),
-    /// Prints the tags of given file.
-    FileTags {
+    /// Prints the tags of an input file.
+    BufferTags {
         #[structopt(long)]
         file: AbsPathBuf,
     },
@@ -80,15 +82,9 @@ struct BufferTagInfo {
 }
 
 impl BufferTagInfo {
+    /// Returns the display line for BuiltinHandle, no icon attached.
     fn display(&self, max_name_len: usize) -> String {
         let pattern_len = self.pattern.len();
-
-        // let icon_name_line = format!(
-            // "{} {}:{}",
-            // icon::tags_kind_icon(&self.kind),
-            // self.name,
-            // self.line
-        // );
 
         let name_line = format!("{}:{}", self.name, self.line);
 
@@ -113,25 +109,25 @@ pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String
         .arg(file)
         .stream_stdout()?;
 
-    let mut max_name_len = 0;
+    let max_name_len = AtomicUsize::new(0);
 
     let tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
         .lines()
         .flatten()
+        .par_bridge()
         .filter_map(|s| {
             let maybe_tag_info = serde_json::from_str::<BufferTagInfo>(&s).ok();
             if let Some(ref tag_info) = maybe_tag_info {
-                let name_len = tag_info.name.len();
-                if name_len > max_name_len {
-                    max_name_len = name_len;
-                }
+                max_name_len.fetch_max(tag_info.name.len(), Ordering::SeqCst);
             }
             maybe_tag_info
         })
         .collect::<Vec<_>>();
 
+    let max_name_len = max_name_len.into_inner();
+
     Ok(tags
-        .into_iter()
+        .par_iter()
         .map(|s| s.display(max_name_len))
         .collect::<Vec<_>>())
 }
@@ -141,16 +137,14 @@ impl Ctags {
         match self {
             Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
             Self::TagsFile(tags_file) => tags_file.run(params),
-            Self::FileTags { file } => {
-                use std::io::BufRead;
-
+            Self::BufferTags { file } => {
                 if *CTAGS_HAS_JSON_FEATURE.deref() {
                     let lines = buffer_tags_lines(file.to_string())?;
                     for line in lines {
                         println!("{}", line);
                     }
                 } else {
-                    let stdout = Exec::cmd("ctags")
+                    Exec::cmd("ctags")
                         .arg("-n")
                         .arg("-f")
                         .arg("-")
