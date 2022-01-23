@@ -161,7 +161,7 @@ impl CtagsCommand {
             .run()?
             .filter_map(|tag| {
                 if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                    Some(tag.display_line())
+                    Some(tag.format_proj_tags())
                 } else {
                     None
                 }
@@ -179,7 +179,7 @@ impl CtagsCommand {
             .par_split(|x| x == &b'\n')
             .filter_map(|tag| {
                 if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
-                    Some(tag.display_line())
+                    Some(tag.format_proj_tags())
                 } else {
                     None
                 }
@@ -198,7 +198,7 @@ impl CtagsCommand {
     pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.display_line())
+                Some(tag.format_proj_tags())
             } else {
                 None
             }
@@ -302,7 +302,7 @@ pub struct TagInfo {
 
 impl TagInfo {
     /// Builds the line for displaying the tag info.
-    pub fn display_line(&self) -> String {
+    pub fn format_proj_tags(&self) -> String {
         let pat_len = self.pattern.len();
         let name_lnum = format!("{}:{}", self.name, self.line);
         let kind = format!("[{}@{}]", self.kind, self.path);
