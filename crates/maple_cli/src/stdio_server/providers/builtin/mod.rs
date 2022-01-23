@@ -4,7 +4,8 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::FilterContext;
+use filter::{FilterContext, FilteredItem};
+use parking_lot::Mutex;
 use serde_json::json;
 
 use crate::command::ctags::recursive::build_recursive_ctags_cmd;
@@ -18,7 +19,17 @@ use crate::stdio_server::{
 pub use on_move::{OnMove, OnMoveHandler};
 
 #[derive(Clone)]
-pub struct BuiltinHandle;
+pub struct BuiltinHandle {
+    pub current_results: Arc<Mutex<Vec<FilteredItem>>>,
+}
+
+impl BuiltinHandle {
+    pub fn new() -> Self {
+        Self {
+            current_results: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl EventHandle for BuiltinHandle {
@@ -28,7 +39,18 @@ impl EventHandle for BuiltinHandle {
         let scale = context.scale.lock();
 
         let curline = match (scale.deref(), msg.get_u64("lnum").ok()) {
-            (Scale::Small { ref lines, .. }, Some(lnum)) => lines.get(lnum as usize - 1).cloned(),
+            (Scale::Small { ref lines, .. }, Some(lnum)) => {
+                if let Some(curline) = self
+                    .current_results
+                    .lock()
+                    .get((lnum - 1) as usize)
+                    .map(|r| r.source_item.raw.clone())
+                {
+                    Some(curline)
+                } else {
+                    lines.get(lnum as usize - 1).cloned()
+                }
+            }
             _ => None,
         };
         drop(scale);
@@ -51,6 +73,7 @@ impl EventHandle for BuiltinHandle {
             Scale::Small { ref lines, .. } => {
                 let SyncFilterResults {
                     total,
+                    results,
                     decorated_lines:
                         printer::DecoratedLines {
                             lines,
@@ -61,6 +84,9 @@ impl EventHandle for BuiltinHandle {
 
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(total, lines, indices, truncated_map, method);
+
+                let mut current_results = self.current_results.lock();
+                *current_results = results;
             }
             Scale::Cache { ref path, .. } => {
                 if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(

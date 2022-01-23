@@ -40,7 +40,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             match call.clone() {
                 Call::Notification(notification) => match notification.method.as_str() {
                     "exit" => manager.terminate(notification.session_id),
-                    "on_init" => manager.new_session(call, BuiltinHandle),
+                    "on_init" => manager.new_session(call, BuiltinHandle::new()),
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.process().await {

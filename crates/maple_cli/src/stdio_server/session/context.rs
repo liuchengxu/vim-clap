@@ -73,6 +73,7 @@ impl Scale {
 #[derive(Clone, Debug)]
 pub struct SyncFilterResults {
     pub total: usize,
+    pub results: Vec<FilteredItem>,
     pub decorated_lines: printer::DecoratedLines,
 }
 
@@ -139,6 +140,7 @@ impl SessionContext {
 
         Ok(SyncFilterResults {
             total,
+            results: ranked,
             decorated_lines,
         })
     }

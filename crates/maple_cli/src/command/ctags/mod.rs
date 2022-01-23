@@ -98,7 +98,7 @@ impl BufferTagInfo {
             name_group = name_line,
             name_group_width = max_name_len + 6,
             kind = kind,
-            kind_width = 20,
+            kind_width = 10,
             pattern = self.pattern[2..pattern_len - 2].trim()
         )
     }
