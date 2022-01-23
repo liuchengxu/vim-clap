@@ -78,6 +78,6 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
             .lines()
             .flatten()
-            .filter_map(|s| TagInfo::from_ctags(&s)))
+            .filter_map(|s| TagInfo::from_readtags(&s)))
     }
 }

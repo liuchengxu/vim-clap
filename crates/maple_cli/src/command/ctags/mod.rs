@@ -68,12 +68,16 @@ pub enum Ctags {
     TagsFile(tagsfile::TagsFile),
     /// Prints the tags of an input file.
     BufferTags {
+        /// Use the raw output format even json output is supported, for testing purpose.
+        #[structopt(long)]
+        force_raw: bool,
+
         #[structopt(long)]
         file: AbsPathBuf,
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
 struct BufferTagInfo {
     name: String,
     pattern: String,
@@ -98,16 +102,74 @@ impl BufferTagInfo {
             pattern = self.pattern[2..pattern_len - 2].trim()
         )
     }
+
+    // The last scope field is optional.
+    //
+    // Blines	crates/maple_cli/src/app.rs	/^    Blines(command::blines::Blines),$/;"	enumerator	line:39	enum:Cmd
+    fn from_ctags_raw(line: &str) -> Option<Self> {
+        let mut items = line.split('\t');
+
+        let name = items.next()?.into();
+        let _path = items.next()?;
+
+        let mut t = Self {
+            name,
+            ..Default::default()
+        };
+
+        let others = items.join("\t");
+
+        if let Some((tagaddress, kind_line_scope)) = others.rsplit_once(";\"") {
+            t.pattern = String::from(&tagaddress[2..]);
+
+            let mut iter = kind_line_scope.split_whitespace();
+
+            t.kind = iter.next()?.into();
+
+            t.line = iter.next().and_then(|s| {
+                s.split_once(':')
+                    .and_then(|(_, line)| line.parse::<usize>().ok())
+            })?;
+
+            Some(t)
+        } else {
+            None
+        }
+    }
 }
 
-pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String>> {
-    use std::io::BufRead;
-
-    let stdout = Exec::cmd("ctags")
+fn build_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
+    Exec::cmd("ctags")
         .arg("--fields=+n")
         .arg("--output-format=json")
         .arg(file)
-        .stream_stdout()?;
+}
+
+fn build_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
+    Exec::cmd("ctags")
+        .arg("--fields=+Kn")
+        .arg("-f")
+        .arg("-")
+        .arg(file)
+}
+
+pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String>> {
+    if *CTAGS_HAS_JSON_FEATURE.deref() {
+        let cmd = build_cmd_in_json_format(file);
+        buffer_tags_lines_inner(cmd, |s: &str| serde_json::from_str::<BufferTagInfo>(s).ok())
+    } else {
+        let cmd = build_cmd_in_raw_format(file);
+        buffer_tags_lines_inner(cmd, |s: &str| BufferTagInfo::from_ctags_raw(s))
+    }
+}
+
+fn buffer_tags_lines_inner(
+    cmd: Exec,
+    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+) -> Result<Vec<String>> {
+    use std::io::BufRead;
+
+    let stdout = cmd.stream_stdout()?;
 
     let max_name_len = AtomicUsize::new(0);
 
@@ -116,7 +178,7 @@ pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String
         .flatten()
         .par_bridge()
         .filter_map(|s| {
-            let maybe_tag_info = serde_json::from_str::<BufferTagInfo>(&s).ok();
+            let maybe_tag_info = parse_fn(&s);
             if let Some(ref tag_info) = maybe_tag_info {
                 max_name_len.fetch_max(tag_info.name.len(), Ordering::SeqCst);
             }
@@ -137,28 +199,21 @@ impl Ctags {
         match self {
             Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
             Self::TagsFile(tags_file) => tags_file.run(params),
-            Self::BufferTags { file } => {
-                if *CTAGS_HAS_JSON_FEATURE.deref() {
-                    let lines = buffer_tags_lines(file.to_string())?;
-                    for line in lines {
-                        println!("{}", line);
-                    }
+            Self::BufferTags { file, force_raw } => {
+                let lines = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
+                    let cmd = build_cmd_in_json_format(file.as_ref());
+                    buffer_tags_lines_inner(cmd, |s: &str| {
+                        serde_json::from_str::<BufferTagInfo>(s).ok()
+                    })?
                 } else {
-                    Exec::cmd("ctags")
-                        .arg("-n")
-                        .arg("-f")
-                        .arg("-")
-                        .arg(file.to_string())
-                        .stream_stdout()?;
+                    let cmd = build_cmd_in_raw_format(file.as_ref());
+                    buffer_tags_lines_inner(cmd, |s: &str| BufferTagInfo::from_ctags_raw(s))?
+                };
 
-                    /*
-                    let lines = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-                        .lines()
-                        .flatten()
-                        .filter_map(|s| TagInfo::from_ctags(&s))
-                        .collect::<Vec<_>>();
-                    */
+                for line in lines {
+                    println!("{}", line);
                 }
+
                 Ok(())
             }
         }
