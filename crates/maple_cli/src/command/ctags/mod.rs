@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Result;
-use filter::subprocess::Exec;
+use filter::subprocess::{Redirection, Exec};
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -144,14 +144,18 @@ impl BufferTagInfo {
 }
 
 fn build_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
+    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
     Exec::cmd("ctags")
+        .stderr(Redirection::Merge)
         .arg("--fields=+n")
         .arg("--output-format=json")
         .arg(file)
 }
 
 fn build_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
+    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
     Exec::cmd("ctags")
+        .stderr(Redirection::Merge)
         .arg("--fields=+Kn")
         .arg("-f")
         .arg("-")
@@ -191,6 +195,7 @@ fn buffer_tags_lines_inner(
         })
         .collect::<Vec<_>>();
 
+    println!("---------- tags: {:?}", tags);
     let max_name_len = max_name_len.into_inner();
 
     Ok(tags
