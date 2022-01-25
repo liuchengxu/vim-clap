@@ -195,7 +195,6 @@ fn buffer_tags_lines_inner(
         })
         .collect::<Vec<_>>();
 
-    println!("---------- tags: {:?}", tags);
     let max_name_len = max_name_len.into_inner();
 
     Ok(tags
