@@ -9,11 +9,10 @@ let s:MAXIMUM_INPUT_HISTORY = 100
 
 let s:input_history = {}
 
-function! clap#provider#input_history#note() abort
-  let cur_input = g:clap.input.get()
+function! s:note_query(query) abort
   let provider_id = g:clap.provider.id
-  if !empty(cur_input) && provider_id !=# 'input_history' && provider_id !=# 'providers'
-    let maybe_new_record = provider_id.':'.cur_input
+  if !empty(a:query) && provider_id !=# 'input_history' && provider_id !=# 'providers'
+    let maybe_new_record = provider_id.':'.a:query
     if index(s:limited_input_history, maybe_new_record) == -1
       call add(s:limited_input_history, maybe_new_record)
       if len(s:limited_input_history) > s:MAXIMUM_INPUT_HISTORY
@@ -21,6 +20,15 @@ function! clap#provider#input_history#note() abort
       endif
     endif
   endif
+endfunction
+
+function! clap#provider#input_history#note() abort
+  let cur_input = g:clap.input.get()
+  call s:note_query(cur_input)
+endfunction
+
+function! clap#provider#input_history#note_query(query) abort
+  call s:note_query(a:query)
 endfunction
 
 function! s:input_history.source() abort

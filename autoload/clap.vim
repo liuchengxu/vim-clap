@@ -342,6 +342,7 @@ function! s:parse_opts(args) abort
     else
       let g:clap.context.query = clap#util#expand(g:clap.context.query)
     endif
+    call clap#provider#input_history#note_query(g:clap.context.query)
   endif
 endfunction
 
