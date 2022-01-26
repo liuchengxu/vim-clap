@@ -279,6 +279,10 @@ function! clap#for(provider_id_or_alias) abort
     return
   endif
 
+  if has_key(g:clap.context, 'query')
+    call clap#provider#input_history#note_query(g:clap.context.query)
+  endif
+
   call clap#state#clear_pre()
 
   " g:__clap_provider_cwd can be set during this process, so this needs to be executed after s:clear_state()
@@ -342,7 +346,6 @@ function! s:parse_opts(args) abort
     else
       let g:clap.context.query = clap#util#expand(g:clap.context.query)
     endif
-    call clap#provider#input_history#note_query(g:clap.context.query)
   endif
 endfunction
 
