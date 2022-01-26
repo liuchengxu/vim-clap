@@ -194,6 +194,7 @@ function! s:apply_input_with_delay() abort
   if s:input_timer != -1
     call timer_stop(s:input_timer)
   endif
+  call clap#provider#input_history#note()
   let s:input_timer = timer_start(s:input_delay, function('s:apply_input'))
 endfunction
 

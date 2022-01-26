@@ -263,17 +263,11 @@ function! s:try_register_is_ok(provider_id) abort
   return s:validate_provider(registration_info)
 endfunction
 
-let g:__clap_last_normal_provider = v:null
-
 function! clap#for(provider_id_or_alias) abort
   if has_key(s:provider_alias, a:provider_id_or_alias)
     let provider_id = s:provider_alias[a:provider_id_or_alias]
   else
     let provider_id = a:provider_id_or_alias
-  endif
-
-  if provider_id !=# 'input_history' && provider_id !=# 'providers'
-    let g:__clap_last_normal_provider = provider_id
   endif
 
   let g:clap.provider.id = provider_id
