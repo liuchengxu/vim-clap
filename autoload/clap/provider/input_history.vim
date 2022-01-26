@@ -5,7 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:limited_input_history = []
-let s:MAXIMUM_INPUT_HISTORY = 20
+let s:MAXIMUM_INPUT_HISTORY = 100
 
 let s:input_history = {}
 
@@ -24,7 +24,7 @@ function! clap#provider#input_history#note() abort
 endfunction
 
 function! s:input_history.source() abort
-  return copy(s:limited_input_history)
+  return reverse(copy(s:limited_input_history))
 endfunction
 
 function! s:input_history.sink(line) abort
