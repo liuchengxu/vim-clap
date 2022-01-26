@@ -828,6 +828,15 @@ g:clap_provider_colors_ignore_default     *g:clap_provider_colors_ignore_default
   Ignore the colors under the path `$VIMRUNTIME` .
 
 
+g:clap_provider_tags_force_vista           *g:clap_provider_tags_force_vista*
+
+  Type: |bool|
+  Default: `undefined`
+
+  The latest Rust binary of vim-clap supports generating the source of `tags` on
+  its own, but you can still use this option to use vista.vim before getting
+  the latest Rust binary in case you use the prebuilt binary.
+
 ===============================================================================
 7. Commands                                                     *clap-commands*
 

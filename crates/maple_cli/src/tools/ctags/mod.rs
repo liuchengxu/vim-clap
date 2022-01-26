@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Result};
 use filter::subprocess::Exec;
 use itertools::Itertools;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -33,6 +33,10 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
     tags_dir
 });
+
+/// If the ctags executable supports `--output-format=json`.
+pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> =
+    Lazy::new(|| detect_json_feature().unwrap_or(false));
 
 /// Used to specify the language when working with `readtags`.
 pub static LANG_MAPS: Lazy<HashMap<String, String>> =
@@ -157,7 +161,7 @@ impl CtagsCommand {
             .run()?
             .filter_map(|tag| {
                 if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                    Some(tag.display_line())
+                    Some(tag.format_proj_tags())
                 } else {
                     None
                 }
@@ -175,7 +179,7 @@ impl CtagsCommand {
             .par_split(|x| x == &b'\n')
             .filter_map(|tag| {
                 if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
-                    Some(tag.display_line())
+                    Some(tag.format_proj_tags())
                 } else {
                     None
                 }
@@ -194,7 +198,7 @@ impl CtagsCommand {
     pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.display_line())
+                Some(tag.format_proj_tags())
             } else {
                 None
             }
@@ -278,11 +282,7 @@ fn generate_lang_maps() -> Result<HashMap<String, String>> {
 
 /// Returns true if the ctags executable is compiled with +json feature.
 pub fn ensure_has_json_support() -> Result<()> {
-    static CTAGS_HAS_JSON_FEATURE: OnceCell<bool> = OnceCell::new();
-    let json_supported =
-        CTAGS_HAS_JSON_FEATURE.get_or_init(|| detect_json_feature().unwrap_or(false));
-
-    if *json_supported {
+    if *CTAGS_HAS_JSON_FEATURE.deref() {
         Ok(())
     } else {
         Err(anyhow!(
@@ -302,7 +302,7 @@ pub struct TagInfo {
 
 impl TagInfo {
     /// Builds the line for displaying the tag info.
-    pub fn display_line(&self) -> String {
+    pub fn format_proj_tags(&self) -> String {
         let pat_len = self.pattern.len();
         let name_lnum = format!("{}:{}", self.name, self.line);
         let kind = format!("[{}@{}]", self.kind, self.path);
