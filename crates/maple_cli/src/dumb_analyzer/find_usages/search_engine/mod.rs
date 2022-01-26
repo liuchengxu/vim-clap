@@ -83,7 +83,9 @@ pub struct TagInfo {
 
 impl TagInfo {
     /// Parse from the output of `readtags`.
-    pub fn from_ctags(s: &str) -> Option<Self> {
+    ///
+    /// TODO: add more tests
+    pub fn from_readtags(s: &str) -> Option<Self> {
         let mut items = s.split('\t');
 
         let mut l = Self {

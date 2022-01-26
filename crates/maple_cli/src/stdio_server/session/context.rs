@@ -20,7 +20,7 @@ const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
 
 /// This type represents the scale of filtering source.
 #[derive(Debug, Clone)]
-pub enum Scale {
+pub enum SourceScale {
     /// We do not know the exact total number of source items.
     Indefinite,
 
@@ -37,13 +37,13 @@ pub enum Scale {
     Cache { total: usize, path: PathBuf },
 }
 
-impl Default for Scale {
+impl Default for SourceScale {
     fn default() -> Self {
         Self::Indefinite
     }
 }
 
-impl Scale {
+impl SourceScale {
     pub fn total(&self) -> Option<usize> {
         match self {
             Self::Large(total) | Self::Small { total, .. } | Self::Cache { total, .. } => {
@@ -73,6 +73,7 @@ impl Scale {
 #[derive(Clone, Debug)]
 pub struct SyncFilterResults {
     pub total: usize,
+    pub results: Vec<FilteredItem>,
     pub decorated_lines: printer::DecoratedLines,
 }
 
@@ -88,7 +89,7 @@ pub struct SessionContext {
     pub icon: Icon,
     pub match_type: MatchType,
     pub match_bonuses: Vec<matcher::Bonus>,
-    pub scale: Arc<Mutex<Scale>>,
+    pub source_scale: Arc<Mutex<SourceScale>>,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
     pub is_running: Arc<Mutex<AtomicBool>>,
@@ -109,7 +110,7 @@ impl SessionContext {
         )
     }
 
-    fn fuzzy_matcher(&self) -> matcher::Matcher {
+    pub fn fuzzy_matcher(&self) -> matcher::Matcher {
         matcher::Matcher::with_bonuses(
             matcher::FuzzyAlgorithm::Fzy,
             self.match_type,
@@ -117,30 +118,9 @@ impl SessionContext {
         )
     }
 
-    pub fn sync_filter_source_item<'a>(
-        &self,
-        query: &str,
-        lines: impl Iterator<Item = &'a str>,
-    ) -> Result<SyncFilterResults> {
-        let ranked = filter::par_filter(
-            query,
-            lines.map(Into::into).collect(),
-            &self.fuzzy_matcher(),
-        );
-
-        let total = ranked.len();
-
-        // Take the first 200 entries and add an icon to each of them.
-        let decorated_lines = printer::decorate_lines(
-            ranked.iter().take(200).cloned().collect(),
-            self.display_winwidth as usize,
-            self.icon,
-        );
-
-        Ok(SyncFilterResults {
-            total,
-            decorated_lines,
-        })
+    pub fn set_source_scale(&self, new: SourceScale) {
+        let mut source_scale = self.source_scale.lock();
+        *source_scale = new;
     }
 
     fn from_params(params: Params) -> Self {
@@ -181,7 +161,8 @@ impl SessionContext {
 
         let icon = if enable_icon.unwrap_or(false) {
             match provider_id.as_str() {
-                "tags" | "proj_tags" => Icon::Enabled(IconKind::ProjTags),
+                "tags" => Icon::Enabled(IconKind::BufferTags),
+                "proj_tags" => Icon::Enabled(IconKind::ProjTags),
                 "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
                 "files" => Icon::Enabled(IconKind::File),
                 _ => Icon::Null,
@@ -208,7 +189,7 @@ impl SessionContext {
             match_type,
             match_bonuses,
             icon,
-            scale: Arc::new(Mutex::new(Scale::Indefinite)),
+            source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
             is_running: Arc::new(Mutex::new(true.into())),
         }
     }

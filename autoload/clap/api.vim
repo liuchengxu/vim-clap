@@ -626,6 +626,9 @@ function! s:init_provider() abort
           endif
         endif
       endif
+      if self.id ==# 'tags'
+        let extra['debounce'] = v:false
+      endif
       call clap#client#notify_on_init('on_init', extra)
     endif
     " Try to fill the preview window.

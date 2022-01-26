@@ -4,27 +4,59 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::FilterContext;
+use filter::{FilterContext, FilteredItem};
+use parking_lot::Mutex;
 use serde_json::json;
 
 use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
-    session::{EventHandle, Scale, SessionContext, SyncFilterResults},
+    session::{EventHandle, SessionContext, SourceScale, SyncFilterResults},
     write_response, MethodCall,
 };
 
 pub use on_move::{OnMove, OnMoveHandler};
 
 #[derive(Clone)]
-pub struct BuiltinHandle;
+pub struct BuiltinHandle {
+    pub current_results: Arc<Mutex<Vec<FilteredItem>>>,
+}
+
+impl BuiltinHandle {
+    pub fn new() -> Self {
+        Self {
+            current_results: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl EventHandle for BuiltinHandle {
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
-        if let Err(error) = on_move::OnMoveHandler::create(&msg, &context, None).map(|x| x.handle())
+
+        let source_scale = context.source_scale.lock();
+
+        let curline = match (source_scale.deref(), msg.get_u64("lnum").ok()) {
+            (SourceScale::Small { ref lines, .. }, Some(lnum)) => {
+                if let Some(curline) = self
+                    .current_results
+                    .lock()
+                    .get((lnum - 1) as usize)
+                    .map(|r| r.source_item.raw.clone())
+                {
+                    Some(curline)
+                } else {
+                    lines.get(lnum as usize - 1).cloned()
+                }
+            }
+            _ => None,
+        };
+        drop(source_scale);
+
+        if let Err(error) =
+            on_move::OnMoveHandler::create(&msg, &context, curline).map(|x| x.handle())
         {
             tracing::error!(?error, "Failed to handle OnMove event");
             write_response(json!({"error": error.to_string(), "id": msg_id }));
@@ -35,24 +67,36 @@ impl EventHandle for BuiltinHandle {
     async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let query = msg.get_query();
 
-        let scale = context.scale.lock();
+        let source_scale = context.source_scale.lock();
 
-        match scale.deref() {
-            Scale::Small { ref lines, .. } => {
-                let SyncFilterResults {
-                    total,
-                    decorated_lines:
-                        printer::DecoratedLines {
-                            lines,
-                            indices,
-                            truncated_map,
-                        },
-                } = context.sync_filter_source_item(&query, lines.iter().map(|s| s.as_str()))?;
+        match source_scale.deref() {
+            SourceScale::Small { ref lines, .. } => {
+                let results = filter::par_filter(
+                    query,
+                    lines.iter().map(|s| s.as_str().into()).collect(),
+                    &context.fuzzy_matcher(),
+                );
+
+                // Take the first 200 entries and add an icon to each of them.
+                let printer::DecoratedLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                } = printer::decorate_lines(
+                    results.iter().take(200).cloned().collect(),
+                    context.display_winwidth as usize,
+                    context.icon,
+                );
+
+                let total = results.len();
 
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(total, lines, indices, truncated_map, method);
+
+                let mut current_results = self.current_results.lock();
+                *current_results = results;
             }
-            Scale::Cache { ref path, .. } => {
+            SourceScale::Cache { ref path, .. } => {
                 if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(
                     &query,
                     path.clone().into(),
@@ -79,14 +123,14 @@ impl EventHandle for BuiltinHandle {
 const LARGE_SCALE: usize = 200_000;
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
+pub async fn on_session_create(context: Arc<SessionContext>) -> Result<SourceScale> {
     let to_scale = |lines: Vec<String>| {
         let total = lines.len();
 
         if total > LARGE_SCALE {
-            Scale::Large(total)
+            SourceScale::Large(total)
         } else {
-            Scale::Small { total, lines }
+            SourceScale::Small { total, lines }
         }
     };
 
@@ -94,9 +138,17 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         "blines" => {
             let total =
                 crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-            return Ok(Scale::Cache {
+            return Ok(SourceScale::Cache {
                 total,
                 path: context.start_buffer_path.to_path_buf(),
+            });
+        }
+        "tags" => {
+            let lines = crate::command::ctags::buffer_tags_lines(&context.start_buffer_path)?;
+
+            return Ok(SourceScale::Small {
+                total: lines.len(),
+                lines,
             });
         }
         "proj_tags" => {
@@ -107,7 +159,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
                 to_scale(lines)
             } else {
                 match ctags_cmd.ctags_cache() {
-                    Some((total, path)) => Scale::Cache { total, path },
+                    Some((total, path)) => SourceScale::Cache { total, path },
                     None => {
                         let lines = ctags_cmd.par_formatted_lines()?;
                         ctags_cmd.create_cache_async(lines.clone()).await?;
@@ -131,7 +183,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
             let name = "g:__clap_forerunner_tempfile";
             let value = &path;
             utility::println_json_with_length!(method, name, value);
-            return Ok(Scale::Cache { total, path });
+            return Ok(SourceScale::Cache { total, path });
         }
         _ => {}
     }
@@ -150,5 +202,5 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<Scale> {
         return Ok(to_scale(lines));
     }
 
-    Ok(Scale::Indefinite)
+    Ok(SourceScale::Indefinite)
 }
