@@ -6,6 +6,10 @@
 
 - Support generating the source of `tags` provider using the Rust binary, remove the vista.vim dep from `tags` provider. #795
 
+## Fixed
+
+- Fix the `proj_tags` cmd list under Vim. #796
+
 ## [0.32] 2022-01-21
 
 ## Improved

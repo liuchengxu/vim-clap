@@ -28,7 +28,7 @@ else
       call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
     else
       call clap#filter#async#dyn#start_directly(
-            \ clap#maple#build_cmd('ctags', 'recursive-tags --dir', clap#rooter#working_dir(), '--query', g:clap.input.get()))
+            \ clap#maple#build_cmd('ctags', 'recursive-tags', '--dir', clap#rooter#working_dir(), '--query', g:clap.input.get()))
     endif
   endfunction
 
