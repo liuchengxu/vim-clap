@@ -15,7 +15,7 @@ use parking_lot::Mutex;
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
-pub use self::context::{Scale, SessionContext, SyncFilterResults};
+pub use self::context::{SessionContext, SourceScale, SyncFilterResults};
 pub use self::manager::SessionManager;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
@@ -50,19 +50,18 @@ pub fn note_job_is_finished(job_id: u64) {
 
 pub type SessionId = u64;
 
-fn process_source_scale(scale: Scale, context: Arc<SessionContext>) {
-    if let Some(total) = scale.total() {
+fn process_source_scale(source_scale: SourceScale, context: Arc<SessionContext>) {
+    if let Some(total) = source_scale.total() {
         let method = "s:set_total_size";
         utility::println_json_with_length!(total, method);
     }
 
-    if let Some(lines) = scale.initial_lines(100) {
+    if let Some(lines) = source_scale.initial_lines(100) {
         printer::decorate_lines::<i64>(lines, context.display_winwidth as usize, context.icon)
             .print_on_session_create();
     }
 
-    let mut val = context.scale.lock();
-    *val = scale;
+    context.set_source_scale(source_scale);
 }
 
 #[async_trait::async_trait]
@@ -70,6 +69,7 @@ pub trait EventHandle: Send + Sync + 'static {
     async fn on_create(&mut self, _call: Call, context: Arc<SessionContext>) {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
+        // TODO: blocking on_create for the swift providers like `tags`.
         match tokio::time::timeout(TIMEOUT, on_session_create(context.clone())).await {
             Ok(scale_result) => match scale_result {
                 Ok(scale) => process_source_scale(scale, context),
@@ -107,7 +107,7 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
-    pub source_scale: Scale,
+    pub source_scale: SourceScale,
 }
 
 #[derive(Debug, Clone)]
@@ -139,7 +139,7 @@ impl<T: EventHandle> Session<T> {
             context: Arc::new(call.into()),
             event_handler,
             event_recv: session_receiver,
-            source_scale: Scale::Indefinite,
+            source_scale: SourceScale::Indefinite,
         };
 
         (session, session_sender)
