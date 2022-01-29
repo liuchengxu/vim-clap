@@ -8,9 +8,9 @@ let s:path_seperator = has('win32') ? '\' : '/'
 let s:default_size = 5
 
 function! clap#preview#direction() abort
-  if g:clap_preview_direction ==# 'AUTO' 
+  if g:clap_preview_direction ==# 'AUTO'
     return &columns < 80 ? 'UD' : 'LR'
-  else 
+  else
     return g:clap_preview_direction
   endif
 endfunction
