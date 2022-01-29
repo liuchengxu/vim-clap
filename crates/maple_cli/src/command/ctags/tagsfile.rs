@@ -37,7 +37,7 @@ pub struct TagsFile {
     query: Option<String>,
 
     /// Generate the tags file whether the tags file exists or not.
-    #[structopt(long)]
+    #[clap(long)]
     force_generate: bool,
 }
 

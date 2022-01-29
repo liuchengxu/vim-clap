@@ -17,7 +17,7 @@ pub enum Cmd {
     /// Execute the grep command to avoid the escape issue
     #[clap(name = "grep")]
     Grep(command::grep::Grep),
-    #[structopt(name = "gtags")]
+    #[clap(name = "gtags")]
     Gtags(command::gtags::Gtags),
     /// Execute the shell command.
     #[clap(name = "exec")]
