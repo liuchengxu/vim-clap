@@ -10,6 +10,10 @@
 
 - Fix the `proj_tags` cmd list under Vim. #796
 
+### Internal
+
+- Update to clap v3.0. #794
+
 ## [0.32] 2022-01-21
 
 ## Improved

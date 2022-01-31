@@ -9,7 +9,7 @@ use std::process::Command;
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use rayon::prelude::*;
-use structopt::StructOpt;
+use clap::Parser;
 
 use filter::{
     matcher::{Bonus, MatchType},
@@ -40,10 +40,10 @@ const RG_ARGS: &[&str] = &[
 // Now `.` is pushed to the end for all platforms due to https://github.com/liuchengxu/vim-clap/issues/711.
 const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never --smart-case '' .";
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     grep_query: String,
 
     /// Specify the grep command to run, normally rg will be used.
@@ -51,23 +51,23 @@ pub struct Grep {
     /// Incase of clap can not reconginize such option: --cmd "rg --vimgrep ... "fn ul"".
     ///                                                       |-----------------|
     ///                                                   this can be seen as an option by mistake.
-    #[structopt(long, required_if("sync", "true"))]
+    #[clap(long, required_if_eq("sync", "true"))]
     grep_cmd: Option<String>,
 
     /// Delegate to -g option of rg
-    #[structopt(long)]
+    #[clap(long)]
     glob: Option<String>,
 
     /// Specify the working directory of CMD
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Synchronous filtering, returns after the input stream is complete.
-    #[structopt(long)]
+    #[clap(long)]
     sync: bool,
 }
 

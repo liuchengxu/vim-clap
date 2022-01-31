@@ -1,43 +1,43 @@
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use super::SharedParams;
 use crate::app::Params;
 use crate::dumb_analyzer::{CtagsSearcher, SearchType};
 use crate::tools::ctags::TagsConfig;
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 struct TagsFileParams {
     /// Same with the `--kinds-all` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     kinds_all: String,
 
     /// Same with the `--fields` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     fields: String,
 
     /// Same with the `--extras` option of ctags.
-    #[structopt(long, default_value = "*")]
+    #[clap(long, default_value = "*")]
     extras: String,
 }
 
 /// Manipulate the tags file.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct TagsFile {
     /// Params for creating tags file.
-    #[structopt(flatten)]
+    #[clap(flatten)]
     inner: TagsFileParams,
 
     /// Shared parameters arouns ctags.
-    #[structopt(flatten)]
+    #[clap(flatten)]
     shared: SharedParams,
 
     /// Search the tag matching the given query.
-    #[structopt(long)]
+    #[clap(long)]
     query: Option<String>,
 
     /// Generate the tags file whether the tags file exists or not.
-    #[structopt(long)]
+    #[clap(long)]
     force_generate: bool,
 }
 

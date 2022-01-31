@@ -1,23 +1,23 @@
 use anyhow::Result;
-use structopt::StructOpt;
+use clap::Parser;
 
 use crate::app::Params;
 use crate::dumb_analyzer::GtagsSearcher;
 use crate::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct Gtags {
     /// Initial query string
-    #[structopt(index = 1, long)]
+    #[clap(index = 1, long)]
     query: String,
 
     /// File path of current vim buffer.
-    #[structopt(index = 2, long)]
+    #[clap(index = 2, long)]
     cwd: AbsPathBuf,
 
     /// Search the reference tags.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     reference: bool,
 }
 

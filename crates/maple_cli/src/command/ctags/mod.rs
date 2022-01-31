@@ -6,31 +6,31 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Result;
-use filter::subprocess::{Redirection, Exec};
+use clap::{Parser, Subcommand};
+use filter::subprocess::{Exec, Redirection};
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{CTAGS_HAS_JSON_FEATURE, EXCLUDE};
 
 /// Generate ctags recursively given the directory.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct SharedParams {
     /// The directory for executing the ctags command.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str))]
     dir: Option<PathBuf>,
 
     /// Specify the language.
-    #[structopt(long)]
+    #[clap(long)]
     languages: Option<String>,
 
     /// Exclude files and directories matching 'pattern'.
     ///
     /// Will be translated into ctags' option: --exclude=pattern.
-    #[structopt(
+    #[clap(
         long,
         default_value = EXCLUDE,
         use_delimiter = true
@@ -39,7 +39,7 @@ pub struct SharedParams {
 
     /// Specify the input files.
     // - notify the tags update on demand.
-    #[structopt(long)]
+    #[clap(long)]
     files: Vec<AbsPathBuf>,
 }
 
@@ -62,17 +62,17 @@ impl SharedParams {
 }
 
 /// Ctags command.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Ctags {
     RecursiveTags(recursive::RecursiveTags),
     TagsFile(tagsfile::TagsFile),
     /// Prints the tags of an input file.
     BufferTags {
         /// Use the raw output format even json output is supported, for testing purpose.
-        #[structopt(long)]
+        #[clap(long)]
         force_raw: bool,
 
-        #[structopt(long)]
+        #[clap(long)]
         file: AbsPathBuf,
     },
 }
