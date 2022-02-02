@@ -15,7 +15,7 @@ use parking_lot::Mutex;
 use crate::stdio_server::providers::builtin::on_session_create;
 use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
-pub use self::context::{SessionContext, SourceScale, SyncFilterResults};
+pub use self::context::{SessionContext, SourceScale};
 pub use self::manager::SessionManager;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
@@ -107,7 +107,6 @@ pub struct Session<T> {
     /// Each Session can have its own message processing logic.
     pub event_handler: T,
     pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
-    pub source_scale: SourceScale,
 }
 
 #[derive(Debug, Clone)]
@@ -139,7 +138,6 @@ impl<T: EventHandle> Session<T> {
             context: Arc::new(call.into()),
             event_handler,
             event_recv: session_receiver,
-            source_scale: SourceScale::Indefinite,
         };
 
         (session, session_sender)

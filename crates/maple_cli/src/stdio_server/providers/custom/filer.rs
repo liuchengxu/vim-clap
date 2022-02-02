@@ -105,7 +105,7 @@ impl EventHandle for FilerHandle {
             size: context.sensible_preview_size(),
             context: &context,
             inner: OnMove::Filer(path.clone()),
-            expected_line: None,
+            cache_line: None,
         };
         if let Err(err) = on_move_handler.handle() {
             tracing::error!(?err, ?path, "Failed to handle filer OnMove");

@@ -12,7 +12,7 @@ use crate::command::ctags::recursive::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
-    session::{EventHandle, SessionContext, SourceScale, SyncFilterResults},
+    session::{EventHandle, SessionContext, SourceScale},
     write_response, MethodCall,
 };
 

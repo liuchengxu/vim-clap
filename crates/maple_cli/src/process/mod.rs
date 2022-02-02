@@ -107,8 +107,8 @@ impl BaseCommand {
     fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;
 
-        let cached_filename = utility::calculate_hash(self).to_string();
-        let cached_path = crate::utils::generate_cache_file_path(&cached_filename)?;
+        let cached_filename = utility::calculate_hash(self);
+        let cached_path = crate::utils::generate_cache_file_path(cached_filename.to_string())?;
 
         std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
 

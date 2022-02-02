@@ -40,14 +40,14 @@ impl GtagsSearcher {
         }
     }
 
-    /// Contracts a `gtags` command with proper env variables.
+    /// Constructs a `gtags` command with proper env variables.
     fn gtags(&self) -> Exec {
         Exec::cmd("gtags")
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
     }
 
-    /// Contracts a `global` command with proper env variables.
+    /// Constructs a `global` command with proper env variables.
     fn global(&self) -> Exec {
         Exec::cmd("global")
             .env("GTAGSROOT", &self.project_root)

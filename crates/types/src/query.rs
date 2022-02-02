@@ -32,3 +32,9 @@ impl<T: AsRef<str>> From<T> for Query {
         }
     }
 }
+
+impl Query {
+    pub fn fuzzy_len(&self) -> usize {
+        self.fuzzy_terms.iter().map(|f| f.len()).sum()
+    }
+}

@@ -186,7 +186,7 @@ impl Matcher {
             };
 
         // Try the fuzzy terms against the matched text.
-        let mut fuzzy_indices = Vec::<usize>::new();
+        let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
         let mut fuzzy_score = Score::default();
 
         for term in query.fuzzy_terms.iter() {

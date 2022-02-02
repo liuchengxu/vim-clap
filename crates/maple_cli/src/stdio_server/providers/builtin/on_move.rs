@@ -15,14 +15,14 @@ use crate::utils::build_abs_path;
 
 static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
-/// We want to preview a certain line in a file.
+/// We want to preview a line of a file.
 #[derive(Debug, Clone)]
-pub struct CertainLine {
+pub struct Position {
     pub path: PathBuf,
     pub lnum: usize,
 }
 
-impl CertainLine {
+impl Position {
     pub fn new(path: PathBuf, lnum: usize) -> Self {
         Self { path, lnum }
     }
@@ -36,10 +36,10 @@ pub enum OnMove {
     Files(PathBuf),
     Filer(PathBuf),
     History(PathBuf),
-    Grep(CertainLine),
-    BLines(CertainLine),
-    ProjTags(CertainLine),
-    BufferTags(CertainLine),
+    Grep(Position),
+    BLines(Position),
+    ProjTags(Position),
+    BufferTags(Position),
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -67,11 +67,11 @@ impl OnMove {
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                Self::ProjTags(CertainLine::new(path, lnum))
+                Self::ProjTags(Position::new(path, lnum))
             }
             "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
-                    let (fpath, lnum, _col, expected_line) =
+                    let (fpath, lnum, _col, cache_line) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
 
                     let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
@@ -80,7 +80,7 @@ impl OnMove {
                         fpath
                     };
 
-                    line_content = Some(expected_line.into());
+                    line_content.replace(cache_line.into());
 
                     let mut path: PathBuf = context.cwd.clone();
                     path.push(&fpath);
@@ -89,25 +89,25 @@ impl OnMove {
 
                 let (path, lnum) = try_extract_file_path(&curline)?;
 
-                Self::Grep(CertainLine::new(path, lnum))
+                Self::Grep(Position::new(path, lnum))
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, lnum, _col) =
                     extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                Self::Grep(CertainLine::new(path, lnum))
+                Self::Grep(Position::new(path, lnum))
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
-                Self::BLines(CertainLine::new(path, lnum))
+                Self::BLines(Position::new(path, lnum))
             }
             "tags" => {
                 let lnum =
                     extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
                 let path = context.start_buffer_path.clone();
-                Self::BufferTags(CertainLine::new(path, lnum))
+                Self::BufferTags(Position::new(path, lnum))
             }
             "help_tags" => {
                 let runtimepath = context
@@ -147,7 +147,12 @@ pub struct OnMoveHandler<'a> {
     pub size: usize,
     pub inner: OnMove,
     pub context: &'a SessionContext,
-    pub expected_line: Option<String>,
+    /// When the line extracted from the cache mismatches the latest
+    /// preview line content, which means the cache is outdated, we
+    /// should refresh the cache.
+    ///
+    /// Currently only for the provider `grep2`.
+    pub cache_line: Option<String>,
 }
 
 impl<'a> OnMoveHandler<'a> {
@@ -168,42 +173,33 @@ impl<'a> OnMoveHandler<'a> {
                 size: context.sensible_preview_size(),
                 context,
                 inner: OnMove::Filer(path),
-                expected_line: None,
+                cache_line: None,
             });
         }
-        let (inner, expected_line) = OnMove::new(curline, context)?;
+        let (inner, cache_line) = OnMove::new(curline, context)?;
         Ok(Self {
             msg_id,
             size: context.sensible_preview_size(),
             context,
             inner,
-            expected_line,
+            cache_line,
         })
     }
 
     pub fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
-            BLines(CertainLine { path, lnum })
-            | Grep(CertainLine { path, lnum })
-            | ProjTags(CertainLine { path, lnum })
-            | BufferTags(CertainLine { path, lnum }) => {
-                self.preview_file_at(path, *lnum);
+            BLines(position) | Grep(position) | ProjTags(position) | BufferTags(position) => {
+                self.preview_file_at(position)
             }
+            Filer(path) if path.is_dir() => self.preview_directory(&path)?,
+            Files(path) | Filer(path) | History(path) => self.preview_file(&path)?,
+            Commit(rev) => self.show_commit(rev)?,
             HelpTags {
                 subject,
                 doc_filename,
                 runtimepath,
             } => self.preview_help_subject(subject, doc_filename, runtimepath),
-            Filer(path) if path.is_dir() => {
-                self.preview_directory(&path)?;
-            }
-            Files(path) | Filer(path) | History(path) => {
-                self.preview_file(&path)?;
-            }
-            Commit(rev) => {
-                self.show_commit(rev)?;
-            }
         }
 
         Ok(())
@@ -243,7 +239,7 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn try_refresh_cache(&self, highlight_line: &str) {
+    fn try_refresh_cache(&self, latest_line: &str) {
         if IS_FERESHING_CACHE.load(Ordering::Relaxed) {
             tracing::debug!(
                 "Skipping the cache refreshing as there is already one that is running or waitting"
@@ -251,9 +247,9 @@ impl<'a> OnMoveHandler<'a> {
             return;
         }
         if self.context.provider_id.as_str() == "grep2" {
-            if let Some(ref expected) = self.expected_line {
-                if !expected.eq(highlight_line) {
-                    tracing::debug!(?expected, got = ?highlight_line, "The cache might be oudated");
+            if let Some(ref cache_line) = self.cache_line {
+                if !cache_line.eq(latest_line) {
+                    tracing::debug!(?latest_line, ?cache_line, "The cache might be oudated");
                     let dir = self.context.cwd.clone();
                     IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
                     // Spawn a future in the background
@@ -274,18 +270,20 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn preview_file_at(&self, path: &Path, lnum: usize) {
-        tracing::debug!(?path, lnum, "Previewing file");
+    fn preview_file_at(&self, position: &Position) {
+        tracing::debug!(?position, "Previewing file");
 
-        match utility::read_preview_lines(path, lnum, self.size) {
+        let Position { path, lnum } = position;
+
+        match utility::read_preview_lines(path, *lnum, self.size) {
             Ok((lines_iter, hi_lnum)) => {
                 let fname = path.display().to_string();
                 let lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines_iter.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(got) = lines.get(hi_lnum) {
-                    self.try_refresh_cache(got);
+                if let Some(latest_line) = lines.get(hi_lnum) {
+                    self.try_refresh_cache(latest_line);
                 }
 
                 tracing::debug!(

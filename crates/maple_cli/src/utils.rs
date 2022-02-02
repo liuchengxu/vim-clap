@@ -94,7 +94,7 @@ pub fn generate_data_file_path(filename: &str) -> Result<PathBuf> {
 }
 
 /// Returns a `PathBuf` using given file name under the project cache directory.
-pub fn generate_cache_file_path(filename: &str) -> Result<PathBuf> {
+pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> Result<PathBuf> {
     let cache_dir = PROJECT_DIRS.cache_dir();
     std::fs::create_dir_all(cache_dir)?;
 

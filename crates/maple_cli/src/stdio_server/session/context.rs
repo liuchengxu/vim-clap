@@ -70,13 +70,6 @@ impl SourceScale {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct SyncFilterResults {
-    pub total: usize,
-    pub results: Vec<FilteredItem>,
-    pub decorated_lines: printer::DecoratedLines,
-}
-
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,

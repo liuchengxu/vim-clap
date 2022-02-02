@@ -113,6 +113,10 @@ impl FuzzyTerm {
     pub fn new(ty: FuzzyTermType, word: String) -> Self {
         Self { ty, word }
     }
+
+    pub fn len(&self) -> usize {
+        self.word.len()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
