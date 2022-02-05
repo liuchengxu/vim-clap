@@ -8,7 +8,7 @@ use filter::{FilterContext, FilteredItem};
 use parking_lot::Mutex;
 use serde_json::json;
 
-use crate::command::ctags::recursive::build_recursive_ctags_cmd;
+use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::{
@@ -144,7 +144,8 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<SourceSca
             });
         }
         "tags" => {
-            let lines = crate::command::ctags::buffer_tags_lines(&context.start_buffer_path)?;
+            let lines =
+                crate::command::ctags::buffer_tags::buffer_tags_lines(&context.start_buffer_path)?;
 
             return Ok(SourceScale::Small {
                 total: lines.len(),

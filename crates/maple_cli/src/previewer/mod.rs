@@ -53,13 +53,13 @@ pub fn preview_file<P: AsRef<Path>>(
     Ok((lines, abs_path))
 }
 
-pub fn preview_file_at<P: AsRef<Path> + std::fmt::Debug>(
+pub fn preview_file_at<P: AsRef<Path>>(
     path: P,
     half_size: usize,
     max_width: usize,
     lnum: usize,
 ) -> Result<(Vec<String>, usize)> {
-    tracing::debug!(?path, lnum, "Previewing file");
+    tracing::debug!(path = %path.as_ref().display(), lnum, "Previewing file");
 
     let (lines_iter, hi_lnum) = read_preview_lines(path.as_ref(), lnum, half_size)?;
     let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))

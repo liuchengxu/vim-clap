@@ -135,7 +135,7 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
     File::open(path)
         .and_then(|mut file| {
             //x XXX: is megabyte enough for any text file?
-            const MEGABYTE: usize = 100 * 1_048_576;
+            const MEGABYTE: usize = 32 * 1_048_576;
 
             let filesize = initial_buffer_size(&file);
             if filesize > MEGABYTE {
@@ -206,7 +206,7 @@ where
 
 /// Attempts to write an entire buffer into the file.
 ///
-/// Creates one if the file doed not exist.
+/// Creates one if the file does not exist.
 pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
     use std::io::Write;
 

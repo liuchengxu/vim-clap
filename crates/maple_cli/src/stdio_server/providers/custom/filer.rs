@@ -56,6 +56,52 @@ impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
     }
 }
 
+/*
+function! s:goto_parent() abort
+  " The root directory
+  if s:is_root_directory(s:current_dir)
+    return
+  endif
+
+  if s:current_dir[-1:] ==# s:PATH_SEPERATOR
+    let parent_dir = fnamemodify(s:current_dir, ':h:h')
+  else
+    let parent_dir = fnamemodify(s:current_dir, ':h')
+  endif
+
+  if s:is_root_directory(parent_dir)
+    let s:current_dir = parent_dir
+  else
+    let s:current_dir = parent_dir.s:PATH_SEPERATOR
+  endif
+  call s:set_prompt()
+  call s:filter_or_send_message()
+endfunction
+*/
+
+fn goto_parent(cur_dir: String) {
+    // Root directory.
+    if Path::new(&cur_dir).parent().is_none() {
+        // noop
+        return;
+    }
+
+    let parent_dir = match Path::new(&cur_dir).parent() {
+        Some(dir) => dir,
+        None => return,
+    };
+
+    let new_cur_dir = if parent_dir.parent().is_none() {
+        parent_dir.to_string_lossy().to_string()
+    } else {
+        format!("{}{}", parent_dir.display(), std::path::MAIN_SEPARATOR)
+    };
+
+    if let Some(last_char) = cur_dir.chars().last() {
+        if last_char == std::path::MAIN_SEPARATOR {}
+    }
+}
+
 pub fn read_dir_entries<P: AsRef<Path>>(
     dir: P,
     enable_icon: bool,
