@@ -6,6 +6,7 @@ use once_cell::sync::Lazy;
 use serde_json::json;
 
 use pattern::*;
+use types::PreviewInfo;
 
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
@@ -276,15 +277,32 @@ impl<'a> OnMoveHandler<'a> {
         let Position { path, lnum } = position;
 
         match utility::read_preview_lines(path, *lnum, self.size) {
-            Ok((lines_iter, hi_lnum)) => {
+            Ok(PreviewInfo {
+                lines,
+                highlight_lnum,
+                start,
+                ..
+            }) => {
                 let fname = path.display().to_string();
-                let lines = std::iter::once(format!("{}:{}", fname, lnum))
-                    .chain(self.truncate_preview_lines(lines_iter.into_iter()))
+                let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
+                    .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(latest_line) = lines.get(hi_lnum) {
+                if let Some(latest_line) = lines.get(highlight_lnum) {
                     self.try_refresh_cache(latest_line);
                 }
+
+                let highlight_lnum =
+                    match crate::command::ctags::buffer_tags::current_function_tag(path, *lnum) {
+                        Some(tag) if tag.line < start => {
+                            let border_line = "─".repeat(self.context.display_winwidth as usize);
+                            lines.insert(1, border_line.clone());
+                            lines.insert(1, format!("{}  💡", tag.extract_pattern()));
+                            lines.insert(1, border_line);
+                            highlight_lnum + 3
+                        }
+                        _ => highlight_lnum,
+                    };
 
                 tracing::debug!(
                     msg_id = self.msg_id,
@@ -297,7 +315,7 @@ impl<'a> OnMoveHandler<'a> {
                   "event": "on_move",
                   "lines": lines,
                   "fname": fname,
-                  "hi_lnum": hi_lnum
+                  "hi_lnum": highlight_lnum
                 }));
             }
             Err(err) => {

@@ -4,6 +4,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 
+use types::PreviewInfo;
 use utility::{read_first_lines, read_preview_lines};
 
 #[inline]
@@ -61,10 +62,15 @@ pub fn preview_file_at<P: AsRef<Path>>(
 ) -> Result<(Vec<String>, usize)> {
     tracing::debug!(path = %path.as_ref().display(), lnum, "Previewing file");
 
-    let (lines_iter, hi_lnum) = read_preview_lines(path.as_ref(), lnum, half_size)?;
+    let PreviewInfo {
+        lines,
+        highlight_lnum,
+        ..
+    } = read_preview_lines(path.as_ref(), lnum, half_size)?;
+
     let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))
-        .chain(truncate_preview_lines(max_width, lines_iter.into_iter()))
+        .chain(truncate_preview_lines(max_width, lines.into_iter()))
         .collect::<Vec<_>>();
 
-    Ok((lines, hi_lnum))
+    Ok((lines, highlight_lnum))
 }

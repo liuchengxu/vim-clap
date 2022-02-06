@@ -1985,6 +1985,7 @@ dependencies = [
  "directories",
  "memchr",
  "simdutf8",
+ "types",
 ]
 
 [[package]]

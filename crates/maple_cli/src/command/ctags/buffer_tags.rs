@@ -1,7 +1,8 @@
 use std::ops::Deref;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use filter::subprocess::{Exec, Redirection};
 use itertools::Itertools;
@@ -15,6 +16,10 @@ use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
 /// Prints the tags for a specific file.
 #[derive(Parser, Debug, Clone)]
 pub struct BufferTags {
+    /// Show the nearest function/method to a specific line.
+    #[clap(long)]
+    current_function: Option<usize>,
+
     /// Use the raw output format even json output is supported, for testing purpose.
     #[clap(long)]
     force_raw: bool,
@@ -25,6 +30,12 @@ pub struct BufferTags {
 
 impl BufferTags {
     pub fn run(&self, _params: Params) -> Result<()> {
+        if let Some(at) = self.current_function {
+            return current_function_tag(self.file.as_path(), at)
+                .map(|_| ())
+                .ok_or_else(|| anyhow!("Can not find the current function"));
+        }
+
         let lines = if *CTAGS_HAS_JSON_FEATURE.deref() && !self.force_raw {
             let cmd = build_cmd_in_json_format(self.file.as_ref());
             buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)?
@@ -41,12 +52,29 @@ impl BufferTags {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
-struct BufferTagInfo {
-    name: String,
-    pattern: String,
-    line: usize,
-    kind: String,
+pub fn current_function_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
+    let tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+        let cmd = build_cmd_in_json_format(file);
+        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_json).ok()?
+    } else {
+        let cmd = build_cmd_in_raw_format(file);
+        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_raw).ok()?
+    };
+
+    let maybe_idx = match tags.binary_search_by_key(&at, |tag| tag.line) {
+        Ok(l) => Some(l), // the function name will be displayed by default normally because we preview the lines of [at - n, at + n].
+        Err(l) => l.checked_sub(1), // use the previous item.
+    };
+
+    maybe_idx.map(|idx| tags[idx].clone())
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+pub struct BufferTagInfo {
+    pub name: String,
+    pub pattern: String,
+    pub line: usize,
+    pub kind: String,
 }
 
 impl BufferTagInfo {
@@ -104,6 +132,11 @@ impl BufferTagInfo {
         } else {
             None
         }
+    }
+
+    pub fn extract_pattern(&self) -> &str {
+        let pattern_len = self.pattern.len();
+        &self.pattern[2..pattern_len - 2]
     }
 }
 
@@ -165,4 +198,24 @@ fn buffer_tags_lines_inner(
         .par_iter()
         .map(|s| s.format_buffer_tags(max_name_len))
         .collect::<Vec<_>>())
+}
+
+fn collect_buffer_tags(
+    cmd: Exec,
+    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+) -> Result<Vec<BufferTagInfo>> {
+    use std::io::BufRead;
+
+    let stdout = cmd.stream_stdout()?;
+
+    let mut tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
+        .lines()
+        .flatten()
+        .par_bridge()
+        .filter_map(|s| parse_fn(&s).filter(|tag| tag.kind == "function" || tag.kind == "method"))
+        .collect::<Vec<_>>();
+
+    tags.par_sort_unstable_by_key(|x| x.line);
+
+    Ok(tags)
 }
