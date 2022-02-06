@@ -235,7 +235,7 @@ mod tests {
     fn test_multi_byte_reading() {
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.push("test_673.txt");
-        let (lines, _hl_line) = read_preview_lines_impl(current_dir, 2, 5).unwrap();
+        let PreviewInfo { lines, .. } = read_preview_lines_impl(current_dir, 2, 5).unwrap();
         assert_eq!(
             lines,
             [
