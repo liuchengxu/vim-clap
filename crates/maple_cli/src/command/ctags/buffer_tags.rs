@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result};
 use clap::Parser;
 use filter::subprocess::{Exec, Redirection};
 use itertools::Itertools;
@@ -19,7 +19,7 @@ use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
 pub struct BufferTags {
     /// Show the nearest function/method to a specific line.
     #[clap(long)]
-    current_function: Option<usize>,
+    current_context: Option<usize>,
 
     /// Use the raw output format even json output is supported, for testing purpose.
     #[clap(long)]
@@ -31,10 +31,11 @@ pub struct BufferTags {
 
 impl BufferTags {
     pub fn run(&self, _params: Params) -> Result<()> {
-        if let Some(at) = self.current_function {
-            return current_function_tag(self.file.as_path(), at)
-                .map(|_| ())
-                .ok_or_else(|| anyhow!("Can not find the current function"));
+        if let Some(at) = self.current_context {
+            let current_tag = current_function_tag(self.file.as_path(), at)
+                .context("Error at finding the context tag info")?;
+            println!("Context: {:?}", current_tag);
+            return Ok(());
         }
 
         let lines = if *CTAGS_HAS_JSON_FEATURE.deref() && !self.force_raw {
@@ -62,12 +63,25 @@ pub fn current_function_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
         collect_buffer_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
     };
 
-    let maybe_idx = match tags.binary_search_by_key(&at, |tag| tag.line) {
-        Ok(l) => Some(l), // the function name will be displayed by default normally because we preview the lines of [at - n, at + n].
-        Err(l) => l.checked_sub(1), // use the previous item.
-    };
+    match tags.binary_search_by_key(&at, |tag| tag.line) {
+        Ok(_l) => None, // Skip if the line is exactly a tag line.
+        Err(_l) => {
+            const CONTEXT_KINDS: &[&str] = &["function", "method", "module"];
 
-    maybe_idx.map(|idx| tags[idx].clone())
+            let context_tags = tags
+                .iter()
+                .filter(|tag| CONTEXT_KINDS.contains(&tag.kind.as_ref()))
+                .collect::<Vec<_>>();
+
+            match context_tags.binary_search_by_key(&at, |tag| tag.line) {
+                Ok(_) => None,
+                Err(l) => {
+                    let maybe_idx = l.checked_sub(1); // use the previous item.
+                    maybe_idx.map(|idx| context_tags[idx].clone())
+                }
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
@@ -206,12 +220,22 @@ fn collect_buffer_tags(
 ) -> Result<Vec<BufferTagInfo>> {
     let stdout = cmd.stream_stdout()?;
 
+    const DEFINITION_KINDS: &[&str] = &[
+        "function",
+        "method",
+        "module",
+        "implementation",
+        "struct",
+        "enumerator",
+    ];
+
     let mut tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
         .lines()
         .flatten()
         .par_bridge()
-        .filter_map(|s| parse_fn(&s).filter(|tag| tag.kind == "function" || tag.kind == "method"))
-        .filter(|tag| tag.line <= target_lnum) // the line of method/function name is lower.
+        .filter_map(|s| parse_fn(&s))
+        // the line of method/function name is lower.
+        .filter(|tag| tag.line <= target_lnum && DEFINITION_KINDS.contains(&tag.kind.as_ref()))
         .collect::<Vec<_>>();
 
     tags.par_sort_unstable_by_key(|x| x.line);
