@@ -304,7 +304,7 @@ impl<'a> OnMoveHandler<'a> {
                 }
 
                 let highlight_lnum =
-                    match crate::command::ctags::buffer_tags::current_function_tag(path, *lnum) {
+                    match crate::command::ctags::buffer_tags::current_context_tag(path, *lnum) {
                         Some(tag) if tag.line < start => {
                             let border_line = "─".repeat(self.context.display_winwidth as usize);
                             lines.insert(1, border_line.clone());

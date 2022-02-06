@@ -32,9 +32,9 @@ pub struct BufferTags {
 impl BufferTags {
     pub fn run(&self, _params: Params) -> Result<()> {
         if let Some(at) = self.current_context {
-            let current_tag = current_function_tag(self.file.as_path(), at)
+            let context_tag = current_context_tag(self.file.as_path(), at)
                 .context("Error at finding the context tag info")?;
-            println!("Context: {:?}", current_tag);
+            println!("Context: {:?}", context_tag);
             return Ok(());
         }
 
@@ -54,7 +54,8 @@ impl BufferTags {
     }
 }
 
-pub fn current_function_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
+/// Returns the method/function context associated with line `at`.
+pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
     let tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = build_cmd_in_json_format(file);
         collect_buffer_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
@@ -95,8 +96,6 @@ pub struct BufferTagInfo {
 impl BufferTagInfo {
     /// Returns the display line for BuiltinHandle, no icon attached.
     fn format_buffer_tags(&self, max_name_len: usize) -> String {
-        let pattern_len = self.pattern.len();
-
         let name_line = format!("{}:{}", self.name, self.line);
 
         let kind = format!("[{}]", self.kind);
@@ -106,7 +105,7 @@ impl BufferTagInfo {
             name_group_width = max_name_len + 6,
             kind = kind,
             kind_width = 10,
-            pattern = self.pattern[2..pattern_len - 2].trim()
+            pattern = self.extract_pattern().trim()
         )
     }
 
