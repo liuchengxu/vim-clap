@@ -285,10 +285,11 @@ impl<'a> OnMoveHandler<'a> {
                 start,
                 ..
             }) => {
+                let container_width = self.context.display_winwidth as usize;
+
                 // Truncate the left of absolute path string.
                 let mut fname = path.display().to_string();
-                let max_fname_len =
-                    self.context.display_winwidth as usize - 1 - crate::utils::display_width(*lnum);
+                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
                 if fname.len() > max_fname_len {
                     if let Some((offset, _)) =
                         fname.char_indices().nth(fname.len() - max_fname_len + 2)
@@ -306,7 +307,6 @@ impl<'a> OnMoveHandler<'a> {
 
                 let highlight_lnum = match current_context_tag(path, *lnum) {
                     Some(tag) if tag.line < start => {
-                        let container_width = self.context.display_winwidth as usize;
                         let border_line = "─".repeat(container_width);
                         lines.insert(1, border_line.clone());
 
