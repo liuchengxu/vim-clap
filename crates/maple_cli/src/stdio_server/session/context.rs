@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
@@ -9,6 +10,7 @@ use matcher::MatchType;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
+use crate::command::ctags::buffer_tags::BufferTagInfo;
 use crate::stdio_server::{
     rpc::{Call, MethodCall, Notification},
     types::ProviderId,
@@ -70,6 +72,20 @@ impl SourceScale {
     }
 }
 
+// TODO: cache the buffer tags per session.
+#[derive(Debug, Clone)]
+pub struct CachedBufTags {
+    pub done: bool,
+    pub tags: Vec<BufferTagInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SessionState {
+    pub is_running: Arc<AtomicBool>,
+    pub source_scale: Arc<Mutex<SourceScale>>,
+    pub buf_tags_cache: Arc<Mutex<HashMap<PathBuf, CachedBufTags>>>,
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
@@ -82,10 +98,9 @@ pub struct SessionContext {
     pub icon: Icon,
     pub match_type: MatchType,
     pub match_bonuses: Vec<matcher::Bonus>,
-    pub source_scale: Arc<Mutex<SourceScale>>,
-    pub is_running: Arc<AtomicBool>,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
+    pub state: SessionState,
 }
 
 impl SessionContext {
@@ -112,7 +127,7 @@ impl SessionContext {
     }
 
     pub fn set_source_scale(&self, new: SourceScale) {
-        let mut source_scale = self.source_scale.lock();
+        let mut source_scale = self.state.source_scale.lock();
         *source_scale = new;
     }
 
@@ -182,8 +197,11 @@ impl SessionContext {
             match_type,
             match_bonuses,
             icon,
-            source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
-            is_running: Arc::new(true.into()),
+            state: SessionState {
+                is_running: Arc::new(true.into()),
+                source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
+                buf_tags_cache: Arc::new(Mutex::new(HashMap::new())),
+            },
         }
     }
 }
