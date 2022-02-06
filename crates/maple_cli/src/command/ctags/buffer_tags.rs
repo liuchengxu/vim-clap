@@ -67,7 +67,7 @@ pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
     match tags.binary_search_by_key(&at, |tag| tag.line) {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
-            const CONTEXT_KINDS: &[&str] = &["function", "method", "module"];
+            const CONTEXT_KINDS: &[&str] = &["function", "method", "module", "macro"];
 
             let context_tags = tags
                 .iter()
@@ -225,6 +225,7 @@ fn collect_buffer_tags(
         "module",
         "implementation",
         "struct",
+        "macro",
         "enumerator",
     ];
 

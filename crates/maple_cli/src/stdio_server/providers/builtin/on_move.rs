@@ -314,7 +314,7 @@ impl<'a> OnMoveHandler<'a> {
                             let pattern = if pattern.len() > max_pattern_len {
                                 // Use the chars instead of indexing the str to avoid the char boundary error.
                                 let mut p: String =
-                                    pattern.chars().take(max_pattern_len - 2).collect();
+                                    pattern.chars().take(max_pattern_len - 4 - 2).collect();
                                 p.push_str("..");
                                 Cow::Owned(p)
                             } else {
