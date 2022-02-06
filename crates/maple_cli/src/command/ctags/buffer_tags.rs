@@ -1,3 +1,4 @@
+use std::io::BufRead;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -55,10 +56,10 @@ impl BufferTags {
 pub fn current_function_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
     let tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = build_cmd_in_json_format(file);
-        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_json).ok()?
+        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
     } else {
         let cmd = build_cmd_in_raw_format(file);
-        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_raw).ok()?
+        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
     };
 
     let maybe_idx = match tags.binary_search_by_key(&at, |tag| tag.line) {
@@ -173,8 +174,6 @@ fn buffer_tags_lines_inner(
     cmd: Exec,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
 ) -> Result<Vec<String>> {
-    use std::io::BufRead;
-
     let stdout = cmd.stream_stdout()?;
 
     let max_name_len = AtomicUsize::new(0);
@@ -203,9 +202,8 @@ fn buffer_tags_lines_inner(
 fn collect_buffer_tags(
     cmd: Exec,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+    target_lnum: usize,
 ) -> Result<Vec<BufferTagInfo>> {
-    use std::io::BufRead;
-
     let stdout = cmd.stream_stdout()?;
 
     let mut tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
@@ -213,6 +211,7 @@ fn collect_buffer_tags(
         .flatten()
         .par_bridge()
         .filter_map(|s| parse_fn(&s).filter(|tag| tag.kind == "function" || tag.kind == "method"))
+        .filter(|tag| tag.line <= target_lnum) // the line of method/function name is lower.
         .collect::<Vec<_>>();
 
     tags.par_sort_unstable_by_key(|x| x.line);
