@@ -83,9 +83,9 @@ pub struct SessionContext {
     pub match_type: MatchType,
     pub match_bonuses: Vec<matcher::Bonus>,
     pub source_scale: Arc<Mutex<SourceScale>>,
+    pub is_running: Arc<AtomicBool>,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
-    pub is_running: Arc<Mutex<AtomicBool>>,
 }
 
 impl SessionContext {
@@ -183,7 +183,7 @@ impl SessionContext {
             match_bonuses,
             icon,
             source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
-            is_running: Arc::new(Mutex::new(true.into())),
+            is_running: Arc::new(true.into()),
         }
     }
 }

@@ -113,11 +113,10 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
     static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<&str, Vec<&str>>> = OnceCell::new();
 
     let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
-        let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
+        serde_json::from_str(include_str!(
             "../../../../../../../scripts/dumb_jump/comments_map.json"
         ))
-        .expect("Wrong path for comments_map.json");
-        comments
+        .expect("Wrong path for comments_map.json")
     });
 
     table

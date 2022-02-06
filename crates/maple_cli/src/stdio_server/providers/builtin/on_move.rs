@@ -9,6 +9,7 @@ use serde_json::json;
 use pattern::*;
 use types::PreviewInfo;
 
+use crate::command::ctags::buffer_tags::current_context_tag;
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
     global, providers::filer, session::SessionContext, write_response, MethodCall,
@@ -284,7 +285,7 @@ impl<'a> OnMoveHandler<'a> {
                 start,
                 ..
             }) => {
-                // Truncate the absolute path string.
+                // Truncate the left of absolute path string.
                 let mut fname = path.display().to_string();
                 let max_fname_len =
                     self.context.display_winwidth as usize - 1 - crate::utils::display_width(*lnum);
@@ -303,29 +304,31 @@ impl<'a> OnMoveHandler<'a> {
                     self.try_refresh_cache(latest_line);
                 }
 
-                let highlight_lnum =
-                    match crate::command::ctags::buffer_tags::current_context_tag(path, *lnum) {
-                        Some(tag) if tag.line < start => {
-                            let border_line = "─".repeat(self.context.display_winwidth as usize);
-                            lines.insert(1, border_line.clone());
-                            let pattern = tag.extract_pattern();
-                            // 2 whitespaces + 💡
-                            let max_pattern_len = self.context.display_winwidth as usize - 4;
-                            let pattern = if pattern.len() > max_pattern_len {
-                                // Use the chars instead of indexing the str to avoid the char boundary error.
-                                let mut p: String =
-                                    pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                                p.push_str("..");
-                                Cow::Owned(p)
-                            } else {
-                                Cow::Borrowed(pattern)
-                            };
-                            lines.insert(1, format!("{}  💡", pattern));
-                            lines.insert(1, border_line);
-                            highlight_lnum + 3
-                        }
-                        _ => highlight_lnum,
-                    };
+                let highlight_lnum = match current_context_tag(path, *lnum) {
+                    Some(tag) if tag.line < start => {
+                        let container_width = self.context.display_winwidth as usize;
+                        let border_line = "─".repeat(container_width);
+                        lines.insert(1, border_line.clone());
+
+                        let pattern = tag.extract_pattern();
+                        // Truncate the right of pattern, 2 whitespaces + 💡
+                        let max_pattern_len = container_width - 4;
+                        let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
+                            // Use the chars instead of indexing the str to avoid the char boundary error.
+                            let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                            (p, "..  💡")
+                        } else {
+                            (String::from(pattern), "  💡")
+                        };
+                        context_line.reserve(to_push.len());
+                        context_line.push_str(to_push);
+                        lines.insert(1, context_line);
+
+                        lines.insert(1, border_line);
+                        highlight_lnum + 3
+                    }
+                    _ => highlight_lnum,
+                };
 
                 tracing::debug!(
                     msg_id = self.msg_id,
