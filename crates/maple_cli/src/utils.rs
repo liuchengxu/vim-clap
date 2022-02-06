@@ -221,6 +221,24 @@ pub fn count_lines<R: std::io::Read>(handle: R) -> Result<usize, std::io::Error>
     Ok(count)
 }
 
+/// Returns the width of displaying `n` on the screen.
+///
+/// Same with `n.to_string().len()` but without allocation.
+pub fn display_width(n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+
+    let mut n = n;
+    let mut len = 0;
+    while n > 0 {
+        len += 1;
+        n /= 10;
+    }
+
+    len
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

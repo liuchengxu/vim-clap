@@ -284,7 +284,17 @@ impl<'a> OnMoveHandler<'a> {
                 start,
                 ..
             }) => {
-                let fname = path.display().to_string();
+                // Truncate the absolute path string.
+                let mut fname = path.display().to_string();
+                let max_fname_len =
+                    self.context.display_winwidth as usize - 1 - crate::utils::display_width(*lnum);
+                if fname.len() > max_fname_len {
+                    if let Some((offset, _)) =
+                        fname.char_indices().nth(fname.len() - max_fname_len + 2)
+                    {
+                        fname.replace_range(..offset, "..");
+                    }
+                }
                 let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
@@ -302,6 +312,7 @@ impl<'a> OnMoveHandler<'a> {
                             // 2 whitespaces + 💡
                             let max_pattern_len = self.context.display_winwidth as usize - 4;
                             let pattern = if pattern.len() > max_pattern_len {
+                                // Use the chars instead of indexing the str to avoid the char boundary error.
                                 let mut p: String =
                                     pattern.chars().take(max_pattern_len - 2).collect();
                                 p.push_str("..");
