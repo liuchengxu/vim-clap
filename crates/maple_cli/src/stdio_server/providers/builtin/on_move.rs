@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -297,7 +298,18 @@ impl<'a> OnMoveHandler<'a> {
                         Some(tag) if tag.line < start => {
                             let border_line = "─".repeat(self.context.display_winwidth as usize);
                             lines.insert(1, border_line.clone());
-                            lines.insert(1, format!("{}  💡", tag.extract_pattern()));
+                            let pattern = tag.extract_pattern();
+                            // 2 whitespaces + 💡
+                            let max_pattern_len = self.context.display_winwidth as usize - 4;
+                            let pattern = if pattern.len() > max_pattern_len {
+                                let mut p: String =
+                                    pattern.chars().take(max_pattern_len - 2).collect();
+                                p.push_str("..");
+                                Cow::Owned(p)
+                            } else {
+                                Cow::Borrowed(pattern)
+                            };
+                            lines.insert(1, format!("{}  💡", pattern));
                             lines.insert(1, border_line);
                             highlight_lnum + 3
                         }
