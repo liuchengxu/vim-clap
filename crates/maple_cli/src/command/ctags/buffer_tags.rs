@@ -70,7 +70,7 @@ pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
             const CONTEXT_KINDS: &[&str] = &["function", "method", "module", "macro"];
 
             let context_tags = tags
-                .iter()
+                .par_iter()
                 .filter(|tag| CONTEXT_KINDS.contains(&tag.kind.as_ref()))
                 .collect::<Vec<_>>();
 
