@@ -89,7 +89,7 @@ pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
             let context_tags = superset_tags
-                .par_iter()
+                .into_par_iter()
                 .filter(|tag| CONTEXT_KINDS.contains(&tag.kind.as_ref()))
                 .collect::<Vec<_>>();
 
@@ -97,7 +97,7 @@ pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
                 Ok(_) => None,
                 Err(l) => {
                     let maybe_idx = l.checked_sub(1); // use the previous item.
-                    maybe_idx.map(|idx| context_tags[idx].clone())
+                    maybe_idx.and_then(|idx| context_tags.into_iter().nth(idx))
                 }
             }
         }
