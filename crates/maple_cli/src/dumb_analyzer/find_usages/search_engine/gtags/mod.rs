@@ -1,4 +1,3 @@
-use std::io::BufRead;
 use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::{anyhow, Result};
@@ -121,11 +120,7 @@ impl GtagsSearcher {
 
 // Returns a stream of tag parsed from the gtags output.
 fn execute(cmd: Exec) -> Result<impl Iterator<Item = TagInfo>> {
-    let stdout = cmd.stream_stdout()?;
-
-    // We usually have a decent amount of RAM nowdays.
-    Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-        .lines()
+    Ok(crate::utils::lines(cmd)?
         .flatten()
         .filter_map(|s| TagInfo::from_gtags(&s)))
 }

@@ -1,4 +1,3 @@
-use std::io::BufRead;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -54,22 +53,42 @@ impl BufferTags {
     }
 }
 
+const CONTEXT_KINDS: &[&str] = &[
+    "function",
+    "method",
+    "module",
+    "macro",
+    "implementation",
+    "interface",
+];
+
+const CONTEXT_SUPERSET: &[&str] = &[
+    "function",
+    "method",
+    "module",
+    "macro",
+    "implementation",
+    "interface",
+    "struct",
+    "field",
+    "typedef",
+    "enumerator",
+];
+
 /// Returns the method/function context associated with line `at`.
 pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
-    let tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = build_cmd_in_json_format(file);
-        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
+        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
     } else {
         let cmd = build_cmd_in_raw_format(file);
-        collect_buffer_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
+        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
     };
 
-    match tags.binary_search_by_key(&at, |tag| tag.line) {
+    match superset_tags.binary_search_by_key(&at, |tag| tag.line) {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
-            const CONTEXT_KINDS: &[&str] = &["function", "method", "module", "macro"];
-
-            let context_tags = tags
+            let context_tags = superset_tags
                 .par_iter()
                 .filter(|tag| CONTEXT_KINDS.contains(&tag.kind.as_ref()))
                 .collect::<Vec<_>>();
@@ -187,12 +206,9 @@ fn buffer_tags_lines_inner(
     cmd: Exec,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
 ) -> Result<Vec<String>> {
-    let stdout = cmd.stream_stdout()?;
-
     let max_name_len = AtomicUsize::new(0);
 
-    let tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-        .lines()
+    let tags = crate::utils::lines(cmd)?
         .flatten()
         .par_bridge()
         .filter_map(|s| {
@@ -212,30 +228,17 @@ fn buffer_tags_lines_inner(
         .collect::<Vec<_>>())
 }
 
-fn collect_buffer_tags(
+fn collect_superset_context_tags(
     cmd: Exec,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
     target_lnum: usize,
 ) -> Result<Vec<BufferTagInfo>> {
-    let stdout = cmd.stream_stdout()?;
-
-    const DEFINITION_KINDS: &[&str] = &[
-        "function",
-        "method",
-        "module",
-        "implementation",
-        "struct",
-        "macro",
-        "enumerator",
-    ];
-
-    let mut tags = std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-        .lines()
+    let mut tags = crate::utils::lines(cmd)?
         .flatten()
         .par_bridge()
         .filter_map(|s| parse_fn(&s))
         // the line of method/function name is lower.
-        .filter(|tag| tag.line <= target_lnum && DEFINITION_KINDS.contains(&tag.kind.as_ref()))
+        .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
         .collect::<Vec<_>>();
 
     tags.par_sort_unstable_by_key(|x| x.line);
