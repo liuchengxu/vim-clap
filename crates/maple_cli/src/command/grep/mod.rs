@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
+use clap::Parser;
 use itertools::Itertools;
 use rayon::prelude::*;
-use clap::Parser;
 
 use filter::{
     matcher::{Bonus, MatchType},

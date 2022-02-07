@@ -301,34 +301,48 @@ impl<'a> OnMoveHandler<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
+                let mut highlight_lnum = highlight_lnum;
+
+                // Some checks against the latest preview line.
                 if let Some(latest_line) = lines.get(highlight_lnum) {
                     self.try_refresh_cache(latest_line);
-                }
 
-                let highlight_lnum = match current_context_tag(path, *lnum) {
-                    Some(tag) if tag.line < start => {
-                        let border_line = "─".repeat(container_width);
-                        lines.insert(1, border_line.clone());
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        let is_comment_line = crate::dumb_analyzer::get_comments_by_ext(ext)
+                            .iter()
+                            .any(|comment| latest_line.trim_start().starts_with(comment));
 
-                        let pattern = tag.extract_pattern();
-                        // Truncate the right of pattern, 2 whitespaces + 💡
-                        let max_pattern_len = container_width - 4;
-                        let (mut context_line, to_push) = if pattern.len() > max_pattern_len {
-                            // Use the chars instead of indexing the str to avoid the char boundary error.
-                            let p: String = pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                            (p, "..  💡")
-                        } else {
-                            (String::from(pattern), "  💡")
-                        };
-                        context_line.reserve(to_push.len());
-                        context_line.push_str(to_push);
-                        lines.insert(1, context_line);
+                        if !is_comment_line {
+                            match current_context_tag(path, *lnum) {
+                                Some(tag) if tag.line < start => {
+                                    let border_line = "─".repeat(container_width);
+                                    lines.insert(1, border_line.clone());
 
-                        lines.insert(1, border_line);
-                        highlight_lnum + 3
+                                    let pattern = tag.extract_pattern();
+                                    // Truncate the right of pattern, 2 whitespaces + 💡
+                                    let max_pattern_len = container_width - 4;
+                                    let (mut context_line, to_push) = if pattern.len()
+                                        > max_pattern_len
+                                    {
+                                        // Use the chars instead of indexing the str to avoid the char boundary error.
+                                        let p: String =
+                                            pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                                        (p, "..  💡")
+                                    } else {
+                                        (String::from(pattern), "  💡")
+                                    };
+                                    context_line.reserve(to_push.len());
+                                    context_line.push_str(to_push);
+                                    lines.insert(1, context_line);
+
+                                    lines.insert(1, border_line);
+                                    highlight_lnum += 3;
+                                }
+                                _ => {}
+                            }
+                        }
                     }
-                    _ => highlight_lnum,
-                };
+                }
 
                 tracing::debug!(
                     msg_id = self.msg_id,

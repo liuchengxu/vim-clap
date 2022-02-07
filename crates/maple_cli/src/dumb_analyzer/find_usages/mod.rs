@@ -1,10 +1,32 @@
 mod search_engine;
 
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
+use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
 pub use self::search_engine::{CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType};
+
+/// Returns a list of comment prefix for a source file.
+///
+/// # Argument
+///
+/// - `ext`: the extension of a file, e.g., `rs`.
+pub fn get_comments_by_ext(ext: &str) -> &[&str] {
+    static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<&str, Vec<&str>>> = OnceCell::new();
+
+    let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
+        serde_json::from_str(include_str!(
+            "../../../../../scripts/dumb_jump/comments_map.json"
+        ))
+        .expect("Wrong path for comments_map.json")
+    });
+
+    table
+        .get(ext)
+        .unwrap_or_else(|| table.get("*").expect("`*` entry exists; qed"))
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct Usage {
