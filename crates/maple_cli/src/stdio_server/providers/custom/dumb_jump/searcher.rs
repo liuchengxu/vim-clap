@@ -48,6 +48,7 @@ fn search_gtags(dir: &Path, search_info: &SearchInfo) -> Result<Usages> {
     } = search_info;
     let usages = GtagsSearcher::new(dir.to_path_buf())
         .search_references(keyword)?
+        .par_bridge()
         .filter_map(|tag_info| {
             let (line, indices) = tag_info.grep_format_gtags("refs", keyword, false);
             filtering_terms
