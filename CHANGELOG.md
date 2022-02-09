@@ -10,6 +10,7 @@
 ## Fixed
 
 - Fix the `proj_tags` cmd list under Vim. #796
+- No syntax highlight for `c` preview. #800
 
 ### Internal
 

@@ -148,7 +148,37 @@ impl MethodCall {
                 }
             })
             .chain(
-                vec![("h", "c"), ("hpp", "cpp"), ("vimrc", "vim"), ("cc", "cpp")].into_par_iter(),
+                // Lines as followed can not be parsed correctly, thus the preview highlight of
+                // related file will be broken. Ref #800
+                // *.c       call dist#ft#FTlpc()
+                vec![
+                    ("hpp", "cpp"),
+                    ("vimrc", "vim"),
+                    ("cc", "cpp"),
+                    ("cpp", "cpp"),
+                    ("c", "c"),
+                    ("h", "c"),
+                    ("cmd", "dosbatch"),
+                    ("CMakeLists.txt", "cmake"),
+                    ("Dockerfile", "dockerfile"),
+                    ("directory", "desktop"),
+                    ("patch", "diff"),
+                    ("dircolors", "dircolors"),
+                    ("editorconfig", "dosini"),
+                    ("COMMIT_EDITMSG", "gitcommit"),
+                    ("MERGE_MSG", "gitcommit"),
+                    ("TAG_EDITMSG", "gitcommit"),
+                    ("NOTES_EDITMSG", "gitcommit"),
+                    ("EDIT_DESCRIPTION", "gitcommit"),
+                    ("gitconfig", "gitconfig"),
+                    ("worktree", "gitconfig"),
+                    ("gitmodules", "gitconfig"),
+                    ("htm", "html"),
+                    ("html", "html"),
+                    ("shtml", "html"),
+                    ("stm", "html"),
+                ]
+                .into_par_iter(),
             )
             .map(|(ext, ft)| (ext, ft))
             .collect();
