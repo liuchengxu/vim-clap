@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
 
@@ -104,25 +104,6 @@ pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
     RG_LANGUAGE_EXT_TABLE
         .get(ext)
         .ok_or_else(|| anyhow!("dumb_analyzer is unsupported for {}", ext))
-}
-
-/// Map of file extension to the comment prefix.
-///
-/// Keyed by the extension name.
-pub fn get_comments_by_ext(ext: &str) -> &[&str] {
-    static LANGUAGE_COMMENT_TABLE: OnceCell<HashMap<&str, Vec<&str>>> = OnceCell::new();
-
-    let table = LANGUAGE_COMMENT_TABLE.get_or_init(|| {
-        let comments: HashMap<&str, Vec<&str>> = serde_json::from_str(include_str!(
-            "../../../../../../../scripts/dumb_jump/comments_map.json"
-        ))
-        .expect("Wrong path for comments_map.json");
-        comments
-    });
-
-    table
-        .get(ext)
-        .unwrap_or_else(|| table.get("*").expect("`*` entry exists; qed"))
 }
 
 /// Type of match result of ripgrep.

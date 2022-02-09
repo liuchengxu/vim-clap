@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use anyhow::{anyhow, Result};
+use types::PreviewInfo;
 
 use self::bytelines::ByteLines;
 
@@ -86,7 +87,7 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
     size: usize,
 ) -> io::Result<(impl Iterator<Item = String>, usize)> {
     let file = File::open(path)?;
-    let (start, end, hl_line) = if target_line > size {
+    let (start, end, highlight_lnum) = if target_line > size {
         (target_line - size, target_line + size, size)
     } else {
         (0, 2 * size, target_line)
@@ -97,7 +98,7 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
             .skip(start)
             .filter_map(|l| l.ok())
             .take(end - start),
-        hl_line,
+        highlight_lnum,
     ))
 }
 
@@ -106,7 +107,7 @@ pub fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     target_line: usize,
     size: usize,
-) -> io::Result<(Vec<String>, usize)> {
+) -> io::Result<PreviewInfo> {
     read_preview_lines_impl(path, target_line, size)
 }
 
@@ -123,8 +124,8 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
     path: P,
     target_line: usize,
     size: usize,
-) -> io::Result<(Vec<String>, usize)> {
-    let (start, end, hl_line) = if target_line > size {
+) -> io::Result<PreviewInfo> {
+    let (start, end, highlight_lnum) = if target_line > size {
         (target_line - size, target_line + size, size)
     } else {
         (0, 2 * size, target_line)
@@ -149,15 +150,19 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
             file.read_to_end(&mut filebuf)
         })
         .map(|_| {
-            (
-                ByteLines::new(&filebuf)
-                    .into_iter()
-                    .skip(start)
-                    .take(end - start)
-                    .map(|l| l.to_string())
-                    .collect::<Vec<_>>(),
-                hl_line,
-            )
+            let lines = ByteLines::new(&filebuf)
+                .into_iter()
+                .skip(start)
+                .take(end - start)
+                .map(|l| l.to_string())
+                .collect::<Vec<_>>();
+
+            PreviewInfo {
+                start,
+                end,
+                highlight_lnum,
+                lines,
+            }
         })
 }
 
@@ -230,7 +235,7 @@ mod tests {
     fn test_multi_byte_reading() {
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.push("test_673.txt");
-        let (lines, _hl_line) = read_preview_lines_impl(current_dir, 2, 5).unwrap();
+        let PreviewInfo { lines, .. } = read_preview_lines_impl(current_dir, 2, 5).unwrap();
         assert_eq!(
             lines,
             [

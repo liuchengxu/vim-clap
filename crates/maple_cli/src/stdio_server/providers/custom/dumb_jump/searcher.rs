@@ -1,6 +1,8 @@
 use std::path::Path;
 
 use anyhow::Result;
+use itertools::Itertools;
+use rayon::prelude::*;
 
 use super::SearchInfo;
 use crate::dumb_analyzer::{
@@ -25,6 +27,8 @@ fn search_ctags(dir: &Path, extension: &str, search_info: &SearchInfo) -> Result
 
     let usages = CtagsSearcher::new(tags_config)
         .search(keyword, search_type.clone(), true)?
+        .sorted_by_key(|t| t.line) // Ensure the tags are sorted as the definition goes first and then the implementations.
+        .par_bridge()
         .filter_map(|tag_line| {
             let (line, indices) = tag_line.grep_format_ctags(keyword, ignorecase);
             filtering_terms
@@ -44,6 +48,7 @@ fn search_gtags(dir: &Path, search_info: &SearchInfo) -> Result<Usages> {
     } = search_info;
     let usages = GtagsSearcher::new(dir.to_path_buf())
         .search_references(keyword)?
+        .par_bridge()
         .filter_map(|tag_info| {
             let (line, indices) = tag_info.grep_format_gtags("refs", keyword, false);
             filtering_terms

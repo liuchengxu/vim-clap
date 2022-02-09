@@ -7,6 +7,8 @@ use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
+use crate::utils::display_width;
+
 pub use self::jsont::{Match, Message, SubMatch};
 
 /// Word represents the input query around by word boundries.
@@ -128,23 +130,6 @@ impl TryFrom<&str> for Match {
             Err("Not Message::Match type".into())
         }
     }
-}
-
-/// Returns the width of displaying `n` on the screen.
-///
-/// Same with `n.to_string().len()` but without allocation.
-fn display_width(mut n: usize) -> usize {
-    if n == 0 {
-        return 1;
-    }
-
-    let mut len = 0;
-    while n > 0 {
-        len += 1;
-        n /= 10;
-    }
-
-    len
 }
 
 impl Match {

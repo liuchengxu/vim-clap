@@ -1,4 +1,4 @@
-use maple_cli::{Cmd, Context, Maple, Result, Parser};
+use maple_cli::{Cmd, Context, Maple, Parser, Result};
 
 pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -6,7 +7,9 @@ use once_cell::sync::Lazy;
 use serde_json::json;
 
 use pattern::*;
+use types::PreviewInfo;
 
+use crate::command::ctags::buffer_tags::{current_context_tag, BufferTagInfo};
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
     global, providers::filer, session::SessionContext, write_response, MethodCall,
@@ -276,14 +279,69 @@ impl<'a> OnMoveHandler<'a> {
         let Position { path, lnum } = position;
 
         match utility::read_preview_lines(path, *lnum, self.size) {
-            Ok((lines_iter, hi_lnum)) => {
-                let fname = path.display().to_string();
-                let lines = std::iter::once(format!("{}:{}", fname, lnum))
-                    .chain(self.truncate_preview_lines(lines_iter.into_iter()))
+            Ok(PreviewInfo {
+                lines,
+                highlight_lnum,
+                start,
+                ..
+            }) => {
+                let container_width = self.context.display_winwidth as usize;
+
+                // Truncate the left of absolute path string.
+                let mut fname = path.display().to_string();
+                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
+                if fname.len() > max_fname_len {
+                    if let Some((offset, _)) =
+                        fname.char_indices().nth(fname.len() - max_fname_len + 2)
+                    {
+                        fname.replace_range(..offset, "..");
+                    }
+                }
+                let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
+                    .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(latest_line) = lines.get(hi_lnum) {
+                let mut highlight_lnum = highlight_lnum;
+
+                // Some checks against the latest preview line.
+                if let Some(latest_line) = lines.get(highlight_lnum) {
                     self.try_refresh_cache(latest_line);
+
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        let is_comment_line = crate::dumb_analyzer::get_comments_by_ext(ext)
+                            .iter()
+                            .any(|comment| latest_line.trim_start().starts_with(comment));
+
+                        if !is_comment_line {
+                            match current_context_tag(path, *lnum) {
+                                Some(tag) if tag.line < start => {
+                                    let border_line = "─".repeat(container_width);
+                                    lines.insert(1, border_line.clone());
+
+                                    let pattern = tag.extract_pattern();
+                                    // Truncate the right of pattern, 2 whitespaces + 💡
+                                    let max_pattern_len = container_width - 4;
+                                    let (mut context_line, to_push) = if pattern.len()
+                                        > max_pattern_len
+                                    {
+                                        // Use the chars instead of indexing the str to avoid the char boundary error.
+                                        let p: String =
+                                            pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                                        (p, "..  💡")
+                                    } else {
+                                        (String::from(pattern), "  💡")
+                                    };
+                                    context_line.reserve(to_push.len());
+                                    context_line.push_str(to_push);
+                                    lines.insert(1, context_line);
+
+                                    lines.insert(1, border_line);
+                                    highlight_lnum += 3;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                 }
 
                 tracing::debug!(
@@ -297,7 +355,7 @@ impl<'a> OnMoveHandler<'a> {
                   "event": "on_move",
                   "lines": lines,
                   "fname": fname,
-                  "hi_lnum": hi_lnum
+                  "hi_lnum": highlight_lnum
                 }));
             }
             Err(err) => {

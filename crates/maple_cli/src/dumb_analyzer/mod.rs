@@ -1,5 +1,5 @@
 mod find_usages;
 
 pub use self::find_usages::{
-    CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType, Usage, Usages,
+    get_comments_by_ext, CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType, Usage, Usages,
 };

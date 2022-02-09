@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use rayon::prelude::*;
 
-use super::definition::{build_full_regexp, get_comments_by_ext, is_comment, DefinitionKind};
+use super::definition::{build_full_regexp, is_comment, DefinitionKind};
+use crate::dumb_analyzer::get_comments_by_ext;
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 

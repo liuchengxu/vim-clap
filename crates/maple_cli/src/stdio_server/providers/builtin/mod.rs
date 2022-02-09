@@ -36,7 +36,7 @@ impl EventHandle for BuiltinHandle {
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
-        let source_scale = context.source_scale.lock();
+        let source_scale = context.state.source_scale.lock();
 
         let curline = match (source_scale.deref(), msg.get_u64("lnum").ok()) {
             (SourceScale::Small { ref lines, .. }, Some(lnum)) => {
@@ -67,7 +67,7 @@ impl EventHandle for BuiltinHandle {
     async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let query = msg.get_query();
 
-        let source_scale = context.source_scale.lock();
+        let source_scale = context.state.source_scale.lock();
 
         match source_scale.deref() {
             SourceScale::Small { ref lines, .. } => {

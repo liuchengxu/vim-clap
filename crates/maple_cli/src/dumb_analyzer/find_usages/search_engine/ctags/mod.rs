@@ -66,17 +66,13 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         search_type: SearchType,
         force_generate: bool,
     ) -> Result<impl Iterator<Item = TagInfo>> {
-        use std::io::BufRead;
-
         if force_generate || !self.tags_exists() {
             self.generate_tags()?;
         }
 
-        let stdout = self.build_exec(query, search_type).stream_stdout()?;
+        let cmd = self.build_exec(query, search_type);
 
-        // We usually have a decent amount of RAM nowdays.
-        Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, stdout)
-            .lines()
+        Ok(crate::utils::lines(cmd)?
             .flatten()
             .filter_map(|s| TagInfo::from_readtags(&s)))
     }

@@ -19,11 +19,13 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use self::definition::{
-    definitions_and_references, do_search_usages, get_comments_by_ext, get_language_by_ext,
-    MatchKind,
+    definitions_and_references, do_search_usages, get_language_by_ext, MatchKind,
 };
 use self::worker::find_occurrences_by_ext;
-use crate::dumb_analyzer::find_usages::{Usage, Usages};
+use crate::dumb_analyzer::{
+    find_usages::{Usage, Usages},
+    get_comments_by_ext,
+};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 

@@ -3,7 +3,7 @@ mod manager;
 
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -145,8 +145,7 @@ impl<T: EventHandle> Session<T> {
 
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     pub fn handle_terminate(&mut self) {
-        let mut val = self.context.is_running.lock();
-        *val.get_mut() = false;
+        self.context.state.is_running.store(false, Ordering::SeqCst);
         tracing::debug!(
             session_id = self.session_id,
             provider_id = %self.provider_id(),
