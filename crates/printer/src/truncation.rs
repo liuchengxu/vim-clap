@@ -54,6 +54,8 @@ fn truncate_line_v1(
     }
 }
 
+const MAX_LINE_LEN: usize = 500;
+
 /// Long matched lines can cause the matched items invisible.
 ///
 /// # Arguments
@@ -68,14 +70,25 @@ pub fn truncate_long_matched_lines<T>(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut filtered_item)| {
-        let source_item = &filtered_item.source_item;
-        if let Some((truncated, truncated_indices)) = truncate_line_v1(
-            source_item.display_text(),
+        let origin_display_text = filtered_item.source_item.display_text();
+
+        // Truncate the text simply if it's too long.
+        if origin_display_text.len() > MAX_LINE_LEN {
+            let display_text: String = origin_display_text.chars().take(1000).collect();
+            filtered_item.display_text = Some(display_text);
+            filtered_item.match_indices = filtered_item
+                .match_indices
+                .iter()
+                .filter(|x| **x < 1000)
+                .copied()
+                .collect();
+        } else if let Some((truncated, truncated_indices)) = truncate_line_v1(
+            origin_display_text,
             &mut filtered_item.match_indices,
             winwidth,
             skipped,
         ) {
-            truncated_map.insert(lnum + 1, source_item.display_text().to_string());
+            truncated_map.insert(lnum + 1, origin_display_text.to_string());
 
             filtered_item.display_text = Some(truncated);
             filtered_item.match_indices = truncated_indices;

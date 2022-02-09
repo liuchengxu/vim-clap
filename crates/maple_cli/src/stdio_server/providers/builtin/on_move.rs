@@ -9,7 +9,7 @@ use serde_json::json;
 use pattern::*;
 use types::PreviewInfo;
 
-use crate::command::ctags::buffer_tags::current_context_tag;
+use crate::command::ctags::buffer_tags::{current_context_tag, BufferTagInfo};
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
     global, providers::filer, session::SessionContext, write_response, MethodCall,
