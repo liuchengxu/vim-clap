@@ -46,7 +46,7 @@ fn search_gtags(dir: &Path, search_info: &SearchInfo) -> Result<Usages> {
         filtering_terms,
         ..
     } = search_info;
-    let usages = GtagsSearcher::new(dir.to_path_buf())
+    let mut usages = GtagsSearcher::new(dir.to_path_buf())
         .search_references(keyword)?
         .par_bridge()
         .filter_map(|tag_info| {
@@ -56,6 +56,9 @@ fn search_gtags(dir: &Path, search_info: &SearchInfo) -> Result<Usages> {
                 .map(|(line, indices)| Usage::new(line, indices))
         })
         .collect::<Vec<_>>();
+    // TODO: the usages are grouped per file, but the usages in a file is not sorted by the line
+    // number.
+    usages.par_sort_unstable_by(|a, b| a.line.cmp(&b.line));
     Ok(usages.into())
 }
 

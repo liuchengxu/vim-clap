@@ -220,7 +220,7 @@ impl<'a> OnMoveHandler<'a> {
             .split('\n')
             .take(self.size * 2)
             .collect::<Vec<_>>();
-        self.send_response(json!({ "event": "on_move", "lines": lines }));
+        self.send_response(json!({ "lines": lines }));
         Ok(())
     }
 
@@ -230,13 +230,9 @@ impl<'a> OnMoveHandler<'a> {
             let lines = std::iter::once(fname.clone())
                 .chain(lines.into_iter())
                 .collect::<Vec<_>>();
-            self.send_response(json!({
-              "event": "on_move",
-              "syntax": "help",
-              "lines": lines,
-              "hi_lnum": 1,
-              "fname": fname
-            }));
+            self.send_response(
+                json!({ "syntax": "help", "lines": lines, "hi_lnum": 1, "fname": fname }),
+            );
         } else {
             tracing::debug!(?preview_tag, "Can not find the preview help lines");
         }
@@ -351,12 +347,15 @@ impl<'a> OnMoveHandler<'a> {
                     "<== message(out) preview file content",
                 );
 
-                self.send_response(json!({
-                  "event": "on_move",
-                  "lines": lines,
-                  "fname": fname,
-                  "hi_lnum": highlight_lnum
-                }));
+                if let Some(syntax) = crate::stdio_server::vim::syntax_for(path) {
+                    self.send_response(
+                        json!({ "lines": lines, "syntax": syntax, "hi_lnum": highlight_lnum }),
+                    );
+                } else {
+                    self.send_response(
+                        json!({ "lines": lines, "fname": fname, "hi_lnum": highlight_lnum }),
+                    );
+                }
             }
             Err(err) => {
                 tracing::error!(
@@ -387,15 +386,20 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let (lines, fname) = previewer::preview_file(path, 2 * self.size, self.max_width())?;
-        self.send_response(json!({ "event": "on_move", "lines": lines, "fname": fname }));
+        let (lines, fname) =
+            previewer::preview_file(path.as_ref(), 2 * self.size, self.max_width())?;
+        if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
+            self.send_response(json!({ "lines": lines, "syntax": syntax }));
+        } else {
+            self.send_response(json!({ "lines": lines, "fname": fname }));
+        }
         Ok(())
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let enable_icon = global().enable_icon;
         let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        self.send_response(json!({ "event": "on_move", "lines": lines, "is_dir": true }));
+        self.send_response(json!({ "lines": lines, "is_dir": true }));
         Ok(())
     }
 }
