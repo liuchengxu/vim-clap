@@ -14,8 +14,37 @@ use crate::stdio_server::rpc::RpcClient;
 /// Map of file extension to vim syntax mapping.
 static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
 
-static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> =
-    Lazy::new(|| vec![("vimrc", "vim")].into_iter().collect());
+static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+    vec![
+        ("bashrc", "bash"),
+        (".bashrc", "bash"),
+        ("BUCK", "bzl"),
+        ("BUILD", "bzl"),
+        ("BUILD.bazel", "bzl"),
+        ("Tiltfile", "bzl"),
+        ("WORKSPACE", "bz"),
+        ("configure.ac", "config"),
+        ("configure.in", "config"),
+        ("Containerfile", "dockerfile"),
+        ("Dockerfile", "dockerfile"),
+        ("dockerfile", "dockerfile"),
+        ("jsconfig.json", "jsonc"),
+        ("tsconfig.json", "jsonc"),
+        ("mplayer.conf", "mplayerconf"),
+        ("inputrc", "readline"),
+        ("robots.txt", "robots"),
+        ("ssh_config", "sshdconfig"),
+        ("sshd_config", "sshdconfig"),
+        ("tidy.conf", "tidy"),
+        ("tidyrc", "tidy"),
+        ("Pipfile", "toml"),
+        ("vimrc", "vim"),
+        ("_vimrc", "vim"),
+        ("_viminfo", "viminfo"),
+    ]
+    .into_iter()
+    .collect()
+});
 
 /// Returns the value of `&syntax` for a specific file path.
 ///
@@ -84,6 +113,7 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
                 ("html", "html"),
                 ("shtml", "html"),
                 ("stm", "html"),
+                ("toml", "toml"),
             ]
             .into_par_iter(),
         )
