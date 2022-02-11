@@ -134,56 +134,8 @@ impl MethodCall {
     pub fn parse_filetypedetect(self) -> Value {
         let msg = self;
         let output = msg.get_string_unsafe("autocmd_filetypedetect");
-        let ext_map: HashMap<&str, &str> = output
-            .par_split(|x| x == '\n')
-            .filter(|s| s.contains("setf"))
-            .filter_map(|s| {
-                // *.mkiv    setf context
-                let items = s.split_whitespace().collect::<Vec<_>>();
-                if items.len() != 3 {
-                    None
-                } else {
-                    // (mkiv, context)
-                    items[0].split('.').last().map(|ext| (ext, items[2]))
-                }
-            })
-            .chain(
-                // Lines as followed can not be parsed correctly, thus the preview highlight of
-                // related file will be broken. Ref #800
-                // *.c       call dist#ft#FTlpc()
-                vec![
-                    ("hpp", "cpp"),
-                    ("vimrc", "vim"),
-                    ("cc", "cpp"),
-                    ("cpp", "cpp"),
-                    ("c", "c"),
-                    ("h", "c"),
-                    ("cmd", "dosbatch"),
-                    ("CMakeLists.txt", "cmake"),
-                    ("Dockerfile", "dockerfile"),
-                    ("directory", "desktop"),
-                    ("patch", "diff"),
-                    ("dircolors", "dircolors"),
-                    ("editorconfig", "dosini"),
-                    ("COMMIT_EDITMSG", "gitcommit"),
-                    ("MERGE_MSG", "gitcommit"),
-                    ("TAG_EDITMSG", "gitcommit"),
-                    ("NOTES_EDITMSG", "gitcommit"),
-                    ("EDIT_DESCRIPTION", "gitcommit"),
-                    ("gitconfig", "gitconfig"),
-                    ("worktree", "gitconfig"),
-                    ("gitmodules", "gitconfig"),
-                    ("htm", "html"),
-                    ("html", "html"),
-                    ("shtml", "html"),
-                    ("stm", "html"),
-                ]
-                .into_par_iter(),
-            )
-            .map(|(ext, ft)| (ext, ft))
-            .collect();
-
-        json!({"method": "clap#ext#set", "ext_map": ext_map})
+        let ext_map = crate::stdio_server::vim::initialize_syntax_map(&output);
+        json!({ "method": "clap#ext#set", "ext_map": ext_map })
     }
 
     pub async fn preview_file(self) -> Result<Value> {
