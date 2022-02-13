@@ -38,6 +38,7 @@ fn calc_bonus_per_item(
 impl Language {
     pub fn calc_bonus(&self, bonus_text: &str, base_score: Score) -> Score {
         let trimmed = bonus_text.trim_start();
+        // TODO: take care of the comment line universally.
         match self.0.as_str() {
             "vim" => {
                 let calc_bonus = |item: Option<&str>| {
