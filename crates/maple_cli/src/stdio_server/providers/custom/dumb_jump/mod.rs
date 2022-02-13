@@ -258,15 +258,15 @@ impl EventHandle for DumbJumpHandle {
                 }
 
                 // TODO: smarter strategy to regenerate the tags?
-                let ctags_searcher = CtagsSearcher::new(tags_config);
                 async move {
                     let now = std::time::Instant::now();
+                    let ctags_searcher = CtagsSearcher::new(tags_config);
                     match ctags_searcher.generate_tags() {
                         Ok(()) => {
                             ctags_regenerated.store(true, Ordering::Relaxed);
                         }
                         Err(e) => {
-                            tracing::error!(error = ?e, "Error at generating the tags file for dumb_jump");
+                            tracing::error!(error = ?e, "💔 Error at generating the tags file for dumb_jump");
                         }
                     }
                     tracing::debug!(?cwd, "⏱️  Ctags elapsed: {:?}", now.elapsed());
@@ -276,13 +276,35 @@ impl EventHandle for DumbJumpHandle {
             let gtags_future = {
                 let gtags_regenerated = self.gtags_regenerated.clone();
                 let cwd = params.cwd.clone();
-                let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
                 async move {
                     let now = std::time::Instant::now();
-                    if let Err(e) = gtags_searcher.create_or_update_tags() {
-                        tracing::error!(error = ?e, "Error at initializing GTAGS");
+                    let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
+                    match tokio::task::spawn_blocking({
+                        let gtags_searcher = gtags_searcher.clone();
+                        move || gtags_searcher.create_or_update_tags()
+                    })
+                    .await
+                    {
+                        Ok(_) => gtags_regenerated.store(true, Ordering::Relaxed),
+                        Err(e) => {
+                            tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");
+                            // TODO: creating gtags may take 20s+ for large project
+                            match tokio::task::spawn_blocking({
+                                let gtags_searcher = gtags_searcher.clone();
+                                move || gtags_searcher.force_recreate()
+                            })
+                            .await
+                            {
+                                Ok(_) => {
+                                    gtags_regenerated.store(true, Ordering::Relaxed);
+                                    tracing::debug!("Recreating gtags db successfully");
+                                }
+                                Err(e) => {
+                                    tracing::error!(error = ?e, "💔 Failed to recreate gtags db");
+                                }
+                            }
+                        }
                     }
-                    gtags_regenerated.store(true, Ordering::Relaxed);
                     tracing::debug!(?cwd, "⏱️  Gtags elapsed: {:?}", now.elapsed());
                 }
             };

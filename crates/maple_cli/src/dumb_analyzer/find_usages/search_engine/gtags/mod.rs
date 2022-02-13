@@ -6,6 +6,7 @@ use filter::subprocess::Exec;
 use super::TagInfo;
 use crate::tools::gtags::GTAGS_DIR;
 
+#[derive(Clone, Debug)]
 pub struct GtagsSearcher {
     pub project_root: PathBuf,
     pub db_path: PathBuf,
@@ -39,6 +40,12 @@ impl GtagsSearcher {
         }
     }
 
+    /// Force recreating the gtags db.
+    pub fn force_recreate(&self) -> Result<()> {
+        std::fs::remove_dir_all(&self.db_path)?;
+        self.create_tags()
+    }
+
     /// Constructs a `gtags` command with proper env variables.
     fn gtags(&self) -> Exec {
         Exec::cmd("gtags")
@@ -64,7 +71,10 @@ impl GtagsSearcher {
         if exit_status.success() {
             Ok(())
         } else {
-            Err(anyhow!("Process for creating tags exited without success"))
+            Err(anyhow!(
+                "Creating gtags failed, exit_status: {:?}",
+                exit_status
+            ))
         }
     }
 
@@ -82,7 +92,8 @@ impl GtagsSearcher {
             Ok(())
         } else {
             Err(anyhow!(
-                "Gtags process for updating tags exited without success"
+                "Updating gtags failed, exit_status: {:?}",
+                exit_status
             ))
         }
     }
