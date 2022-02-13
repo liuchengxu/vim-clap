@@ -105,7 +105,7 @@ impl EventHandle for BuiltinHandle {
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        context.match_type,
+                        context.matching_text_kind,
                     ),
                     context.match_bonuses.clone(),
                 ) {

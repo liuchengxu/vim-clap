@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, MatchType},
+    matcher::{Bonus, MatchingTextKind},
     FilterContext, Source,
 };
 
@@ -80,7 +80,13 @@ impl RecursiveTags {
                     Default::default()
                 },
                 Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
-                FilterContext::new(Default::default(), icon, Some(30), None, MatchType::TagName),
+                FilterContext::new(
+                    Default::default(),
+                    icon,
+                    Some(30),
+                    None,
+                    MatchingTextKind::TagName,
+                ),
                 vec![Bonus::None],
             )?;
         }

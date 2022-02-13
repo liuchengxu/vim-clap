@@ -33,7 +33,7 @@ else
   endfunction
 
   function! s:proj_tags.init() abort
-    let g:__clap_match_type_enum = 'TagName'
+    let g:__clap_matching_text_kind_enum = 'TagName'
     if clap#maple#is_available()
       call clap#rooter#try_set_cwd()
       call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
@@ -58,8 +58,8 @@ function! s:proj_tags.on_move() abort
 endfunction
 
 function! s:proj_tags.on_exit() abort
-  if exists('g:__clap_match_type_enum')
-    unlet g:__clap_match_type_enum
+  if exists('g:__clap_matching_text_kind_enum')
+    unlet g:__clap_matching_text_kind_enum
   endif
 endfunction
 

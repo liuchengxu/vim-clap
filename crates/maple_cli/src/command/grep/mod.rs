@@ -12,7 +12,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use filter::{
-    matcher::{Bonus, MatchType},
+    matcher::{Bonus, MatchingTextKind},
     subprocess::Exec,
     Source,
 };
@@ -168,7 +168,7 @@ impl Grep {
                 source,
                 params
                     .into_filter_context()
-                    .match_type(MatchType::IgnoreFilePath),
+                    .matching_text_kind(MatchingTextKind::IgnoreFilePath),
                 vec![Bonus::None],
             )
         };

@@ -13,7 +13,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher};
+use matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -29,7 +29,7 @@ pub struct FilterContext {
     icon: Icon,
     number: Option<usize>,
     winwidth: Option<usize>,
-    match_type: MatchType,
+    matching_text_kind: MatchingTextKind,
 }
 
 impl Default for FilterContext {
@@ -39,7 +39,7 @@ impl Default for FilterContext {
             icon: Default::default(),
             number: None,
             winwidth: None,
-            match_type: MatchType::Full,
+            matching_text_kind: MatchingTextKind::Full,
         }
     }
 }
@@ -50,14 +50,14 @@ impl FilterContext {
         icon: Icon,
         number: Option<usize>,
         winwidth: Option<usize>,
-        match_type: MatchType,
+        matching_text_kind: MatchingTextKind,
     ) -> Self {
         Self {
             algo,
             icon,
             number,
             winwidth,
-            match_type,
+            matching_text_kind,
         }
     }
 
@@ -81,8 +81,8 @@ impl FilterContext {
         self
     }
 
-    pub fn match_type(mut self, match_type: MatchType) -> Self {
-        self.match_type = match_type;
+    pub fn matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
+        self.matching_text_kind = matching_text_kind;
         self
     }
 }
@@ -102,10 +102,10 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     algo: FuzzyAlgorithm,
-    match_type: MatchType,
+    matching_text_kind: MatchingTextKind,
     bonuses: Vec<Bonus>,
 ) -> Result<Vec<FilteredItem>> {
-    let matcher = Matcher::with_bonuses(algo, match_type, bonuses);
+    let matcher = Matcher::with_bonuses(bonuses, algo, matching_text_kind);
     let query: Query = query.into();
     let filtered = source.filter_and_collect(matcher, &query)?;
     let ranked = sort_initial_filtered(filtered);

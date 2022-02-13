@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use filter::{FilteredItem, Query, SourceItem};
-use matcher::{FuzzyAlgorithm, MatchType, Matcher};
+use matcher::{FuzzyAlgorithm, Matcher, MatchingTextKind};
 
 use maple_cli::command::ctags::recursive::build_recursive_ctags_cmd;
 
@@ -45,7 +45,8 @@ fn bench_filter(c: &mut Criterion) {
     let source_items_100k = take_items(100_000);
     let source_items_1m = take_items(1_000_000);
 
-    let matcher = matcher::Matcher::with_bonuses(FuzzyAlgorithm::Fzy, MatchType::Full, Vec::new());
+    let matcher =
+        matcher::Matcher::with_bonuses(Vec::new(), FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
     let query: Query = "executor".into();
 
     c.bench_function("filter 1k", |b| {
