@@ -9,21 +9,9 @@ pub type FileExtension = String;
 #[derive(Debug, Clone)]
 pub struct Language(FileExtension);
 
-impl From<String> for Language {
-    fn from(inner: String) -> Self {
-        Self(inner)
-    }
-}
-
-impl From<&String> for Language {
-    fn from(inner: &String) -> Self {
-        Self(inner.to_owned())
-    }
-}
-
-impl From<&str> for Language {
-    fn from(s: &str) -> Self {
-        Self(s.into())
+impl<T: AsRef<str>> From<T> for Language {
+    fn from(s: T) -> Self {
+        Self(s.as_ref().into())
     }
 }
 
@@ -70,9 +58,9 @@ impl Language {
                 calc_bonus_per_item(trimmed, calc_bonus)
             }
             "rs" => {
-                const TYPE: [&str; 3] = ["type", "mod", "impl"];
-                const FUNCTION: [&str; 2] = ["fn", "macro_rules"];
-                const VARIABLE: [&str; 6] = ["let", "const", "static", "enum", "struct", "trait"];
+                const TYPE: &[&str] = &["type", "mod", "impl"];
+                const FUNCTION: &[&str] = &["fn", "macro_rules"];
+                const VARIABLE: &[&str] = &["let", "const", "static", "enum", "struct", "trait"];
 
                 let calc_bonus = |item: Option<&str>| {
                     item.and_then(|s| {

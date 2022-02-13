@@ -6,7 +6,7 @@ pub mod recent_files;
 use types::MatchingText;
 
 use self::cwd::Cwd;
-use self::filename::calc_bonus_filename;
+use self::filename::calc_bonus_file_name;
 use self::language::Language;
 use self::recent_files::RecentFiles;
 
@@ -42,7 +42,6 @@ impl Default for Bonus {
 impl<T: AsRef<str>> From<T> for Bonus {
     fn from(s: T) -> Self {
         match s.as_ref().to_lowercase().as_str() {
-            "none" => Self::None,
             "filename" => Self::FileName,
             _ => Self::None,
         }
@@ -70,7 +69,7 @@ impl Bonus {
         let bonus_text = item.bonus_text();
 
         match self {
-            Self::FileName => calc_bonus_filename(bonus_text, score, indices),
+            Self::FileName => calc_bonus_file_name(bonus_text, score, indices),
             Self::RecentFiles(recent_files) => recent_files.calc_bonus(bonus_text, score),
             Self::Language(language) => language.calc_bonus(bonus_text, score),
             Self::Cwd(cwd) => cwd.calc_bonus(bonus_text, score),
