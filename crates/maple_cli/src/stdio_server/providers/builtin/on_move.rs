@@ -304,37 +304,42 @@ impl<'a> OnMoveHandler<'a> {
                     self.try_refresh_cache(latest_line);
 
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                        let is_comment_line = crate::dumb_analyzer::get_comments_by_ext(ext)
-                            .iter()
-                            .any(|comment| latest_line.trim_start().starts_with(comment));
+                        const BLACK_LIST: &[&str] =
+                            &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
+                        if !BLACK_LIST.contains(&ext) {
+                            let is_comment_line = crate::dumb_analyzer::get_comments_by_ext(ext)
+                                .iter()
+                                .any(|comment| latest_line.trim_start().starts_with(comment));
 
-                        if !is_comment_line {
-                            match current_context_tag(path, *lnum) {
-                                Some(tag) if tag.line < start => {
-                                    let border_line = "─".repeat(container_width);
-                                    lines.insert(1, border_line.clone());
+                            if !is_comment_line {
+                                match current_context_tag(path, *lnum) {
+                                    Some(tag) if tag.line < start => {
+                                        let border_line = "─".repeat(container_width);
+                                        lines.insert(1, border_line.clone());
 
-                                    let pattern = tag.extract_pattern();
-                                    // Truncate the right of pattern, 2 whitespaces + 💡
-                                    let max_pattern_len = container_width - 4;
-                                    let (mut context_line, to_push) = if pattern.len()
-                                        > max_pattern_len
-                                    {
-                                        // Use the chars instead of indexing the str to avoid the char boundary error.
-                                        let p: String =
-                                            pattern.chars().take(max_pattern_len - 4 - 2).collect();
-                                        (p, "..  💡")
-                                    } else {
-                                        (String::from(pattern), "  💡")
-                                    };
-                                    context_line.reserve(to_push.len());
-                                    context_line.push_str(to_push);
-                                    lines.insert(1, context_line);
+                                        let pattern = tag.extract_pattern();
+                                        // Truncate the right of pattern, 2 whitespaces + 💡
+                                        let max_pattern_len = container_width - 4;
+                                        let (mut context_line, to_push) =
+                                            if pattern.len() > max_pattern_len {
+                                                // Use the chars instead of indexing the str to avoid the char boundary error.
+                                                let p: String = pattern
+                                                    .chars()
+                                                    .take(max_pattern_len - 4 - 2)
+                                                    .collect();
+                                                (p, "..  💡")
+                                            } else {
+                                                (String::from(pattern), "  💡")
+                                            };
+                                        context_line.reserve(to_push.len());
+                                        context_line.push_str(to_push);
+                                        lines.insert(1, context_line);
 
-                                    lines.insert(1, border_line);
-                                    highlight_lnum += 3;
+                                        lines.insert(1, border_line);
+                                        highlight_lnum += 3;
+                                    }
+                                    _ => {}
                                 }
-                                _ => {}
                             }
                         }
                     }
