@@ -114,6 +114,14 @@ fn parse_query_info(query: &str) -> QueryInfo {
     }
 }
 
+/// Internal reprentation of user input.
+#[derive(Debug, Clone, Default)]
+struct SearchInfo {
+    cwd: String,
+    extension: String,
+    query_info: QueryInfo,
+}
+
 #[derive(Debug, Clone, Default)]
 struct SearchResults {
     /// Last searching results.
@@ -125,7 +133,7 @@ struct SearchResults {
     usages: Usages,
     /// Last raw query.
     raw_query: String,
-    /// Last parsed search info.
+    /// Last parsed query info.
     query_info: QueryInfo,
 }
 
@@ -161,7 +169,11 @@ async fn search_for_usages(
     let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
 
     let (response, usages) = match search_engine
-        .search_usages(cwd, extension, &query_info)
+        .search_usages(SearchInfo {
+            cwd,
+            extension,
+            query_info: query_info.clone(),
+        })
         .await
     {
         Ok(usages) => {

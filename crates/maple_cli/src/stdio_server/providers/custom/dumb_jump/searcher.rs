@@ -4,16 +4,22 @@ use anyhow::Result;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-use super::QueryInfo;
+use super::{QueryInfo, SearchInfo};
 use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
-fn search_ctags(dir: &Path, extension: &str, query_info: &QueryInfo) -> Result<Usages> {
+fn search_ctags(
+    SearchInfo {
+        cwd,
+        extension,
+        query_info,
+    }: SearchInfo,
+) -> Result<Usages> {
     let ignorecase = query_info.keyword.chars().all(char::is_lowercase);
 
-    let mut tags_config = TagsConfig::with_dir(dir);
-    if let Some(language) = get_language(extension) {
+    let mut tags_config = TagsConfig::with_dir(cwd);
+    if let Some(language) = get_language(&extension) {
         tags_config.languages(language.into());
     }
 
@@ -24,11 +30,11 @@ fn search_ctags(dir: &Path, extension: &str, query_info: &QueryInfo) -> Result<U
     } = query_info;
 
     let usages = CtagsSearcher::new(tags_config)
-        .search(keyword, query_type.clone(), true)?
+        .search(&keyword, query_type, true)?
         .sorted_by_key(|t| t.line) // Ensure the tags are sorted as the definition goes first and then the implementations.
         .par_bridge()
         .filter_map(|tag_line| {
-            let (line, indices) = tag_line.grep_format_ctags(keyword, ignorecase);
+            let (line, indices) = tag_line.grep_format_ctags(&keyword, ignorecase);
             filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
                 .map(|(line, indices)| Usage::new(line, indices))
@@ -38,17 +44,21 @@ fn search_ctags(dir: &Path, extension: &str, query_info: &QueryInfo) -> Result<U
     Ok(usages.into())
 }
 
-fn search_gtags(dir: &Path, query_info: &QueryInfo) -> Result<Usages> {
+fn search_gtags(
+    SearchInfo {
+        cwd, query_info, ..
+    }: SearchInfo,
+) -> Result<Usages> {
     let QueryInfo {
         keyword,
         filtering_terms,
         ..
     } = query_info;
-    let mut usages = GtagsSearcher::new(dir.to_path_buf())
-        .search_references(keyword)?
+    let mut usages = GtagsSearcher::new(cwd.into())
+        .search_references(&keyword)?
         .par_bridge()
         .filter_map(|tag_info| {
-            let (line, indices) = tag_info.grep_format_gtags("refs", keyword, false);
+            let (line, indices) = tag_info.grep_format_gtags("refs", &keyword, false);
             filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
                 .map(|(line, indices)| Usage::new(line, indices))
@@ -60,7 +70,13 @@ fn search_gtags(dir: &Path, query_info: &QueryInfo) -> Result<Usages> {
     Ok(usages.into())
 }
 
-async fn search_regex(extension: String, cwd: String, query_info: &QueryInfo) -> Result<Usages> {
+async fn search_regex(
+    SearchInfo {
+        cwd,
+        extension,
+        query_info,
+    }: SearchInfo,
+) -> Result<Usages> {
     let QueryInfo {
         keyword,
         filtering_terms,
@@ -71,7 +87,7 @@ async fn search_regex(extension: String, cwd: String, query_info: &QueryInfo) ->
         extension,
         dir: Some(cwd.into()),
     };
-    searcher.search_usages(false, filtering_terms).await
+    searcher.search_usages(false, &filtering_terms).await
 }
 
 // Returns a combo of various results in the order of [ctags, gtags, regex].
@@ -109,24 +125,17 @@ pub(super) enum SearchEngine {
 }
 
 impl SearchEngine {
-    pub async fn search_usages(
-        &self,
-        cwd: String,
-        extension: String,
-        query_info: &QueryInfo,
-    ) -> Result<Usages> {
+    pub async fn search_usages(&self, search_info: SearchInfo) -> Result<Usages> {
         let ctags_future = {
-            let cwd = cwd.clone();
-            let extension = extension.clone();
-            let query_info = query_info.clone();
-            async move { search_ctags(Path::new(&cwd), &extension, &query_info) }
+            let search_info = search_info.clone();
+            async move { search_ctags(search_info) }
         };
 
         match self {
-            SearchEngine::Ctags => search_ctags(Path::new(&cwd), &extension, query_info),
-            SearchEngine::Regex => search_regex(extension, cwd, query_info).await,
+            SearchEngine::Ctags => search_ctags(search_info),
+            SearchEngine::Regex => search_regex(search_info).await,
             SearchEngine::CtagsAndRegex => {
-                let regex_future = search_regex(extension, cwd, query_info);
+                let regex_future = search_regex(search_info);
                 let (ctags_results, regex_results) = futures::join!(ctags_future, regex_future);
 
                 Ok(merge_all(
@@ -136,24 +145,23 @@ impl SearchEngine {
                 ))
             }
             SearchEngine::CtagsElseRegex => {
-                let results = search_ctags(Path::new(&cwd), &extension, query_info);
+                let results = search_ctags(search_info.clone());
                 // tags might be incomplete, try the regex way if no results from the tags file.
                 let try_regex =
                     results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
                 if try_regex {
-                    search_regex(extension, cwd, query_info).await
+                    search_regex(search_info).await
                 } else {
                     results
                 }
             }
             SearchEngine::All => {
                 let gtags_future = {
-                    let cwd = cwd.clone();
-                    let query_info = query_info.clone();
-                    async move { search_gtags(Path::new(&cwd), &query_info) }
+                    let search_info = search_info.clone();
+                    async move { search_gtags(search_info) }
                 };
 
-                let regex_future = search_regex(extension, cwd, query_info);
+                let regex_future = search_regex(search_info);
 
                 let (ctags_results, gtags_results, regex_results) =
                     futures::join!(ctags_future, gtags_future, regex_future);
