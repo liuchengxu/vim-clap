@@ -58,6 +58,7 @@ fn search_gtags(
         .search_references(&keyword)?
         .par_bridge()
         .filter_map(|tag_info| {
+            // TODO: more fine-grained reference kind
             let (line, indices) = tag_info.grep_format_gtags("refs", &keyword, false);
             filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
