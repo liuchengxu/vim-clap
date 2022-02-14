@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use filter::subprocess::Exec;
 
-use super::{SearchType, TagInfo};
+use super::{QueryType, TagInfo};
 use crate::tools::ctags::TagsConfig;
 
 /// `readtags` powered searcher.
@@ -30,7 +30,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         self.config.generate_tags()
     }
 
-    fn build_exec(&self, query: &str, search_type: SearchType) -> Exec {
+    fn build_exec(&self, query: &str, query_type: QueryType) -> Exec {
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let cmd = Exec::cmd("readtags")
             .arg("--tag-file")
@@ -44,17 +44,17 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             cmd
         };
 
-        match search_type {
-            SearchType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
-            SearchType::Exact => cmd
+        match query_type {
+            QueryType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
+            QueryType::Exact => cmd
                 .arg("-Q")
                 .arg(format!("(eq? (downcase $name) \"{}\")", query))
                 .arg("-l"),
-            SearchType::Contain => cmd
+            QueryType::Contain => cmd
                 .arg("-Q")
                 .arg(format!("(substr? (downcase $name) \"{}\")", query))
                 .arg("-l"),
-            SearchType::Inherit => {
+            QueryType::Inherit => {
                 todo!("Inherit")
             }
         }
@@ -63,14 +63,14 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     pub fn search(
         &self,
         query: &str,
-        search_type: SearchType,
+        query_type: QueryType,
         force_generate: bool,
     ) -> Result<impl Iterator<Item = TagInfo>> {
         if force_generate || !self.tags_exists() {
             self.generate_tags()?;
         }
 
-        let cmd = self.build_exec(query, search_type);
+        let cmd = self.build_exec(query, query_type);
 
         Ok(crate::utils::lines(cmd)?
             .flatten()

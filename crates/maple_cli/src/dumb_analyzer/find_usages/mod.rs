@@ -6,7 +6,7 @@ use std::ops::{Index, IndexMut};
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 
-pub use self::search_engine::{CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType};
+pub use self::search_engine::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher};
 
 /// Returns a list of comment prefix for a source file.
 ///

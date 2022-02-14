@@ -18,7 +18,7 @@ use once_cell::sync::OnceCell;
 /// When spawning the ctags/gtags request, we can specify the searching strategy.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[allow(unused)]
-pub enum SearchType {
+pub enum QueryType {
     /// Prefix match.
     StartWith,
     /// Exact match.
@@ -29,7 +29,7 @@ pub enum SearchType {
     Inherit,
 }
 
-impl Default for SearchType {
+impl Default for QueryType {
     fn default() -> Self {
         Self::Exact
     }

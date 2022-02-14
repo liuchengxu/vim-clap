@@ -5,9 +5,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::SearchInfo;
-use crate::dumb_analyzer::{
-    CtagsSearcher, GtagsSearcher, RegexSearcher, SearchType, Usage, Usages,
-};
+use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
@@ -21,12 +19,12 @@ fn search_ctags(dir: &Path, extension: &str, search_info: &SearchInfo) -> Result
 
     let SearchInfo {
         keyword,
-        search_type,
+        query_type,
         filtering_terms,
     } = search_info;
 
     let usages = CtagsSearcher::new(tags_config)
-        .search(keyword, search_type.clone(), true)?
+        .search(keyword, query_type.clone(), true)?
         .sorted_by_key(|t| t.line) // Ensure the tags are sorted as the definition goes first and then the implementations.
         .par_bridge()
         .filter_map(|tag_line| {

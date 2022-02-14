@@ -13,7 +13,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::SearchEngine;
-use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, SearchType, Usage, Usages};
+use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,
@@ -28,8 +28,8 @@ use crate::utils::ExactOrInverseTerms;
 struct SearchInfo {
     /// Keyword for the tag or regex searching.
     keyword: String,
-    /// Search type for `keyword`.
-    search_type: SearchType,
+    /// Query type for `keyword`.
+    query_type: QueryType,
     /// Search terms for further filtering.
     filtering_terms: ExactOrInverseTerms,
 }
@@ -44,7 +44,7 @@ impl SearchInfo {
     /// - the new query is a subset of last query.
     fn has_superset_results(&self, other: &Self) -> bool {
         self.keyword == other.keyword
-            && self.search_type == other.search_type
+            && self.query_type == other.query_type
             && self.filtering_terms.contains(&other.filtering_terms)
     }
 }
@@ -66,17 +66,17 @@ fn parse_search_info(query: &str) -> SearchInfo {
 
     // If there is no fuzzy term, use the full query as the keyword,
     // otherwise restore the fuzzy query as the keyword we are going to search.
-    let (keyword, search_type, filtering_terms) = if fuzzy_terms.is_empty() {
+    let (keyword, query_type, filtering_terms) = if fuzzy_terms.is_empty() {
         if exact_terms.is_empty() {
             (
                 query.into(),
-                SearchType::StartWith,
+                QueryType::StartWith,
                 ExactOrInverseTerms::default(),
             )
         } else {
             (
                 exact_terms[0].word.clone(),
-                SearchType::Exact,
+                QueryType::Exact,
                 ExactOrInverseTerms {
                     exact_terms,
                     inverse_terms,
@@ -86,7 +86,7 @@ fn parse_search_info(query: &str) -> SearchInfo {
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
-            SearchType::StartWith,
+            QueryType::StartWith,
             ExactOrInverseTerms {
                 exact_terms,
                 inverse_terms,
@@ -100,16 +100,16 @@ fn parse_search_info(query: &str) -> SearchInfo {
     // - foo
     //
     // if let Some(stripped) = query.strip_suffix('*') {
-    // (stripped, SearchType::Contain)
+    // (stripped, QueryType::Contain)
     // } else if let Some(stripped) = query.strip_prefix('\'') {
-    // (stripped, SearchType::Exact)
+    // (stripped, QueryType::Exact)
     // } else {
-    // (query, SearchType::StartWith)
+    // (query, QueryType::StartWith)
     // };
 
     SearchInfo {
         keyword,
-        search_type,
+        query_type,
         filtering_terms,
     }
 }
