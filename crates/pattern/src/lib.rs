@@ -178,7 +178,7 @@ mod tests {
         assert_eq!(
             info,
             (
-                "variable".into(),
+                "variable",
                 "crates/maple_cli/src/stdio_server/session/context.rs".into(),
                 36,
                 8
@@ -188,8 +188,8 @@ mod tests {
         assert_eq!(
             extract_jump_line_info(line).unwrap(),
             (
-                "variable".into(),
-                "crates/maple_cli/src/stdio_server/session/providers/dumb_jump.rs",
+                "variable",
+                "crates/maple_cli/src/stdio_server/session/providers/dumb_jump.rs".into(),
                 9,
                 8
             )
