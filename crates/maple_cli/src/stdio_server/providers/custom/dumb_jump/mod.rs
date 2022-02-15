@@ -12,7 +12,7 @@ use serde_json::json;
 
 use filter::Query;
 
-use self::searcher::SearchEngine;
+use self::searcher::{SearchEngine, SearchingWorker};
 use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
@@ -114,14 +114,6 @@ fn parse_query_info(query: &str) -> QueryInfo {
     }
 }
 
-/// Internal reprentation of user input.
-#[derive(Debug, Clone, Default)]
-struct SearchInfo {
-    cwd: String,
-    extension: String,
-    query_info: QueryInfo,
-}
-
 #[derive(Debug, Clone, Default)]
 struct SearchResults {
     /// Last searching results.
@@ -169,7 +161,7 @@ async fn search_for_usages(
     let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
 
     let (response, usages) = match search_engine
-        .search_usages(SearchInfo {
+        .run(SearchingWorker {
             cwd,
             extension,
             query_info: query_info.clone(),

@@ -31,7 +31,7 @@ fn find_matches(
             .filter_map(|s| {
                 Match::try_from(s)
                     .ok()
-                    .filter(|mat| !is_comment(mat, comments))
+                    .filter(|mat| !is_comment(mat, comments)) // TODO: do not ignore comments?
             })
             .collect())
     } else {
