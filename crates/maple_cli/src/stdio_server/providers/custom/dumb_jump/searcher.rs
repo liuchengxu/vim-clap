@@ -44,9 +44,44 @@ fn search_ctags(
     Ok(usages.into())
 }
 
+/// Used for sorting the usages from gtags properly.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct GtagsUsage {
+    pub line: String,
+    pub indices: Vec<usize>,
+    pub line_number: usize,
+    pub path: String,
+    pub kind_weight: usize,
+}
+
+impl GtagsUsage {
+    pub fn into_usage(self) -> Usage {
+        let Self { line, indices, .. } = self;
+        Usage { line, indices }
+    }
+}
+
+impl PartialOrd for GtagsUsage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some((self.kind_weight, &self.path, self.line_number).cmp(&(
+            other.kind_weight,
+            &other.path,
+            other.line_number,
+        )))
+    }
+}
+
+impl Ord for GtagsUsage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 fn search_gtags(
     SearchInfo {
-        cwd, query_info, ..
+        cwd,
+        query_info,
+        extension,
     }: SearchInfo,
 ) -> Result<Usages> {
     let QueryInfo {
@@ -54,21 +89,35 @@ fn search_gtags(
         filtering_terms,
         ..
     } = query_info;
-    let mut usages = GtagsSearcher::new(cwd.into())
+    let mut gtags_usages = GtagsSearcher::new(cwd.into())
         .search_references(&keyword)?
         .par_bridge()
         .filter_map(|tag_info| {
             // TODO: more fine-grained reference kind
-            let (line, indices) = tag_info.grep_format_gtags("refs", &keyword, false);
+            let (kind, kind_weight) = match extension.as_str() {
+                "rs" if tag_info.pattern.trim_start().starts_with("use ") => ("use", 1),
+                _ => ("refs", 100),
+            };
+            let (line, indices) = tag_info.grep_format_gtags(kind, &keyword, false);
             filtering_terms
                 .check_jump_line((line, indices.unwrap_or_default()))
-                .map(|(line, indices)| Usage::new(line, indices))
+                .map(|(line, indices)| GtagsUsage {
+                    line,
+                    indices,
+                    kind_weight,
+                    path: tag_info.path, // TODO: perhaps path_weight? Lower the weight of path containing `test`.
+                    line_number: tag_info.line,
+                })
         })
         .collect::<Vec<_>>();
-    // TODO: the usages are grouped per file, but the usages in a file is not sorted by the line
-    // number.
-    usages.par_sort_unstable_by(|a, b| a.line.cmp(&b.line));
-    Ok(usages.into())
+
+    gtags_usages.par_sort_unstable_by(|a, b| a.cmp(b));
+
+    Ok(gtags_usages
+        .into_iter()
+        .map(GtagsUsage::into_usage)
+        .collect::<Vec<_>>()
+        .into())
 }
 
 async fn search_regex(
@@ -84,14 +133,14 @@ async fn search_regex(
         ..
     } = query_info;
     let searcher = RegexSearcher {
-        word: keyword.clone(),
+        word: keyword,
         extension,
         dir: Some(cwd.into()),
     };
     searcher.search_usages(false, &filtering_terms).await
 }
 
-// Returns a combo of various results in the order of [ctags, gtags, regex].
+/// Returns a combo of various results in the order of [ctags, gtags, regex].
 fn merge_all(
     ctag_results: Usages,
     maybe_gtags_results: Option<Usages>,
@@ -110,12 +159,12 @@ fn merge_all(
     ctag_results
 }
 
-// The initialization of Ctags on a new project is normally
-// faster than Gtags, but once Gtags has been initialized,
-// the incremental update of Gtags should be instant enough
-// and is comparable to Ctags regarding the speed.
-//
-// Regex requires no initialization.
+/// The initialization of Ctags for a new project is normally
+/// faster than Gtags, but once Gtags has been initialized,
+/// the incremental update of Gtags should be instant enough
+/// and is comparable to Ctags regarding the speed.
+///
+/// Regex requires no initialization.
 #[derive(Debug, Clone)]
 pub(super) enum SearchEngine {
     Ctags,
