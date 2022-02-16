@@ -6,6 +6,8 @@ set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 
+let s:ALWAYS_ASYNC = exists('g:clap_builtin_fuzzy_filter_threshold') && g:clap_builtin_fuzzy_filter_threshold == 0
+
 " =======================================
 " sync implementation
 " =======================================
@@ -183,6 +185,11 @@ endfunction
 "           \
 "             on_move
 function! clap#impl#on_typed#() abort
+  if s:ALWAYS_ASYNC
+    call s:on_typed_async_impl()
+    return
+  endif
+
   " If user explicitly uses the external filter, just use the async impl then,
   " even the forerunner job is finished already.
   if clap#api#has_externalfilter()

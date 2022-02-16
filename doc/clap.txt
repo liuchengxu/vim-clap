@@ -532,6 +532,11 @@ g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold
   the built-in filter is synchoronous that will block the UI if you have a
   monster of candidates.
 
+  Set the value to `0` to always use the full-featured async implementation
+  powerd by Rust backend.
+  >
+  let g:clap_builtin_fuzzy_filter_threshold = 0
+<
 
 g:clap_preview_size                                         *g:clap_preview_size*
 
