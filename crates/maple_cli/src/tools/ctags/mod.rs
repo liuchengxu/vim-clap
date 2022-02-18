@@ -5,7 +5,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use filter::subprocess::Exec;
+use filter::subprocess::{Exec, NullFile};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -103,7 +103,8 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         tags_path
     }
 
-    fn build_command(&self) -> String {
+    /// Executes the command to generate the tags file.
+    pub fn generate_tags(&self) -> Result<()> {
         // TODO: detect the languages by dir if not explicitly specified?
         let languages_opt = self
             .languages
@@ -127,13 +128,10 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
             cmd.push_str(&self.files.iter().map(|f| f.display()).join(" "));
         }
 
-        cmd
-    }
-
-    /// Executes the command to generate the tags file.
-    pub fn generate_tags(&self) -> Result<()> {
-        let command = self.build_command();
-        let exit_status = Exec::shell(&command).cwd(self.dir.as_ref()).join()?;
+        let exit_status = Exec::shell(&cmd)
+            .stderr(NullFile) // ignore the line: ctags: warning...
+            .cwd(self.dir.as_ref())
+            .join()?;
 
         if !exit_status.success() {
             return Err(anyhow!("Error occured when creating tags file"));
@@ -268,7 +266,7 @@ fn generate_lang_maps() -> Result<HashMap<String, String>> {
         let mut items = line.split_whitespace();
 
         if let Some(lang) = items.next() {
-            for ext in items.into_iter() {
+            for ext in items {
                 // We only take care of the most common cases, `*.rs`.
                 if let Some(stripped) = ext.strip_prefix("*.") {
                     lang_maps.insert(stripped.to_string(), lang.to_string());

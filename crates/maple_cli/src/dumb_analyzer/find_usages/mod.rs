@@ -28,6 +28,25 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
         .unwrap_or_else(|| table.get("*").expect("`*` entry exists; qed"))
 }
 
+// TODO: More general precise reference resolution.
+/// Returns a tuple of (ref_kind, kind_weight) given the pattern and source file extension.
+pub fn reference_kind(pattern: &str, file_ext: &str) -> (&'static str, usize) {
+    let find_more_precise_kind = || match file_ext {
+        "rs" => {
+            if pattern.trim_start().starts_with("use ") {
+                Some(("use", 1))
+            } else if pattern.trim_start().starts_with("impl") {
+                Some(("impl", 2))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+
+    find_more_precise_kind().unwrap_or(("refs", 100))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Usage {
     pub line: String,

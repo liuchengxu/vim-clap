@@ -57,11 +57,8 @@ impl SearchingWorker {
             .search_references(&keyword)?
             .par_bridge()
             .filter_map(|tag_info| {
-                // TODO: more fine-grained reference kind
-                let (kind, kind_weight) = match self.extension.as_str() {
-                    "rs" if tag_info.pattern.trim_start().starts_with("use ") => ("use", 1),
-                    _ => ("refs", 100),
-                };
+                let (kind, kind_weight) =
+                    crate::dumb_analyzer::reference_kind(&tag_info.pattern, &self.extension);
                 let (line, indices) = tag_info.grep_format_gtags(kind, &keyword, false);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))

@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use filter::subprocess::Exec;
+use filter::subprocess::{Exec, Redirection};
 
 use super::{QueryType, TagInfo};
 use crate::tools::ctags::TagsConfig;
@@ -33,6 +33,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     fn build_exec(&self, query: &str, query_type: QueryType) -> Exec {
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let cmd = Exec::cmd("readtags")
+            .stderr(Redirection::Merge)
             .arg("--tag-file")
             .arg(&self.tags_path)
             .arg("-E")

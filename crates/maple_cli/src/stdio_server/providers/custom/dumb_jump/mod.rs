@@ -236,12 +236,8 @@ impl DumbJumpHandle {
             (true, false) => SearchEngine::CtagsAndRegex,
             _ => SearchEngine::Regex,
         };
-        let job_future = search_for_usages(msg_id, params, Some(query_info), search_engine, false);
 
-        tokio::spawn(job_future).await.unwrap_or_else(|e| {
-            tracing::error!(?e, "Failed to spawn task search_for_usages");
-            Default::default()
-        })
+        search_for_usages(msg_id, params, Some(query_info), search_engine, false).await
     }
 }
 
