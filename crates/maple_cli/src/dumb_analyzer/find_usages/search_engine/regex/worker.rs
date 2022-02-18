@@ -14,7 +14,7 @@ use crate::tools::ripgrep::{Match, Word};
 /// Convert the entire output into a stream of ripgrep `Match`.
 fn find_matches(
     command: String,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: Option<&[&str]>,
 ) -> Result<Vec<Match>> {
     let mut cmd = AsyncCommand::new(command);
@@ -45,7 +45,7 @@ fn find_matches(
 pub(super) async fn regexp_search(
     word: &Word,
     lang_type: &str,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: &[&str],
 ) -> Result<Vec<Match>> {
     let command = format!(
@@ -59,7 +59,7 @@ pub(super) async fn regexp_search(
 pub(super) async fn find_occurrences_by_ext(
     word: &Word,
     ext: &str,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
 ) -> Result<Vec<Match>> {
     let command = format!("rg --json --word-regexp '{}' -g '*.{}'", word.raw, ext);
     let comments = get_comments_by_ext(ext);
@@ -72,7 +72,7 @@ pub(super) async fn find_occurrences_by_ext(
 pub(super) async fn find_occurrences_by_lang(
     word: &Word,
     lang_type: &str,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: &[&str],
 ) -> Result<Vec<Match>> {
     let command = format!(
@@ -88,7 +88,7 @@ pub(super) async fn find_definitions_with_kind(
     lang: &str,
     kind: &DefinitionKind,
     word: &Word,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
 ) -> Result<(DefinitionKind, Vec<Match>)> {
     let regexp = build_full_regexp(lang, kind, word)?;
     let command = format!("rg --trim --json --pcre2 --type {} -e '{}'", lang, regexp);

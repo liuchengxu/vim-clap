@@ -71,7 +71,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = find_occurrences_by_ext(&word, extension, dir).await?;
+                let occurrences = find_occurrences_by_ext(&word, extension, dir.as_ref()).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|line| {
@@ -88,7 +88,7 @@ impl RegexSearcher {
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(lang, &word, dir, comments).await?;
+            let res = definitions_and_references(lang, &word, dir.as_ref(), comments).await?;
 
             let usages = res
                 .into_par_iter()
@@ -110,7 +110,7 @@ impl RegexSearcher {
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Usages> {
-        let (definitions, occurrences) = RegexSearcherImpl::new(lang, word, &self.dir)
+        let (definitions, occurrences) = RegexSearcherImpl::new(lang, word, self.dir.as_ref())
             .all(comments)
             .await;
 
@@ -151,7 +151,7 @@ impl RegexSearcher {
             .collect::<Vec<_>>();
 
         if regex_usages.is_empty() {
-            let lines = regexp_search(word, lang, &self.dir, comments).await?;
+            let lines = regexp_search(word, lang, self.dir.as_ref(), comments).await?;
             let grep_usages = lines
                 .into_par_iter()
                 .filter_map(|line| {

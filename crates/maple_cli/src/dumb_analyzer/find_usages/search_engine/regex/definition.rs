@@ -50,12 +50,12 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 pub(super) struct RegexSearcherImpl<'a> {
     lang: &'a str,
     word: &'a Word,
-    dir: &'a Option<PathBuf>,
+    dir: Option<&'a PathBuf>,
 }
 
 impl<'a> RegexSearcherImpl<'a> {
     /// Constructs a new instance of [`RegexSearcherImpl`].
-    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
+    pub fn new(lang: &'a str, word: &'a Word, dir: Option<&'a PathBuf>) -> Self {
         Self { lang, word, dir }
     }
 
@@ -260,7 +260,7 @@ impl Occurrences {
 pub(super) async fn definitions_and_references(
     lang: &str,
     word: &Word,
-    dir: &Option<PathBuf>,
+    dir: Option<&PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, mut occurrences) =
