@@ -7,9 +7,7 @@ use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
-use crate::utils::ExactOrInverseTerms;
 
 use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, regexp_search};
 
@@ -49,14 +47,14 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
 
 /// Usages consists of [`Definitions`] and [`Occurrences`].
 #[derive(Debug, Clone)]
-struct FindUsages<'a> {
+pub(super) struct RegexSearcherImpl<'a> {
     lang: &'a str,
     word: &'a Word,
     dir: &'a Option<PathBuf>,
 }
 
-impl<'a> FindUsages<'a> {
-    /// Constructs a new instance of [`FindUsages`].
+impl<'a> RegexSearcherImpl<'a> {
+    /// Constructs a new instance of [`RegexSearcherImpl`].
     pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
         Self { lang, word, dir }
     }
@@ -259,74 +257,14 @@ impl Occurrences {
     }
 }
 
-pub(super) async fn do_search_usages(
-    lang: &str,
-    file_ext: &str,
-    word: &Word,
-    dir: &Option<PathBuf>,
-    comments: &[&str],
-    exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Usages> {
-    let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
-
-    let defs = definitions.flatten();
-
-    // There are some negative definitions we need to filter them out, e.g., the word
-    // is a subtring in some identifer but we consider every word is a valid identifer.
-    let positive_defs = defs
-        .par_iter()
-        .filter(|def| occurrences.contains(def))
-        .collect::<Vec<_>>();
-
-    let regex_usages = definitions
-        .par_iter()
-        .flat_map(|DefinitionSearchResult { kind, matches }| {
-            matches.par_iter().filter_map(|line| {
-                if positive_defs.contains(&line) {
-                    exact_or_inverse_terms
-                        .check_jump_line(line.build_jump_line(kind.as_ref(), word))
-                } else {
-                    None
-                }
-            })
-        })
-        .chain(
-            // references are these occurrences not in the definitions.
-            occurrences.par_iter().filter_map(|line| {
-                if !defs.contains(line) {
-                    let (kind, _) = crate::dumb_analyzer::reference_kind(line.pattern(), file_ext);
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word))
-                } else {
-                    None
-                }
-            }),
-        )
-        .map(|(line, indices)| Usage::new(line, indices))
-        .collect::<Vec<_>>();
-
-    if regex_usages.is_empty() {
-        let lines = regexp_search(word, lang, dir, comments).await?;
-        let grep_usages = lines
-            .into_par_iter()
-            .filter_map(|line| {
-                exact_or_inverse_terms
-                    .check_jump_line(line.build_jump_line("grep", word))
-                    .map(|(line, indices)| Usage::new(line, indices))
-            })
-            .collect::<Vec<_>>();
-        return Ok(grep_usages.into());
-    }
-
-    Ok(regex_usages.into())
-}
-
 pub(super) async fn definitions_and_references(
     lang: &str,
     word: &Word,
     dir: &Option<PathBuf>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
+    let (definitions, mut occurrences) =
+        RegexSearcherImpl::new(lang, word, dir).all(comments).await;
 
     let defs = definitions.flatten();
 

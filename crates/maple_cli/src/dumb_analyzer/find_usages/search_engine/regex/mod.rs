@@ -19,9 +19,10 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use self::definition::{
-    definitions_and_references, do_search_usages, get_language_by_ext, MatchKind,
+    definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
+    RegexSearcherImpl,
 };
-use self::worker::find_occurrences_by_ext;
+use self::worker::{find_occurrences_by_ext, regexp_search};
 use crate::dumb_analyzer::{
     find_usages::{Usage, Usages},
     get_comments_by_ext,
@@ -37,23 +38,16 @@ pub struct RegexSearcher {
 }
 
 impl RegexSearcher {
-    pub async fn print_usages(self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
+    pub async fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
         let lang = get_language_by_ext(&self.extension)?;
         let comments = get_comments_by_ext(&self.extension);
 
         // TODO: also take word as query?
-        let word = Word::new(self.word)?;
+        let word = Word::new(self.word.clone())?;
 
-        do_search_usages(
-            lang,
-            &self.extension,
-            &word,
-            &self.dir,
-            comments,
-            exact_or_inverse_terms,
-        )
-        .await?
-        .print();
+        self.regex_search(lang, &word, comments, exact_or_inverse_terms)
+            .await?
+            .print();
 
         Ok(())
     }
@@ -61,7 +55,7 @@ impl RegexSearcher {
     /// Search the definitions and references if language type is detected, otherwise
     /// search the occurrences.
     pub async fn search_usages(
-        self,
+        &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Usages> {
@@ -71,13 +65,13 @@ impl RegexSearcher {
             dir,
         } = self;
 
-        let word = Word::new(word)?;
+        let word = Word::new(word.clone())?;
 
-        let lang = match get_language_by_ext(&extension) {
+        let lang = match get_language_by_ext(extension) {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = find_occurrences_by_ext(&word, &extension, &dir).await?;
+                let occurrences = find_occurrences_by_ext(&word, extension, dir).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|line| {
@@ -90,11 +84,11 @@ impl RegexSearcher {
             }
         };
 
-        let comments = get_comments_by_ext(&extension);
+        let comments = get_comments_by_ext(extension);
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(lang, &word, &dir, comments).await?;
+            let res = definitions_and_references(lang, &word, dir, comments).await?;
 
             let usages = res
                 .into_par_iter()
@@ -104,16 +98,72 @@ impl RegexSearcher {
 
             Ok(usages.into())
         } else {
-            do_search_usages(
-                lang,
-                &extension,
-                &word,
-                &dir,
-                comments,
-                exact_or_inverse_terms,
-            )
-            .await
+            self.regex_search(lang, &word, comments, exact_or_inverse_terms)
+                .await
         }
+    }
+
+    async fn regex_search(
+        &self,
+        lang: &str,
+        word: &Word,
+        comments: &[&str],
+        exact_or_inverse_terms: &ExactOrInverseTerms,
+    ) -> Result<Usages> {
+        let (definitions, occurrences) = RegexSearcherImpl::new(lang, word, &self.dir)
+            .all(comments)
+            .await;
+
+        let defs = definitions.flatten();
+
+        // There are some negative definitions we need to filter them out, e.g., the word
+        // is a subtring in some identifer but we consider every word is a valid identifer.
+        let positive_defs = defs
+            .par_iter()
+            .filter(|def| occurrences.contains(def))
+            .collect::<Vec<_>>();
+
+        let regex_usages = definitions
+            .par_iter()
+            .flat_map(|DefinitionSearchResult { kind, matches }| {
+                matches.par_iter().filter_map(|line| {
+                    if positive_defs.contains(&line) {
+                        exact_or_inverse_terms
+                            .check_jump_line(line.build_jump_line(kind.as_ref(), word))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .chain(
+                // references are these occurrences not in the definitions.
+                occurrences.par_iter().filter_map(|line| {
+                    if !defs.contains(line) {
+                        let (kind, _) =
+                            crate::dumb_analyzer::reference_kind(line.pattern(), &self.extension);
+                        exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word))
+                    } else {
+                        None
+                    }
+                }),
+            )
+            .map(|(line, indices)| Usage::new(line, indices))
+            .collect::<Vec<_>>();
+
+        if regex_usages.is_empty() {
+            let lines = regexp_search(word, lang, &self.dir, comments).await?;
+            let grep_usages = lines
+                .into_par_iter()
+                .filter_map(|line| {
+                    exact_or_inverse_terms
+                        .check_jump_line(line.build_jump_line("grep", word))
+                        .map(|(line, indices)| Usage::new(line, indices))
+                })
+                .collect::<Vec<_>>();
+            return Ok(grep_usages.into());
+        }
+
+        Ok(regex_usages.into())
     }
 }
 
