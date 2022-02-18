@@ -20,8 +20,7 @@ use icon::Icon;
 use utility::is_git_repo;
 
 use crate::app::Params;
-use crate::process::tokio::TokioCommand;
-use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
+use crate::process::{light::LightCommand, rstd::StdCommand, tokio::TokioCommand, BaseCommand};
 use crate::tools::ripgrep::Match;
 use crate::utils::{send_response_from_cache, SendResponse};
 

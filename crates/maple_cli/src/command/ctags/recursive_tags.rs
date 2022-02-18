@@ -74,11 +74,7 @@ impl RecursiveTags {
             return Ok(());
         } else {
             filter::dyn_run(
-                if let Some(ref q) = self.query {
-                    q
-                } else {
-                    Default::default()
-                },
+                self.query.as_deref().unwrap_or_default(),
                 Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
                 FilterContext::new(
                     Default::default(),
