@@ -80,6 +80,10 @@ endfunction
 
 " Handle the response of OnTyped event
 function! clap#state#handle_response_on_typed(result, error) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+
   if a:error isnot v:null
     call clap#indicator#set_matches_number(0)
     if has_key(a:error, 'message')

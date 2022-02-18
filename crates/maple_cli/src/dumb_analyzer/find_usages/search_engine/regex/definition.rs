@@ -261,6 +261,7 @@ impl Occurrences {
 
 pub(super) async fn do_search_usages(
     lang: &str,
+    file_ext: &str,
     word: &Word,
     dir: &Option<PathBuf>,
     comments: &[&str],
@@ -293,7 +294,8 @@ pub(super) async fn do_search_usages(
             // references are these occurrences not in the definitions.
             occurrences.par_iter().filter_map(|line| {
                 if !defs.contains(line) {
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", word))
+                    let (kind, _) = crate::dumb_analyzer::reference_kind(line.pattern(), file_ext);
+                    exact_or_inverse_terms.check_jump_line(line.build_jump_line(kind, word))
                 } else {
                     None
                 }

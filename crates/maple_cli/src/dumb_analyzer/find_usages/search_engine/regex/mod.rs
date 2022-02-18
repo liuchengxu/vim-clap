@@ -44,9 +44,16 @@ impl RegexSearcher {
         // TODO: also take word as query?
         let word = Word::new(self.word)?;
 
-        do_search_usages(lang, &word, &self.dir, comments, exact_or_inverse_terms)
-            .await?
-            .print();
+        do_search_usages(
+            lang,
+            &self.extension,
+            &word,
+            &self.dir,
+            comments,
+            exact_or_inverse_terms,
+        )
+        .await?
+        .print();
 
         Ok(())
     }
@@ -97,7 +104,15 @@ impl RegexSearcher {
 
             Ok(usages.into())
         } else {
-            do_search_usages(lang, &word, &dir, comments, exact_or_inverse_terms).await
+            do_search_usages(
+                lang,
+                &extension,
+                &word,
+                &dir,
+                comments,
+                exact_or_inverse_terms,
+            )
+            .await
         }
     }
 }
