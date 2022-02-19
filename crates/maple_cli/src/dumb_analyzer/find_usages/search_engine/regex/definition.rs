@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::{collections::HashMap, fmt::Display};
 
 use anyhow::{anyhow, Result};
@@ -7,11 +6,9 @@ use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::dumb_analyzer::find_usages::{Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
-use crate::utils::ExactOrInverseTerms;
 
-use super::worker::{find_definitions_with_kind, find_occurrences_by_lang, regexp_search};
+use super::runner::RegexRunner;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -46,58 +43,6 @@ static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         })
         .collect()
 });
-
-/// Usages consists of [`Definitions`] and [`Occurrences`].
-#[derive(Debug, Clone)]
-struct FindUsages<'a> {
-    lang: &'a str,
-    word: &'a Word,
-    dir: &'a Option<PathBuf>,
-}
-
-impl<'a> FindUsages<'a> {
-    /// Constructs a new instance of [`FindUsages`].
-    pub fn new(lang: &'a str, word: &'a Word, dir: &'a Option<PathBuf>) -> Self {
-        Self { lang, word, dir }
-    }
-
-    /// Finds the occurrences and all definitions concurrently.
-    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
-        let (definitions, occurrences) =
-            futures::future::join(self.definitions(), self.occurrences(comments)).await;
-
-        (
-            Definitions {
-                defs: definitions.unwrap_or_default(),
-            },
-            Occurrences(occurrences.unwrap_or_default()),
-        )
-    }
-
-    /// Returns all kinds of definitions.
-    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        let all_def_futures = get_definition_rules(self.lang)?
-            .0
-            .keys()
-            .map(|kind| find_definitions_with_kind(self.lang, kind, self.word, self.dir));
-
-        let maybe_defs = futures::future::join_all(all_def_futures).await;
-
-        Ok(maybe_defs
-            .into_par_iter()
-            .filter_map(|def| {
-                def.ok()
-                    .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
-            })
-            .collect())
-    }
-
-    /// Returns all the occurrences.
-    #[inline]
-    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
-        find_occurrences_by_lang(self.word, self.lang, self.dir, comments).await
-    }
-}
 
 /// Finds the ripgrep language given the file extension `ext`.
 pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
@@ -259,72 +204,11 @@ impl Occurrences {
     }
 }
 
-pub(super) async fn do_search_usages(
-    lang: &str,
-    word: &Word,
-    dir: &Option<PathBuf>,
-    comments: &[&str],
-    exact_or_inverse_terms: &ExactOrInverseTerms,
-) -> Result<Usages> {
-    let (definitions, occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
-
-    let defs = definitions.flatten();
-
-    // There are some negative definitions we need to filter them out, e.g., the word
-    // is a subtring in some identifer but we consider every word is a valid identifer.
-    let positive_defs = defs
-        .par_iter()
-        .filter(|def| occurrences.contains(def))
-        .collect::<Vec<_>>();
-
-    let regex_usages = definitions
-        .par_iter()
-        .flat_map(|DefinitionSearchResult { kind, matches }| {
-            matches.par_iter().filter_map(|line| {
-                if positive_defs.contains(&line) {
-                    exact_or_inverse_terms
-                        .check_jump_line(line.build_jump_line(kind.as_ref(), word))
-                } else {
-                    None
-                }
-            })
-        })
-        .chain(
-            // references are these occurrences not in the definitions.
-            occurrences.par_iter().filter_map(|line| {
-                if !defs.contains(line) {
-                    exact_or_inverse_terms.check_jump_line(line.build_jump_line("refs", word))
-                } else {
-                    None
-                }
-            }),
-        )
-        .map(|(line, indices)| Usage::new(line, indices))
-        .collect::<Vec<_>>();
-
-    if regex_usages.is_empty() {
-        let lines = regexp_search(word, lang, dir, comments).await?;
-        let grep_usages = lines
-            .into_par_iter()
-            .filter_map(|line| {
-                exact_or_inverse_terms
-                    .check_jump_line(line.build_jump_line("grep", word))
-                    .map(|(line, indices)| Usage::new(line, indices))
-            })
-            .collect::<Vec<_>>();
-        return Ok(grep_usages.into());
-    }
-
-    Ok(regex_usages.into())
-}
-
-pub(super) async fn definitions_and_references(
-    lang: &str,
-    word: &Word,
-    dir: &Option<PathBuf>,
+pub(super) async fn definitions_and_references<'a>(
+    regex_runner: RegexRunner<'a>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) = FindUsages::new(lang, word, dir).all(comments).await;
+    let (definitions, mut occurrences) = regex_runner.all(comments).await;
 
     let defs = definitions.flatten();
 
@@ -352,7 +236,8 @@ pub(super) async fn definitions_and_references(
         .collect();
 
     if res.is_empty() {
-        regexp_search(word, lang, dir, comments)
+        regex_runner
+            .regexp_search(comments)
             .await
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {

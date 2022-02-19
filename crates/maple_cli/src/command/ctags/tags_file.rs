@@ -3,7 +3,7 @@ use clap::Parser;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::{CtagsSearcher, SearchType};
+use crate::dumb_analyzer::{CtagsSearcher, QueryType};
 use crate::tools::ctags::TagsConfig;
 
 #[derive(Parser, Debug, Clone)]
@@ -59,8 +59,7 @@ impl TagsFile {
         let tags_searcher = CtagsSearcher::new(config);
 
         if let Some(ref query) = self.query {
-            let results =
-                tags_searcher.search(query, SearchType::StartWith, self.force_generate)?;
+            let results = tags_searcher.search(query, QueryType::StartWith, self.force_generate)?;
             for line in results {
                 println!("{:?}", line);
             }

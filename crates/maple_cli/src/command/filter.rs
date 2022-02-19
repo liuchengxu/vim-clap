@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchType},
+    matcher::{Bonus, FuzzyAlgorithm, MatchingTextKind},
     subprocess::Exec,
     FilterContext, Source,
 };
@@ -50,7 +50,7 @@ pub struct Filter {
 
     /// Apply the filter on the full line content or parial of it.
     #[clap(long, parse(from_str), default_value = "full")]
-    match_type: MatchType,
+    matching_text_kind: MatchingTextKind,
 
     /// Add a bonus to the score of base matching algorithm.
     #[clap(long, parse(from_str = parse_bonus), default_value = "none")]
@@ -110,7 +110,7 @@ impl Filter {
                 &self.query,
                 self.generate_source(),
                 self.algo,
-                self.match_type,
+                self.matching_text_kind,
                 self.get_bonuses(),
             )?;
 
@@ -119,7 +119,7 @@ impl Filter {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,
                 self.generate_source(),
-                FilterContext::new(self.algo, icon, number, winwidth, self.match_type),
+                FilterContext::new(self.algo, icon, number, winwidth, self.matching_text_kind),
                 self.get_bonuses(),
             )?;
         }

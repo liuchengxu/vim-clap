@@ -3,7 +3,7 @@ use std::path::Path;
 
 use chrono::prelude::*;
 use filter::SourceItem;
-use matcher::{Bonus, FuzzyAlgorithm, MatchType};
+use matcher::{Bonus, FuzzyAlgorithm, MatchingTextKind};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
@@ -175,9 +175,9 @@ impl SortedRecentFiles {
             .collect();
 
         let matcher = matcher::Matcher::with_bonuses(
-            FuzzyAlgorithm::Fzy,
-            MatchType::Full,
             vec![Bonus::cwd(cwd), Bonus::FileName],
+            FuzzyAlgorithm::Fzy,
+            MatchingTextKind::Full,
         );
 
         filter::par_filter(query, source_items, &matcher)

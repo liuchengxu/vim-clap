@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use pyo3::{prelude::*, wrap_pyfunction};
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchType, Matcher},
+    matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
     FilteredItem, Query, SourceItem,
 };
 use printer::truncate_long_matched_lines_v0;
@@ -25,7 +25,7 @@ const DEFAULT_WINWIDTH: usize = 80;
 struct MatchContext {
     winwidth: usize,
     enable_icon: bool,
-    match_type: MatchType,
+    matching_text_kind: MatchingTextKind,
     bonuses: Vec<Bonus>,
 }
 
@@ -41,10 +41,10 @@ impl From<HashMap<String, String>> for MatchContext {
             .map(|x| x.to_lowercase() == "true")
             .unwrap_or(false);
 
-        let match_type = ctx
-            .get("match_type")
+        let matching_text_kind = ctx
+            .get("matching_text_kind")
             .map(Into::into)
-            .unwrap_or(MatchType::Full);
+            .unwrap_or(MatchingTextKind::Full);
 
         let bonus_type = ctx.get("bonus_type").map(Into::into).unwrap_or(Bonus::None);
 
@@ -56,7 +56,7 @@ impl From<HashMap<String, String>> for MatchContext {
         Self {
             winwidth,
             enable_icon,
-            match_type,
+            matching_text_kind,
             bonuses,
         }
     }
@@ -75,13 +75,13 @@ fn fuzzy_match(
     let MatchContext {
         winwidth,
         enable_icon,
-        match_type,
+        matching_text_kind,
         mut bonuses,
     } = context.into();
 
     bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
-    let matcher = Matcher::with_bonuses(FuzzyAlgorithm::Fzy, match_type, bonuses);
+    let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, matching_text_kind);
 
     let query: Query = query.into();
     let do_match = |line: &str| {
@@ -184,7 +184,7 @@ mod tests {
         let context: HashMap<String, String> = vec![
             ("winwidth", "62"),
             ("enable_icon", "True"),
-            ("match_type", "Full"),
+            ("matching_text_kind", "Full"),
             ("bonus_type", "FileName"),
         ]
         .into_iter()

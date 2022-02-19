@@ -80,6 +80,10 @@ endfunction
 
 " Handle the response of OnTyped event
 function! clap#state#handle_response_on_typed(result, error) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+
   if a:error isnot v:null
     call clap#indicator#set_matches_number(0)
     if has_key(a:error, 'message')
@@ -161,7 +165,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
         \ 'g:__clap_initial_source_size',
-        \ 'g:__clap_match_type_enum',
+        \ 'g:__clap_matching_text_kind_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
   let g:clap.display.initial_size = -1

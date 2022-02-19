@@ -16,7 +16,7 @@
 //! //        ↓
 //! //    Apply fuzzy search term
 //! //        |
-//! //        |  MatchType: extract the content to match.
+//! //        |  MatchingTextKind: extract the content to match.
 //! //        |  FuzzyAlgorithm: run the match algorithm on MatchText.
 //! //        |
 //! //        ↓
@@ -32,7 +32,7 @@ pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
 // Re-export types
 pub use types::{
-    ExactTerm, ExactTermType, FuzzyTermType, MatchType, MatchingText, Query, SearchTerm,
+    ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
     SourceItem, TermType,
 };
 
@@ -117,43 +117,48 @@ pub fn search_exact_terms<'a>(
 
 /// `Matcher` is composed of two components:
 ///
-///   * `match_type`: represents the way of extracting the matching piece from the raw line.
+///   * `matching_text_kind`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
 #[derive(Debug, Clone)]
 pub struct Matcher {
-    fuzzy_algo: FuzzyAlgorithm,
-    match_type: MatchType,
     bonuses: Vec<Bonus>,
+    fuzzy_algo: FuzzyAlgorithm,
+    matching_text_kind: MatchingTextKind,
 }
 
 impl Matcher {
     /// Constructs a new instance of [`Matcher`].
-    pub fn new(fuzzy_algo: FuzzyAlgorithm, match_type: MatchType, bonus: Bonus) -> Self {
+    pub fn new(
+        bonus: Bonus,
+        fuzzy_algo: FuzzyAlgorithm,
+        matching_text_kind: MatchingTextKind,
+    ) -> Self {
         Self {
-            fuzzy_algo,
-            match_type,
             bonuses: vec![bonus],
+            fuzzy_algo,
+            matching_text_kind,
         }
     }
 
     /// Constructs a new instance of [`Matcher`] with multiple bonuses.
     pub fn with_bonuses(
-        fuzzy_algo: FuzzyAlgorithm,
-        match_type: MatchType,
         bonuses: Vec<Bonus>,
+        fuzzy_algo: FuzzyAlgorithm,
+        matching_text_kind: MatchingTextKind,
     ) -> Self {
         Self {
-            fuzzy_algo,
-            match_type,
             bonuses,
+            fuzzy_algo,
+            matching_text_kind,
         }
     }
 
     /// Match the item without considering the bonus.
     #[inline]
     fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> MatchResult {
-        self.fuzzy_algo.fuzzy_match(query, item, &self.match_type)
+        self.fuzzy_algo
+            .fuzzy_match(query, item, &self.matching_text_kind)
     }
 
     /// Returns the sum of bonus score.
@@ -255,7 +260,7 @@ mod tests {
     #[test]
     fn test_exclude_grep_filepath() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> MatchResult {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchType::IgnoreFilePath)
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::IgnoreFilePath)
         }
 
         let query = "rules";
@@ -268,7 +273,7 @@ mod tests {
     #[test]
     fn test_file_name_only() {
         fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> MatchResult {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchType::FileName)
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::FileName)
         }
 
         let query = "lib";
@@ -285,7 +290,7 @@ mod tests {
             "autoload/clap/provider/files.vim",
             "lua/fzy_filter.lua",
         ];
-        let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
         let query = "fil";
         for line in lines {
             let (base_score, indices1) =
@@ -300,9 +305,9 @@ mod tests {
     fn test_filetype_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
         let matcher = Matcher::new(
-            FuzzyAlgorithm::Fzy,
-            MatchType::Full,
             Bonus::Language("vim".into()),
+            FuzzyAlgorithm::Fzy,
+            MatchingTextKind::Full,
         );
         let query: Query = "fo".into();
         let (score_1, indices1) = matcher.match_query(&lines[0], &query).unwrap();
@@ -320,7 +325,7 @@ mod tests {
             "pythonx/clap/scorer.py".into(),
         ];
 
-        let matcher = Matcher::new(FuzzyAlgorithm::Fzy, MatchType::Full, Bonus::FileName);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
 
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items

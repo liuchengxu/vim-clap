@@ -46,12 +46,12 @@ if get(g:, 'clap_provider_tags_force_vista', v:false)
   function! s:tags.on_enter() abort
     let s:origin_syntax = getbufvar(g:clap.start.bufnr, '&syntax')
     call g:clap.display.setbufvar('&syntax', 'clap_tags')
-    let g:__clap_match_type_enum = 'TagName'
+    let g:__clap_matching_text_kind_enum = 'TagName'
   endfunction
 
   function! s:tags.on_exit() abort
-    if exists('g:__clap_match_type_enum')
-      unlet g:__clap_match_type_enum
+    if exists('g:__clap_matching_text_kind_enum')
+      unlet g:__clap_matching_text_kind_enum
     endif
   endfunction
 
