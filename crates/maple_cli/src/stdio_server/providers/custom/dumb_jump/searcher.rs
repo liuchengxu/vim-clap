@@ -5,7 +5,9 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
-use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages};
+use crate::dumb_analyzer::{
+    AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
+};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
@@ -47,7 +49,7 @@ impl SearchingWorker {
         Ok(usages.into())
     }
 
-    fn gtags_search(self) -> Result<Usages> {
+    fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
             filtering_terms,
@@ -76,9 +78,8 @@ impl SearchingWorker {
 
         Ok(gtags_usages
             .into_par_iter()
-            .map(GtagsUsage::into_usage)
-            .collect::<Vec<_>>()
-            .into())
+            .map(GtagsUsage::into_addressable_usage)
+            .collect::<Vec<_>>())
     }
 
     async fn regex_search(self) -> Result<Usages> {
@@ -111,6 +112,15 @@ impl GtagsUsage {
         let Self { line, indices, .. } = self;
         Usage { line, indices }
     }
+
+    fn into_addressable_usage(self) -> AddressableUsage {
+        AddressableUsage {
+            line: self.line,
+            indices: self.indices,
+            path: self.path,
+            line_number: self.line_number,
+        }
+    }
 }
 
 impl PartialOrd for GtagsUsage {
@@ -132,7 +142,7 @@ impl Ord for GtagsUsage {
 /// Returns a combo of various results in the order of [ctags, gtags, regex].
 fn merge_all(
     ctag_results: Usages,
-    maybe_gtags_results: Option<Usages>,
+    maybe_gtags_results: Option<Vec<AddressableUsage>>,
     regex_results: Usages,
 ) -> Usages {
     let mut regex_results = regex_results;
@@ -140,8 +150,12 @@ fn merge_all(
 
     let mut ctag_results = ctag_results;
     if let Some(gtags_results) = maybe_gtags_results {
+        let gtags_results = gtags_results
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<_>>();
         regex_results.retain(|r| !gtags_results.contains(r));
-        ctag_results.append(gtags_results);
+        ctag_results.append(gtags_results.into());
     }
 
     ctag_results.append(regex_results);

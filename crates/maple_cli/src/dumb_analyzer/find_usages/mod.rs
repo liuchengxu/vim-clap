@@ -93,6 +93,24 @@ impl PartialEq for Usage {
 
 impl Eq for Usage {}
 
+/// [`Usage`] with some structured information.
+#[derive(Clone, Debug, Default)]
+pub struct AddressableUsage {
+    pub line: String,
+    pub indices: Vec<usize>,
+    pub path: String,
+    pub line_number: usize,
+}
+
+impl Into<Usage> for AddressableUsage {
+    fn into(self) -> Usage {
+        Usage {
+            line: self.line,
+            indices: self.indices,
+        }
+    }
+}
+
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug, Default)]
 pub struct Usages(Vec<Usage>);
