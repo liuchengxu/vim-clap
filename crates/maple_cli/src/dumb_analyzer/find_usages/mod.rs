@@ -90,6 +90,7 @@ pub struct AddressableUsage {
 
 impl PartialEq for AddressableUsage {
     fn eq(&self, other: &Self) -> bool {
+        // Equal if the path and lnum are the same.
         (&self.path, self.line_number) == (&other.path, other.line_number)
     }
 }
