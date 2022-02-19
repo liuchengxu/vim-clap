@@ -33,11 +33,22 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 pub fn reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'static str, usize) {
     let pattern = pattern.as_ref();
 
-    let find_more_precise_kind = || match file_ext {
+    let maybe_more_precise_kind = match file_ext {
         "rs" => {
-            if pattern.trim_start().starts_with("use ") {
+            let pattern = pattern.trim_start();
+            // use foo::bar;
+            // pub(crate) use foo::bar;
+            if pattern.starts_with("use ")
+                || (pattern.starts_with("pub")
+                    && pattern
+                        .split_ascii_whitespace()
+                        .take(2)
+                        .last()
+                        .map(|e| e == "use")
+                        .unwrap_or(false))
+            {
                 Some(("use", 1))
-            } else if pattern.trim_start().starts_with("impl") {
+            } else if pattern.starts_with("impl") {
                 Some(("impl", 2))
             } else {
                 None
@@ -46,7 +57,7 @@ pub fn reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'static str
         _ => None,
     };
 
-    find_more_precise_kind().unwrap_or(("refs", 100))
+    maybe_more_precise_kind.unwrap_or(("refs", 100))
 }
 
 #[derive(Clone, Debug, Default)]

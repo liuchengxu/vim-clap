@@ -42,6 +42,16 @@ fn find_matches(
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct RgRunner<'a> {
+    /// Directory to perform the ripgrep search.
+    pub dir: Option<&'a PathBuf>,
+    /// Keyword of searching.
+    pub word: &'a Word,
+    /// Extension of the source file.
+    pub file_ext: &'a str,
+}
+
 pub(super) async fn regexp_search(
     word: &Word,
     lang_type: &str,
