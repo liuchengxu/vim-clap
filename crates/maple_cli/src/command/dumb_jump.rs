@@ -51,8 +51,9 @@ impl DumbJump {
             extension: self.extension.to_string(),
             dir: self.cmd_dir.clone(),
         };
-        searcher
+        Ok(searcher
             .search_usages(classify, exact_or_inverse_terms)
-            .await
+            .await?
+            .into())
     }
 }

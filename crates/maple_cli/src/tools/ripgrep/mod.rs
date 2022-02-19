@@ -7,6 +7,7 @@ use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
+use crate::dumb_analyzer::AddressableUsage;
 use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
@@ -224,5 +225,14 @@ impl Match {
         let (formatted, offset) = self.jump_line_format_bare();
         let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
+    }
+
+    pub fn to_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
+        AddressableUsage {
+            line,
+            indices,
+            path: self.path().into(),
+            line_number: self.line_number() as usize,
+        }
     }
 }

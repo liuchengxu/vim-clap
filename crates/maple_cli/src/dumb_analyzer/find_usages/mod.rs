@@ -66,32 +66,18 @@ pub struct Usage {
     pub indices: Vec<usize>,
 }
 
+impl From<AddressableUsage> for Usage {
+    fn from(addressable_usage: AddressableUsage) -> Self {
+        let AddressableUsage { line, indices, .. } = addressable_usage;
+        Self { line, indices }
+    }
+}
+
 impl Usage {
     pub fn new(line: String, indices: Vec<usize>) -> Self {
         Self { line, indices }
     }
 }
-
-impl PartialEq for Usage {
-    fn eq(&self, other: &Self) -> bool {
-        // Equal if the path and lnum are the same.
-        // [tags]crates/readtags/sys/libreadtags/Makefile:388:1:srcdir
-        match (self.line.split_once(']'), other.line.split_once(']')) {
-            (Some((_, l1)), Some((_, l2))) => match (l1.split_once(':'), l2.split_once(':')) {
-                (Some((l_path, l_1)), Some((r_path, r_1))) if l_path == r_path => {
-                    matches!(
-                      (l_1.split_once(':'), r_1.split_once(':')),
-                      (Some((l_lnum, _)), Some((r_lnum, _))) if l_lnum == r_lnum
-                    )
-                }
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-}
-
-impl Eq for Usage {}
 
 /// [`Usage`] with some structured information.
 #[derive(Clone, Debug, Default)]
@@ -102,14 +88,13 @@ pub struct AddressableUsage {
     pub line_number: usize,
 }
 
-impl Into<Usage> for AddressableUsage {
-    fn into(self) -> Usage {
-        Usage {
-            line: self.line,
-            indices: self.indices,
-        }
+impl PartialEq for AddressableUsage {
+    fn eq(&self, other: &Self) -> bool {
+        (&self.path, self.line_number) == (&other.path, other.line_number)
     }
 }
+
+impl Eq for AddressableUsage {}
 
 /// All the lines as well as their match indices that can be sent to the vim side directly.
 #[derive(Clone, Debug, Default)]
@@ -118,6 +103,12 @@ pub struct Usages(Vec<Usage>);
 impl From<Vec<Usage>> for Usages {
     fn from(inner: Vec<Usage>) -> Self {
         Self(inner)
+    }
+}
+
+impl From<Vec<AddressableUsage>> for Usages {
+    fn from(inner: Vec<AddressableUsage>) -> Self {
+        Self(inner.into_iter().map(Into::into).collect())
     }
 }
 
@@ -137,10 +128,6 @@ impl IndexMut<usize> for Usages {
 impl Usages {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
-    }
-
-    pub fn contains(&self, ele: &Usage) -> bool {
-        self.0.contains(ele)
     }
 
     pub fn len(&self) -> usize {

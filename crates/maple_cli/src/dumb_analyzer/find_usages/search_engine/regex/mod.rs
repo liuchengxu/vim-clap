@@ -22,6 +22,7 @@ use self::definition::{
     definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
 };
 use self::runner::{BasicRunner, RegexRunner};
+use crate::dumb_analyzer::AddressableUsage;
 use crate::dumb_analyzer::{
     find_usages::{Usage, Usages},
     get_comments_by_ext,
@@ -53,9 +54,12 @@ impl RegexSearcher {
 
         let regex_runner = RegexRunner::new(basic_runner, lang);
 
-        self.regex_search(regex_runner, comments, exact_or_inverse_terms)
+        let usages: Usages = self
+            .regex_search(regex_runner, comments, exact_or_inverse_terms)
             .await?
-            .print();
+            .into();
+
+        usages.print();
 
         Ok(())
     }
@@ -66,7 +70,7 @@ impl RegexSearcher {
         &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<Usages> {
+    ) -> Result<Vec<AddressableUsage>> {
         let Self {
             word,
             extension,
@@ -88,13 +92,13 @@ impl RegexSearcher {
                 let occurrences = basic_runner.find_occurrences().await?;
                 let usages = occurrences
                     .into_par_iter()
-                    .filter_map(|line| {
+                    .filter_map(|matched| {
                         exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line("refs", &word))
-                            .map(|(line, indices)| Usage::new(line, indices))
+                            .check_jump_line(matched.build_jump_line("refs", &word))
+                            .map(|(line, indices)| matched.to_addressable_usage(line, indices))
                     })
                     .collect::<Vec<_>>();
-                return Ok(usages.into());
+                return Ok(usages);
             }
         };
 
@@ -106,13 +110,14 @@ impl RegexSearcher {
         if classify {
             let res = definitions_and_references(regex_runner, comments).await?;
 
-            let usages = res
+            let _usages = res
                 .into_par_iter()
                 .flat_map(|(match_kind, matches)| render_classify(matches, &match_kind, &word))
                 .map(|(line, indices)| Usage::new(line, indices))
                 .collect::<Vec<_>>();
 
-            Ok(usages.into())
+            unimplemented!("Classify regex search")
+            // Ok(usages.into())
         } else {
             self.regex_search(regex_runner, comments, exact_or_inverse_terms)
                 .await
@@ -124,7 +129,7 @@ impl RegexSearcher {
         regex_runner: RegexRunner<'a>,
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<Usages> {
+    ) -> Result<Vec<AddressableUsage>> {
         let (definitions, occurrences) = regex_runner.all(comments).await;
 
         let defs = definitions.flatten();
@@ -137,48 +142,55 @@ impl RegexSearcher {
             .collect::<Vec<_>>();
 
         let regex_usages = definitions
-            .par_iter()
+            .into_par_iter()
             .flat_map(|DefinitionSearchResult { kind, matches }| {
-                matches.par_iter().filter_map(|line| {
-                    if positive_defs.contains(&line) {
-                        exact_or_inverse_terms.check_jump_line(
-                            line.build_jump_line(kind.as_ref(), regex_runner.inner.word),
-                        )
-                    } else {
-                        None
-                    }
-                })
+                matches
+                    .into_par_iter()
+                    .filter_map(|matched| {
+                        if positive_defs.contains(&&matched) {
+                            exact_or_inverse_terms
+                                .check_jump_line(
+                                    matched.build_jump_line(kind.as_ref(), regex_runner.inner.word),
+                                )
+                                .map(|(line, indices)| matched.to_addressable_usage(line, indices))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
             })
             .chain(
                 // references are these occurrences not in the definitions.
-                occurrences.par_iter().filter_map(|line| {
-                    if !defs.contains(line) {
-                        let (kind, _) =
-                            crate::dumb_analyzer::reference_kind(line.pattern(), &self.extension);
+                occurrences.into_par_iter().filter_map(|matched| {
+                    if !defs.contains(&matched) {
+                        let (kind, _) = crate::dumb_analyzer::reference_kind(
+                            matched.pattern(),
+                            &self.extension,
+                        );
                         exact_or_inverse_terms
-                            .check_jump_line(line.build_jump_line(kind, regex_runner.inner.word))
+                            .check_jump_line(matched.build_jump_line(kind, regex_runner.inner.word))
+                            .map(|(line, indices)| matched.to_addressable_usage(line, indices))
                     } else {
                         None
                     }
                 }),
             )
-            .map(|(line, indices)| Usage::new(line, indices))
             .collect::<Vec<_>>();
 
         if regex_usages.is_empty() {
             let lines = regex_runner.regexp_search(comments).await?;
             let grep_usages = lines
                 .into_par_iter()
-                .filter_map(|line| {
+                .filter_map(|matched| {
                     exact_or_inverse_terms
-                        .check_jump_line(line.build_jump_line("grep", regex_runner.inner.word))
-                        .map(|(line, indices)| Usage::new(line, indices))
+                        .check_jump_line(matched.build_jump_line("grep", regex_runner.inner.word))
+                        .map(|(line, indices)| matched.to_addressable_usage(line, indices))
                 })
                 .collect::<Vec<_>>();
-            return Ok(grep_usages.into());
+            return Ok(grep_usages);
         }
 
-        Ok(regex_usages.into())
+        Ok(regex_usages)
     }
 }
 
