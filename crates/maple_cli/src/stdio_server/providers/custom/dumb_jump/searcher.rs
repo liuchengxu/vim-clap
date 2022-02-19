@@ -6,7 +6,8 @@ use rayon::prelude::*;
 
 use super::QueryInfo;
 use crate::dumb_analyzer::{
-    AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
+    resolve_reference_kind, AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType,
+    RegexSearcher, Usage, Usages,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
@@ -60,7 +61,7 @@ impl SearchingWorker {
             .par_bridge()
             .filter_map(|tag_info| {
                 let (kind, kind_weight) =
-                    crate::dumb_analyzer::reference_kind(&tag_info.pattern, &self.extension);
+                    resolve_reference_kind(&tag_info.pattern, &self.extension);
                 let (line, indices) = tag_info.grep_format_gtags(kind, &keyword, false);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))

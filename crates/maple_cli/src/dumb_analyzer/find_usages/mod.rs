@@ -30,7 +30,7 @@ pub fn get_comments_by_ext(ext: &str) -> &[&str] {
 
 // TODO: More general precise reference resolution.
 /// Returns a tuple of (ref_kind, kind_weight) given the pattern and source file extension.
-pub fn reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'static str, usize) {
+pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'static str, usize) {
     let pattern = pattern.as_ref();
 
     let maybe_more_precise_kind = match file_ext {

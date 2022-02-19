@@ -22,10 +22,9 @@ use self::definition::{
     definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
 };
 use self::runner::{BasicRunner, RegexRunner};
-use crate::dumb_analyzer::AddressableUsage;
 use crate::dumb_analyzer::{
     find_usages::{Usage, Usages},
-    get_comments_by_ext,
+    get_comments_by_ext, resolve_reference_kind, AddressableUsage,
 };
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
@@ -165,10 +164,7 @@ impl RegexSearcher {
                 // references are these occurrences not in the definitions.
                 occurrences.into_par_iter().filter_map(|matched| {
                     if !defs.contains(&matched) {
-                        let (kind, _) = crate::dumb_analyzer::reference_kind(
-                            matched.pattern(),
-                            &self.extension,
-                        );
+                        let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         exact_or_inverse_terms
                             .check_jump_line(matched.build_jump_line(kind, regex_runner.inner.word))
                             .map(|(line, indices)| matched.into_addressable_usage(line, indices))
