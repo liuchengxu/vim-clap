@@ -227,7 +227,7 @@ impl Match {
         (formatted, indices)
     }
 
-    pub fn to_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
+    pub fn into_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
         AddressableUsage {
             line,
             indices,

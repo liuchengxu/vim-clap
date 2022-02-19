@@ -42,7 +42,7 @@ impl SearchingWorker {
                 let (line, indices) = tag_line.grep_format_ctags(&keyword, ignorecase);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))
-                    .map(|(line, indices)| tag_line.to_addressable_usage(line, indices))
+                    .map(|(line, indices)| tag_line.into_addressable_usage(line, indices))
             })
             .collect::<Vec<_>>();
 

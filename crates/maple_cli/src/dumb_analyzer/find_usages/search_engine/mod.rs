@@ -200,7 +200,7 @@ impl TagInfo {
         self.grep_format_inner(kind, query, ignorecase)
     }
 
-    pub fn to_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
+    pub fn into_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
         AddressableUsage {
             line,
             indices,

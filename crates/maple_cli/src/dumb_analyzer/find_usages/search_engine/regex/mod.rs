@@ -95,7 +95,7 @@ impl RegexSearcher {
                     .filter_map(|matched| {
                         exact_or_inverse_terms
                             .check_jump_line(matched.build_jump_line("refs", &word))
-                            .map(|(line, indices)| matched.to_addressable_usage(line, indices))
+                            .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                     })
                     .collect::<Vec<_>>();
                 return Ok(usages);
@@ -152,7 +152,9 @@ impl RegexSearcher {
                                 .check_jump_line(
                                     matched.build_jump_line(kind.as_ref(), regex_runner.inner.word),
                                 )
-                                .map(|(line, indices)| matched.to_addressable_usage(line, indices))
+                                .map(|(line, indices)| {
+                                    matched.into_addressable_usage(line, indices)
+                                })
                         } else {
                             None
                         }
@@ -169,7 +171,7 @@ impl RegexSearcher {
                         );
                         exact_or_inverse_terms
                             .check_jump_line(matched.build_jump_line(kind, regex_runner.inner.word))
-                            .map(|(line, indices)| matched.to_addressable_usage(line, indices))
+                            .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                     } else {
                         None
                     }
@@ -184,7 +186,7 @@ impl RegexSearcher {
                 .filter_map(|matched| {
                     exact_or_inverse_terms
                         .check_jump_line(matched.build_jump_line("grep", regex_runner.inner.word))
-                        .map(|(line, indices)| matched.to_addressable_usage(line, indices))
+                        .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                 })
                 .collect::<Vec<_>>();
             return Ok(grep_usages);
