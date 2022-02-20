@@ -12,6 +12,10 @@
 - Fix the `proj_tags` cmd list under Vim. #796
 - No syntax highlight for `c` preview. #800
 
+## Improved
+
+- Better performance for the pre-built binary. #804
+
 ## Changed
 
 - Set `g:clap_builtin_fuzzy_filter_threshold` to `0` to always use the async `on_typed` implementation which is full-featured using the Rust backend.
