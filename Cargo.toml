@@ -18,3 +18,13 @@ maple_cli = { path = "crates/maple_cli" }
 
 [build-dependencies]
 built = { package = "built", version = "0.5", features = ["git2"] }
+
+[profile.production]
+inherits = "release"
+
+# Sacrifice compile speed for execution speed by using optimization flags:
+
+# https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+lto = "fat"
+# https://doc.rust-lang.org/rustc/codegen-options/index.html#codegen-units
+codegen-units = 1

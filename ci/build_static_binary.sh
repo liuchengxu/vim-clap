@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+PROFILE=production
+
 # Install Docker
 sudo apt-get update
 sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
@@ -10,9 +12,9 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 docker --version
 
 docker pull clux/muslrust
-docker run -v $PWD:/volume --rm -t clux/muslrust cargo build --release --locked
+docker run -v $PWD:/volume --rm -t clux/muslrust cargo build --profile $PROFILE --locked
 
 mkdir -p target/release
-sudo cp target/x86_64-unknown-linux-musl/release/maple target/release/maple
+sudo cp target/x86_64-unknown-linux-musl/$PROFILE/maple target/$PROFILE/maple
 
-./target/release/maple version
+./target/$PROFILE/maple version

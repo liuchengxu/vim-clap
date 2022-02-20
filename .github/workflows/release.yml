@@ -68,7 +68,7 @@ jobs:
 
     - name: Build
       if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
-      run: cargo build --release --locked
+      run: cargo build --profile production --locked
 
     - name: Build static binary
       if: matrix.os == 'ubuntu-latest'
@@ -78,6 +78,6 @@ jobs:
       uses: svenstaro/upload-release-action@v1-release
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/release/${{ matrix.artifact_name }}
+        file: target/production/${{ matrix.artifact_name }}
         asset_name: ${{ matrix.asset_name }}
         tag: ${{ github.ref }}
