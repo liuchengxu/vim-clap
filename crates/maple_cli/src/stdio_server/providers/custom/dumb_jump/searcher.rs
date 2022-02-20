@@ -109,11 +109,6 @@ struct GtagsUsage {
 }
 
 impl GtagsUsage {
-    fn into_usage(self) -> Usage {
-        let Self { line, indices, .. } = self;
-        Usage { line, indices }
-    }
-
     fn into_addressable_usage(self) -> AddressableUsage {
         AddressableUsage {
             line: self.line,

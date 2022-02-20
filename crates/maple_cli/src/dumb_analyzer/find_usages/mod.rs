@@ -62,7 +62,9 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
 
 #[derive(Clone, Debug, Default)]
 pub struct Usage {
+    /// Display line.
     pub line: String,
+    /// Highlights of matched elements.
     pub indices: Vec<usize>,
 }
 
