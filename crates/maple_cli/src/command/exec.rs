@@ -46,7 +46,19 @@ impl Exec {
     ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 
-        let mut light_cmd = LightCommand::new(&mut exec_cmd, number, icon, self.output_threshold);
+        // TODO: fix this properly
+        //
+        // `let g:clap_builtin_fuzzy_filter_threshold == 0` is used to configure clap always use
+        // the async on_typed impl, but some commands also makes this variable to control
+        // `--output-threshold`, which can be problamatic. I imagine not many people actually are
+        // aware of the option `--output-threshold`, I'll use this ugly fix for now.
+        let output_threshold = if self.output_threshold == 0 {
+            100_000
+        } else {
+            self.output_threshold
+        };
+
+        let mut light_cmd = LightCommand::new(&mut exec_cmd, number, icon, output_threshold);
 
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),
