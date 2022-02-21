@@ -88,7 +88,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = basic_runner.find_occurrences().await?;
+                let occurrences = basic_runner.find_occurrences(true).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
@@ -123,6 +123,9 @@ impl RegexSearcher {
         }
     }
 
+    /// Search the usages using the pre-defined regex matching rules.
+    ///
+    /// If the result from regex matching is empty, try the pure grep approach.
     async fn regex_search<'a>(
         &'a self,
         regex_runner: RegexRunner<'a>,
@@ -161,7 +164,7 @@ impl RegexSearcher {
                     .collect::<Vec<_>>()
             })
             .chain(
-                // references are these occurrences not in the definitions.
+                // references are the occurrences that are not in the definition set.
                 occurrences.into_par_iter().filter_map(|matched| {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
@@ -175,6 +178,7 @@ impl RegexSearcher {
             )
             .collect::<Vec<_>>();
 
+        // Pure results by grepping the word.
         if regex_usages.is_empty() {
             let lines = regex_runner.regexp_search(comments).await?;
             let grep_usages = lines
