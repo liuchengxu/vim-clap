@@ -154,6 +154,19 @@ fn merge_all(
     ctag_results
 }
 
+/// These is no best option here, each search engine has its own advantages and
+/// disadvantages, hence, we make use of all of them to achieve a comprehensive
+/// result.
+///
+/// # Comparison between all the search engines
+///
+/// |                | Ctags | Gtags                     | Regex                        |
+/// | ----           | ----  | ----                      | ----                         |
+/// | Initialization | No    | Required                  | No                           |
+/// | Create         | Fast  | Slow                      | Fast                         |
+/// | Update         | Fast  | Fast                      | Fast                         |
+/// | Support        | Defs  | Defs(unpolished) and refs | Defs and refs(less accurate) |
+///
 /// The initialization of Ctags for a new project is normally
 /// faster than Gtags, but once Gtags has been initialized,
 /// the incremental update of Gtags should be instant enough
