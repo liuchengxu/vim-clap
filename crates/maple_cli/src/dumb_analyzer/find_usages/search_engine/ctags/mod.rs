@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use filter::subprocess::{Exec, Redirection};
 
-use super::{QueryType, TagInfo};
+use super::{QueryType, UnifiedTagInfo};
 use crate::tools::ctags::TagsConfig;
 
 /// `readtags` powered searcher.
@@ -66,7 +66,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         query: &str,
         query_type: QueryType,
         force_generate: bool,
-    ) -> Result<impl Iterator<Item = TagInfo>> {
+    ) -> Result<impl Iterator<Item = UnifiedTagInfo>> {
         if force_generate || !self.tags_exists() {
             self.generate_tags()?;
         }
@@ -75,6 +75,6 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
 
         Ok(crate::utils::lines(cmd)?
             .flatten()
-            .filter_map(|s| TagInfo::from_readtags(&s)))
+            .filter_map(|s| UnifiedTagInfo::from_readtags(&s)))
     }
 }

@@ -40,6 +40,7 @@ impl Default for QueryType {
 fn rs_kind_alias() -> HashMap<&'static str, &'static str> {
     vec![
         ("module", "mod"),
+        ("typedef", "type"),
         ("function", "fn"),
         ("interface", "trait"),
         ("enumerator", "enum"),
@@ -71,7 +72,7 @@ fn compact_kind(maybe_extension: Option<&str>, kind: &str) -> String {
 
 /// Parsed from `ctags` and `gtags` output.
 #[derive(Default, Debug)]
-pub struct TagInfo {
+pub struct UnifiedTagInfo {
     /// None for `gtags`.
     pub name: Option<String>,
     pub path: String,
@@ -83,7 +84,7 @@ pub struct TagInfo {
     pub scope: Option<String>,
 }
 
-impl TagInfo {
+impl UnifiedTagInfo {
     /// Parse from the output of `readtags`.
     ///
     /// TODO: add more tests
