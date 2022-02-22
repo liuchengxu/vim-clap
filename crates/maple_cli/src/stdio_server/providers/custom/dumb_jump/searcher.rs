@@ -35,6 +35,7 @@ impl SearchingWorker {
             filtering_terms,
         } = self.query_info;
 
+        // TODO: reorder the ctags results similar to gtags.
         let usages = CtagsSearcher::new(tags_config)
             .search(&keyword, query_type, true)?
             .sorted_by_key(|t| t.line) // Ensure the tags are sorted as the definition goes first and then the implementations.
