@@ -73,17 +73,9 @@ impl Digest {
 }
 
 /// List of cache digests.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct CacheInfo {
     digests: Vec<Digest>,
-}
-
-impl Default for CacheInfo {
-    fn default() -> Self {
-        Self {
-            digests: Vec::new(),
-        }
-    }
 }
 
 impl CacheInfo {

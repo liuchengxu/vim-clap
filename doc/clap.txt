@@ -538,6 +538,20 @@ g:clap_builtin_fuzzy_filter_threshold     *g:clap_builtin_fuzzy_filter_threshold
   let g:clap_builtin_fuzzy_filter_threshold = 0
 <
 
+g:clap_cache_threshold                                   *g:clap_cache_threshold*
+
+  Type: |Number|
+  Default: `100000`
+
+  When the number of execution results of some command exceeds this variable,
+  the output will be wrote to a cache file, which will be reused next time
+  when you invoke the same command against the same directory.
+
+  If you want to run the command without using the cache or want to rebuild
+  the cache, append `!` to the provider argument in `:Clap` command, e.g.,
+  `:Clap files!` .
+
+
 g:clap_preview_size                                         *g:clap_preview_size*
 
   Type: |Number| or |Dict|

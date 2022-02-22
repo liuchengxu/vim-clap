@@ -1,6 +1,6 @@
 use std::fs::read_dir;
 use std::io::Write;
-use std::path::{self, Path};
+use std::path::{self, Path, PathBuf};
 
 use anyhow::Result;
 use clap::Parser;
@@ -21,10 +21,36 @@ pub struct Cache {
     purge: bool,
 }
 
+// The cache directory is not huge and pretty deep, hence the recursive version is acceptable.
+fn dir_size(path: impl Into<PathBuf>) -> std::io::Result<u64> {
+    fn dir_size(mut dir: std::fs::ReadDir) -> std::io::Result<u64> {
+        dir.try_fold(0, |acc, file| {
+            let file = file?;
+            let size = match file.metadata()? {
+                data if data.is_dir() => dir_size(std::fs::read_dir(file.path())?)?,
+                data => data.len(),
+            };
+            Ok(acc + size)
+        })
+    }
+
+    dir_size(read_dir(path.into())?)
+}
+
 impl Cache {
     pub fn run(&self) -> Result<()> {
         let cache_dir = clap_cache_dir()?;
         if self.purge {
+            if let Ok(cache_size) = dir_size(&cache_dir) {
+                let readable_size = if cache_size > 1024 * 1024 {
+                    format!("{}MB", cache_size / 1024 / 1024)
+                } else if cache_size > 1024 {
+                    format!("{}KB", cache_size / 1024)
+                } else {
+                    format!("{}B", cache_size)
+                };
+                println!("Cache size: {:?}", readable_size);
+            }
             if let Some(f) = crate::datastore::CACHE_JSON_PATH.as_deref() {
                 std::fs::remove_file(f)?;
                 println!("Cache metadata {} has been deleted", f.display());
