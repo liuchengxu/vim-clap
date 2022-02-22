@@ -21,7 +21,7 @@ use rayon::prelude::*;
 use self::definition::{
     definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
 };
-use self::runner::{BasicRunner, RegexRunner};
+use self::runner::{MatchFinder, RegexRunner};
 use crate::dumb_analyzer::{
     find_usages::{Usage, Usages},
     get_comments_by_ext, resolve_reference_kind, AddressableUsage,
@@ -45,13 +45,13 @@ impl RegexSearcher {
         // TODO: also take word as query?
         let word = Word::new(self.word.clone())?;
 
-        let basic_runner = BasicRunner {
+        let match_finder = MatchFinder {
             word: &word,
             file_ext: &self.extension,
             dir: self.dir.as_ref(),
         };
 
-        let regex_runner = RegexRunner::new(basic_runner, lang);
+        let regex_runner = RegexRunner::new(match_finder, lang);
 
         let usages: Usages = self
             .regex_search(regex_runner, comments, exact_or_inverse_terms)
@@ -78,7 +78,7 @@ impl RegexSearcher {
 
         let word = Word::new(word.clone())?;
 
-        let basic_runner = BasicRunner {
+        let match_finder = MatchFinder {
             word: &word,
             file_ext: extension,
             dir: dir.as_ref(),
@@ -88,7 +88,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = basic_runner.find_occurrences(true).await?;
+                let occurrences = match_finder.find_occurrences(true).await?;
                 let usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
@@ -101,7 +101,7 @@ impl RegexSearcher {
             }
         };
 
-        let regex_runner = RegexRunner::new(basic_runner, lang);
+        let regex_runner = RegexRunner::new(match_finder, lang);
 
         let comments = get_comments_by_ext(extension);
 
@@ -152,7 +152,7 @@ impl RegexSearcher {
                         if positive_defs.contains(&&matched) {
                             exact_or_inverse_terms
                                 .check_jump_line(
-                                    matched.build_jump_line(kind.as_ref(), regex_runner.inner.word),
+                                    matched.build_jump_line(kind.as_ref(), regex_runner.finder.word),
                                 )
                                 .map(|(line, indices)| {
                                     matched.into_addressable_usage(line, indices)
@@ -169,7 +169,7 @@ impl RegexSearcher {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         exact_or_inverse_terms
-                            .check_jump_line(matched.build_jump_line(kind, regex_runner.inner.word))
+                            .check_jump_line(matched.build_jump_line(kind, regex_runner.finder.word))
                             .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                     } else {
                         None
@@ -185,7 +185,7 @@ impl RegexSearcher {
                 .into_par_iter()
                 .filter_map(|matched| {
                     exact_or_inverse_terms
-                        .check_jump_line(matched.build_jump_line("grep", regex_runner.inner.word))
+                        .check_jump_line(matched.build_jump_line("grep", regex_runner.finder.word))
                         .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                 })
                 .collect::<Vec<_>>();

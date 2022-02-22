@@ -12,9 +12,9 @@ use crate::dumb_analyzer::get_comments_by_ext;
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 
-/// Basic information for searching with ripgrep.
+/// Searches a directory for pattern matches using ripgrep.
 #[derive(Debug, Clone)]
-pub struct BasicRunner<'a> {
+pub struct MatchFinder<'a> {
     /// Directory to perform the ripgrep search.
     pub dir: Option<&'a PathBuf>,
     /// Keyword of searching.
@@ -23,7 +23,7 @@ pub struct BasicRunner<'a> {
     pub file_ext: &'a str,
 }
 
-impl<'a> BasicRunner<'a> {
+impl<'a> MatchFinder<'a> {
     pub(super) async fn find_occurrences(&self, ignore_comment: bool) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json --word-regexp '{}' -g '*.{}'",
@@ -69,18 +69,18 @@ impl<'a> BasicRunner<'a> {
     }
 }
 
-/// [`BasicRunner`] with a known language type.
+/// [`MatchFinder`] with a known language type.
 #[derive(Debug, Clone)]
 pub struct RegexRunner<'a> {
-    /// Inner runner.
-    pub inner: BasicRunner<'a>,
+    /// Match finder.
+    pub finder: MatchFinder<'a>,
     /// Language type defined by ripgrep.
     pub lang: &'a str,
 }
 
 impl<'a> RegexRunner<'a> {
-    pub fn new(inner: BasicRunner<'a>, lang: &'a str) -> Self {
-        Self { inner, lang }
+    pub fn new(finder: MatchFinder<'a>, lang: &'a str) -> Self {
+        Self { finder, lang }
     }
 
     /// Finds the occurrences and all definitions concurrently.
@@ -120,19 +120,19 @@ impl<'a> RegexRunner<'a> {
     async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json --word-regexp '{}' --type {}",
-            self.inner.word.raw, self.lang
+            self.finder.word.raw, self.lang
         );
 
-        self.inner.find_matches(command, Some(comments))
+        self.finder.find_matches(command, Some(comments))
     }
 
     pub(super) async fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json -e '{}' --type {}",
-            self.inner.word.raw.replace(char::is_whitespace, ".*"),
+            self.finder.word.raw.replace(char::is_whitespace, ".*"),
             self.lang
         );
-        self.inner.find_matches(command, Some(comments))
+        self.finder.find_matches(command, Some(comments))
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
@@ -140,12 +140,12 @@ impl<'a> RegexRunner<'a> {
         &self,
         kind: &DefinitionKind,
     ) -> Result<(DefinitionKind, Vec<Match>)> {
-        let regexp = build_full_regexp(self.lang, kind, self.inner.word)?;
+        let regexp = build_full_regexp(self.lang, kind, self.finder.word)?;
         let command = format!(
             "rg --trim --json --pcre2 --type {} -e '{}'",
             self.lang, regexp
         );
-        self.inner
+        self.finder
             .find_matches(command, None)
             .map(|defs| (kind.clone(), defs))
     }
