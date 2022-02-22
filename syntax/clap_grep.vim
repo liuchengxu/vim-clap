@@ -14,7 +14,6 @@ syntax match ClapFpathDots '\.\.' contained
 
 hi default link ClapFpath            Keyword
 hi default link ClapFpathTruncated   Keyword
-hi default link ClapFpathTruncatedFull   Keyword
 hi default link ClapLinNr            LineNr
 hi default link ClapColumn           Comment
 hi default link ClapLinNrColumn      Type
