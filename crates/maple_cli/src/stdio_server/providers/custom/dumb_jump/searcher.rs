@@ -5,7 +5,10 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
-use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages};
+use crate::dumb_analyzer::{
+    resolve_reference_kind, AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType,
+    RegexSearcher, Usage, Usages,
+};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 
@@ -18,7 +21,7 @@ pub(super) struct SearchingWorker {
 }
 
 impl SearchingWorker {
-    fn ctags_search(self) -> Result<Usages> {
+    fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
         let ignorecase = self.query_info.keyword.chars().all(char::is_lowercase);
 
         let mut tags_config = TagsConfig::with_dir(self.cwd);
@@ -40,14 +43,14 @@ impl SearchingWorker {
                 let (line, indices) = tag_line.grep_format_ctags(&keyword, ignorecase);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))
-                    .map(|(line, indices)| Usage::new(line, indices))
+                    .map(|(line, indices)| tag_line.into_addressable_usage(line, indices))
             })
             .collect::<Vec<_>>();
 
-        Ok(usages.into())
+        Ok(usages)
     }
 
-    fn gtags_search(self) -> Result<Usages> {
+    fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
             filtering_terms,
@@ -58,7 +61,7 @@ impl SearchingWorker {
             .par_bridge()
             .filter_map(|tag_info| {
                 let (kind, kind_weight) =
-                    crate::dumb_analyzer::reference_kind(&tag_info.pattern, &self.extension);
+                    resolve_reference_kind(&tag_info.pattern, &self.extension);
                 let (line, indices) = tag_info.grep_format_gtags(kind, &keyword, false);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))
@@ -76,12 +79,11 @@ impl SearchingWorker {
 
         Ok(gtags_usages
             .into_par_iter()
-            .map(GtagsUsage::into_usage)
-            .collect::<Vec<_>>()
-            .into())
+            .map(GtagsUsage::into_addressable_usage)
+            .collect::<Vec<_>>())
     }
 
-    async fn regex_search(self) -> Result<Usages> {
+    async fn regex_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
             filtering_terms,
@@ -107,9 +109,13 @@ struct GtagsUsage {
 }
 
 impl GtagsUsage {
-    fn into_usage(self) -> Usage {
-        let Self { line, indices, .. } = self;
-        Usage { line, indices }
+    fn into_addressable_usage(self) -> AddressableUsage {
+        AddressableUsage {
+            line: self.line,
+            indices: self.indices,
+            path: self.path,
+            line_number: self.line_number,
+        }
     }
 }
 
@@ -131,23 +137,36 @@ impl Ord for GtagsUsage {
 
 /// Returns a combo of various results in the order of [ctags, gtags, regex].
 fn merge_all(
-    ctag_results: Usages,
-    maybe_gtags_results: Option<Usages>,
-    regex_results: Usages,
-) -> Usages {
+    ctag_results: Vec<AddressableUsage>,
+    maybe_gtags_results: Option<Vec<AddressableUsage>>,
+    regex_results: Vec<AddressableUsage>,
+) -> Vec<AddressableUsage> {
     let mut regex_results = regex_results;
     regex_results.retain(|r| !ctag_results.contains(r));
 
     let mut ctag_results = ctag_results;
-    if let Some(gtags_results) = maybe_gtags_results {
+    if let Some(mut gtags_results) = maybe_gtags_results {
         regex_results.retain(|r| !gtags_results.contains(r));
-        ctag_results.append(gtags_results);
+        ctag_results.append(&mut gtags_results);
     }
 
-    ctag_results.append(regex_results);
+    ctag_results.append(&mut regex_results);
     ctag_results
 }
 
+/// These is no best option here, each search engine has its own advantages and
+/// disadvantages, hence, we make use of all of them to achieve a comprehensive
+/// result.
+///
+/// # Comparison between all the search engines
+///
+/// |                | Ctags | Gtags                     | Regex                        |
+/// | ----           | ----  | ----                      | ----                         |
+/// | Initialization | No    | Required                  | No                           |
+/// | Create         | Fast  | Slow                      | Fast                         |
+/// | Update         | Fast  | Fast                      | Fast                         |
+/// | Support        | Defs  | Defs(unpolished) and refs | Defs and refs(less accurate) |
+///
 /// The initialization of Ctags for a new project is normally
 /// faster than Gtags, but once Gtags has been initialized,
 /// the incremental update of Gtags should be instant enough
@@ -170,18 +189,18 @@ impl SearchEngine {
             async move { searching_worker.ctags_search() }
         };
 
-        match self {
-            SearchEngine::Ctags => searching_worker.ctags_search(),
-            SearchEngine::Regex => searching_worker.regex_search().await,
+        let addressable_usages = match self {
+            SearchEngine::Ctags => searching_worker.ctags_search()?,
+            SearchEngine::Regex => searching_worker.regex_search().await?,
             SearchEngine::CtagsAndRegex => {
                 let regex_future = searching_worker.regex_search();
                 let (ctags_results, regex_results) = futures::join!(ctags_future, regex_future);
 
-                Ok(merge_all(
+                merge_all(
                     ctags_results.unwrap_or_default(),
                     None,
                     regex_results.unwrap_or_default(),
-                ))
+                )
             }
             SearchEngine::CtagsElseRegex => {
                 let results = searching_worker.clone().ctags_search();
@@ -189,9 +208,9 @@ impl SearchEngine {
                 let try_regex =
                     results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
                 if try_regex {
-                    searching_worker.regex_search().await
+                    searching_worker.regex_search().await?
                 } else {
-                    results
+                    results?
                 }
             }
             SearchEngine::All => {
@@ -204,12 +223,14 @@ impl SearchEngine {
                 let (ctags_results, gtags_results, regex_results) =
                     futures::join!(ctags_future, gtags_future, regex_future);
 
-                Ok(merge_all(
+                merge_all(
                     ctags_results.unwrap_or_default(),
                     gtags_results.ok(),
                     regex_results.unwrap_or_default(),
-                ))
+                )
             }
-        }
+        };
+
+        Ok(addressable_usages.into())
     }
 }

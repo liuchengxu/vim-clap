@@ -171,6 +171,7 @@ impl Definitions {
         defs
     }
 
+    #[allow(unused)]
     pub fn par_iter(&self) -> rayon::slice::Iter<'_, DefinitionSearchResult> {
         self.defs.par_iter()
     }
@@ -188,8 +189,13 @@ impl Occurrences {
         self.0.contains(m)
     }
 
+    #[allow(unused)]
     pub fn par_iter(&self) -> rayon::slice::Iter<'_, Match> {
         self.0.par_iter()
+    }
+
+    pub fn into_par_iter(self) -> rayon::vec::IntoIter<Match> {
+        self.0.into_par_iter()
     }
 
     pub fn retain<F>(&mut self, f: F)

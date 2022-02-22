@@ -312,6 +312,7 @@ impl<'a> OnMoveHandler<'a> {
                                 .any(|comment| latest_line.trim_start().starts_with(comment));
 
                             if !is_comment_line {
+                                // FIXME: this can be slow.
                                 match current_context_tag(path, *lnum) {
                                     Some(tag) if tag.line < start => {
                                         let border_line = "─".repeat(container_width);

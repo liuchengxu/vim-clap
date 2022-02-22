@@ -165,7 +165,7 @@ impl<'a> LightCommand<'a> {
 
     /// Collect the output of command, exit directly if any error happened.
     fn collect_stdout(&mut self) -> Result<Vec<u8>> {
-        match crate::process::rstd::collect_stdout(&mut self.cmd) {
+        match crate::process::rstd::collect_stdout(self.cmd) {
             Ok(stdout) => Ok(stdout),
             Err(e) => {
                 // vim-clap does not handle the stderr stream, we just pass the error info via stdout.
@@ -183,7 +183,7 @@ impl<'a> LightCommand<'a> {
             let lines = self.try_prepend_icon(
                 stdout
                     .split(|x| x == &b'\n')
-                    .map(|s| String::from_utf8_lossy(s))
+                    .map(String::from_utf8_lossy)
                     .take(number),
             );
             let total = self.env.total;
@@ -277,7 +277,7 @@ impl<'a> LightCommand<'a> {
         let lines = self.try_prepend_icon(
             cmd_stdout
                 .split(|n| n == &b'\n')
-                .map(|s| String::from_utf8_lossy(s)),
+                .map(String::from_utf8_lossy),
         );
 
         Ok(ExecutedInfo {

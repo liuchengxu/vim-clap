@@ -24,13 +24,19 @@ pub struct BasicRunner<'a> {
 }
 
 impl<'a> BasicRunner<'a> {
-    pub(super) async fn find_occurrences(&self) -> Result<Vec<Match>> {
+    pub(super) async fn find_occurrences(&self, ignore_comment: bool) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json --word-regexp '{}' -g '*.{}'",
             self.word.raw, self.file_ext
         );
-        let comments = get_comments_by_ext(self.file_ext);
-        self.find_matches(command, Some(comments))
+        self.find_matches(
+            command,
+            if ignore_comment {
+                Some(get_comments_by_ext(self.file_ext))
+            } else {
+                None
+            },
+        )
     }
 
     /// Executes `command` as a child process.
@@ -51,7 +57,7 @@ impl<'a> BasicRunner<'a> {
                 .filter_map(|s| {
                     Match::try_from(s)
                         .ok()
-                        .filter(|mat| !is_comment(mat, comments)) // TODO: do not ignore comments?
+                        .filter(|matched| !is_comment(matched, comments))
                 })
                 .collect())
         } else {
