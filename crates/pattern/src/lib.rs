@@ -12,7 +12,7 @@ static DUMB_JUMP_LINE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap());
 
 // match the file path and line number of grep line.
-static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:\d+:\d+:").unwrap());
+static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*?:\d+:\d+:").unwrap());
 
 // match the tag_name:lnum of tag line.
 static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*:\d+)").unwrap());
@@ -52,7 +52,7 @@ pub fn tag_name_only(line: &str) -> Option<&str> {
 /// //                                |
 /// //                             offset
 #[inline]
-pub fn strip_grep_filepath(line: &str) -> Option<(&str, usize)> {
+pub fn extract_grep_pattern(line: &str) -> Option<(&str, usize)> {
     GREP_STRIP_FPATH
         .find(line)
         .map(|mat| (&line[mat.end()..], mat.end()))
@@ -252,5 +252,17 @@ mod tests {
                 "pub async fn run(self) -> Result<()> {"
             ))
         )
+    }
+
+    #[test]
+    fn test_strip_grep_filepath() {
+        let line = r#"crates/pattern/src/lib.rs:51:1:/// // crates/printer/src/lib.rs:199:26:        let query = "srlisrlisrsr";"#;
+        assert_eq!(
+            extract_grep_pattern(line).unwrap(),
+            (
+                "/// // crates/printer/src/lib.rs:199:26:        let query = \"srlisrlisrsr\";",
+                31
+            )
+        );
     }
 }

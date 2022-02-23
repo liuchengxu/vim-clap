@@ -1,4 +1,4 @@
-use pattern::{find_file_name, strip_grep_filepath, tag_name_only};
+use pattern::{find_file_name, extract_grep_pattern, tag_name_only};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 pub type FuzzyText<'a> = (&'a str, usize);
@@ -134,7 +134,7 @@ impl SourceItem {
             MatchingTextKind::Full => Some((&self.raw, 0)),
             MatchingTextKind::TagName => tag_name_only(self.raw.as_str()).map(|s| (s, 0)),
             MatchingTextKind::FileName => find_file_name(self.raw.as_str()),
-            MatchingTextKind::IgnoreFilePath => strip_grep_filepath(self.raw.as_str()),
+            MatchingTextKind::IgnoreFilePath => extract_grep_pattern(self.raw.as_str()),
         }
     }
 }
