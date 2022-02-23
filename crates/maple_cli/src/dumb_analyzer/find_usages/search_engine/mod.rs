@@ -70,21 +70,23 @@ fn compact_kind(maybe_extension: Option<&str>, kind: &str) -> String {
         .to_string()
 }
 
+/// Unified tag info.
+///
 /// Parsed from `ctags` and `gtags` output.
 #[derive(Default, Debug)]
-pub struct UnifiedTagInfo {
+pub struct Symbol {
     /// None for `gtags`.
     pub name: Option<String>,
     pub path: String,
     pub pattern: String,
-    pub line: usize,
+    pub line_number: usize,
     /// ctags only.
     pub kind: Option<String>,
     /// ctags only.
     pub scope: Option<String>,
 }
 
-impl UnifiedTagInfo {
+impl Symbol {
     /// Parse from the output of `readtags`.
     ///
     /// TODO: add more tests
@@ -137,7 +139,7 @@ impl UnifiedTagInfo {
                 match k {
                     "kind" => l.kind = Some(compact_kind(maybe_extension, v)),
                     "scope" => l.scope = Some(v.into()),
-                    "line" => l.line = v.parse().expect("line is an integer"),
+                    "line" => l.line_number = v.parse().expect("line is an integer"),
                     // Unused for now.
                     "language" | "roles" | "access" | "signature" => {}
                     unknown => {
@@ -154,7 +156,7 @@ impl UnifiedTagInfo {
         pattern::parse_gtags(s).map(|(line, path, pattern)| Self {
             path: path.into(),
             pattern: pattern.into(),
-            line,
+            line_number: line,
             ..Default::default()
         })
     }
@@ -166,7 +168,7 @@ impl UnifiedTagInfo {
         query: &str,
         ignorecase: bool,
     ) -> (String, Option<Vec<usize>>) {
-        let mut formatted = format!("[{}]{}:{}:1:", kind, self.path, self.line);
+        let mut formatted = format!("[{}]{}:{}:1:", kind, self.path, self.line_number);
 
         let found = if ignorecase {
             self.pattern.to_lowercase().find(&query.to_lowercase())
@@ -206,7 +208,7 @@ impl UnifiedTagInfo {
             line,
             indices,
             path: self.path,
-            line_number: self.line,
+            line_number: self.line_number,
         }
     }
 }

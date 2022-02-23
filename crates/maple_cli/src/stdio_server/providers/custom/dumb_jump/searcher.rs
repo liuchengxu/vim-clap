@@ -38,13 +38,13 @@ impl SearchingWorker {
         // TODO: reorder the ctags results similar to gtags.
         let usages = CtagsSearcher::new(tags_config)
             .search(&keyword, query_type, true)?
-            .sorted_by_key(|t| t.line) // Ensure the tags are sorted as the definition goes first and then the implementations.
+            .sorted_by_key(|s| s.line_number) // Ensure the tags are sorted as the definition goes first and then the implementations.
             .par_bridge()
-            .filter_map(|tag_line| {
-                let (line, indices) = tag_line.grep_format_ctags(&keyword, ignorecase);
+            .filter_map(|symbol| {
+                let (line, indices) = symbol.grep_format_ctags(&keyword, ignorecase);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))
-                    .map(|(line, indices)| tag_line.into_addressable_usage(line, indices))
+                    .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
             })
             .collect::<Vec<_>>();
 
@@ -60,18 +60,17 @@ impl SearchingWorker {
         let mut gtags_usages = GtagsSearcher::new(self.cwd.into())
             .search_references(&keyword)?
             .par_bridge()
-            .filter_map(|tag_info| {
-                let (kind, kind_weight) =
-                    resolve_reference_kind(&tag_info.pattern, &self.extension);
-                let (line, indices) = tag_info.grep_format_gtags(kind, &keyword, false);
+            .filter_map(|symbol| {
+                let (kind, kind_weight) = resolve_reference_kind(&symbol.pattern, &self.extension);
+                let (line, indices) = symbol.grep_format_gtags(kind, &keyword, false);
                 filtering_terms
                     .check_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| GtagsUsage {
                         line,
                         indices,
                         kind_weight,
-                        path: tag_info.path, // TODO: perhaps path_weight? Lower the weight of path containing `test`.
-                        line_number: tag_info.line,
+                        path: symbol.path, // TODO: perhaps path_weight? Lower the weight of path containing `test`.
+                        line_number: symbol.line_number,
                     })
             })
             .collect::<Vec<_>>();
