@@ -96,23 +96,19 @@ fn subprocess_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Subprocess
         .arg(file)
 }
 
-fn tokio_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> TokioCommand {
-    let mut cmd = crate::process::tokio::base_command();
-    cmd.arg("ctags")
-        .arg("--fields=+n")
-        .arg("--output-format=json")
-        .arg(file);
+fn tokio_cmd_in_json_format(file: &Path) -> TokioCommand {
+    let mut cmd = crate::process::tokio::build_command(format!(
+        "ctags --fields=+n --output-format=json {}",
+        file.display()
+    ));
+    cmd.stderr(Stdio::null());
     cmd
 }
 
-fn tokio_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> TokioCommand {
-    let mut cmd = crate::process::tokio::base_command();
-    cmd.arg("ctags")
-        .arg("--fields=+Kn")
-        .arg("-f")
-        .arg("-")
-        .arg(file)
-        .stderr(Stdio::null());
+fn tokio_cmd_in_raw_format(file: &Path) -> TokioCommand {
+    let mut cmd =
+        crate::process::tokio::build_command(format!("ctags --fields=+Kn -f - {}", file.display()));
+    cmd.stderr(Stdio::null());
     cmd
 }
 
@@ -156,7 +152,7 @@ pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferT
 /// Returns the method/function context associated with line `at`.
 pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = subprocess_cmd_in_raw_format(file);
+        let cmd = subprocess_cmd_in_json_format(file);
         collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);

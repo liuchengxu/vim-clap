@@ -315,9 +315,7 @@ impl<'a> OnMoveHandler<'a> {
                                 .any(|comment| latest_line.trim_start().starts_with(comment));
 
                             if !is_comment_line {
-                                // FIXME: this can be slow.
-                                // match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
-                                match current_context_tag(path, *lnum) {
+                                match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
                                     Some(tag) if tag.line < start => {
                                         let border_line = "─".repeat(container_width);
                                         lines.insert(1, border_line.clone());
@@ -422,10 +420,7 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
     })
     .await
     {
-        Ok(res) => {
-            tracing::debug!("==== Received context tag: {:?}", res);
-            res
-        }
+        Ok(res) => res,
         Err(_) => {
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
             None
