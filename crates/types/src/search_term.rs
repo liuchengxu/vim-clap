@@ -117,6 +117,10 @@ impl FuzzyTerm {
     pub fn len(&self) -> usize {
         self.word.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.word.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

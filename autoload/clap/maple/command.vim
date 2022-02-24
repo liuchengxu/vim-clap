@@ -8,6 +8,8 @@ let s:maple_bin = clap#maple#binary()
 
 let s:can_enable_icon = ['files', 'git_files']
 
+let s:cache_threshold = get(g:, 'clap_cache_threshold', 100000)
+
 function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
   let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
 
@@ -40,7 +42,7 @@ function! clap#maple#command#ripgrep_forerunner() abort
   let subcommand = [
         \ 'ripgrep-forerunner',
         \ '--cmd-dir', clap#rooter#working_dir(),
-        \ '--output-threshold', clap#filter#capacity(),
+        \ '--output-threshold', s:cache_threshold,
         \ ]
 
   return [s:maple_bin] + global_opts + subcommand
@@ -69,7 +71,7 @@ function! clap#maple#command#exec_forerunner(cmd) abort
   let subcommand = [
         \ 'exec', a:cmd,
         \ '--cmd-dir', clap#rooter#working_dir(),
-        \ '--output-threshold', clap#filter#capacity(),
+        \ '--output-threshold', s:cache_threshold,
         \ ]
 
   return [s:maple_bin] + global_opts + subcommand

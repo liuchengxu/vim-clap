@@ -223,7 +223,7 @@ function! s:grep_sink(selected) abort
   call s:grep_exit()
   let line = a:selected
 
-  let pattern = '\(.*\):\(\d\+\):\(\d\+\):'
+  let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):'
   let matched = s:matchlist(line, pattern)
   let [fpath, linenr, column] = [matched[1], str2nr(matched[2]), str2nr(matched[3])]
   call clap#sink#open_file(fpath, linenr, column)

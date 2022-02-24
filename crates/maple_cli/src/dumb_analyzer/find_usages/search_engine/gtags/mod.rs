@@ -3,7 +3,7 @@ use std::path::{PathBuf, MAIN_SEPARATOR};
 use anyhow::{anyhow, Result};
 use filter::subprocess::Exec;
 
-use super::TagInfo;
+use super::Symbol;
 use crate::tools::gtags::GTAGS_DIR;
 
 #[derive(Clone, Debug)]
@@ -99,7 +99,7 @@ impl GtagsSearcher {
     }
 
     /// Search definition tags exactly matching `keyword`.
-    pub fn search_definitions(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
+    pub fn search_definitions(&self, keyword: &str) -> Result<impl Iterator<Item = Symbol>> {
         let cmd = self
             .global()
             .cwd(&self.project_root)
@@ -113,7 +113,7 @@ impl GtagsSearcher {
     /// Search reference tags exactly matching `keyword`.
     ///
     /// Reference means the reference to a symbol which has definitions.
-    pub fn search_references(&self, keyword: &str) -> Result<impl Iterator<Item = TagInfo>> {
+    pub fn search_references(&self, keyword: &str) -> Result<impl Iterator<Item = Symbol>> {
         let cmd = self
             .global()
             .cwd(&self.project_root)
@@ -130,8 +130,8 @@ impl GtagsSearcher {
 }
 
 // Returns a stream of tag parsed from the gtags output.
-fn execute(cmd: Exec) -> Result<impl Iterator<Item = TagInfo>> {
+fn execute(cmd: Exec) -> Result<impl Iterator<Item = Symbol>> {
     Ok(crate::utils::lines(cmd)?
         .flatten()
-        .filter_map(|s| TagInfo::from_gtags(&s)))
+        .filter_map(|s| Symbol::from_gtags(&s)))
 }

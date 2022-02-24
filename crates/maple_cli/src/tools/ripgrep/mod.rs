@@ -108,7 +108,7 @@ impl Match {
 }
 
 impl TryFrom<&[u8]> for Match {
-    type Error = String;
+    type Error = Cow<'static, str>;
     fn try_from(byte_line: &[u8]) -> Result<Self, Self::Error> {
         let msg = serde_json::from_slice::<Message>(byte_line)
             .map_err(|e| format!("deserialize error: {:?}", e))?;
@@ -121,7 +121,7 @@ impl TryFrom<&[u8]> for Match {
 }
 
 impl TryFrom<&str> for Match {
-    type Error = String;
+    type Error = Cow<'static, str>;
     fn try_from(line: &str) -> Result<Self, Self::Error> {
         let msg = serde_json::from_str::<Message>(line)
             .map_err(|e| format!("deserialize error: {:?}", e))?;
