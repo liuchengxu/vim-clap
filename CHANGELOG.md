@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## Added
+
+- Add `g:clap_cache_threshold`. #806
 
 ## [0.33] 2022-02-20
+
 ## Added
 
 - Support generating the source of `tags` provider using the Rust binary, remove the vista.vim dep from `tags` provider. #795
