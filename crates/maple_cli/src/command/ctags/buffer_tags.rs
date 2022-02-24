@@ -1,13 +1,15 @@
 use std::ops::Deref;
 use std::path::Path;
+use std::process::Stdio;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use filter::subprocess::{Exec, Redirection};
+use filter::subprocess::{Exec as SubprocessCommand, Redirection};
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tokio::process::Command as TokioCommand;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -38,10 +40,10 @@ impl BufferTags {
         }
 
         let lines = if *CTAGS_HAS_JSON_FEATURE.deref() && !self.force_raw {
-            let cmd = build_cmd_in_json_format(self.file.as_ref());
+            let cmd = subprocess_cmd_in_json_format(self.file.as_ref());
             buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)?
         } else {
-            let cmd = build_cmd_in_raw_format(self.file.as_ref());
+            let cmd = subprocess_cmd_in_json_format(self.file.as_ref());
             buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_raw)?
         };
 
@@ -75,16 +77,46 @@ const CONTEXT_SUPERSET: &[&str] = &[
     "enumerator",
 ];
 
-/// Returns the method/function context associated with line `at`.
-pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
-    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = build_cmd_in_json_format(file);
-        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
-    } else {
-        let cmd = build_cmd_in_raw_format(file);
-        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
-    };
+fn subprocess_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
+    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
+    SubprocessCommand::cmd("ctags")
+        .stderr(Redirection::Merge)
+        .arg("--fields=+n")
+        .arg("--output-format=json")
+        .arg(file)
+}
 
+fn subprocess_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
+    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
+    SubprocessCommand::cmd("ctags")
+        .stderr(Redirection::Merge)
+        .arg("--fields=+Kn")
+        .arg("-f")
+        .arg("-")
+        .arg(file)
+}
+
+fn tokio_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> TokioCommand {
+    let mut cmd = crate::process::tokio::base_command();
+    cmd.arg("ctags")
+        .arg("--fields=+n")
+        .arg("--output-format=json")
+        .arg(file);
+    cmd
+}
+
+fn tokio_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> TokioCommand {
+    let mut cmd = crate::process::tokio::base_command();
+    cmd.arg("ctags")
+        .arg("--fields=+Kn")
+        .arg("-f")
+        .arg("-")
+        .arg(file)
+        .stderr(Stdio::null());
+    cmd
+}
+
+fn find_context_tag(superset_tags: Vec<BufferTagInfo>, at: usize) -> Option<BufferTagInfo> {
     match superset_tags.binary_search_by_key(&at, |tag| tag.line) {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
@@ -102,6 +134,36 @@ pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
             }
         }
     }
+}
+
+/// Async version of [`current_context_tag`].
+pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTagInfo> {
+    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+        let cmd = tokio_cmd_in_json_format(file);
+        collect_superset_context_tags_async(cmd, BufferTagInfo::from_ctags_json, at)
+            .await
+            .ok()?
+    } else {
+        let cmd = tokio_cmd_in_raw_format(file);
+        collect_superset_context_tags_async(cmd, BufferTagInfo::from_ctags_raw, at)
+            .await
+            .ok()?
+    };
+
+    find_context_tag(superset_tags, at)
+}
+
+/// Returns the method/function context associated with line `at`.
+pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
+    let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
+        let cmd = subprocess_cmd_in_raw_format(file);
+        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
+    } else {
+        let cmd = subprocess_cmd_in_raw_format(file);
+        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
+    };
+
+    find_context_tag(superset_tags, at)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
@@ -173,37 +235,18 @@ impl BufferTagInfo {
     }
 }
 
-fn build_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
-    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
-    Exec::cmd("ctags")
-        .stderr(Redirection::Merge)
-        .arg("--fields=+n")
-        .arg("--output-format=json")
-        .arg(file)
-}
-
-fn build_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Exec {
-    // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
-    Exec::cmd("ctags")
-        .stderr(Redirection::Merge)
-        .arg("--fields=+Kn")
-        .arg("-f")
-        .arg("-")
-        .arg(file)
-}
-
 pub fn buffer_tags_lines(file: impl AsRef<std::ffi::OsStr>) -> Result<Vec<String>> {
     if *CTAGS_HAS_JSON_FEATURE.deref() {
-        let cmd = build_cmd_in_json_format(file);
+        let cmd = subprocess_cmd_in_json_format(file);
         buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)
     } else {
-        let cmd = build_cmd_in_raw_format(file);
+        let cmd = subprocess_cmd_in_raw_format(file);
         buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_raw)
     }
 }
 
 fn buffer_tags_lines_inner(
-    cmd: Exec,
+    cmd: SubprocessCommand,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
 ) -> Result<Vec<String>> {
     let max_name_len = AtomicUsize::new(0);
@@ -229,7 +272,7 @@ fn buffer_tags_lines_inner(
 }
 
 fn collect_superset_context_tags(
-    cmd: Exec,
+    cmd: SubprocessCommand,
     parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
     target_lnum: usize,
 ) -> Result<Vec<BufferTagInfo>> {
@@ -237,6 +280,28 @@ fn collect_superset_context_tags(
         .flatten()
         .par_bridge()
         .filter_map(|s| parse_fn(&s))
+        // the line of method/function name is lower.
+        .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
+        .collect::<Vec<_>>();
+
+    tags.par_sort_unstable_by_key(|x| x.line);
+
+    Ok(tags)
+}
+
+async fn collect_superset_context_tags_async(
+    cmd: TokioCommand,
+    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+    target_lnum: usize,
+) -> Result<Vec<BufferTagInfo>> {
+    let mut cmd = cmd;
+
+    let mut tags = cmd
+        .output()
+        .await?
+        .stdout
+        .par_split(|x| x == &b'\n')
+        .filter_map(|s| parse_fn(&String::from_utf8_lossy(s)))
         // the line of method/function name is lower.
         .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
         .collect::<Vec<_>>();

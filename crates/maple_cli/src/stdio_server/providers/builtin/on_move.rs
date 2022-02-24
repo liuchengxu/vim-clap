@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use once_cell::sync::Lazy;
@@ -9,7 +10,9 @@ use serde_json::json;
 use pattern::*;
 use types::PreviewInfo;
 
-use crate::command::ctags::buffer_tags::{current_context_tag, BufferTagInfo};
+use crate::command::ctags::buffer_tags::{
+    current_context_tag, current_context_tag_async, BufferTagInfo,
+};
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
     global, providers::filer, session::SessionContext, write_response, MethodCall,
@@ -313,6 +316,7 @@ impl<'a> OnMoveHandler<'a> {
 
                             if !is_comment_line {
                                 // FIXME: this can be slow.
+                                // match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
                                 match current_context_tag(path, *lnum) {
                                     Some(tag) if tag.line < start => {
                                         let border_line = "─".repeat(container_width);
@@ -407,5 +411,24 @@ impl<'a> OnMoveHandler<'a> {
         let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({ "lines": lines, "is_dir": true }));
         Ok(())
+    }
+}
+
+async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTagInfo> {
+    const TIMEOUT: Duration = Duration::from_millis(300);
+
+    match tokio::time::timeout(TIMEOUT, async move {
+        current_context_tag_async(path.as_path(), lnum).await
+    })
+    .await
+    {
+        Ok(res) => {
+            tracing::debug!("==== Received context tag: {:?}", res);
+            res
+        }
+        Err(_) => {
+            tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
+            None
+        }
     }
 }

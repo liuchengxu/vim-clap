@@ -20,6 +20,18 @@ fn build_command(shell_cmd: &str) -> Command {
     }
 }
 
+pub fn base_command() -> Command {
+    if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C");
+        cmd
+    } else {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c");
+        cmd
+    }
+}
+
 /// Unit type wrapper for [`tokio::process::Command`].
 #[derive(Debug)]
 pub struct TokioCommand(Command);
