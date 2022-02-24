@@ -349,9 +349,8 @@ impl EventHandle for DumbJumpHandle {
             .unwrap_or(&self.cached_results.usages)
             .get_line((lnum - 1) as usize)
         {
-            if let Err(error) =
-                OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
-            {
+            let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline.into()))?;
+            if let Err(error) = on_move_handler.handle().await {
                 tracing::error!(?error, "Failed to handle OnMove event");
                 write_response(json!({"error": error.to_string(), "id": msg_id }));
             }

@@ -147,15 +147,15 @@ impl EventHandle for RecentFilesHandle {
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
 
-        if let Some(curline) = self
+        let maybe_curline = self
             .lines
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.source_item.raw.as_str())
-        {
-            if let Err(e) =
-                OnMoveHandler::create(&msg, &context, Some(curline.into())).map(|x| x.handle())
-            {
+            .map(|r| r.source_item.raw.clone());
+
+        if let Some(curline) = maybe_curline {
+            let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline))?;
+            if let Err(e) = on_move_handler.handle().await {
                 tracing::error!(error = ?e, "Failed to handle OnMove event");
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
             }

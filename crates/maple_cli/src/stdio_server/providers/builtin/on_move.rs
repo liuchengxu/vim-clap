@@ -189,11 +189,11 @@ impl<'a> OnMoveHandler<'a> {
         })
     }
 
-    pub fn handle(&self) -> Result<()> {
+    pub async fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
             BLines(position) | Grep(position) | ProjTags(position) | BufferTags(position) => {
-                self.preview_file_at(position)
+                self.preview_file_at(position).await
             }
             Filer(path) if path.is_dir() => self.preview_directory(&path)?,
             Files(path) | Filer(path) | History(path) => self.preview_file(&path)?,
@@ -269,7 +269,7 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn preview_file_at(&self, position: &Position) {
+    async fn preview_file_at(&self, position: &Position) {
         tracing::debug!(?position, "Previewing file");
 
         let Position { path, lnum } = position;
