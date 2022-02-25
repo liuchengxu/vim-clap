@@ -13,7 +13,7 @@ use serde_json::json;
 use filter::Query;
 
 use self::searcher::{SearchEngine, SearchingWorker};
-use crate::dumb_analyzer::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
+use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::stdio_server::{
     providers::builtin::OnMoveHandler,
     rpc::Call,

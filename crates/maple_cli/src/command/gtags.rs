@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::dumb_analyzer::GtagsSearcher;
+use crate::find_usages::GtagsSearcher;
 use crate::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.

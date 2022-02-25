@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "dumb_analyzer",
     "filter",
     "icon",
     "maple_cli",

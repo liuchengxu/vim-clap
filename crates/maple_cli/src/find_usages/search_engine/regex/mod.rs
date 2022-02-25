@@ -16,18 +16,35 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use dumb_analyzer::get_comment_syntax;
 use rayon::prelude::*;
 
 use self::definition::{
     definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
 };
 use self::runner::{MatchFinder, RegexRunner};
-use crate::dumb_analyzer::{
-    find_usages::{Usage, Usages},
-    get_comments_by_ext, resolve_reference_kind, AddressableUsage,
-};
+use crate::find_usages::{resolve_reference_kind, AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
+
+/// [`Usage`] with some structured information.
+#[derive(Clone, Debug, Default)]
+pub struct RegexUsage {
+    pub line: String,
+    pub indices: Vec<usize>,
+    pub path: String,
+    pub line_number: usize,
+    pub pattern_weight: usize,
+}
+
+impl PartialEq for RegexUsage {
+    fn eq(&self, other: &Self) -> bool {
+        (self.pattern_weight, &self.path, self.line_number)
+            == (self.pattern_weight, &other.path, other.line_number)
+    }
+}
+
+impl Eq for RegexUsage {}
 
 #[derive(Clone, Debug)]
 pub struct RegexSearcher {
@@ -40,7 +57,7 @@ impl RegexSearcher {
     pub async fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
         let lang = get_language_by_ext(&self.extension)?;
 
-        let comments = get_comments_by_ext(&self.extension);
+        let comments = get_comment_syntax(&self.extension);
 
         // TODO: also take word as query?
         let word = Word::new(self.word.clone())?;
@@ -103,7 +120,7 @@ impl RegexSearcher {
 
         let regex_runner = RegexRunner::new(match_finder, lang);
 
-        let comments = get_comments_by_ext(extension);
+        let comments = get_comment_syntax(extension);
 
         // render the results in group.
         if classify {

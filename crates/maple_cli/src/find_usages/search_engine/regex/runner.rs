@@ -2,13 +2,13 @@ use std::convert::TryFrom;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use dumb_analyzer::get_comment_syntax;
 use rayon::prelude::*;
 
 use super::definition::{
     build_full_regexp, get_definition_rules, is_comment, DefinitionKind, DefinitionSearchResult,
     Definitions, Occurrences,
 };
-use crate::dumb_analyzer::get_comments_by_ext;
 use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 
@@ -32,7 +32,7 @@ impl<'a> MatchFinder<'a> {
         self.find_matches(
             command,
             if ignore_comment {
-                Some(get_comments_by_ext(self.file_ext))
+                Some(get_comment_syntax(self.file_ext))
             } else {
                 None
             },

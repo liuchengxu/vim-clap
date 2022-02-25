@@ -315,7 +315,7 @@ impl<'a> OnMoveHandler<'a> {
                             &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
 
                         if !BLACK_LIST.contains(&ext)
-                            && !crate::dumb_analyzer::is_comment(latest_line, ext)
+                            && !dumb_analyzer::is_comment(latest_line, ext)
                         {
                             match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
                                 Some(tag) if tag.line < start => {

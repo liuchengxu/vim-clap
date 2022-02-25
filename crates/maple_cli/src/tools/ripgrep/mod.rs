@@ -7,7 +7,7 @@ use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
-use crate::dumb_analyzer::AddressableUsage;
+use crate::find_usages::AddressableUsage;
 use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};

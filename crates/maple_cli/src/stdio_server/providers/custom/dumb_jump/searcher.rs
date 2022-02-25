@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
-use crate::dumb_analyzer::{
+use crate::find_usages::{
     resolve_reference_kind, AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType,
     RegexSearcher, Usage, Usages,
 };

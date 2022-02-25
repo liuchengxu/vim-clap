@@ -3,7 +3,7 @@ use clap::Parser;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::dumb_analyzer::{CtagsSearcher, QueryType};
+use crate::find_usages::{CtagsSearcher, QueryType};
 use crate::tools::ctags::TagsConfig;
 
 #[derive(Parser, Debug, Clone)]
