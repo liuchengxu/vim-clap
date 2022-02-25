@@ -1,13 +1,13 @@
 use std::path::Path;
 
 use anyhow::Result;
+use dumb_analyzer::resolve_reference_kind;
 use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
 use crate::find_usages::{
-    resolve_reference_kind, AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType,
-    RegexSearcher, Usage, Usages,
+    AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;

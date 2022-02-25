@@ -16,14 +16,14 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use dumb_analyzer::get_comment_syntax;
+use dumb_analyzer::{get_comment_syntax, resolve_reference_kind};
 use rayon::prelude::*;
 
 use self::definition::{
     definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
 };
 use self::runner::{MatchFinder, RegexRunner};
-use crate::find_usages::{resolve_reference_kind, AddressableUsage, Usage, Usages};
+use crate::find_usages::{AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
