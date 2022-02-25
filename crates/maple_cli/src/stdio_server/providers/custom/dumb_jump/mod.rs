@@ -35,17 +35,17 @@ struct QueryInfo {
 }
 
 impl QueryInfo {
-    /// Returns true if the filtered results of `self` is a superset of applying `other` on the
-    /// same source.
+    /// Return `true` if the result of query info is a superset of the result of another,
+    /// i.e., `self` contains all the search results of `other`.
     ///
     /// The rule is as follows:
     ///
     /// - the keyword is the same.
     /// - the new query is a subset of last query.
-    fn has_superset_results(&self, other: &Self) -> bool {
+    fn is_superset(&self, other: &Self) -> bool {
         self.keyword == other.keyword
             && self.query_type == other.query_type
-            && self.filtering_terms.contains(&other.filtering_terms)
+            && self.filtering_terms.is_superset(&other.filtering_terms)
     }
 }
 
@@ -365,11 +365,7 @@ impl EventHandle for DumbJumpHandle {
         let query_info = parse_query_info(&params.query);
 
         // Try to refilter the cached results.
-        if self
-            .cached_results
-            .query_info
-            .has_superset_results(&query_info)
-        {
+        if self.cached_results.query_info.is_superset(&query_info) {
             let refiltered = self
                 .cached_results
                 .usages

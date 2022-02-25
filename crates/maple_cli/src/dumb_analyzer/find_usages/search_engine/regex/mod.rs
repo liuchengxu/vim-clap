@@ -152,7 +152,8 @@ impl RegexSearcher {
                         if positive_defs.contains(&&matched) {
                             exact_or_inverse_terms
                                 .check_jump_line(
-                                    matched.build_jump_line(kind.as_ref(), regex_runner.finder.word),
+                                    matched
+                                        .build_jump_line(kind.as_ref(), regex_runner.finder.word),
                                 )
                                 .map(|(line, indices)| {
                                     matched.into_addressable_usage(line, indices)
@@ -169,7 +170,9 @@ impl RegexSearcher {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         exact_or_inverse_terms
-                            .check_jump_line(matched.build_jump_line(kind, regex_runner.finder.word))
+                            .check_jump_line(
+                                matched.build_jump_line(kind, regex_runner.finder.word),
+                            )
                             .map(|(line, indices)| matched.into_addressable_usage(line, indices))
                     } else {
                         None
