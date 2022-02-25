@@ -242,7 +242,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn try_refresh_cache(&self, latest_line: &str) {
-        if IS_FERESHING_CACHE.load(Ordering::Relaxed) {
+        if IS_FERESHING_CACHE.load(Ordering::SeqCst) {
             tracing::debug!(
                 "Skipping the cache refreshing as there is already one that is running or waitting"
             );
@@ -253,7 +253,7 @@ impl<'a> OnMoveHandler<'a> {
                 if !cache_line.eq(latest_line) {
                     tracing::debug!(?latest_line, ?cache_line, "The cache might be oudated");
                     let dir = self.context.cwd.clone();
-                    IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
+                    IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
                     // Spawn a future in the background
                     tokio::task::spawn_blocking(|| {
                         tracing::debug!(?dir, "Attempting to refresh grep2 cache");
@@ -265,7 +265,7 @@ impl<'a> OnMoveHandler<'a> {
                                 tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
                             }
                         }
-                        IS_FERESHING_CACHE.store(false, Ordering::Relaxed);
+                        IS_FERESHING_CACHE.store(false, Ordering::SeqCst);
                     });
                 }
             }
@@ -296,6 +296,10 @@ impl<'a> OnMoveHandler<'a> {
                         fname.replace_range(..offset, "..");
                     }
                 }
+
+                // TODO: refactor this
+                let latest_highlight_line = lines.get(highlight_lnum - 1).cloned();
+
                 let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
@@ -303,7 +307,7 @@ impl<'a> OnMoveHandler<'a> {
                 let mut highlight_lnum = highlight_lnum;
 
                 // Some checks against the latest preview line.
-                if let Some(latest_line) = lines.get(highlight_lnum) {
+                if let Some(ref latest_line) = latest_highlight_line {
                     self.try_refresh_cache(latest_line);
 
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
