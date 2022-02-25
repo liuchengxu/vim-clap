@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use dumb_analyzer::{get_comment_syntax, resolve_reference_kind};
+use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Weight};
 use rayon::prelude::*;
 
 use self::definition::{
@@ -28,23 +28,60 @@ use crate::tools::ripgrep::{Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 /// [`Usage`] with some structured information.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RegexUsage {
     pub line: String,
     pub indices: Vec<usize>,
     pub path: String,
     pub line_number: usize,
-    pub pattern_weight: usize,
+    pub pattern_weight: Weight,
 }
 
-impl PartialEq for RegexUsage {
-    fn eq(&self, other: &Self) -> bool {
-        (self.pattern_weight, &self.path, self.line_number)
-            == (self.pattern_weight, &other.path, other.line_number)
+impl From<RegexUsage> for AddressableUsage {
+    fn from(regex_usage: RegexUsage) -> Self {
+        let RegexUsage {
+            line,
+            indices,
+            path,
+            line_number,
+            ..
+        } = regex_usage;
+        Self {
+            line,
+            indices,
+            path,
+            line_number,
+        }
     }
 }
 
-impl Eq for RegexUsage {}
+impl RegexUsage {
+    fn from_matched(matched: &Match, line: String, indices: Vec<usize>) -> Self {
+        Self {
+            line,
+            indices,
+            path: matched.path().into(),
+            line_number: matched.line_number() as usize,
+            pattern_weight: matched.pattern_weight(),
+        }
+    }
+}
+
+impl PartialOrd for RegexUsage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some((self.pattern_weight, &self.path, self.line_number).cmp(&(
+            other.pattern_weight,
+            &other.path,
+            other.line_number,
+        )))
+    }
+}
+
+impl Ord for RegexUsage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct RegexSearcher {
@@ -106,15 +143,18 @@ impl RegexSearcher {
             Err(_) => {
                 // Search the occurrences if no language detected.
                 let occurrences = match_finder.find_occurrences(true).await?;
-                let usages = occurrences
+                let mut usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
                         exact_or_inverse_terms
                             .check_jump_line(matched.build_jump_line("refs", &word))
-                            .map(|(line, indices)| matched.into_addressable_usage(line, indices))
+                            .map(|(line, indices)| {
+                                RegexUsage::from_matched(&matched, line, indices)
+                            })
                     })
                     .collect::<Vec<_>>();
-                return Ok(usages);
+                usages.par_sort_unstable();
+                return Ok(usages.into_iter().map(Into::into).collect());
             }
         };
 
@@ -160,7 +200,7 @@ impl RegexSearcher {
             .filter(|def| occurrences.contains(def))
             .collect::<Vec<_>>();
 
-        let regex_usages = definitions
+        let mut regex_usages = definitions
             .into_par_iter()
             .flat_map(|DefinitionSearchResult { kind, matches }| {
                 matches
@@ -173,7 +213,7 @@ impl RegexSearcher {
                                         .build_jump_line(kind.as_ref(), regex_runner.finder.word),
                                 )
                                 .map(|(line, indices)| {
-                                    matched.into_addressable_usage(line, indices)
+                                    RegexUsage::from_matched(&matched, line, indices)
                                 })
                         } else {
                             None
@@ -190,7 +230,9 @@ impl RegexSearcher {
                             .check_jump_line(
                                 matched.build_jump_line(kind, regex_runner.finder.word),
                             )
-                            .map(|(line, indices)| matched.into_addressable_usage(line, indices))
+                            .map(|(line, indices)| {
+                                RegexUsage::from_matched(&matched, line, indices)
+                            })
                     } else {
                         None
                     }
@@ -201,18 +243,20 @@ impl RegexSearcher {
         // Pure results by grepping the word.
         if regex_usages.is_empty() {
             let lines = regex_runner.regexp_search(comments).await?;
-            let grep_usages = lines
+            let mut grep_usages = lines
                 .into_par_iter()
                 .filter_map(|matched| {
                     exact_or_inverse_terms
                         .check_jump_line(matched.build_jump_line("grep", regex_runner.finder.word))
-                        .map(|(line, indices)| matched.into_addressable_usage(line, indices))
+                        .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
                 })
                 .collect::<Vec<_>>();
-            return Ok(grep_usages);
+            grep_usages.par_sort_unstable();
+            return Ok(grep_usages.into_iter().map(Into::into).collect());
         }
 
-        Ok(regex_usages)
+        regex_usages.par_sort_unstable();
+        Ok(regex_usages.into_iter().map(Into::into).collect())
     }
 }
 

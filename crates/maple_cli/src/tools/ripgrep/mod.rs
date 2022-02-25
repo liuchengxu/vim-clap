@@ -7,7 +7,6 @@ use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
 
-use crate::find_usages::AddressableUsage;
 use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
@@ -177,6 +176,15 @@ impl Match {
         self.lines.text()
     }
 
+    pub fn pattern_weight(&self) -> dumb_analyzer::Weight {
+        self.path()
+            .rsplit_once('.')
+            .and_then(|(_, file_ext)| {
+                dumb_analyzer::calculate_pattern_weight(self.pattern(), file_ext)
+            })
+            .unwrap_or_default()
+    }
+
     /// Returns a pair of the formatted `String` and the offset of matches for dumb_jump provider.
     ///
     /// NOTE: [`pattern::DUMB_JUMP_LINE`] must be updated accordingly once the format is changed.
@@ -225,14 +233,5 @@ impl Match {
         let (formatted, offset) = self.jump_line_format_bare();
         let indices = self.match_indices_for_dumb_jump(offset, word);
         (formatted, indices)
-    }
-
-    pub fn into_addressable_usage(self, line: String, indices: Vec<usize>) -> AddressableUsage {
-        AddressableUsage {
-            line,
-            indices,
-            path: self.path().into(),
-            line_number: self.line_number() as usize,
-        }
     }
 }
