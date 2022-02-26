@@ -15,7 +15,7 @@ use super::runner::RegexRunner;
 /// Ref: https://github.com/jacktasia/dumb-jump/blob/master/dumb-jump.el.
 static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(|| {
     serde_json::from_str(include_str!(
-        "../../../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
+        "../../../../../../scripts/dumb_jump/rg_pcre2_regex.json"
     ))
     .expect("Wrong path for rg_pcre2_regex.json")
 });

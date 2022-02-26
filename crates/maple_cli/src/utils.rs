@@ -31,7 +31,7 @@ pub struct ExactOrInverseTerms {
 impl ExactOrInverseTerms {
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
-        if let Some((_, indices)) = matcher::search_exact_terms(self.exact_terms.iter(), line) {
+        if let Some((_, indices)) = matcher::match_exact_terms(self.exact_terms.iter(), line) {
             let should_retain = !self
                 .inverse_terms
                 .iter()
@@ -47,17 +47,18 @@ impl ExactOrInverseTerms {
         }
     }
 
-    /// The results of applying `other` is a subset of applying `self` on the same source.
-    pub fn contains(&self, other: &Self) -> bool {
+    /// Returns `true` if the result of The results of applying `self`
+    /// is a superset of applying `other` on the same source.
+    pub fn is_superset(&self, other: &Self) -> bool {
         self.exact_terms
             .iter()
             .zip(other.exact_terms.iter())
-            .all(|(local, other)| local.contains(other))
+            .all(|(local, other)| local.is_superset(other))
             && self
                 .inverse_terms
                 .iter()
                 .zip(other.inverse_terms.iter())
-                .all(|(local, other)| local.contains(other))
+                .all(|(local, other)| local.is_superset(other))
     }
 
     pub fn check_jump_line(

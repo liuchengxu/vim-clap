@@ -123,6 +123,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumb_analyzer"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "serde_json",
+]
+
+[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,6 +281,7 @@ name = "matcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",

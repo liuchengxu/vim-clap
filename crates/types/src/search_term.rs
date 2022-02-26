@@ -25,8 +25,9 @@ impl ExactTerm {
         Self { ty, word }
     }
 
-    /// The results of applying `other` is a subset of applying `self` on the same source.
-    pub fn contains(&self, other: &Self) -> bool {
+    /// Returns `true` if the result of The results of applying `self`
+    /// is a superset of applying `other` on the same source.
+    pub fn is_superset(&self, other: &Self) -> bool {
         use ExactTermType::*;
 
         match (&self.ty, &other.ty) {
@@ -67,8 +68,9 @@ impl InverseTerm {
         Self { ty, word }
     }
 
-    /// The results of applying `other` is a subset of applying `self` on the same source.
-    pub fn contains(&self, other: &Self) -> bool {
+    /// Returns `true` if the result of The results of applying `self`
+    /// is a superset of applying `other` on the same source.
+    pub fn is_superset(&self, other: &Self) -> bool {
         use InverseTermType::*;
 
         // Comparing with `!hello`, `!he` has less results.

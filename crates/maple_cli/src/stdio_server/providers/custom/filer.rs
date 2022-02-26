@@ -153,7 +153,7 @@ impl EventHandle for FilerHandle {
             inner: OnMove::Filer(path.clone()),
             cache_line: None,
         };
-        if let Err(err) = on_move_handler.handle() {
+        if let Err(err) = on_move_handler.handle().await {
             tracing::error!(?err, ?path, "Failed to handle filer OnMove");
             let res = json!({
               "id": msg_id,

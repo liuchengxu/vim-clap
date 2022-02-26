@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use once_cell::sync::Lazy;
@@ -9,7 +10,9 @@ use serde_json::json;
 use pattern::*;
 use types::PreviewInfo;
 
-use crate::command::ctags::buffer_tags::{current_context_tag, BufferTagInfo};
+use crate::command::ctags::buffer_tags::{
+    current_context_tag, current_context_tag_async, BufferTagInfo,
+};
 use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::{
     global, providers::filer, session::SessionContext, write_response, MethodCall,
@@ -189,11 +192,11 @@ impl<'a> OnMoveHandler<'a> {
         })
     }
 
-    pub fn handle(&self) -> Result<()> {
+    pub async fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
             BLines(position) | Grep(position) | ProjTags(position) | BufferTags(position) => {
-                self.preview_file_at(position)
+                self.preview_file_at(position).await
             }
             Filer(path) if path.is_dir() => self.preview_directory(&path)?,
             Files(path) | Filer(path) | History(path) => self.preview_file(&path)?,
@@ -239,7 +242,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn try_refresh_cache(&self, latest_line: &str) {
-        if IS_FERESHING_CACHE.load(Ordering::Relaxed) {
+        if IS_FERESHING_CACHE.load(Ordering::SeqCst) {
             tracing::debug!(
                 "Skipping the cache refreshing as there is already one that is running or waitting"
             );
@@ -250,7 +253,7 @@ impl<'a> OnMoveHandler<'a> {
                 if !cache_line.eq(latest_line) {
                     tracing::debug!(?latest_line, ?cache_line, "The cache might be oudated");
                     let dir = self.context.cwd.clone();
-                    IS_FERESHING_CACHE.store(true, Ordering::Relaxed);
+                    IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
                     // Spawn a future in the background
                     tokio::task::spawn_blocking(|| {
                         tracing::debug!(?dir, "Attempting to refresh grep2 cache");
@@ -262,14 +265,14 @@ impl<'a> OnMoveHandler<'a> {
                                 tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
                             }
                         }
-                        IS_FERESHING_CACHE.store(false, Ordering::Relaxed);
+                        IS_FERESHING_CACHE.store(false, Ordering::SeqCst);
                     });
                 }
             }
         }
     }
 
-    fn preview_file_at(&self, position: &Position) {
+    async fn preview_file_at(&self, position: &Position) {
         tracing::debug!(?position, "Previewing file");
 
         let Position { path, lnum } = position;
@@ -293,58 +296,58 @@ impl<'a> OnMoveHandler<'a> {
                         fname.replace_range(..offset, "..");
                     }
                 }
-                let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
-                    .chain(self.truncate_preview_lines(lines.into_iter()))
-                    .collect::<Vec<_>>();
 
-                let mut highlight_lnum = highlight_lnum;
+                let mut context_lines = Vec::new();
 
                 // Some checks against the latest preview line.
-                if let Some(latest_line) = lines.get(highlight_lnum) {
+                if let Some(latest_line) = lines.get(highlight_lnum - 1) {
                     self.try_refresh_cache(latest_line);
 
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                         const BLACK_LIST: &[&str] =
                             &["log", "txt", "lock", "toml", "yaml", "mod", "conf"];
-                        if !BLACK_LIST.contains(&ext) {
-                            let is_comment_line = crate::dumb_analyzer::get_comments_by_ext(ext)
-                                .iter()
-                                .any(|comment| latest_line.trim_start().starts_with(comment));
 
-                            if !is_comment_line {
-                                // FIXME: this can be slow.
-                                match current_context_tag(path, *lnum) {
-                                    Some(tag) if tag.line < start => {
-                                        let border_line = "─".repeat(container_width);
-                                        lines.insert(1, border_line.clone());
+                        if !BLACK_LIST.contains(&ext)
+                            && !dumb_analyzer::is_comment(latest_line, ext)
+                        {
+                            match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
+                                Some(tag) if tag.line < start => {
+                                    context_lines.reserve_exact(3);
 
-                                        let pattern = tag.extract_pattern();
-                                        // Truncate the right of pattern, 2 whitespaces + 💡
-                                        let max_pattern_len = container_width - 4;
-                                        let (mut context_line, to_push) =
-                                            if pattern.len() > max_pattern_len {
-                                                // Use the chars instead of indexing the str to avoid the char boundary error.
-                                                let p: String = pattern
-                                                    .chars()
-                                                    .take(max_pattern_len - 4 - 2)
-                                                    .collect();
-                                                (p, "..  💡")
-                                            } else {
-                                                (String::from(pattern), "  💡")
-                                            };
-                                        context_line.reserve(to_push.len());
-                                        context_line.push_str(to_push);
-                                        lines.insert(1, context_line);
+                                    let border_line = "─".repeat(container_width);
+                                    context_lines.push(border_line.clone());
 
-                                        lines.insert(1, border_line);
-                                        highlight_lnum += 3;
-                                    }
-                                    _ => {}
+                                    // Truncate the right of pattern, 2 whitespaces + 💡
+                                    let max_pattern_len = container_width - 4;
+                                    let pattern = tag.extract_pattern();
+                                    let (mut context_line, to_push) = if pattern.len()
+                                        > max_pattern_len
+                                    {
+                                        // Use the chars instead of indexing the str to avoid the char boundary error.
+                                        let p: String =
+                                            pattern.chars().take(max_pattern_len - 4 - 2).collect();
+                                        (p, "..  💡")
+                                    } else {
+                                        (String::from(pattern), "  💡")
+                                    };
+                                    context_line.reserve(to_push.len());
+                                    context_line.push_str(to_push);
+                                    context_lines.push(context_line);
+
+                                    context_lines.push(border_line);
                                 }
+                                _ => {}
                             }
                         }
                     }
                 }
+
+                let highlight_lnum = highlight_lnum + context_lines.len();
+
+                let lines = std::iter::once(format!("{}:{}", fname, lnum))
+                    .chain(context_lines.into_iter())
+                    .chain(self.truncate_preview_lines(lines.into_iter()))
+                    .collect::<Vec<_>>();
 
                 tracing::debug!(
                     msg_id = self.msg_id,
@@ -407,5 +410,21 @@ impl<'a> OnMoveHandler<'a> {
         let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         self.send_response(json!({ "lines": lines, "is_dir": true }));
         Ok(())
+    }
+}
+
+async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTagInfo> {
+    const TIMEOUT: Duration = Duration::from_millis(300);
+
+    match tokio::time::timeout(TIMEOUT, async move {
+        current_context_tag_async(path.as_path(), lnum).await
+    })
+    .await
+    {
+        Ok(res) => res,
+        Err(_) => {
+            tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
+            None
+        }
     }
 }

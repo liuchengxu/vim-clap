@@ -43,7 +43,7 @@ pub type Score = i64;
 pub type MatchResult = Option<(Score, Vec<usize>)>;
 
 // TODO: the shorter search line has a higher score for the exact matching?
-pub fn search_exact_terms<'a>(
+pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
     full_search_line: &str,
 ) -> Option<(Score, Vec<usize>)> {
@@ -185,7 +185,7 @@ impl Matcher {
 
         // Try the exact terms against the full search line.
         let (exact_score, mut indices) =
-            match search_exact_terms(query.exact_terms.iter(), item.full_text()) {
+            match match_exact_terms(query.exact_terms.iter(), item.full_text()) {
                 Some(ret) => ret,
                 None => return None,
             };

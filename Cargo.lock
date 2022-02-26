@@ -317,6 +317,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56899898ce76aaf4a0f24d914c97ea6ed976d42fec6ad33fcbb0a1103e07b2b0"
 
 [[package]]
+name = "dumb_analyzer"
+version = "0.1.0"
+dependencies = [
+ "once_cell",
+ "serde_json",
+]
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -888,6 +896,7 @@ dependencies = [
  "crossbeam-channel",
  "curl",
  "directories",
+ "dumb_analyzer",
  "filter",
  "futures",
  "icon",
@@ -918,6 +927,7 @@ name = "matcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
  "pattern",

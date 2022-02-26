@@ -1,7 +1,7 @@
 mod app;
 mod cache;
 mod datastore;
-mod dumb_analyzer;
+mod find_usages;
 mod logger;
 mod paths;
 mod previewer;

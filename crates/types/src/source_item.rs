@@ -1,4 +1,4 @@
-use pattern::{find_file_name, extract_grep_pattern, tag_name_only};
+use pattern::{extract_grep_pattern, find_file_name, tag_name_only};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 pub type FuzzyText<'a> = (&'a str, usize);

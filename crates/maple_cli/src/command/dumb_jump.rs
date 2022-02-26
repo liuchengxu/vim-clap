@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 
-use crate::dumb_analyzer::{RegexSearcher, Usages};
+use crate::find_usages::{RegexSearcher, Usages};
 use crate::utils::ExactOrInverseTerms;
 
 /// Search-based jump.
