@@ -297,17 +297,10 @@ impl<'a> OnMoveHandler<'a> {
                     }
                 }
 
-                // TODO: refactor this
-                let latest_highlight_line = lines.get(highlight_lnum - 1).cloned();
-
-                let mut lines = std::iter::once(format!("{}:{}", fname, lnum))
-                    .chain(self.truncate_preview_lines(lines.into_iter()))
-                    .collect::<Vec<_>>();
-
-                let mut highlight_lnum = highlight_lnum;
+                let mut context_lines = Vec::with_capacity(3);
 
                 // Some checks against the latest preview line.
-                if let Some(ref latest_line) = latest_highlight_line {
+                if let Some(latest_line) = lines.get(highlight_lnum - 1) {
                     self.try_refresh_cache(latest_line);
 
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -320,7 +313,7 @@ impl<'a> OnMoveHandler<'a> {
                             match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
                                 Some(tag) if tag.line < start => {
                                     let border_line = "─".repeat(container_width);
-                                    lines.insert(1, border_line.clone());
+                                    context_lines.push(border_line.clone());
 
                                     let pattern = tag.extract_pattern();
                                     // Truncate the right of pattern, 2 whitespaces + 💡
@@ -337,16 +330,22 @@ impl<'a> OnMoveHandler<'a> {
                                     };
                                     context_line.reserve(to_push.len());
                                     context_line.push_str(to_push);
-                                    lines.insert(1, context_line);
+                                    context_lines.push(context_line);
 
-                                    lines.insert(1, border_line);
-                                    highlight_lnum += 3;
+                                    context_lines.push(border_line);
                                 }
                                 _ => {}
                             }
                         }
                     }
                 }
+
+                let highlight_lnum = highlight_lnum + context_lines.len();
+
+                let lines = std::iter::once(format!("{}:{}", fname, lnum))
+                    .chain(context_lines.into_iter())
+                    .chain(self.truncate_preview_lines(lines.into_iter()))
+                    .collect::<Vec<_>>();
 
                 tracing::debug!(
                     msg_id = self.msg_id,
