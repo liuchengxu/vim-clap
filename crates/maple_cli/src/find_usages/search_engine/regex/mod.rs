@@ -92,23 +92,8 @@ pub struct RegexSearcher {
 
 impl RegexSearcher {
     pub async fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
-        let lang = get_language_by_ext(&self.extension)?;
-
-        let comments = get_comment_syntax(&self.extension);
-
-        // TODO: also take word as query?
-        let word = Word::new(self.word.clone())?;
-
-        let match_finder = MatchFinder {
-            word: &word,
-            file_ext: &self.extension,
-            dir: self.dir.as_ref(),
-        };
-
-        let regex_runner = RegexRunner::new(match_finder, lang);
-
         let usages: Usages = self
-            .regex_search(regex_runner, comments, exact_or_inverse_terms)
+            .search_usages(false, exact_or_inverse_terms)
             .await?
             .into();
 
