@@ -105,6 +105,9 @@ fn calculate_weight(
     }
 }
 
+// TODO: language keyword lookup
+//
+// https://github.com/e3b0c442/keywords#rust-146-53-keywords
 /// Calculates the weight of a specific pattern.
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
     let trimmed = pattern.as_ref().trim_start();
