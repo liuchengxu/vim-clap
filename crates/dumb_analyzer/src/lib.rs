@@ -4,6 +4,8 @@ use std::collections::HashMap;
 
 use once_cell::sync::OnceCell;
 
+mod keywords;
+
 /// General weight for fine-grained resolved result.
 ///
 /// Lower is better, the better results will be displayed first.
@@ -112,51 +114,9 @@ fn calculate_weight(
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
     let trimmed = pattern.as_ref().trim_start();
 
-    // TODO: take care of the comment line universally.
     match file_ext {
-        "vim" => {
-            let weight_fn = |item: Option<&str>| {
-                item.and_then(|s| {
-                    // function[!]
-                    if s.starts_with("function") {
-                        Some(3)
-                    } else if s == "let" {
-                        Some(6)
-                    } else {
-                        None
-                    }
-                })
-            };
-
-            calculate_weight(trimmed, weight_fn)
-        }
-
-        "rs" => {
-            const TYPE: &[&str] = &["type", "mod", "impl"];
-            const FUNCTION: &[&str] = &["fn", "macro_rules"];
-            const VARIABLE: &[&str] = &["let", "const", "static", "enum", "struct", "trait"];
-
-            let weight_fn = |item: Option<&str>| {
-                item.and_then(|s| {
-                    if FUNCTION.contains(&s) {
-                        Some(4)
-                    } else if s.starts_with("pub") {
-                        Some(6)
-                    } else if TYPE.contains(&s) {
-                        Some(7)
-                    } else if VARIABLE.contains(&s) {
-                        Some(8)
-                    } else if s.starts_with("[cfg(feature") {
-                        Some(10)
-                    } else {
-                        None
-                    }
-                })
-            };
-
-            calculate_weight(trimmed, weight_fn)
-        }
-
+        "vim" => calculate_weight(trimmed, keywords::viml::pattern_weight),
+        "rs" => calculate_weight(trimmed, keywords::rust::pattern_weight),
         _ => None,
     }
 }
