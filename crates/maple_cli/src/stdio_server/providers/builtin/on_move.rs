@@ -297,7 +297,7 @@ impl<'a> OnMoveHandler<'a> {
                     }
                 }
 
-                let mut context_lines = Vec::with_capacity(3);
+                let mut context_lines = Vec::new();
 
                 // Some checks against the latest preview line.
                 if let Some(latest_line) = lines.get(highlight_lnum - 1) {
@@ -312,12 +312,14 @@ impl<'a> OnMoveHandler<'a> {
                         {
                             match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
                                 Some(tag) if tag.line < start => {
+                                    context_lines.reserve_exact(3);
+
                                     let border_line = "─".repeat(container_width);
                                     context_lines.push(border_line.clone());
 
-                                    let pattern = tag.extract_pattern();
                                     // Truncate the right of pattern, 2 whitespaces + 💡
                                     let max_pattern_len = container_width - 4;
+                                    let pattern = tag.extract_pattern();
                                     let (mut context_line, to_push) = if pattern.len()
                                         > max_pattern_len
                                     {
