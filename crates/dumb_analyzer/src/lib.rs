@@ -87,36 +87,27 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
     maybe_more_precise_kind.unwrap_or(("refs", 100))
 }
 
-/// Calculates the bonus by checking the first two items.
-fn calculate_weight(
-    trimmed_line: &str,
-    weight_fn: impl Fn(Option<&str>) -> Option<usize>,
-) -> Option<Weight> {
-    let mut iter = trimmed_line.split_whitespace();
-
-    // Try the first two items because blines provider prepends the line number to the
-    // original line and the language bonus is mostly used in the blines provider.
-    let first_item = iter.next();
-
-    match weight_fn(first_item) {
-        Some(weight) => Some(weight.into()),
-        None => {
-            let second_item = iter.next();
-            weight_fn(second_item).map(Into::into)
-        }
-    }
-}
-
 // TODO: language keyword lookup
 //
 // https://github.com/e3b0c442/keywords#rust-146-53-keywords
 /// Calculates the weight of a specific pattern.
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
-    let trimmed = pattern.as_ref().trim_start();
+    let weight_fn = match file_ext {
+        "vim" => keywords::viml::pattern_weight,
+        "rs" => keywords::rust::pattern_weight,
+        _ => return None,
+    };
 
-    match file_ext {
-        "vim" => calculate_weight(trimmed, keywords::viml::pattern_weight),
-        "rs" => calculate_weight(trimmed, keywords::rust::pattern_weight),
-        _ => None,
-    }
+    // Try the first 3 items because:
+    //
+    // 1. blines provider prepends the line number to the original line and the language bonus
+    //    is mostly used in the blines provider.
+    // 2. Languages like Rust has the visibility before the commen keyword(fn, struct, ...).
+    pattern
+        .as_ref()
+        .trim_start()
+        .split_whitespace()
+        .take(3)
+        .find_map(weight_fn)
+        .map(Into::into)
 }
