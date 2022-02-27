@@ -93,8 +93,8 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
 /// Calculates the weight of a specific pattern.
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
     let weight_fn = match file_ext {
-        "vim" => keywords::viml::pattern_weight,
-        "rs" => keywords::rust::pattern_weight,
+        "vim" => keywords::viml::token_weight,
+        "rs" => keywords::rust::token_weight,
         _ => return None,
     };
 

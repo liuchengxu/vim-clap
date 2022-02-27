@@ -1,4 +1,4 @@
-pub fn pattern_weight(token: &str) -> Option<usize> {
+pub fn token_weight(token: &str) -> Option<usize> {
     // function[!]
     if token.starts_with("function") {
         Some(3)

@@ -10,7 +10,7 @@ const STATEMENT: &[&str] = &[
     "type", "unsafe", "where", "while",
 ];
 
-pub fn pattern_weighttoken(token: &str) -> Option<usize> {
+pub fn token_weight(token: &str) -> Option<usize> {
     if DEFINITION.contains(&token) {
         Some(4)
     } else if REFERENCE.contains(&token) {
