@@ -1,9 +1,11 @@
-const DEFINITION: &[&str] = &["function", "functioin!", "command", "command!", "cmd"];
+const DEFINITION: &[&str] = &["fun"];
 
-const REFERENCE: &[&str] = &["let"];
+const REFERENCE: &[&str] = &[];
 
 const STATEMENT: &[&str] = &[
-    "for", "endfor", "while", "endwhile", "if", "elseif", "else", "endif", "call", "in",
+    "after", "and", "andalso", "band", "begin", "bnot", "bor", "bsl", "bsr", "bxor", "case",
+    "catch", "cond", "div", "end", "if", "let", "not", "of", "or", "orelse", "receive", "rem",
+    "try", "when", "xor",
 ];
 
 pub fn token_weight(token: &str) -> Option<usize> {

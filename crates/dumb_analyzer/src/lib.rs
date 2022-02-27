@@ -95,6 +95,8 @@ pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Opt
     let weight_fn = match file_ext {
         "vim" => keywords::viml::token_weight,
         "rs" => keywords::rust::token_weight,
+        "go" => keywords::go::token_weight,
+        "erl" => keywords::erlang::token_weight,
         _ => return None,
     };
 
