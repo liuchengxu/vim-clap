@@ -1,10 +1,13 @@
 use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::{anyhow, Result};
+use dumb_analyzer::resolve_reference_kind;
 use filter::subprocess::Exec;
+use rayon::prelude::*;
 
 use super::Symbol;
-use crate::tools::gtags::GTAGS_DIR;
+use crate::utils::ExactOrInverseTerms;
+use crate::{find_usages::AddressableUsage, tools::gtags::GTAGS_DIR};
 
 #[derive(Clone, Debug)]
 pub struct GtagsSearcher {
@@ -110,6 +113,39 @@ impl GtagsSearcher {
         execute(cmd)
     }
 
+    /// `search_references` and reorder the results based on the language pattern.
+    pub fn search_usages(
+        &self,
+        keyword: &str,
+        filtering_terms: &ExactOrInverseTerms,
+        file_ext: &str,
+    ) -> Result<Vec<AddressableUsage>> {
+        let mut gtags_usages = self
+            .search_references(keyword)?
+            .par_bridge()
+            .filter_map(|symbol| {
+                let (kind, kind_weight) = resolve_reference_kind(&symbol.pattern, file_ext);
+                let (line, indices) = symbol.grep_format_gtags(kind, keyword, false);
+                filtering_terms
+                    .check_jump_line((line, indices.unwrap_or_default()))
+                    .map(|(line, indices)| GtagsUsage {
+                        line,
+                        indices,
+                        kind_weight,
+                        path: symbol.path, // TODO: perhaps path_weight? Lower the weight of path containing `test`.
+                        line_number: symbol.line_number,
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        gtags_usages.par_sort_unstable_by(|a, b| a.cmp(b));
+
+        Ok(gtags_usages
+            .into_par_iter()
+            .map(GtagsUsage::into_addressable_usage)
+            .collect::<Vec<_>>())
+    }
+
     /// Search reference tags exactly matching `keyword`.
     ///
     /// Reference means the reference to a symbol which has definitions.
@@ -134,4 +170,41 @@ fn execute(cmd: Exec) -> Result<impl Iterator<Item = Symbol>> {
     Ok(crate::utils::lines(cmd)?
         .flatten()
         .filter_map(|s| Symbol::from_gtags(&s)))
+}
+
+/// Used for sorting the usages from gtags properly.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct GtagsUsage {
+    line: String,
+    indices: Vec<usize>,
+    line_number: usize,
+    path: String,
+    kind_weight: usize,
+}
+
+impl GtagsUsage {
+    fn into_addressable_usage(self) -> AddressableUsage {
+        AddressableUsage {
+            line: self.line,
+            indices: self.indices,
+            path: self.path,
+            line_number: self.line_number,
+        }
+    }
+}
+
+impl PartialOrd for GtagsUsage {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some((self.kind_weight, &self.path, self.line_number).cmp(&(
+            other.kind_weight,
+            &other.path,
+            other.line_number,
+        )))
+    }
+}
+
+impl Ord for GtagsUsage {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
