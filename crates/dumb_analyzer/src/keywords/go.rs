@@ -1,44 +1,38 @@
-const DEFINITION: &[&str] = &[
-    "enum",
-    "interface",
-    "struct",
-    "func",
-    "const",
-    "type",
-    "package",
-];
+use super::KeywordWeight;
 
-const REFERENCE: &[&str] = &["import"];
+pub struct Go;
 
-const STATEMENT: &[&str] = &[
-    "break",
-    "case",
-    "chan",
-    "continue",
-    "default",
-    "defer",
-    "else",
-    "fallthrough",
-    "for",
-    "go",
-    "goto",
-    "if",
-    "map",
-    "range",
-    "return",
-    "select",
-    "switch",
-    "var",
-];
+impl KeywordWeight for Go {
+    const DEFINITION: &'static [&'static str] = &[
+        "enum",
+        "interface",
+        "struct",
+        "func",
+        "const",
+        "type",
+        "package",
+    ];
 
-pub fn token_weight(token: &str) -> Option<usize> {
-    if DEFINITION.contains(&token) {
-        Some(4)
-    } else if REFERENCE.contains(&token) {
-        Some(6)
-    } else if STATEMENT.contains(&token) {
-        Some(8)
-    } else {
-        None
-    }
+    const REFERENCE: &'static [&'static str] = &["import"];
+
+    const STATEMENT: &'static [&'static str] = &[
+        "break",
+        "case",
+        "chan",
+        "continue",
+        "default",
+        "defer",
+        "else",
+        "fallthrough",
+        "for",
+        "go",
+        "goto",
+        "if",
+        "map",
+        "range",
+        "return",
+        "select",
+        "switch",
+        "var",
+    ];
 }

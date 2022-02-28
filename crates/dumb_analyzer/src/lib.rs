@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use keywords::KeywordWeight;
 use once_cell::sync::OnceCell;
 
 mod keywords;
@@ -92,11 +93,11 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
 // https://github.com/e3b0c442/keywords#rust-146-53-keywords
 /// Calculates the weight of a specific pattern.
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
-    let weight_fn = match file_ext {
-        "vim" => keywords::viml::token_weight,
-        "rs" => keywords::rust::token_weight,
-        "go" => keywords::go::token_weight,
-        "erl" => keywords::erlang::token_weight,
+    let weigher = match file_ext {
+        "erl" => keywords::Erlang::keyword_weight,
+        "go" => keywords::Go::keyword_weight,
+        "rs" => keywords::Rust::keyword_weight,
+        "vim" => keywords::Viml::keyword_weight,
         _ => return None,
     };
 
@@ -110,6 +111,6 @@ pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Opt
         .trim_start()
         .split_whitespace()
         .take(3)
-        .find_map(weight_fn)
+        .find_map(weigher)
         .map(Into::into)
 }

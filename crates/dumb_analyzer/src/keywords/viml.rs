@@ -1,19 +1,14 @@
-const DEFINITION: &[&str] = &["function", "functioin!", "command", "command!", "cmd"];
+use super::KeywordWeight;
 
-const REFERENCE: &[&str] = &["let"];
+pub struct Viml;
 
-const STATEMENT: &[&str] = &[
-    "for", "endfor", "while", "endwhile", "if", "elseif", "else", "endif", "call", "in",
-];
+impl KeywordWeight for Viml {
+    const DEFINITION: &'static [&'static str] =
+        &["function", "functioin!", "command", "command!", "cmd"];
 
-pub fn token_weight(token: &str) -> Option<usize> {
-    if DEFINITION.contains(&token) {
-        Some(4)
-    } else if REFERENCE.contains(&token) {
-        Some(6)
-    } else if STATEMENT.contains(&token) {
-        Some(8)
-    } else {
-        None
-    }
+    const REFERENCE: &'static [&'static str] = &["let"];
+
+    const STATEMENT: &'static [&'static str] = &[
+        "for", "endfor", "while", "endwhile", "if", "elseif", "else", "endif", "call", "in",
+    ];
 }

@@ -1,21 +1,15 @@
-const DEFINITION: &[&str] = &["fun"];
+use super::KeywordWeight;
 
-const REFERENCE: &[&str] = &[];
+pub struct Erlang;
 
-const STATEMENT: &[&str] = &[
-    "after", "and", "andalso", "band", "begin", "bnot", "bor", "bsl", "bsr", "bxor", "case",
-    "catch", "cond", "div", "end", "if", "let", "not", "of", "or", "orelse", "receive", "rem",
-    "try", "when", "xor",
-];
+impl KeywordWeight for Erlang {
+    const DEFINITION: &'static [&'static str] = &["fun"];
 
-pub fn token_weight(token: &str) -> Option<usize> {
-    if DEFINITION.contains(&token) {
-        Some(4)
-    } else if REFERENCE.contains(&token) {
-        Some(6)
-    } else if STATEMENT.contains(&token) {
-        Some(8)
-    } else {
-        None
-    }
+    const REFERENCE: &'static [&'static str] = &[];
+
+    const STATEMENT: &'static [&'static str] = &[
+        "after", "and", "andalso", "band", "begin", "bnot", "bor", "bsl", "bsr", "bxor", "case",
+        "catch", "cond", "div", "end", "if", "let", "not", "of", "or", "orelse", "receive", "rem",
+        "try", "when", "xor",
+    ];
 }
