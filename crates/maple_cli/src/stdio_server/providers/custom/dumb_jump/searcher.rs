@@ -57,30 +57,11 @@ impl SearchingWorker {
             filtering_terms,
             ..
         } = self.query_info;
-        let mut gtags_usages = GtagsSearcher::new(self.cwd.into())
-            .search_references(&keyword)?
-            .par_bridge()
-            .filter_map(|symbol| {
-                let (kind, kind_weight) = resolve_reference_kind(&symbol.pattern, &self.extension);
-                let (line, indices) = symbol.grep_format_gtags(kind, &keyword, false);
-                filtering_terms
-                    .check_jump_line((line, indices.unwrap_or_default()))
-                    .map(|(line, indices)| GtagsUsage {
-                        line,
-                        indices,
-                        kind_weight,
-                        path: symbol.path, // TODO: perhaps path_weight? Lower the weight of path containing `test`.
-                        line_number: symbol.line_number,
-                    })
-            })
-            .collect::<Vec<_>>();
-
-        gtags_usages.par_sort_unstable_by(|a, b| a.cmp(b));
-
-        Ok(gtags_usages
-            .into_par_iter()
-            .map(GtagsUsage::into_addressable_usage)
-            .collect::<Vec<_>>())
+        GtagsSearcher::new(self.cwd.into()).search_usages(
+            &keyword,
+            &filtering_terms,
+            &self.extension,
+        )
     }
 
     async fn regex_search(self) -> Result<Vec<AddressableUsage>> {
@@ -95,43 +76,6 @@ impl SearchingWorker {
             dir: Some(self.cwd.into()),
         };
         searcher.search_usages(false, &filtering_terms).await
-    }
-}
-
-/// Used for sorting the usages from gtags properly.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct GtagsUsage {
-    line: String,
-    indices: Vec<usize>,
-    line_number: usize,
-    path: String,
-    kind_weight: usize,
-}
-
-impl GtagsUsage {
-    fn into_addressable_usage(self) -> AddressableUsage {
-        AddressableUsage {
-            line: self.line,
-            indices: self.indices,
-            path: self.path,
-            line_number: self.line_number,
-        }
-    }
-}
-
-impl PartialOrd for GtagsUsage {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some((self.kind_weight, &self.path, self.line_number).cmp(&(
-            other.kind_weight,
-            &other.path,
-            other.line_number,
-        )))
-    }
-}
-
-impl Ord for GtagsUsage {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
     }
 }
 

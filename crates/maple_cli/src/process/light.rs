@@ -137,30 +137,8 @@ pub struct LightCommand<'a> {
 
 impl<'a> LightCommand<'a> {
     /// Contructs LightCommand from various common opts.
-    pub fn new(
-        cmd: &'a mut Command,
-        number: Option<usize>,
-        icon: Icon,
-        output_threshold: usize,
-    ) -> Self {
-        Self {
-            cmd,
-            env: CommandEnv::new(None, number, icon, Some(output_threshold)),
-        }
-    }
-
-    /// Contructs LightCommand from grep opts.
-    pub fn new_grep(
-        cmd: &'a mut Command,
-        dir: Option<PathBuf>,
-        number: Option<usize>,
-        icon: Icon,
-        output_threshold: Option<usize>,
-    ) -> Self {
-        Self {
-            cmd,
-            env: CommandEnv::new(dir, number, icon, output_threshold),
-        }
+    pub fn new(cmd: &'a mut Command, env: CommandEnv) -> Self {
+        Self { cmd, env }
     }
 
     /// Collect the output of command, exit directly if any error happened.
