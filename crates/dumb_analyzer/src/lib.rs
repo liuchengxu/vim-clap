@@ -95,7 +95,7 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
 pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
     let weigher = match file_ext {
         "erl" => keywords::Erlang::keyword_weight,
-        "go" => keywords::Go::keyword_weight,
+        "go" => keywords::Golang::keyword_weight,
         "rs" => keywords::Rust::keyword_weight,
         "vim" => keywords::Viml::keyword_weight,
         _ => return None,

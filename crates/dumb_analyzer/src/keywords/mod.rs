@@ -1,10 +1,10 @@
 mod erlang;
-mod go;
+mod golang;
 mod rust;
 mod viml;
 
 pub use erlang::Erlang;
-pub use go::Go;
+pub use golang::Golang;
 pub use rust::Rust;
 pub use viml::Viml;
 
