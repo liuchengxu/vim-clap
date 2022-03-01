@@ -3,9 +3,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use filter::subprocess::{Exec, Redirection};
+use itertools::Itertools;
+use rayon::prelude::*;
 
 use super::{QueryType, Symbol};
+use crate::find_usages::AddressableUsage;
 use crate::tools::ctags::TagsConfig;
+use crate::utils::ExactOrInverseTerms;
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -28,6 +32,31 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     /// Generate the `tags` file.
     pub fn generate_tags(&self) -> Result<()> {
         self.config.generate_tags()
+    }
+
+    pub fn search_usages(
+        &self,
+        keyword: &str,
+        filtering_terms: &ExactOrInverseTerms,
+        query_type: QueryType,
+        force_generate: bool,
+    ) -> Result<Vec<AddressableUsage>> {
+        let ignorecase = keyword.chars().all(char::is_lowercase);
+
+        // TODO: reorder the ctags results similar to gtags.
+        let usages = self
+            .search(keyword, query_type, force_generate)?
+            .sorted_by_key(|s| s.line_number) // Ensure the tags are sorted as the definition goes first and then the implementations.
+            .par_bridge()
+            .filter_map(|symbol| {
+                let (line, indices) = symbol.grep_format_ctags(keyword, ignorecase);
+                filtering_terms
+                    .check_jump_line((line, indices.unwrap_or_default()))
+                    .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
+            })
+            .collect::<Vec<_>>();
+
+        Ok(usages)
     }
 
     fn build_exec(&self, query: &str, query_type: QueryType) -> Exec {
