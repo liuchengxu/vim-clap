@@ -45,7 +45,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
 
         // TODO: reorder the ctags results similar to gtags.
         let usages = self
-            .search(keyword, query_type, force_generate)?
+            .search_symbols(keyword, query_type, force_generate)?
             .sorted_by_key(|s| s.line_number) // Ensure the tags are sorted as the definition goes first and then the implementations.
             .par_bridge()
             .filter_map(|symbol| {
@@ -90,7 +90,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         }
     }
 
-    pub fn search(
+    pub fn search_symbols(
         &self,
         query: &str,
         query_type: QueryType,

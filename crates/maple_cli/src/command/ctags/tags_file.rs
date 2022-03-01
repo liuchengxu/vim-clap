@@ -59,9 +59,10 @@ impl TagsFile {
         let tags_searcher = CtagsSearcher::new(config);
 
         if let Some(ref query) = self.query {
-            let results = tags_searcher.search(query, QueryType::StartWith, self.force_generate)?;
-            for line in results {
-                println!("{:?}", line);
+            let symbols =
+                tags_searcher.search_symbols(query, QueryType::StartWith, self.force_generate)?;
+            for symbol in symbols {
+                println!("{:?}", symbol);
             }
         }
 
