@@ -218,6 +218,8 @@ pub struct DumbJumpHandle {
     ctags_regenerated: Arc<AtomicBool>,
     /// Whether the GTAGS file has been (re)-created.
     gtags_regenerated: Arc<AtomicBool>,
+    /// First on_typed event received.
+    first_on_typed_event_received: Arc<AtomicBool>,
 }
 
 impl DumbJumpHandle {
@@ -275,7 +277,7 @@ impl EventHandle for DumbJumpHandle {
 
             let gtags_future = {
                 let gtags_regenerated = self.gtags_regenerated.clone();
-                let cwd = params.cwd.clone();
+                let cwd = params.cwd;
                 async move {
                     let now = std::time::Instant::now();
                     let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
@@ -329,10 +331,6 @@ impl EventHandle for DumbJumpHandle {
                 });
             }
         }
-
-        tokio::spawn(async move {
-            search_for_usages(msg_id, params, None, SearchEngine::Regex, true).await;
-        });
     }
 
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
@@ -360,6 +358,15 @@ impl EventHandle for DumbJumpHandle {
     }
 
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+        // TODO: early initialization
+        if !self.first_on_typed_event_received.load(Ordering::Relaxed) {
+            self.first_on_typed_event_received
+                .store(true, Ordering::Relaxed);
+            // Earn some time for the initialization that can be done instantly so that we can have
+            // the results of high quality.
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+
         let (msg_id, params) = parse_msg(msg);
 
         let query_info = parse_query_info(&params.query);
