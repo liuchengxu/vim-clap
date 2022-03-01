@@ -358,6 +358,7 @@ impl EventHandle for DumbJumpHandle {
     }
 
     async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+        /*
         // TODO: early initialization
         if !self.first_on_typed_event_received.load(Ordering::Relaxed) {
             self.first_on_typed_event_received
@@ -366,6 +367,7 @@ impl EventHandle for DumbJumpHandle {
             // the results of high quality.
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
+        */
 
         let (msg_id, params) = parse_msg(msg);
 
