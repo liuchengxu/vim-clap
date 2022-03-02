@@ -243,7 +243,7 @@ endfunction
 
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
-  let pattern = '\(.*\):\(\d\+\):\(\d\+\):\(.*\)'
+  let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):\(.*\)'
   call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 

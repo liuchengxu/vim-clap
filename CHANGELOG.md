@@ -6,6 +6,10 @@
 
 - Add `g:clap_cache_threshold`. #806
 
+## Improved
+
+- Tweak the final matching score using the language keyword matching. #808
+
 ## [0.33] 2022-02-20
 
 ## Added

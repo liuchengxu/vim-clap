@@ -158,15 +158,13 @@ impl<T: EventHandle> Session<T> {
     }
 
     pub fn start_event_loop(mut self) {
-        if self.context.debounce {
-            tokio::spawn(async move {
+        tokio::spawn(async move {
+            if self.context.debounce {
                 self.run_event_loop_with_debounce().await;
-            });
-        } else {
-            tokio::spawn(async move {
+            } else {
                 self.run_event_loop_without_debounce().await;
-            });
-        }
+            }
+        });
     }
 
     async fn process_event(&mut self, event: SessionEvent) -> Result<()> {

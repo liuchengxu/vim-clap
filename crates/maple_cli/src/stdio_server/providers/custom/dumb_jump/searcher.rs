@@ -22,8 +22,6 @@ pub(super) struct SearchingWorker {
 
 impl SearchingWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
-        let ignorecase = self.query_info.keyword.chars().all(char::is_lowercase);
-
         let mut tags_config = TagsConfig::with_dir(self.cwd);
         if let Some(language) = get_language(&self.extension) {
             tags_config.languages(language.into());
@@ -35,20 +33,7 @@ impl SearchingWorker {
             filtering_terms,
         } = self.query_info;
 
-        // TODO: reorder the ctags results similar to gtags.
-        let usages = CtagsSearcher::new(tags_config)
-            .search(&keyword, query_type, true)?
-            .sorted_by_key(|s| s.line_number) // Ensure the tags are sorted as the definition goes first and then the implementations.
-            .par_bridge()
-            .filter_map(|symbol| {
-                let (line, indices) = symbol.grep_format_ctags(&keyword, ignorecase);
-                filtering_terms
-                    .check_jump_line((line, indices.unwrap_or_default()))
-                    .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
-            })
-            .collect::<Vec<_>>();
-
-        Ok(usages)
+        CtagsSearcher::new(tags_config).search_usages(&keyword, &filtering_terms, query_type, true)
     }
 
     fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
