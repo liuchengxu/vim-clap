@@ -40,6 +40,7 @@ fn truncate_line_v1(
         let container_width = winwidth - skipped;
         let text = line.chars().skip(skipped).collect::<String>();
         indices.iter_mut().for_each(|x| *x -= 2);
+        // TODO: tabstop is not always 4, `:h vim9-differences`
         trim_text(&text, indices, container_width, 4).map(|(text, mut indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
