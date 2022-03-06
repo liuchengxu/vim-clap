@@ -314,7 +314,18 @@ impl<'a> OnMoveHandler<'a> {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
-                                    let border_line = "─".repeat(container_width);
+                                    let border_line = if crate::stdio_server::global().is_nvim {
+                                        "─".repeat(container_width)
+                                    } else {
+                                        // Vim has a different border width.
+                                        let mut border_line =
+                                            String::with_capacity(container_width - 2);
+                                        border_line.extend(
+                                            std::iter::repeat('─').take(container_width - 2),
+                                        );
+                                        border_line
+                                    };
+
                                     context_lines.push(border_line.clone());
 
                                     // Truncate the right of pattern, 2 whitespaces + 💡
