@@ -2,7 +2,7 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use types::{MatchingText, MatchingTextKind};
+use types::{FuzzyText, MatchingText, MatchingTextKind};
 
 use crate::MatchResult;
 
@@ -44,16 +44,20 @@ impl FuzzyAlgorithm {
         item: &T,
         matching_text_kind: &MatchingTextKind,
     ) -> MatchResult {
-        item.fuzzy_text(matching_text_kind)
-            .and_then(|(text, offset)| {
+        item.fuzzy_text(matching_text_kind).and_then(
+            |FuzzyText {
+                 text,
+                 matching_start,
+             }| {
                 let res = match self {
                     Self::Fzy => fzy::fuzzy_indices(text, query),
                     Self::Skim => skim::fuzzy_indices(text, query),
                 };
                 res.map(|(score, mut indices)| {
-                    indices.iter_mut().for_each(|x| *x += offset);
+                    indices.iter_mut().for_each(|x| *x += matching_start);
                     (score, indices)
                 })
-            })
+            },
+        )
     }
 }
