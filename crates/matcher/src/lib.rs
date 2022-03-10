@@ -41,7 +41,7 @@ pub use types::{
 pub type Score = i64;
 
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchResult {
     pub score: Score,
     pub indices: Vec<usize>,
@@ -281,28 +281,28 @@ mod tests {
 
     #[test]
     fn test_exclude_grep_filepath() {
-        fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> MatchResult {
+        fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
             FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::IgnoreFilePath)
         }
 
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let (_, origin_indices) = fzy::fuzzy_indices(line, query).unwrap();
-        let (_, indices) = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
-        assert_eq!(origin_indices, indices);
+        let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
+        let match_result2 = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
+        assert_eq!(match_result1, match_result2);
     }
 
     #[test]
     fn test_file_name_only() {
-        fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> MatchResult {
+        fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
             FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::FileName)
         }
 
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
-        let (_, origin_indices) = fzy::fuzzy_indices(line, query).unwrap();
-        let (_, indices) = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
-        assert_eq!(origin_indices, indices);
+        let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
+        let match_result2 = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
+        assert_eq!(match_result1, match_result2);
     }
 
     #[test]
@@ -315,11 +315,10 @@ mod tests {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
         let query = "fil";
         for line in lines {
-            let (base_score, indices1) =
-                matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
-            let (score_with_bonus, indices2) = matcher.match_query(&line, &query.into()).unwrap();
-            assert!(indices1 == indices2);
-            assert!(score_with_bonus > base_score);
+            let match_result_base = matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
+            let match_result_with_bonus = matcher.match_query(&line, &query.into()).unwrap();
+            assert!(match_result_base.indices == match_result_with_bonus.indices);
+            assert!(match_result_with_bonus.score > match_result_base.score);
         }
     }
 
@@ -332,10 +331,10 @@ mod tests {
             MatchingTextKind::Full,
         );
         let query: Query = "fo".into();
-        let (score_1, indices1) = matcher.match_query(&lines[0], &query).unwrap();
-        let (score_2, indices2) = matcher.match_query(&lines[1], &query).unwrap();
-        assert!(indices1 == indices2);
-        assert!(score_1 < score_2);
+        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
+        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        assert!(match_result1.indices == match_result2.indices);
+        assert!(match_result1.score < match_result2.score);
     }
 
     #[test]
@@ -357,8 +356,14 @@ mod tests {
 
         assert_eq!(
             vec![
-                Some((751, [0, 1, 2, 3, 9, 10, 11, 12, 37, 38, 39, 40].to_vec())),
-                Some((760, [0, 1, 2, 3, 9, 10, 11, 12, 28, 29, 30, 31].to_vec())),
+                Some(MatchResult::new(
+                    751,
+                    [0, 1, 2, 3, 9, 10, 11, 12, 37, 38, 39, 40].to_vec()
+                )),
+                Some(MatchResult::new(
+                    760,
+                    [0, 1, 2, 3, 9, 10, 11, 12, 28, 29, 30, 31].to_vec()
+                )),
                 None,
                 None
             ],
@@ -372,7 +377,12 @@ mod tests {
             .collect();
 
         assert_eq!(
-            vec![None, None, Some((4, [32, 33, 34].to_vec())), None],
+            vec![
+                None,
+                None,
+                Some(MatchResult::new(4, [32, 33, 34].to_vec())),
+                None
+            ],
             matched_results
         );
 
@@ -384,10 +394,10 @@ mod tests {
 
         assert_eq!(
             vec![
-                Some((126, [14, 36].to_vec())),
+                Some(MatchResult::new(126, [14, 36].to_vec())),
                 None,
                 None,
-                Some((360, [0, 1].to_vec()))
+                Some(MatchResult::new(360, [0, 1].to_vec()))
             ],
             matched_results
         );
@@ -399,7 +409,7 @@ mod tests {
             .collect();
 
         assert_eq!(
-            vec![None, None, None, Some((2, [0, 1].to_vec()))],
+            vec![None, None, None, Some(MatchResult::new(2, [0, 1].to_vec()))],
             matched_results
         );
     }
