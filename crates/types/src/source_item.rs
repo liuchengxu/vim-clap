@@ -1,7 +1,29 @@
 use pattern::{extract_grep_pattern, find_file_name, tag_name_only};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
-pub type FuzzyText<'a> = (&'a str, usize);
+#[derive(Debug, Clone)]
+pub struct FuzzyText<'a> {
+    pub text: &'a str,
+    pub matching_start: usize,
+}
+
+impl<'a> FuzzyText<'a> {
+    pub fn new(text: &'a str, matching_start: usize) -> Self {
+        Self {
+            text,
+            matching_start,
+        }
+    }
+}
+
+impl<'a> From<(&'a str, usize)> for FuzzyText<'a> {
+    fn from((text, matching_start): (&'a str, usize)) -> Self {
+        Self {
+            text,
+            matching_start,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum MatchingTextKind {
@@ -62,7 +84,10 @@ impl<'a> MatchingText<'a> for &'a str {
     }
 
     fn fuzzy_text(&self, _matching_text_kind: &MatchingTextKind) -> Option<FuzzyText> {
-        Some((self, 0))
+        Some(FuzzyText {
+            text: self,
+            matching_start: 0,
+        })
     }
 }
 
@@ -128,13 +153,17 @@ impl SourceItem {
 
     pub fn get_fuzzy_text(&self, match_ty: &MatchingTextKind) -> Option<FuzzyText> {
         if let Some((ref text, offset)) = self.fuzzy_text {
-            return Some((text, offset));
+            return Some(FuzzyText::new(text, offset));
         }
         match match_ty {
-            MatchingTextKind::Full => Some((&self.raw, 0)),
-            MatchingTextKind::TagName => tag_name_only(self.raw.as_str()).map(|s| (s, 0)),
-            MatchingTextKind::FileName => find_file_name(self.raw.as_str()),
-            MatchingTextKind::IgnoreFilePath => extract_grep_pattern(self.raw.as_str()),
+            MatchingTextKind::Full => Some(FuzzyText::new(&self.raw, 0)),
+            MatchingTextKind::TagName => {
+                tag_name_only(self.raw.as_str()).map(|s| FuzzyText::new(s, 0))
+            }
+            MatchingTextKind::FileName => find_file_name(self.raw.as_str()).map(Into::into),
+            MatchingTextKind::IgnoreFilePath => {
+                extract_grep_pattern(self.raw.as_str()).map(Into::into)
+            }
         }
     }
 }

@@ -55,7 +55,15 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> &str {
     let current_width = display_width(text, tabstop);
 
     if current_width > width {
-        &text[..width]
+        if text.is_char_boundary(width) {
+            &text[..width]
+        } else {
+            let mut width = width;
+            while !text.is_char_boundary(width) {
+                width -= 1;
+            }
+            &text[..width]
+        }
     } else {
         text
     }

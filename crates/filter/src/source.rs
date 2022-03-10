@@ -1,6 +1,7 @@
 use std::io::BufRead;
 use std::path::PathBuf;
 
+use matcher::MatchResult;
 #[cfg(feature = "dyn-filtering")]
 use subprocess::Exec;
 
@@ -39,7 +40,9 @@ macro_rules! source_iter_stdin {
             lines_iter
                 .ok()
                 .map(Into::<SourceItem>::into)
-                .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                .and_then(|item| {
+                    $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
+                })
                 .map(Into::into)
         })
     };
@@ -56,7 +59,9 @@ macro_rules! source_iter_exec {
                 lines_iter
                     .ok()
                     .map(Into::<SourceItem>::into)
-                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .and_then(|item| {
+                        $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
+                    })
                     .map(Into::into)
             })
     };
@@ -73,7 +78,9 @@ macro_rules! source_iter_file {
             .filter_map(|x| {
                 x.ok()
                     .map(Into::<SourceItem>::into)
-                    .and_then(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+                    .and_then(|item| {
+                        $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
+                    })
                     .map(Into::into)
             })
     };
@@ -84,7 +91,9 @@ macro_rules! source_iter_file {
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
         $list
-            .filter_map(|item| $scorer(&item).map(|(score, indices)| (item, score, indices)))
+            .filter_map(|item| {
+                $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
+            })
             .map(Into::into)
     };
 }
@@ -116,6 +125,8 @@ pub(crate) fn par_filter_impl(
 ) -> Vec<FilteredItem> {
     let scorer = |item: &SourceItem| matcher.match_query(item, query);
     list.into_par_iter()
-        .filter_map(|item| scorer(&item).map(|(score, indices)| (item, score, indices).into()))
+        .filter_map(|item| {
+            scorer(&item).map(|MatchResult { score, indices }| (item, score, indices).into())
+        })
         .collect()
 }

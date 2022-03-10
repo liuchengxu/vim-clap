@@ -5,6 +5,7 @@ use crossbeam_channel::Receiver;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 
+use crate::stdio_server::providers::dumb_jump::DumbJumpHandle;
 use crate::stdio_server::rpc::{Call, MethodCall};
 use crate::stdio_server::state::State;
 
@@ -13,7 +14,7 @@ use super::session::SessionManager;
 #[derive(Clone)]
 pub struct SessionClient {
     pub state_mutex: Arc<Mutex<State>>,
-    pub session_manager: Arc<Mutex<SessionManager>>,
+    pub session_manager_mutex: Arc<Mutex<SessionManager>>,
 }
 
 impl SessionClient {
@@ -21,7 +22,7 @@ impl SessionClient {
     pub fn new(state: State) -> Self {
         Self {
             state_mutex: Arc::new(Mutex::new(state)),
-            session_manager: Arc::new(Mutex::new(SessionManager::default())),
+            session_manager_mutex: Arc::new(Mutex::new(SessionManager::default())),
         }
     }
 
@@ -73,11 +74,24 @@ impl SessionClient {
             "preview/file" => Some(msg.preview_file().await?),
             "quickfix" => Some(msg.preview_quickfix().await?),
 
-            /*
-            "dumb_jump/on_init" => self.session_manager.new_session::<DumbJumpSession>(msg),
-            "dumb_jump/on_typed" => self.session_manager.send(msg.session_id, OnTyped(msg)),
-            "dumb_jump/on_move" => self.session_manager.send(msg.session_id, OnMove(msg)),
+            "dumb_jump/on_init" => {
+                use crate::stdio_server::rpc::Call;
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.new_session(Call::MethodCall(msg), DumbJumpHandle::default());
+                None
+            }
+            "dumb_jump/on_typed" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnTyped(msg));
+                None
+            }
+            "dumb_jump/on_move" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnMove(msg));
+                None
+            }
 
+            /*
             "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
             "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
             "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
