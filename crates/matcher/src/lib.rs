@@ -30,6 +30,7 @@ pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
+use types::FilteredItem;
 // Re-export types
 pub use types::{
     ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
@@ -40,7 +41,21 @@ pub use types::{
 pub type Score = i64;
 
 /// A tuple of (score, matched_indices) for the line has a match given the query string.
-pub type MatchResult = Option<(Score, Vec<usize>)>;
+#[derive(Debug, Clone)]
+pub struct MatchResult {
+    pub score: Score,
+    pub indices: Vec<usize>,
+}
+
+impl MatchResult {
+    pub fn new(score: Score, indices: Vec<usize>) -> Self {
+        Self { score, indices }
+    }
+
+    pub fn into_filtered_item<I: Into<SourceItem>>(self, item: I) -> FilteredItem {
+        (item, self.score, self.indices).into()
+    }
+}
 
 // TODO: the shorter search line has a higher score for the exact matching?
 pub fn match_exact_terms<'a>(
@@ -156,7 +171,7 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> MatchResult {
+    fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
             .fuzzy_match(query, item, &self.matching_text_kind)
     }
@@ -175,7 +190,11 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query<'a, T: MatchingText<'a>>(&self, item: &T, query: &Query) -> MatchResult {
+    pub fn match_query<'a, T: MatchingText<'a>>(
+        &self,
+        item: &T,
+        query: &Query,
+    ) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(item.full_text()) {
@@ -196,8 +215,8 @@ impl Matcher {
 
         for term in query.fuzzy_terms.iter() {
             let query = &term.word;
-            if let Some((score, sub_indices)) = self.fuzzy_match(item, query) {
-                fuzzy_indices.extend_from_slice(&sub_indices);
+            if let Some(MatchResult { score, indices }) = self.fuzzy_match(item, query) {
+                fuzzy_indices.extend_from_slice(&indices);
                 fuzzy_score += score;
             } else {
                 return None;
@@ -210,7 +229,7 @@ impl Matcher {
             indices.sort_unstable();
             indices.dedup();
 
-            Some((exact_score + bonus_score, indices))
+            Some(MatchResult::new(exact_score + bonus_score, indices))
         } else {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
@@ -221,7 +240,10 @@ impl Matcher {
             indices.sort_unstable();
             indices.dedup();
 
-            Some((exact_score + bonus_score + fuzzy_score, indices))
+            Some(MatchResult::new(
+                exact_score + bonus_score + fuzzy_score,
+                indices,
+            ))
         }
     }
 }

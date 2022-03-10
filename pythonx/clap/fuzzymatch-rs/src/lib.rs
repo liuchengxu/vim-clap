@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use pyo3::{prelude::*, wrap_pyfunction};
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
+    matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher, MatchingTextKind},
     FilteredItem, Query, SourceItem,
 };
 use printer::truncate_long_matched_lines_v0;
@@ -89,7 +89,9 @@ fn fuzzy_match(
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
                 .match_query(&SourceItem::from(&line[4..]), &query)
-                .map(|(score, indices)| (score, indices.into_iter().map(|x| x + 4).collect()))
+                .map(|MatchResult { score, indices }| {
+                    MatchResult::new(score, indices.into_iter().map(|x| x + 4).collect())
+                })
         } else {
             matcher.match_query(&SourceItem::from(line), &query)
         }
@@ -98,7 +100,9 @@ fn fuzzy_match(
     let mut ranked = candidates
         .into_iter()
         .filter_map(|line| {
-            do_match(&line).map(|(score, indices)| (Into::<SourceItem>::into(line), score, indices))
+            do_match(&line).map(|MatchResult { score, indices }| {
+                (Into::<SourceItem>::into(line), score, indices)
+            })
         })
         .map(Into::<FilteredItem>::into)
         .collect::<Vec<_>>();

@@ -43,7 +43,7 @@ impl FuzzyAlgorithm {
         query: &str,
         item: &T,
         matching_text_kind: &MatchingTextKind,
-    ) -> MatchResult {
+    ) -> Option<MatchResult> {
         item.fuzzy_text(matching_text_kind).and_then(
             |FuzzyText {
                  text,
@@ -53,9 +53,10 @@ impl FuzzyAlgorithm {
                     Self::Fzy => fzy::fuzzy_indices(text, query),
                     Self::Skim => skim::fuzzy_indices(text, query),
                 };
-                res.map(|(score, mut indices)| {
+                res.map(|MatchResult { score, indices }| {
+                    let mut indices = indices;
                     indices.iter_mut().for_each(|x| *x += matching_start);
-                    (score, indices)
+                    MatchResult::new(score, indices)
                 })
             },
         )
