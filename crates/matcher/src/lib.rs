@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn test_exclude_grep_filepath() {
+    fn test_matching_text_kind_ignore_file_path() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
             FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::IgnoreFilePath)
         }
@@ -289,11 +289,12 @@ mod tests {
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
         let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
         let match_result2 = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
-        assert_eq!(match_result1, match_result2);
+        assert_eq!(match_result1.indices, match_result2.indices);
+        assert!(match_result2.score > match_result1.score);
     }
 
     #[test]
-    fn test_file_name_only() {
+    fn test_matching_text_kind_filename() {
         fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
             FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::FileName)
         }
@@ -302,7 +303,8 @@ mod tests {
         let line = "crates/extracted_fzy/src/lib.rs";
         let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
         let match_result2 = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
-        assert_eq!(match_result1, match_result2);
+        assert_eq!(match_result1.indices, match_result2.indices);
+        assert!(match_result2.score > match_result1.score);
     }
 
     #[test]
@@ -323,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filetype_bonus() {
+    fn test_language_keyword_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
         let matcher = Matcher::new(
             Bonus::Language("vim".into()),
