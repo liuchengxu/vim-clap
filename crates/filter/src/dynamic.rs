@@ -400,7 +400,6 @@ mod tests {
                 .take(usize::max_value() >> 8),
             ),
             FilterContext::default().number(Some(100)),
-            vec![Bonus::None],
         )
         .unwrap()
     }
