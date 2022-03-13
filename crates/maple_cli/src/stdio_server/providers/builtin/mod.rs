@@ -103,9 +103,10 @@ impl EventHandle for BuiltinHandle {
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        Matcher::default().set_matching_text_kind(context.matching_text_kind),
+                        Matcher::default()
+                            .set_matching_text_kind(context.matching_text_kind)
+                            .set_bonuses(context.match_bonuses.clone()),
                     ),
-                    context.match_bonuses.clone(),
                 ) {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }

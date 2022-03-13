@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, Matcher, MatchingTextKind},
+    matcher::{Matcher, MatchingTextKind},
     FilterContext, Source,
 };
 
@@ -82,7 +82,6 @@ impl RecursiveTags {
                     None,
                     Matcher::default().set_matching_text_kind(MatchingTextKind::TagName),
                 ),
-                vec![Bonus::None],
             )?;
         }
 

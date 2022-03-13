@@ -123,9 +123,8 @@ impl Filter {
                     icon,
                     number,
                     winwidth,
-                    Matcher::new(Default::default(), self.algo, self.matching_text_kind),
+                    Matcher::with_bonuses(self.get_bonuses(), self.algo, self.matching_text_kind),
                 ),
-                self.get_bonuses(),
             )?;
         }
         Ok(())

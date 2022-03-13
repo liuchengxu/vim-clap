@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use matcher::Bonus;
 use utility::{println_json, println_json_with_length};
 
 use super::*;
@@ -295,11 +294,9 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         winwidth,
         matcher,
     }: FilterContext,
-    bonuses: Vec<Bonus>,
 ) -> Result<()> {
-    let scoring_matcher = matcher.set_bonuses(bonuses);
     let query: Query = query.into();
-    let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
+    let scorer = |item: &SourceItem| matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
