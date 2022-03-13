@@ -30,7 +30,7 @@ pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-use types::FilteredItem;
+use types::{CaseMatching, FilteredItem};
 // Re-export types
 pub use types::{
     ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
@@ -140,6 +140,7 @@ pub struct Matcher {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
     matching_text_kind: MatchingTextKind,
+    case_matching: CaseMatching,
 }
 
 impl Matcher {
@@ -153,6 +154,7 @@ impl Matcher {
             bonuses: vec![bonus],
             fuzzy_algo,
             matching_text_kind,
+            case_matching: Default::default(),
         }
     }
 
@@ -166,6 +168,7 @@ impl Matcher {
             bonuses,
             fuzzy_algo,
             matching_text_kind,
+            case_matching: Default::default(),
         }
     }
 
@@ -179,11 +182,16 @@ impl Matcher {
         self
     }
 
+    pub fn set_case_matching(mut self, case_matching: CaseMatching) -> Self {
+        self.case_matching = case_matching;
+        self
+    }
+
     /// Match the item without considering the bonus.
     #[inline]
     fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
-            .fuzzy_match(query, item, &self.matching_text_kind)
+            .fuzzy_match(query, item, &self.matching_text_kind, &self.case_matching)
     }
 
     /// Returns the sum of bonus score.

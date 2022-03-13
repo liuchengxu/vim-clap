@@ -61,11 +61,6 @@ impl FilterContext {
         self
     }
 
-    pub fn matcher(mut self, matcher: Matcher) -> Self {
-        self.matcher = matcher;
-        self
-    }
-
     pub fn matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
         self.matcher = self.matcher.set_matching_text_kind(matching_text_kind);
         self
