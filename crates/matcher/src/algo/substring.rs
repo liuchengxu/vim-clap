@@ -82,7 +82,7 @@ pub fn substr_indices(
             (lowercased_needle.as_str(), lowercased_haystack.as_str())
         }
         CaseMatching::Respect => (needle, haystack),
-        CaseMatching::SmartCase => {
+        CaseMatching::Smart => {
             if needle.chars().any(|c| c.is_uppercase()) {
                 (needle, haystack)
             } else {
@@ -99,12 +99,12 @@ pub fn substr_indices(
 #[test]
 fn test_substr() {
     assert_eq!(
-        substr_indices("src/bun/blune", "sr bl", CaseMatching::SmartCase),
+        substr_indices("src/bun/blune", "sr bl", CaseMatching::Smart),
         Some((-1, vec![0, 1, 8, 9]))
     );
 
     assert_eq!(
-        substr_indices("src/bun/blune", "bl sr", CaseMatching::SmartCase),
+        substr_indices("src/bun/blune", "bl sr", CaseMatching::Smart),
         Some((-1, vec![0, 1, 8, 9]))
     );
 }

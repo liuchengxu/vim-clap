@@ -24,12 +24,12 @@ pub struct PreviewInfo {
 pub enum CaseMatching {
     Ignore,
     Respect,
-    SmartCase,
+    Smart,
 }
 
 impl Default for CaseMatching {
     fn default() -> Self {
-        Self::SmartCase
+        Self::Smart
     }
 }
 
@@ -45,7 +45,7 @@ impl<T: AsRef<str>> From<T> for CaseMatching {
         match case_matching.as_ref().to_lowercase().as_str() {
             "ignore" => Self::Ignore,
             "respect" => Self::Respect,
-            _ => Self::SmartCase,
+            _ => Self::Smart,
         }
     }
 }
@@ -55,7 +55,7 @@ impl CaseMatching {
         match self {
             Self::Ignore => false,
             Self::Respect => true,
-            Self::SmartCase => query.chars().any(|c| c.is_uppercase()),
+            Self::Smart => query.chars().any(|c| c.is_uppercase()),
         }
     }
 }

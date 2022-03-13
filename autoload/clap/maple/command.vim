@@ -79,7 +79,11 @@ endfunction
 
 " Returns the filtered results after the input stream is complete.
 function! clap#maple#command#filter_sync(query) abort
-  let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
+  let global_opts = [
+        \ '--number', g:clap.display.preload_capacity,
+        \ '--winwidth', winwidth(g:clap.display.winid),
+        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
+        \ ]
 
   if g:clap.provider.id ==# 'files'
     let tmp = tempname()
@@ -96,7 +100,11 @@ function! clap#maple#command#filter_sync(query) abort
 endfunction
 
 function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
-  let global_opts = ['--number', a:dyn_size, '--winwidth', winwidth(g:clap.display.winid)]
+  let global_opts = [
+        \ '--number', a:dyn_size,
+        \ '--winwidth', winwidth(g:clap.display.winid),
+        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
+        \ ]
   let global_opts = s:inject_icon_opt(global_opts)
 
   let subcommand = [

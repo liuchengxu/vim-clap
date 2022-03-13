@@ -19,7 +19,7 @@ pub type MatchWithPositions = (Score, Vec<usize>);
 pub enum CaseMatching {
     Ignore,
     Respect,
-    SmartCase,
+    Smart,
 }
 
 pub fn match_and_score_with_positions(
@@ -36,7 +36,7 @@ pub fn match_and_score_with_positions(
             (lowercased_needle.as_str(), lowercased_haystack.as_str())
         }
         CaseMatching::Respect => (needle, haystack),
-        CaseMatching::SmartCase => {
+        CaseMatching::Smart => {
             if needle.chars().any(|c| c.is_uppercase()) {
                 (needle, haystack)
             } else {
@@ -289,22 +289,22 @@ mod tests {
 
     #[test]
     fn case_insensitive() {
-        let result = match_and_score_with_positions("def", "abc DEF ghi", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions("def", "abc DEF ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("def", "abc def ghi", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions("def", "abc def ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("xyz", "abc def ghi", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions("xyz", "abc def ghi", CaseMatching::Smart);
         assert_eq!(result, None);
     }
 
     #[test]
     fn smart_case() {
-        let result = match_and_score_with_positions("Def", "abc Def ghi", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions("Def", "abc Def ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("Def", "abc def ghi", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions("Def", "abc def ghi", CaseMatching::Smart);
         assert_eq!(result, None);
     }
 
@@ -326,7 +326,7 @@ mod tests {
         let result = match_and_score_with_positions(
             "DocumentTaskHelper",
             "document_task_helper.rb",
-            CaseMatching::SmartCase,
+            CaseMatching::Smart,
         );
         assert_eq!(result, None);
     }

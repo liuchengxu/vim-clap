@@ -32,7 +32,7 @@ impl ExactOrInverseTerms {
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
         if let Some((_, indices)) =
-            matcher::match_exact_terms(self.exact_terms.iter(), line, CaseMatching::SmartCase)
+            matcher::match_exact_terms(self.exact_terms.iter(), line, CaseMatching::Smart)
         {
             let should_retain = !self
                 .inverse_terms

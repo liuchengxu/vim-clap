@@ -13,7 +13,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind};
+use matcher::{Matcher, MatchingTextKind};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -81,11 +81,8 @@ pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
 pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    algo: FuzzyAlgorithm,
-    matching_text_kind: MatchingTextKind,
-    bonuses: Vec<Bonus>,
+    matcher: Matcher,
 ) -> Result<Vec<FilteredItem>> {
-    let matcher = Matcher::with_bonuses(bonuses, algo, matching_text_kind);
     let query: Query = query.into();
     let filtered = source.filter_and_collect(matcher, &query)?;
     let ranked = sort_initial_filtered(filtered);

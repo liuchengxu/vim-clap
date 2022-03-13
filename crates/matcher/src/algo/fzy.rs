@@ -14,7 +14,7 @@ pub fn fuzzy_indices(
     let case_sensitive = match case_sensitive {
         types::CaseMatching::Ignore => CaseMatching::Ignore,
         types::CaseMatching::Respect => CaseMatching::Respect,
-        types::CaseMatching::SmartCase => CaseMatching::SmartCase,
+        types::CaseMatching::Smart => CaseMatching::Smart,
     };
     match_and_score_with_positions(query, line, case_sensitive)
         .map(|(score, indices)| MatchResult::new(score as Score, indices))

@@ -10,7 +10,7 @@ pub fn fuzzy_indices(text: &str, query: &str, case_matching: CaseMatching) -> Op
     let skim_matcher = match case_matching {
         CaseMatching::Ignore => skim_matcher.ignore_case(),
         CaseMatching::Respect => skim_matcher.respect_case(),
-        CaseMatching::SmartCase => skim_matcher.smart_case(),
+        CaseMatching::Smart => skim_matcher.smart_case(),
     };
     skim_matcher
         .fuzzy_indices(text, query)

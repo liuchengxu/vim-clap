@@ -308,13 +308,13 @@ mod tests {
                 query,
                 item,
                 &MatchingTextKind::IgnoreFilePath,
-                CaseMatching::SmartCase,
+                CaseMatching::Smart,
             )
         }
 
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::SmartCase).unwrap();
+        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
         let match_result2 = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
@@ -327,13 +327,13 @@ mod tests {
                 query,
                 item,
                 &MatchingTextKind::FileName,
-                CaseMatching::SmartCase,
+                CaseMatching::Smart,
             )
         }
 
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
-        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::SmartCase).unwrap();
+        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
         let match_result2 = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
