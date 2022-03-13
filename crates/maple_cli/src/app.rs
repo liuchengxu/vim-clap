@@ -84,7 +84,7 @@ pub struct Params {
     pub icon: Icon,
 
     /// Case matching strategy.
-    #[clap(long, parse(from_str), default_value = "smartcase")]
+    #[clap(long, parse(from_str), default_value = "smart")]
     pub case_matching: CaseMatching,
 
     /// Do not use the cached file for exec subcommand.
