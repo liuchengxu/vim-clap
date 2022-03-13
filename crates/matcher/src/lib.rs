@@ -135,7 +135,7 @@ pub fn match_exact_terms<'a>(
 ///   * `matching_text_kind`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Matcher {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
@@ -167,6 +167,16 @@ impl Matcher {
             fuzzy_algo,
             matching_text_kind,
         }
+    }
+
+    pub fn set_bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
+        self.bonuses = bonuses;
+        self
+    }
+
+    pub fn set_matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
+        self.matching_text_kind = matching_text_kind;
+        self
     }
 
     /// Match the item without considering the bonus.

@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::{FilterContext, FilteredItem};
+use filter::{matcher::Matcher, FilterContext, FilteredItem};
 use parking_lot::Mutex;
 use serde_json::json;
 
@@ -100,11 +100,10 @@ impl EventHandle for BuiltinHandle {
                     &query,
                     path.clone().into(),
                     FilterContext::new(
-                        Default::default(),
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        context.matching_text_kind,
+                        Matcher::default().set_matching_text_kind(context.matching_text_kind),
                     ),
                     context.match_bonuses.clone(),
                 ) {

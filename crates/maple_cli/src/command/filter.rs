@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchingTextKind},
+    matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
     subprocess::Exec,
     FilterContext, Source,
 };
@@ -119,7 +119,12 @@ impl Filter {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,
                 self.generate_source(),
-                FilterContext::new(self.algo, icon, number, winwidth, self.matching_text_kind),
+                FilterContext::new(
+                    icon,
+                    number,
+                    winwidth,
+                    Matcher::new(Default::default(), self.algo, self.matching_text_kind),
+                ),
                 self.get_bonuses(),
             )?;
         }

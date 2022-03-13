@@ -23,47 +23,27 @@ pub use subprocess;
 pub use types::{FilteredItem, Query, SourceItem};
 
 /// Context for running the filter.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FilterContext {
-    algo: FuzzyAlgorithm,
     icon: Icon,
     number: Option<usize>,
     winwidth: Option<usize>,
-    matching_text_kind: MatchingTextKind,
-}
-
-impl Default for FilterContext {
-    fn default() -> Self {
-        Self {
-            algo: Default::default(),
-            icon: Default::default(),
-            number: None,
-            winwidth: None,
-            matching_text_kind: MatchingTextKind::Full,
-        }
-    }
+    matcher: Matcher,
 }
 
 impl FilterContext {
     pub fn new(
-        algo: FuzzyAlgorithm,
         icon: Icon,
         number: Option<usize>,
         winwidth: Option<usize>,
-        matching_text_kind: MatchingTextKind,
+        matcher: Matcher,
     ) -> Self {
         Self {
-            algo,
             icon,
             number,
             winwidth,
-            matching_text_kind,
+            matcher,
         }
-    }
-
-    pub fn algo(mut self, algo: FuzzyAlgorithm) -> Self {
-        self.algo = algo;
-        self
     }
 
     pub fn number(mut self, number: Option<usize>) -> Self {
@@ -81,8 +61,13 @@ impl FilterContext {
         self
     }
 
+    pub fn matcher(mut self, matcher: Matcher) -> Self {
+        self.matcher = matcher;
+        self
+    }
+
     pub fn matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
-        self.matching_text_kind = matching_text_kind;
+        self.matcher = self.matcher.set_matching_text_kind(matching_text_kind);
         self
     }
 }

@@ -290,15 +290,14 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     FilterContext {
-        algo,
         icon,
         number,
         winwidth,
-        matching_text_kind,
+        matcher,
     }: FilterContext,
     bonuses: Vec<Bonus>,
 ) -> Result<()> {
-    let scoring_matcher = matcher::Matcher::with_bonuses(bonuses, algo, matching_text_kind);
+    let scoring_matcher = matcher.set_bonuses(bonuses);
     let query: Query = query.into();
     let scorer = |item: &SourceItem| scoring_matcher.match_query(item, &query);
     if let Some(number) = number {
