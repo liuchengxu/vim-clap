@@ -20,7 +20,7 @@ pub struct PreviewInfo {
     pub lines: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum CaseMatching {
     Ignore,
     Respect,

@@ -61,6 +61,7 @@ impl MatchResult {
 pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
     full_search_line: &str,
+    case_matching: CaseMatching,
 ) -> Option<(Score, Vec<usize>)> {
     use ExactTermType::*;
 
@@ -73,7 +74,7 @@ pub fn match_exact_terms<'a>(
         match term.ty {
             Exact => {
                 if let Some((score, sub_indices)) =
-                    substring::substr_indices(full_search_line, sub_query)
+                    substring::substr_indices(full_search_line, sub_query, case_matching)
                 {
                     indices.extend_from_slice(&sub_indices);
                     exact_score += std::cmp::max(score, sub_query.len() as Score);
@@ -191,7 +192,7 @@ impl Matcher {
     #[inline]
     fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
-            .fuzzy_match(query, item, &self.matching_text_kind, &self.case_matching)
+            .fuzzy_match(query, item, &self.matching_text_kind, self.case_matching)
     }
 
     /// Returns the sum of bonus score.
@@ -221,11 +222,14 @@ impl Matcher {
         }
 
         // Try the exact terms against the full search line.
-        let (exact_score, mut indices) =
-            match match_exact_terms(query.exact_terms.iter(), item.full_text()) {
-                Some(ret) => ret,
-                None => return None,
-            };
+        let (exact_score, mut indices) = match match_exact_terms(
+            query.exact_terms.iter(),
+            item.full_text(),
+            self.case_matching,
+        ) {
+            Some(ret) => ret,
+            None => return None,
+        };
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());

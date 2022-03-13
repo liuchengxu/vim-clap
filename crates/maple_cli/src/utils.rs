@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 
 use filter::subprocess::Exec;
 use icon::Icon;
-use types::{ExactTerm, InverseTerm};
+use types::{CaseMatching, ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
 
 /// Project directory for Vim Clap.
@@ -31,7 +31,9 @@ pub struct ExactOrInverseTerms {
 impl ExactOrInverseTerms {
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
-        if let Some((_, indices)) = matcher::match_exact_terms(self.exact_terms.iter(), line) {
+        if let Some((_, indices)) =
+            matcher::match_exact_terms(self.exact_terms.iter(), line, CaseMatching::SmartCase)
+        {
             let should_retain = !self
                 .inverse_terms
                 .iter()

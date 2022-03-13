@@ -43,7 +43,7 @@ impl FuzzyAlgorithm {
         query: &str,
         item: &T,
         matching_text_kind: &MatchingTextKind,
-        case_matching: &CaseMatching,
+        case_matching: CaseMatching,
     ) -> Option<MatchResult> {
         item.fuzzy_text(matching_text_kind).and_then(
             |FuzzyText {

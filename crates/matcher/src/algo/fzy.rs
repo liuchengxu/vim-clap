@@ -19,7 +19,7 @@ impl FzyMatcher {
 pub fn fuzzy_indices(
     line: &str,
     query: &str,
-    case_sensitive: &types::CaseMatching,
+    case_sensitive: types::CaseMatching,
 ) -> Option<MatchResult> {
     let case_sensitive = match case_sensitive {
         types::CaseMatching::Ignore => CaseMatching::Ignore,

@@ -5,7 +5,7 @@ use crate::MatchResult;
 
 // TODO: do not have to create an instance of SkimMatcherV2 each time.
 #[inline]
-pub fn fuzzy_indices(text: &str, query: &str, case_matching: &CaseMatching) -> Option<MatchResult> {
+pub fn fuzzy_indices(text: &str, query: &str, case_matching: CaseMatching) -> Option<MatchResult> {
     let skim_matcher = SkimMatcherV2::default();
     let skim_matcher = match case_matching {
         CaseMatching::Ignore => skim_matcher.ignore_case(),
