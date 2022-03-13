@@ -166,16 +166,16 @@ mod tests {
             ("su ork", "substr_scorer_should_work"),
         ];
 
-        for (niddle, haystack) in test_cases.into_iter() {
+        for (needle, haystack) in test_cases.into_iter() {
             let py_result: (i64, Vec<usize>) = py_scorer
                 .getattr("substr_scorer")
                 .unwrap()
-                .call1((niddle, haystack))
+                .call1((needle, haystack))
                 .unwrap()
                 .extract()
                 .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
                 .unwrap();
-            let rs_result = substr_scorer(haystack, niddle).unwrap();
+            let rs_result = substr_scorer(haystack, needle, filter::CaseMatching::Smart).unwrap();
             assert_eq!(py_result, rs_result);
         }
     }

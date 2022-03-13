@@ -20,7 +20,7 @@ pub use self::source::Source;
 pub use matcher;
 #[cfg(feature = "dyn-filtering")]
 pub use subprocess;
-pub use types::{FilteredItem, Query, SourceItem};
+pub use types::{CaseMatching, FilteredItem, Query, SourceItem};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
