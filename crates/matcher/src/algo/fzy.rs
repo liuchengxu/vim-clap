@@ -5,16 +5,6 @@ use extracted_fzy::CaseMatching;
 
 use crate::{MatchResult, Score};
 
-pub struct FzyMatcher {
-    case_sensitive: CaseMatching,
-}
-
-impl FzyMatcher {
-    pub fn new(case_sensitive: CaseMatching) -> Self {
-        Self { case_sensitive }
-    }
-}
-
 /// Make the arguments order same to Skim's `fuzzy_indices()`.
 pub fn fuzzy_indices(
     line: &str,

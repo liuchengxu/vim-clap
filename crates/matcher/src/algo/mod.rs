@@ -2,7 +2,7 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use types::{FuzzyText, MatchingText, MatchingTextKind, CaseMatching};
+use types::{CaseMatching, FuzzyText, MatchingText, MatchingTextKind};
 
 use crate::MatchResult;
 

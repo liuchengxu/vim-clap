@@ -15,7 +15,7 @@ use crate::scoring_utils::*;
 
 pub type MatchWithPositions = (Score, Vec<usize>);
 
-#[derive(Clone, Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum CaseMatching {
     Ignore,
     Respect,
@@ -310,10 +310,24 @@ mod tests {
 
     #[test]
     fn ignore_case() {
-        let result = match_and_score_with_positions("DocumentTaskHelper", "document_task_helper.rb", CaseMatching::Ignore);
-        assert_eq!(result, Some((3493, vec![0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19])));
+        let result = match_and_score_with_positions(
+            "DocumentTaskHelper",
+            "document_task_helper.rb",
+            CaseMatching::Ignore,
+        );
+        assert_eq!(
+            result,
+            Some((
+                3493,
+                vec![0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19]
+            ))
+        );
 
-        let result = match_and_score_with_positions("DocumentTaskHelper", "document_task_helper.rb", CaseMatching::SmartCase);
+        let result = match_and_score_with_positions(
+            "DocumentTaskHelper",
+            "document_task_helper.rb",
+            CaseMatching::SmartCase,
+        );
         assert_eq!(result, None);
     }
 }

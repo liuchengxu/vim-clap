@@ -11,11 +11,7 @@ use clap::Parser;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-use filter::{
-    matcher::MatchingTextKind,
-    subprocess::Exec,
-    Source,
-};
+use filter::{matcher::MatchingTextKind, subprocess::Exec, Source};
 use icon::Icon;
 use utility::is_git_repo;
 
