@@ -872,6 +872,7 @@ The form of `[++opt]` is `++{optname}={value}`, where {optname} is one of:
 `[+opt]` is used for the bool arguments:
 
  - `+async`
+ - `+ignorecase`: case-insensitive search.
 
 `Clap! [provider_id_or_alias]` is equal to `Clap [provider_id_or_alias] +async` .
 
