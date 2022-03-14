@@ -111,6 +111,12 @@ function! s:on_typed_async_impl() abort
       call clap#sign#toggle_cursorline()
       call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()
+    elseif g:clap.provider.id ==# 'blines'
+      call g:clap.display.set_lines_lazy(clap#provider#blines#on_empty())
+      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#sign#toggle_cursorline()
+      call g:clap#display_win.shrink_if_undersize()
+      call g:clap.preview.hide()
     endif
     call clap#highlight#clear()
     return

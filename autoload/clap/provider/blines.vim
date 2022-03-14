@@ -44,12 +44,18 @@ endfunction
 if clap#maple#is_available()
   function! clap#provider#blines#initialize() abort
     if g:clap.display.initial_size < 100000
-      let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-      call g:clap.display.set_lines_lazy(clap#provider#blines#format(lines))
+      let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      call g:clap.display.set_lines_lazy(clap#provider#blines#format(s:lines_on_empty_query))
       call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches_number(g:clap.display.initial_size)
       call clap#sign#toggle_cursorline()
     endif
+  endfunction
+  function! clap#provider#blines#on_empty() abort
+    if !exists('s:lines_on_empty_query')
+      let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+    endif
+    return copy(s:lines_on_empty_query)
   endfunction
 else
   function! s:blines.init() abort
