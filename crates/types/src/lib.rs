@@ -19,3 +19,43 @@ pub struct PreviewInfo {
     /// [start, end] of the source file.
     pub lines: Vec<String>,
 }
+
+#[derive(Clone, Copy, Debug)]
+pub enum CaseMatching {
+    Ignore,
+    Respect,
+    Smart,
+}
+
+impl Default for CaseMatching {
+    fn default() -> Self {
+        Self::Smart
+    }
+}
+
+impl std::str::FromStr for CaseMatching {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
+    }
+}
+
+impl<T: AsRef<str>> From<T> for CaseMatching {
+    fn from(case_matching: T) -> Self {
+        match case_matching.as_ref().to_lowercase().as_str() {
+            "ignore" => Self::Ignore,
+            "respect" => Self::Respect,
+            _ => Self::Smart,
+        }
+    }
+}
+
+impl CaseMatching {
+    pub fn is_case_sensitive(&self, query: &str) -> bool {
+        match self {
+            Self::Ignore => false,
+            Self::Respect => true,
+            Self::Smart => query.chars().any(|c| c.is_uppercase()),
+        }
+    }
+}

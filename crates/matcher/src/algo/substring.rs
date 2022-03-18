@@ -1,3 +1,5 @@
+use types::CaseMatching;
+
 use crate::Score;
 
 fn find_start_at(slice: &str, start_at: usize, pat: &str) -> Option<usize> {
@@ -65,20 +67,44 @@ fn unordered_substr_indices_impl(haystack: &str, niddle: &str) -> Option<(f64, V
     Some((total_score, positions))
 }
 
-pub fn substr_indices(haystack: &str, niddle: &str) -> Option<(Score, Vec<usize>)> {
-    unordered_substr_indices_impl(haystack, niddle)
+pub fn substr_indices(
+    haystack: &str,
+    needle: &str,
+    case_matching: CaseMatching,
+) -> Option<(Score, Vec<usize>)> {
+    let lowercased_haystack;
+    let lowercased_needle;
+
+    let (needle, haystack) = match case_matching {
+        CaseMatching::Ignore => {
+            lowercased_haystack = haystack.to_lowercase();
+            lowercased_needle = needle.to_lowercase();
+            (lowercased_needle.as_str(), lowercased_haystack.as_str())
+        }
+        CaseMatching::Respect => (needle, haystack),
+        CaseMatching::Smart => {
+            if needle.chars().any(|c| c.is_uppercase()) {
+                (needle, haystack)
+            } else {
+                lowercased_haystack = haystack.to_lowercase();
+                (needle, lowercased_haystack.as_str())
+            }
+        }
+    };
+
+    unordered_substr_indices_impl(haystack, needle)
         .map(|(score, positions)| (score as Score, positions))
 }
 
 #[test]
 fn test_substr() {
     assert_eq!(
-        substr_indices("src/bun/blune", "sr bl"),
+        substr_indices("src/bun/blune", "sr bl", CaseMatching::Smart),
         Some((-1, vec![0, 1, 8, 9]))
     );
 
     assert_eq!(
-        substr_indices("src/bun/blune", "bl sr"),
+        substr_indices("src/bun/blune", "bl sr", CaseMatching::Smart),
         Some((-1, vec![0, 1, 8, 9]))
     );
 }

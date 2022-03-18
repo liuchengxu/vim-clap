@@ -10,12 +10,29 @@ let s:can_enable_icon = ['files', 'git_files']
 
 let s:cache_threshold = get(g:, 'clap_cache_threshold', 100000)
 
-function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
-  let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
-
-  if a:enable_icon
-    call add(global_opts, '--icon=Grep')
+function! s:prepare_global_opts(number) abort
+  let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
+  let global_opts += ['--winwidth', winwidth(g:clap.display.winid)]
+  if a:number isnot v:null
+    let global_opts += ['--number', a:number]
   endif
+  let global_opts += [ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart']
+
+  if g:clap_enable_icon
+    if index(['files', 'git_files'], g:clap.provider.id) > -1
+      call add(global_opts, '--icon=File')
+    elseif 'proj_tags' ==# g:clap.provider.id
+      call add(global_opts, '--icon=ProjTags')
+    elseif index(['grep', 'grep2'], g:clap.provider.id) > -1
+      call add(global_opts, '--icon=Grep')
+    endif
+  endif
+
+  return global_opts
+endfunction
+
+function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
+  let global_opts = s:prepare_global_opts(g:clap.display.preload_capacity)
 
   let subcommand = [
         \ 'grep', a:query,
@@ -33,11 +50,7 @@ endfunction
 
 function! clap#maple#command#ripgrep_forerunner() abort
   " TODO: add max_output
-  let global_opts = g:clap_enable_icon ? ['--icon=Grep'] : []
-
-  if has_key(g:clap.context, 'no-cache')
-    call add(global_opts, '--no-cache')
-  endif
+  let global_opts = s:prepare_global_opts(v:null)
 
   let subcommand = [
         \ 'ripgrep-forerunner',
@@ -48,25 +61,9 @@ function! clap#maple#command#ripgrep_forerunner() abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! s:inject_icon_opt(opts) abort
-  let global_opts = a:opts
-  if g:clap_enable_icon
-    if index(['files', 'git_files'], g:clap.provider.id) > -1
-      call add(global_opts, '--icon=File')
-    elseif 'proj_tags' ==# g:clap.provider.id
-      call add(global_opts, '--icon=ProjTags')
-    endif
-  endif
-  return global_opts
-endfunction
-
 function! clap#maple#command#exec_forerunner(cmd) abort
   " No global --number option.
-  let global_opts = s:inject_icon_opt([])
-
-  if has_key(g:clap.context, 'no-cache')
-    call add(global_opts, '--no-cache')
-  endif
+  let global_opts = s:prepare_global_opts(v:null)
 
   let subcommand = [
         \ 'exec', a:cmd,
@@ -79,7 +76,7 @@ endfunction
 
 " Returns the filtered results after the input stream is complete.
 function! clap#maple#command#filter_sync(query) abort
-  let global_opts = ['--number', g:clap.display.preload_capacity, '--winwidth', winwidth(g:clap.display.winid)]
+  let global_opts = s:prepare_global_opts(g:clap.display.preload_capacity)
 
   if g:clap.provider.id ==# 'files'
     let tmp = tempname()
@@ -96,8 +93,7 @@ function! clap#maple#command#filter_sync(query) abort
 endfunction
 
 function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
-  let global_opts = ['--number', a:dyn_size, '--winwidth', winwidth(g:clap.display.winid)]
-  let global_opts = s:inject_icon_opt(global_opts)
+  let global_opts = s:prepare_global_opts(a:dyn_size)
 
   let subcommand = [
         \ 'filter', g:.clap.input.get(),
@@ -123,8 +119,7 @@ function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
 endfunction
 
 function! clap#maple#command#tags(is_forerunner) abort
-  let global_opts = has_key(g:clap.context, 'no-cache') ? ['--no-cache'] : []
-  let global_opts = s:inject_icon_opt(global_opts)
+  let global_opts = s:prepare_global_opts(v:null)
 
   let subcommand = ['ctags', 'recursive-tags']
 

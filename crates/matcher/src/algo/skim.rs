@@ -1,10 +1,18 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use types::CaseMatching;
 
 use crate::MatchResult;
 
+// TODO: do not have to create an instance of SkimMatcherV2 each time.
 #[inline]
-pub fn fuzzy_indices(text: &str, query: &str) -> Option<MatchResult> {
-    SkimMatcherV2::default()
+pub fn fuzzy_indices(text: &str, query: &str, case_matching: CaseMatching) -> Option<MatchResult> {
+    let skim_matcher = SkimMatcherV2::default();
+    let skim_matcher = match case_matching {
+        CaseMatching::Ignore => skim_matcher.ignore_case(),
+        CaseMatching::Respect => skim_matcher.respect_case(),
+        CaseMatching::Smart => skim_matcher.smart_case(),
+    };
+    skim_matcher
         .fuzzy_indices(text, query)
         .map(|(score, indices)| MatchResult::new(score, indices))
 }

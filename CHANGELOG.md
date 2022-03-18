@@ -5,6 +5,7 @@
 ## Added
 
 - Add `g:clap_cache_threshold`. #806
+- Add `+ignorecase` to enable case-insensitive search, e.g., `:Clap files +ignorecase`. #814
 
 ## Improved
 

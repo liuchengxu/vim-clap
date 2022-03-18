@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchingTextKind},
+    matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
     subprocess::Exec,
     FilterContext, Source,
 };
@@ -102,16 +102,18 @@ impl Filter {
             number,
             winwidth,
             icon,
+            case_matching,
             ..
         }: Params,
     ) -> Result<()> {
+        let matcher = Matcher::with_bonuses(self.get_bonuses(), self.algo, self.matching_text_kind)
+            .set_case_matching(case_matching);
+
         if self.sync {
             let ranked = filter::sync_run::<std::iter::Empty<_>>(
                 &self.query,
                 self.generate_source(),
-                self.algo,
-                self.matching_text_kind,
-                self.get_bonuses(),
+                matcher,
             )?;
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
@@ -119,8 +121,7 @@ impl Filter {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,
                 self.generate_source(),
-                FilterContext::new(self.algo, icon, number, winwidth, self.matching_text_kind),
-                self.get_bonuses(),
+                FilterContext::new(icon, number, winwidth, matcher),
             )?;
         }
         Ok(())

@@ -15,13 +15,35 @@ use crate::scoring_utils::*;
 
 pub type MatchWithPositions = (Score, Vec<usize>);
 
-pub fn match_and_score_with_positions(needle: &str, haystack: &str) -> Option<MatchWithPositions> {
-    let lowercased;
-    let haystack = if needle.chars().any(|c| c.is_uppercase()) {
-        haystack
-    } else {
-        lowercased = haystack.to_lowercase();
-        &lowercased
+#[derive(Clone, Copy, Debug)]
+pub enum CaseMatching {
+    Ignore,
+    Respect,
+    Smart,
+}
+
+pub fn match_and_score_with_positions(
+    needle: &str,
+    haystack: &str,
+    case_matching: CaseMatching,
+) -> Option<MatchWithPositions> {
+    let lowercased_haystack;
+    let lowercased_needle;
+    let (needle, haystack) = match case_matching {
+        CaseMatching::Ignore => {
+            lowercased_haystack = haystack.to_lowercase();
+            lowercased_needle = needle.to_lowercase();
+            (lowercased_needle.as_str(), lowercased_haystack.as_str())
+        }
+        CaseMatching::Respect => (needle, haystack),
+        CaseMatching::Smart => {
+            if needle.chars().any(|c| c.is_uppercase()) {
+                (needle, haystack)
+            } else {
+                lowercased_haystack = haystack.to_lowercase();
+                (needle, lowercased_haystack.as_str())
+            }
+        }
     };
 
     // The another approach to avoid the unnecessary allocation in the case of `needle` contains
@@ -126,6 +148,7 @@ fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (
     (M.get(needle_length - 1, haystack_length - 1), positions)
 }
 
+#[allow(non_snake_case)]
 fn calculate_score(
     needle: &str,
     needle_length: usize,
@@ -134,9 +157,7 @@ fn calculate_score(
 ) -> (Matrix, Matrix) {
     let bonus = compute_bonus(haystack, haystack_length);
 
-    #[allow(non_snake_case)]
     let mut M = Matrix::new(needle_length, haystack_length);
-    #[allow(non_snake_case)]
     let mut D = Matrix::new(needle_length, haystack_length);
 
     for (i, n) in needle.chars().enumerate() {
@@ -268,22 +289,45 @@ mod tests {
 
     #[test]
     fn case_insensitive() {
-        let result = match_and_score_with_positions("def", "abc DEF ghi");
+        let result = match_and_score_with_positions("def", "abc DEF ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("def", "abc def ghi");
+        let result = match_and_score_with_positions("def", "abc def ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("xyz", "abc def ghi");
+        let result = match_and_score_with_positions("xyz", "abc def ghi", CaseMatching::Smart);
         assert_eq!(result, None);
     }
 
     #[test]
     fn smart_case() {
-        let result = match_and_score_with_positions("Def", "abc Def ghi");
+        let result = match_and_score_with_positions("Def", "abc Def ghi", CaseMatching::Smart);
         assert_eq!(result, Some((552, vec![4, 5, 6])));
 
-        let result = match_and_score_with_positions("Def", "abc def ghi");
+        let result = match_and_score_with_positions("Def", "abc def ghi", CaseMatching::Smart);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn ignore_case() {
+        let result = match_and_score_with_positions(
+            "DocumentTaskHelper",
+            "document_task_helper.rb",
+            CaseMatching::Ignore,
+        );
+        assert_eq!(
+            result,
+            Some((
+                3493,
+                vec![0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19]
+            ))
+        );
+
+        let result = match_and_score_with_positions(
+            "DocumentTaskHelper",
+            "document_task_helper.rb",
+            CaseMatching::Smart,
+        );
         assert_eq!(result, None);
     }
 }

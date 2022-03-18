@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use filter::{matcher::Bonus, Source};
+use filter::Source;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -31,7 +31,6 @@ impl Blines {
                     .map(Into::into),
             ),
             params.into_filter_context(),
-            vec![Bonus::None],
         )
     }
 }

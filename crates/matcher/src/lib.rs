@@ -30,7 +30,7 @@ pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-use types::FilteredItem;
+use types::{CaseMatching, FilteredItem};
 // Re-export types
 pub use types::{
     ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
@@ -61,6 +61,7 @@ impl MatchResult {
 pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
     full_search_line: &str,
+    case_matching: CaseMatching,
 ) -> Option<(Score, Vec<usize>)> {
     use ExactTermType::*;
 
@@ -73,7 +74,7 @@ pub fn match_exact_terms<'a>(
         match term.ty {
             Exact => {
                 if let Some((score, sub_indices)) =
-                    substring::substr_indices(full_search_line, sub_query)
+                    substring::substr_indices(full_search_line, sub_query, case_matching)
                 {
                     indices.extend_from_slice(&sub_indices);
                     exact_score += std::cmp::max(score, sub_query.len() as Score);
@@ -135,11 +136,12 @@ pub fn match_exact_terms<'a>(
 ///   * `matching_text_kind`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Matcher {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
     matching_text_kind: MatchingTextKind,
+    case_matching: CaseMatching,
 }
 
 impl Matcher {
@@ -153,6 +155,7 @@ impl Matcher {
             bonuses: vec![bonus],
             fuzzy_algo,
             matching_text_kind,
+            case_matching: Default::default(),
         }
     }
 
@@ -166,14 +169,30 @@ impl Matcher {
             bonuses,
             fuzzy_algo,
             matching_text_kind,
+            case_matching: Default::default(),
         }
+    }
+
+    pub fn set_bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
+        self.bonuses = bonuses;
+        self
+    }
+
+    pub fn set_matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
+        self.matching_text_kind = matching_text_kind;
+        self
+    }
+
+    pub fn set_case_matching(mut self, case_matching: CaseMatching) -> Self {
+        self.case_matching = case_matching;
+        self
     }
 
     /// Match the item without considering the bonus.
     #[inline]
     fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
-            .fuzzy_match(query, item, &self.matching_text_kind)
+            .fuzzy_match(query, item, &self.matching_text_kind, self.case_matching)
     }
 
     /// Returns the sum of bonus score.
@@ -203,11 +222,14 @@ impl Matcher {
         }
 
         // Try the exact terms against the full search line.
-        let (exact_score, mut indices) =
-            match match_exact_terms(query.exact_terms.iter(), item.full_text()) {
-                Some(ret) => ret,
-                None => return None,
-            };
+        let (exact_score, mut indices) = match match_exact_terms(
+            query.exact_terms.iter(),
+            item.full_text(),
+            self.case_matching,
+        ) {
+            Some(ret) => ret,
+            None => return None,
+        };
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
@@ -282,12 +304,17 @@ mod tests {
     #[test]
     fn test_matching_text_kind_ignore_file_path() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::IgnoreFilePath)
+            FuzzyAlgorithm::Fzy.fuzzy_match(
+                query,
+                item,
+                &MatchingTextKind::IgnoreFilePath,
+                CaseMatching::Smart,
+            )
         }
 
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
+        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
         let match_result2 = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
@@ -296,12 +323,17 @@ mod tests {
     #[test]
     fn test_matching_text_kind_filename() {
         fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchingTextKind::FileName)
+            FuzzyAlgorithm::Fzy.fuzzy_match(
+                query,
+                item,
+                &MatchingTextKind::FileName,
+                CaseMatching::Smart,
+            )
         }
 
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
-        let match_result1 = fzy::fuzzy_indices(line, query).unwrap();
+        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
         let match_result2 = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);

@@ -3,6 +3,7 @@ use clap::{AppSettings, Parser};
 
 use filter::FilterContext;
 use icon::Icon;
+use types::CaseMatching;
 
 use crate::command;
 
@@ -81,6 +82,10 @@ pub struct Params {
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
     #[clap(long, parse(from_str), default_value = "unknown")]
     pub icon: Icon,
+
+    /// Case matching strategy.
+    #[clap(long, parse(from_str), default_value = "smart")]
+    pub case_matching: CaseMatching,
 
     /// Do not use the cached file for exec subcommand.
     #[clap(long)]

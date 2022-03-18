@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::{FilterContext, FilteredItem};
+use filter::{matcher::Matcher, FilterContext, FilteredItem};
 use parking_lot::Mutex;
 use serde_json::json;
 
@@ -100,13 +100,13 @@ impl EventHandle for BuiltinHandle {
                     &query,
                     path.clone().into(),
                     FilterContext::new(
-                        Default::default(),
                         context.icon,
                         Some(40),
                         Some(context.display_winwidth as usize),
-                        context.matching_text_kind,
+                        Matcher::default()
+                            .set_matching_text_kind(context.matching_text_kind)
+                            .set_bonuses(context.match_bonuses.clone()),
                     ),
-                    context.match_bonuses.clone(),
                 ) {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }

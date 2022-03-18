@@ -33,6 +33,12 @@ pub enum MatchingTextKind {
     IgnoreFilePath,
 }
 
+impl Default for MatchingTextKind {
+    fn default() -> Self {
+        Self::Full
+    }
+}
+
 impl std::str::FromStr for MatchingTextKind {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
