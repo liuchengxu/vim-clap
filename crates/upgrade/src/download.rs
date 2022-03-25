@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
+use crate::github::download_url;
+
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -19,9 +21,7 @@ fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
 ///
 /// - `version`: "v0.13"
 pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
-    let target = crate::github::download_url_for(version)?;
-
-    let mut response = reqwest::blocking::get(&target)?;
+    let mut response = reqwest::blocking::get(&download_url(version)?)?;
 
     let (mut dest, temp_file) = {
         let fname = response
@@ -31,9 +31,9 @@ pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> 
             .and_then(|name| if name.is_empty() { None } else { Some(name) })
             .unwrap_or("tmp.bin");
 
-        let mut tmp_dir = std::env::temp_dir();
-        tmp_dir.push(format!("{}-{}", version, fname));
-        (File::create(&tmp_dir)?, tmp_dir)
+        let mut tmp = std::env::temp_dir();
+        tmp.push(format!("{}-{}", version, fname));
+        (File::create(&tmp)?, tmp)
     };
 
     copy(&mut response, &mut dest)?;
@@ -45,42 +45,39 @@ pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> 
 }
 
 pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) -> Result<PathBuf> {
-    use crate::github::{get_asset_name, retrieve_asset_size};
+    use crate::github::{asset_name, retrieve_asset_size};
     use indicatif::{ProgressBar, ProgressStyle};
     use tokio::{fs, io::AsyncWriteExt};
 
-    let asset_name = get_asset_name()?;
+    let asset_name = asset_name()?;
     let total_size = retrieve_asset_size(&asset_name, version)?;
 
     let client = reqwest::Client::new();
-    let target = crate::github::download_url_for(version)?;
-    let request = client.get(&target);
+    let request = client.get(&download_url(version)?);
 
     let progress_bar = ProgressBar::new(total_size);
     progress_bar.set_style(ProgressStyle::default_bar()
                        .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
                        .progress_chars("#>-"));
 
-    let mut tmp_dir = std::env::temp_dir();
-    tmp_dir.push(format!("{}-{}", version, asset_name));
+    let mut tmp = std::env::temp_dir();
+    tmp.push(format!("{}-{}", version, asset_name));
 
-    if tmp_dir.is_file() {
-        let metadata = std::fs::metadata(&tmp_dir)?;
+    if tmp.is_file() {
+        let metadata = std::fs::metadata(&tmp)?;
         if metadata.len() == total_size {
-            println!("{} has alreay been downloaded", tmp_dir.display());
-            return Ok(tmp_dir);
+            println!("{} has alreay been downloaded", tmp.display());
+            return Ok(tmp);
         } else {
-            std::fs::remove_file(&tmp_dir)?;
+            std::fs::remove_file(&tmp)?;
         }
     }
 
     let mut source = request.send().await?;
-
-    let file = tmp_dir.as_path();
     let mut dest = fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&file)
+        .open(&tmp.as_path())
         .await?;
 
     while let Some(chunk) = source.chunk().await? {
@@ -89,11 +86,11 @@ pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) 
     }
 
     #[cfg(unix)]
-    set_executable_permission(&tmp_dir)?;
+    set_executable_permission(&tmp)?;
 
-    println!("Download of '{}' has been completed.", tmp_dir.display());
+    println!("Download of '{}' has been completed.", tmp.display());
 
-    Ok(tmp_dir)
+    Ok(tmp)
 }
 
 #[cfg(test)]

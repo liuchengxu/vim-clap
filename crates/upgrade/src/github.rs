@@ -32,13 +32,6 @@ fn retrieve_github_api(api_url: &str) -> Result<Vec<u8>> {
     Ok(dst)
 }
 
-fn retrieve_latest_release() -> Result<Vec<u8>> {
-    retrieve_github_api(&format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        USER, REPO
-    ))
-}
-
 pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
     let data = retrieve_github_api(&format!(
         "https://api.github.com/repos/{}/{}/releases/tags/{}",
@@ -58,12 +51,15 @@ pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
 }
 
 pub fn latest_remote_release() -> Result<RemoteRelease> {
-    let data = retrieve_latest_release()?;
+    let data = retrieve_github_api(&format!(
+        "https://api.github.com/repos/{}/{}/releases/latest",
+        USER, REPO
+    ))?;
     let release: RemoteRelease = serde_json::from_slice(&data)?;
     Ok(release)
 }
 
-pub(super) fn get_asset_name() -> Result<String> {
+pub(super) fn asset_name() -> Result<&'static str> {
     let asset_name = if cfg!(target_os = "macos") {
         "maple-x86_64-apple-darwin"
     } else if cfg!(target_os = "linux") {
@@ -73,16 +69,16 @@ pub(super) fn get_asset_name() -> Result<String> {
     } else {
         return Err(anyhow!("no-avaliable-prebuilt-binary for this platform"));
     };
-    Ok(asset_name.into())
+    Ok(asset_name)
 }
 
-pub(super) fn download_url_for(version: &str) -> Result<String> {
+pub(super) fn download_url(version: &str) -> Result<String> {
     Ok(format!(
         "https://github.com/{}/{}/releases/download/{}/{}",
         USER,
         REPO,
         version,
-        get_asset_name()?
+        asset_name()?
     ))
 }
 
@@ -93,9 +89,6 @@ mod tests {
     #[test]
     #[ignore]
     fn test_retrieve_asset_size() {
-        println!(
-            "{:?}",
-            retrieve_asset_size(&get_asset_name().unwrap(), "v0.14")
-        );
+        println!("{:?}", retrieve_asset_size(&asset_name().unwrap(), "v0.14"));
     }
 }

@@ -37,7 +37,7 @@ impl Upgrade {
                 println!(
                     "New maple release {} is avaliable, please download it from {} or rerun with --download flag.",
                     remote_tag,
-                    github::download_url_for(&remote_tag)?
+                    github::download_url(&remote_tag)?
                 );
             }
         } else {
