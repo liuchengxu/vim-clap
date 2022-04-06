@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## Fixed
+
+- Fix the incompatiblity issue between vim-signature and vim-clap popup window. #817
 
 ## [0.34] 2022-03-25
+
 ## Added
 
 - Add `g:clap_cache_threshold`. #806
