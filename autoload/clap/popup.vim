@@ -371,6 +371,12 @@ function! clap#popup#open() abort
   let s:save_t_ve = &t_ve
   set t_ve=
 
+  let s:restore_vim_signature_maps = v:false
+  if exists('*signature#utils#Maps') && !empty(maparg(get(g:SignatureMap, 'Leader', 'm'), ''))
+    call signature#utils#Maps('remove')
+    let s:restore_vim_signature_maps = v:true
+  endif
+
   let s:indicator_width = clap#layout#indicator_width()
 
   call s:open_popup()
@@ -397,6 +403,10 @@ endfunction
 function! clap#popup#close() abort
   if exists('s:display_winid')
     call popup_close(s:display_winid)
+  endif
+
+  if s:restore_vim_signature_maps
+    call signature#utils#Maps('create')
   endif
 
   let &t_ve = s:save_t_ve
