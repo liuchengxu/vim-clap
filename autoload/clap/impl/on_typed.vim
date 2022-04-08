@@ -77,7 +77,7 @@ function! s:on_typed_sync_impl() abort
 endfunction
 
 function! s:dyn_run_is_ok() abort
-  if g:clap.provider.id ==# 'blines'
+  if g:clap.provider.id ==# 'blines' && filereadable(expand('#'.g:clap.start.bufnr.':p'))
     call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
     return v:true
   endif
