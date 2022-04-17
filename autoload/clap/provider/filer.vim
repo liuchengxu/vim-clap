@@ -281,7 +281,7 @@ function! s:smart_concatenate(cur_dir, curline) abort
 endfunction
 
 function! s:filer_sink(selected) abort
-  execute 'edit' s:get_entry_by_line(a:selected)
+  execute 'edit' fnameescape(s:get_entry_by_line(a:selected))
 endfunction
 
 function! s:is_in_empty_dir() abort
