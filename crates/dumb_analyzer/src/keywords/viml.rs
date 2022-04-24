@@ -4,7 +4,7 @@ pub struct Viml;
 
 impl KeywordWeight for Viml {
     const DEFINITION: &'static [&'static str] =
-        &["function", "functioin!", "command", "command!", "cmd"];
+        &["function", "function!", "command", "command!", "cmd"];
 
     const REFERENCE: &'static [&'static str] = &["let"];
 

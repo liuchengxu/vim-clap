@@ -279,3 +279,31 @@ fn render_classify(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_regex_runner_language_keyword_ordering() {
+        let regex_searcher = RegexSearcher {
+            word: "clap#filter#async#dyn#start".into(),
+            extension: "vim".into(),
+            dir: std::env::current_dir()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .map(|path| path.to_path_buf()),
+        };
+        let usages = regex_searcher
+            .search_usages(false, &ExactOrInverseTerms::default())
+            .await
+            .unwrap();
+        assert!(usages[0]
+            .line
+            .contains("function! clap#filter#async#dyn#start"));
+        assert!(usages[1].line.contains("call clap#filter#async#dyn#start"));
+        assert!(usages[2].line.contains("call clap#filter#async#dyn#start"));
+    }
+}
