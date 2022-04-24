@@ -15,7 +15,7 @@ function! clap#state#set_variable_string(res) abort
   execute 'let '.a:res['name'].' = "'.a:res['value'].'"'
 endfunction
 
-function! clap#state#process_filter_message(decoded_msg) abort
+function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abort
   let decoded = a:decoded_msg
 
   if has_key(decoded, 'total')
@@ -37,7 +37,9 @@ function! clap#state#process_filter_message(decoded_msg) abort
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
-  call clap#sign#ensure_exists()
+  if a:ensure_sign_exists
+    call clap#sign#ensure_exists()
+  endif
 
   if has_key(decoded, 'indices')
     try
@@ -48,14 +50,14 @@ function! clap#state#process_filter_message(decoded_msg) abort
   endif
 endfunction
 
-function! clap#state#process_raw_message(msg) abort
+function! clap#state#process_dyn_message(msg) abort
   let decoded = json_decode(a:msg)
 
   if type(decoded) != v:t_dict
     return
   endif
 
-  call clap#state#process_filter_message(decoded)
+  call clap#state#process_filter_message(decoded, v:false)
 endfunction
 
 function! clap#state#process_preview_result(result) abort
