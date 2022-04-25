@@ -2,32 +2,34 @@
 
 use std::collections::HashMap;
 
-use keywords::KeywordWeight;
+use keywords::KeywordPriority;
 use once_cell::sync::OnceCell;
 
 mod keywords;
 
-/// General weight for fine-grained resolved result.
+const LOWEST_PRIORITY: usize = 1000usize;
+
+/// Display priority of the line.
 ///
 /// Lower is better, the better results will be displayed first.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Weight(usize);
+pub struct Priority(usize);
 
-impl Weight {
+impl Priority {
     pub fn as_i64(self) -> i64 {
         self.0 as i64
     }
 }
 
-impl Default for Weight {
+impl Default for Priority {
     fn default() -> Self {
-        Self(1000usize)
+        Self(LOWEST_PRIORITY)
     }
 }
 
-impl From<usize> for Weight {
-    fn from(weight: usize) -> Self {
-        Self(weight)
+impl From<usize> for Priority {
+    fn from(priority: usize) -> Self {
+        Self(priority)
     }
 }
 
@@ -92,12 +94,12 @@ pub fn resolve_reference_kind(pattern: impl AsRef<str>, file_ext: &str) -> (&'st
 //
 // https://github.com/e3b0c442/keywords#rust-146-53-keywords
 /// Calculates the weight of a specific pattern.
-pub fn calculate_pattern_weight(pattern: impl AsRef<str>, file_ext: &str) -> Option<Weight> {
+pub fn calculate_pattern_priority(pattern: impl AsRef<str>, file_ext: &str) -> Option<Priority> {
     let weigher = match file_ext {
-        "erl" => keywords::Erlang::keyword_weight,
-        "go" => keywords::Golang::keyword_weight,
-        "rs" => keywords::Rust::keyword_weight,
-        "vim" => keywords::Viml::keyword_weight,
+        "erl" => keywords::Erlang::keyword_priority,
+        "go" => keywords::Golang::keyword_priority,
+        "rs" => keywords::Rust::keyword_priority,
+        "vim" => keywords::Viml::keyword_priority,
         _ => return None,
     };
 

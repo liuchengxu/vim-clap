@@ -1,8 +1,8 @@
-use super::KeywordWeight;
+use super::KeywordPriority;
 
 pub struct Rust;
 
-impl KeywordWeight for Rust {
+impl KeywordPriority for Rust {
     const DEFINITION: &'static [&'static str] = &[
         "enum", "trait", "struct", "fn", "const", "static", "crate", "mod",
     ];
@@ -15,7 +15,7 @@ impl KeywordWeight for Rust {
         "true", "type", "unsafe", "where", "while",
     ];
 
-    fn keyword_weight(token: &str) -> Option<usize> {
+    fn keyword_priority(token: &str) -> Option<usize> {
         if Self::DEFINITION.contains(&token) {
             Some(4)
         } else if Self::REFERENCE.contains(&token) {

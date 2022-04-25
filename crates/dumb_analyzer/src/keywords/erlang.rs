@@ -1,8 +1,8 @@
-use super::KeywordWeight;
+use super::KeywordPriority;
 
 pub struct Erlang;
 
-impl KeywordWeight for Erlang {
+impl KeywordPriority for Erlang {
     const DEFINITION: &'static [&'static str] = &["fun"];
 
     const REFERENCE: &'static [&'static str] = &[];

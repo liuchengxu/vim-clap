@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Weight};
+use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 
 use self::definition::{
@@ -34,7 +34,7 @@ pub struct RegexUsage {
     pub indices: Vec<usize>,
     pub path: String,
     pub line_number: usize,
-    pub pattern_weight: Weight,
+    pub pattern_priority: Priority,
 }
 
 impl From<RegexUsage> for AddressableUsage {
@@ -62,15 +62,15 @@ impl RegexUsage {
             indices,
             path: matched.path().into(),
             line_number: matched.line_number() as usize,
-            pattern_weight: matched.pattern_weight(),
+            pattern_priority: matched.pattern_priority(),
         }
     }
 }
 
 impl PartialOrd for RegexUsage {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some((self.pattern_weight, &self.path, self.line_number).cmp(&(
-            other.pattern_weight,
+        Some((self.pattern_priority, &self.path, self.line_number).cmp(&(
+            other.pattern_priority,
             &other.path,
             other.line_number,
         )))

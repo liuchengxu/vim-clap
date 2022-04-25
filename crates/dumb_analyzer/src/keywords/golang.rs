@@ -1,8 +1,8 @@
-use super::KeywordWeight;
+use super::KeywordPriority;
 
 pub struct Golang;
 
-impl KeywordWeight for Golang {
+impl KeywordPriority for Golang {
     const DEFINITION: &'static [&'static str] = &[
         "enum",
         "interface",

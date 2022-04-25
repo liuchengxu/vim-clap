@@ -8,7 +8,7 @@ pub use golang::Golang;
 pub use rust::Rust;
 pub use viml::Viml;
 
-pub trait KeywordWeight {
+pub trait KeywordPriority {
     /// Definition/Decleration keywords.
     const DEFINITION: &'static [&'static str];
 
@@ -18,7 +18,7 @@ pub trait KeywordWeight {
     /// Keywords for simple & compund statement.
     const STATEMENT: &'static [&'static str];
 
-    fn keyword_weight(token: &str) -> Option<usize> {
+    fn keyword_priority(token: &str) -> Option<usize> {
         if Self::DEFINITION.contains(&token) {
             Some(4)
         } else if Self::REFERENCE.contains(&token) {
