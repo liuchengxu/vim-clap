@@ -1,8 +1,8 @@
-use super::KeywordWeight;
+use super::KeywordPriority;
 
 pub struct Viml;
 
-impl KeywordWeight for Viml {
+impl KeywordPriority for Viml {
     const DEFINITION: &'static [&'static str] =
         &["function", "function!", "command", "command!", "cmd"];
 

@@ -176,11 +176,11 @@ impl Match {
         self.lines.text()
     }
 
-    pub fn pattern_weight(&self) -> dumb_analyzer::Weight {
+    pub fn pattern_priority(&self) -> dumb_analyzer::Priority {
         self.path()
             .rsplit_once('.')
             .and_then(|(_, file_ext)| {
-                dumb_analyzer::calculate_pattern_weight(self.pattern(), file_ext)
+                dumb_analyzer::calculate_pattern_priority(self.pattern(), file_ext)
             })
             .unwrap_or_default()
     }

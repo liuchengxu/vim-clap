@@ -22,8 +22,8 @@ impl Language {
         if dumb_analyzer::is_comment(trimmed, &self.0) {
             -(base_score / 5)
         } else {
-            match dumb_analyzer::calculate_pattern_weight(trimmed, &self.0) {
-                Some(weight) => base_score / weight.as_i64(),
+            match dumb_analyzer::calculate_pattern_priority(trimmed, &self.0) {
+                Some(priority) => base_score / priority.as_i64(),
                 None => 0,
             }
         }
