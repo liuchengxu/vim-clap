@@ -81,7 +81,7 @@ else
   function! s:tags.sink(selected) abort
     let icon_tag_lnum = split(a:selected, '[')[0]
     let i = len(icon_tag_lnum)
-    while icon_tag_lnum[i] != ':'
+    while icon_tag_lnum[i] !=# ':'
       let i -= 1
     endwhile
     let icon_tag = icon_tag_lnum[:i-1]
