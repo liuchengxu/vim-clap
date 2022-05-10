@@ -55,6 +55,19 @@ if get(g:, 'clap_provider_tags_force_vista', v:false)
     endif
   endfunction
 
+  function! s:tags.on_move() abort
+    try
+      let [lnum, tag] = vista#finder#fzf#extract(g:clap.display.getcurline())
+    catch
+      return
+    endtry
+    call clap#preview#buffer(lnum, s:origin_syntax)
+  endfunction
+
+  function! s:tags.sink(selected) abort
+    call vista#finder#fzf#sink(a:selected, g:clap.start.winid)
+  endfunction
+
   let s:tags.on_move_async = function('clap#impl#on_move#async')
 else
   function! s:tags.on_typed() abort
@@ -64,20 +77,27 @@ else
   function! s:tags.on_move_async() abort
     call clap#client#call_with_lnum('on_move', function('clap#impl#on_move#handler'))
   endfunction
+
+  function! s:tags.sink(selected) abort
+    let icon_tag_lnum = split(a:selected, '[')[0]
+    let i = len(icon_tag_lnum)
+    while icon_tag_lnum[i] !=# ':'
+      let i -= 1
+    endwhile
+    let icon_tag = icon_tag_lnum[:i-1]
+    let tag = g:clap_enable_icon ? icon_tag[4:] : icon_tag
+    let lnum = str2nr(trim(icon_tag_lnum[i+1:]))
+
+    let source_line = getbufline(g:clap.start.bufnr, lnum)[0]
+    let col = stridx(source_line, tag)
+    let col = col == -1 ? 1 : col + 1
+
+    " Push the current position to the jumplist
+    normal! m'
+
+    silent call cursor(lnum, col)
+  endfunction
 endif
-
-function! s:tags.on_move() abort
-  try
-    let [lnum, tag] = vista#finder#fzf#extract(g:clap.display.getcurline())
-  catch
-    return
-  endtry
-  call clap#preview#buffer(lnum, s:origin_syntax)
-endfunction
-
-function! s:tags.sink(selected) abort
-  call vista#finder#fzf#sink(a:selected, g:clap.start.winid)
-endfunction
 
 let s:tags.syntax = 'clap_tags'
 let g:clap#provider#tags# = s:tags
