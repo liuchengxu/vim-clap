@@ -38,7 +38,7 @@ impl Default for FuzzyAlgorithm {
 
 impl FuzzyAlgorithm {
     /// Does the fuzzy match against the match text.
-    pub fn fuzzy_match<'a, T: MatchingText<'a>>(
+    pub fn fuzzy_match<T: MatchingText>(
         &self,
         query: &str,
         item: &T,

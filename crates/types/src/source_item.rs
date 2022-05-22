@@ -1,4 +1,4 @@
-use pattern::{extract_grep_pattern, find_file_name, tag_name_only};
+use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 #[derive(Debug, Clone)]
@@ -65,7 +65,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// Text used in the matching algorithm.
-pub trait MatchingText<'a> {
+pub trait MatchingText {
     /// Initial full text.
     fn full_text(&self) -> &str;
 
@@ -77,10 +77,10 @@ pub trait MatchingText<'a> {
     /// Text for applying the fuzzy match algorithm.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_ty: &MatchScope) -> Option<FuzzyText>;
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
 }
 
-impl<'a> MatchingText<'a> for SourceItem {
+impl MatchingText for SourceItem {
     fn full_text(&self) -> &str {
         &self.raw
     }
@@ -90,7 +90,7 @@ impl<'a> MatchingText<'a> for SourceItem {
     }
 }
 
-impl<'a> MatchingText<'a> for &'a str {
+impl MatchingText for &str {
     fn full_text(&self) -> &str {
         self
     }
@@ -163,15 +163,16 @@ impl SourceItem {
         }
     }
 
-    pub fn get_fuzzy_text(&self, match_ty: &MatchScope) -> Option<FuzzyText> {
+    pub fn get_fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
         if let Some((ref text, offset)) = self.fuzzy_text {
             return Some(FuzzyText::new(text, offset));
         }
-        match match_ty {
-            MatchScope::Full => Some(FuzzyText::new(&self.raw, 0)),
-            MatchScope::TagName => tag_name_only(self.raw.as_str()).map(|s| FuzzyText::new(s, 0)),
-            MatchScope::FileName => find_file_name(self.raw.as_str()).map(Into::into),
-            MatchScope::GrepLine => extract_grep_pattern(self.raw.as_str()).map(Into::into),
+        let full = self.raw.as_str();
+        match match_scope {
+            MatchScope::Full => Some(FuzzyText::new(full, 0)),
+            MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
+            MatchScope::FileName => extract_file_name(full).map(Into::into),
+            MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
         }
     }
 }

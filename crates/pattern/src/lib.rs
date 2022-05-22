@@ -39,7 +39,7 @@ pub fn parse_gtags(line: &str) -> Option<(usize, &str, &str)> {
 
 /// Extract tag name from the line in tags provider.
 #[inline]
-pub fn tag_name_only(line: &str) -> Option<&str> {
+pub fn extract_tag_name(line: &str) -> Option<&str> {
     TAG_RE.find(line).map(|x| x.as_str())
 }
 
@@ -93,7 +93,7 @@ pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
 }
 
 /// Returns the file name as well as its offset from the complete file path.
-pub fn find_file_name(file_path: &str) -> Option<(&str, usize)> {
+pub fn extract_file_name(file_path: &str) -> Option<(&str, usize)> {
     // TODO: extract the file name efficiently
     let fpath: std::path::PathBuf = file_path.into();
 
