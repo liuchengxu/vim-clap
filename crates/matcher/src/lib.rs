@@ -300,12 +300,7 @@ mod tests {
     #[test]
     fn test_match_scope_ignore_file_path() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(
-                query,
-                item,
-                &MatchScope::IgnoreFilePath,
-                CaseMatching::Smart,
-            )
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::GrepLine, CaseMatching::Smart)
         }
 
         let query = "rules";

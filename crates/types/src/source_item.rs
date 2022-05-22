@@ -25,12 +25,18 @@ impl<'a> From<(&'a str, usize)> for FuzzyText<'a> {
     }
 }
 
+/// The location that a match should look in.
+///
+/// Given a query, the match scope can refer to a full string or a substring.
 #[derive(Debug, Clone, Copy)]
 pub enum MatchScope {
     Full,
+    /// `:Clap tags`, `:Clap proj_tags`
     TagName,
+    /// `:Clap files`
     FileName,
-    IgnoreFilePath,
+    /// `:Clap grep2`
+    GrepLine,
 }
 
 impl Default for MatchScope {
@@ -52,7 +58,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
             "full" => Self::Full,
             "tagname" => Self::TagName,
             "filename" => Self::FileName,
-            "ignorefilepath" => Self::IgnoreFilePath,
+            "grepline" => Self::GrepLine,
             _ => Self::Full,
         }
     }
@@ -165,7 +171,7 @@ impl SourceItem {
             MatchScope::Full => Some(FuzzyText::new(&self.raw, 0)),
             MatchScope::TagName => tag_name_only(self.raw.as_str()).map(|s| FuzzyText::new(s, 0)),
             MatchScope::FileName => find_file_name(self.raw.as_str()).map(Into::into),
-            MatchScope::IgnoreFilePath => extract_grep_pattern(self.raw.as_str()).map(Into::into),
+            MatchScope::GrepLine => extract_grep_pattern(self.raw.as_str()).map(Into::into),
         }
     }
 }

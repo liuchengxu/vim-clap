@@ -102,7 +102,7 @@ function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
 
   if g:clap.provider.id ==# 'files'
     if has_key(g:clap.context, 'name-only')
-      call add(subcommand, '--match-type=FileName')
+      call add(subcommand, '--match-scope=FileName')
     endif
     if !exists('g:__clap_recent_files_dyn_tmp')
       let g:__clap_recent_files_dyn_tmp = tempname()
@@ -111,7 +111,7 @@ function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
     call add(subcommand, printf('--recent-files=%s', g:__clap_recent_files_dyn_tmp))
   else
     if g:clap.provider.id ==# 'proj_tags'
-      call add(subcommand, '--match-type=TagName')
+      call add(subcommand, '--match-scope=TagName')
     endif
   endif
 

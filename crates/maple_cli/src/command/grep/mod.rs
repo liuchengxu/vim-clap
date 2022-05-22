@@ -174,7 +174,7 @@ impl Grep {
                 source,
                 params
                     .into_filter_context()
-                    .match_scope(MatchScope::IgnoreFilePath),
+                    .match_scope(MatchScope::GrepLine),
             )
         };
 

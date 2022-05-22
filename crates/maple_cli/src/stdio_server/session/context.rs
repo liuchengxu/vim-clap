@@ -163,7 +163,7 @@ impl SessionContext {
 
         let match_scope = match provider_id.as_str() {
             "tags" | "proj_tags" => MatchScope::TagName,
-            "grep" | "grep2" => MatchScope::IgnoreFilePath,
+            "grep" | "grep2" => MatchScope::GrepLine,
             _ => MatchScope::Full,
         };
 
