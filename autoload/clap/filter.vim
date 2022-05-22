@@ -52,8 +52,8 @@ function! clap#filter#matchfuzzy(query, candidates) abort
   return filtered
 endfunction
 
-function! s:matching_text_kind() abort
-  return exists('g:__clap_matching_text_kind_enum') ? g:__clap_matching_text_kind_enum : 'Full'
+function! s:match_scope() abort
+  return exists('g:__clap_match_scope_enum') ? g:__clap_match_scope_enum : 'Full'
 endfunction
 
 if get(g:, 'clap_force_matchfuzzy', v:false)
@@ -69,7 +69,7 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
 elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   let s:current_filter_impl = 'Lua'
   function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:matching_text_kind())
+    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_scope())
   endfunction
 else
   let s:can_use_python = v:false
@@ -96,7 +96,7 @@ else
       let context = {
             \ 'winwidth': winwidth(g:clap.display.winid),
             \ 'enable_icon': s:enable_icon() == v:true ? 'True' : 'False',
-            \ 'matching_text_kind': s:matching_text_kind(),
+            \ 'match_scope': s:match_scope(),
             \ 'bonus_type': clap#filter#get_bonus_type(),
             \ }
       " TODO: support more providers by detecting if the specific

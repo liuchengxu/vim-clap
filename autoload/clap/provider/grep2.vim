@@ -20,7 +20,7 @@ function! s:grep2.on_typed()
 endfunction
 
 function! s:grep2.init() abort
-  let g:__clap_matching_text_kind_enum = 'IgnoreFilePath'
+  let g:__clap_match_scope_enum = 'IgnoreFilePath'
   call clap#provider#grep#inject_icon_appended(g:clap_enable_icon)
   call clap#rooter#try_set_cwd()
   if g:__clap_development
@@ -31,7 +31,7 @@ function! s:grep2.init() abort
 endfunction
 
 function! s:grep2.exit() abort
-  unlet g:__clap_matching_text_kind_enum
+  unlet g:__clap_match_scope_enum
 endfunction
 
 let s:grep2.sink = g:clap#provider#grep#.sink
