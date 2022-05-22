@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
+    matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
     subprocess::Exec,
     FilterContext, Source,
 };
@@ -50,7 +50,7 @@ pub struct Filter {
 
     /// Apply the filter on the full line content or parial of it.
     #[clap(long, parse(from_str), default_value = "full")]
-    matching_text_kind: MatchingTextKind,
+    match_scope: MatchScope,
 
     /// Add a bonus to the score of base matching algorithm.
     #[clap(long, parse(from_str = parse_bonus), default_value = "none")]
@@ -106,7 +106,7 @@ impl Filter {
             ..
         }: Params,
     ) -> Result<()> {
-        let matcher = Matcher::with_bonuses(self.get_bonuses(), self.algo, self.matching_text_kind)
+        let matcher = Matcher::with_bonuses(self.get_bonuses(), self.algo, self.match_scope)
             .set_case_matching(case_matching);
 
         if self.sync {

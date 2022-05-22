@@ -2,7 +2,7 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use types::{CaseMatching, FuzzyText, MatchingText, MatchingTextKind};
+use types::{CaseMatching, FuzzyText, MatchScope, MatchingText};
 
 use crate::MatchResult;
 
@@ -42,10 +42,10 @@ impl FuzzyAlgorithm {
         &self,
         query: &str,
         item: &T,
-        matching_text_kind: &MatchingTextKind,
+        match_scope: &MatchScope,
         case_matching: CaseMatching,
     ) -> Option<MatchResult> {
-        item.fuzzy_text(matching_text_kind).and_then(
+        item.fuzzy_text(match_scope).and_then(
             |FuzzyText {
                  text,
                  matching_start,

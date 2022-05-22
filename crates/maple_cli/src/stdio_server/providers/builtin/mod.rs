@@ -104,7 +104,7 @@ impl EventHandle for BuiltinHandle {
                         Some(40),
                         Some(context.display_winwidth as usize),
                         Matcher::default()
-                            .set_matching_text_kind(context.matching_text_kind)
+                            .set_match_scope(context.match_scope)
                             .set_bonuses(context.match_bonuses.clone()),
                     ),
                 ) {

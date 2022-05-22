@@ -158,7 +158,7 @@ pub fn print_dyn_filter_results(
 pub(crate) mod tests {
     use super::*;
     use filter::{
-        matcher::{Bonus, FuzzyAlgorithm, Matcher, MatchingTextKind},
+        matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
         Source, SourceItem,
     };
     use rayon::prelude::*;
@@ -205,7 +205,7 @@ pub(crate) mod tests {
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<FilteredItem> {
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let mut ranked = Source::List(std::iter::once(line.into()))
             .filter_and_collect(matcher, &query.into())

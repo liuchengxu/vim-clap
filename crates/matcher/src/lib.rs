@@ -16,7 +16,7 @@
 //! //        ↓
 //! //    Apply fuzzy search term
 //! //        |
-//! //        |  MatchingTextKind: extract the content to match.
+//! //        |  MatchScope: extract the content to match.
 //! //        |  FuzzyAlgorithm: run the match algorithm on MatchText.
 //! //        |
 //! //        ↓
@@ -33,7 +33,7 @@ pub use self::bonus::Bonus;
 use types::{CaseMatching, FilteredItem};
 // Re-export types
 pub use types::{
-    ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
+    ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MatchingText, Query, SearchTerm,
     SourceItem, TermType,
 };
 
@@ -133,28 +133,24 @@ pub fn match_exact_terms<'a>(
 
 /// `Matcher` is composed of two components:
 ///
-///   * `matching_text_kind`: represents the way of extracting the matching piece from the raw line.
+///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
 #[derive(Debug, Clone, Default)]
 pub struct Matcher {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
-    matching_text_kind: MatchingTextKind,
+    match_scope: MatchScope,
     case_matching: CaseMatching,
 }
 
 impl Matcher {
     /// Constructs a new instance of [`Matcher`].
-    pub fn new(
-        bonus: Bonus,
-        fuzzy_algo: FuzzyAlgorithm,
-        matching_text_kind: MatchingTextKind,
-    ) -> Self {
+    pub fn new(bonus: Bonus, fuzzy_algo: FuzzyAlgorithm, match_scope: MatchScope) -> Self {
         Self {
             bonuses: vec![bonus],
             fuzzy_algo,
-            matching_text_kind,
+            match_scope,
             case_matching: Default::default(),
         }
     }
@@ -163,12 +159,12 @@ impl Matcher {
     pub fn with_bonuses(
         bonuses: Vec<Bonus>,
         fuzzy_algo: FuzzyAlgorithm,
-        matching_text_kind: MatchingTextKind,
+        match_scope: MatchScope,
     ) -> Self {
         Self {
             bonuses,
             fuzzy_algo,
-            matching_text_kind,
+            match_scope,
             case_matching: Default::default(),
         }
     }
@@ -178,8 +174,8 @@ impl Matcher {
         self
     }
 
-    pub fn set_matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
-        self.matching_text_kind = matching_text_kind;
+    pub fn set_match_scope(mut self, match_scope: MatchScope) -> Self {
+        self.match_scope = match_scope;
         self
     }
 
@@ -192,7 +188,7 @@ impl Matcher {
     #[inline]
     fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
-            .fuzzy_match(query, item, &self.matching_text_kind, self.case_matching)
+            .fuzzy_match(query, item, &self.match_scope, self.case_matching)
     }
 
     /// Returns the sum of bonus score.
@@ -302,12 +298,12 @@ mod tests {
     }
 
     #[test]
-    fn test_matching_text_kind_ignore_file_path() {
+    fn test_match_scope_ignore_file_path() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
             FuzzyAlgorithm::Fzy.fuzzy_match(
                 query,
                 item,
-                &MatchingTextKind::IgnoreFilePath,
+                &MatchScope::IgnoreFilePath,
                 CaseMatching::Smart,
             )
         }
@@ -321,14 +317,9 @@ mod tests {
     }
 
     #[test]
-    fn test_matching_text_kind_filename() {
+    fn test_match_scope_filename() {
         fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(
-                query,
-                item,
-                &MatchingTextKind::FileName,
-                CaseMatching::Smart,
-            )
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::FileName, CaseMatching::Smart)
         }
 
         let query = "lib";
@@ -346,7 +337,7 @@ mod tests {
             "autoload/clap/provider/files.vim",
             "lua/fzy_filter.lua",
         ];
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
         for line in lines {
             let match_result_base = matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
@@ -362,7 +353,7 @@ mod tests {
         let matcher = Matcher::new(
             Bonus::Language("vim".into()),
             FuzzyAlgorithm::Fzy,
-            MatchingTextKind::Full,
+            MatchScope::Full,
         );
         let query: Query = "fo".into();
         let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
@@ -380,7 +371,7 @@ mod tests {
             "pythonx/clap/scorer.py".into(),
         ];
 
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items

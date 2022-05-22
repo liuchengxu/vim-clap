@@ -44,8 +44,8 @@ local function get_filename(p)
   end
 end
 
-local function match_text_for(item, matching_text_kind)
-  if matching_text_kind == 'FileNameOnly' then
+local function match_text_for(item, match_scope)
+  if match_scope == 'FileNameOnly' then
     filename_info = get_filename(item)
     return { match_text = filename_info['filename'], offset = filename_info['offset'] }
   else
@@ -53,7 +53,7 @@ local function match_text_for(item, matching_text_kind)
   end
 end
 
-local function apply_fzy(query, candidates, enable_icon, matching_text_kind)
+local function apply_fzy(query, candidates, enable_icon, match_scope)
     if string.match(query, '%u') then
         case_sensitive = true
     else
@@ -67,11 +67,11 @@ local function apply_fzy(query, candidates, enable_icon, matching_text_kind)
         -- Skip two chars, icon + one Space
         if enable_icon then
             c = string.sub(c, 5)
-            match_info = match_text_for(c, matching_text_kind)
+            match_info = match_text_for(c, match_scope)
             c = match_info['match_text']
             offset = match_info['offset'] + 3
         else
-            match_info = match_text_for(c, matching_text_kind)
+            match_info = match_text_for(c, match_scope)
             c = match_info['match_text']
             offset = match_info['offset'] - 1
         end
@@ -96,13 +96,13 @@ local function compare(a, b)
     return a[2]["score"] > b[2]["score"]
 end
 
-function fzy_filter.do_fuzzy_match(query, candidates, enable_icon, matching_text_kind)
+function fzy_filter.do_fuzzy_match(query, candidates, enable_icon, match_scope)
     -- https://cesarbs.org/blog/2009/10/23/why-luas-0-zero-as-a-true-value-makes-sense/
     if enable_icon == 0 then
       enable_icon = false
     end
 
-    scored = apply_fzy(query, candidates, enable_icon, matching_text_kind)
+    scored = apply_fzy(query, candidates, enable_icon, match_scope)
 
     ranked = {}
     for k, v in pairs(scored) do
