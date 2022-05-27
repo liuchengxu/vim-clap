@@ -43,12 +43,13 @@ function! clap#api#get_origin_line_at(lnum) abort
         \ && !empty(g:__clap_lines_truncated_map)
         \ && has_key(g:__clap_lines_truncated_map, a:lnum)
     let t_line = g:__clap_lines_truncated_map[a:lnum]
+	echom 'Getting:'.t_line
     " NOTE: t_line[3] is not 100% right
     if g:clap.provider.id ==# 'grep'
       " The icon offset has been considered on the Rust side.
       return t_line
     endif
-    if g:clap_enable_icon && index(s:has_no_icons, g:clap.provider.id) == -1 && t_line[3] !=# ' '
+    if g:__clap_icon_added
       return getbufline(g:clap.display.bufnr, a:lnum)[0][:3] . t_line
     else
       return t_line
@@ -343,6 +344,7 @@ function! s:init_provider() abort
   endfunction
 
   function! provider._apply_sink(selected) abort
+	  echom '_apply_sink:'.a:selected
     let Sink = self._().sink
     if type(Sink) == v:t_func
       call Sink(a:selected)

@@ -37,6 +37,10 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
+  if has_key(decoded, 'icon_added')
+    let g:__clap_icon_added = decoded.icon_added
+  endif
+
   if a:ensure_sign_exists
     call clap#sign#ensure_exists()
   endif
@@ -171,6 +175,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
   let g:clap.display.initial_size = -1
+  let g:__clap_icon_added = v:false
   call clap#indicator#clear()
   call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')

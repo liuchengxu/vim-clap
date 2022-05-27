@@ -16,6 +16,7 @@ function! clap#selection#get_sink_or_sink_star_params() abort
   else
     let Sink = g:clap.provider.sink
     let sink_args = g:clap.display.getcurline()
+    echom 'sink_args'.string(sink_args)
   endif
   return [Sink, sink_args]
 endfunction

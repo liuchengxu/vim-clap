@@ -86,6 +86,7 @@ async fn handle_recent_files_message(
         lines,
         indices,
         truncated_map,
+        icon_added,
     } = printer::decorate_lines(
         ranked.iter().take(200).cloned().collect(),
         winwidth,
@@ -101,6 +102,7 @@ async fn handle_recent_files_message(
             "lines": lines,
             "indices": indices,
             "total": total,
+            "icon_added": icon_added,
             "initial_size": initial_size,
             "preview": preview,
         })
@@ -110,6 +112,7 @@ async fn handle_recent_files_message(
             "indices": indices,
             "truncated_map": truncated_map,
             "total": total,
+            "icon_added": icon_added,
             "initial_size": initial_size,
             "preview": preview,
         })

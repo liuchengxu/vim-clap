@@ -21,16 +21,26 @@ pub struct DecoratedLines {
     pub lines: Vec<String>,
     pub indices: Vec<Vec<usize>>,
     pub truncated_map: LinesTruncatedMap,
+    /// An icon added to the head of line.
+    ///
+    /// The icon is added after the truncating processing.
+    pub icon_added: bool,
 }
 
-impl From<(Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap)> for DecoratedLines {
+impl From<(Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap, bool)> for DecoratedLines {
     fn from(
-        (lines, indices, truncated_map): (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap),
+        (lines, indices, truncated_map, icon_added): (
+            Vec<String>,
+            Vec<Vec<usize>>,
+            LinesTruncatedMap,
+            bool,
+        ),
     ) -> Self {
         Self {
             lines,
             indices,
             truncated_map,
+            icon_added,
         }
     }
 }
@@ -41,14 +51,15 @@ impl DecoratedLines {
             lines,
             indices,
             truncated_map,
+            icon_added,
         } = self;
 
         #[allow(non_upper_case_globals)]
         const method: &str = "s:process_filter_message";
         if let Some(total) = total {
-            println_json_with_length!(method, lines, indices, total, truncated_map);
+            println_json_with_length!(method, lines, indices, icon_added, truncated_map, total);
         } else {
-            println_json_with_length!(method, lines, indices, truncated_map);
+            println_json_with_length!(method, lines, indices, icon_added, truncated_map);
         }
     }
 
@@ -57,12 +68,13 @@ impl DecoratedLines {
             lines,
             indices,
             truncated_map,
+            icon_added,
         } = self;
 
         if let Some(total) = total {
-            println_json!(lines, indices, total, truncated_map);
+            println_json!(lines, indices, truncated_map, icon_added, total);
         } else {
-            println_json!(lines, indices, truncated_map);
+            println_json!(lines, indices, truncated_map, icon_added, total);
         }
     }
 
@@ -70,10 +82,11 @@ impl DecoratedLines {
         let Self {
             lines,
             truncated_map,
+            icon_added,
             ..
         } = self;
         let method = "s:init_display";
-        println_json_with_length!(lines, truncated_map, method);
+        println_json_with_length!(lines, truncated_map, icon_added, method);
     }
 }
 
@@ -99,7 +112,7 @@ pub fn decorate_lines<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map).into()
+        (lines, indices, truncated_map, true).into()
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
@@ -111,7 +124,7 @@ pub fn decorate_lines<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map).into()
+        (lines, indices, truncated_map, false).into()
     }
 }
 
