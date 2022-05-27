@@ -12,7 +12,7 @@ function! clap#state#refresh_matches_count(cnt) abort
 endfunction
 
 function! clap#state#set_variable_string(res) abort
-  execute 'let '.a:res['name'].' = "'.a:res['value'].'"'
+  execute printf("let %s = '%s'", a:res['name'], a:res['value'])
 endfunction
 
 function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abort
