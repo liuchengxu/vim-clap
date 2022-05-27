@@ -117,6 +117,10 @@ function! clap#state#handle_response_on_typed(result, error) abort
     let g:__clap_lines_truncated_map = a:result.truncated_map
   endif
 
+  if has_key(a:result, 'icon_added')
+    let g:__clap_icon_added = a:result.icon_added
+  endif
+
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
   call clap#preview#async_open_with_delay()

@@ -21,20 +21,18 @@ pub struct DecoratedLines {
     pub lines: Vec<String>,
     pub indices: Vec<Vec<usize>>,
     pub truncated_map: LinesTruncatedMap,
-    /// An icon added to the head of line.
+    /// An icon is added to the head of line.
     ///
     /// The icon is added after the truncating processing.
     pub icon_added: bool,
 }
 
-impl From<(Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap, bool)> for DecoratedLines {
-    fn from(
-        (lines, indices, truncated_map, icon_added): (
-            Vec<String>,
-            Vec<Vec<usize>>,
-            LinesTruncatedMap,
-            bool,
-        ),
+impl DecoratedLines {
+    pub fn new(
+        lines: Vec<String>,
+        indices: Vec<Vec<usize>>,
+        truncated_map: LinesTruncatedMap,
+        icon_added: bool,
     ) -> Self {
         Self {
             lines,
@@ -43,9 +41,7 @@ impl From<(Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap, bool)> for Decorated
             icon_added,
         }
     }
-}
 
-impl DecoratedLines {
     pub fn print_json_with_length(&self, total: Option<usize>) {
         let Self {
             lines,
@@ -112,7 +108,7 @@ pub fn decorate_lines<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map, true).into()
+        DecoratedLines::new(lines, indices, truncated_map, true)
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
@@ -124,7 +120,7 @@ pub fn decorate_lines<T>(
             })
             .unzip();
 
-        (lines, indices, truncated_map, false).into()
+        DecoratedLines::new(lines, indices, truncated_map, false)
     }
 }
 
