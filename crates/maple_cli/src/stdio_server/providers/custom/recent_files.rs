@@ -57,7 +57,7 @@ async fn handle_recent_files_message(
             })
             .collect::<Vec<_>>()
     } else {
-        recent_files.filter_on_query(&query, cwd)
+        recent_files.filter_on_query(&query, cwd.clone())
     };
     let initial_size = recent_files.len();
 
@@ -95,6 +95,15 @@ async fn handle_recent_files_message(
             icon::Icon::Null
         },
     );
+
+    let mut projct_dir_prefix = cwd;
+    projct_dir_prefix.push(std::path::MAIN_SEPARATOR);
+
+    let icon_enabled = enable_icon.unwrap_or(true);
+    let lines = lines
+        .into_iter()
+        .map(|abs_path| abs_path.replacen(&projct_dir_prefix, "", 1))
+        .collect::<Vec<_>>();
 
     let result = if truncated_map.is_empty() {
         json!({
