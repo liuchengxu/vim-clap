@@ -99,7 +99,6 @@ async fn handle_recent_files_message(
     let mut projct_dir_prefix = cwd;
     projct_dir_prefix.push(std::path::MAIN_SEPARATOR);
 
-    let icon_enabled = enable_icon.unwrap_or(true);
     let lines = lines
         .into_iter()
         .map(|abs_path| abs_path.replacen(&projct_dir_prefix, "", 1))

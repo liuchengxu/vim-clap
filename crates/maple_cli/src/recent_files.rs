@@ -14,6 +14,7 @@ const DAY: i64 = HOUR * 24;
 const WEEK: i64 = DAY * 7;
 const MONTH: i64 = DAY * 30;
 
+/// Maximum number of recent files.
 const MAX_ENTRIES: u64 = 10_000;
 
 /// Preference for sorting the recent files.
