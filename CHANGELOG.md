@@ -8,6 +8,10 @@
 - Escape the file name for filer sink. #822
 - Seperate the vista impl for tags provider completely. #827
 
+## Improved
+
+- Strip the current working directory prefix from the entry of `recent_files` provider, all the entries which are not in cwd still shows the absolute path. #834
+
 ## [0.34] 2022-03-25
 
 ## Added
