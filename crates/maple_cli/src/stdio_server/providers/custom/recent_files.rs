@@ -96,12 +96,12 @@ async fn handle_recent_files_message(
         },
     );
 
-    let mut projct_dir_prefix = cwd;
-    projct_dir_prefix.push(std::path::MAIN_SEPARATOR);
+    let mut cwd = cwd;
+    cwd.push(std::path::MAIN_SEPARATOR);
 
     let lines = lines
         .into_iter()
-        .map(|abs_path| abs_path.replacen(&projct_dir_prefix, "", 1))
+        .map(|abs_path| abs_path.replacen(&cwd, "", 1))
         .collect::<Vec<_>>();
 
     let result = if truncated_map.is_empty() {

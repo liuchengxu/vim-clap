@@ -169,19 +169,19 @@ impl SortedRecentFiles {
     }
 
     pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::FilteredItem> {
-        let mut project_dir_prefix = cwd;
-        project_dir_prefix.push(std::path::MAIN_SEPARATOR);
+        let mut cwd = cwd;
+        cwd.push(std::path::MAIN_SEPARATOR);
 
         let source_items: Vec<SourceItem> = self
             .entries
             .iter()
-            .map(|entry| entry.fpath.replacen(&project_dir_prefix, "", 1).into())
+            .map(|entry| entry.fpath.replacen(&cwd, "", 1).into())
             .collect();
 
-        project_dir_prefix.pop();
+        cwd.pop();
 
         let matcher = matcher::Matcher::with_bonuses(
-            vec![Bonus::cwd(project_dir_prefix), Bonus::FileName],
+            vec![Bonus::cwd(cwd), Bonus::FileName],
             FuzzyAlgorithm::Fzy,
             MatchingTextKind::Full,
         );
