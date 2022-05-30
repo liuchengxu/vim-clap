@@ -57,7 +57,6 @@ impl MatchResult {
     }
 }
 
-// TODO: the shorter search line has a higher score for the exact matching?
 /// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
 pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
@@ -118,6 +117,11 @@ pub fn match_exact_terms<'a>(
             }
         }
     }
+
+    // Exact search term bonus
+    //
+    // The shorter search line has a higher score.
+    exact_score += (1024 / full_search_line.len()) as Score;
 
     Some((exact_score, indices))
 }
