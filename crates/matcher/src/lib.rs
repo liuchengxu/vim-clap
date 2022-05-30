@@ -349,6 +349,17 @@ mod tests {
     }
 
     #[test]
+    fn test_exact_search_term_bonus() {
+        let lines = vec!["function foo qwer", "function foo"];
+        let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
+        let query: Query = "'fo".into();
+        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
+        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        assert!(match_result1.indices == match_result2.indices);
+        assert!(match_result1.score < match_result2.score);
+    }
+
+    #[test]
     fn test_search_syntax() {
         let items: Vec<SourceItem> = vec![
             "autoload/clap/provider/search_history.vim".into(),
@@ -372,7 +383,7 @@ mod tests {
                     [0, 1, 2, 3, 9, 10, 11, 12, 37, 38, 39, 40].to_vec()
                 )),
                 Some(MatchResult::new(
-                    760,
+                    792,
                     [0, 1, 2, 3, 9, 10, 11, 12, 28, 29, 30, 31].to_vec()
                 )),
                 None,
