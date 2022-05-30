@@ -58,6 +58,7 @@ impl MatchResult {
 }
 
 // TODO: the shorter search line has a higher score for the exact matching?
+/// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
 pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
     full_search_line: &str,
@@ -77,24 +78,20 @@ pub fn match_exact_terms<'a>(
                     substring::substr_indices(full_search_line, sub_query, case_matching)
                 {
                     indices.extend_from_slice(&sub_indices);
-                    exact_score += std::cmp::max(score, sub_query.len() as Score);
+                    exact_score += score.max(sub_query.len() as Score);
                 } else {
                     return None;
                 }
             }
             PrefixExact => {
                 let trimmed = full_search_line.trim_start();
-                let white_space_len = if full_search_line.len() > trimmed.len() {
-                    full_search_line.len() - trimmed.len()
-                } else {
-                    0
-                };
+                let white_space_len = full_search_line.len().saturating_sub(trimmed.len());
                 if trimmed.starts_with(sub_query) {
+                    let mut match_start = -1i32 + white_space_len as i32;
                     let new_len = indices.len() + sub_query.len();
-                    let mut start = -1i32 + white_space_len as i32;
                     indices.resize_with(new_len, || {
-                        start += 1;
-                        start as usize
+                        match_start += 1;
+                        match_start as usize
                     });
                     exact_score += sub_query.len() as Score;
                 } else {
@@ -102,23 +99,17 @@ pub fn match_exact_terms<'a>(
                 }
             }
             SuffixExact => {
+                let total_len = full_search_line.len();
                 let trimmed = full_search_line.trim_end();
-
-                let white_space_len = if full_search_line.len() > trimmed.len() {
-                    full_search_line.len() - trimmed.len()
-                } else {
-                    0
-                };
-
+                let white_space_len = total_len.saturating_sub(trimmed.len());
                 if trimmed.ends_with(sub_query) {
-                    let total_len = full_search_line.len();
                     // In case of underflow, we use i32 here.
-                    let mut start =
+                    let mut match_start =
                         total_len as i32 - sub_query.len() as i32 - 1i32 - white_space_len as i32;
                     let new_len = indices.len() + sub_query.len();
                     indices.resize_with(new_len, || {
-                        start += 1;
-                        start as usize
+                        match_start += 1;
+                        match_start as usize
                     });
                     exact_score += sub_query.len() as Score;
                 } else {
