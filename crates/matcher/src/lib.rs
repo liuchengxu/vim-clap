@@ -121,7 +121,7 @@ pub fn match_exact_terms<'a>(
     // Exact search term bonus
     //
     // The shorter search line has a higher score.
-    exact_score += (1024 / full_search_line.len()) as Score;
+    exact_score += (512 / full_search_line.len()) as Score;
 
     Some((exact_score, indices))
 }
@@ -379,11 +379,11 @@ mod tests {
         assert_eq!(
             vec![
                 Some(MatchResult::new(
-                    751,
+                    763,
                     [0, 1, 2, 3, 9, 10, 11, 12, 37, 38, 39, 40].to_vec()
                 )),
                 Some(MatchResult::new(
-                    792,
+                    776,
                     [0, 1, 2, 3, 9, 10, 11, 12, 28, 29, 30, 31].to_vec()
                 )),
                 None,
@@ -402,7 +402,7 @@ mod tests {
             vec![
                 None,
                 None,
-                Some(MatchResult::new(4, [32, 33, 34].to_vec())),
+                Some(MatchResult::new(24, [32, 33, 34].to_vec())),
                 None
             ],
             matched_results
@@ -416,10 +416,10 @@ mod tests {
 
         assert_eq!(
             vec![
-                Some(MatchResult::new(126, [14, 36].to_vec())),
+                Some(MatchResult::new(138, [14, 36].to_vec())),
                 None,
                 None,
-                Some(MatchResult::new(360, [0, 1].to_vec()))
+                Some(MatchResult::new(383, [0, 1].to_vec()))
             ],
             matched_results
         );
@@ -431,7 +431,12 @@ mod tests {
             .collect();
 
         assert_eq!(
-            vec![None, None, None, Some(MatchResult::new(2, [0, 1].to_vec()))],
+            vec![
+                None,
+                None,
+                None,
+                Some(MatchResult::new(25, [0, 1].to_vec()))
+            ],
             matched_results
         );
     }
