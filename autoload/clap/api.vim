@@ -34,13 +34,10 @@ function! clap#api#has_externalfilter() abort
         \ || has_key(g:clap.context, 'externalfilter')
 endfunction
 
-let s:has_no_icons = ['blines', 'help_tags']
-
-" Returns the original full line with icon if g:clap_enable_icon is on given
+" Returns the original full line with icon if the icon has been added given
 " the lnum of display buffer.
 function! clap#api#get_origin_line_at(lnum) abort
   if exists('g:__clap_lines_truncated_map')
-        \ && !empty(g:__clap_lines_truncated_map)
         \ && has_key(g:__clap_lines_truncated_map, a:lnum)
     let t_line = g:__clap_lines_truncated_map[a:lnum]
     " NOTE: t_line[3] is not 100% right
@@ -48,11 +45,7 @@ function! clap#api#get_origin_line_at(lnum) abort
       " The icon offset has been considered on the Rust side.
       return t_line
     endif
-    if g:clap_enable_icon && index(s:has_no_icons, g:clap.provider.id) == -1 && t_line[3] !=# ' '
-      return getbufline(g:clap.display.bufnr, a:lnum)[0][:3] . t_line
-    else
-      return t_line
-    endif
+    return g:__clap_icon_added ? getbufline(g:clap.display.bufnr, a:lnum)[0][:3] . t_line : t_line
   else
     return get(getbufline(g:clap.display.bufnr, a:lnum), 0, '')
   endif

@@ -78,6 +78,10 @@ function! s:on_complete_maple() abort
     else
       let g:__clap_forerunner_result = decoded.lines
     endif
+
+    if has_key(decoded, 'icon_added')
+      let g:__clap_icon_added = decoded.icon_added
+    endif
   endif
 endfunction
 
