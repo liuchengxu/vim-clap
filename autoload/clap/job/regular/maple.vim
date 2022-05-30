@@ -75,6 +75,10 @@ function! s:on_complete() abort
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
 
+  if has_key(decoded, 'icon_added')
+    let g:__clap_icon_added = decoded.icon_added
+  endif
+
   call clap#sign#reset_to_first_line()
   call g:clap#display_win.shrink_if_undersize()
 endfunction

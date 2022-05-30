@@ -57,7 +57,7 @@ async fn handle_recent_files_message(
             })
             .collect::<Vec<_>>()
     } else {
-        recent_files.filter_on_query(&query, cwd)
+        recent_files.filter_on_query(&query, cwd.clone())
     };
     let initial_size = recent_files.len();
 
@@ -86,6 +86,7 @@ async fn handle_recent_files_message(
         lines,
         indices,
         truncated_map,
+        icon_added,
     } = printer::decorate_lines(
         ranked.iter().take(200).cloned().collect(),
         winwidth,
@@ -96,11 +97,20 @@ async fn handle_recent_files_message(
         },
     );
 
+    let mut cwd = cwd;
+    cwd.push(std::path::MAIN_SEPARATOR);
+
+    let lines = lines
+        .into_iter()
+        .map(|abs_path| abs_path.replacen(&cwd, "", 1))
+        .collect::<Vec<_>>();
+
     let result = if truncated_map.is_empty() {
         json!({
             "lines": lines,
             "indices": indices,
             "total": total,
+            "icon_added": icon_added,
             "initial_size": initial_size,
             "preview": preview,
         })
@@ -110,6 +120,7 @@ async fn handle_recent_files_message(
             "indices": indices,
             "truncated_map": truncated_map,
             "total": total,
+            "icon_added": icon_added,
             "initial_size": initial_size,
             "preview": preview,
         })

@@ -81,6 +81,7 @@ impl EventHandle for BuiltinHandle {
                     lines,
                     indices,
                     truncated_map,
+                    icon_added,
                 } = printer::decorate_lines(
                     results.iter().take(200).cloned().collect(),
                     context.display_winwidth as usize,
@@ -90,7 +91,14 @@ impl EventHandle for BuiltinHandle {
                 let total = results.len();
 
                 let method = "s:process_filter_message";
-                utility::println_json_with_length!(total, lines, indices, truncated_map, method);
+                utility::println_json_with_length!(
+                    total,
+                    lines,
+                    indices,
+                    truncated_map,
+                    icon_added,
+                    method
+                );
 
                 let mut current_results = self.current_results.lock();
                 *current_results = results;
