@@ -209,14 +209,11 @@ impl Matcher {
         }
 
         // Try the exact terms against the full search line.
-        let (exact_score, mut indices) = match match_exact_terms(
+        let (exact_score, mut indices) = match_exact_terms(
             query.exact_terms.iter(),
             item.full_text(),
             self.case_matching,
-        ) {
-            Some(ret) => ret,
-            None => return None,
-        };
+        )?;
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
