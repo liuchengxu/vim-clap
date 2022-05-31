@@ -96,7 +96,7 @@ pub fn par_filter(
     fuzzy_matcher: &Matcher,
 ) -> Vec<FilteredItem> {
     let query: Query = query.into();
-    let mut filtered: Vec<FilteredItem> = source_items
+    let filtered: Vec<FilteredItem> = source_items
         .into_par_iter()
         .filter_map(|item| {
             fuzzy_matcher
@@ -104,6 +104,5 @@ pub fn par_filter(
                 .map(|MatchResult { score, indices }| (item, score, indices).into())
         })
         .collect();
-    filtered.par_sort_unstable_by(|item1, item2| item2.score.partial_cmp(&item1.score).unwrap());
-    filtered
+    sort_initial_filtered(filtered)
 }
