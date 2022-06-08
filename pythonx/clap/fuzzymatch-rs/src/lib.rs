@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher, MatchingTextKind},
-    FilteredItem, Query, SourceItem,
-};
+use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher, MatchingTextKind};
 use printer::truncate_long_matched_lines_v0;
+use types::{FilteredItem, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;

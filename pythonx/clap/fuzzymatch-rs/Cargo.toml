@@ -12,15 +12,12 @@ publish = false
 name = "fuzzymatch_rs"
 crate-type = ["cdylib"]
 
-[dependencies.pyo3]
-version = "0.15"
+[dependencies]
+pyo3 = "0.15"
 
-[dependencies.printer]
-path = "../../../crates/printer"
-
-[dependencies.filter]
-path = "../../../crates/filter"
-default-features = false
+printer = { path = "../../../crates/printer" }
+matcher = { path = "../../../crates/matcher" }
+types = { path = "../../../crates/types" }
 
 # https://github.com/PyO3/pyo3/issues/340
 # For running PyO3 test using `cargo test --no-default-features`
