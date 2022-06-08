@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn py_and_rs_subscore_should_work() {
-        use filter::matcher::substring::substr_indices as substr_scorer;
+        use matcher::substring::substr_indices as substr_scorer;
         use pyo3::{prelude::*, types::PyModule};
         use std::fs;
 
