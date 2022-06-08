@@ -8,7 +8,6 @@ use std::io::{self, BufRead, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use anyhow::{anyhow, Result};
 use types::PreviewInfo;
 
 use self::bytelines::ByteLines;
@@ -17,7 +16,7 @@ pub mod bytelines;
 mod macros;
 
 /// Removes all the file and directories under `target_dir`.
-pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
+pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> io::Result<()> {
     let entries = read_dir(target_dir)?;
     for entry in entries.into_iter().flatten() {
         let path = entry.path();
@@ -68,14 +67,17 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
 }
 
 #[inline]
-pub fn clap_cache_dir() -> Result<PathBuf> {
+pub fn clap_cache_dir() -> io::Result<PathBuf> {
     if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
         let cache_dir = proj_dirs.cache_dir();
         std::fs::create_dir_all(cache_dir)?;
 
         Ok(cache_dir.to_path_buf())
     } else {
-        Err(anyhow!("Couldn't create Vim Clap project directory"))
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Couldn't create Vim Clap project directory",
+        ))
     }
 }
 
@@ -200,19 +202,19 @@ pub fn as_std_command<P: AsRef<Path>>(shell_cmd: impl AsRef<OsStr>, dir: Option<
 }
 
 /// Executes the `shell_cmd` and returns the output.
-pub fn execute_at<S, P>(shell_cmd: S, dir: Option<P>) -> Result<Output>
+pub fn execute_at<S, P>(shell_cmd: S, dir: Option<P>) -> io::Result<Output>
 where
     S: AsRef<OsStr>,
     P: AsRef<Path>,
 {
     let mut cmd = as_std_command(shell_cmd, dir);
-    Ok(cmd.output()?)
+    cmd.output()
 }
 
 /// Attempts to write an entire buffer into the file.
 ///
 /// Creates one if the file does not exist.
-pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
+pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> io::Result<()> {
     use std::io::Write;
 
     // Overwrite it.

@@ -12,12 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
-
-[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -187,15 +181,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "log"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
-dependencies = [
- "cfg-if 0.1.10",
-]
-
-[[package]]
 name = "matcher"
 version = "0.1.0"
 dependencies = [
@@ -267,7 +252,6 @@ dependencies = [
 name = "pattern"
 version = "0.1.0"
 dependencies = [
- "log",
  "once_cell",
  "regex",
 ]
@@ -503,7 +487,6 @@ checksum = "f14ee04d9415b52b3aeab06258a3f07093182b88ba0f9b8d203f211a7a7d41c7"
 name = "utility"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "directories",
  "memchr",
  "simdutf8",
