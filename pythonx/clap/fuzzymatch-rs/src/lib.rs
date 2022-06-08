@@ -148,6 +148,7 @@ mod tests {
         use matcher::substring::substr_indices as substr_scorer;
         use pyo3::{prelude::*, types::PyModule};
         use std::fs;
+        use types::CaseMatching;
 
         let cur_dir = std::env::current_dir().unwrap();
         let py_path = cur_dir.parent().unwrap().join("scorer.py");
@@ -173,7 +174,7 @@ mod tests {
                 .extract()
                 .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
                 .unwrap();
-            let rs_result = substr_scorer(haystack, needle, filter::CaseMatching::Smart).unwrap();
+            let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
             assert_eq!(py_result, rs_result);
         }
     }
