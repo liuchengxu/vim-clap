@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher, MatchScope},
-    FilteredItem, Query, SourceItem,
-};
+use matcher::{Bonus, FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use printer::truncate_long_matched_lines_v0;
+use types::{FilteredItem, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -147,9 +145,10 @@ mod tests {
 
     #[test]
     fn py_and_rs_subscore_should_work() {
-        use filter::matcher::substring::substr_indices as substr_scorer;
+        use matcher::substring::substr_indices as substr_scorer;
         use pyo3::{prelude::*, types::PyModule};
         use std::fs;
+        use types::CaseMatching;
 
         let cur_dir = std::env::current_dir().unwrap();
         let py_path = cur_dir.parent().unwrap().join("scorer.py");
@@ -175,7 +174,7 @@ mod tests {
                 .extract()
                 .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
                 .unwrap();
-            let rs_result = substr_scorer(haystack, needle, filter::CaseMatching::Smart).unwrap();
+            let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
             assert_eq!(py_result, rs_result);
         }
     }

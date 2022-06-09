@@ -926,7 +926,6 @@ dependencies = [
 name = "matcher"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
@@ -1183,7 +1182,6 @@ dependencies = [
 name = "pattern"
 version = "0.1.0"
 dependencies = [
- "log",
  "once_cell",
  "regex",
 ]
@@ -1990,7 +1988,6 @@ dependencies = [
 name = "utility"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "directories",
  "memchr",
  "simdutf8",
