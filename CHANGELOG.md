@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+## Changed
+
+- The default value of `g:clap_enable_background_shadow` is now `v:false` by default due to the side effect like #836.
+
 ## Fixed
 
 - Fix the incompatiblity issue between vim-signature and vim-clap popup window. #817

@@ -572,7 +572,7 @@ g:clap_preview_size                                         *g:clap_preview_size
 g:clap_enable_background_shadow                 *g:clap_enable_background_shadow*
 
   Type: |Bool|
-  Default: `v:true`
+  Default: `v:false`
   (neovim only)
 
   This variable controls if the background shadow is rendered.
@@ -580,8 +580,9 @@ g:clap_enable_background_shadow                 *g:clap_enable_background_shadow
   " Deactivates the background shadow
   let g:clap_enable_background_shadow = v:false
 <
-  If clap break highlights in neovim, you should be turned off this option.
-  https://github.com/liuchengxu/vim-clap/issues/670
+  NOTE: The colorscheme/highlights can be affected in an unexpected way if enabled.
+  - https://github.com/liuchengxu/vim-clap/issues/670,
+  - https://github.com/liuchengxu/vim-clap/issues/836
 
 g:clap_background_shadow_blend                  *g:clap_background_shadow_blend*
 
