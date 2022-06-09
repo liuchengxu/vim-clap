@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use log::error;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -108,14 +107,9 @@ pub fn find_file_name(file_path: &str) -> Option<(&str, usize)> {
         })
 }
 
+#[inline]
 fn parse_lnum(lnum: &str) -> Option<usize> {
-    match lnum.parse::<usize>() {
-        Err(e) => {
-            error!("failed to extract lnum from {}, error:{:?}", lnum, e);
-            None
-        }
-        Ok(p) => Some(p),
-    }
+    lnum.parse::<usize>().ok()
 }
 
 pub fn parse_rev(line: &str) -> Option<&str> {
