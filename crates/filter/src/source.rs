@@ -1,16 +1,16 @@
 use std::io::BufRead;
 use std::path::PathBuf;
 
-#[cfg(feature = "dyn-filtering")]
+use anyhow::Result;
 use subprocess::Exec;
 
-use super::*;
+use matcher::Matcher;
+use types::{FilteredItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
 pub enum Source<I: Iterator<Item = SourceItem>> {
     Stdin,
-    #[cfg(feature = "dyn-filtering")]
     Exec(Box<Exec>),
     File(PathBuf),
     List(I),
@@ -22,7 +22,6 @@ impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {
     }
 }
 
-#[cfg(feature = "dyn-filtering")]
 impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(Box::new(exec))
@@ -48,7 +47,6 @@ macro_rules! source_iter_stdin {
 }
 
 /// Generate an iterator of [`FilteredItem`] from [`Source::Exec`].
-#[cfg(feature = "dyn-filtering")]
 #[macro_export]
 macro_rules! source_iter_exec {
     ( $scorer:ident, $exec:ident ) => {
@@ -106,7 +104,6 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
 
         let filtered = match self {
             Self::Stdin => source_iter_stdin!(scorer).collect(),
-            #[cfg(feature = "dyn-filtering")]
             Self::Exec(exec) => source_iter_exec!(scorer, exec).collect(),
             Self::File(fpath) => source_iter_file!(scorer, fpath).collect(),
             Self::List(list) => source_iter_list!(scorer, list).collect(),

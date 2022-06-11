@@ -18,7 +18,6 @@ use matcher::{MatchResult, MatchScope, Matcher};
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
-#[cfg(feature = "dyn-filtering")]
 pub use subprocess;
 pub use types::{CaseMatching, FilteredItem, Query, SourceItem};
 
