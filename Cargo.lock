@@ -894,7 +894,6 @@ dependencies = [
  "chrono",
  "clap",
  "crossbeam-channel",
- "curl",
  "directories",
  "dumb_analyzer",
  "filter",
