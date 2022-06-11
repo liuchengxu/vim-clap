@@ -29,7 +29,7 @@ pub struct SharedParams {
     #[clap(
         long,
         default_value = EXCLUDE,
-        use_delimiter = true
+        use_value_delimiter = true
     )]
     exclude: Vec<String>,
 

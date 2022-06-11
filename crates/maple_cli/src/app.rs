@@ -51,7 +51,7 @@ pub enum Cmd {
 
 #[derive(Parser, Debug)]
 #[clap(name = "maple")]
-#[clap(global_setting(AppSettings::DisableVersionFlag))]
+#[clap(global_setting(AppSettings::NoAutoVersion))]
 pub struct Maple {
     #[clap(flatten)]
     pub params: Params,
