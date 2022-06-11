@@ -252,7 +252,7 @@ pub(crate) mod tests {
         println!("\n      winwidth: {}", "─".repeat(winwidth));
         println!(
             "       display: {}",
-            wrap_matches(truncated_text_got, truncated_indices)
+            wrap_matches(truncated_text_got, &truncated_indices)
         );
         // The highlighted result can be case insensitive.
         assert!(query
