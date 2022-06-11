@@ -16,7 +16,7 @@ bytecount = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "3.0", features = ["derive"] }
 crossbeam-channel = "0.5"
-directories = "3.0"
+directories = "4.0"
 futures = "0.3"
 itertools = "0.10"
 jsonrpc-core = "18.0.0"
