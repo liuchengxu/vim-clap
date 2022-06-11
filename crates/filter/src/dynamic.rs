@@ -5,11 +5,11 @@ use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
+use types::{FilteredItem, Query, SourceItem};
 use utility::{println_json, println_json_with_length};
 
 use super::{source_iter_exec, source_iter_file, source_iter_list, source_iter_stdin};
 use crate::{sort_initial_filtered, FilterContext, Source};
-use types::{FilteredItem, Query, SourceItem};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
