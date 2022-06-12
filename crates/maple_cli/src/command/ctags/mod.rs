@@ -29,9 +29,8 @@ pub struct SharedParams {
     #[clap(
         long,
         default_value = EXCLUDE,
-        use_value_delimiter = true
     )]
-    exclude: Vec<String>,
+    exclude: String,
 
     /// Specify the input files.
     // - notify the tags update on demand.
@@ -42,7 +41,7 @@ pub struct SharedParams {
 impl SharedParams {
     pub fn exclude_opt(&self) -> String {
         self.exclude
-            .iter()
+            .split(',')
             .map(|x| format!("--exclude={}", x))
             .join(" ")
     }
@@ -71,6 +70,34 @@ impl Ctags {
             Self::BufferTags(buffer_tags) => buffer_tags.run(params),
             Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
             Self::TagsFile(tags_file) => tags_file.run(params),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::Maple;
+
+    #[test]
+    fn test_ctags_command() {
+        let app = Maple::parse_from(&[
+            "",
+            "ctags",
+            "recursive-tags",
+            "--query",
+            "Query",
+            "--exclude",
+            ".git,target",
+        ]);
+        match app.command {
+            crate::app::Cmd::Ctags(Ctags::RecursiveTags(rtags)) => {
+                assert_eq!(
+                    rtags.shared.exclude_opt(),
+                    "--exclude=.git --exclude=target".to_string(),
+                )
+            }
+            _ => unreachable!(""),
         }
     }
 }

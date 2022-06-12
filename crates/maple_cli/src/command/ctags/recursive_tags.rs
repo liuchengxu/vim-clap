@@ -31,7 +31,7 @@ pub struct RecursiveTags {
 
     /// Shared parameters arouns ctags.
     #[clap(flatten)]
-    shared: SharedParams,
+    pub(super) shared: SharedParams,
 }
 
 pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
