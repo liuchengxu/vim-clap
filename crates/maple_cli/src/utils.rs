@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::prelude::*;
 use directories::ProjectDirs;
 use once_cell::sync::Lazy;
@@ -19,6 +19,13 @@ use utility::{println_json, println_json_with_length, read_first_lines};
 pub static PROJECT_DIRS: Lazy<ProjectDirs> = Lazy::new(|| {
     ProjectDirs::from("org", "vim", "Vim Clap")
         .expect("Couldn't create project directory for vim-clap")
+});
+
+pub static HOME_DIR: Lazy<PathBuf> = Lazy::new(|| {
+    directories::BaseDirs::new()
+        .expect("Failed to construct BaseDirs")
+        .home_dir()
+        .to_path_buf()
 });
 
 /// Yes or no terms.
@@ -171,10 +178,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> Result<PathBuf> {
     static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
 
     let fpath = if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
-        let mut home_dir = directories::BaseDirs::new()
-            .ok_or_else(|| anyhow!("Failed to construct BaseDirs"))?
-            .home_dir()
-            .to_path_buf();
+        let mut home_dir = HOME_DIR.clone();
         home_dir.push(stripped);
         home_dir
     } else {

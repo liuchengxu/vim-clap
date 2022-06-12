@@ -57,8 +57,7 @@ impl OnMove {
     pub fn new(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
         let mut line_content = None;
         let context = match context.provider_id.as_str() {
-            "filer" => unreachable!("filer has been handled ahead"),
-
+            "filer" => unreachable!("filer has been handled beforehand"),
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, &curline)),
             "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
@@ -250,8 +249,8 @@ impl<'a> OnMoveHandler<'a> {
         }
         if self.context.provider_id.as_str() == "grep2" {
             if let Some(ref cache_line) = self.cache_line {
-                if !cache_line.eq(latest_line) {
-                    tracing::debug!(?latest_line, ?cache_line, "The cache might be oudated");
+                if cache_line != latest_line {
+                    tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
                     let dir = self.context.cwd.clone();
                     IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
                     // Spawn a future in the background
@@ -288,15 +287,8 @@ impl<'a> OnMoveHandler<'a> {
 
                 // Truncate the left of absolute path string.
                 // TODO: truncate the absolute path better.
-                let mut fname = path.display().to_string();
                 let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
-                if fname.len() > max_fname_len {
-                    if let Some((offset, _)) =
-                        fname.char_indices().nth(fname.len() - max_fname_len + 2)
-                    {
-                        fname.replace_range(..offset, "..");
-                    }
-                }
+                let fname = truncate_absolute_path(path.display().to_string(), max_fname_len);
 
                 let mut context_lines = Vec::new();
 
@@ -439,4 +431,39 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
             None
         }
     }
+}
+
+// /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+fn truncate_absolute_path(abs_path: String, max_len: usize) -> String {
+    if abs_path.len() > max_len {
+        let gap = abs_path.len() - max_len;
+
+        if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
+            // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+            if home_dir.len() > gap {
+                return abs_path.replacen(home_dir, "~", 1);
+            }
+
+            let sep = std::path::MAIN_SEPARATOR;
+
+            // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
+            let home_stripped = &abs_path[home_dir.len() + 1..];
+            let mut components = home_stripped.split(sep);
+            if let Some(first) = components.next() {
+                let target = &home_stripped[first.len()..];
+                let mut hidden = 0usize;
+                for component in target.split(sep) {
+                    if hidden > gap + 3 {
+                        let mut target = target.to_string();
+                        target.replace_range(..hidden - 1, "...");
+                        return format!("~{sep}{first}{sep}{target}");
+                    } else {
+                        hidden += component.len() + 1;
+                    }
+                }
+            }
+        }
+    }
+
+    abs_path
 }
