@@ -285,11 +285,6 @@ impl<'a> OnMoveHandler<'a> {
             }) => {
                 let container_width = self.context.display_winwidth as usize;
 
-                // Truncate the left of absolute path string.
-                // TODO: truncate the absolute path better.
-                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
-                let fname = truncate_absolute_path(path.display().to_string(), max_fname_len);
-
                 let mut context_lines = Vec::new();
 
                 // Some checks against the latest preview line.
@@ -307,17 +302,13 @@ impl<'a> OnMoveHandler<'a> {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
-                                    let border_line = if crate::stdio_server::global().is_nvim {
-                                        "─".repeat(container_width)
-                                    } else {
-                                        // Vim has a different border width.
-                                        let mut border_line =
-                                            String::with_capacity(container_width - 2);
-                                        border_line.extend(
-                                            std::iter::repeat('─').take(container_width - 2),
-                                        );
-                                        border_line
-                                    };
+                                    let border_line =
+                                        "─".repeat(if crate::stdio_server::global().is_nvim {
+                                            container_width
+                                        } else {
+                                            // Vim has a different border width.
+                                            container_width - 2
+                                        });
 
                                     context_lines.push(border_line.clone());
 
@@ -348,7 +339,12 @@ impl<'a> OnMoveHandler<'a> {
 
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
-                let lines = std::iter::once(format!("{}:{}", fname, lnum))
+                let fname = path.display().to_string();
+                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
+                let header_line =
+                    format!("{}:{}", truncate_absolute_path(&fname, max_fname_len), lnum);
+
+                let lines = std::iter::once(header_line)
                     .chain(context_lines.into_iter())
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
@@ -434,36 +430,67 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
 }
 
 // /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-fn truncate_absolute_path(abs_path: String, max_len: usize) -> String {
+fn truncate_absolute_path<'a>(abs_path: &'a str, max_len: usize) -> Cow<'a, str> {
     if abs_path.len() > max_len {
         let gap = abs_path.len() - max_len;
 
         if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
             // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
             if home_dir.len() > gap {
-                return abs_path.replacen(home_dir, "~", 1);
+                return abs_path.replacen(home_dir, "~", 1).into();
             }
 
             let sep = std::path::MAIN_SEPARATOR;
 
             // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
-            let home_stripped = &abs_path[home_dir.len() + 1..];
-            let mut components = home_stripped.split(sep);
-            if let Some(first) = components.next() {
-                let target = &home_stripped[first.len()..];
+            let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
+            if let Some((first, target)) = home_stripped.split_once(sep) {
                 let mut hidden = 0usize;
                 for component in target.split(sep) {
-                    if hidden > gap + 3 {
+                    if hidden > gap + 2 {
                         let mut target = target.to_string();
                         target.replace_range(..hidden - 1, "...");
-                        return format!("~{sep}{first}{sep}{target}");
+                        return format!("~{sep}{first}{sep}{target}").into();
                     } else {
                         hidden += component.len() + 1;
                     }
                 }
             }
+        } else {
+            // Truncate the left of absolute path string.
+            // ../stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+            if let Some((offset, _)) = abs_path.char_indices().nth(abs_path.len() - max_len + 2) {
+                let mut abs_path = abs_path.to_string();
+                abs_path.replace_range(..offset, "..");
+                return abs_path.into();
+            }
         }
     }
 
-    abs_path
+    abs_path.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_absolute_path() {
+        #[cfg(not(target_os = "windows"))]
+        let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
+        let abs_path = format!(
+            "{}{}{}",
+            crate::utils::HOME_DIR.as_path().to_str().unwrap(),
+            std::path::MAIN_SEPARATOR,
+            p
+        );
+        let max_len = 60;
+        #[cfg(not(target_os = "windows"))]
+        let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
+        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected)
+    }
 }
