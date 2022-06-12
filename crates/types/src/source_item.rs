@@ -1,4 +1,4 @@
-use pattern::{extract_grep_pattern, find_file_name, tag_name_only};
+use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 #[derive(Debug, Clone)]
@@ -25,41 +25,47 @@ impl<'a> From<(&'a str, usize)> for FuzzyText<'a> {
     }
 }
 
+/// The location that a match should look in.
+///
+/// Given a query, the match scope can refer to a full string or a substring.
 #[derive(Debug, Clone, Copy)]
-pub enum MatchingTextKind {
+pub enum MatchScope {
     Full,
+    /// `:Clap tags`, `:Clap proj_tags`
     TagName,
+    /// `:Clap files`
     FileName,
-    IgnoreFilePath,
+    /// `:Clap grep2`
+    GrepLine,
 }
 
-impl Default for MatchingTextKind {
+impl Default for MatchScope {
     fn default() -> Self {
         Self::Full
     }
 }
 
-impl std::str::FromStr for MatchingTextKind {
+impl std::str::FromStr for MatchScope {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(s.into())
     }
 }
 
-impl<T: AsRef<str>> From<T> for MatchingTextKind {
-    fn from(matching_text_kind: T) -> Self {
-        match matching_text_kind.as_ref().to_lowercase().as_str() {
+impl<T: AsRef<str>> From<T> for MatchScope {
+    fn from(match_scope: T) -> Self {
+        match match_scope.as_ref().to_lowercase().as_str() {
             "full" => Self::Full,
             "tagname" => Self::TagName,
             "filename" => Self::FileName,
-            "ignorefilepath" => Self::IgnoreFilePath,
+            "grepline" => Self::GrepLine,
             _ => Self::Full,
         }
     }
 }
 
 /// Text used in the matching algorithm.
-pub trait MatchingText<'a> {
+pub trait MatchingText {
     /// Initial full text.
     fn full_text(&self) -> &str;
 
@@ -71,25 +77,25 @@ pub trait MatchingText<'a> {
     /// Text for applying the fuzzy match algorithm.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_ty: &MatchingTextKind) -> Option<FuzzyText>;
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
 }
 
-impl<'a> MatchingText<'a> for SourceItem {
+impl MatchingText for SourceItem {
     fn full_text(&self) -> &str {
         &self.raw
     }
 
-    fn fuzzy_text(&self, matching_text_kind: &MatchingTextKind) -> Option<FuzzyText> {
-        self.get_fuzzy_text(matching_text_kind)
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+        self.get_fuzzy_text(match_scope)
     }
 }
 
-impl<'a> MatchingText<'a> for &'a str {
+impl MatchingText for &str {
     fn full_text(&self) -> &str {
         self
     }
 
-    fn fuzzy_text(&self, _matching_text_kind: &MatchingTextKind) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
         Some(FuzzyText {
             text: self,
             matching_start: 0,
@@ -157,19 +163,16 @@ impl SourceItem {
         }
     }
 
-    pub fn get_fuzzy_text(&self, match_ty: &MatchingTextKind) -> Option<FuzzyText> {
+    pub fn get_fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
         if let Some((ref text, offset)) = self.fuzzy_text {
             return Some(FuzzyText::new(text, offset));
         }
-        match match_ty {
-            MatchingTextKind::Full => Some(FuzzyText::new(&self.raw, 0)),
-            MatchingTextKind::TagName => {
-                tag_name_only(self.raw.as_str()).map(|s| FuzzyText::new(s, 0))
-            }
-            MatchingTextKind::FileName => find_file_name(self.raw.as_str()).map(Into::into),
-            MatchingTextKind::IgnoreFilePath => {
-                extract_grep_pattern(self.raw.as_str()).map(Into::into)
-            }
+        let full = self.raw.as_str();
+        match match_scope {
+            MatchScope::Full => Some(FuzzyText::new(full, 0)),
+            MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
+            MatchScope::FileName => extract_file_name(full).map(Into::into),
+            MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
         }
     }
 }

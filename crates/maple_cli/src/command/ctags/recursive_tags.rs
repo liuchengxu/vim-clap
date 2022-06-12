@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{
-    matcher::{Matcher, MatchingTextKind},
+    matcher::{MatchScope, Matcher},
     FilterContext, Source,
 };
 
@@ -80,7 +80,7 @@ impl RecursiveTags {
                     icon,
                     Some(30),
                     None,
-                    Matcher::default().set_matching_text_kind(MatchingTextKind::TagName),
+                    Matcher::default().set_match_scope(MatchScope::TagName),
                 ),
             )?;
         }

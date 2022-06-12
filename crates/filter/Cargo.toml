@@ -7,18 +7,12 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 rayon = "1.5"
-serde = { package = "serde", version = "1.0",  features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-subprocess = { git = "https://github.com/hniksic/rust-subprocess", optional = true }
+subprocess = { git = "https://github.com/hniksic/rust-subprocess" }
 
 icon = { path = "../icon" }
 matcher = { path = "../matcher" }
 printer = { path = "../printer" }
 types = { path = "../types" }
 utility = { path = "../utility" }
-
-[features]
-default = ["dyn-filtering"]
-# Allow dynamic filtering
-# Avoid introduce needless dependency in pythonx/clap/fuzzymatch-rs as it's sync only.
-dyn-filtering = ["subprocess"]

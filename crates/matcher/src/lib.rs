@@ -16,7 +16,7 @@
 //! //        ↓
 //! //    Apply fuzzy search term
 //! //        |
-//! //        |  MatchingTextKind: extract the content to match.
+//! //        |  MatchScope: extract the content to match.
 //! //        |  FuzzyAlgorithm: run the match algorithm on MatchText.
 //! //        |
 //! //        ↓
@@ -33,7 +33,7 @@ pub use self::bonus::Bonus;
 use types::{CaseMatching, FilteredItem};
 // Re-export types
 pub use types::{
-    ExactTerm, ExactTermType, FuzzyTermType, MatchingText, MatchingTextKind, Query, SearchTerm,
+    ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MatchingText, Query, SearchTerm,
     SourceItem, TermType,
 };
 
@@ -57,7 +57,7 @@ impl MatchResult {
     }
 }
 
-// TODO: the shorter search line has a higher score for the exact matching?
+/// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
 pub fn match_exact_terms<'a>(
     terms: impl Iterator<Item = &'a ExactTerm>,
     full_search_line: &str,
@@ -77,24 +77,20 @@ pub fn match_exact_terms<'a>(
                     substring::substr_indices(full_search_line, sub_query, case_matching)
                 {
                     indices.extend_from_slice(&sub_indices);
-                    exact_score += std::cmp::max(score, sub_query.len() as Score);
+                    exact_score += score.max(sub_query.len() as Score);
                 } else {
                     return None;
                 }
             }
             PrefixExact => {
                 let trimmed = full_search_line.trim_start();
-                let white_space_len = if full_search_line.len() > trimmed.len() {
-                    full_search_line.len() - trimmed.len()
-                } else {
-                    0
-                };
+                let white_space_len = full_search_line.len().saturating_sub(trimmed.len());
                 if trimmed.starts_with(sub_query) {
+                    let mut match_start = -1i32 + white_space_len as i32;
                     let new_len = indices.len() + sub_query.len();
-                    let mut start = -1i32 + white_space_len as i32;
                     indices.resize_with(new_len, || {
-                        start += 1;
-                        start as usize
+                        match_start += 1;
+                        match_start as usize
                     });
                     exact_score += sub_query.len() as Score;
                 } else {
@@ -102,23 +98,17 @@ pub fn match_exact_terms<'a>(
                 }
             }
             SuffixExact => {
+                let total_len = full_search_line.len();
                 let trimmed = full_search_line.trim_end();
-
-                let white_space_len = if full_search_line.len() > trimmed.len() {
-                    full_search_line.len() - trimmed.len()
-                } else {
-                    0
-                };
-
+                let white_space_len = total_len.saturating_sub(trimmed.len());
                 if trimmed.ends_with(sub_query) {
-                    let total_len = full_search_line.len();
                     // In case of underflow, we use i32 here.
-                    let mut start =
+                    let mut match_start =
                         total_len as i32 - sub_query.len() as i32 - 1i32 - white_space_len as i32;
                     let new_len = indices.len() + sub_query.len();
                     indices.resize_with(new_len, || {
-                        start += 1;
-                        start as usize
+                        match_start += 1;
+                        match_start as usize
                     });
                     exact_score += sub_query.len() as Score;
                 } else {
@@ -128,33 +118,34 @@ pub fn match_exact_terms<'a>(
         }
     }
 
+    // Exact search term bonus
+    //
+    // The shorter search line has a higher score.
+    exact_score += (512 / full_search_line.len()) as Score;
+
     Some((exact_score, indices))
 }
 
 /// `Matcher` is composed of two components:
 ///
-///   * `matching_text_kind`: represents the way of extracting the matching piece from the raw line.
+///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
 ///   * `algo`: algorithm used for matching the text.
 ///   * `bonus`: add a bonus to the result of base `algo`.
 #[derive(Debug, Clone, Default)]
 pub struct Matcher {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
-    matching_text_kind: MatchingTextKind,
+    match_scope: MatchScope,
     case_matching: CaseMatching,
 }
 
 impl Matcher {
     /// Constructs a new instance of [`Matcher`].
-    pub fn new(
-        bonus: Bonus,
-        fuzzy_algo: FuzzyAlgorithm,
-        matching_text_kind: MatchingTextKind,
-    ) -> Self {
+    pub fn new(bonus: Bonus, fuzzy_algo: FuzzyAlgorithm, match_scope: MatchScope) -> Self {
         Self {
             bonuses: vec![bonus],
             fuzzy_algo,
-            matching_text_kind,
+            match_scope,
             case_matching: Default::default(),
         }
     }
@@ -163,12 +154,12 @@ impl Matcher {
     pub fn with_bonuses(
         bonuses: Vec<Bonus>,
         fuzzy_algo: FuzzyAlgorithm,
-        matching_text_kind: MatchingTextKind,
+        match_scope: MatchScope,
     ) -> Self {
         Self {
             bonuses,
             fuzzy_algo,
-            matching_text_kind,
+            match_scope,
             case_matching: Default::default(),
         }
     }
@@ -178,8 +169,8 @@ impl Matcher {
         self
     }
 
-    pub fn set_matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
-        self.matching_text_kind = matching_text_kind;
+    pub fn set_match_scope(mut self, match_scope: MatchScope) -> Self {
+        self.match_scope = match_scope;
         self
     }
 
@@ -190,13 +181,13 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match<'a, T: MatchingText<'a>>(&self, item: &T, query: &str) -> Option<MatchResult> {
+    fn fuzzy_match<T: MatchingText>(&self, item: &T, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
-            .fuzzy_match(query, item, &self.matching_text_kind, self.case_matching)
+            .fuzzy_match(query, item, &self.match_scope, self.case_matching)
     }
 
     /// Returns the sum of bonus score.
-    fn calc_bonus<'a, T: MatchingText<'a>>(
+    fn calc_bonus<T: MatchingText>(
         &self,
         item: &T,
         base_score: Score,
@@ -209,11 +200,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query<'a, T: MatchingText<'a>>(
-        &self,
-        item: &T,
-        query: &Query,
-    ) -> Option<MatchResult> {
+    pub fn match_query<T: MatchingText>(&self, item: &T, query: &Query) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(item.full_text()) {
@@ -222,14 +209,11 @@ impl Matcher {
         }
 
         // Try the exact terms against the full search line.
-        let (exact_score, mut indices) = match match_exact_terms(
+        let (exact_score, mut indices) = match_exact_terms(
             query.exact_terms.iter(),
             item.full_text(),
             self.case_matching,
-        ) {
-            Some(ret) => ret,
-            None => return None,
-        };
+        )?;
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
@@ -302,14 +286,9 @@ mod tests {
     }
 
     #[test]
-    fn test_matching_text_kind_ignore_file_path() {
+    fn test_match_scope_ignore_file_path() {
         fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(
-                query,
-                item,
-                &MatchingTextKind::IgnoreFilePath,
-                CaseMatching::Smart,
-            )
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::GrepLine, CaseMatching::Smart)
         }
 
         let query = "rules";
@@ -321,14 +300,9 @@ mod tests {
     }
 
     #[test]
-    fn test_matching_text_kind_filename() {
+    fn test_match_scope_filename() {
         fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(
-                query,
-                item,
-                &MatchingTextKind::FileName,
-                CaseMatching::Smart,
-            )
+            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::FileName, CaseMatching::Smart)
         }
 
         let query = "lib";
@@ -346,7 +320,7 @@ mod tests {
             "autoload/clap/provider/files.vim",
             "lua/fzy_filter.lua",
         ];
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
         for line in lines {
             let match_result_base = matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
@@ -362,9 +336,20 @@ mod tests {
         let matcher = Matcher::new(
             Bonus::Language("vim".into()),
             FuzzyAlgorithm::Fzy,
-            MatchingTextKind::Full,
+            MatchScope::Full,
         );
         let query: Query = "fo".into();
+        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
+        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        assert!(match_result1.indices == match_result2.indices);
+        assert!(match_result1.score < match_result2.score);
+    }
+
+    #[test]
+    fn test_exact_search_term_bonus() {
+        let lines = vec!["function foo qwer", "function foo"];
+        let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
+        let query: Query = "'fo".into();
         let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
         let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
         assert!(match_result1.indices == match_result2.indices);
@@ -380,7 +365,7 @@ mod tests {
             "pythonx/clap/scorer.py".into(),
         ];
 
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchingTextKind::Full);
+        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items
@@ -391,11 +376,11 @@ mod tests {
         assert_eq!(
             vec![
                 Some(MatchResult::new(
-                    751,
+                    763,
                     [0, 1, 2, 3, 9, 10, 11, 12, 37, 38, 39, 40].to_vec()
                 )),
                 Some(MatchResult::new(
-                    760,
+                    776,
                     [0, 1, 2, 3, 9, 10, 11, 12, 28, 29, 30, 31].to_vec()
                 )),
                 None,
@@ -414,7 +399,7 @@ mod tests {
             vec![
                 None,
                 None,
-                Some(MatchResult::new(4, [32, 33, 34].to_vec())),
+                Some(MatchResult::new(24, [32, 33, 34].to_vec())),
                 None
             ],
             matched_results
@@ -428,10 +413,10 @@ mod tests {
 
         assert_eq!(
             vec![
-                Some(MatchResult::new(126, [14, 36].to_vec())),
+                Some(MatchResult::new(138, [14, 36].to_vec())),
                 None,
                 None,
-                Some(MatchResult::new(360, [0, 1].to_vec()))
+                Some(MatchResult::new(383, [0, 1].to_vec()))
             ],
             matched_results
         );
@@ -443,7 +428,12 @@ mod tests {
             .collect();
 
         assert_eq!(
-            vec![None, None, None, Some(MatchResult::new(2, [0, 1].to_vec()))],
+            vec![
+                None,
+                None,
+                None,
+                Some(MatchResult::new(25, [0, 1].to_vec()))
+            ],
             matched_results
         );
     }

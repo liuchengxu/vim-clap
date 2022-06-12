@@ -45,12 +45,16 @@ async fn handle_recent_files_message(
         //
         // This changes the order of existing recent file entries.
         recent_files.sort_by_cwd(&cwd);
+
+        let mut cwd = cwd.clone();
+        cwd.push(std::path::MAIN_SEPARATOR);
+
         recent_files
             .entries
             .iter()
             .map(|entry| {
                 FilteredItem::new(
-                    entry.fpath.clone(),
+                    entry.fpath.replacen(&cwd, "", 1),
                     entry.frecent_score as i64,
                     Default::default(),
                 )

@@ -287,6 +287,7 @@ impl<'a> OnMoveHandler<'a> {
                 let container_width = self.context.display_winwidth as usize;
 
                 // Truncate the left of absolute path string.
+                // TODO: truncate the absolute path better.
                 let mut fname = path.display().to_string();
                 let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
                 if fname.len() > max_fname_len {

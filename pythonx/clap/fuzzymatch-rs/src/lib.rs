@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher, MatchingTextKind};
+use matcher::{Bonus, FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use printer::truncate_long_matched_lines_v0;
 use types::{FilteredItem, Query, SourceItem};
 
@@ -23,7 +23,7 @@ const DEFAULT_WINWIDTH: usize = 80;
 struct MatchContext {
     winwidth: usize,
     enable_icon: bool,
-    matching_text_kind: MatchingTextKind,
+    match_scope: MatchScope,
     bonuses: Vec<Bonus>,
 }
 
@@ -39,10 +39,10 @@ impl From<HashMap<String, String>> for MatchContext {
             .map(|x| x.to_lowercase() == "true")
             .unwrap_or(false);
 
-        let matching_text_kind = ctx
-            .get("matching_text_kind")
+        let match_scope = ctx
+            .get("match_scope")
             .map(Into::into)
-            .unwrap_or(MatchingTextKind::Full);
+            .unwrap_or(MatchScope::Full);
 
         let bonus_type = ctx.get("bonus_type").map(Into::into).unwrap_or(Bonus::None);
 
@@ -54,7 +54,7 @@ impl From<HashMap<String, String>> for MatchContext {
         Self {
             winwidth,
             enable_icon,
-            matching_text_kind,
+            match_scope,
             bonuses,
         }
     }
@@ -73,13 +73,13 @@ fn fuzzy_match(
     let MatchContext {
         winwidth,
         enable_icon,
-        matching_text_kind,
+        match_scope,
         mut bonuses,
     } = context.into();
 
     bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
-    let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, matching_text_kind);
+    let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, match_scope);
 
     let query: Query = query.into();
     let do_match = |line: &str| {
@@ -187,7 +187,7 @@ mod tests {
         let context: HashMap<String, String> = vec![
             ("winwidth", "62"),
             ("enable_icon", "True"),
-            ("matching_text_kind", "Full"),
+            ("match_scope", "Full"),
             ("bonus_type", "FileName"),
         ]
         .into_iter()

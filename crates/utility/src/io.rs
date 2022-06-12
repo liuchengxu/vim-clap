@@ -178,8 +178,6 @@ pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> io::Result<()
     Ok(())
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

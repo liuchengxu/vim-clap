@@ -13,12 +13,11 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{Matcher, MatchingTextKind};
+use matcher::{MatchResult, MatchScope, Matcher};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
-#[cfg(feature = "dyn-filtering")]
 pub use subprocess;
 pub use types::{CaseMatching, FilteredItem, Query, SourceItem};
 
@@ -61,8 +60,8 @@ impl FilterContext {
         self
     }
 
-    pub fn matching_text_kind(mut self, matching_text_kind: MatchingTextKind) -> Self {
-        self.matcher = self.matcher.set_matching_text_kind(matching_text_kind);
+    pub fn match_scope(mut self, match_scope: MatchScope) -> Self {
+        self.matcher = self.matcher.set_match_scope(match_scope);
         self
     }
 }
@@ -96,7 +95,13 @@ pub fn par_filter(
     fuzzy_matcher: &Matcher,
 ) -> Vec<FilteredItem> {
     let query: Query = query.into();
-    let mut filtered = source::par_filter_impl(source_items, fuzzy_matcher, &query);
-    filtered.par_sort_unstable_by(|item1, item2| item2.score.partial_cmp(&item1.score).unwrap());
-    filtered
+    let filtered: Vec<FilteredItem> = source_items
+        .into_par_iter()
+        .filter_map(|item| {
+            fuzzy_matcher
+                .match_query(&item, &query)
+                .map(|MatchResult { score, indices }| (item, score, indices).into())
+        })
+        .collect();
+    sort_initial_filtered(filtered)
 }

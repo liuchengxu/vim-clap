@@ -55,12 +55,7 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_score<'a, T: MatchingText<'a>>(
-        &self,
-        item: &T,
-        score: Score,
-        indices: &[usize],
-    ) -> Score {
+    pub fn bonus_score<T: MatchingText>(&self, item: &T, score: Score, indices: &[usize]) -> Score {
         // Ignore the long line.
         if item.full_text().len() > 1024 {
             return 0;
