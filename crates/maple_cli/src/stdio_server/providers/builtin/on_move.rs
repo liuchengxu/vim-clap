@@ -145,6 +145,11 @@ impl OnMove {
 
         Ok((context, line_content))
     }
+
+    /// Returns `true` if the file path of preview file should be truncateted relative to cwd.
+    fn should_truncate_cwd_relative(&self) -> bool {
+        matches!(self, Self::Files(_) | Self::Grep(_) | Self::ProjTags(_))
+    }
 }
 
 pub struct OnMoveHandler<'a> {
@@ -341,14 +346,14 @@ impl<'a> OnMoveHandler<'a> {
 
                 let fname = path.display().to_string();
                 let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
-                let header_line = match self.inner {
-                    OnMove::Grep(_) if !crate::stdio_server::global().is_nvim => {
-                        // cwd is shown via the popup title, no need to include it again.
-                        let cwd_relative =
-                            fname.replacen(self.context.cwd.to_str().unwrap(), ".", 1);
-                        format!("{}:{}", cwd_relative, lnum)
-                    }
-                    _ => format!("{}:{}", truncate_absolute_path(&fname, max_fname_len), lnum),
+                let header_line = if !crate::stdio_server::global().is_nvim
+                    && self.inner.should_truncate_cwd_relative()
+                {
+                    // cwd is shown via the popup title, no need to include it again.
+                    let cwd_relative = fname.replacen(self.context.cwd.to_str().unwrap(), ".", 1);
+                    format!("{}:{}", cwd_relative, lnum)
+                } else {
+                    format!("{}:{}", truncate_absolute_path(&fname, max_fname_len), lnum)
                 };
 
                 let lines = std::iter::once(header_line)
