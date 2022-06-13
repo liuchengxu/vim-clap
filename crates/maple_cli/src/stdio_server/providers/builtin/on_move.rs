@@ -437,7 +437,7 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
 }
 
 // /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-fn truncate_absolute_path<'a>(abs_path: &'a str, max_len: usize) -> Cow<'a, str> {
+fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
     if abs_path.len() > max_len {
         let gap = abs_path.len() - max_len;
 
