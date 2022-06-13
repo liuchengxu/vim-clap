@@ -115,6 +115,10 @@ function! s:create_preview() abort
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
+    let should_enable_title = ['grep', 'grep2', 'dumb_jump', 'files']
+    if index(should_enable_title, g:clap.provider.id) > -1
+      let preview_opts.title = ' '.clap#rooter#working_dir().' '
+    endif
     if clap#preview#direction() ==# 'LR'
       let preview_opts['line'] = pos.line - 1
       let preview_opts['height'] = pos.height
