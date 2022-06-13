@@ -6,26 +6,28 @@ set cpoptions&vim
 
 let s:plugin_root_dir = fnamemodify(g:clap#autoload_dir, ':h')
 
-function! s:run_term(cmd, cwd, success_info) abort
+function! s:OnExit(status, bufnr, success_info, ErrorCallback) abort
+  if a:status == 0
+    execute 'silent! bd! '.a:bufnr
+    call clap#helper#echo_info(a:success_info)
+  else
+    call a:ErrorCallback()
+  endif
+  if clap#maple#is_available()
+    call clap#job#daemon#start(function('clap#client#handle'))
+  endif
+endfunction
+
+function! s:run_term(cmd, cwd, success_info, ErrorCallback) abort
   belowright 10new
   setlocal buftype=nofile winfixheight norelativenumber nonumber bufhidden=wipe
 
   let bufnr = bufnr('')
 
-  function! s:OnExit(status) closure abort
-    if a:status == 0
-      execute 'silent! bd! '.bufnr
-      call clap#helper#echo_info(a:success_info)
-    endif
-    if clap#maple#is_available()
-      call clap#job#daemon#start(function('clap#client#handle'))
-    endif
-  endfunction
-
   if has('nvim')
     call termopen(a:cmd, {
           \ 'cwd': a:cwd,
-          \ 'on_exit': {job, status -> s:OnExit(status)},
+          \ 'on_exit': {job, status -> s:OnExit(status, bufnr, a:success_info, a:ErrorCallback)},
           \ 'env': {'MAKE_CMD': s:make_cmd},
           \})
   else
@@ -36,7 +38,7 @@ function! s:run_term(cmd, cwd, success_info) abort
     call term_start(cmd, {
           \ 'curwin': 1,
           \ 'cwd': a:cwd,
-          \ 'exit_cb': {job, status -> s:OnExit(status)},
+          \ 'exit_cb': {job, status -> s:OnExit(status, bufnr, a:success_info, a:ErrorCallback)},
           \})
   endif
 
@@ -70,7 +72,7 @@ function! clap#installer#build_python_dynamic_module() abort
     if !s:unix_sanity_check_is_ok()
       return
     endif
-    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully')
+    call s:run_term(s:rust_ext_cmd, s:rust_ext_cwd, 'built Python dynamic module successfully', {-> clap#helper#echo_warn('build module failed')})
   else
     call clap#helper#echo_error('Can not build Python dynamic module in that cargo is not found.')
   endif
@@ -79,7 +81,7 @@ endfunction
 function! clap#installer#build_maple() abort
   if executable('cargo')
     let cmd = 'cargo build --release'
-    call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully')
+    call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully', {-> clap#helper#echo_warn('build maple failed')})
   else
     call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
   endif
@@ -97,7 +99,7 @@ function! clap#installer#build_all(...) abort
         endif
         let cmd = s:make_cmd
       endif
-      call s:run_term(cmd, s:plugin_root_dir, 'built maple binary and Python dynamic module successfully')
+      call s:run_term(cmd, s:plugin_root_dir, 'built maple binary and Python dynamic module successfully', {-> clap#helper#echo_warn('build all failed')})
     else
       call clap#installer#build_maple()
     endif
@@ -115,7 +117,7 @@ function! clap#installer#download_binary() abort
     endif
     let cmd = './install.sh'
   endif
-  call s:run_term(cmd, s:plugin_root_dir, 'download the prebuilt maple binary successfully')
+  call s:run_term(cmd, s:plugin_root_dir, 'download the prebuilt maple binary successfully', {-> clap#helper#echo_warn('download failed')})
 endfunction
 
 function! s:do_download() abort
@@ -131,7 +133,7 @@ function! s:do_download() abort
   " Since v0.14 maple itself is able to download the latest release binary.
   if s:current_version >= 14
     let cmd = s:prebuilt_maple_binary.' upgrade --download'
-    call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully')
+    call s:run_term(cmd, s:plugin_root_dir, 'download the latest prebuilt maple binary successfully', function('clap#installer#download_binary'))
   else
     call clap#installer#download_binary()
   endif
