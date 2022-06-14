@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -345,15 +344,20 @@ impl<'a> OnMoveHandler<'a> {
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
                 let fname = path.display().to_string();
-                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
                 let header_line = if !crate::stdio_server::global().is_nvim
                     && self.inner.should_truncate_cwd_relative()
                 {
                     // cwd is shown via the popup title, no need to include it again.
-                    let cwd_relative = fname.replacen(self.context.cwd.to_str().unwrap(), ".", 1);
+                    let cwd_relative =
+                        fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
                     format!("{}:{}", cwd_relative, lnum)
                 } else {
-                    format!("{}:{}", truncate_absolute_path(&fname, max_fname_len), lnum)
+                    let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
+                    format!(
+                        "{}:{}",
+                        crate::utils::truncate_absolute_path(&fname, max_fname_len),
+                        lnum
+                    )
                 };
 
                 let lines = std::iter::once(header_line)
@@ -397,18 +401,23 @@ impl<'a> OnMoveHandler<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        previewer::truncate_preview_lines(self.max_width(), lines)
+        previewer::truncate_preview_lines(self.max_line_width(), lines)
     }
 
     /// Returns the maximum line width.
     #[inline]
-    fn max_width(&self) -> usize {
+    fn max_line_width(&self) -> usize {
         2 * self.context.display_winwidth as usize
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let (lines, fname) =
-            previewer::preview_file(path.as_ref(), 2 * self.size, self.max_width())?;
+        let max_fname_len = self.context.display_winwidth as usize - 1;
+        let (lines, fname) = previewer::preview_file_with_truncated_title(
+            path.as_ref(),
+            2 * self.size,
+            self.max_line_width(),
+            max_fname_len,
+        )?;
         if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
             self.send_response(json!({ "lines": lines, "syntax": syntax }));
         } else {
@@ -438,71 +447,5 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
             None
         }
-    }
-}
-
-// /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
-    if abs_path.len() > max_len {
-        let gap = abs_path.len() - max_len;
-
-        if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
-            // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-            if home_dir.len() > gap {
-                return abs_path.replacen(home_dir, "~", 1).into();
-            }
-
-            let sep = std::path::MAIN_SEPARATOR;
-
-            // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
-            let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
-            if let Some((first, target)) = home_stripped.split_once(sep) {
-                let mut hidden = 0usize;
-                for component in target.split(sep) {
-                    if hidden > gap + 2 {
-                        let mut target = target.to_string();
-                        target.replace_range(..hidden - 1, "...");
-                        return format!("~{sep}{first}{sep}{target}").into();
-                    } else {
-                        hidden += component.len() + 1;
-                    }
-                }
-            }
-        } else {
-            // Truncate the left of absolute path string.
-            // ../stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-            if let Some((offset, _)) = abs_path.char_indices().nth(abs_path.len() - max_len + 2) {
-                let mut abs_path = abs_path.to_string();
-                abs_path.replace_range(..offset, "..");
-                return abs_path.into();
-            }
-        }
-    }
-
-    abs_path.into()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_truncate_absolute_path() {
-        #[cfg(not(target_os = "windows"))]
-        let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
-        #[cfg(target_os = "windows")]
-        let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
-        let abs_path = format!(
-            "{}{}{}",
-            crate::utils::HOME_DIR.as_path().to_str().unwrap(),
-            std::path::MAIN_SEPARATOR,
-            p
-        );
-        let max_len = 60;
-        #[cfg(not(target_os = "windows"))]
-        let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
-        #[cfg(target_os = "windows")]
-        let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
-        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected)
     }
 }

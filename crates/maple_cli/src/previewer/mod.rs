@@ -54,6 +54,23 @@ pub fn preview_file<P: AsRef<Path>>(
     Ok((lines, abs_path))
 }
 
+pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
+    path: P,
+    size: usize,
+    max_line_width: usize,
+    max_title_width: usize,
+) -> Result<(Vec<String>, String)> {
+    let abs_path = as_absolute_path(path.as_ref())?;
+    let truncated_abs_path =
+        crate::utils::truncate_absolute_path(&abs_path, max_title_width).into_owned();
+    let lines_iter = read_first_lines(path.as_ref(), size)?;
+    let lines = std::iter::once(truncated_abs_path.clone())
+        .chain(truncate_preview_lines(max_line_width, lines_iter))
+        .collect::<Vec<_>>();
+
+    Ok((lines, truncated_abs_path))
+}
+
 pub fn preview_file_at<P: AsRef<Path>>(
     path: P,
     half_size: usize,

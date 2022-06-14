@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::{
     io::{BufRead, Lines},
     path::{Path, PathBuf},
@@ -245,6 +246,47 @@ pub fn display_width(n: usize) -> usize {
     len
 }
 
+// /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+pub(crate) fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
+    if abs_path.len() > max_len {
+        let gap = abs_path.len() - max_len;
+
+        if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
+            // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+            if home_dir.len() > gap {
+                return abs_path.replacen(home_dir, "~", 1).into();
+            }
+
+            let sep = std::path::MAIN_SEPARATOR;
+
+            // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
+            let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
+            if let Some((first, target)) = home_stripped.split_once(sep) {
+                let mut hidden = 0usize;
+                for component in target.split(sep) {
+                    if hidden > gap + 2 {
+                        let mut target = target.to_string();
+                        target.replace_range(..hidden - 1, "...");
+                        return format!("~{sep}{first}{sep}{target}").into();
+                    } else {
+                        hidden += component.len() + 1;
+                    }
+                }
+            }
+        } else {
+            // Truncate the left of absolute path string.
+            // ../stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+            if let Some((offset, _)) = abs_path.char_indices().nth(abs_path.len() - max_len + 2) {
+                let mut abs_path = abs_path.to_string();
+                abs_path.replace_range(..offset, "..");
+                return abs_path.into();
+            }
+        }
+    }
+
+    abs_path.into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,5 +295,25 @@ mod tests {
     fn test_count_lines() {
         let f: &[u8] = b"some text\nwith\nfour\nlines\n";
         assert_eq!(count_lines(f).unwrap(), 4);
+    }
+
+    #[test]
+    fn test_truncate_absolute_path() {
+        #[cfg(not(target_os = "windows"))]
+        let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
+        let abs_path = format!(
+            "{}{}{}",
+            crate::utils::HOME_DIR.as_path().to_str().unwrap(),
+            std::path::MAIN_SEPARATOR,
+            p
+        );
+        let max_len = 60;
+        #[cfg(not(target_os = "windows"))]
+        let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
+        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected)
     }
 }
