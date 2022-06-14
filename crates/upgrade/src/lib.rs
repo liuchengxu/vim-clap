@@ -4,21 +4,25 @@ mod download;
 mod github;
 
 use anyhow::{anyhow, Context, Result};
-use clap::Parser;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
-#[derive(Parser, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Upgrade {
     /// Download if the local version mismatches the latest remote version.
-    #[clap(long)]
     pub download: bool,
     /// Disable the downloading progress_bar
-    #[clap(long)]
     pub no_progress_bar: bool,
 }
 
 impl Upgrade {
+    pub fn new(download: bool, no_progress_bar: bool) -> Self {
+        Self {
+            download,
+            no_progress_bar,
+        }
+    }
+
     pub async fn run(&self, local_tag: &str) -> Result<()> {
         println!("Retrieving the latest remote release info...");
         let remote_release = github::latest_remote_release()?;
@@ -48,20 +52,16 @@ impl Upgrade {
 
     async fn download_prebuilt_binary(&self, version: &str) -> Result<()> {
         let bin_path = get_binary_path()?;
-        let temp_file = self.download_to_tempfile(version).await?;
+        let temp_file = if self.no_progress_bar {
+            download::download_prebuilt_binary(version)?
+        } else {
+            download::download_prebuilt_binary_async(version).await?
+        };
 
         // Move the downloaded binary to bin/maple
         std::fs::rename(temp_file, bin_path)?;
 
         Ok(())
-    }
-
-    async fn download_to_tempfile(&self, version: &str) -> Result<std::path::PathBuf> {
-        if self.no_progress_bar {
-            download::download_prebuilt_binary(version)
-        } else {
-            download::download_prebuilt_binary_async(version).await
-        }
     }
 }
 

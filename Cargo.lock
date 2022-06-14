@@ -1746,7 +1746,6 @@ name = "upgrade"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap",
  "curl",
  "indicatif",
  "reqwest",

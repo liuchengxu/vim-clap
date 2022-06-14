@@ -7,6 +7,26 @@ use types::CaseMatching;
 
 use crate::command;
 
+/// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
+/// vim-clap/bin/maple.
+#[derive(Parser, Debug, Clone)]
+pub struct Upgrade {
+    /// Download if the local version mismatches the latest remote version.
+    #[clap(long)]
+    download: bool,
+    /// Disable the downloading progress_bar
+    #[clap(long)]
+    no_progress_bar: bool,
+}
+
+impl Upgrade {
+    pub async fn run(self, local_tag: &str) -> Result<()> {
+        upgrade::Upgrade::new(self.download, self.no_progress_bar)
+            .run(local_tag)
+            .await
+    }
+}
+
 #[derive(Parser, Debug)]
 pub enum Cmd {
     /// Display the current version
@@ -46,7 +66,7 @@ pub enum Cmd {
     RipGrepForerunner(command::grep::RipGrepForerunner),
     /// Retrive the latest remote release info.
     #[clap(name = "upgrade")]
-    Upgrade(upgrade::Upgrade),
+    Upgrade(Upgrade),
 }
 
 #[derive(Parser, Debug)]
