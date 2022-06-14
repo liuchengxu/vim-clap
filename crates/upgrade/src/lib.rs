@@ -58,9 +58,9 @@ impl Upgrade {
 
     async fn download_to_tempfile(&self, version: &str) -> Result<std::path::PathBuf> {
         if self.no_progress_bar {
-            download::download_prebuilt_binary_to_a_tempfile(version)
+            download::download_prebuilt_binary(version)
         } else {
-            download::download_prebuilt_binary_to_a_tempfile_async(version).await
+            download::download_prebuilt_binary_async(version).await
         }
     }
 }

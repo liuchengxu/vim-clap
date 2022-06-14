@@ -3,8 +3,10 @@ use std::io::copy;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use indicatif::{ProgressBar, ProgressStyle};
+use tokio::{fs, io::AsyncWriteExt};
 
-use crate::github::download_url;
+use crate::github::{asset_name, download_url, retrieve_asset_size};
 
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -20,7 +22,7 @@ fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
 /// # Arguments
 ///
 /// - `version`: "v0.13"
-pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> {
+pub fn download_prebuilt_binary(version: &str) -> Result<PathBuf> {
     let mut response = reqwest::blocking::get(&download_url(version)?)?;
 
     let (mut dest, temp_file) = {
@@ -41,16 +43,14 @@ pub fn download_prebuilt_binary_to_a_tempfile(version: &str) -> Result<PathBuf> 
     #[cfg(unix)]
     set_executable_permission(&temp_file)?;
 
+    println!("{} has alreay been downloaded", temp_file.display());
+
     Ok(temp_file)
 }
 
-pub(super) async fn download_prebuilt_binary_to_a_tempfile_async(version: &str) -> Result<PathBuf> {
-    use crate::github::{asset_name, retrieve_asset_size};
-    use indicatif::{ProgressBar, ProgressStyle};
-    use tokio::{fs, io::AsyncWriteExt};
-
+pub(super) async fn download_prebuilt_binary_async(version: &str) -> Result<PathBuf> {
     let asset_name = asset_name()?;
-    let total_size = retrieve_asset_size(&asset_name, version)?;
+    let total_size = retrieve_asset_size(asset_name, version)?;
 
     let client = reqwest::Client::new();
     let request = client.get(&download_url(version)?);
@@ -98,17 +98,16 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
-    fn test_download_to_a_tempfile() {
+    fn test_download_prebuilt_binary() {
         let remote_release = crate::github::latest_remote_release().unwrap();
         let remote_tag = remote_release.tag_name;
-        download_prebuilt_binary_to_a_tempfile(&remote_tag).unwrap();
+        download_prebuilt_binary(&remote_tag).unwrap();
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn test_async_download_to_a_tempfile() {
-        let file = download_prebuilt_binary_to_a_tempfile_async("v0.14").await;
-        println!("async downloaded file: {:?}", file);
+    async fn test_download_prebuilt_binary_async() {
+        download_prebuilt_binary_async("v0.34")
+            .await
+            .expect("Failed to download the prebuilt binary into a tempfile asynchronously");
     }
 }
