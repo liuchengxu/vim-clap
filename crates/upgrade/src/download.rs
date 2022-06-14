@@ -98,10 +98,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_download_prebuilt_binary() {
+    fn test_download_latest_prebuilt_binary() {
         let remote_release = crate::github::latest_remote_release().unwrap();
         let remote_tag = remote_release.tag_name;
-        download_prebuilt_binary(&remote_tag).unwrap();
+        download_prebuilt_binary(&remote_tag)
+            .expect("Failed to download the latest prebuilt binary");
     }
 
     #[tokio::test]
