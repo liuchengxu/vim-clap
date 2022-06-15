@@ -161,7 +161,7 @@ pub fn tags_kind_icon(kind: &str) -> IconType {
 
 fn buffer_tags_icon(line: &str) -> IconType {
     pattern::extract_buffer_tags_kind(line)
-        .map(|kind| tags_kind_icon(kind))
+        .map(tags_kind_icon)
         .unwrap_or(DEFAULT_ICON)
 }
 
@@ -180,7 +180,7 @@ fn proj_tags_icon(line: &str) -> IconType {
 #[inline]
 fn grep_icon(line: &str) -> IconType {
     pattern::extract_fpath_from_grep_line(line)
-        .map(|fpath| file_icon(fpath))
+        .map(file_icon)
         .unwrap_or(DEFAULT_ICON)
 }
 
