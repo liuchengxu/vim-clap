@@ -4,7 +4,7 @@ mod download;
 mod github;
 
 use crate::download::download_prebuilt_binary;
-use crate::github::retrieve_latest_release;
+use crate::github::{asset_download_url, retrieve_latest_release};
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
@@ -44,7 +44,7 @@ impl Upgrade {
 
                 println!("Latest version {latest_tag} download completed");
             } else {
-                match github::download_url(&latest_tag) {
+                match asset_download_url(&latest_tag) {
                     Some(url) => {
                         println!("New maple release {latest_tag} is available, please download it from {url} or rerun with --download flag.");
                     }

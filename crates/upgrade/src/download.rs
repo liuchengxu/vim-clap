@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::io::AsyncWriteExt;
 
-use crate::github::{asset_name, download_url, retrieve_asset_size};
+use crate::github::{asset_download_url, asset_name, retrieve_asset_size};
 
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
@@ -61,7 +61,7 @@ pub(super) async fn download_prebuilt_binary(
     let to_io_error =
         |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
-    let download_url = download_url(version).ok_or_else(binary_unavailable)?;
+    let download_url = asset_download_url(version).ok_or_else(binary_unavailable)?;
     let mut source = reqwest::Client::new()
         .get(download_url)
         .send()

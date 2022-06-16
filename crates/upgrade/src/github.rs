@@ -15,7 +15,7 @@ pub(super) fn asset_name() -> Option<&'static str> {
     }
 }
 
-pub(super) fn download_url(version: &str) -> Option<String> {
+pub(super) fn asset_download_url(version: &str) -> Option<String> {
     asset_name().map(|asset_name| {
         format!("https://github.com/{USER}/{REPO}/releases/download/{version}/{asset_name}",)
     })
