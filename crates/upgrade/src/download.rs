@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::io::AsyncWriteExt;
 
-use crate::github::{download_url, retrieve_asset_size, PLATFORM};
+use crate::github::{asset_name, download_url, retrieve_asset_size};
 
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
@@ -30,7 +30,7 @@ pub(super) async fn download_prebuilt_binary(
         )
     };
 
-    let asset_name = PLATFORM.as_asset_name().ok_or_else(binary_unavailable)?;
+    let asset_name = asset_name().ok_or_else(binary_unavailable)?;
 
     let mut tmp = std::env::temp_dir();
     tmp.push(format!("{}-{}", version, asset_name));
@@ -58,17 +58,16 @@ pub(super) async fn download_prebuilt_binary(
         Some(progress_bar)
     };
 
+    let to_io_error =
+        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+
     let download_url = download_url(version).ok_or_else(binary_unavailable)?;
-    let request = reqwest::Client::new().get(download_url);
+    let mut source = reqwest::Client::new()
+        .get(download_url)
+        .send()
+        .await
+        .map_err(to_io_error)?;
 
-    let to_io_error = |e| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("There was an error while sending request: {e}"),
-        )
-    };
-
-    let mut source = request.send().await.map_err(to_io_error)?;
     let mut dest = tokio::fs::OpenOptions::new()
         .create(true)
         .append(true)
