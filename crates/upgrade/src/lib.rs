@@ -25,8 +25,8 @@ impl Upgrade {
 
     pub async fn run(&self, local_tag: &str) -> Result<()> {
         println!("Retrieving the latest remote release info...");
-        let remote_release = github::latest_remote_release()?;
-        let remote_tag = remote_release.tag_name;
+        let latest_release = github::retrieve_latest_release().await?;
+        let remote_tag = latest_release.tag_name;
         let remote_version = extract_remote_version_number(&remote_tag);
         let local_version = extract_local_version_number(local_tag);
         if remote_version != local_version {
@@ -51,11 +51,7 @@ impl Upgrade {
     }
 
     async fn download_prebuilt_binary(&self, version: &str) -> Result<()> {
-        let temp_file = if self.no_progress_bar {
-            download::download_prebuilt_binary(version)?
-        } else {
-            download::download_prebuilt_binary_async(version).await?
-        };
+        let temp_file = download::download_prebuilt_binary(version, self.no_progress_bar).await?;
 
         let bin_path = get_binary_path()?;
 

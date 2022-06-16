@@ -1,61 +1,54 @@
 use anyhow::{anyhow, Result};
-use curl::easy::{Easy, List};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 const USER: &str = "liuchengxu";
 const REPO: &str = "vim-clap";
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemoteRelease {
+#[derive(Debug, Deserialize)]
+pub struct Asset {
+    pub name: String,
+    pub size: u64,
+}
+
+// https://docs.github.com/en/rest/releases/releases
+#[derive(Debug, Deserialize)]
+pub struct Release {
     pub tag_name: String,
+    pub assets: Vec<Asset>,
 }
 
-fn retrieve_github_api(api_url: &str) -> Result<Vec<u8>> {
-    let mut dst = Vec::new();
-    let mut handle = Easy::new();
-    handle.url(api_url)?;
-    let mut headers = List::new();
-    headers.append(&format!("User-Agent: {}", USER))?;
-    headers.append("Accept: application/json")?;
-    handle.http_headers(headers)?;
+pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
 
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            dst.extend_from_slice(data);
-            Ok(data.len())
-        })?;
+    let res = reqwest::Client::new()
+        .get(url)
+        .header("Accept", "application/vnd.github.v3+json")
+        .header("User-Agent", USER)
+        .send()
+        .await?;
 
-        transfer.perform()?;
-    }
+    let release = res.json::<Release>().await?;
 
-    Ok(dst)
+    release
+        .assets
+        .iter()
+        .find(|x| x.name == asset_name)
+        .map(|x| x.size)
+        .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
 }
 
-pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
-    let data = retrieve_github_api(&format!(
-        "https://api.github.com/repos/{}/{}/releases/tags/{}",
-        USER, REPO, tag
-    ))?;
-    let v: serde_json::Value = serde_json::from_slice(&data)?;
-    if let serde_json::Value::Array(assets) = &v["assets"] {
-        for asset in assets {
-            if asset["name"] == asset_name {
-                return asset["size"]
-                    .as_u64()
-                    .ok_or_else(|| anyhow!("Couldn't as u64"));
-            }
-        }
-    }
-    Err(anyhow!("Couldn't retrieve size for {}:{}", asset_name, tag))
-}
+pub(super) async fn retrieve_latest_release() -> Result<Release> {
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest",);
 
-pub fn latest_remote_release() -> Result<RemoteRelease> {
-    let data = retrieve_github_api(&format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        USER, REPO
-    ))?;
-    let release: RemoteRelease = serde_json::from_slice(&data)?;
+    let release = reqwest::Client::new()
+        .get(url)
+        .header("Accept", "application/vnd.github.v3+json")
+        .header("User-Agent", USER)
+        .send()
+        .await?
+        .json::<Release>()
+        .await?;
+
     Ok(release)
 }
 
@@ -86,9 +79,10 @@ pub(super) fn download_url(version: &str) -> Result<String> {
 mod tests {
     use super::*;
 
-    #[test]
-    #[ignore]
-    fn test_retrieve_asset_size() {
-        println!("{:?}", retrieve_asset_size(&asset_name().unwrap(), "v0.14"));
+    #[tokio::test]
+    async fn test_retrieve_asset_size() {
+        retrieve_asset_size(&asset_name().unwrap(), "v0.34")
+            .await
+            .expect("Failed to retrieve the asset size for release v0.34");
     }
 }
