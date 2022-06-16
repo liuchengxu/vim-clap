@@ -4,7 +4,7 @@ use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::io::AsyncWriteExt;
 
-use crate::github::{asset_name, download_url, retrieve_asset_size};
+use crate::github::{download_url, retrieve_asset_size, PLATFORM};
 
 #[cfg(unix)]
 fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -24,9 +24,18 @@ pub(super) async fn download_prebuilt_binary(
     version: &str,
     no_progress_bar: bool,
 ) -> Result<PathBuf> {
-    let request = reqwest::Client::new().get(&download_url(version)?);
+    let binary_unavailable = || {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "no-avaliable-prebuilt-binary for this platform",
+        )
+    };
 
-    let asset_name = asset_name()?;
+    let download_url = download_url(version).ok_or_else(binary_unavailable)?;
+
+    let request = reqwest::Client::new().get(download_url);
+
+    let asset_name = PLATFORM.as_asset_name().ok_or_else(binary_unavailable)?;
 
     let total_size = retrieve_asset_size(asset_name, version).await?;
 

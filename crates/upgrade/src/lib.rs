@@ -45,8 +45,14 @@ impl Upgrade {
 
                 println!("Latest version {latest_tag} download completed");
             } else {
-                let download_url = github::download_url(&latest_tag)?;
-                println!("New maple release {latest_tag} is available, please download it from {download_url} or rerun with --download flag.");
+                match github::download_url(&latest_tag) {
+                    Some(url) => {
+                        println!("New maple release {latest_tag} is available, please download it from {url} or rerun with --download flag.");
+                    }
+                    None => {
+                        println!("New maple release {latest_tag} is available, but no prebuilt binary provided for your platform");
+                    }
+                }
             }
         } else {
             println!("No newer release, current maple version: {latest_tag}");
