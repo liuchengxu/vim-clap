@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::Deserialize;
 
 const USER: &str = "liuchengxu";
@@ -64,17 +63,22 @@ pub struct Release {
     pub assets: Vec<Asset>,
 }
 
-pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
+pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
 
-    let res = reqwest::Client::new()
+    let to_io_error =
+        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+
+    let release = reqwest::Client::new()
         .get(url)
         .header("Accept", "application/vnd.github.v3+json")
         .header("User-Agent", USER)
         .send()
-        .await?;
-
-    let release = res.json::<Release>().await?;
+        .await
+        .map_err(to_io_error)?
+        .json::<Release>()
+        .await
+        .map_err(to_io_error)?;
 
     release
         .assets
@@ -84,17 +88,22 @@ pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u
         .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
 }
 
-pub(super) async fn retrieve_latest_release() -> Result<Release> {
+pub(super) async fn retrieve_latest_release() -> std::io::Result<Release> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest",);
+
+    let to_io_error =
+        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
     let release = reqwest::Client::new()
         .get(url)
         .header("Accept", "application/vnd.github.v3+json")
         .header("User-Agent", USER)
         .send()
-        .await?
+        .await
+        .map_err(to_io_error)?
         .json::<Release>()
-        .await?;
+        .await
+        .map_err(to_io_error)?;
 
     Ok(release)
 }

@@ -1688,7 +1688,6 @@ dependencies = [
 name = "upgrade"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "indicatif",
  "reqwest",
  "serde",

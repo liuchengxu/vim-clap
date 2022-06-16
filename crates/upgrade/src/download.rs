@@ -1,13 +1,12 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::io::AsyncWriteExt;
 
 use crate::github::{download_url, retrieve_asset_size, PLATFORM};
 
 #[cfg(unix)]
-fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
+fn set_executable_permission<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let mut perms = std::fs::metadata(path.as_ref())?.permissions();
     perms.set_mode(0o755);
@@ -23,7 +22,7 @@ fn set_executable_permission<P: AsRef<Path>>(path: P) -> Result<()> {
 pub(super) async fn download_prebuilt_binary(
     version: &str,
     no_progress_bar: bool,
-) -> Result<PathBuf> {
+) -> std::io::Result<PathBuf> {
     let binary_unavailable = || {
         std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -31,17 +30,14 @@ pub(super) async fn download_prebuilt_binary(
         )
     };
 
-    let download_url = download_url(version).ok_or_else(binary_unavailable)?;
-
-    let request = reqwest::Client::new().get(download_url);
-
     let asset_name = PLATFORM.as_asset_name().ok_or_else(binary_unavailable)?;
-
-    let total_size = retrieve_asset_size(asset_name, version).await?;
 
     let mut tmp = std::env::temp_dir();
     tmp.push(format!("{}-{}", version, asset_name));
 
+    let total_size = retrieve_asset_size(asset_name, version).await?;
+
+    // Check if there is a partially download binary before.
     if tmp.is_file() {
         let metadata = std::fs::metadata(&tmp)?;
         if metadata.len() == total_size {
@@ -62,14 +58,24 @@ pub(super) async fn download_prebuilt_binary(
         Some(progress_bar)
     };
 
-    let mut source = request.send().await?;
+    let download_url = download_url(version).ok_or_else(binary_unavailable)?;
+    let request = reqwest::Client::new().get(download_url);
+
+    let to_io_error = |e| {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("There was an error while sending request: {e}"),
+        )
+    };
+
+    let mut source = request.send().await.map_err(to_io_error)?;
     let mut dest = tokio::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&tmp.as_path())
         .await?;
 
-    while let Some(chunk) = source.chunk().await? {
+    while let Some(chunk) = source.chunk().await.map_err(to_io_error)? {
         dest.write_all(&chunk).await?;
 
         if let Some(ref mut progress_bar) = maybe_progress_bar {

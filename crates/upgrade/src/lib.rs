@@ -3,8 +3,6 @@
 mod download;
 mod github;
 
-use anyhow::Result;
-
 use crate::download::download_prebuilt_binary;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
@@ -25,7 +23,7 @@ impl Upgrade {
         }
     }
 
-    pub async fn run(&self, local_tag: &str) -> Result<()> {
+    pub async fn run(&self, local_tag: &str) -> std::io::Result<()> {
         println!("Retrieving the latest remote release info...");
         let latest_release = github::retrieve_latest_release().await?;
         let latest_tag = latest_release.tag_name;

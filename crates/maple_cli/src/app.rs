@@ -24,6 +24,7 @@ impl Upgrade {
         upgrade::Upgrade::new(self.download, self.no_progress_bar)
             .run(local_tag)
             .await
+            .map_err(Into::into)
     }
 }
 
