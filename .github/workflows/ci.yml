@@ -61,7 +61,7 @@ jobs:
           args: --all-features
 
   crates:
-    name: Rust
+    name: Rust Tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -78,6 +78,23 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests under crates
       run: bash ci/run_test.sh
+
+  maple:
+    name: Rust Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build maple
       run: cargo build --release
 

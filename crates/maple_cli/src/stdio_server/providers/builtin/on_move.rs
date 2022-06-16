@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -57,8 +56,7 @@ impl OnMove {
     pub fn new(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
         let mut line_content = None;
         let context = match context.provider_id.as_str() {
-            "filer" => unreachable!("filer has been handled ahead"),
-
+            "filer" => unreachable!("filer has been handled beforehand"),
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, &curline)),
             "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
@@ -145,6 +143,11 @@ impl OnMove {
         };
 
         Ok((context, line_content))
+    }
+
+    /// Returns `true` if the file path of preview file should be truncateted relative to cwd.
+    fn should_truncate_cwd_relative(&self) -> bool {
+        matches!(self, Self::Files(_) | Self::Grep(_) | Self::ProjTags(_))
     }
 }
 
@@ -250,8 +253,8 @@ impl<'a> OnMoveHandler<'a> {
         }
         if self.context.provider_id.as_str() == "grep2" {
             if let Some(ref cache_line) = self.cache_line {
-                if !cache_line.eq(latest_line) {
-                    tracing::debug!(?latest_line, ?cache_line, "The cache might be oudated");
+                if cache_line != latest_line {
+                    tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
                     let dir = self.context.cwd.clone();
                     IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
                     // Spawn a future in the background
@@ -286,18 +289,6 @@ impl<'a> OnMoveHandler<'a> {
             }) => {
                 let container_width = self.context.display_winwidth as usize;
 
-                // Truncate the left of absolute path string.
-                // TODO: truncate the absolute path better.
-                let mut fname = path.display().to_string();
-                let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
-                if fname.len() > max_fname_len {
-                    if let Some((offset, _)) =
-                        fname.char_indices().nth(fname.len() - max_fname_len + 2)
-                    {
-                        fname.replace_range(..offset, "..");
-                    }
-                }
-
                 let mut context_lines = Vec::new();
 
                 // Some checks against the latest preview line.
@@ -315,17 +306,13 @@ impl<'a> OnMoveHandler<'a> {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
-                                    let border_line = if crate::stdio_server::global().is_nvim {
-                                        "─".repeat(container_width)
-                                    } else {
-                                        // Vim has a different border width.
-                                        let mut border_line =
-                                            String::with_capacity(container_width - 2);
-                                        border_line.extend(
-                                            std::iter::repeat('─').take(container_width - 2),
-                                        );
-                                        border_line
-                                    };
+                                    let border_line =
+                                        "─".repeat(if crate::stdio_server::global().is_nvim {
+                                            container_width
+                                        } else {
+                                            // Vim has a different border width.
+                                            container_width - 2
+                                        });
 
                                     context_lines.push(border_line.clone());
 
@@ -356,7 +343,24 @@ impl<'a> OnMoveHandler<'a> {
 
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
-                let lines = std::iter::once(format!("{}:{}", fname, lnum))
+                let fname = path.display().to_string();
+                let header_line = if !crate::stdio_server::global().is_nvim
+                    && self.inner.should_truncate_cwd_relative()
+                {
+                    // cwd is shown via the popup title, no need to include it again.
+                    let cwd_relative =
+                        fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
+                    format!("{}:{}", cwd_relative, lnum)
+                } else {
+                    let max_fname_len = container_width - 1 - crate::utils::display_width(*lnum);
+                    format!(
+                        "{}:{}",
+                        crate::utils::truncate_absolute_path(&fname, max_fname_len),
+                        lnum
+                    )
+                };
+
+                let lines = std::iter::once(header_line)
                     .chain(context_lines.into_iter())
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
@@ -397,18 +401,23 @@ impl<'a> OnMoveHandler<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        previewer::truncate_preview_lines(self.max_width(), lines)
+        previewer::truncate_preview_lines(self.max_line_width(), lines)
     }
 
     /// Returns the maximum line width.
     #[inline]
-    fn max_width(&self) -> usize {
+    fn max_line_width(&self) -> usize {
         2 * self.context.display_winwidth as usize
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let (lines, fname) =
-            previewer::preview_file(path.as_ref(), 2 * self.size, self.max_width())?;
+        let max_fname_len = self.context.display_winwidth as usize - 1;
+        let (lines, fname) = previewer::preview_file_with_truncated_title(
+            path.as_ref(),
+            2 * self.size,
+            self.max_line_width(),
+            max_fname_len,
+        )?;
         if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
             self.send_response(json!({ "lines": lines, "syntax": syntax }));
         } else {

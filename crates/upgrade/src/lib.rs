@@ -3,7 +3,7 @@
 mod download;
 mod github;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
@@ -51,12 +51,13 @@ impl Upgrade {
     }
 
     async fn download_prebuilt_binary(&self, version: &str) -> Result<()> {
-        let bin_path = get_binary_path()?;
         let temp_file = if self.no_progress_bar {
             download::download_prebuilt_binary(version)?
         } else {
             download::download_prebuilt_binary_async(version).await?
         };
+
+        let bin_path = get_binary_path()?;
 
         // Move the downloaded binary to bin/maple
         std::fs::rename(temp_file, bin_path)?;
@@ -66,14 +67,21 @@ impl Upgrade {
 }
 
 /// The prebuilt binary is put at bin/maple.
-fn get_binary_path() -> Result<impl AsRef<std::path::Path>> {
+fn get_binary_path() -> std::io::Result<impl AsRef<std::path::Path>> {
+    use std::io::{Error, ErrorKind};
+
     let exe_dir = std::env::current_exe()?;
-    let bin_dir = exe_dir
-        .parent()
-        .context("Couldn't get the parent of current exe")?;
+    let bin_dir = exe_dir.parent().ok_or_else(|| {
+        Error::new(
+            ErrorKind::NotFound,
+            "Parent directory of current executable not found",
+        )
+    })?;
+
     if !bin_dir.ends_with("bin") {
-        return Err(anyhow!(
-            "Current exe has to be under vim-clap/bin directory"
+        return Err(Error::new(
+            ErrorKind::Other,
+            "Current executable must be put vim-clap/bin directory",
         ));
     }
 
@@ -88,16 +96,18 @@ fn get_binary_path() -> Result<impl AsRef<std::path::Path>> {
 /// remote: "v0.13"
 #[inline]
 fn extract_remote_version_number(remote_tag: &str) -> u32 {
-    let v = remote_tag.split('.').collect::<Vec<_>>();
-    v[1].parse()
-        .unwrap_or_else(|_| panic!("Couldn't extract remote version"))
+    remote_tag
+        .split('.')
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .expect("Couldn't extract remote version")
 }
 
 /// local: "v0.13-4-g58738c0"
 #[inline]
 fn extract_local_version_number(local_tag: &str) -> u32 {
-    let tag = local_tag.split('-').collect::<Vec<_>>();
-    extract_remote_version_number(tag[0])
+    let tag = local_tag.split('-').next().expect("Invalid tag");
+    extract_remote_version_number(tag)
 }
 
 #[cfg(test)]

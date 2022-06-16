@@ -147,11 +147,11 @@ impl CacheInfo {
 
 /// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
 pub fn push_cache_digest(digest: Digest) -> Result<()> {
-    let cache_info = CACHE_INFO_IN_MEMORY.lock();
+    let cache_info = CACHE_INFO_IN_MEMORY.clone();
 
-    let mut cache_info_cloned = cache_info.clone();
     tokio::spawn(async move {
-        if let Err(e) = cache_info_cloned.limited_push(digest) {
+        let mut cache_info = cache_info.lock();
+        if let Err(e) = cache_info.limited_push(digest) {
             tracing::error!(?e, "Failed to push the cache digest");
         }
     });
