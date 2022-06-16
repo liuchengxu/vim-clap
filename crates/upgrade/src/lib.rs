@@ -5,6 +5,8 @@ mod github;
 
 use anyhow::Result;
 
+use crate::download::download_prebuilt_binary;
+
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
 #[derive(Debug, Clone)]
@@ -26,37 +28,29 @@ impl Upgrade {
     pub async fn run(&self, local_tag: &str) -> Result<()> {
         println!("Retrieving the latest remote release info...");
         let latest_release = github::retrieve_latest_release().await?;
-        let remote_tag = latest_release.tag_name;
-        let remote_version = extract_remote_version_number(&remote_tag);
+        let latest_tag = latest_release.tag_name;
+        let latest_version = extract_remote_version_number(&latest_tag);
         let local_version = extract_local_version_number(local_tag);
-        if remote_version != local_version {
+
+        if latest_version != local_version {
             if self.download {
-                println!(
-                    "New maple release {} is avaliable, downloading...",
-                    remote_tag
-                );
-                self.download_prebuilt_binary(&remote_tag).await?;
-                println!("Latest version {} download completed", remote_tag);
+                println!("New maple release {latest_tag} is available, downloading...",);
+
+                let temp_file = download_prebuilt_binary(&latest_tag, self.no_progress_bar).await?;
+
+                let bin_path = get_binary_path()?;
+
+                // Move the downloaded binary to bin/maple
+                std::fs::rename(temp_file, bin_path)?;
+
+                println!("Latest version {latest_tag} download completed");
             } else {
-                println!(
-                    "New maple release {} is avaliable, please download it from {} or rerun with --download flag.",
-                    remote_tag,
-                    github::download_url(&remote_tag)?
-                );
+                let download_url = github::download_url(&latest_tag)?;
+                println!("New maple release {latest_tag} is available, please download it from {download_url} or rerun with --download flag.");
             }
         } else {
-            println!("No newer release, current maple version: {}", remote_tag);
+            println!("No newer release, current maple version: {latest_tag}");
         }
-        Ok(())
-    }
-
-    async fn download_prebuilt_binary(&self, version: &str) -> Result<()> {
-        let temp_file = download::download_prebuilt_binary(version, self.no_progress_bar).await?;
-
-        let bin_path = get_binary_path()?;
-
-        // Move the downloaded binary to bin/maple
-        std::fs::rename(temp_file, bin_path)?;
 
         Ok(())
     }
@@ -89,7 +83,7 @@ fn get_binary_path() -> std::io::Result<impl AsRef<std::path::Path>> {
     Ok(bin_path)
 }
 
-/// remote: "v0.13"
+/// Extracts the number of version from tag name, e.g., returns 13 out of the tag `v0.13`.
 #[inline]
 fn extract_remote_version_number(remote_tag: &str) -> u32 {
     remote_tag
@@ -102,7 +96,7 @@ fn extract_remote_version_number(remote_tag: &str) -> u32 {
 /// local: "v0.13-4-g58738c0"
 #[inline]
 fn extract_local_version_number(local_tag: &str) -> u32 {
-    let tag = local_tag.split('-').next().expect("Invalid tag");
+    let tag = local_tag.split('-').next().expect("Invalid local tag");
     extract_remote_version_number(tag)
 }
 
