@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 
 const USER: &str = "liuchengxu";
 const REPO: &str = "vim-clap";
@@ -34,22 +34,25 @@ pub struct Release {
     pub assets: Vec<Asset>,
 }
 
-pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
-
+async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
     let to_io_error =
         |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
-    let release = reqwest::Client::new()
+    reqwest::Client::new()
         .get(url)
         .header("Accept", "application/vnd.github.v3+json")
         .header("User-Agent", USER)
         .send()
         .await
         .map_err(to_io_error)?
-        .json::<Release>()
+        .json::<T>()
         .await
-        .map_err(to_io_error)?;
+        .map_err(to_io_error)
+}
+
+pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
+    let release: Release = request(&url).await?;
 
     release
         .assets
@@ -61,22 +64,7 @@ pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io:
 
 pub(super) async fn retrieve_latest_release() -> std::io::Result<Release> {
     let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest",);
-
-    let to_io_error =
-        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
-
-    let release = reqwest::Client::new()
-        .get(url)
-        .header("Accept", "application/vnd.github.v3+json")
-        .header("User-Agent", USER)
-        .send()
-        .await
-        .map_err(to_io_error)?
-        .json::<Release>()
-        .await
-        .map_err(to_io_error)?;
-
-    Ok(release)
+    request::<Release>(&url).await
 }
 
 #[cfg(test)]
