@@ -4,6 +4,7 @@ mod download;
 mod github;
 
 use crate::download::download_prebuilt_binary;
+use crate::github::retrieve_latest_release;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.
@@ -25,7 +26,7 @@ impl Upgrade {
 
     pub async fn run(&self, local_tag: &str) -> std::io::Result<()> {
         println!("Retrieving the latest remote release info...");
-        let latest_release = github::retrieve_latest_release().await?;
+        let latest_release = retrieve_latest_release().await?;
         let latest_tag = latest_release.tag_name;
         let latest_version = extract_remote_version_number(&latest_tag);
         let local_version = extract_local_version_number(local_tag);
@@ -79,10 +80,11 @@ fn get_binary_path() -> std::io::Result<impl AsRef<std::path::Path>> {
         ));
     }
 
-    #[cfg(windows)]
-    let bin_path = bin_dir.join("maple.exe");
-    #[cfg(not(windows))]
-    let bin_path = bin_dir.join("maple");
+    let bin_path = if cfg!(windows) {
+        bin_dir.join("maple.exe")
+    } else {
+        bin_dir.join("maple")
+    };
 
     Ok(bin_path)
 }

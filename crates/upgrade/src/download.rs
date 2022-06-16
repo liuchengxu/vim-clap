@@ -37,7 +37,7 @@ pub(super) async fn download_prebuilt_binary(
 
     let total_size = retrieve_asset_size(asset_name, version).await?;
 
-    // Check if there is a partially download binary before.
+    // Check if there is a partially downloaded binary before.
     if tmp.is_file() {
         let metadata = std::fs::metadata(&tmp)?;
         if metadata.len() == total_size {
