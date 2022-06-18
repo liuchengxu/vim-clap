@@ -145,7 +145,7 @@ impl Watcher {
     /// # NOTE
     ///
     /// Printing to stdout is to send the content to the client.
-    pub fn maybe_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[FilteredItem]) {
+    pub fn try_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[FilteredItem]) {
         if self.total % 16 == 0 {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
@@ -223,7 +223,7 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: Icon) -> 
 
         watcher.total += 1;
 
-        watcher.maybe_notify(&top_results, &buffer);
+        watcher.try_notify(&top_results, &buffer);
     });
 
     buffer
@@ -268,7 +268,7 @@ fn dyn_collect_number(
 
         watcher.total += 1;
 
-        watcher.maybe_notify(&top_results, &buffer);
+        watcher.try_notify(&top_results, &buffer);
 
         if buffer.len() == buffer.capacity() {
             buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
