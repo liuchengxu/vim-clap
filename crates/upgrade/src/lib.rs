@@ -40,6 +40,7 @@ impl Upgrade {
 
                 let temp_file = download_prebuilt_binary(&latest_tag, self.no_progress_bar).await?;
 
+                // Only tries to upgrade if using the prebuilt binary, i.e., `bin/maple`.
                 let bin_path = get_binary_path()?;
 
                 // Move the downloaded binary to bin/maple
@@ -79,7 +80,7 @@ fn get_binary_path() -> std::io::Result<impl AsRef<std::path::Path>> {
     if !bin_dir.ends_with("bin") {
         return Err(Error::new(
             ErrorKind::Other,
-            "Current executable must be put vim-clap/bin directory",
+            "Current executable is not from bin/***",
         ));
     }
 
@@ -130,7 +131,7 @@ async fn download_prebuilt_binary(
     let binary_unavailable = || {
         std::io::Error::new(
             std::io::ErrorKind::Other,
-            "no-avaliable-prebuilt-binary for this platform",
+            "No available prebuilt binary for this platform",
         )
     };
 
