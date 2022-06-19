@@ -1,94 +1,80 @@
-use anyhow::{anyhow, Result};
-use curl::easy::{Easy, List};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize};
 
 const USER: &str = "liuchengxu";
 const REPO: &str = "vim-clap";
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RemoteRelease {
-    pub tag_name: String,
-}
-
-fn retrieve_github_api(api_url: &str) -> Result<Vec<u8>> {
-    let mut dst = Vec::new();
-    let mut handle = Easy::new();
-    handle.url(api_url)?;
-    let mut headers = List::new();
-    headers.append(&format!("User-Agent: {}", USER))?;
-    headers.append("Accept: application/json")?;
-    handle.http_headers(headers)?;
-
-    {
-        let mut transfer = handle.transfer();
-        transfer.write_function(|data| {
-            dst.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-
-        transfer.perform()?;
-    }
-
-    Ok(dst)
-}
-
-pub(super) fn retrieve_asset_size(asset_name: &str, tag: &str) -> Result<u64> {
-    let data = retrieve_github_api(&format!(
-        "https://api.github.com/repos/{}/{}/releases/tags/{}",
-        USER, REPO, tag
-    ))?;
-    let v: serde_json::Value = serde_json::from_slice(&data)?;
-    if let serde_json::Value::Array(assets) = &v["assets"] {
-        for asset in assets {
-            if asset["name"] == asset_name {
-                return asset["size"]
-                    .as_u64()
-                    .ok_or_else(|| anyhow!("Couldn't as u64"));
-            }
-        }
-    }
-    Err(anyhow!("Couldn't retrieve size for {}:{}", asset_name, tag))
-}
-
-pub fn latest_remote_release() -> Result<RemoteRelease> {
-    let data = retrieve_github_api(&format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        USER, REPO
-    ))?;
-    let release: RemoteRelease = serde_json::from_slice(&data)?;
-    Ok(release)
-}
-
-pub(super) fn asset_name() -> Result<&'static str> {
-    let asset_name = if cfg!(target_os = "macos") {
-        "maple-x86_64-apple-darwin"
+pub(super) fn asset_name() -> Option<&'static str> {
+    if cfg!(target_os = "macos") {
+        Some("maple-x86_64-apple-darwin")
     } else if cfg!(target_os = "linux") {
-        "maple-x86_64-unknown-linux-musl"
+        Some("maple-x86_64-unknown-linux-musl")
     } else if cfg!(target_os = "windows") {
-        "maple-x86_64-pc-windows-msvc"
+        Some("maple-x86_64-pc-windows-msvc")
     } else {
-        return Err(anyhow!("no-avaliable-prebuilt-binary for this platform"));
-    };
-    Ok(asset_name)
+        None
+    }
 }
 
-pub(super) fn download_url(version: &str) -> Result<String> {
-    Ok(format!(
-        "https://github.com/{}/{}/releases/download/{}/{}",
-        USER,
-        REPO,
-        version,
-        asset_name()?
-    ))
+pub(super) fn asset_download_url(version: &str) -> Option<String> {
+    asset_name().map(|asset_name| {
+        format!("https://github.com/{USER}/{REPO}/releases/download/{version}/{asset_name}",)
+    })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Asset {
+    pub name: String,
+    pub size: u64,
+}
+
+// https://docs.github.com/en/rest/releases/releases
+#[derive(Debug, Deserialize)]
+pub struct Release {
+    pub tag_name: String,
+    pub assets: Vec<Asset>,
+}
+
+async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
+    let to_io_error =
+        |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
+
+    reqwest::Client::new()
+        .get(url)
+        .header("Accept", "application/vnd.github.v3+json")
+        .header("User-Agent", USER)
+        .send()
+        .await
+        .map_err(to_io_error)?
+        .json::<T>()
+        .await
+        .map_err(to_io_error)
+}
+
+pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
+    let release: Release = request(&url).await?;
+
+    release
+        .assets
+        .iter()
+        .find(|x| x.name == asset_name)
+        .map(|x| x.size)
+        .ok_or_else(|| panic!("Can not find the asset {asset_name} in given release {tag}"))
+}
+
+pub(super) async fn retrieve_latest_release() -> std::io::Result<Release> {
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest",);
+    request::<Release>(&url).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    #[ignore]
-    fn test_retrieve_asset_size() {
-        println!("{:?}", retrieve_asset_size(&asset_name().unwrap(), "v0.14"));
+    #[tokio::test]
+    async fn test_retrieve_asset_size() {
+        retrieve_asset_size(asset_name().unwrap(), "v0.34")
+            .await
+            .expect("Failed to retrieve the asset size for release v0.34");
     }
 }

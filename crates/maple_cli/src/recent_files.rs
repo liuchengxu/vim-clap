@@ -109,7 +109,7 @@ impl FrecentEntry {
     }
 
     /// Add a bonus score based on cwd.
-    pub fn adjusted_score(&self, cwd: &str) -> u64 {
+    pub fn cwd_preferred_score(&self, cwd: &str) -> u64 {
         if self.fpath.starts_with(cwd) {
             self.frecent_score * 2
         } else {
@@ -162,8 +162,8 @@ impl SortedRecentFiles {
     /// Sort the entries by adding a bonus score given `cwd`.
     pub fn sort_by_cwd(&mut self, cwd: &str) {
         self.entries.sort_unstable_by(|a, b| {
-            b.adjusted_score(cwd)
-                .partial_cmp(&a.adjusted_score(cwd))
+            b.cwd_preferred_score(cwd)
+                .partial_cmp(&a.cwd_preferred_score(cwd))
                 .unwrap()
         });
     }

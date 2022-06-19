@@ -24,6 +24,7 @@ impl Upgrade {
         upgrade::Upgrade::new(self.download, self.no_progress_bar)
             .run(local_tag)
             .await
+            .map_err(Into::into)
     }
 }
 
@@ -136,14 +137,43 @@ impl Maple {
             Cmd::DumbJump(dumb_jump) => dumb_jump.run().await?,
             Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::Rpc => {
-                if let Some(ref log_path) = self.log {
-                    crate::logger::init(log_path)?;
-                } else if let Ok(log_path) = std::env::var("VIM_CLAP_LOG_PATH") {
-                    crate::logger::init(log_path)?;
-                }
+                let maybe_log = if let Some(log_path) = self.log {
+                    Some(log_path)
+                } else if let Ok(log_path) =
+                    std::env::var("VIM_CLAP_LOG_PATH").map(std::path::PathBuf::from)
+                {
+                    Some(log_path)
+                } else {
+                    None
+                };
 
-                crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
-                // crate::stdio_server::start()?;
+                if let Some(log_path) = maybe_log {
+                    if log_path.is_file() {
+                        if std::fs::metadata(&log_path)?.len() > 8 * 1024 * 1024 {
+                            std::fs::remove_file(&log_path)?;
+                        }
+                    } else {
+                        return Err(anyhow::anyhow!("{} must be a file", log_path.display()));
+                    }
+
+                    let file_name = log_path.file_name().expect("Invalid file name");
+                    let directory = log_path.parent().expect("A file must have a parent");
+
+                    let file_appender = tracing_appender::rolling::never(directory, file_name);
+                    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+                    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+                        .with_max_level(tracing::Level::TRACE)
+                        .with_line_number(true)
+                        .with_writer(non_blocking)
+                        .finish();
+
+                    tracing::subscriber::set_global_default(subscriber)?;
+
+                    crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+                } else {
+                    crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+                }
             }
         };
         Ok(())
