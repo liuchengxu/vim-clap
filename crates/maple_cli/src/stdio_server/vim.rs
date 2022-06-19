@@ -53,18 +53,13 @@ pub fn syntax_for(path: &Path) -> Option<&str> {
     match path
         .file_name()
         .and_then(|x| x.to_str())
-        .map(|filename| FILENAME_SYNTAX_MAP.deref().get(filename).copied())
-        .flatten()
+        .and_then(|filename| FILENAME_SYNTAX_MAP.deref().get(filename).copied())
     {
-        None => path
-            .extension()
-            .and_then(|x| x.to_str())
-            .map(|ext| {
-                SYNTAX_MAP
-                    .get()
-                    .and_then(|m| m.get(ext).map(|s| s.as_ref()))
-            })
-            .flatten(),
+        None => path.extension().and_then(|x| x.to_str()).and_then(|ext| {
+            SYNTAX_MAP
+                .get()
+                .and_then(|m| m.get(ext).map(|s| s.as_ref()))
+        }),
         Some(s) => Some(s),
     }
 }

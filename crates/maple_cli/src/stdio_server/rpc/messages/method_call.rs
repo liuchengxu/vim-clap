@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
-use jsonrpc_core::Params;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::stdio_server::rpc::Params;
 use crate::stdio_server::types::ProviderId;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]

@@ -7,13 +7,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{anyhow, Result};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
-use jsonrpc_core::Params;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 
 pub use self::messages::method_call::MethodCall;
 pub use self::messages::notification::Notification;
-pub use self::types::{Call, Error, Failure, Output, RawMessage, Success};
+pub use self::types::{Call, Error, ErrorCode, Failure, Output, Params, RawMessage, Success};
 
 #[derive(Serialize)]
 pub struct RpcClient {
@@ -111,7 +110,7 @@ impl RpcClient {
             Err(err) => Output::Failure(Failure {
                 id,
                 error: Error {
-                    code: jsonrpc_core::ErrorCode::InternalError,
+                    code: ErrorCode::InternalError,
                     message: err.to_string(),
                     data: None,
                 },

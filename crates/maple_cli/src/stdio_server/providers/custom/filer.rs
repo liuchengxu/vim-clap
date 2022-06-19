@@ -3,8 +3,7 @@ use std::sync::Arc;
 use std::{fs, io};
 
 use anyhow::Result;
-use jsonrpc_core::Value;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use icon::prepend_filer_icon;
 

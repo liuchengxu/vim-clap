@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
-use jsonrpc_core::Params;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
+use crate::stdio_server::rpc::Params;
 use crate::stdio_server::types::GlobalEnv;
 use crate::stdio_server::GLOBAL_ENV;
 

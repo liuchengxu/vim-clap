@@ -5,16 +5,13 @@ use std::sync::{atomic::AtomicBool, Arc};
 use anyhow::Result;
 use filter::FilteredItem;
 use icon::{Icon, IconKind};
-use jsonrpc_core::Params;
 use matcher::MatchScope;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
 use crate::command::ctags::buffer_tags::BufferTagInfo;
-use crate::stdio_server::{
-    rpc::{Call, MethodCall, Notification},
-    types::ProviderId,
-};
+use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
+use crate::stdio_server::types::ProviderId;
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
