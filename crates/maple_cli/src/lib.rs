@@ -2,7 +2,6 @@ mod app;
 mod cache;
 mod datastore;
 mod find_usages;
-mod logger;
 mod paths;
 mod previewer;
 mod process;
