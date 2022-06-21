@@ -297,9 +297,7 @@ impl From<Params> for Value {
 
 #[cfg(test)]
 mod tests {
-    use super::Params;
-    use crate::types::{Error, ErrorCode, Value};
-    use serde_json;
+    use super::{Error, ErrorCode, Params, Value};
 
     #[test]
     fn params_deserialization() {

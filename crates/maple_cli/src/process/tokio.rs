@@ -58,6 +58,7 @@ impl TokioCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[tokio::test]
     async fn test_tokio_command() {
@@ -71,8 +72,11 @@ mod tests {
         )
         .into();
         assert_eq!(
-            vec!["Cargo.toml", "benches", "src"],
-            tokio_cmd.lines().await.unwrap()
+            vec!["Cargo.toml", "benches", "src"]
+                .into_iter()
+                .map(Into::into)
+                .collect::<HashSet<String>>(),
+            HashSet::from_iter(tokio_cmd.lines().await.unwrap().into_iter())
         );
     }
 }
