@@ -203,7 +203,7 @@ impl<'a> OnMoveHandler<'a> {
             }
             Filer(path) if path.is_dir() => self.preview_directory(&path)?,
             Files(path) | Filer(path) | History(path) => self.preview_file(&path)?,
-            Commit(rev) => self.show_commit(rev)?,
+            Commit(rev) => self.preview_commit(rev)?,
             HelpTags {
                 subject,
                 doc_filename,
@@ -214,12 +214,7 @@ impl<'a> OnMoveHandler<'a> {
         Ok(())
     }
 
-    fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id = &self.context.provider_id;
-        write_response(json!({ "id": self.msg_id, "provider_id": provider_id, "result": result }));
-    }
-
-    fn show_commit(&self, rev: &str) -> Result<()> {
+    fn preview_commit(&self, rev: &str) -> Result<()> {
         let stdout = self.context.execute(&format!("git show {}", rev))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
@@ -244,35 +239,38 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    fn try_refresh_cache(&self, latest_line: &str) {
-        if IS_FERESHING_CACHE.load(Ordering::SeqCst) {
-            tracing::debug!(
-                "Skipping the cache refreshing as there is already one that is running or waitting"
-            );
-            return;
+    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let enable_icon = global().enable_icon;
+        let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        self.send_response(json!({ "lines": lines, "is_dir": true }));
+        Ok(())
+    }
+
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let max_fname_len = self.context.display_winwidth as usize - 1;
+        let (lines, fname) = if !crate::stdio_server::global().is_nvim {
+            let (lines, abs_path) =
+                previewer::preview_file(path.as_ref(), 2 * self.size, self.max_line_width())?;
+            // cwd is shown via the popup title, no need to include it again.
+            let cwd_relative =
+                abs_path.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
+            let mut lines = lines;
+            lines[0] = cwd_relative;
+            (lines, abs_path)
+        } else {
+            previewer::preview_file_with_truncated_title(
+                path.as_ref(),
+                2 * self.size,
+                self.max_line_width(),
+                max_fname_len,
+            )?
+        };
+        if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
+            self.send_response(json!({ "lines": lines, "syntax": syntax }));
+        } else {
+            self.send_response(json!({ "lines": lines, "fname": fname }));
         }
-        if self.context.provider_id.as_str() == "grep2" {
-            if let Some(ref cache_line) = self.cache_line {
-                if cache_line != latest_line {
-                    tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
-                    let dir = self.context.cwd.clone();
-                    IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
-                    // Spawn a future in the background
-                    tokio::task::spawn_blocking(|| {
-                        tracing::debug!(?dir, "Attempting to refresh grep2 cache");
-                        match crate::command::grep::refresh_cache(dir) {
-                            Ok(total) => {
-                                tracing::debug!(total, "Refresh the grep2 cache successfully");
-                            }
-                            Err(e) => {
-                                tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
-                            }
-                        }
-                        IS_FERESHING_CACHE.store(false, Ordering::SeqCst);
-                    });
-                }
-            }
-        }
+        Ok(())
     }
 
     async fn preview_file_at(&self, position: &Position) {
@@ -393,6 +391,42 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
+    fn try_refresh_cache(&self, latest_line: &str) {
+        if IS_FERESHING_CACHE.load(Ordering::SeqCst) {
+            tracing::debug!(
+                "Skipping the cache refreshing as there is already one that is running or waitting"
+            );
+            return;
+        }
+        if self.context.provider_id.as_str() == "grep2" {
+            if let Some(ref cache_line) = self.cache_line {
+                if cache_line != latest_line {
+                    tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
+                    let dir = self.context.cwd.clone();
+                    IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
+                    // Spawn a future in the background
+                    tokio::task::spawn_blocking(|| {
+                        tracing::debug!(?dir, "Attempting to refresh grep2 cache");
+                        match crate::command::grep::refresh_cache(dir) {
+                            Ok(total) => {
+                                tracing::debug!(total, "Refresh the grep2 cache successfully");
+                            }
+                            Err(e) => {
+                                tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
+                            }
+                        }
+                        IS_FERESHING_CACHE.store(false, Ordering::SeqCst);
+                    });
+                }
+            }
+        }
+    }
+
+    fn send_response(&self, result: serde_json::value::Value) {
+        let provider_id = &self.context.provider_id;
+        write_response(json!({ "id": self.msg_id, "provider_id": provider_id, "result": result }));
+    }
+
     /// Truncates the lines that are awfully long as vim might have some performence issue with
     /// them.
     ///
@@ -408,29 +442,6 @@ impl<'a> OnMoveHandler<'a> {
     #[inline]
     fn max_line_width(&self) -> usize {
         2 * self.context.display_winwidth as usize
-    }
-
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let max_fname_len = self.context.display_winwidth as usize - 1;
-        let (lines, fname) = previewer::preview_file_with_truncated_title(
-            path.as_ref(),
-            2 * self.size,
-            self.max_line_width(),
-            max_fname_len,
-        )?;
-        if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
-            self.send_response(json!({ "lines": lines, "syntax": syntax }));
-        } else {
-            self.send_response(json!({ "lines": lines, "fname": fname }));
-        }
-        Ok(())
-    }
-
-    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let enable_icon = global().enable_icon;
-        let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        self.send_response(json!({ "lines": lines, "is_dir": true }));
-        Ok(())
     }
 }
 
