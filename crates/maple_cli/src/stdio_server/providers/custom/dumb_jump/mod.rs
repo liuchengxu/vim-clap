@@ -14,12 +14,12 @@ use filter::Query;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
-use crate::stdio_server::{
-    providers::builtin::OnMoveHandler,
-    rpc::Call,
-    session::{note_job_is_finished, register_job_successfully, EventHandle, SessionContext},
-    write_response, MethodCall,
+use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::rpc::Call;
+use crate::stdio_server::session::{
+    note_job_is_finished, register_job_successfully, EventHandle, SessionContext,
 };
+use crate::stdio_server::{write_response, MethodCall};
 use crate::tools::ctags::{get_language, TagsConfig};
 use crate::utils::ExactOrInverseTerms;
 

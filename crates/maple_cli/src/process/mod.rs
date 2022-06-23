@@ -9,7 +9,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use self::rstd::StdCommand;
-
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::CACHE_INFO_IN_MEMORY;
 

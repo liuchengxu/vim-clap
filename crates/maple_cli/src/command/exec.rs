@@ -5,11 +5,9 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::process::{
-    light::{CommandEnv, LightCommand},
-    rstd::StdCommand,
-    BaseCommand,
-};
+use crate::process::light::{CommandEnv, LightCommand};
+use crate::process::rstd::StdCommand;
+use crate::process::BaseCommand;
 
 /// Execute the shell command
 #[derive(Parser, Debug, Clone)]

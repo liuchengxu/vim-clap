@@ -5,11 +5,10 @@ use crossbeam_channel::Receiver;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 
+use super::session::SessionManager;
 use crate::stdio_server::providers::dumb_jump::DumbJumpHandle;
 use crate::stdio_server::rpc::{Call, MethodCall};
 use crate::stdio_server::state::State;
-
-use super::session::SessionManager;
 
 #[derive(Clone)]
 pub struct SessionClient {

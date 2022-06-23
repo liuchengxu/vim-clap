@@ -102,7 +102,7 @@ pub struct SessionContext {
 
 impl SessionContext {
     /// Executes the command `cmd` and returns the raw bytes of stdout.
-    pub fn execute(&self, cmd: &str) -> Result<Vec<u8>> {
+    pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
         let out = utility::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
     }

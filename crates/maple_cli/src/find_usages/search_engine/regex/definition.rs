@@ -6,9 +6,8 @@ use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::tools::ripgrep::{Match, Word};
-
 use super::runner::RegexRunner;
+use crate::tools::ripgrep::{Match, Word};
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///

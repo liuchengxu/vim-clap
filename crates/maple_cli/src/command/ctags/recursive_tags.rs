@@ -4,13 +4,10 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 
-use filter::{
-    matcher::{MatchScope, Matcher},
-    FilterContext, Source,
-};
+use filter::{FilterContext, Source};
+use matcher::{MatchScope, Matcher};
 
 use super::SharedParams;
-
 use crate::app::Params;
 use crate::process::BaseCommand;
 use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, DEFAULT_EXCLUDE_OPT};

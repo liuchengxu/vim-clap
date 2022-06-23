@@ -11,8 +11,9 @@ use clap::Parser;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-use filter::{matcher::MatchScope, subprocess::Exec, Source};
+use filter::{subprocess::Exec, Source};
 use icon::Icon;
+use matcher::MatchScope;
 use utility::is_git_repo;
 
 use crate::app::Params;

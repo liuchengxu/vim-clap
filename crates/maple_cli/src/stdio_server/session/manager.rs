@@ -2,13 +2,10 @@ use std::collections::HashMap;
 
 use crossbeam_channel::Sender;
 
-use crate::stdio_server::{
-    rpc::Call,
-    session::{Session, SessionId},
-    SessionEvent,
-};
-
 use super::EventHandle;
+use crate::stdio_server::rpc::Call;
+use crate::stdio_server::session::{Session, SessionId};
+use crate::stdio_server::SessionEvent;
 
 /// A small wrapper of Sender<SessionEvent> for logging on sending error.
 #[derive(Debug)]
