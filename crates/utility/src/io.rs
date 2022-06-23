@@ -134,7 +134,8 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
                 .into_iter()
                 .skip(start)
                 .take(end - start)
-                .map(|l| l.to_string())
+                // trim_end() to get rid of ^M on Windows.
+                .map(|l| l.trim_end().to_string())
                 .collect::<Vec<_>>();
 
             PreviewInfo {

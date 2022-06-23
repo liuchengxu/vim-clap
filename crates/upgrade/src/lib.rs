@@ -2,7 +2,7 @@
 
 mod github;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::io::AsyncWriteExt;
@@ -111,7 +111,7 @@ fn extract_local_version_number(local_tag: &str) -> u32 {
 }
 
 #[cfg(unix)]
-fn set_executable_permission<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
+fn set_executable_permission<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
     let mut perms = std::fs::metadata(path.as_ref())?.permissions();
     perms.set_mode(0o755);
