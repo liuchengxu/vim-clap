@@ -9,10 +9,17 @@ use utility::{read_first_lines, read_preview_lines};
 
 #[inline]
 pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
-    std::fs::canonicalize(path.as_ref())?
-        .into_os_string()
-        .into_string()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string_lossy()))
+    if path.as_ref().is_absolute() {
+        Ok(path.as_ref().to_string_lossy().into())
+    } else {
+        // Somehow the absolute path on Windows is problematic using `canonicalize`:
+        // C:\Users\liuchengxu\AppData\Local\nvim\init.vim
+        // \\?\C:\Users\liuchengxu\AppData\Local\nvim\init.vim
+        std::fs::canonicalize(path.as_ref())?
+            .into_os_string()
+            .into_string()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string_lossy()))
+    }
 }
 
 /// Truncates the lines that are awfully long as vim can not handle them properly.
