@@ -148,12 +148,10 @@ impl Maple {
                 };
 
                 if let Some(log_path) = maybe_log {
-                    if log_path.is_file() {
-                        if std::fs::metadata(&log_path)?.len() > 8 * 1024 * 1024 {
+                    if let Ok(metadata) = std::fs::metadata(&log_path) {
+                        if log_path.is_file() && metadata.len() > 8 * 1024 * 1024 {
                             std::fs::remove_file(&log_path)?;
                         }
-                    } else {
-                        return Err(anyhow::anyhow!("{} must be a file", log_path.display()));
                     }
 
                     let file_name = log_path.file_name().expect("Invalid file name");
