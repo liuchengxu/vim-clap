@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::{
-    io::{BufRead, Lines},
-    path::{Path, PathBuf},
-};
+use std::io::{BufRead, Lines};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::prelude::*;

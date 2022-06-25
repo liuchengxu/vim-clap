@@ -11,10 +11,8 @@ use serde_json::json;
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgBaseCommand;
 use crate::process::tokio::TokioCommand;
-use crate::stdio_server::{
-    session::{EventHandle, SessionContext, SourceScale},
-    write_response, MethodCall,
-};
+use crate::stdio_server::session::{EventHandle, SessionContext, SourceScale};
+use crate::stdio_server::{write_response, MethodCall};
 
 pub use on_move::{OnMove, OnMoveHandler};
 

@@ -4,14 +4,12 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 
-use filter::{
-    matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
-    subprocess::Exec,
-    FilterContext, Source,
-};
+use filter::{subprocess::Exec, FilterContext, Source};
+use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::SourceItem;
 
-use crate::{app::Params, paths::AbsPathBuf};
+use crate::app::Params;
+use crate::paths::AbsPathBuf;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {

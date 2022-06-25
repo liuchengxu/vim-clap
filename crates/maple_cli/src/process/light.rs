@@ -183,19 +183,16 @@ impl<'a> LightCommand<'a> {
         lines
     }
 
-    fn handle_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
+    fn exec_info_from_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
         let Digest {
             total, cached_path, ..
         } = digest;
 
-        let lines = if let Ok(iter) = read_first_lines(&cached_path, 100) {
-            if let Some(painter) = self.env.icon.painter() {
-                iter.map(|x| painter.paint(&x)).collect()
-            } else {
-                iter.collect()
-            }
+        let lines_iter = read_first_lines(&cached_path, 100)?;
+        let lines = if let Some(painter) = self.env.icon.painter() {
+            lines_iter.map(|x| painter.paint(&x)).collect()
         } else {
-            Vec::new()
+            lines_iter.collect()
         };
 
         Ok(ExecutedInfo {
@@ -215,14 +212,13 @@ impl<'a> LightCommand<'a> {
         base_cmd: BaseCommand,
         no_cache: bool,
     ) -> Result<ExecutedInfo> {
-        if !no_cache {
-            if let Some(digest) = base_cmd.cache_digest() {
-                self.handle_cache_digest(&digest)
-            } else {
-                self.execute(base_cmd)
-            }
-        } else {
+        if no_cache {
             self.execute(base_cmd)
+        } else {
+            base_cmd
+                .cache_digest()
+                .map(|digest| self.exec_info_from_cache_digest(&digest))
+                .unwrap_or_else(|| self.execute(base_cmd))
         }
     }
 

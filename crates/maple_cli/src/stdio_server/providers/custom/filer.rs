@@ -8,11 +8,9 @@ use serde_json::{json, Value};
 use icon::prepend_filer_icon;
 
 use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
-use crate::stdio_server::{
-    rpc::Call,
-    session::{EventHandle, SessionContext},
-    write_response, MethodCall,
-};
+use crate::stdio_server::rpc::Call;
+use crate::stdio_server::session::{EventHandle, SessionContext};
+use crate::stdio_server::{write_response, MethodCall};
 use crate::utils::build_abs_path;
 
 /// Display the inner path in a nicer way.
@@ -105,16 +103,14 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     dir: P,
     enable_icon: bool,
     max: Option<usize>,
-) -> Result<Vec<String>> {
+) -> std::io::Result<Vec<String>> {
     let entries_iter = fs::read_dir(dir)?
         .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
 
     let mut entries = if let Some(m) = max {
-        entries_iter
-            .take(m)
-            .collect::<Result<Vec<_>, io::Error>>()?
+        entries_iter.take(m).collect::<std::io::Result<Vec<_>>>()?
     } else {
-        entries_iter.collect::<Result<Vec<_>, io::Error>>()?
+        entries_iter.collect::<std::io::Result<Vec<_>>>()?
     };
 
     entries.sort();

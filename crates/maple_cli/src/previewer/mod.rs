@@ -2,17 +2,17 @@ pub mod vim_help;
 
 use std::path::Path;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use types::PreviewInfo;
 use utility::{read_first_lines, read_preview_lines};
 
 #[inline]
-pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> Result<String> {
+pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
     std::fs::canonicalize(path.as_ref())?
         .into_os_string()
         .into_string()
-        .map_err(|e| anyhow!("{:?}, path:{}", e, path.as_ref().display()))
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string_lossy()))
 }
 
 /// Truncates the lines that are awfully long as vim can not handle them properly.
@@ -44,7 +44,7 @@ pub fn preview_file<P: AsRef<Path>>(
     path: P,
     size: usize,
     max_width: usize,
-) -> Result<(Vec<String>, String)> {
+) -> std::io::Result<(Vec<String>, String)> {
     let abs_path = as_absolute_path(path.as_ref())?;
     let lines_iter = read_first_lines(path.as_ref(), size)?;
     let lines = std::iter::once(abs_path.clone())
@@ -59,7 +59,7 @@ pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
     size: usize,
     max_line_width: usize,
     max_title_width: usize,
-) -> Result<(Vec<String>, String)> {
+) -> std::io::Result<(Vec<String>, String)> {
     let abs_path = as_absolute_path(path.as_ref())?;
     let truncated_abs_path =
         crate::utils::truncate_absolute_path(&abs_path, max_title_width).into_owned();
