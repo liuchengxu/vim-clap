@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use chrono::prelude::*;
 use directories::ProjectDirs;
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 
 use filter::subprocess::Exec;
@@ -249,25 +250,44 @@ pub(crate) fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, 
     if abs_path.len() > max_len {
         let gap = abs_path.len() - max_len;
 
+        const SEP: char = std::path::MAIN_SEPARATOR;
+
         if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
-            // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
-            if home_dir.len() > gap {
-                return abs_path.replacen(home_dir, "~", 1).into();
-            }
+            if abs_path.starts_with(home_dir) {
+                // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+                if home_dir.len() > gap {
+                    return abs_path.replacen(home_dir, "~", 1).into();
+                }
 
-            let sep = std::path::MAIN_SEPARATOR;
-
-            // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
-            let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
-            if let Some((first, target)) = home_stripped.split_once(sep) {
-                let mut hidden = 0usize;
-                for component in target.split(sep) {
-                    if hidden > gap + 2 {
-                        let mut target = target.to_string();
-                        target.replace_range(..hidden - 1, "...");
-                        return format!("~{sep}{first}{sep}{target}").into();
-                    } else {
-                        hidden += component.len() + 1;
+                // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
+                let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
+                if let Some((first, target)) = home_stripped.split_once(SEP) {
+                    let mut hidden = 0usize;
+                    for component in target.split(SEP) {
+                        if hidden > gap + 2 {
+                            let mut target = target.to_string();
+                            target.replace_range(..hidden - 1, "...");
+                            return format!("~{SEP}{first}{SEP}{target}").into();
+                        } else {
+                            hidden += component.len() + 1;
+                        }
+                    }
+                }
+            } else {
+                let top = abs_path.splitn(4, SEP).collect::<Vec<_>>();
+                if let Some(last) = top.last() {
+                    if let Some((_first, target)) = last.split_once(SEP) {
+                        let mut hidden = 0usize;
+                        for component in target.split(SEP) {
+                            if hidden > gap + 2 {
+                                let mut target = target.to_string();
+                                target.replace_range(..hidden - 1, "...");
+                                let head = top.iter().take(top.len() - 1).join(&SEP.to_string());
+                                return format!("{head}{SEP}{target}").into();
+                            } else {
+                                hidden += component.len() + 1;
+                            }
+                        }
                     }
                 }
             }
@@ -312,6 +332,10 @@ mod tests {
         let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
         #[cfg(target_os = "windows")]
         let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
-        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected)
+        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected);
+
+        let abs_path = "/media/xlc/Data/src/github.com/paritytech/substrate/bin/node/cli/src/command_helper.rs";
+        let expected = "/media/xlc/.../bin/node/cli/src/command_helper.rs";
+        assert_eq!(truncate_absolute_path(abs_path, max_len), expected);
     }
 }
