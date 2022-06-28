@@ -191,7 +191,10 @@ endfunction
 "           \
 "             on_move
 function! clap#impl#on_typed#() abort
-  if s:ALWAYS_ASYNC
+  let source_is_list = g:clap.provider.source_type == g:__t_list
+        \ || g:clap.provider.source_type == g:__t_func_list
+
+  if s:ALWAYS_ASYNC && !source_is_list
     call s:on_typed_async_impl()
     return
   endif
@@ -203,9 +206,7 @@ function! clap#impl#on_typed#() abort
     return
   endif
 
-  if exists('g:__clap_forerunner_result')
-        \ || g:clap.provider.source_type == g:__t_list
-        \ || g:clap.provider.source_type == g:__t_func_list
+  if exists('g:__clap_forerunner_result') || source_is_list
     call s:on_typed_sync_impl()
     return
   endif
