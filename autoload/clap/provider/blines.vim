@@ -9,8 +9,7 @@ let s:ALWAYS_ASYNC = exists('g:clap_builtin_fuzzy_filter_threshold') && g:clap_b
 let s:blines = {}
 
 function! s:format(lines) abort
-  let linefmt = '%4d %s'
-  return map(a:lines, 'printf(linefmt, v:key + 1, v:val)')
+  return map(a:lines, 'printf("%4d %s", v:key + 1, v:val)')
 endfunction
 
 function! s:blines.source() abort
