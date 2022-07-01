@@ -85,6 +85,37 @@ function! s:blines_sink_star(lines) abort
   call clap#util#open_quickfix(map(a:lines, 's:into_qf_entry(v:val)'))
 endfunction
 
+let s:ALWAYS_ASYNC = exists('g:clap_builtin_fuzzy_filter_threshold') && g:clap_builtin_fuzzy_filter_threshold == 0
+
+function! s:blines.on_typed() abort
+  call g:clap.display.clear_highlight()
+  let l:cur_input = g:clap.input.get()
+
+  if empty(l:cur_input)
+    call g:clap.display.set_lines_lazy(clap#provider#blines#on_empty())
+    call clap#indicator#set_matches_number(g:clap.display.initial_size)
+    call clap#sign#toggle_cursorline()
+    call g:clap#display_win.shrink_if_undersize()
+    call g:clap.preview.hide()
+    call clap#highlight#clear()
+    return
+  endif
+
+  if clap#filter#async#external#using_maple()
+    if filereadable(expand('#'.g:clap.start.bufnr.':p'))
+      call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
+    else
+      let l:raw_lines = clap#provider#blines#format(g:clap.start.get_lines())
+      call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+    endif
+  else
+    let cmd = g:clap.provider.source_async_or_default()
+    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+  endif
+
+  call clap#spinner#set_busy()
+endfunction
+
 " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
 " `blines` provider, so we did a hard code for blines provider here.
 let s:blines.source_type = g:__t_func_list
