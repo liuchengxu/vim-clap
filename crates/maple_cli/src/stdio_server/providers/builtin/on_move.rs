@@ -292,6 +292,22 @@ impl<'a> OnMoveHandler<'a> {
 
         let Position { path, lnum } = position;
 
+        let container_width = self.context.display_winwidth as usize;
+        let fname = path.display().to_string();
+
+        let truncated_preview_header = || {
+            if !global().is_nvim && self.inner.should_truncate_cwd_relative() {
+                // cwd is shown via the popup title, no need to include it again.
+                let cwd_relative =
+                    fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
+                format!("{cwd_relative}:{lnum}")
+            } else {
+                let max_fname_len = container_width - 1 - display_width(*lnum);
+                let truncated_abs_path = truncate_absolute_path(&fname, max_fname_len);
+                format!("{truncated_abs_path}:{lnum}")
+            }
+        };
+
         match utility::read_preview_lines(path, *lnum, self.size) {
             Ok(PreviewInfo {
                 lines,
@@ -299,8 +315,6 @@ impl<'a> OnMoveHandler<'a> {
                 start,
                 ..
             }) => {
-                let container_width = self.context.display_winwidth as usize;
-
                 let mut context_lines = Vec::new();
 
                 // Some checks against the latest preview line.
@@ -354,19 +368,7 @@ impl<'a> OnMoveHandler<'a> {
 
                 let highlight_lnum = highlight_lnum + context_lines.len();
 
-                let fname = path.display().to_string();
-                let header_line = if !global().is_nvim && self.inner.should_truncate_cwd_relative()
-                {
-                    // cwd is shown via the popup title, no need to include it again.
-                    let cwd_relative =
-                        fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
-                    format!("{cwd_relative}:{lnum}")
-                } else {
-                    let max_fname_len = container_width - 1 - display_width(*lnum);
-                    let truncated_abs_path = truncate_absolute_path(&fname, max_fname_len);
-                    format!("{truncated_abs_path}:{lnum}")
-                };
-
+                let header_line = truncated_preview_header();
                 let lines = std::iter::once(header_line)
                     .chain(context_lines.into_iter())
                     .chain(self.truncate_preview_lines(lines.into_iter()))
@@ -396,6 +398,12 @@ impl<'a> OnMoveHandler<'a> {
                     ?err,
                     "Couldn't read first lines",
                 );
+                let header_line = truncated_preview_header();
+                let lines = vec![
+                    header_line,
+                    format!("Error while previewing the file: {err}"),
+                ];
+                self.send_response(json!({ "lines": lines, "fname": fname }));
             }
         }
     }
