@@ -9,7 +9,7 @@ use super::QueryInfo;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
-use crate::tools::ctags::{get_language, TagsConfig};
+use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Context for performing a search.
@@ -22,9 +22,9 @@ pub(super) struct SearchingWorker {
 
 impl SearchingWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
-        let mut tags_config = TagsConfig::with_dir(self.cwd);
+        let mut tags_config = TagsGenerator::with_dir(self.cwd);
         if let Some(language) = get_language(&self.extension) {
-            tags_config.languages(language.into());
+            tags_config.set_languages(language.into());
         }
 
         let QueryInfo {

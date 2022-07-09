@@ -10,18 +10,18 @@ use rayon::prelude::*;
 
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;
-use crate::tools::ctags::TagsConfig;
+use crate::tools::ctags::TagsGenerator;
 use crate::utils::ExactOrInverseTerms;
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CtagsSearcher<'a, P> {
-    config: TagsConfig<'a, P>,
+    config: TagsGenerator<'a, P>,
     tags_path: PathBuf,
 }
 
 impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
-    pub fn new(config: TagsConfig<'a, P>) -> Self {
+    pub fn new(config: TagsGenerator<'a, P>) -> Self {
         let tags_path = config.tags_path();
         Self { config, tags_path }
     }

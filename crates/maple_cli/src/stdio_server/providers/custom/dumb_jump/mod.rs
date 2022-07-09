@@ -20,7 +20,7 @@ use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, EventHandle, SessionContext,
 };
 use crate::stdio_server::{write_response, MethodCall};
-use crate::tools::ctags::{get_language, TagsConfig};
+use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Internal reprentation of user input.
@@ -254,9 +254,9 @@ impl EventHandle for DumbJumpHandle {
             let ctags_future = {
                 let ctags_regenerated = self.ctags_regenerated.clone();
                 let cwd = params.cwd.clone();
-                let mut tags_config = TagsConfig::with_dir(cwd.clone());
+                let mut tags_config = TagsGenerator::with_dir(cwd.clone());
                 if let Some(language) = get_language(&params.extension) {
-                    tags_config.languages(language.into());
+                    tags_config.set_languages(language.into());
                 }
 
                 // TODO: smarter strategy to regenerate the tags?

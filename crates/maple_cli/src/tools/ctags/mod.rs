@@ -47,7 +47,7 @@ pub fn get_language(extension: &str) -> Option<&str> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct TagsConfig<'a, P> {
+pub struct TagsGenerator<'a, P> {
     languages: Option<String>,
     kinds_all: &'a str,
     fields: &'a str,
@@ -57,7 +57,7 @@ pub struct TagsConfig<'a, P> {
     dir: P,
 }
 
-impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
+impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     pub fn new(
         languages: Option<String>,
         kinds_all: &'a str,
@@ -90,7 +90,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         }
     }
 
-    pub fn languages(&mut self, languages: String) {
+    pub fn set_languages(&mut self, languages: String) {
         self.languages = Some(languages);
     }
 

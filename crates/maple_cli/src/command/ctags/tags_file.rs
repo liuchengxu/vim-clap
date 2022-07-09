@@ -4,7 +4,7 @@ use clap::Parser;
 use super::SharedParams;
 use crate::app::Params;
 use crate::find_usages::{CtagsSearcher, QueryType};
-use crate::tools::ctags::TagsConfig;
+use crate::tools::ctags::TagsGenerator;
 
 #[derive(Parser, Debug, Clone)]
 struct TagsFileParams {
@@ -46,7 +46,7 @@ impl TagsFile {
         let dir = self.shared.dir()?;
 
         let exclude_opt = self.shared.exclude_opt();
-        let config = TagsConfig::new(
+        let config = TagsGenerator::new(
             self.shared.languages.clone(),
             &self.inner.kinds_all,
             &self.inner.fields,
