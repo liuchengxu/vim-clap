@@ -4,8 +4,8 @@ use std::{io::BufRead, sync::Arc};
 use anyhow::Result;
 use subprocess::Exec;
 
-use matcher::{ClapItem, Matcher};
-use types::{MatchedItem, Query, SourceItem};
+use matcher::{MatchResult, Matcher};
+use types::{ClapItem, MatchedItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -28,24 +28,22 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     }
 }
 
-/// macros for `dyn_collect_number` and `dyn_collect_number`
-///
 /// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
-#[macro_export]
-macro_rules! source_iter_stdin {
-    ( $scorer:ident ) => {
-        std::io::stdin().lock().lines().filter_map(|lines_iter| {
-            lines_iter
-                .ok()
-                .and_then(|line: String| {
-                    let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(line);
-                    $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                        types::MatchedItem::new(item, score, indices)
-                    })
-                })
-                .map(Into::into)
+pub fn source_stdin<'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+) -> impl Iterator<Item = MatchedItem> + 'a {
+    let match_fn = |item: &Arc<dyn ClapItem>| matcher.match_query(item, query);
+    std::io::stdin()
+        .lock()
+        .lines()
+        .filter_map(move |lines_iter| {
+            lines_iter.ok().and_then(|line: String| {
+                let item: Arc<dyn ClapItem> = Arc::new(line);
+                match_fn(&item)
+                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+            })
         })
-    };
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
@@ -58,7 +56,8 @@ macro_rules! source_iter_exec {
                 lines_iter
                     .ok()
                     .and_then(|item: String| {
-                        let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
+                        use std::sync::Arc;
+                        let item: Arc<dyn types::ClapItem> = Arc::new(item);
                         $scorer(&item).map(|matcher::MatchResult { score, indices }| {
                             types::MatchedItem::new(item, score, indices)
 
@@ -89,7 +88,8 @@ macro_rules! source_iter_file {
             .filter_map(|x| {
                 x.ok()
                     .and_then(|item: String| {
-                        let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
+                        use std::sync::Arc;
+                        let item: Arc<dyn types::ClapItem> = Arc::new(item);
                         $scorer(&item).map(|matcher::MatchResult { score, indices }| {
                             types::MatchedItem::new(item, score, indices)
                         })
@@ -105,7 +105,8 @@ macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
         $list
             .filter_map(|item: types::SourceItem| {
-                let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
+                use std::sync::Arc;
+                let item: Arc<dyn types::ClapItem> = Arc::new(item);
                 $scorer(&item).map(|matcher::MatchResult { score, indices }| {
                     types::MatchedItem::new(item, score, indices)
                 })
@@ -122,7 +123,7 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
         let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, query);
 
         let filtered = match self {
-            Self::Stdin => source_iter_stdin!(scorer).collect(),
+            Self::Stdin => source_stdin(&matcher, query).collect(),
             Self::Exec(exec) => source_iter_exec!(scorer, exec).collect(),
             Self::File(fpath) => source_iter_file!(scorer, fpath).collect(),
             Self::List(list) => source_iter_list!(scorer, list).collect(),
