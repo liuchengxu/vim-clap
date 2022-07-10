@@ -26,6 +26,11 @@
 mod algo;
 mod bonus;
 
+use std::ops::Deref;
+use std::sync::Arc;
+
+use types::AsAny;
+
 pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
@@ -54,6 +59,43 @@ impl MatchResult {
 
     pub fn into_filtered_item<I: Into<SourceItem>>(self, item: I) -> FilteredItem {
         (item, self.score, self.indices).into()
+    }
+
+    pub fn from_source_item(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+        let Self { score, indices } = self;
+
+        let item = item
+            .as_any()
+            .downcast_ref::<SourceItem>()
+            .expect("item is not SourceItem");
+
+        (item, score, indices).into()
+    }
+
+    pub fn from_string(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+        let Self { score, indices } = self;
+
+        let item = item
+            .as_any()
+            .downcast_ref::<String>()
+            .expect("item is not String");
+        // FIXME
+        let item: SourceItem = item.as_str().into();
+
+        (item, score, indices).into()
+    }
+
+    pub fn from_str(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+        let Self { score, indices } = self;
+
+        let item = item
+            .as_any()
+            .downcast_ref::<&str>()
+            .expect("item is not &str");
+        // FIXME
+        let item: SourceItem = item.deref().into();
+
+        (item, score, indices).into()
     }
 }
 
@@ -181,15 +223,15 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match<T: MatchingText>(&self, item: &T, query: &str) -> Option<MatchResult> {
+    fn fuzzy_match(&self, item: &Arc<dyn MatchingText>, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
             .fuzzy_match(query, item, &self.match_scope, self.case_matching)
     }
 
     /// Returns the sum of bonus score.
-    fn calc_bonus<T: MatchingText>(
+    fn calc_bonus(
         &self,
-        item: &T,
+        item: &Arc<dyn MatchingText>,
         base_score: Score,
         base_indices: &[usize],
     ) -> Score {
@@ -200,7 +242,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query<T: MatchingText>(&self, item: &T, query: &Query) -> Option<MatchResult> {
+    pub fn match_query(&self, item: &Arc<dyn MatchingText>, query: &Query) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(item.full_text()) {

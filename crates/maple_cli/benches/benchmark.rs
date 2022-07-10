@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use filter::{FilteredItem, Query, SourceItem};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
+use types::MatchingText;
 
-use maple_cli::command::ctags::recursive::build_recursive_ctags_cmd;
+use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     use std::io::BufRead;
@@ -17,9 +20,12 @@ fn prepare_source_items() -> Vec<SourceItem> {
 }
 
 fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<FilteredItem> {
-    let scorer = |item: &SourceItem| matcher.match_query(item, query);
+    let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, query);
     list.into_iter()
-        .filter_map(|item| scorer(&item).map(|(score, indices)| (item, score, indices)))
+        .filter_map(|item| {
+            let item: Arc<dyn MatchingText> = Arc::new(item);
+            scorer(&item).map(|match_result| match_result.from_source_item(item))
+        })
         .map(Into::into)
         .collect()
 }
@@ -28,9 +34,12 @@ fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Filter
 fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<FilteredItem> {
     use rayon::prelude::*;
 
-    let scorer = |item: &SourceItem| matcher.match_query(item, query);
+    let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, query);
     list.into_par_iter()
-        .filter_map(|item| scorer(&item).map(|(score, indices)| (item, score, indices)))
+        .filter_map(|item| {
+            let item: Arc<dyn MatchingText> = Arc::new(item);
+            scorer(&item).map(|match_result| match_result.from_source_item(item))
+        })
         .map(Into::into)
         .collect()
 }

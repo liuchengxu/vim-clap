@@ -9,11 +9,14 @@
 mod dynamic;
 mod source;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{MatchResult, MatchScope, Matcher};
+use matcher::{MatchResult, MatchScope, Matcher, MatchingText};
+use types::AsAny;
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -98,9 +101,17 @@ pub fn par_filter(
     let filtered: Vec<FilteredItem> = source_items
         .into_par_iter()
         .filter_map(|item| {
+            let item: Arc<dyn MatchingText> = Arc::new(item);
             fuzzy_matcher
                 .match_query(&item, &query)
-                .map(|MatchResult { score, indices }| (item, score, indices).into())
+                .map(|MatchResult { score, indices }| {
+                    let item = item
+                        .as_any()
+                        .downcast_ref::<SourceItem>()
+                        .expect("item is not SourceItem");
+
+                    (item, score, indices).into()
+                })
         })
         .collect();
     sort_initial_filtered(filtered)

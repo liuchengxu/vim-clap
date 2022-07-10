@@ -1,5 +1,22 @@
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
+use std::any::Any;
+
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 #[derive(Debug, Clone)]
 pub struct FuzzyText<'a> {
@@ -90,7 +107,43 @@ impl MatchingText for SourceItem {
     }
 }
 
+impl MatchingText for &SourceItem {
+    fn full_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+        self.get_fuzzy_text(match_scope)
+    }
+}
+
 impl MatchingText for &str {
+    fn full_text(&self) -> &str {
+        self
+    }
+
+    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText {
+            text: self,
+            matching_start: 0,
+        })
+    }
+}
+
+impl MatchingText for String {
+    fn full_text(&self) -> &str {
+        self
+    }
+
+    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText {
+            text: self,
+            matching_start: 0,
+        })
+    }
+}
+
+impl MatchingText for &String {
     fn full_text(&self) -> &str {
         self
     }
@@ -198,6 +251,17 @@ impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
     fn from((item, score, match_indices): (I, T, Vec<usize>)) -> Self {
         Self {
             source_item: item.into(),
+            score,
+            match_indices,
+            display_text: None,
+        }
+    }
+}
+
+impl<T> From<(&SourceItem, T, Vec<usize>)> for FilteredItem<T> {
+    fn from((item, score, match_indices): (&SourceItem, T, Vec<usize>)) -> Self {
+        Self {
+            source_item: item.clone(),
             score,
             match_indices,
             display_text: None,

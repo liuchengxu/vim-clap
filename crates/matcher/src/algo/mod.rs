@@ -2,6 +2,8 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
+use std::sync::Arc;
+
 use types::{CaseMatching, FuzzyText, MatchScope, MatchingText};
 
 use crate::MatchResult;
@@ -38,10 +40,10 @@ impl Default for FuzzyAlgorithm {
 
 impl FuzzyAlgorithm {
     /// Does the fuzzy match against the match text.
-    pub fn fuzzy_match<T: MatchingText>(
+    pub fn fuzzy_match(
         &self,
         query: &str,
-        item: &T,
+        item: &Arc<dyn MatchingText>,
         match_scope: &MatchScope,
         case_matching: CaseMatching,
     ) -> Option<MatchResult> {

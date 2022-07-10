@@ -1,7 +1,9 @@
 use std::io::BufRead;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use matcher::MatchingText;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
@@ -290,15 +292,16 @@ fn dyn_collect_number(
 pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
-    FilterContext {
+    filter_context: FilterContext,
+) -> Result<()> {
+    let FilterContext {
         icon,
         number,
         winwidth,
         matcher,
-    }: FilterContext,
-) -> Result<()> {
+    } = filter_context;
     let query: Query = query.into();
-    let scorer = |item: &SourceItem| matcher.match_query(item, &query);
+    let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
