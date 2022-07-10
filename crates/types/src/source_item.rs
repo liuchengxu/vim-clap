@@ -87,7 +87,18 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial full text.
     fn raw_text(&self) -> &str;
 
-    /// Text for applying the fuzzy match algorithm.
+    /// Text for the matching engine.
+    fn match_text(&self) -> &str {
+        self.raw_text()
+    }
+
+    // TODO: replace with `fuzzy_text(&self) -> Option<FuzzyText>` and add new variant accordingly.
+    // - SourceItem(Full)
+    // - TagNameItem
+    // - FileNameItem
+    // - GrepLine
+    /// Text specifically for performing the fuzzy matching, part of the entire
+    /// mathcing pipeline.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
     fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
