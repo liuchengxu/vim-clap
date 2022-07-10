@@ -1,15 +1,15 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use filter::{FilteredItem, Query, SourceItem};
-use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
+use matcher::{FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 
-use maple_cli::command::ctags::recursive::build_recursive_ctags_cmd;
+use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     use std::io::BufRead;
 
     std::io::BufReader::new(
-        std::fs::File::open("/home/xlc/.cache/vimclap/17131070373568728185").unwrap(), // 1 million +
+        std::fs::File::open("/home/xlc/.cache/vimclap/3289946909090762716").unwrap(), // 1 million +
     )
     .lines()
     .filter_map(|x| x.ok().map(Into::<SourceItem>::into))
@@ -19,7 +19,9 @@ fn prepare_source_items() -> Vec<SourceItem> {
 fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<FilteredItem> {
     let scorer = |item: &SourceItem| matcher.match_query(item, query);
     list.into_iter()
-        .filter_map(|item| scorer(&item).map(|(score, indices)| (item, score, indices)))
+        .filter_map(|item| {
+            scorer(&item).map(|MatchResult { score, indices }| (item, score, indices))
+        })
         .map(Into::into)
         .collect()
 }
@@ -30,7 +32,9 @@ fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Fi
 
     let scorer = |item: &SourceItem| matcher.match_query(item, query);
     list.into_par_iter()
-        .filter_map(|item| scorer(&item).map(|(score, indices)| (item, score, indices)))
+        .filter_map(|item| {
+            scorer(&item).map(|MatchResult { score, indices }| (item, score, indices))
+        })
         .map(Into::into)
         .collect()
 }
