@@ -28,6 +28,22 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     }
 }
 
+impl<I: Iterator<Item = SourceItem>> Source<I> {
+    /// Returns the complete filtered results given `matcher` and `query`.
+    ///
+    /// This is kind of synchronous filtering, can be used for multi-staged processing.
+    pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
+        let filtered = match self {
+            Self::Stdin => source_stdin(&matcher, query).collect(),
+            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
+            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
+            Self::List(list) => source_list(&matcher, query, list).collect(),
+        };
+
+        Ok(filtered)
+    }
+}
+
 /// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
 pub fn source_stdin<'a>(
     matcher: &'a Matcher,
@@ -97,35 +113,15 @@ pub fn source_file<'a, P: AsRef<Path>>(
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
-#[macro_export]
-macro_rules! source_iter_list {
-    ( $scorer:ident, $list:ident ) => {
-        $list
-            .filter_map(|item: types::SourceItem| {
-                use std::sync::Arc;
-                let item: Arc<dyn types::ClapItem> = Arc::new(item);
-                $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                    types::MatchedItem::new(item, score, indices)
-                })
-            })
-            .map(Into::into)
-    };
-}
-
-impl<I: Iterator<Item = SourceItem>> Source<I> {
-    /// Returns the complete filtered results given `matcher` and `query`.
-    ///
-    /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
-        let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, query);
-
-        let filtered = match self {
-            Self::Stdin => source_stdin(&matcher, query).collect(),
-            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
-            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
-            Self::List(list) => source_iter_list!(scorer, list).collect(),
-        };
-
-        Ok(filtered)
-    }
+pub fn source_list<'a, 'b: 'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    list: impl Iterator<Item = SourceItem> + 'b,
+) -> impl Iterator<Item = MatchedItem> + 'a {
+    list.filter_map(|item: SourceItem| {
+        let item: Arc<dyn ClapItem> = Arc::new(item);
+        matcher
+            .match_query(&item, query)
+            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+    })
 }

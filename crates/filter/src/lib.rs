@@ -85,7 +85,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     matcher: Matcher,
 ) -> Result<Vec<MatchedItem>> {
     let query: Query = query.into();
-    let filtered = source.filter_and_collect(matcher, &query)?;
+    let filtered = source.run_and_collect(matcher, &query)?;
     let ranked = sort_initial_filtered(filtered);
     Ok(ranked)
 }

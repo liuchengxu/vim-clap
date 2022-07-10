@@ -217,7 +217,7 @@ pub(crate) mod tests {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let mut ranked = Source::List(std::iter::once(line.into()))
-            .filter_and_collect(matcher, &query.into())
+            .run_and_collect(matcher, &query.into())
             .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 

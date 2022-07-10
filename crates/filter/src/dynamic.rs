@@ -1,16 +1,13 @@
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use matcher::ClapItem;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
 use types::{MatchedItem, Query, SourceItem};
 use utility::{println_json, println_json_with_length};
 
-use super::source_iter_list;
-use crate::source::{source_exec, source_file, source_stdin};
+use crate::source::{source_exec, source_file, source_list, source_stdin};
 use crate::{sort_initial_filtered, FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
@@ -301,7 +298,6 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         matcher,
     } = filter_context;
     let query: Query = query.into();
-    let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_stdin(&matcher, &query), number, icon),
@@ -311,7 +307,9 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             Source::File(fpath) => {
                 dyn_collect_number(source_file(&matcher, &query, fpath)?, number, icon)
             }
-            Source::List(list) => dyn_collect_number(source_iter_list!(scorer, list), number, icon),
+            Source::List(list) => {
+                dyn_collect_number(source_list(&matcher, &query, list), number, icon)
+            }
         };
 
         let ranked = sort_initial_filtered(filtered);
@@ -322,7 +320,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
             Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
             Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
-            Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), icon),
+            Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),
         };
 
         let ranked = sort_initial_filtered(filtered);
