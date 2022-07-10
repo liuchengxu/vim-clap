@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{io::BufRead, sync::Arc};
 
 use anyhow::Result;
@@ -77,25 +77,23 @@ pub fn source_exec<'a>(
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::File`].
-#[macro_export]
-macro_rules! source_iter_file {
-    ( $scorer:ident, $fpath:ident ) => {
-        // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-        // The line stream can contain invalid UTF-8 data.
-        std::io::BufReader::new(std::fs::File::open($fpath)?)
-            .lines()
-            .filter_map(|x| {
-                x.ok()
-                    .and_then(|item: String| {
-                        use std::sync::Arc;
-                        let item: Arc<dyn types::ClapItem> = Arc::new(item);
-                        $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                            types::MatchedItem::new(item, score, indices)
-                        })
-                    })
-                    .map(Into::into)
+pub fn source_file<'a, P: AsRef<Path>>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    path: P,
+) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
+    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+    // The line stream can contain invalid UTF-8 data.
+    Ok(std::io::BufReader::new(std::fs::File::open(path)?)
+        .lines()
+        .filter_map(|x| {
+            x.ok().and_then(|item: String| {
+                let item: Arc<dyn ClapItem> = Arc::new(item);
+                matcher
+                    .match_query(&item, query)
+                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
             })
-    };
+        }))
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
@@ -124,7 +122,7 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
         let filtered = match self {
             Self::Stdin => source_stdin(&matcher, query).collect(),
             Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
-            Self::File(fpath) => source_iter_file!(scorer, fpath).collect(),
+            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
             Self::List(list) => source_iter_list!(scorer, list).collect(),
         };
 

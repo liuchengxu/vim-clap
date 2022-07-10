@@ -1,4 +1,3 @@
-use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -10,8 +9,8 @@ use icon::{Icon, ICON_LEN};
 use types::{MatchedItem, Query, SourceItem};
 use utility::{println_json, println_json_with_length};
 
-use super::{source_iter_file, source_iter_list};
-use crate::source::{source_exec, source_stdin};
+use super::source_iter_list;
+use crate::source::{source_exec, source_file, source_stdin};
 use crate::{sort_initial_filtered, FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
@@ -310,7 +309,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
                 dyn_collect_number(source_exec(&matcher, &query, exec)?, number, icon)
             }
             Source::File(fpath) => {
-                dyn_collect_number(source_iter_file!(scorer, fpath), number, icon)
+                dyn_collect_number(source_file(&matcher, &query, fpath)?, number, icon)
             }
             Source::List(list) => dyn_collect_number(source_iter_list!(scorer, list), number, icon),
         };
@@ -322,7 +321,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         let filtered = match source {
             Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
             Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
-            Source::File(fpath) => dyn_collect_all(source_iter_file!(scorer, fpath), icon),
+            Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
             Source::List(list) => dyn_collect_all(source_iter_list!(scorer, list), icon),
         };
 
