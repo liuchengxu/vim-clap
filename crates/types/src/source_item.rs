@@ -149,13 +149,6 @@ pub struct SourceItem {
     pub display_text: Option<String>,
 }
 
-// NOTE: do not use it when you are dealing with a large number of items.
-// impl From<&str> for SourceItem {
-// fn from(s: &str) -> Self {
-// String::from(s).into()
-// }
-// }
-
 impl From<String> for SourceItem {
     fn from(raw: String) -> Self {
         Self {
@@ -197,11 +190,10 @@ impl SourceItem {
     }
 
     pub fn get_fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
-        if let Some((ref text, offset)) = self.fuzzy_text {
-            return Some(FuzzyText::new(text, offset));
+        match self.fuzzy_text {
+            Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
+            None => extract_fuzzy_text(self.raw.as_str(), match_scope),
         }
-        let full = self.raw.as_str();
-        extract_fuzzy_text(full, match_scope)
     }
 }
 
