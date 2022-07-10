@@ -87,19 +87,19 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial full text.
     fn full_text(&self) -> &str;
 
-    fn display_text(&self) -> &str {
-        self.full_text()
-    }
+    /// Text for applying the fuzzy match algorithm.
+    ///
+    /// The fuzzy matching process only happens when Some(_) is returned.
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
 
     /// Text for calculating the bonus score.
     fn bonus_text(&self) -> &str {
         self.full_text()
     }
 
-    /// Text for applying the fuzzy match algorithm.
-    ///
-    /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
+    fn display_text(&self) -> &str {
+        self.full_text()
+    }
 }
 
 impl ClapItem for SourceItem {
@@ -139,11 +139,11 @@ pub struct SourceItem {
 }
 
 // NOTE: do not use it when you are dealing with a large number of items.
-impl From<&str> for SourceItem {
-    fn from(s: &str) -> Self {
-        String::from(s).into()
-    }
-}
+// impl From<&str> for SourceItem {
+    // fn from(s: &str) -> Self {
+        // String::from(s).into()
+    // }
+// }
 
 impl From<String> for SourceItem {
     fn from(raw: String) -> Self {

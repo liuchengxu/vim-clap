@@ -177,13 +177,6 @@ impl Matcher {
         self
     }
 
-    /// Match the item without considering the bonus.
-    #[inline]
-    fn fuzzy_match(&self, item: &Arc<dyn ClapItem>, query: &str) -> Option<MatchResult> {
-        self.fuzzy_algo
-            .fuzzy_match(query, item, &self.match_scope, self.case_matching)
-    }
-
     /// Returns the sum of bonus score.
     fn calc_bonus(
         &self,
@@ -219,7 +212,10 @@ impl Matcher {
 
         for term in query.fuzzy_terms.iter() {
             let query = &term.word;
-            if let Some(MatchResult { score, indices }) = self.fuzzy_match(item, query) {
+            if let Some(MatchResult { score, indices }) =
+                self.fuzzy_algo
+                    .fuzzy_match(query, item, &self.match_scope, self.case_matching)
+            {
                 fuzzy_indices.extend_from_slice(&indices);
                 fuzzy_score += score;
             } else {

@@ -70,7 +70,7 @@ impl EventHandle for BuiltinHandle {
             SourceScale::Small { ref lines, .. } => {
                 let results = filter::par_filter(
                     query,
-                    lines.iter().map(|s| s.as_str().into()).collect(),
+                    lines.iter().map(|s| s.to_string().into()).collect(), // TODO: avoid `to_string()`
                     &context.fuzzy_matcher(),
                 );
 

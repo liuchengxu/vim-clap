@@ -61,6 +61,24 @@ impl From<HashMap<String, String>> for MatchContext {
     }
 }
 
+/*
+#[derive(Debug)]
+struct LineWithIcon(String);
+
+impl ClapItem for LineWithIcon {
+    fn full_text(&self) -> &str {
+        self.0.as_str()
+    }
+
+    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText {
+            text: self,
+            matching_start: 0,
+        })
+    }
+}
+*/
+
 /// Filter the candidates synchorously given `query` and `candidates`.
 ///
 /// `recent_files` and `context` are the full context for matching each item.
@@ -85,7 +103,9 @@ fn fuzzy_match(
     let query: Query = query.into();
     let do_match = |line: String| {
         if enable_icon {
-            let item = SourceItem::from(&line[4..]);
+            // TODO: make a wrapper of SourceItem which implements custom `match_text`.
+            // TODO: remove the string allocation.
+            let item = SourceItem::from(String::from(&line[4..]));
             let item: Arc<dyn ClapItem> = Arc::new(item);
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
