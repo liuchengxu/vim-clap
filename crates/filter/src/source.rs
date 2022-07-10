@@ -39,7 +39,9 @@ macro_rules! source_iter_stdin {
                 .ok()
                 .and_then(|line: String| {
                     let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(line);
-                    $scorer(&item).map(|match_result| match_result.from_string(item))
+                    $scorer(&item).map(|matcher::MatchResult { score, indices }| {
+                        types::FilteredItem::new(item, score, indices)
+                    })
                 })
                 .map(Into::into)
         })
@@ -57,17 +59,23 @@ macro_rules! source_iter_exec {
                     .ok()
                     .and_then(|item: String| {
                         let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
-                        $scorer(&item).map(|match_result| match_result.from_string(item))
+                        $scorer(&item).map(|matcher::MatchResult { score, indices }| {
+                            types::FilteredItem::new(item, score, indices)
+
+                            /* NOTE: downcast_ref has to take place here.
+                            let s = item
+                                .as_any()
+                                .downcast_ref::<String>()
+                                .expect("item is String; qed");
+                            // FIXME: to FilteredItem
+                            let item: types::SourceItem = s.as_str().into();
+                            match_result.from_source_item_concrete(item)
+                            */
+                        })
                     })
                     .map(Into::into)
             })
     };
-}
-
-use std::any::{Any, TypeId};
-
-pub fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
-    TypeId::of::<String>() == TypeId::of::<T>()
 }
 
 /// Generate an iterator of [`FilteredItem`] from [`Source::File`].
@@ -81,14 +89,10 @@ macro_rules! source_iter_file {
             .filter_map(|x| {
                 x.ok()
                     .and_then(|item: String| {
-                        println!(
-                            "============ item: {item:?}, {:?}",
-                            std::any::TypeId::of::<String>()
-                        );
-                        assert_eq!(crate::source::is_string(&item), true);
-                        println!("Source type is String");
                         let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
-                        $scorer(&item).map(|match_result| match_result.from_string(item))
+                        $scorer(&item).map(|matcher::MatchResult { score, indices }| {
+                            types::FilteredItem::new(item, score, indices)
+                        })
                     })
                     .map(Into::into)
             })
@@ -100,9 +104,11 @@ macro_rules! source_iter_file {
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
         $list
-            .filter_map(|item| {
+            .filter_map(|item: types::SourceItem| {
                 let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
-                $scorer(&item).map(|match_result| match_result.from_source_item(item))
+                $scorer(&item).map(|matcher::MatchResult { score, indices }| {
+                    types::FilteredItem::new(item, score, indices)
+                })
             })
             .map(Into::into)
     };

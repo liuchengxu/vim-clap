@@ -26,16 +26,13 @@
 mod algo;
 mod bonus;
 
-use std::ops::Deref;
 use std::sync::Arc;
-
-use types::AsAny;
 
 pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-use types::{CaseMatching, FilteredItem};
+use types::CaseMatching;
 // Re-export types
 pub use types::{
     ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, Query, SearchTerm, SourceItem,
@@ -55,47 +52,6 @@ pub struct MatchResult {
 impl MatchResult {
     pub fn new(score: Score, indices: Vec<usize>) -> Self {
         Self { score, indices }
-    }
-
-    pub fn into_filtered_item<I: Into<SourceItem>>(self, item: I) -> FilteredItem {
-        (item, self.score, self.indices).into()
-    }
-
-    pub fn from_source_item(self, item: Arc<dyn ClapItem>) -> FilteredItem {
-        let Self { score, indices } = self;
-
-        let item = item
-            .as_any()
-            .downcast_ref::<SourceItem>()
-            .expect("item is not SourceItem");
-
-        (item, score, indices).into()
-    }
-
-    pub fn from_string(self, item: Arc<dyn ClapItem>) -> FilteredItem {
-        let Self { score, indices } = self;
-
-        let item = item
-            .as_any()
-            .downcast_ref::<String>()
-            .expect("item is not String");
-        // FIXME
-        let item: SourceItem = item.as_str().into();
-
-        (item, score, indices).into()
-    }
-
-    pub fn from_str(self, item: Arc<dyn ClapItem>) -> FilteredItem {
-        let Self { score, indices } = self;
-
-        let item = item
-            .as_any()
-            .downcast_ref::<&str>()
-            .expect("item is not &str");
-        // FIXME
-        let item: SourceItem = item.deref().into();
-
-        (item, score, indices).into()
     }
 }
 

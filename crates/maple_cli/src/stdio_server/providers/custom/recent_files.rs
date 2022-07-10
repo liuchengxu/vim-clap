@@ -1,3 +1,4 @@
+use matcher::ClapItem;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -51,11 +52,8 @@ async fn handle_recent_files_message(
             .entries
             .iter()
             .map(|entry| {
-                FilteredItem::new(
-                    entry.fpath.replacen(&cwd, "", 1),
-                    entry.frecent_score as i64,
-                    Default::default(),
-                )
+                let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
+                FilteredItem::new(item, entry.frecent_score as i64, Default::default())
             })
             .collect::<Vec<_>>()
     } else {
@@ -164,7 +162,7 @@ impl EventHandle for RecentFilesHandle {
             .lines
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.source_item.raw.clone());
+            .map(|r| r.item.full_text().to_string());
 
         if let Some(curline) = maybe_curline {
             let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline))?;

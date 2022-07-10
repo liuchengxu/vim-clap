@@ -1,6 +1,7 @@
-use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
-
 use std::any::Any;
+use std::sync::Arc;
+
+use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;
@@ -82,9 +83,13 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// Text used in the matching algorithm.
-pub trait ClapItem: AsAny + 'static {
+pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial full text.
     fn full_text(&self) -> &str;
+
+    fn display_text(&self) -> &str {
+        self.full_text()
+    }
 
     /// Text for calculating the bonus score.
     fn bonus_text(&self) -> &str {
@@ -107,31 +112,6 @@ impl ClapItem for SourceItem {
     }
 }
 
-/*
-impl ClapItem for &SourceItem {
-    fn full_text(&self) -> &str {
-        &self.raw
-    }
-
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
-        self.get_fuzzy_text(match_scope)
-    }
-}
-
-impl ClapItem for &str {
-    fn full_text(&self) -> &str {
-        self
-    }
-
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self,
-            matching_start: 0,
-        })
-    }
-}
-*/
-
 impl ClapItem for String {
     fn full_text(&self) -> &str {
         self
@@ -144,21 +124,6 @@ impl ClapItem for String {
         })
     }
 }
-
-/*
-impl ClapItem for &String {
-    fn full_text(&self) -> &str {
-        self
-    }
-
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self,
-            matching_start: 0,
-        })
-    }
-}
-*/
 
 /// This type represents the item for doing the filtering pipeline.
 #[derive(Debug, Clone)]
@@ -238,7 +203,7 @@ impl SourceItem {
 #[derive(Debug, Clone)]
 pub struct FilteredItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
-    pub source_item: SourceItem,
+    pub item: Arc<dyn ClapItem>,
     /// Filtering score.
     pub score: T,
     /// Indices of matched elements.
@@ -251,47 +216,19 @@ pub struct FilteredItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((item, score, match_indices): (I, T, Vec<usize>)) -> Self {
-        Self {
-            source_item: item.into(),
-            score,
-            match_indices,
-            display_text: None,
-        }
-    }
-}
-
-impl<T> From<(&SourceItem, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((item, score, match_indices): (&SourceItem, T, Vec<usize>)) -> Self {
-        Self {
-            source_item: item.clone(),
-            score,
-            match_indices,
-            display_text: None,
-        }
-    }
-}
-
-impl<I: Into<SourceItem>, T: Default> From<I> for FilteredItem<T> {
-    fn from(item: I) -> Self {
-        Self {
-            source_item: item.into(),
-            score: Default::default(),
-            match_indices: Default::default(),
-            display_text: None,
-        }
-    }
-}
-
 impl<T> FilteredItem<T> {
-    pub fn new<I: Into<SourceItem>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
-        (item, score, match_indices).into()
+    pub fn new(item: Arc<dyn ClapItem>, score: T, match_indices: Vec<usize>) -> Self {
+        Self {
+            item,
+            score,
+            match_indices,
+            display_text: None,
+        }
     }
 
     /// Untruncated display text.
     pub fn source_item_display_text(&self) -> &str {
-        self.source_item.display_text()
+        self.item.display_text()
     }
 
     /// Maybe truncated display text.
@@ -299,7 +236,7 @@ impl<T> FilteredItem<T> {
         if let Some(ref text) = self.display_text {
             text
         } else {
-            self.source_item.display_text()
+            self.item.display_text()
         }
     }
 

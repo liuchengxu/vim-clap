@@ -16,7 +16,6 @@ use rayon::prelude::*;
 
 use icon::Icon;
 use matcher::{ClapItem, MatchResult, MatchScope, Matcher};
-use types::AsAny;
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -104,14 +103,7 @@ pub fn par_filter(
             let item: Arc<dyn ClapItem> = Arc::new(item);
             fuzzy_matcher
                 .match_query(&item, &query)
-                .map(|MatchResult { score, indices }| {
-                    let item = item
-                        .as_any()
-                        .downcast_ref::<SourceItem>()
-                        .expect("item is not SourceItem");
-
-                    (item, score, indices).into()
-                })
+                .map(|MatchResult { score, indices }| FilteredItem::new(item, score, indices))
         })
         .collect();
     sort_initial_filtered(filtered)

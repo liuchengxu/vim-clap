@@ -326,13 +326,13 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         let ranked = sort_initial_filtered(filtered);
 
         for FilteredItem {
-            source_item,
+            item,
             match_indices,
             display_text,
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| source_item.display_text().to_owned());
+            let text = display_text.unwrap_or_else(|| item.display_text().to_owned());
             let indices = match_indices;
             println_json!(text, indices);
         }

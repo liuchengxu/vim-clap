@@ -138,13 +138,13 @@ pub fn print_sync_filter_results(
         decorate_lines(ranked, winwidth, icon).print_json(Some(total));
     } else {
         for FilteredItem {
-            source_item,
+            item,
             match_indices,
             display_text,
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| source_item.display_text().into());
+            let text = display_text.unwrap_or_else(|| item.display_text().into());
             let indices = match_indices;
             println_json!(text, indices);
         }

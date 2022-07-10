@@ -71,7 +71,7 @@ pub fn truncate_long_matched_lines<T>(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut filtered_item)| {
-        let origin_display_text = filtered_item.source_item.display_text();
+        let origin_display_text = filtered_item.item.display_text();
 
         // Truncate the text simply if it's too long.
         if origin_display_text.len() > MAX_LINE_LEN {

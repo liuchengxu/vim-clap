@@ -83,7 +83,7 @@ fn fuzzy_match(
     let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, match_scope);
 
     let query: Query = query.into();
-    let do_match = |line: &str| {
+    let do_match = |line: String| {
         if enable_icon {
             let item = SourceItem::from(&line[4..]);
             let item: Arc<dyn ClapItem> = Arc::new(item);
@@ -91,23 +91,20 @@ fn fuzzy_match(
             matcher
                 .match_query(&item, &query)
                 .map(|MatchResult { score, indices }| {
-                    MatchResult::new(score, indices.into_iter().map(|x| x + 4).collect())
+                    FilteredItem::new(item, score, indices.into_iter().map(|x| x + 4).collect())
                 })
         } else {
             let item = SourceItem::from(line);
             let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher.match_query(&item, &query)
+            matcher
+                .match_query(&item, &query)
+                .map(|MatchResult { score, indices }| FilteredItem::new(item, score, indices))
         }
     };
 
     let mut ranked = candidates
         .into_iter()
-        .filter_map(|line| {
-            do_match(&line).map(|MatchResult { score, indices }| {
-                (Into::<SourceItem>::into(line), score, indices)
-            })
-        })
-        .map(Into::<FilteredItem>::into)
+        .filter_map(do_match)
         .collect::<Vec<_>>();
 
     ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
