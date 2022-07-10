@@ -156,7 +156,7 @@ pub fn trim_text(
 mod tests {
     use super::*;
     use crate::tests::filter_single_line;
-    use types::FilteredItem;
+    use types::MatchedItem;
 
     #[test]
     fn test_trim_left() {
@@ -238,7 +238,7 @@ mod tests {
         for (text, query, highlighted, container_width, display_line) in test_cases {
             let ranked = filter_single_line(text, query);
 
-            let FilteredItem { match_indices, .. } = ranked[0].clone();
+            let MatchedItem { match_indices, .. } = ranked[0].clone();
 
             let (display_line_got, indices_post) =
                 trim_text(text, &match_indices, container_width, 4)

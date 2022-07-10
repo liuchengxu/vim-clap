@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use filter::{FilteredItem, Query, SourceItem};
+use filter::{MatchedItem, Query, SourceItem};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 use types::MatchingText;
 
@@ -19,7 +19,7 @@ fn prepare_source_items() -> Vec<SourceItem> {
     .collect()
 }
 
-fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<FilteredItem> {
+fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, query);
     list.into_iter()
         .filter_map(|item| {
@@ -31,7 +31,7 @@ fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Filter
 }
 
 // 3 times faster than filter
-fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<FilteredItem> {
+fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     use rayon::prelude::*;
 
     let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, query);

@@ -21,7 +21,7 @@ pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
 pub use subprocess;
-pub use types::{CaseMatching, FilteredItem, Query, SourceItem};
+pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
@@ -71,7 +71,7 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
+pub fn sort_initial_filtered(filtered: Vec<MatchedItem>) -> Vec<MatchedItem> {
     let mut filtered = filtered;
     filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
     filtered
@@ -83,7 +83,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     matcher: Matcher,
-) -> Result<Vec<FilteredItem>> {
+) -> Result<Vec<MatchedItem>> {
     let query: Query = query.into();
     let filtered = source.filter_and_collect(matcher, &query)?;
     let ranked = sort_initial_filtered(filtered);
@@ -95,15 +95,15 @@ pub fn par_filter(
     query: impl Into<Query>,
     source_items: Vec<SourceItem>,
     fuzzy_matcher: &Matcher,
-) -> Vec<FilteredItem> {
+) -> Vec<MatchedItem> {
     let query: Query = query.into();
-    let filtered: Vec<FilteredItem> = source_items
+    let filtered: Vec<MatchedItem> = source_items
         .into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
             fuzzy_matcher
                 .match_query(&item, &query)
-                .map(|MatchResult { score, indices }| FilteredItem::new(item, score, indices))
+                .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
         })
         .collect();
     sort_initial_filtered(filtered)

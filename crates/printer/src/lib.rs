@@ -5,7 +5,7 @@ mod trimmer;
 mod truncation;
 
 use icon::{Icon, ICON_LEN};
-use types::FilteredItem;
+use types::MatchedItem;
 use utility::{println_json, println_json_with_length};
 
 pub use self::truncation::{
@@ -88,7 +88,7 @@ impl DecoratedLines {
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn decorate_lines<T>(
-    mut top_list: Vec<FilteredItem<T>>,
+    mut top_list: Vec<MatchedItem<T>>,
     winwidth: usize,
     icon: Icon,
 ) -> DecoratedLines {
@@ -126,7 +126,7 @@ pub fn decorate_lines<T>(
 
 /// Prints the results of filter::sync_run() to stdout.
 pub fn print_sync_filter_results(
-    ranked: Vec<FilteredItem>,
+    ranked: Vec<MatchedItem>,
     number: Option<usize>,
     winwidth: usize,
     icon: Icon,
@@ -137,7 +137,7 @@ pub fn print_sync_filter_results(
         ranked.truncate(number);
         decorate_lines(ranked, winwidth, icon).print_json(Some(total));
     } else {
-        for FilteredItem {
+        for MatchedItem {
             item,
             match_indices,
             display_text,
@@ -153,7 +153,7 @@ pub fn print_sync_filter_results(
 
 /// Prints the results of filter::dyn_run() to stdout.
 pub fn print_dyn_filter_results(
-    ranked: Vec<FilteredItem>,
+    ranked: Vec<MatchedItem>,
     total: usize,
     number: usize,
     winwidth: usize,
@@ -213,7 +213,7 @@ pub(crate) mod tests {
     pub(crate) fn filter_single_line(
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
-    ) -> Vec<FilteredItem> {
+    ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let mut ranked = Source::List(std::iter::once(line.into()))
@@ -237,7 +237,7 @@ pub(crate) mod tests {
         let mut ranked = filter_single_line(text, &query);
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-        let FilteredItem { match_indices, .. } = ranked[0].clone();
+        let MatchedItem { match_indices, .. } = ranked[0].clone();
         let truncated_indices = match_indices;
 
         let truncated_text_got = ranked[0].display_text();

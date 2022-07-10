@@ -201,7 +201,7 @@ impl SourceItem {
 
 /// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
-pub struct FilteredItem<T = i64> {
+pub struct MatchedItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
     pub item: Arc<dyn ClapItem>,
     /// Filtering score.
@@ -216,7 +216,7 @@ pub struct FilteredItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<T> FilteredItem<T> {
+impl<T> MatchedItem<T> {
     pub fn new(item: Arc<dyn ClapItem>, score: T, match_indices: Vec<usize>) -> Self {
         Self {
             item,

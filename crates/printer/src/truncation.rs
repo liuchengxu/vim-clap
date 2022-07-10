@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::slice::IterMut;
 
-use types::FilteredItem;
+use types::MatchedItem;
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
@@ -64,7 +64,7 @@ const MAX_LINE_LEN: usize = 500;
 /// - winwidth: width of the display window.
 /// - skipped: number of skipped chars, used when need to skip the leading icons.
 pub fn truncate_long_matched_lines<T>(
-    items: IterMut<FilteredItem<T>>,
+    items: IterMut<MatchedItem<T>>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
@@ -99,7 +99,7 @@ pub fn truncate_long_matched_lines<T>(
 }
 
 pub fn truncate_long_matched_lines_v0<T>(
-    items: IterMut<FilteredItem<T>>,
+    items: IterMut<MatchedItem<T>>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {

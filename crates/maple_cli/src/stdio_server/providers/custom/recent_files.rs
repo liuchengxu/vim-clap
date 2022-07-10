@@ -7,7 +7,7 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
-use filter::FilteredItem;
+use filter::MatchedItem;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::providers::builtin::OnMoveHandler;
@@ -19,7 +19,7 @@ async fn handle_recent_files_message(
     msg: MethodCall,
     context: Arc<SessionContext>,
     force_execute: bool,
-) -> Vec<FilteredItem> {
+) -> Vec<MatchedItem> {
     let msg_id = msg.id;
 
     let cwd = context.cwd.to_string_lossy().to_string();
@@ -53,7 +53,7 @@ async fn handle_recent_files_message(
             .iter()
             .map(|entry| {
                 let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
-                FilteredItem::new(item, entry.frecent_score as i64, Default::default())
+                MatchedItem::new(item, entry.frecent_score as i64, Default::default())
             })
             .collect::<Vec<_>>()
     } else {
@@ -140,7 +140,7 @@ async fn handle_recent_files_message(
 
 #[derive(Debug, Clone, Default)]
 pub struct RecentFilesHandle {
-    lines: Arc<Mutex<Vec<FilteredItem>>>,
+    lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 #[async_trait::async_trait]

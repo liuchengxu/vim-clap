@@ -168,7 +168,7 @@ impl SortedRecentFiles {
         });
     }
 
-    pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::FilteredItem> {
+    pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::MatchedItem> {
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);
 

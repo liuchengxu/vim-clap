@@ -7,7 +7,7 @@ use matcher::ClapItem;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{FilteredItem, Query, SourceItem};
+use types::{MatchedItem, Query, SourceItem};
 use utility::{println_json, println_json_with_length};
 
 use super::{source_iter_exec, source_iter_file, source_iter_list, source_iter_stdin};
@@ -74,8 +74,8 @@ type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHO
 ///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
 fn select_top_items_to_show(
-    buffer: &mut Vec<FilteredItem>,
-    iter: &mut impl Iterator<Item = FilteredItem>,
+    buffer: &mut Vec<MatchedItem>,
+    iter: &mut impl Iterator<Item = MatchedItem>,
 ) -> std::result::Result<usize, SelectedTopItemsInfo> {
     let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
@@ -147,7 +147,7 @@ impl Watcher {
     /// # NOTE
     ///
     /// Printing to stdout is to send the content to the client.
-    pub fn try_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[FilteredItem]) {
+    pub fn try_notify(&mut self, top_results: &[usize; ITEMS_TO_SHOW], buffer: &[MatchedItem]) {
         if self.total % 16 == 0 {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
@@ -199,7 +199,7 @@ impl Watcher {
 /// VecDeque for this iterator.
 ///
 /// So, this particular function won't work in parallel context at all.
-fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: Icon) -> Vec<FilteredItem> {
+fn dyn_collect_all(mut iter: impl Iterator<Item = MatchedItem>, icon: Icon) -> Vec<MatchedItem> {
     let mut buffer = Vec::with_capacity({
         let (low, high) = iter.size_hint();
         high.unwrap_or(low)
@@ -243,10 +243,10 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = FilteredItem>, icon: Icon) -> 
 // I think, it's just good enough. And should be more effective than full
 // `collect()` into Vec on big numbers of iterations.
 fn dyn_collect_number(
-    mut iter: impl Iterator<Item = FilteredItem>,
+    mut iter: impl Iterator<Item = MatchedItem>,
     number: usize,
     icon: Icon,
-) -> (usize, Vec<FilteredItem>) {
+) -> (usize, Vec<MatchedItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
@@ -275,7 +275,7 @@ fn dyn_collect_number(
         if buffer.len() == buffer.capacity() {
             buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
-            for (idx, FilteredItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
+            for (idx, MatchedItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
                 top_scores[idx] = *score;
                 top_results[idx] = idx;
             }
@@ -325,7 +325,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         let ranked = sort_initial_filtered(filtered);
 
-        for FilteredItem {
+        for MatchedItem {
             item,
             match_indices,
             display_text,

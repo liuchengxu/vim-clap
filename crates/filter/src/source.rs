@@ -5,7 +5,7 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::{ClapItem, Matcher};
-use types::{FilteredItem, Query, SourceItem};
+use types::{MatchedItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
 
 /// macros for `dyn_collect_number` and `dyn_collect_number`
 ///
-/// Generate an iterator of [`FilteredItem`] from [`Source::Stdin`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
 #[macro_export]
 macro_rules! source_iter_stdin {
     ( $scorer:ident ) => {
@@ -40,7 +40,7 @@ macro_rules! source_iter_stdin {
                 .and_then(|line: String| {
                     let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(line);
                     $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                        types::FilteredItem::new(item, score, indices)
+                        types::MatchedItem::new(item, score, indices)
                     })
                 })
                 .map(Into::into)
@@ -48,7 +48,7 @@ macro_rules! source_iter_stdin {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::Exec`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
 #[macro_export]
 macro_rules! source_iter_exec {
     ( $scorer:ident, $exec:ident ) => {
@@ -60,14 +60,14 @@ macro_rules! source_iter_exec {
                     .and_then(|item: String| {
                         let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                         $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                            types::FilteredItem::new(item, score, indices)
+                            types::MatchedItem::new(item, score, indices)
 
                             /* NOTE: downcast_ref has to take place here.
                             let s = item
                                 .as_any()
                                 .downcast_ref::<String>()
                                 .expect("item is String; qed");
-                            // FIXME: to FilteredItem
+                            // FIXME: to MatchedItem
                             let item: types::SourceItem = s.as_str().into();
                             match_result.from_source_item_concrete(item)
                             */
@@ -78,7 +78,7 @@ macro_rules! source_iter_exec {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::File`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
 #[macro_export]
 macro_rules! source_iter_file {
     ( $scorer:ident, $fpath:ident ) => {
@@ -91,7 +91,7 @@ macro_rules! source_iter_file {
                     .and_then(|item: String| {
                         let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                         $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                            types::FilteredItem::new(item, score, indices)
+                            types::MatchedItem::new(item, score, indices)
                         })
                     })
                     .map(Into::into)
@@ -99,7 +99,7 @@ macro_rules! source_iter_file {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::List(list)`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
 #[macro_export]
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
@@ -107,7 +107,7 @@ macro_rules! source_iter_list {
             .filter_map(|item: types::SourceItem| {
                 let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                 $scorer(&item).map(|matcher::MatchResult { score, indices }| {
-                    types::FilteredItem::new(item, score, indices)
+                    types::MatchedItem::new(item, score, indices)
                 })
             })
             .map(Into::into)
@@ -118,7 +118,7 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<FilteredItem>> {
+    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
         let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, query);
 
         let filtered = match self {
