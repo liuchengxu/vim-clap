@@ -162,7 +162,7 @@ impl EventHandle for RecentFilesHandle {
             .lines
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.item.full_text().to_string());
+            .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
             let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline))?;

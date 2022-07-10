@@ -194,7 +194,7 @@ impl Matcher {
     pub fn match_query(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.match_full_line(item.full_text()) {
+            if inverse_term.match_full_line(item.raw_text()) {
                 return None;
             }
         }
@@ -202,7 +202,7 @@ impl Matcher {
         // Try the exact terms against the full search line.
         let (exact_score, mut indices) = match_exact_terms(
             query.exact_terms.iter(),
-            item.full_text(),
+            item.raw_text(),
             self.case_matching,
         )?;
 

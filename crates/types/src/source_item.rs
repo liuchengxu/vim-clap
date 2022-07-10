@@ -85,7 +85,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 /// Text used in the matching algorithm.
 pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial full text.
-    fn full_text(&self) -> &str;
+    fn raw_text(&self) -> &str;
 
     /// Text for applying the fuzzy match algorithm.
     ///
@@ -94,16 +94,16 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 
     /// Text for calculating the bonus score.
     fn bonus_text(&self) -> &str {
-        self.full_text()
+        self.raw_text()
     }
 
     fn display_text(&self) -> &str {
-        self.full_text()
+        self.raw_text()
     }
 }
 
 impl ClapItem for SourceItem {
-    fn full_text(&self) -> &str {
+    fn raw_text(&self) -> &str {
         &self.raw
     }
 
@@ -113,7 +113,7 @@ impl ClapItem for SourceItem {
 }
 
 impl ClapItem for String {
-    fn full_text(&self) -> &str {
+    fn raw_text(&self) -> &str {
         self
     }
 
@@ -140,9 +140,9 @@ pub struct SourceItem {
 
 // NOTE: do not use it when you are dealing with a large number of items.
 // impl From<&str> for SourceItem {
-    // fn from(s: &str) -> Self {
-        // String::from(s).into()
-    // }
+// fn from(s: &str) -> Self {
+// String::from(s).into()
+// }
 // }
 
 impl From<String> for SourceItem {

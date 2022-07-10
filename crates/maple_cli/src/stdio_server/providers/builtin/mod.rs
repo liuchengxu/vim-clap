@@ -43,7 +43,7 @@ impl EventHandle for BuiltinHandle {
                     .current_results
                     .lock()
                     .get((lnum - 1) as usize)
-                    .map(|r| r.item.full_text().to_string())
+                    .map(|r| r.item.raw_text().to_string())
                 {
                     Some(curline)
                 } else {

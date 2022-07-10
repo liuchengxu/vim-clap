@@ -66,7 +66,7 @@ impl From<HashMap<String, String>> for MatchContext {
 struct LineWithIcon(String);
 
 impl ClapItem for LineWithIcon {
-    fn full_text(&self) -> &str {
+    fn raw_text(&self) -> &str {
         self.0.as_str()
     }
 

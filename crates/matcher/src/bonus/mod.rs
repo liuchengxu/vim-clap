@@ -59,7 +59,7 @@ impl Bonus {
     /// Calculates the bonus score given the match result of base algorithm.
     pub fn bonus_score(&self, item: &Arc<dyn ClapItem>, score: Score, indices: &[usize]) -> Score {
         // Ignore the long line.
-        if item.full_text().len() > 1024 {
+        if item.raw_text().len() > 1024 {
             return 0;
         }
 
