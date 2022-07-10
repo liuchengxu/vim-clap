@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{FilteredItem, Query, SourceItem};
+use types::{ClapItem, FilteredItem, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -84,14 +85,18 @@ fn fuzzy_match(
     let query: Query = query.into();
     let do_match = |line: &str| {
         if enable_icon {
+            let item = SourceItem::from(&line[4..]);
+            let item: Arc<dyn ClapItem> = Arc::new(item);
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
-                .match_query(&SourceItem::from(&line[4..]), &query)
+                .match_query(&item, &query)
                 .map(|MatchResult { score, indices }| {
                     MatchResult::new(score, indices.into_iter().map(|x| x + 4).collect())
                 })
         } else {
-            matcher.match_query(&SourceItem::from(line), &query)
+            let item = SourceItem::from(line);
+            let item: Arc<dyn ClapItem> = Arc::new(item);
+            matcher.match_query(&item, &query)
         }
     };
 

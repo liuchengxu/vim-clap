@@ -4,7 +4,7 @@ use std::{io::BufRead, sync::Arc};
 use anyhow::Result;
 use subprocess::Exec;
 
-use matcher::{Matcher, MatchingText};
+use matcher::{ClapItem, Matcher};
 use types::{FilteredItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
@@ -37,8 +37,8 @@ macro_rules! source_iter_stdin {
         std::io::stdin().lock().lines().filter_map(|lines_iter| {
             lines_iter
                 .ok()
-                .and_then(|item| {
-                    let item: std::sync::Arc<dyn types::MatchingText> = std::sync::Arc::new(item);
+                .and_then(|line: String| {
+                    let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(line);
                     $scorer(&item).map(|match_result| match_result.from_string(item))
                 })
                 .map(Into::into)
@@ -55,14 +55,19 @@ macro_rules! source_iter_exec {
             .filter_map(|lines_iter| {
                 lines_iter
                     .ok()
-                    .and_then(|item| {
-                        let item: std::sync::Arc<dyn types::MatchingText> =
-                            std::sync::Arc::new(item);
+                    .and_then(|item: String| {
+                        let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                         $scorer(&item).map(|match_result| match_result.from_string(item))
                     })
                     .map(Into::into)
             })
     };
+}
+
+use std::any::{Any, TypeId};
+
+pub fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
+    TypeId::of::<String>() == TypeId::of::<T>()
 }
 
 /// Generate an iterator of [`FilteredItem`] from [`Source::File`].
@@ -75,9 +80,14 @@ macro_rules! source_iter_file {
             .lines()
             .filter_map(|x| {
                 x.ok()
-                    .and_then(|item| {
-                        let item: std::sync::Arc<dyn types::MatchingText> =
-                            std::sync::Arc::new(item);
+                    .and_then(|item: String| {
+                        println!(
+                            "============ item: {item:?}, {:?}",
+                            std::any::TypeId::of::<String>()
+                        );
+                        assert_eq!(crate::source::is_string(&item), true);
+                        println!("Source type is String");
+                        let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                         $scorer(&item).map(|match_result| match_result.from_string(item))
                     })
                     .map(Into::into)
@@ -91,7 +101,7 @@ macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
         $list
             .filter_map(|item| {
-                let item: std::sync::Arc<dyn types::MatchingText> = std::sync::Arc::new(item);
+                let item: std::sync::Arc<dyn types::ClapItem> = std::sync::Arc::new(item);
                 $scorer(&item).map(|match_result| match_result.from_source_item(item))
             })
             .map(Into::into)
@@ -103,7 +113,7 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<FilteredItem>> {
-        let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, query);
+        let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, query);
 
         let filtered = match self {
             Self::Stdin => source_iter_stdin!(scorer).collect(),

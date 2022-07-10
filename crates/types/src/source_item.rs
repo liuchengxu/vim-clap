@@ -82,7 +82,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// Text used in the matching algorithm.
-pub trait MatchingText {
+pub trait ClapItem: AsAny + 'static {
     /// Initial full text.
     fn full_text(&self) -> &str;
 
@@ -97,7 +97,7 @@ pub trait MatchingText {
     fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
 }
 
-impl MatchingText for SourceItem {
+impl ClapItem for SourceItem {
     fn full_text(&self) -> &str {
         &self.raw
     }
@@ -107,7 +107,8 @@ impl MatchingText for SourceItem {
     }
 }
 
-impl MatchingText for &SourceItem {
+/*
+impl ClapItem for &SourceItem {
     fn full_text(&self) -> &str {
         &self.raw
     }
@@ -117,7 +118,21 @@ impl MatchingText for &SourceItem {
     }
 }
 
-impl MatchingText for &str {
+impl ClapItem for &str {
+    fn full_text(&self) -> &str {
+        self
+    }
+
+    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText {
+            text: self,
+            matching_start: 0,
+        })
+    }
+}
+*/
+
+impl ClapItem for String {
     fn full_text(&self) -> &str {
         self
     }
@@ -130,7 +145,8 @@ impl MatchingText for &str {
     }
 }
 
-impl MatchingText for String {
+/*
+impl ClapItem for &String {
     fn full_text(&self) -> &str {
         self
     }
@@ -142,19 +158,7 @@ impl MatchingText for String {
         })
     }
 }
-
-impl MatchingText for &String {
-    fn full_text(&self) -> &str {
-        self
-    }
-
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self,
-            matching_start: 0,
-        })
-    }
-}
+*/
 
 /// This type represents the item for doing the filtering pipeline.
 #[derive(Debug, Clone)]

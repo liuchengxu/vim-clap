@@ -4,7 +4,7 @@ pub mod substring;
 
 use std::sync::Arc;
 
-use types::{CaseMatching, FuzzyText, MatchScope, MatchingText};
+use types::{CaseMatching, ClapItem, FuzzyText, MatchScope};
 
 use crate::MatchResult;
 
@@ -43,7 +43,7 @@ impl FuzzyAlgorithm {
     pub fn fuzzy_match(
         &self,
         query: &str,
-        item: &Arc<dyn MatchingText>,
+        item: &Arc<dyn ClapItem>,
         match_scope: &MatchScope,
         case_matching: CaseMatching,
     ) -> Option<MatchResult> {

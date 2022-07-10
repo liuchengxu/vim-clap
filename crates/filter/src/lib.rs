@@ -15,7 +15,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{MatchResult, MatchScope, Matcher, MatchingText};
+use matcher::{ClapItem, MatchResult, MatchScope, Matcher};
 use types::AsAny;
 
 pub use self::dynamic::dyn_run;
@@ -101,7 +101,7 @@ pub fn par_filter(
     let filtered: Vec<FilteredItem> = source_items
         .into_par_iter()
         .filter_map(|item| {
-            let item: Arc<dyn MatchingText> = Arc::new(item);
+            let item: Arc<dyn ClapItem> = Arc::new(item);
             fuzzy_matcher
                 .match_query(&item, &query)
                 .map(|MatchResult { score, indices }| {

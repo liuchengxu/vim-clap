@@ -7,7 +7,7 @@ pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,
     TermType,
 };
-pub use self::source_item::{FilteredItem, FuzzyText, MatchScope, MatchingText, SourceItem, AsAny};
+pub use self::source_item::{AsAny, ClapItem, FilteredItem, FuzzyText, MatchScope, SourceItem};
 
 /// The preview content is usually part of a file.
 #[derive(Clone, Debug)]

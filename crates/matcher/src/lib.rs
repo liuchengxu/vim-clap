@@ -38,8 +38,8 @@ pub use self::bonus::Bonus;
 use types::{CaseMatching, FilteredItem};
 // Re-export types
 pub use types::{
-    ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MatchingText, Query, SearchTerm,
-    SourceItem, TermType,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, Query, SearchTerm, SourceItem,
+    TermType,
 };
 
 /// Score of base matching algorithm(fzy, skim, etc).
@@ -61,7 +61,7 @@ impl MatchResult {
         (item, self.score, self.indices).into()
     }
 
-    pub fn from_source_item(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+    pub fn from_source_item(self, item: Arc<dyn ClapItem>) -> FilteredItem {
         let Self { score, indices } = self;
 
         let item = item
@@ -72,7 +72,7 @@ impl MatchResult {
         (item, score, indices).into()
     }
 
-    pub fn from_string(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+    pub fn from_string(self, item: Arc<dyn ClapItem>) -> FilteredItem {
         let Self { score, indices } = self;
 
         let item = item
@@ -85,7 +85,7 @@ impl MatchResult {
         (item, score, indices).into()
     }
 
-    pub fn from_str(self, item: Arc<dyn MatchingText>) -> FilteredItem {
+    pub fn from_str(self, item: Arc<dyn ClapItem>) -> FilteredItem {
         let Self { score, indices } = self;
 
         let item = item
@@ -223,7 +223,7 @@ impl Matcher {
 
     /// Match the item without considering the bonus.
     #[inline]
-    fn fuzzy_match(&self, item: &Arc<dyn MatchingText>, query: &str) -> Option<MatchResult> {
+    fn fuzzy_match(&self, item: &Arc<dyn ClapItem>, query: &str) -> Option<MatchResult> {
         self.fuzzy_algo
             .fuzzy_match(query, item, &self.match_scope, self.case_matching)
     }
@@ -231,7 +231,7 @@ impl Matcher {
     /// Returns the sum of bonus score.
     fn calc_bonus(
         &self,
-        item: &Arc<dyn MatchingText>,
+        item: &Arc<dyn ClapItem>,
         base_score: Score,
         base_indices: &[usize],
     ) -> Score {
@@ -242,7 +242,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query(&self, item: &Arc<dyn MatchingText>, query: &Query) -> Option<MatchResult> {
+    pub fn match_query(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(item.full_text()) {

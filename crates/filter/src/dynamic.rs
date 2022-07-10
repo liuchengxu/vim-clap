@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use matcher::MatchingText;
+use matcher::ClapItem;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
@@ -301,7 +301,7 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
         matcher,
     } = filter_context;
     let query: Query = query.into();
-    let scorer = |item: &Arc<dyn MatchingText>| matcher.match_query(item, &query);
+    let scorer = |item: &Arc<dyn ClapItem>| matcher.match_query(item, &query);
     if let Some(number) = number {
         let (total, filtered) = match source {
             Source::Stdin => dyn_collect_number(source_iter_stdin!(scorer), number, icon),
