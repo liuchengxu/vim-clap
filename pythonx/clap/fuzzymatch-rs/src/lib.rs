@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use matcher::{Bonus, FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
+use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, FuzzyText, MatchScope, MatchedItem, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -61,7 +61,6 @@ impl From<HashMap<String, String>> for MatchContext {
     }
 }
 
-/*
 #[derive(Debug)]
 struct LineWithIcon(String);
 
@@ -70,14 +69,14 @@ impl ClapItem for LineWithIcon {
         self.0.as_str()
     }
 
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self,
-            matching_start: 0,
-        })
+    fn match_text(&self) -> &str {
+        &self.0[4..]
+    }
+
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+        types::extract_fuzzy_text(self.match_text(), match_scope)
     }
 }
-*/
 
 /// Filter the candidates synchorously given `query` and `candidates`.
 ///
@@ -103,10 +102,7 @@ fn fuzzy_match(
     let query: Query = query.into();
     let do_match = |line: String| {
         if enable_icon {
-            // TODO: make a wrapper of SourceItem which implements custom `match_text`.
-            // TODO: remove the string allocation.
-            let item = SourceItem::from(String::from(&line[4..]));
-            let item: Arc<dyn ClapItem> = Arc::new(item);
+            let item: Arc<dyn ClapItem> = Arc::new(LineWithIcon(line));
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
                 .match_query(&item, &query)

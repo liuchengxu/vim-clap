@@ -201,12 +201,16 @@ impl SourceItem {
             return Some(FuzzyText::new(text, offset));
         }
         let full = self.raw.as_str();
-        match match_scope {
-            MatchScope::Full => Some(FuzzyText::new(full, 0)),
-            MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
-            MatchScope::FileName => extract_file_name(full).map(Into::into),
-            MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
-        }
+        extract_fuzzy_text(full, match_scope)
+    }
+}
+
+pub fn extract_fuzzy_text<'a>(full: &'a str, match_scope: &MatchScope) -> Option<FuzzyText<'a>> {
+    match match_scope {
+        MatchScope::Full => Some(FuzzyText::new(full, 0)),
+        MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
+        MatchScope::FileName => extract_file_name(full).map(Into::into),
+        MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
     }
 }
 
