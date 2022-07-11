@@ -280,29 +280,35 @@ mod tests {
     }
 
     #[test]
-    fn test_match_scope_ignore_file_path() {
-        fn apply_on_grep_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::GrepLine, CaseMatching::Smart)
-        }
-
+    fn test_match_scope_grep_line() {
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
-        let match_result2 = apply_on_grep_line_fzy(&line.to_string().into(), query).unwrap();
+        let match_result2 = FuzzyAlgorithm::Fzy
+            .fuzzy_match(
+                query,
+                &(Arc::new(SourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
+                &MatchScope::GrepLine,
+                CaseMatching::Smart,
+            )
+            .unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
     }
 
     #[test]
     fn test_match_scope_filename() {
-        fn apply_on_file_line_fzy(item: &SourceItem, query: &str) -> Option<MatchResult> {
-            FuzzyAlgorithm::Fzy.fuzzy_match(query, item, &MatchScope::FileName, CaseMatching::Smart)
-        }
-
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
-        let match_result2 = apply_on_file_line_fzy(&line.to_string().into(), query).unwrap();
+        let match_result2 = FuzzyAlgorithm::Fzy
+            .fuzzy_match(
+                query,
+                &(Arc::new(SourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
+                &MatchScope::FileName,
+                CaseMatching::Smart,
+            )
+            .unwrap();
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
     }
@@ -317,8 +323,12 @@ mod tests {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
         for line in lines {
-            let match_result_base = matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
-            let match_result_with_bonus = matcher.match_query(&line, &query.into()).unwrap();
+            let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line.to_string()));
+            let match_result_base = matcher
+                .fuzzy_algo
+                .fuzzy_match(query, &item, &matcher.match_scope, matcher.case_matching)
+                .unwrap();
+            let match_result_with_bonus = matcher.match_query(&item, &query.into()).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
             assert!(match_result_with_bonus.score > match_result_base.score);
         }
@@ -333,8 +343,12 @@ mod tests {
             MatchScope::Full,
         );
         let query: Query = "fo".into();
-        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
-        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        let match_result1 = matcher
+            .match_query(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+            .unwrap();
+        let match_result2 = matcher
+            .match_query(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+            .unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
     }
@@ -344,27 +358,35 @@ mod tests {
         let lines = vec!["function foo qwer", "function foo"];
         let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
-        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
-        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        let match_result1 = matcher
+            .match_query(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+            .unwrap();
+        let match_result2 = matcher
+            .match_query(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+            .unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
     }
 
     #[test]
     fn test_search_syntax() {
-        let items: Vec<SourceItem> = vec![
-            "autoload/clap/provider/search_history.vim".into(),
-            "autoload/clap/provider/files.vim".into(),
-            "vim-clap/crates/matcher/src/algo.rs".into(),
-            "pythonx/clap/scorer.py".into(),
+        let items = vec![
+            Arc::new("autoload/clap/provider/search_history.vim"),
+            Arc::new("autoload/clap/provider/files.vim"),
+            Arc::new("vim-clap/crates/matcher/src/algo.rs"),
+            Arc::new("pythonx/clap/scorer.py"),
         ];
 
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items
-            .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let item: Arc<dyn ClapItem> = item;
+                matcher.match_query(&item, &query)
+            })
             .collect();
 
         assert_eq!(
@@ -385,8 +407,12 @@ mod tests {
 
         let query: Query = ".rs$".into();
         let matched_results: Vec<_> = items
-            .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let item: Arc<dyn ClapItem> = item;
+                matcher.match_query(&item, &query)
+            })
             .collect();
 
         assert_eq!(
@@ -401,8 +427,12 @@ mod tests {
 
         let query: Query = "py".into();
         let matched_results: Vec<_> = items
-            .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let item: Arc<dyn ClapItem> = item;
+                matcher.match_query(&item, &query)
+            })
             .collect();
 
         assert_eq!(
@@ -417,8 +447,12 @@ mod tests {
 
         let query: Query = "'py".into();
         let matched_results: Vec<_> = items
-            .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let item: Arc<dyn ClapItem> = item;
+                matcher.match_query(&item, &query)
+            })
             .collect();
 
         assert_eq!(

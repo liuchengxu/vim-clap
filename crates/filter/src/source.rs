@@ -54,7 +54,7 @@ pub fn source_stdin<'a>(
         .lines()
         .filter_map(move |lines_iter| {
             lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(line);
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
@@ -71,8 +71,8 @@ pub fn source_exec<'a>(
     Ok(std::io::BufReader::new(exec.stream_stdout()?)
         .lines()
         .filter_map(|lines_iter| {
-            lines_iter.ok().and_then(|item: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(item);
+            lines_iter.ok().and_then(|line: String| {
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| {
@@ -103,8 +103,8 @@ pub fn source_file<'a, P: AsRef<Path>>(
     Ok(std::io::BufReader::new(std::fs::File::open(path)?)
         .lines()
         .filter_map(|x| {
-            x.ok().and_then(|item: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(item);
+            x.ok().and_then(|line: String| {
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))

@@ -123,14 +123,14 @@ impl ClapItem for SourceItem {
     }
 }
 
-impl ClapItem for String {
+impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     fn raw_text(&self) -> &str {
-        self
+        self.as_ref()
     }
 
     fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
         Some(FuzzyText {
-            text: self,
+            text: self.as_ref(),
             matching_start: 0,
         })
     }
