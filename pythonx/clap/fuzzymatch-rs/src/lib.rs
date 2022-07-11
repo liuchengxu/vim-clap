@@ -5,7 +5,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{ClapItem, FuzzyText, MatchScope, MatchedItem, Query, MultiSourceItem};
+use types::{ClapItem, MatchScope, MatchedItem, MultiSourceItem, Query};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -72,10 +72,6 @@ impl ClapItem for LineWithIcon {
     fn match_text(&self) -> &str {
         &self.0[4..]
     }
-
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
-        types::extract_fuzzy_text(self.match_text(), match_scope)
-    }
 }
 
 /// Filter the candidates synchorously given `query` and `candidates`.
@@ -133,7 +129,7 @@ fn fuzzy_match(
         .into_iter()
         .map(|matched_item| {
             (
-                matched_item.display_text().to_owned(),
+                matched_item.display_text().to_string(),
                 matched_item.match_indices,
             )
         })

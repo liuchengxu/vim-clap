@@ -103,7 +103,9 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// mathcing pipeline.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+        extract_fuzzy_text(self.match_text(), match_scope)
+    }
 
     // TODO: Each bonus can have its own range of `bonus_text`, make use of MatchScope.
     /// Text for calculating the bonus score.

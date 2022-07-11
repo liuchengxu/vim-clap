@@ -5,7 +5,7 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::{MatchResult, Matcher};
-use types::{ClapItem, MatchedItem, Query, MultiSourceItem};
+use types::{ClapItem, MatchedItem, MultiSourceItem, Query};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -33,14 +33,14 @@ impl<I: Iterator<Item = MultiSourceItem>> Source<I> {
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
-        let filtered = match self {
+        let res = match self {
             Self::Stdin => source_stdin(&matcher, query).collect(),
             Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
             Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
             Self::List(list) => source_list(&matcher, query, list).collect(),
         };
 
-        Ok(filtered)
+        Ok(res)
     }
 }
 
