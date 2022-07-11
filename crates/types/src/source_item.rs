@@ -245,11 +245,6 @@ impl<T> MatchedItem<T> {
         }
     }
 
-    /// Untruncated display text.
-    pub fn source_item_display_text(&self) -> &str {
-        self.item.display_text()
-    }
-
     /// Maybe truncated display text.
     pub fn display_text(&self) -> &str {
         if let Some(ref text) = self.display_text {

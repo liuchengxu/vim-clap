@@ -106,7 +106,7 @@ pub fn truncate_long_matched_lines_v0<T>(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, matched_item)| {
-        let line = matched_item.source_item_display_text();
+        let line = matched_item.item.display_text();
 
         if let Some((truncated, truncated_indices)) =
             crate::trimmer::v0::trim_text(line, &matched_item.match_indices, winwidth, skipped)
