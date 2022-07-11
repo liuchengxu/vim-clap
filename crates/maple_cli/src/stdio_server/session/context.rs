@@ -53,23 +53,33 @@ impl SourceScale {
     }
 
     pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
-        // FIXME: fix this properly
-        None
-        /*
-          match self {
-              Self::Small { ref lines, .. } => {
-                  Some(lines.iter().take(n).map(|s| s.as_str().into()).collect())
-              }
-              Self::Cache { ref path, .. } => {
-                  if let Ok(lines_iter) = utility::read_first_lines(path, n) {
-                      Some(lines_iter.map(Into::into).collect::<Vec<_>>())
-                  } else {
-                      None
-                  }
-              }
-              _ => None,
-          }
-        */
+        match self {
+            Self::Small { ref lines, .. } => Some(
+                lines
+                    .iter()
+                    .take(n)
+                    .map(|s| MatchedItem::new(Arc::new(s.to_string()), Default::default(), Default::default()))
+                    .collect(),
+            ),
+            Self::Cache { ref path, .. } => {
+                if let Ok(lines_iter) = utility::read_first_lines(path, n) {
+                    Some(
+                        lines_iter
+                            .map(|line| {
+                                MatchedItem::new(
+                                    Arc::new(line),
+                                    Default::default(),
+                                    Default::default(),
+                                )
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 }
 

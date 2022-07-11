@@ -82,9 +82,9 @@ impl<T: AsRef<str>> From<T> for MatchScope {
     }
 }
 
-/// Item used in the filtering pipeline.
+/// This trait represents the items used in the entire filter pipeline.
 pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
-    /// Initial full text.
+    /// Initial raw text.
     fn raw_text(&self) -> &str;
 
     /// Text for the matching engine.
@@ -95,7 +95,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     }
 
     // TODO: replace with `fuzzy_text(&self) -> Option<FuzzyText>` and add new variant accordingly.
-    // - SourceItem(Full)
+    // - MultiSourceItem(Full)
     // - TagNameItem
     // - FileNameItem
     // - GrepLine
@@ -105,9 +105,10 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// The fuzzy matching process only happens when Some(_) is returned.
     fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
 
+    // TODO: Each bonus can have its own range of `bonus_text`, make use of MatchScope.
     /// Text for calculating the bonus score.
     fn bonus_text(&self) -> &str {
-        self.raw_text()
+        self.match_text()
     }
 
     fn display_text(&self) -> &str {
@@ -132,12 +133,12 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     }
 }
 
-// TODO: Deprecate SourceItem with various wrappers:
+// TODO: Deprecate MultiSourceItem with various wrappers:
 // - FullItem
 // - BLinesItem
 // - GrepLineItem
 // - FileNameItem
-impl ClapItem for SourceItem {
+impl ClapItem for MultiSourceItem {
     fn raw_text(&self) -> &str {
         &self.raw
     }
@@ -153,18 +154,18 @@ impl ClapItem for SourceItem {
 
 /// This type represents the item for doing the filtering pipeline.
 #[derive(Debug, Clone)]
-pub struct SourceItem {
+pub struct MultiSourceItem {
     /// Raw line from the initial input stream.
     pub raw: String,
     /// Text for performing the fuzzy match algorithm.
     ///
-    /// Could be initialized on creating a new [`SourceItem`].
+    /// Could be initialized on creating a new [`MultiSourceItem`].
     pub fuzzy_text: Option<(String, usize)>,
     /// Text for displaying on a window with limited size.
     pub display_text: Option<String>,
 }
 
-impl From<String> for SourceItem {
+impl From<String> for MultiSourceItem {
     fn from(raw: String) -> Self {
         Self {
             raw,
@@ -174,8 +175,8 @@ impl From<String> for SourceItem {
     }
 }
 
-impl SourceItem {
-    /// Constructs a new instance of [`SourceItem`].
+impl MultiSourceItem {
+    /// Constructs a new instance of [`MultiSourceItem`].
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,
@@ -215,7 +216,7 @@ pub fn extract_fuzzy_text<'a>(full: &'a str, match_scope: &MatchScope) -> Option
     }
 }
 
-/// This struct represents the filtered result of [`SourceItem`].
+/// This struct represents the filtered result of [`MultiSourceItem`].
 #[derive(Debug, Clone)]
 pub struct MatchedItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)

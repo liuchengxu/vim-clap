@@ -2,24 +2,24 @@ use std::sync::Arc;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use filter::{MatchedItem, Query, SourceItem};
+use filter::{MatchedItem, Query, MultiSourceItem};
 use matcher::{FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use types::ClapItem;
 
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 
-fn prepare_source_items() -> Vec<SourceItem> {
+fn prepare_source_items() -> Vec<MultiSourceItem> {
     use std::io::BufRead;
 
     std::io::BufReader::new(
         std::fs::File::open("/home/xlc/.cache/vimclap/3289946909090762716").unwrap(), // 1 million +
     )
     .lines()
-    .filter_map(|x| x.ok().map(Into::<SourceItem>::into))
+    .filter_map(|x| x.ok().map(Into::<MultiSourceItem>::into))
     .collect()
 }
 
-fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn filter(list: Vec<MultiSourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
@@ -32,7 +32,7 @@ fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Matche
 }
 
 // 3 times faster than filter
-fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn par_filter(list: Vec<MultiSourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     use rayon::prelude::*;
 
     list.into_par_iter()

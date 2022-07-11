@@ -21,7 +21,7 @@ pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
 pub use subprocess;
-pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
+pub use types::{CaseMatching, MatchedItem, MultiSourceItem, Query};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
@@ -79,7 +79,7 @@ pub fn sort_initial_filtered(filtered: Vec<MatchedItem>) -> Vec<MatchedItem> {
 
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = SourceItem>>(
+pub fn sync_run<I: Iterator<Item = MultiSourceItem>>(
     query: &str,
     source: Source<I>,
     matcher: Matcher,
@@ -93,7 +93,7 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
 /// Performs the synchorous filtering on a small scale of source in parallel.
 pub fn par_filter(
     query: impl Into<Query>,
-    source_items: Vec<SourceItem>,
+    source_items: Vec<MultiSourceItem>,
     fuzzy_matcher: &Matcher,
 ) -> Vec<MatchedItem> {
     let query: Query = query.into();

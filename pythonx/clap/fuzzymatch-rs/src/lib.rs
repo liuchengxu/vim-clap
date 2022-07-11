@@ -5,7 +5,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{ClapItem, FuzzyText, MatchScope, MatchedItem, Query, SourceItem};
+use types::{ClapItem, FuzzyText, MatchScope, MatchedItem, Query, MultiSourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -110,7 +110,7 @@ fn fuzzy_match(
                     MatchedItem::new(item, score, indices.into_iter().map(|x| x + 4).collect())
                 })
         } else {
-            let item = SourceItem::from(line);
+            let item = MultiSourceItem::from(line);
             let item: Arc<dyn ClapItem> = Arc::new(item);
             matcher
                 .match_query(&item, &query)

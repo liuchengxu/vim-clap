@@ -35,7 +35,7 @@ pub use self::bonus::Bonus;
 use types::CaseMatching;
 // Re-export types
 pub use types::{
-    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, Query, SearchTerm, SourceItem,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, Query, SearchTerm, MultiSourceItem,
     TermType,
 };
 
@@ -287,7 +287,7 @@ mod tests {
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(
                 query,
-                &(Arc::new(SourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
+                &(Arc::new(MultiSourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
                 &MatchScope::GrepLine,
                 CaseMatching::Smart,
             )
@@ -304,7 +304,7 @@ mod tests {
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(
                 query,
-                &(Arc::new(SourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
+                &(Arc::new(MultiSourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
                 &MatchScope::FileName,
                 CaseMatching::Smart,
             )
@@ -323,7 +323,7 @@ mod tests {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
         for line in lines {
-            let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line.to_string()));
+            let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line.to_string()));
             let match_result_base = matcher
                 .fuzzy_algo
                 .fuzzy_match(query, &item, &matcher.match_scope, matcher.case_matching)

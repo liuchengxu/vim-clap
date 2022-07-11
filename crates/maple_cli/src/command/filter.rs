@@ -6,7 +6,7 @@ use clap::Parser;
 
 use filter::{subprocess::Exec, FilterContext, Source};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
-use types::SourceItem;
+use types::MultiSourceItem;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -61,7 +61,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = MultiSourceItem>>(&self) -> Source<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir).into()

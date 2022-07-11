@@ -5,30 +5,30 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::{MatchResult, Matcher};
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchedItem, Query, MultiSourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
-pub enum Source<I: Iterator<Item = SourceItem>> {
+pub enum Source<I: Iterator<Item = MultiSourceItem>> {
     Stdin,
     Exec(Box<Exec>),
     File(PathBuf),
     List(I),
 }
 
-impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {
+impl<I: Iterator<Item = MultiSourceItem>> From<PathBuf> for Source<I> {
     fn from(fpath: PathBuf) -> Self {
         Self::File(fpath)
     }
 }
 
-impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
+impl<I: Iterator<Item = MultiSourceItem>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(Box::new(exec))
     }
 }
 
-impl<I: Iterator<Item = SourceItem>> Source<I> {
+impl<I: Iterator<Item = MultiSourceItem>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
@@ -54,7 +54,7 @@ pub fn source_stdin<'a>(
         .lines()
         .filter_map(move |lines_iter| {
             lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
@@ -72,7 +72,7 @@ pub fn source_exec<'a>(
         .lines()
         .filter_map(|lines_iter| {
             lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| {
@@ -84,7 +84,7 @@ pub fn source_exec<'a>(
                             .downcast_ref::<String>()
                             .expect("item is String; qed");
                         // FIXME: to MatchedItem
-                        let item: types::SourceItem = s.as_str().into();
+                        let item: types::MultiSourceItem = s.as_str().into();
                         match_result.from_source_item_concrete(item)
                         */
                     })
@@ -104,7 +104,7 @@ pub fn source_file<'a, P: AsRef<Path>>(
         .lines()
         .filter_map(|x| {
             x.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
                     .match_query(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
@@ -116,9 +116,9 @@ pub fn source_file<'a, P: AsRef<Path>>(
 pub fn source_list<'a, 'b: 'a>(
     matcher: &'a Matcher,
     query: &'a Query,
-    list: impl Iterator<Item = SourceItem> + 'b,
+    list: impl Iterator<Item = MultiSourceItem> + 'b,
 ) -> impl Iterator<Item = MatchedItem> + 'a {
-    list.filter_map(|item: SourceItem| {
+    list.filter_map(|item: MultiSourceItem| {
         let item: Arc<dyn ClapItem> = Arc::new(item);
         matcher
             .match_query(&item, query)
