@@ -82,12 +82,14 @@ impl<T: AsRef<str>> From<T> for MatchScope {
     }
 }
 
-/// Text used in the matching algorithm.
+/// Item used in the filtering pipeline.
 pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial full text.
     fn raw_text(&self) -> &str;
 
     /// Text for the matching engine.
+    ///
+    /// Can be used to skip the leading icon.
     fn match_text(&self) -> &str {
         self.raw_text()
     }
@@ -113,16 +115,10 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     }
 }
 
-impl ClapItem for SourceItem {
-    fn raw_text(&self) -> &str {
-        &self.raw
-    }
-
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
-        self.get_fuzzy_text(match_scope)
-    }
-}
-
+// Impl [`ClapItem`] for raw String.
+//
+// In order to filter/calculate bonus for a substring instead of the whole String, a
+// custom wrapper is necessary to extract the text for matching/calculating bonus/diplaying, etc.
 impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     fn raw_text(&self) -> &str {
         self.as_ref()
@@ -133,6 +129,25 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
             text: self.as_ref(),
             matching_start: 0,
         })
+    }
+}
+
+// TODO: Deprecate SourceItem with various wrappers:
+// - FullItem
+// - BLinesItem
+// - GrepLineItem
+// - FileNameItem
+impl ClapItem for SourceItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+        self.fuzzy_text_or_exact_using_match_scope(match_scope)
+    }
+
+    fn display_text(&self) -> &str {
+        self.display_text_or_raw()
     }
 }
 
@@ -173,23 +188,17 @@ impl SourceItem {
         }
     }
 
-    pub fn display_text(&self) -> &str {
-        if let Some(ref text) = self.display_text {
-            text
-        } else {
-            &self.raw
+    pub fn display_text_or_raw(&self) -> &str {
+        match self.display_text {
+            Some(ref text) => text,
+            None => &self.raw,
         }
     }
 
-    pub fn fuzzy_text_or_default(&self) -> &str {
-        if let Some((ref text, _)) = self.fuzzy_text {
-            text
-        } else {
-            &self.raw
-        }
-    }
-
-    pub fn get_fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+    pub fn fuzzy_text_or_exact_using_match_scope(
+        &self,
+        match_scope: &MatchScope,
+    ) -> Option<FuzzyText> {
         match self.fuzzy_text {
             Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
             None => extract_fuzzy_text(self.raw.as_str(), match_scope),

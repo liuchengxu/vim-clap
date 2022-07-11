@@ -78,14 +78,14 @@ fn select_top_items_to_show(
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
-    let res = iter.try_for_each(|filtered_item| {
-        let score = filtered_item.score;
+    let res = iter.try_for_each(|matched_item| {
+        let score = matched_item.score;
         let idx = match find_best_score_idx(&top_scores, score) {
             Some(idx) => idx + 1,
             None => 0,
         };
 
-        insert_both!(idx, score, filtered_item => buffer, top_results, top_scores);
+        insert_both!(idx, score, matched_item => buffer, top_results, top_scores);
 
         // Stop iterating after `ITEMS_TO_SHOW` iterations.
         total += 1;
@@ -151,13 +151,13 @@ impl Watcher {
                 let mut indices = Vec::with_capacity(ITEMS_TO_SHOW);
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
-                    let filtered_item = std::ops::Index::index(buffer, idx);
+                    let matched_item = std::ops::Index::index(buffer, idx);
                     let text = if let Some(painter) = self.icon.painter() {
-                        indices.push(filtered_item.shifted_indices(ICON_LEN));
-                        painter.paint(filtered_item.display_text())
+                        indices.push(matched_item.shifted_indices(ICON_LEN));
+                        painter.paint(matched_item.display_text())
                     } else {
-                        indices.push(filtered_item.match_indices.clone());
-                        filtered_item.display_text().to_owned()
+                        indices.push(matched_item.match_indices.clone());
+                        matched_item.display_text().to_owned()
                     };
                     lines.push(text);
                 }
@@ -259,11 +259,11 @@ fn dyn_collect_number(
 
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
-    iter.for_each(|filtered_item| {
-        let score = filtered_item.score;
+    iter.for_each(|matched_item| {
+        let score = matched_item.score;
         let idx = find_best_score_idx(&top_scores, score);
 
-        insert_both!(pop; idx, score, filtered_item => buffer, top_results, top_scores);
+        insert_both!(pop; idx, score, matched_item => buffer, top_results, top_scores);
 
         watcher.total += 1;
 

@@ -131,10 +131,10 @@ fn fuzzy_match(
 
     let (filtered, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
-        .map(|filtered_item| {
+        .map(|matched_item| {
             (
-                filtered_item.display_text().to_owned(),
-                filtered_item.match_indices,
+                matched_item.display_text().to_owned(),
+                matched_item.match_indices,
             )
         })
         .unzip();

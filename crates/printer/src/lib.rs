@@ -97,14 +97,14 @@ pub fn decorate_lines<T>(
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
-            .map(|(idx, filtered_item)| {
-                let text = filtered_item.display_text();
+            .map(|(idx, matched_item)| {
+                let text = matched_item.display_text();
                 let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
                     format!("{} {}", painter.icon(origin_text), text)
                 } else {
                     painter.paint(&text)
                 };
-                (iconized, filtered_item.shifted_indices(ICON_LEN))
+                (iconized, matched_item.shifted_indices(ICON_LEN))
             })
             .unzip();
 
@@ -112,10 +112,10 @@ pub fn decorate_lines<T>(
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
-            .map(|filtered_item| {
+            .map(|matched_item| {
                 (
-                    filtered_item.display_text().to_owned(),
-                    filtered_item.match_indices,
+                    matched_item.display_text().to_owned(),
+                    matched_item.match_indices,
                 )
             })
             .unzip();

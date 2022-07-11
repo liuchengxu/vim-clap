@@ -70,14 +70,14 @@ pub fn truncate_long_matched_lines<T>(
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
-    items.enumerate().for_each(|(lnum, mut filtered_item)| {
-        let origin_display_text = filtered_item.item.display_text();
+    items.enumerate().for_each(|(lnum, mut matched_item)| {
+        let origin_display_text = matched_item.item.display_text();
 
         // Truncate the text simply if it's too long.
         if origin_display_text.len() > MAX_LINE_LEN {
             let display_text: String = origin_display_text.chars().take(1000).collect();
-            filtered_item.display_text = Some(display_text);
-            filtered_item.match_indices = filtered_item
+            matched_item.display_text = Some(display_text);
+            matched_item.match_indices = matched_item
                 .match_indices
                 .iter()
                 .filter(|x| **x < 1000)
@@ -85,14 +85,14 @@ pub fn truncate_long_matched_lines<T>(
                 .collect();
         } else if let Some((truncated, truncated_indices)) = truncate_line_v1(
             origin_display_text,
-            &mut filtered_item.match_indices,
+            &mut matched_item.match_indices,
             winwidth,
             skipped,
         ) {
             truncated_map.insert(lnum + 1, origin_display_text.to_string());
 
-            filtered_item.display_text = Some(truncated);
-            filtered_item.match_indices = truncated_indices;
+            matched_item.display_text = Some(truncated);
+            matched_item.match_indices = truncated_indices;
         }
     });
     truncated_map
@@ -105,16 +105,16 @@ pub fn truncate_long_matched_lines_v0<T>(
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
-    items.enumerate().for_each(|(lnum, filtered_item)| {
-        let line = filtered_item.source_item_display_text();
+    items.enumerate().for_each(|(lnum, matched_item)| {
+        let line = matched_item.source_item_display_text();
 
         if let Some((truncated, truncated_indices)) =
-            crate::trimmer::v0::trim_text(line, &filtered_item.match_indices, winwidth, skipped)
+            crate::trimmer::v0::trim_text(line, &matched_item.match_indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 
-            filtered_item.display_text = Some(truncated);
-            filtered_item.match_indices = truncated_indices;
+            matched_item.display_text = Some(truncated);
+            matched_item.match_indices = truncated_indices;
         }
     });
     truncated_map
