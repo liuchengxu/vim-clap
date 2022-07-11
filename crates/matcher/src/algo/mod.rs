@@ -2,9 +2,7 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use std::sync::Arc;
-
-use types::{CaseMatching, ClapItem, FuzzyText, MatchScope};
+use types::{CaseMatching, FuzzyText};
 
 use crate::MatchResult;
 
@@ -43,25 +41,22 @@ impl FuzzyAlgorithm {
     pub fn fuzzy_match(
         &self,
         query: &str,
-        item: &Arc<dyn ClapItem>,
-        match_scope: &MatchScope,
+        fuzzy_text: &FuzzyText,
         case_matching: CaseMatching,
     ) -> Option<MatchResult> {
-        item.fuzzy_text(match_scope).and_then(
-            |FuzzyText {
-                 text,
-                 matching_start,
-             }| {
-                let res = match self {
-                    Self::Fzy => fzy::fuzzy_indices(text, query, case_matching),
-                    Self::Skim => skim::fuzzy_indices(text, query, case_matching),
-                };
-                res.map(|MatchResult { score, indices }| {
-                    let mut indices = indices;
-                    indices.iter_mut().for_each(|x| *x += matching_start);
-                    MatchResult::new(score, indices)
-                })
-            },
-        )
+        let FuzzyText {
+            text,
+            matching_start,
+        } = fuzzy_text;
+
+        let fuzzy_result = match self {
+            Self::Fzy => fzy::fuzzy_indices(text, query, case_matching),
+            Self::Skim => skim::fuzzy_indices(text, query, case_matching),
+        };
+        fuzzy_result.map(|MatchResult { score, indices }| {
+            let mut indices = indices;
+            indices.iter_mut().for_each(|x| *x += matching_start);
+            MatchResult::new(score, indices)
+        })
     }
 }

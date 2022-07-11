@@ -35,8 +35,8 @@ pub use self::bonus::Bonus;
 use types::CaseMatching;
 // Re-export types
 pub use types::{
-    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, Query, SearchTerm, MultiSourceItem,
-    TermType,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MultiSourceItem, Query,
+    SearchTerm, TermType,
 };
 
 /// Score of base matching algorithm(fzy, skim, etc).
@@ -192,34 +192,37 @@ impl Matcher {
 
     /// Actually performs the matching algorithm.
     pub fn match_query(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
+        let match_text = item.match_text();
+
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.match_full_line(item.match_text()) {
+            if inverse_term.match_full_line(match_text) {
                 return None;
             }
         }
 
         // Try the exact terms against the full search line.
-        let (exact_score, mut indices) = match_exact_terms(
-            query.exact_terms.iter(),
-            item.match_text(),
-            self.case_matching,
-        )?;
+        let (exact_score, mut indices) =
+            match_exact_terms(query.exact_terms.iter(), match_text, self.case_matching)?;
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
         let mut fuzzy_score = Score::default();
 
-        for term in query.fuzzy_terms.iter() {
-            let query = &term.word;
-            if let Some(MatchResult { score, indices }) =
-                self.fuzzy_algo
-                    .fuzzy_match(query, item, &self.match_scope, self.case_matching)
-            {
-                fuzzy_indices.extend_from_slice(&indices);
-                fuzzy_score += score;
-            } else {
-                return None;
+        let maybe_fuzzy_text = item.fuzzy_text(&self.match_scope);
+
+        if let Some(ref fuzzy_text) = maybe_fuzzy_text {
+            for term in query.fuzzy_terms.iter() {
+                let query = &term.word;
+                if let Some(MatchResult { score, indices }) =
+                    self.fuzzy_algo
+                        .fuzzy_match(query, fuzzy_text, self.case_matching)
+                {
+                    fuzzy_indices.extend_from_slice(&indices);
+                    fuzzy_score += score;
+                } else {
+                    return None;
+                }
             }
         }
 
@@ -284,14 +287,13 @@ mod tests {
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
+
+        let item = MultiSourceItem::from(line.to_string());
+        let fuzzy_text = item.fuzzy_text(&MatchScope::GrepLine).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
-            .fuzzy_match(
-                query,
-                &(Arc::new(MultiSourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
-                &MatchScope::GrepLine,
-                CaseMatching::Smart,
-            )
+            .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
+
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
     }
@@ -301,14 +303,13 @@ mod tests {
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
+
+        let item = MultiSourceItem::from(line.to_string());
+        let fuzzy_text = item.fuzzy_text(&MatchScope::FileName).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
-            .fuzzy_match(
-                query,
-                &(Arc::new(MultiSourceItem::from(line.to_string())) as Arc<dyn ClapItem>),
-                &MatchScope::FileName,
-                CaseMatching::Smart,
-            )
+            .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
+
         assert_eq!(match_result1.indices, match_result2.indices);
         assert!(match_result2.score > match_result1.score);
     }
@@ -324,9 +325,10 @@ mod tests {
         let query = "fil";
         for line in lines {
             let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line.to_string()));
+            let fuzzy_text = item.fuzzy_text(&matcher.match_scope).unwrap();
             let match_result_base = matcher
                 .fuzzy_algo
-                .fuzzy_match(query, &item, &matcher.match_scope, matcher.case_matching)
+                .fuzzy_match(query, &fuzzy_text, matcher.case_matching)
                 .unwrap();
             let match_result_with_bonus = matcher.match_query(&item, &query.into()).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
