@@ -38,7 +38,7 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 
   if has_key(decoded, 'icon_added')
-    let g:__clap_icon_added = decoded.icon_added
+    let g:__clap_icon_added_by_maple = decoded.icon_added
   endif
 
   if a:ensure_sign_exists
@@ -118,7 +118,7 @@ function! clap#state#handle_response_on_typed(result, error) abort
   endif
 
   if has_key(a:result, 'icon_added')
-    let g:__clap_icon_added = a:result.icon_added
+    let g:__clap_icon_added_by_maple = a:result.icon_added
   endif
 
   call g:clap.display.set_lines(a:result.lines)
@@ -179,7 +179,7 @@ function! clap#state#clear_pre() abort
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
   let g:clap.display.initial_size = -1
-  let g:__clap_icon_added = v:false
+  let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
   call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')
