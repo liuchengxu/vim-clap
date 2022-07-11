@@ -168,7 +168,7 @@ pub(crate) mod tests {
     use super::*;
     use filter::{
         matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
-        Source, MultiSourceItem,
+        MultiSourceItem, Source,
     };
     use rayon::prelude::*;
     use types::Query;

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-use filter::{MatchedItem, Query, MultiSourceItem};
+use filter::{MatchedItem, MultiSourceItem, Query};
 use matcher::{FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use types::ClapItem;
 

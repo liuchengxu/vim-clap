@@ -148,19 +148,16 @@ impl Match {
         };
 
         let formatted_line = format!(
-            "{}{}:{}:{}:{}",
-            maybe_icon,
-            path,
-            line_number,
-            column,
+            "{maybe_icon}{path}:{line_number}:{column}:{}",
             self.pattern().trim_end()
         );
 
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
-        let fixed_offset = if enable_icon { 3 + 4 } else { 3 };
-
-        let offset =
-            path.len() + display_width(line_number as usize) + display_width(column) + fixed_offset;
+        let offset = maybe_icon.len()
+            + path.len()
+            + display_width(line_number as usize)
+            + display_width(column)
+            + 3;
 
         (formatted_line, offset)
     }
@@ -194,19 +191,15 @@ impl Match {
         let column = self.column();
 
         let formatted_line = format!(
-            "[r{}]{}:{}:{}:{}",
-            kind,
-            path,
-            line_number,
-            column,
+            "[r{kind}]{path}:{line_number}:{column}:{}",
             self.pattern().trim_end()
         );
 
-        let offset = path.len()
+        let offset = kind.len()
+            + path.len()
             + display_width(line_number as usize)
             + display_width(column)
-            + 6 // `[r]` + 3 `:`
-            + kind.len();
+            + 6; // `[r]` + 3 `:`
 
         (formatted_line, offset)
     }
@@ -221,8 +214,7 @@ impl Match {
         let line_number = self.line_number();
         let column = self.column();
 
-        let formatted_string =
-            format!("  {}:{}:{}", line_number, column, self.pattern().trim_end());
+        let formatted_string = format!("  {line_number}:{column}:{}", self.pattern().trim_end());
 
         let offset = display_width(line_number as usize) + display_width(column) + 2 + 2;
 

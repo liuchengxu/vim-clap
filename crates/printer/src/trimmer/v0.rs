@@ -54,22 +54,11 @@ pub fn trim_text(
 
         let (truncated, max_index) = if left_truncated_len > container_width {
             if left_truncated_len == container_width + 1 {
-                (
-                    format!(
-                        "{}.",
-                        utf8_str_slice(&left_truncated, 0, container_width - 1)
-                    ),
-                    container_width - 1,
-                )
+                let left_truncated = utf8_str_slice(&left_truncated, 0, container_width - 1);
+                (format!("{left_truncated}.",), container_width - 1)
             } else {
-                (
-                    format!(
-                        "{}{}",
-                        utf8_str_slice(&left_truncated, 0, container_width - 2),
-                        DOTS
-                    ),
-                    container_width - 2,
-                )
+                let left_truncated = utf8_str_slice(&left_truncated, 0, container_width - 2);
+                (format!("{left_truncated}{DOTS}",), container_width - 2)
             }
         } else {
             (left_truncated, container_width)

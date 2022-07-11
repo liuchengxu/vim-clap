@@ -4,7 +4,7 @@ use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{MatchedItem, Query, MultiSourceItem};
+use types::{MatchedItem, MultiSourceItem, Query};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};

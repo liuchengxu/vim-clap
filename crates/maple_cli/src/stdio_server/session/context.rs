@@ -58,7 +58,13 @@ impl SourceScale {
                 lines
                     .iter()
                     .take(n)
-                    .map(|s| MatchedItem::new(Arc::new(s.to_string()), Default::default(), Default::default()))
+                    .map(|s| {
+                        MatchedItem::new(
+                            Arc::new(s.to_string()),
+                            Default::default(),
+                            Default::default(),
+                        )
+                    })
                     .collect(),
             ),
             Self::Cache { ref path, .. } => {
