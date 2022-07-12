@@ -42,7 +42,19 @@ impl DecoratedLines {
         }
     }
 
-    pub fn print_json_with_length(&self, total: Option<usize>) {
+    pub fn print_on_session_create(&self) {
+        let Self {
+            lines,
+            truncated_map,
+            icon_added,
+            ..
+        } = self;
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:init_display";
+        println_json_with_length!(method, lines, icon_added, truncated_map);
+    }
+
+    fn print_on_filter_finished(&self, total: usize) {
         let Self {
             lines,
             indices,
@@ -52,14 +64,10 @@ impl DecoratedLines {
 
         #[allow(non_upper_case_globals)]
         const method: &str = "s:process_filter_message";
-        if let Some(total) = total {
-            println_json_with_length!(method, lines, indices, icon_added, truncated_map, total);
-        } else {
-            println_json_with_length!(method, lines, indices, icon_added, truncated_map);
-        }
+        println_json_with_length!(method, lines, indices, icon_added, truncated_map, total);
     }
 
-    pub fn print_json(&self, total: Option<usize>) {
+    fn print_json(&self, total: usize) {
         let Self {
             lines,
             indices,
@@ -67,22 +75,7 @@ impl DecoratedLines {
             icon_added,
         } = self;
 
-        if let Some(total) = total {
-            println_json!(lines, indices, truncated_map, icon_added, total);
-        } else {
-            println_json!(lines, indices, truncated_map, icon_added, total);
-        }
-    }
-
-    pub fn print_on_session_create(&self) {
-        let Self {
-            lines,
-            truncated_map,
-            icon_added,
-            ..
-        } = self;
-        let method = "s:init_display";
-        println_json_with_length!(lines, truncated_map, icon_added, method);
+        println_json!(lines, indices, truncated_map, icon_added, total);
     }
 }
 
@@ -135,7 +128,7 @@ pub fn print_sync_filter_results(
         let total = ranked.len();
         let mut ranked = ranked;
         ranked.truncate(number);
-        decorate_lines(ranked, winwidth, icon).print_json(Some(total));
+        decorate_lines(ranked, winwidth, icon).print_json(total);
     } else {
         for MatchedItem {
             item,
@@ -159,8 +152,8 @@ pub fn print_dyn_filter_results(
     winwidth: usize,
     icon: Icon,
 ) {
-    decorate_lines(ranked.into_iter().take(number).collect(), winwidth, icon)
-        .print_json_with_length(Some(total));
+    let top_items = ranked.into_iter().take(number).collect();
+    decorate_lines(top_items, winwidth, icon).print_on_filter_finished(total);
 }
 
 #[cfg(test)]
