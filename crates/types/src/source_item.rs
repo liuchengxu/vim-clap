@@ -34,15 +34,6 @@ impl<'a> FuzzyText<'a> {
     }
 }
 
-impl<'a> From<(&'a str, usize)> for FuzzyText<'a> {
-    fn from((text, matching_start): (&'a str, usize)) -> Self {
-        Self {
-            text,
-            matching_start,
-        }
-    }
-}
-
 /// The location that a match should look in.
 ///
 /// Given a query, the match scope can refer to a full string or a substring.
@@ -213,8 +204,12 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
     match match_scope {
         MatchScope::Full => Some(FuzzyText::new(full, 0)),
         MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
-        MatchScope::FileName => extract_file_name(full).map(Into::into),
-        MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
+        MatchScope::FileName => {
+            extract_file_name(full).map(|(s, offset)| FuzzyText::new(s, offset))
+        }
+        MatchScope::GrepLine => {
+            extract_grep_pattern(full).map(|(s, offset)| FuzzyText::new(s, offset))
+        }
     }
 }
 
