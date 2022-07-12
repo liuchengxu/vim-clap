@@ -191,7 +191,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
+    pub fn match_item(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
         let match_text = item.match_text();
 
         // Try the inverse terms against the full search line.
@@ -330,7 +330,7 @@ mod tests {
                 .fuzzy_algo
                 .fuzzy_match(query, &fuzzy_text, matcher.case_matching)
                 .unwrap();
-            let match_result_with_bonus = matcher.match_query(&item, &query.into()).unwrap();
+            let match_result_with_bonus = matcher.match_item(&item, &query.into()).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
             assert!(match_result_with_bonus.score > match_result_base.score);
         }
@@ -346,10 +346,10 @@ mod tests {
         );
         let query: Query = "fo".into();
         let match_result1 = matcher
-            .match_query(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+            .match_item(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
             .unwrap();
         let match_result2 = matcher
-            .match_query(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+            .match_item(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
             .unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
@@ -361,10 +361,10 @@ mod tests {
         let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
         let match_result1 = matcher
-            .match_query(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+            .match_item(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
             .unwrap();
         let match_result2 = matcher
-            .match_query(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+            .match_item(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
             .unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
@@ -387,7 +387,7 @@ mod tests {
             .into_iter()
             .map(|item| {
                 let item: Arc<dyn ClapItem> = item;
-                matcher.match_query(&item, &query)
+                matcher.match_item(&item, &query)
             })
             .collect();
 
@@ -413,7 +413,7 @@ mod tests {
             .into_iter()
             .map(|item| {
                 let item: Arc<dyn ClapItem> = item;
-                matcher.match_query(&item, &query)
+                matcher.match_item(&item, &query)
             })
             .collect();
 
@@ -433,7 +433,7 @@ mod tests {
             .into_iter()
             .map(|item| {
                 let item: Arc<dyn ClapItem> = item;
-                matcher.match_query(&item, &query)
+                matcher.match_item(&item, &query)
             })
             .collect();
 
@@ -453,7 +453,7 @@ mod tests {
             .into_iter()
             .map(|item| {
                 let item: Arc<dyn ClapItem> = item;
-                matcher.match_query(&item, &query)
+                matcher.match_item(&item, &query)
             })
             .collect();
 

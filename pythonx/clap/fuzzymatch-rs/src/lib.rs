@@ -101,7 +101,7 @@ fn fuzzy_match(
             let item: Arc<dyn ClapItem> = Arc::new(LineWithIcon(line));
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| {
                     MatchedItem::new(item, score, indices.into_iter().map(|x| x + 4).collect())
                 })
@@ -109,7 +109,7 @@ fn fuzzy_match(
             let item = MultiSourceItem::from(line);
             let item: Arc<dyn ClapItem> = Arc::new(item);
             matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
         }
     };

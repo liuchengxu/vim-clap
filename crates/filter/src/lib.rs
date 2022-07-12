@@ -102,7 +102,7 @@ pub fn par_filter(
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
             fuzzy_matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
         })
         .collect();

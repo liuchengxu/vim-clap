@@ -53,7 +53,7 @@ pub fn source_list<'a, 'b: 'a>(
     list.filter_map(|item: MultiSourceItem| {
         let item: Arc<dyn ClapItem> = Arc::new(item);
         matcher
-            .match_query(&item, query)
+            .match_item(&item, query)
             .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
     })
 }
@@ -70,7 +70,7 @@ pub fn source_stdin<'a>(
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
-                    .match_query(&item, query)
+                    .match_item(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
             })
         })
@@ -90,7 +90,7 @@ pub fn source_file<'a, P: AsRef<Path>>(
             x.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
-                    .match_query(&item, query)
+                    .match_item(&item, query)
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
             })
         }))
@@ -108,7 +108,7 @@ pub fn source_exec<'a>(
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
                 matcher
-                    .match_query(&item, query)
+                    .match_item(&item, query)
                     .map(|MatchResult { score, indices }| {
                         MatchedItem::new(item, score, indices)
 

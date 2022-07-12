@@ -24,7 +24,7 @@ fn filter(list: Vec<MultiSourceItem>, matcher: &Matcher, query: &Query) -> Vec<M
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
             matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
         })
         .map(Into::into)
@@ -39,7 +39,7 @@ fn par_filter(list: Vec<MultiSourceItem>, matcher: &Matcher, query: &Query) -> V
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
             matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
         })
         .map(Into::into)
