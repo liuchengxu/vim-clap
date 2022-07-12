@@ -10,10 +10,10 @@ use types::{ClapItem, MatchedItem, MultiSourceItem, Query};
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
 pub enum Source<I: Iterator<Item = MultiSourceItem>> {
-    Stdin,
-    Exec(Box<Exec>),
-    File(PathBuf),
     List(I),
+    Stdin,
+    File(PathBuf),
+    Exec(Box<Exec>),
 }
 
 impl<I: Iterator<Item = MultiSourceItem>> From<PathBuf> for Source<I> {
@@ -34,14 +34,28 @@ impl<I: Iterator<Item = MultiSourceItem>> Source<I> {
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
         let res = match self {
-            Self::Stdin => source_stdin(&matcher, query).collect(),
-            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
-            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
             Self::List(list) => source_list(&matcher, query, list).collect(),
+            Self::Stdin => source_stdin(&matcher, query).collect(),
+            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
+            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
         };
 
         Ok(res)
     }
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
+pub fn source_list<'a, 'b: 'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    list: impl Iterator<Item = MultiSourceItem> + 'b,
+) -> impl Iterator<Item = MatchedItem> + 'a {
+    list.filter_map(|item: MultiSourceItem| {
+        let item: Arc<dyn ClapItem> = Arc::new(item);
+        matcher
+            .match_query(&item, query)
+            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+    })
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
@@ -60,6 +74,26 @@ pub fn source_stdin<'a>(
                     .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
             })
         })
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
+pub fn source_file<'a, P: AsRef<Path>>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    path: P,
+) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
+    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+    // The line stream can contain invalid UTF-8 data.
+    Ok(std::io::BufReader::new(std::fs::File::open(path)?)
+        .lines()
+        .filter_map(|x| {
+            x.ok().and_then(|line: String| {
+                let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
+                matcher
+                    .match_query(&item, query)
+                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+            })
+        }))
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
@@ -90,38 +124,4 @@ pub fn source_exec<'a>(
                     })
             })
         }))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
-pub fn source_file<'a, P: AsRef<Path>>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    path: P,
-) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
-    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-    // The line stream can contain invalid UTF-8 data.
-    Ok(std::io::BufReader::new(std::fs::File::open(path)?)
-        .lines()
-        .filter_map(|x| {
-            x.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
-                matcher
-                    .match_query(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
-            })
-        }))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
-pub fn source_list<'a, 'b: 'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    list: impl Iterator<Item = MultiSourceItem> + 'b,
-) -> impl Iterator<Item = MatchedItem> + 'a {
-    list.filter_map(|item: MultiSourceItem| {
-        let item: Arc<dyn ClapItem> = Arc::new(item);
-        matcher
-            .match_query(&item, query)
-            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
-    })
 }

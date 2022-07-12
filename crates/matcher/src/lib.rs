@@ -209,7 +209,7 @@ impl Matcher {
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
         let mut fuzzy_score = Score::default();
 
-        let maybe_fuzzy_text = item.fuzzy_text(&self.match_scope);
+        let maybe_fuzzy_text = item.fuzzy_text(self.match_scope);
 
         if let Some(ref fuzzy_text) = maybe_fuzzy_text {
             for term in query.fuzzy_terms.iter() {
@@ -289,7 +289,7 @@ mod tests {
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
         let item = MultiSourceItem::from(line.to_string());
-        let fuzzy_text = item.fuzzy_text(&MatchScope::GrepLine).unwrap();
+        let fuzzy_text = item.fuzzy_text(MatchScope::GrepLine).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
@@ -305,7 +305,7 @@ mod tests {
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
         let item = MultiSourceItem::from(line.to_string());
-        let fuzzy_text = item.fuzzy_text(&MatchScope::FileName).unwrap();
+        let fuzzy_text = item.fuzzy_text(MatchScope::FileName).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
@@ -325,7 +325,7 @@ mod tests {
         let query = "fil";
         for line in lines {
             let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line.to_string()));
-            let fuzzy_text = item.fuzzy_text(&matcher.match_scope).unwrap();
+            let fuzzy_text = item.fuzzy_text(matcher.match_scope).unwrap();
             let match_result_base = matcher
                 .fuzzy_algo
                 .fuzzy_match(query, &fuzzy_text, matcher.case_matching)

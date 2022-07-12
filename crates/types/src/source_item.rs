@@ -103,7 +103,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// mathcing pipeline.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
         extract_fuzzy_text(self.match_text(), match_scope)
     }
 
@@ -127,7 +127,7 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
         self.as_ref()
     }
 
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
         Some(FuzzyText {
             text: self.as_ref(),
             matching_start: 0,
@@ -145,7 +145,7 @@ impl ClapItem for MultiSourceItem {
         &self.raw
     }
 
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
         self.fuzzy_text_or_exact_using_match_scope(match_scope)
     }
 
@@ -200,7 +200,7 @@ impl MultiSourceItem {
 
     pub fn fuzzy_text_or_exact_using_match_scope(
         &self,
-        match_scope: &MatchScope,
+        match_scope: MatchScope,
     ) -> Option<FuzzyText> {
         match self.fuzzy_text {
             Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
@@ -209,7 +209,7 @@ impl MultiSourceItem {
     }
 }
 
-pub fn extract_fuzzy_text<'a>(full: &'a str, match_scope: &MatchScope) -> Option<FuzzyText<'a>> {
+pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyText> {
     match match_scope {
         MatchScope::Full => Some(FuzzyText::new(full, 0)),
         MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),

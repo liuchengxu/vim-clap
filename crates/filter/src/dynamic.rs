@@ -300,15 +300,15 @@ pub fn dyn_run<I: Iterator<Item = MultiSourceItem>>(
     let query: Query = query.into();
     if let Some(number) = number {
         let (total, filtered) = match source {
-            Source::Stdin => dyn_collect_number(source_stdin(&matcher, &query), number, icon),
-            Source::Exec(exec) => {
-                dyn_collect_number(source_exec(&matcher, &query, exec)?, number, icon)
+            Source::List(list) => {
+                dyn_collect_number(source_list(&matcher, &query, list), number, icon)
             }
+            Source::Stdin => dyn_collect_number(source_stdin(&matcher, &query), number, icon),
             Source::File(fpath) => {
                 dyn_collect_number(source_file(&matcher, &query, fpath)?, number, icon)
             }
-            Source::List(list) => {
-                dyn_collect_number(source_list(&matcher, &query, list), number, icon)
+            Source::Exec(exec) => {
+                dyn_collect_number(source_exec(&matcher, &query, exec)?, number, icon)
             }
         };
 
@@ -317,10 +317,10 @@ pub fn dyn_run<I: Iterator<Item = MultiSourceItem>>(
         printer::print_dyn_filter_results(ranked, total, number, winwidth.unwrap_or(100), icon);
     } else {
         let filtered = match source {
-            Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
-            Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
-            Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
             Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),
+            Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
+            Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
+            Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
         };
 
         let ranked = sort_initial_filtered(filtered);
