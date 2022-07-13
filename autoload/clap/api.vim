@@ -39,9 +39,7 @@ endfunction
 function! clap#api#get_origin_line_at(lnum) abort
   if exists('g:__clap_lines_truncated_map')
         \ && has_key(g:__clap_lines_truncated_map, a:lnum)
-    let full_line = g:__clap_lines_truncated_map[a:lnum]
-    let icon = getbufline(g:clap.display.bufnr, a:lnum)[0][:3]
-    return g:__clap_icon_added_by_maple ? icon.full_line : full_line
+    return g:__clap_lines_truncated_map[a:lnum]
   else
     return get(getbufline(g:clap.display.bufnr, a:lnum), 0, '')
   endif
