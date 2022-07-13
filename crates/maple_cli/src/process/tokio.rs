@@ -2,7 +2,6 @@
 
 use std::path::Path;
 
-use anyhow::Result;
 use tokio::process::Command;
 
 /// Builds `Command` from a cmd string which can use pipe.
@@ -36,7 +35,7 @@ impl TokioCommand {
         cmd.into()
     }
 
-    pub async fn lines(&mut self) -> Result<Vec<String>> {
+    pub async fn lines(&mut self) -> std::io::Result<Vec<String>> {
         // Calling `output()` or `spawn().wait_with_output()` directly does not
         // work for Vim.
         // let output = self.0.spawn()?.wait_with_output().await?;

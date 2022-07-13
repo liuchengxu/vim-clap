@@ -4,7 +4,7 @@ pub mod tokio;
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -15,9 +15,12 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
 /// Remove the last line if it's empty.
-pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
+pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
-        return Err(anyhow!("Error in output: {:?}", output.stderr));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Error in output: {:?}", output.stderr),
+        ));
     }
 
     let mut lines = output
@@ -49,11 +52,11 @@ impl AsyncCommand {
     }
 
     #[allow(unused)]
-    pub async fn lines(&mut self) -> Result<Vec<String>> {
+    pub async fn lines(&mut self) -> std::io::Result<Vec<String>> {
         self.0.lines()
     }
 
-    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+    pub fn stdout(&mut self) -> std::io::Result<Vec<u8>> {
         self.0.stdout()
     }
 }

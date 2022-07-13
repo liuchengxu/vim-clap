@@ -3,7 +3,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::Result;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
@@ -36,10 +35,10 @@ pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(||
     Mutex::new(maybe_persistent)
 });
 
-pub fn store_cache_info(cache_info: &CacheInfo) -> Result<()> {
+pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
     crate::utils::write_json(cache_info, CACHE_JSON_PATH.as_ref())
 }
 
-pub fn store_recent_files(recent_files: &SortedRecentFiles) -> Result<()> {
+pub fn store_recent_files(recent_files: &SortedRecentFiles) -> std::io::Result<()> {
     crate::utils::write_json(&recent_files, RECENT_FILES_JSON_PATH.as_ref())
 }

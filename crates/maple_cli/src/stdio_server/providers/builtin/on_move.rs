@@ -68,7 +68,7 @@ impl OnMove {
             "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
                 if curline.starts_with('~') {
-                    Self::History(crate::utils::expand_tilde(curline)?)
+                    Self::History(crate::utils::expand_tilde(curline))
                 } else {
                     Self::History(build_abs_path(&context.cwd, &curline))
                 }

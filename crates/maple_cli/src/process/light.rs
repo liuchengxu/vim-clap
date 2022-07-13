@@ -132,7 +132,7 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Collect the output of command, exit directly if any error happened.
-    fn collect_stdout(&mut self) -> Result<Vec<u8>> {
+    fn collect_stdout(&mut self) -> std::io::Result<Vec<u8>> {
         match crate::process::rstd::collect_stdout(self.cmd) {
             Ok(stdout) => Ok(stdout),
             Err(e) => {
