@@ -9,9 +9,10 @@ set cpoptions&vim
 let s:frames = get(g:, 'clap_spinner_frames', ['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓'])
 let s:frames_len = len(s:frames)
 let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%forerunner_status%%provider_id%:')
+let s:IDLE = ' '
 
 let s:frame_index = 0
-let s:spinner = s:frames[0]
+let s:spinner = s:IDLE
 
 " The spinner and current provider prompt are actually displayed in a same window.
 function! s:fill_in_placeholders(prompt_format) abort
@@ -111,7 +112,7 @@ function! s:on_frame(...) abort
   if !s:is_busy
     call timer_stop(s:timer)
     unlet s:timer
-    let s:spinner = s:frames[0]
+    let s:spinner = s:IDLE
   endif
 endfunction
 
@@ -132,12 +133,16 @@ function! clap#spinner#set_busy() abort
 endfunction
 
 function! clap#spinner#set_idle() abort
+  if !s:is_busy
+    return
+  endif
   let s:is_busy = 0
   if exists('s:timer')
     call timer_stop(s:timer)
     unlet s:timer
   endif
-  let s:spinner = s:frames[0]
+  let s:spinner = s:IDLE
+  call s:set_spinner()
 endfunction
 
 let &cpoptions = s:save_cpo

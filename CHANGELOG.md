@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+## Changed
+
+- The spinner will be hidden if it's idle.
+
 ## Fixed
 
 - Maple self-upgrade is broken. #847, #848
