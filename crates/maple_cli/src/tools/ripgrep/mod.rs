@@ -140,24 +140,21 @@ impl Match {
         let path = self.path();
         let line_number = self.line_number();
         let column = self.column();
-
-        let maybe_icon = if enable_icon {
-            format!("{} ", icon::file_icon(&path))
-        } else {
-            Default::default()
-        };
-
-        let formatted_line = format!(
-            "{maybe_icon}{path}:{line_number}:{column}:{}",
-            self.pattern().trim_end()
-        );
+        let pattern = self.pattern();
+        let pattern = pattern.trim_end();
 
         // filepath:line_number:column:text, 3 extra `:` in the formatted String.
-        let offset = maybe_icon.len()
-            + path.len()
-            + display_width(line_number as usize)
-            + display_width(column)
-            + 3;
+        let mut offset =
+            path.len() + display_width(line_number as usize) + display_width(column) + 3;
+
+        let formatted_line = if enable_icon {
+            let icon = icon::file_icon(&path);
+            offset += icon.len_utf8() + 1;
+            format!("{icon} {path}:{line_number}:{column}:{pattern}")
+        } else {
+            let pattern = pattern.trim_end();
+            format!("{path}:{line_number}:{column}:{pattern}")
+        };
 
         (formatted_line, offset)
     }

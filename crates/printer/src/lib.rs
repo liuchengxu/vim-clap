@@ -85,15 +85,17 @@ pub fn decorate_lines<T>(
     winwidth: usize,
     icon: Icon,
 ) -> DecoratedLines {
-    let truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
+    let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
             .map(|(idx, matched_item)| {
                 let text = matched_item.display_text();
-                let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
-                    format!("{} {}", painter.icon(origin_text), text)
+                let iconized = if let Some(origin_text) = truncated_map.get_mut(&(idx + 1)) {
+                    let icon = painter.icon(origin_text);
+                    *origin_text = format!("{icon} {origin_text}");
+                    format!("{icon} {text}")
                 } else {
                     painter.paint(&text)
                 };

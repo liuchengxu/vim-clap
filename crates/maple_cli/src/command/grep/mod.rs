@@ -157,7 +157,8 @@ impl Grep {
         if truncated_map.is_empty() {
             utility::println_json!(total, lines, indices);
         } else {
-            utility::println_json!(total, lines, indices, truncated_map);
+            let icon_added = enable_icon;
+            utility::println_json!(total, lines, indices, truncated_map, icon_added);
         }
 
         Ok(())
