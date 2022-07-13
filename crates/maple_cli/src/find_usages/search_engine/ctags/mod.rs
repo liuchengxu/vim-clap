@@ -16,14 +16,17 @@ use crate::utils::ExactOrInverseTerms;
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CtagsSearcher<'a, P> {
-    config: TagsGenerator<'a, P>,
+    tags_generator: TagsGenerator<'a, P>,
     tags_path: PathBuf,
 }
 
 impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
-    pub fn new(config: TagsGenerator<'a, P>) -> Self {
-        let tags_path = config.tags_path();
-        Self { config, tags_path }
+    pub fn new(tags_generator: TagsGenerator<'a, P>) -> Self {
+        let tags_path = tags_generator.tags_path();
+        Self {
+            tags_generator,
+            tags_path,
+        }
     }
 
     /// Returns `true` if the tags file already exists.
@@ -33,7 +36,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
 
     /// Generate the `tags` file.
     pub fn generate_tags(&self) -> Result<()> {
-        self.config.generate_tags()
+        self.tags_generator.generate_tags()
     }
 
     pub fn search_usages(

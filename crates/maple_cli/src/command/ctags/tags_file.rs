@@ -46,7 +46,7 @@ impl TagsFile {
         let dir = self.shared.dir()?;
 
         let exclude_opt = self.shared.exclude_opt();
-        let config = TagsGenerator::new(
+        let tags_generator = TagsGenerator::new(
             self.shared.languages.clone(),
             &self.inner.kinds_all,
             &self.inner.fields,
@@ -56,7 +56,7 @@ impl TagsFile {
             &exclude_opt,
         );
 
-        let tags_searcher = CtagsSearcher::new(config);
+        let tags_searcher = CtagsSearcher::new(tags_generator);
 
         if let Some(ref query) = self.query {
             let symbols =

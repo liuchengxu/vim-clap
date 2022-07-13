@@ -252,17 +252,17 @@ impl EventHandle for DumbJumpHandle {
 
         if register_job_successfully(job_id) {
             let ctags_future = {
-                let ctags_regenerated = self.ctags_regenerated.clone();
                 let cwd = params.cwd.clone();
-                let mut tags_config = TagsGenerator::with_dir(cwd.clone());
+                let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
                 if let Some(language) = get_language(&params.extension) {
-                    tags_config.set_languages(language.into());
+                    tags_generator.set_languages(language.into());
                 }
+                let ctags_regenerated = self.ctags_regenerated.clone();
 
                 // TODO: smarter strategy to regenerate the tags?
                 async move {
                     let now = std::time::Instant::now();
-                    let ctags_searcher = CtagsSearcher::new(tags_config);
+                    let ctags_searcher = CtagsSearcher::new(tags_generator);
                     match ctags_searcher.generate_tags() {
                         Ok(()) => {
                             ctags_regenerated.store(true, Ordering::Relaxed);

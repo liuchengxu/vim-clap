@@ -22,9 +22,9 @@ pub(super) struct SearchingWorker {
 
 impl SearchingWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
-        let mut tags_config = TagsGenerator::with_dir(self.cwd);
+        let mut tags_generator = TagsGenerator::with_dir(self.cwd);
         if let Some(language) = get_language(&self.extension) {
-            tags_config.set_languages(language.into());
+            tags_generator.set_languages(language.into());
         }
 
         let QueryInfo {
@@ -33,7 +33,12 @@ impl SearchingWorker {
             filtering_terms,
         } = self.query_info;
 
-        CtagsSearcher::new(tags_config).search_usages(&keyword, &filtering_terms, query_type, true)
+        CtagsSearcher::new(tags_generator).search_usages(
+            &keyword,
+            &filtering_terms,
+            query_type,
+            true,
+        )
     }
 
     fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
