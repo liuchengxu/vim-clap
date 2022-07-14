@@ -4,20 +4,25 @@
 //!
 //! There two steps to match a line:
 //!
-//! //     RawSearchLine
+//! //     arc<dyn ClapItem>
 //! //        |
 //! //        |
 //! //        |
 //! //        ↓
-//! //    Apply exact/inverse search term
+//! //    Apply InverseSearchTerms
 //! //        |
 //! //        |
 //! //        |
 //! //        ↓
-//! //    Apply fuzzy search term
+//! //    Apply ExactSearchTerms
+//! //        |
+//! //        |
+//! //        |
+//! //        ↓
+//! //    Apply FuzzyTerms
 //! //        |
 //! //        |  MatchScope: extract the content to match.
-//! //        |  FuzzyAlgorithm: run the match algorithm on MatchText.
+//! //        |  FuzzyAlgorithm: run the match algorithm on FuzzyText.
 //! //        |
 //! //        ↓
 //! //   MatchResult
@@ -209,9 +214,7 @@ impl Matcher {
         let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
         let mut fuzzy_score = Score::default();
 
-        let maybe_fuzzy_text = item.fuzzy_text(self.match_scope);
-
-        if let Some(ref fuzzy_text) = maybe_fuzzy_text {
+        if let Some(ref fuzzy_text) = item.fuzzy_text(self.match_scope) {
             for term in query.fuzzy_terms.iter() {
                 let query = &term.word;
                 if let Some(MatchResult { score, indices }) =
