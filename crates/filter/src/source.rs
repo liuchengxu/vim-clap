@@ -9,26 +9,26 @@ use types::{ClapItem, MatchedItem, MultiSourceItem, Query};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
-pub enum Source<I: Iterator<Item = MultiSourceItem>> {
+pub enum Source<I: Iterator<Item = Arc<dyn ClapItem>>> {
     List(I),
     Stdin,
     File(PathBuf),
     Exec(Box<Exec>),
 }
 
-impl<I: Iterator<Item = MultiSourceItem>> From<PathBuf> for Source<I> {
+impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<PathBuf> for Source<I> {
     fn from(fpath: PathBuf) -> Self {
         Self::File(fpath)
     }
 }
 
-impl<I: Iterator<Item = MultiSourceItem>> From<Exec> for Source<I> {
+impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for Source<I> {
     fn from(exec: Exec) -> Self {
         Self::Exec(Box::new(exec))
     }
 }
 
-impl<I: Iterator<Item = MultiSourceItem>> Source<I> {
+impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
@@ -48,10 +48,10 @@ impl<I: Iterator<Item = MultiSourceItem>> Source<I> {
 pub fn source_list<'a, 'b: 'a>(
     matcher: &'a Matcher,
     query: &'a Query,
-    list: impl Iterator<Item = MultiSourceItem> + 'b,
+    list: impl Iterator<Item = Arc<dyn ClapItem>> + 'b,
 ) -> impl Iterator<Item = MatchedItem> + 'a {
-    list.filter_map(|item: MultiSourceItem| {
-        let item: Arc<dyn ClapItem> = Arc::new(item);
+    list.filter_map(|item| {
+        // let item: Arc<dyn ClapItem> = Arc::new(item);
         matcher
             .match_item(&item, query)
             .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))

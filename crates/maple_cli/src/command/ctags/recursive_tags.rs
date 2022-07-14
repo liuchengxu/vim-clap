@@ -1,11 +1,12 @@
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
 
 use filter::{FilterContext, Source};
-use matcher::{MatchScope, Matcher};
+use matcher::{ClapItem, MatchScope, Matcher};
 
 use super::SharedParams;
 use crate::app::Params;
@@ -72,7 +73,10 @@ impl RecursiveTags {
         } else {
             filter::dyn_run(
                 self.query.as_deref().unwrap_or_default(),
-                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
+                Source::List(ctags_cmd.formatted_tags_iter()?.map(|tag_line| {
+                    let item: Arc<dyn ClapItem> = Arc::new(tag_line);
+                    item
+                })),
                 FilterContext::new(
                     icon,
                     Some(30),

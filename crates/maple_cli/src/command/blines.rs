@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use clap::Parser;
 
 use filter::Source;
+use matcher::ClapItem;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -27,7 +30,10 @@ impl Blines {
                 std::fs::read_to_string(&self.input)?
                     .lines()
                     .enumerate()
-                    .map(|(idx, item)| format!("{} {}", idx + 1, item))
+                    .map(|(idx, item)| {
+                        let item: Arc<dyn ClapItem> = Arc::new(format!("{} {}", idx + 1, item));
+                        item
+                    })
                     .map(Into::into),
             ),
             params.into_filter_context(),

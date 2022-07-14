@@ -79,7 +79,7 @@ pub fn sort_initial_filtered(filtered: Vec<MatchedItem>) -> Vec<MatchedItem> {
 
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = MultiSourceItem>>(
+pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     source: Source<I>,
     matcher: Matcher,

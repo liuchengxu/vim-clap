@@ -1,10 +1,11 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{MatchedItem, MultiSourceItem, Query};
+use types::{ClapItem, MatchedItem, Query};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};
@@ -286,7 +287,7 @@ fn dyn_collect_number(
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn dyn_run<I: Iterator<Item = MultiSourceItem>>(
+pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     source: Source<I>,
     filter_context: FilterContext,
