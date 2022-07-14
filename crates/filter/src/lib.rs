@@ -15,7 +15,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{ClapItem, MatchResult, MatchScope, Matcher};
+use matcher::{Bonus, ClapItem, MatchResult, MatchScope, Matcher};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -64,6 +64,11 @@ impl FilterContext {
 
     pub fn match_scope(mut self, match_scope: MatchScope) -> Self {
         self.matcher = self.matcher.set_match_scope(match_scope);
+        self
+    }
+
+    pub fn bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
+        self.matcher = self.matcher.set_bonuses(bonuses);
         self
     }
 }

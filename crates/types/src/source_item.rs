@@ -3,6 +3,8 @@ use std::{any::Any, borrow::Cow};
 
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
+use crate::MatchResult;
+
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -106,6 +108,13 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 
     fn display_text(&self) -> Cow<'_, str> {
         self.raw_text().into()
+    }
+
+    /// Callback for the result of `matcher::match_item`.
+    ///
+    /// Sometimes we need to tweak the indices of matched item for custom display text.
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        match_result
     }
 }
 

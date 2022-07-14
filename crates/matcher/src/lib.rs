@@ -40,25 +40,9 @@ pub use self::bonus::Bonus;
 use types::CaseMatching;
 // Re-export types
 pub use types::{
-    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MultiSourceItem, Query,
-    SearchTerm, TermType,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchResult, MatchScope, MultiSourceItem,
+    Query, Score, SearchTerm, TermType,
 };
-
-/// Score of base matching algorithm(fzy, skim, etc).
-pub type Score = i64;
-
-/// A tuple of (score, matched_indices) for the line has a match given the query string.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MatchResult {
-    pub score: Score,
-    pub indices: Vec<usize>,
-}
-
-impl MatchResult {
-    pub fn new(score: Score, indices: Vec<usize>) -> Self {
-        Self { score, indices }
-    }
-}
 
 /// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
 pub fn match_exact_terms<'a>(

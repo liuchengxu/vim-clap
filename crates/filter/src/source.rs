@@ -51,10 +51,10 @@ pub fn source_list<'a, 'b: 'a>(
     list: impl Iterator<Item = Arc<dyn ClapItem>> + 'b,
 ) -> impl Iterator<Item = MatchedItem> + 'a {
     list.filter_map(|item| {
-        // let item: Arc<dyn ClapItem> = Arc::new(item);
-        matcher
-            .match_item(&item, query)
-            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+        matcher.match_item(&item, query).map(|match_result| {
+            let MatchResult { score, indices } = item.match_result_callback(match_result);
+            MatchedItem::new(item, score, indices)
+        })
     })
 }
 
@@ -69,9 +69,10 @@ pub fn source_stdin<'a>(
         .filter_map(move |lines_iter| {
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+                matcher.match_item(&item, query).map(|match_result| {
+                    let MatchResult { score, indices } = item.match_result_callback(match_result);
+                    MatchedItem::new(item, score, indices)
+                })
             })
         })
 }
@@ -89,9 +90,10 @@ pub fn source_file<'a, P: AsRef<Path>>(
         .filter_map(|x| {
             x.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+                matcher.match_item(&item, query).map(|match_result| {
+                    let MatchResult { score, indices } = item.match_result_callback(match_result);
+                    MatchedItem::new(item, score, indices)
+                })
             })
         }))
 }
@@ -107,21 +109,20 @@ pub fn source_exec<'a>(
         .filter_map(|lines_iter| {
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| {
-                        MatchedItem::new(item, score, indices)
+                matcher.match_item(&item, query).map(|match_result| {
+                    let MatchResult { score, indices } = item.match_result_callback(match_result);
+                    MatchedItem::new(item, score, indices)
 
-                        /* NOTE: downcast_ref has to take place here.
-                        let s = item
-                            .as_any()
-                            .downcast_ref::<String>()
-                            .expect("item is String; qed");
-                        // FIXME: to MatchedItem
-                        let item: types::MultiSourceItem = s.as_str().into();
-                        match_result.from_source_item_concrete(item)
-                        */
-                    })
+                    /* NOTE: downcast_ref has to take place here.
+                    let s = item
+                        .as_any()
+                        .downcast_ref::<String>()
+                        .expect("item is String; qed");
+                    // FIXME: to MatchedItem
+                    let item: types::MultiSourceItem = s.as_str().into();
+                    match_result.from_source_item_concrete(item)
+                    */
+                })
             })
         }))
 }

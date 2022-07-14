@@ -30,11 +30,15 @@ fn accumulate_text_width(text: &str, tabstop: usize) -> Vec<usize> {
 
 /// `String` -> `..ring`.
 fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
+    // 292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");, 56, 4
+    // thread 'main' panicked at 'byte index 62 is not a char boundary; it is inside '💔' (bytes 61..65) of `292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");`', library/core/src/str/mod.rs:127:5
+    // (String::from(&text[diff..]), diff)
+
     // Assume each char takes at least one column
     let chars_count = text.chars().count();
     let (mut text, mut trimmed_len) = if chars_count > width + 2 {
         let diff = chars_count - width - 2;
-        (String::from(&text[diff..]), diff)
+        (text.chars().skip(diff).collect::<String>(), diff)
     } else {
         (text.into(), 0)
     };
