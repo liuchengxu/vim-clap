@@ -84,7 +84,7 @@ pub fn truncate_long_matched_lines<T>(
                 .copied()
                 .collect();
         } else if let Some((truncated, truncated_indices)) = truncate_line_v1(
-            origin_display_text,
+            &origin_display_text,
             &mut matched_item.match_indices,
             winwidth,
             skipped,
@@ -109,7 +109,7 @@ pub fn truncate_long_matched_lines_v0<T>(
         let line = matched_item.item.display_text();
 
         if let Some((truncated, truncated_indices)) =
-            crate::trimmer::v0::trim_text(line, &matched_item.match_indices, winwidth, skipped)
+            crate::trimmer::v0::trim_text(&line, &matched_item.match_indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 

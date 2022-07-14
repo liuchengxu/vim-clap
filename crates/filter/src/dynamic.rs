@@ -157,7 +157,7 @@ impl Watcher {
                         painter.paint(matched_item.display_text())
                     } else {
                         indices.push(matched_item.match_indices.clone());
-                        matched_item.display_text().to_owned()
+                        matched_item.display_text().into()
                     };
                     lines.push(text);
                 }
@@ -332,7 +332,7 @@ pub fn dyn_run<I: Iterator<Item = MultiSourceItem>>(
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| item.display_text().to_owned());
+            let text = display_text.unwrap_or_else(|| item.display_text().into());
             let indices = match_indices;
             println_json!(text, indices);
         }

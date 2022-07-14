@@ -109,7 +109,7 @@ pub fn decorate_lines<T>(
             .into_iter()
             .map(|matched_item| {
                 (
-                    matched_item.display_text().to_owned(),
+                    matched_item.display_text().to_string().into(),
                     matched_item.match_indices,
                 )
             })

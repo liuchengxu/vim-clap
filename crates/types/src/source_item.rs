@@ -1,5 +1,5 @@
-use std::any::Any;
 use std::sync::Arc;
+use std::{any::Any, borrow::Cow};
 
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
@@ -104,8 +104,8 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
         self.match_text()
     }
 
-    fn display_text(&self) -> &str {
-        self.raw_text()
+    fn display_text(&self) -> Cow<'_, str> {
+        self.raw_text().into()
     }
 }
 
@@ -140,8 +140,8 @@ impl ClapItem for MultiSourceItem {
         self.fuzzy_text_or_exact_using_match_scope(match_scope)
     }
 
-    fn display_text(&self) -> &str {
-        self.display_text_or_raw()
+    fn display_text(&self) -> Cow<'_, str> {
+        self.display_text_or_raw().into()
     }
 }
 
@@ -241,9 +241,9 @@ impl<T> MatchedItem<T> {
     }
 
     /// Maybe truncated display text.
-    pub fn display_text(&self) -> &str {
+    pub fn display_text(&self) -> Cow<'_, str> {
         if let Some(ref text) = self.display_text {
-            text
+            text.into()
         } else {
             self.item.display_text()
         }

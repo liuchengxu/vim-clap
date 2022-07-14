@@ -70,7 +70,7 @@ async fn handle_recent_files_message(
     if let Some(lnum) = lnum {
         // process the new preview
         if let Some(new_entry) = ranked.get(lnum as usize - 1) {
-            let new_curline = new_entry.display_text();
+            let new_curline = new_entry.display_text().to_string();
             if let Ok((lines, fname)) = crate::previewer::preview_file(
                 new_curline,
                 context.sensible_preview_size(),
