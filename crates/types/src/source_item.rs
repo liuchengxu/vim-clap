@@ -88,7 +88,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     }
 
     // TODO: replace with `fuzzy_text(&self) -> Option<FuzzyText>` and add new variant accordingly.
-    // - MultiSourceItem(Full)
+    // - MultiItem(Full)
     // - TagNameItem
     // - FileNameItem
     // - GrepLine
@@ -135,12 +135,12 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     }
 }
 
-// TODO: Deprecate MultiSourceItem with various wrappers:
+// TODO: Deprecate MultiItem with various wrappers:
 // - FullItem
 // - BLinesItem
 // - GrepLineItem
 // - FileNameItem
-impl ClapItem for MultiSourceItem {
+impl ClapItem for MultiItem {
     fn raw_text(&self) -> &str {
         &self.raw
     }
@@ -154,20 +154,21 @@ impl ClapItem for MultiSourceItem {
     }
 }
 
-/// This type represents the item for doing the filtering pipeline.
+/// This type represents multiple kinds of concrete Clap item from providers like grep,
+/// proj_tags, files, etc.
 #[derive(Debug, Clone)]
-pub struct MultiSourceItem {
+pub struct MultiItem {
     /// Raw line from the initial input stream.
     pub raw: String,
     /// Text for performing the fuzzy match algorithm.
     ///
-    /// Could be initialized on creating a new [`MultiSourceItem`].
+    /// Could be initialized on creating a new [`MultiItem`].
     pub fuzzy_text: Option<(String, usize)>,
     /// Text for displaying on a window with limited size.
     pub display_text: Option<String>,
 }
 
-impl From<String> for MultiSourceItem {
+impl From<String> for MultiItem {
     fn from(raw: String) -> Self {
         Self {
             raw,
@@ -177,8 +178,8 @@ impl From<String> for MultiSourceItem {
     }
 }
 
-impl MultiSourceItem {
-    /// Constructs a new instance of [`MultiSourceItem`].
+impl MultiItem {
+    /// Constructs a new instance of [`MultiItem`].
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,
@@ -222,7 +223,7 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
     }
 }
 
-/// This struct represents the filtered result of [`MultiSourceItem`].
+/// This struct represents the filtered result of [`MultiItem`].
 #[derive(Debug, Clone)]
 pub struct MatchedItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)

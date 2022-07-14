@@ -40,8 +40,8 @@ pub use self::bonus::Bonus;
 use types::CaseMatching;
 // Re-export types
 pub use types::{
-    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchResult, MatchScope, MultiSourceItem,
-    Query, Score, SearchTerm, TermType,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchResult, MatchScope, MultiItem, Query,
+    Score, SearchTerm, TermType,
 };
 
 /// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
@@ -275,7 +275,7 @@ mod tests {
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
-        let item = MultiSourceItem::from(line.to_string());
+        let item = MultiItem::from(line.to_string());
         let fuzzy_text = item.fuzzy_text(MatchScope::GrepLine).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
@@ -291,7 +291,7 @@ mod tests {
         let line = "crates/extracted_fzy/src/lib.rs";
         let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
-        let item = MultiSourceItem::from(line.to_string());
+        let item = MultiItem::from(line.to_string());
         let fuzzy_text = item.fuzzy_text(MatchScope::FileName).unwrap();
         let match_result2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
@@ -311,7 +311,7 @@ mod tests {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
         for line in lines {
-            let item: Arc<dyn ClapItem> = Arc::new(MultiSourceItem::from(line.to_string()));
+            let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line.to_string()));
             let fuzzy_text = item.fuzzy_text(matcher.match_scope).unwrap();
             let match_result_base = matcher
                 .fuzzy_algo

@@ -21,7 +21,7 @@ pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
 pub use subprocess;
-pub use types::{CaseMatching, MatchedItem, MultiSourceItem, Query};
+pub use types::{CaseMatching, MatchedItem, MultiItem, Query};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
@@ -98,7 +98,7 @@ pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 /// Performs the synchorous filtering on a small scale of source in parallel.
 pub fn par_filter(
     query: impl Into<Query>,
-    source_items: Vec<MultiSourceItem>,
+    source_items: Vec<MultiItem>,
     fuzzy_matcher: &Matcher,
 ) -> Vec<MatchedItem> {
     let query: Query = query.into();
