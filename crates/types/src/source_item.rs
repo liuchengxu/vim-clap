@@ -82,16 +82,11 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 
     /// Text for the matching engine.
     ///
-    /// Can be used to skip the leading icon.
+    /// Can be used to skip the leading icon, see `LineWithIcon` in `fuzzymatch-rs/src/lib.rs`.
     fn match_text(&self) -> &str {
         self.raw_text()
     }
 
-    // TODO: replace with `fuzzy_text(&self) -> Option<FuzzyText>` and add new variant accordingly.
-    // - MultiItem(Full)
-    // - TagNameItem
-    // - FileNameItem
-    // - GrepLine
     /// Text specifically for performing the fuzzy matching, part of the entire
     /// mathcing pipeline.
     ///
@@ -125,13 +120,6 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     fn raw_text(&self) -> &str {
         self.as_ref()
-    }
-
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self.as_ref(),
-            matching_start: 0,
-        })
     }
 }
 
