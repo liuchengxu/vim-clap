@@ -166,7 +166,8 @@ pub(crate) mod tests {
         MultiSourceItem, Source,
     };
     use rayon::prelude::*;
-    use types::Query;
+    use std::sync::Arc;
+    use types::{ClapItem, Query};
 
     pub(crate) fn wrap_matches(line: &str, indices: &[usize]) -> String {
         let mut ret = String::new();
@@ -211,7 +212,7 @@ pub(crate) mod tests {
     ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
-        let mut ranked = Source::List(std::iter::once(line.into()))
+        let mut ranked = Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
             .run_and_collect(matcher, &query.into())
             .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
@@ -247,7 +248,7 @@ pub(crate) mod tests {
         println!("\n      winwidth: {}", "─".repeat(winwidth));
         println!(
             "       display: {}",
-            wrap_matches(truncated_text_got, &truncated_indices)
+            wrap_matches(&truncated_text_got, &truncated_indices)
         );
         // The highlighted result can be case insensitive.
         assert!(query
