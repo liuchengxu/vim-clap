@@ -397,9 +397,10 @@ mod tests {
                         println!("Total lines created: {}", total_lines_created)
                     }
 
-                    String::from_utf8(changing_text.as_ref().to_owned())
-                        .unwrap()
-                        .into()
+                    let item: Arc<dyn ClapItem> =
+                        Arc::new(String::from_utf8(changing_text.as_ref().to_owned()).unwrap());
+
+                    item
                 })
                 .take(usize::max_value() >> 8),
             ),
