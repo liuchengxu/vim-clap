@@ -31,6 +31,10 @@ impl Icon {
             Self::Enabled(icon_kind) => Some(icon_kind),
         }
     }
+
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::Enabled(_))
+    }
 }
 
 impl std::str::FromStr for Icon {

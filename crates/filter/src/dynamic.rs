@@ -168,7 +168,8 @@ impl Watcher {
                 #[allow(non_upper_case_globals)]
                 const method: &str = "s:process_filter_message";
                 if self.last_lines != lines.as_slice() {
-                    println_json_with_length!(total, lines, indices, method);
+                    let icon_added = self.icon.enabled();
+                    println_json_with_length!(total, lines, indices, method, icon_added);
                     self.past = now;
                     self.last_lines = lines;
                 } else {
