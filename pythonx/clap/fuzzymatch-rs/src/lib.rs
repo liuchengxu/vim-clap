@@ -72,6 +72,14 @@ impl ClapItem for LineWithIcon {
     fn match_text(&self) -> &str {
         &self.0[4..]
     }
+
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        let mut match_result = match_result;
+        match_result.indices.iter_mut().for_each(|x| {
+            *x += 4;
+        });
+        match_result
+    }
 }
 
 /// Filter the candidates synchorously given `query` and `candidates`.
@@ -97,21 +105,14 @@ fn fuzzy_match(
 
     let query: Query = query.into();
     let do_match = |line: String| {
-        if enable_icon {
-            let item: Arc<dyn ClapItem> = Arc::new(LineWithIcon(line));
-            // " " is 4 bytes, but the offset of highlight is 2.
-            matcher
-                .match_item(&item, &query)
-                .map(|MatchResult { score, indices }| {
-                    MatchedItem::new(item, score, indices.into_iter().map(|x| x + 4).collect())
-                })
+        let item: Arc<dyn ClapItem> = if enable_icon {
+            Arc::new(LineWithIcon(line))
         } else {
-            let item = MultiItem::from(line);
-            let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher
-                .match_item(&item, &query)
-                .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
-        }
+            Arc::new(MultiItem::from(line))
+        };
+        matcher
+            .match_item(&item, &query)
+            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
     };
 
     let mut ranked = candidates
@@ -121,6 +122,7 @@ fn fuzzy_match(
 
     ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
+    // " " is 4 bytes, but the offset of highlight is 2.
     // 2 = chars(icon)
     let skipped = if enable_icon { Some(2) } else { None };
     let truncated_map = truncate_long_matched_lines_v0(ranked.iter_mut(), winwidth, skipped);
