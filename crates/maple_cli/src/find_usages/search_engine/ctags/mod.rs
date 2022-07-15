@@ -67,7 +67,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     fn build_exec(&self, query: &str, query_type: QueryType) -> Exec {
         // https://docs.ctags.io/en/latest/man/readtags.1.html#examples
         let cmd = Exec::cmd("readtags")
-            .stderr(Redirection::Merge)
+            .stderr(Redirection::None) // Ignore the line: ctags: warning...
             .arg("--tag-file")
             .arg(&self.tags_path)
             .arg("-E")
