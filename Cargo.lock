@@ -317,6 +317,7 @@ dependencies = [
  "anyhow",
  "icon",
  "matcher",
+ "parking_lot",
  "printer",
  "rayon",
  "serde",

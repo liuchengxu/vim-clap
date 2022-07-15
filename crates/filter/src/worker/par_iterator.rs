@@ -7,16 +7,18 @@ use std::sync::Arc;
 use std::{
     io::BufRead,
     sync::atomic::{AtomicUsize, Ordering},
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use matcher::Matcher;
 use types::{ClapItem, MatchedItem, MultiItem, Query};
 
-use crate::{FilterContext, Source};
+use crate::{sort_initial_filtered, FilterContext, Source};
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn par_dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
@@ -33,14 +35,79 @@ pub fn par_dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
     let query: Query = query.into();
 
-    match source {
-        Source::File(file) => {
-            par_source_file(&matcher, &query, file)?;
-        }
+    let (total_processed, filtered) = match source {
+        Source::File(file) => par_source_file(&matcher, &query, file)?,
         _ => todo!("Implement par dyn run"),
-    }
+    };
+
+    let total_matched = filtered.len();
+
+    let ranked = sort_initial_filtered(filtered);
+
+    printer::print_dyn_filter_results(
+        ranked,
+        total_matched,
+        number.unwrap_or(100),
+        winwidth.unwrap_or(100),
+        icon,
+    );
 
     Ok(())
+}
+
+/// Refresh the top filtered results per 300 ms.
+const UPDATE_INTERVAL: Duration = Duration::from_millis(300);
+
+#[derive(Debug)]
+pub struct BestItems {
+    /// Time of last notification.
+    past: Instant,
+    items: Vec<MatchedItem>,
+    last_lines: Vec<String>,
+    max_capacity: usize,
+}
+
+impl BestItems {
+    fn new(max_capacity: usize) -> Self {
+        Self {
+            past: Instant::now(),
+            items: Vec::new(),
+            last_lines: Vec::new(),
+            max_capacity,
+        }
+    }
+
+    fn try_push_and_notify(&mut self, new: MatchedItem, matched: usize, processed: usize) {
+        if self.items.len() <= self.max_capacity {
+            self.items.push(new);
+            self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+        } else {
+            let last = self
+                .items
+                .last_mut()
+                .expect("Max capacity is non-zero; qed");
+
+            if new.score > last.score {
+                *last = new;
+                self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+            }
+
+            if matched % 16 == 0 || processed % 16 == 0 {
+                let now = Instant::now();
+                if now > self.past + UPDATE_INTERVAL {
+                    // if let Some(ref last_seen) = self.last_seen {
+                    // TODO: calculate diff beween last_seen and current results.
+                    // Send the diff to the client?
+                    // }
+
+                    // self.last_seen.replace(self.items.clone());
+                    println!("====== [{matched}/{processed}]");
+
+                    self.past = now;
+                }
+            }
+        }
+    }
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::File`].
@@ -48,13 +115,15 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
     matcher: &'a Matcher,
     query: &'a Query,
     path: P,
-) -> Result<Vec<MatchedItem>> {
+) -> Result<(usize, Vec<MatchedItem>)> {
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
+    let best_items = Arc::new(Mutex::new(BestItems::new(100)));
+
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.
-    let results = std::io::BufReader::new(std::fs::File::open(path)?)
+    let matched_items = std::io::BufReader::new(std::fs::File::open(path)?)
         .lines()
         .par_bridge()
         .filter_map(|x| {
@@ -65,9 +134,8 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
                 matcher.match_item(item, query).map(|matched_item| {
                     let matched = matched_count.fetch_add(1, Ordering::Relaxed);
 
-                    if matched % 64 == 0 || processed % 1024 == 0 {
-                        println!("====== [{matched}/{processed}]");
-                    }
+                    let mut best_items = best_items.lock();
+                    best_items.try_push_and_notify(matched_item.clone(), matched, processed);
 
                     matched_item
                 })
@@ -75,11 +143,9 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
         })
         .collect::<Vec<_>>();
 
-    let matched_count = matched_count.load(Ordering::Relaxed);
-    let total_count = processed_count.load(Ordering::Relaxed);
-    println!("====== [{matched_count}/{total_count}]");
+    let total_processed = processed_count.load(Ordering::Relaxed);
 
-    Ok(results)
+    Ok((total_processed, matched_items))
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
