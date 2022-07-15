@@ -37,21 +37,17 @@ function! s:blines.on_move() abort
   call clap#preview#buffer(lnum, s:origin_syntax)
 endfunction
 
+function! s:lines_on_empty() abort
+  if !exists('s:lines_on_empty_query')
+    let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+  endif
+  return copy(s:lines_on_empty_query)
+endfunction
+
 if clap#maple#is_available()
-  function! clap#provider#blines#initialize() abort
-    if g:clap.display.initial_size < 100000
-      let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-      call g:clap.display.set_lines_lazy(s:format(s:lines_on_empty_query))
-      call g:clap#display_win.shrink_if_undersize()
-      call clap#indicator#set_matches_number(g:clap.display.initial_size)
-      call clap#sign#toggle_cursorline()
-    endif
-  endfunction
-  function! clap#provider#blines#on_empty() abort
-    if !exists('s:lines_on_empty_query')
-      let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
-    endif
-    return copy(s:lines_on_empty_query)
+  function! clap#provider#blines#initialize(lines) abort
+    let s:lines_on_empty_query = a:lines
+    call g:clap.display.set_lines_lazy(s:format(a:lines))
   endfunction
   function! s:blines.init() abort
     call clap#client#notify_on_init('on_init', {})
@@ -63,6 +59,7 @@ else
 
     if line_count > 0 && line_count < 100000
       let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+      let s:lines_on_empty_query = lines
       call g:clap.display.set_lines_lazy(s:format(lines))
       call g:clap#display_win.shrink_if_undersize()
       call clap#indicator#set_matches_number(line_count)
@@ -89,23 +86,21 @@ function! s:blines.on_typed() abort
   let l:cur_input = g:clap.input.get()
 
   if empty(l:cur_input)
-    call g:clap.display.set_lines_lazy(clap#provider#blines#on_empty())
+    call g:clap.display.set_lines_lazy(s:lines_on_empty())
     call clap#indicator#set_matches_number(g:clap.display.initial_size)
     call clap#sign#toggle_cursorline()
     call g:clap#display_win.shrink_if_undersize()
     call g:clap.preview.hide()
-    call clap#highlight#clear()
-    return
-  endif
-
-  if clap#maple#is_available() && filereadable(expand('#'.g:clap.start.bufnr.':p'))
-    call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
   else
-    let l:raw_lines = s:format(g:clap.start.get_lines())
-    call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
-  endif
+    if clap#maple#is_available() && filereadable(expand('#'.g:clap.start.bufnr.':p'))
+      call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
+    else
+      let l:raw_lines = s:format(g:clap.start.get_lines())
+      call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+    endif
 
-  call clap#spinner#set_busy()
+    call clap#spinner#set_busy()
+  endif
 endfunction
 
 " if Source() is 1,000,000+ lines, it could be very slow, e.g.,
