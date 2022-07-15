@@ -213,13 +213,13 @@ impl Matcher {
             }
         }
 
-        if fuzzy_indices.is_empty() {
+        let match_result = if fuzzy_indices.is_empty() {
             let bonus_score = self.calc_bonus(item, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
 
-            Some(MatchResult::new(exact_score + bonus_score, indices))
+            MatchResult::new(exact_score + bonus_score, indices)
         } else {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
@@ -230,11 +230,10 @@ impl Matcher {
             indices.sort_unstable();
             indices.dedup();
 
-            Some(MatchResult::new(
-                exact_score + bonus_score + fuzzy_score,
-                indices,
-            ))
-        }
+            MatchResult::new(exact_score + bonus_score + fuzzy_score, indices)
+        };
+
+        Some(item.match_result_callback(match_result))
     }
 }
 
