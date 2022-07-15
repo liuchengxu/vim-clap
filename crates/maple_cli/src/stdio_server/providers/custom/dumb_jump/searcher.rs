@@ -70,6 +70,8 @@ impl SearchingWorker {
 }
 
 /// Returns a combo of various results in the order of [ctags, gtags, regex].
+///
+/// The regex results will be deduplicated from the results of ctags and gtags.
 fn merge_all(
     ctag_results: Vec<AddressableUsage>,
     maybe_gtags_results: Option<Vec<AddressableUsage>>,
@@ -78,14 +80,17 @@ fn merge_all(
     let mut regex_results = regex_results;
     regex_results.retain(|r| !ctag_results.contains(r));
 
-    let mut ctag_results = ctag_results;
+    let mut results = ctag_results;
     if let Some(mut gtags_results) = maybe_gtags_results {
         regex_results.retain(|r| !gtags_results.contains(r));
-        ctag_results.append(&mut gtags_results);
+        results.append(&mut gtags_results);
     }
 
-    ctag_results.append(&mut regex_results);
-    ctag_results
+    results.append(&mut regex_results);
+
+    // TODO: remove the usages of which the source file is not tracked by git in a git repo.
+
+    results
 }
 
 /// These is no best option here, each search engine has its own advantages and
