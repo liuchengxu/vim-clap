@@ -2,9 +2,12 @@
 
 #![allow(unused)]
 
-use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
+use std::{
+    io::BufRead,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use anyhow::Result;
 use rayon::iter::{ParallelBridge, ParallelIterator};
@@ -46,6 +49,9 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
     query: &'a Query,
     path: P,
 ) -> Result<Vec<MatchedItem>> {
+    let matched_count = AtomicUsize::new(0);
+    let processed_count = AtomicUsize::new(0);
+
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.
     let results = std::io::BufReader::new(std::fs::File::open(path)?)
@@ -53,13 +59,25 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
         .par_bridge()
         .filter_map(|x| {
             x.ok().and_then(|line: String| {
+                let processed = processed_count.fetch_add(1, Ordering::Relaxed);
+
                 let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher.match_item(item, query)
+                matcher.match_item(item, query).map(|matched_item| {
+                    let matched = matched_count.fetch_add(1, Ordering::Relaxed);
+
+                    if matched % 64 == 0 || processed % 1024 == 0 {
+                        println!("====== [{matched}/{processed}]");
+                    }
+
+                    matched_item
+                })
             })
         })
         .collect::<Vec<_>>();
 
-    // println!("results: {results:?}");
+    let matched_count = matched_count.load(Ordering::Relaxed);
+    let total_count = processed_count.load(Ordering::Relaxed);
+    println!("====== [{matched_count}/{total_count}]");
 
     Ok(results)
 }
