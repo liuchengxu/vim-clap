@@ -2,7 +2,6 @@ use std::path::{Path, PathBuf};
 use std::{io::BufRead, sync::Arc};
 
 use anyhow::Result;
-use rayon::iter::{ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use matcher::Matcher;
@@ -109,23 +108,6 @@ pub fn source_exec<'a>(
                 let item: types::MultiItem = s.as_str().into();
                 match_result.from_source_item_concrete(item)
                 */
-            })
-        }))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
-pub fn par_source_exec<'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    exec: Box<Exec>,
-) -> Result<impl ParallelIterator<Item = MatchedItem> + 'a> {
-    Ok(std::io::BufReader::new(exec.stream_stdout()?)
-        .lines()
-        .par_bridge()
-        .filter_map(|lines_iter| {
-            lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher.match_item(item, query)
             })
         }))
 }

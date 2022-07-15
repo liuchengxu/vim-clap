@@ -6,8 +6,8 @@
 //! 2. sort the all lines with a match result.
 //! 3. print the top rated filtered lines to stdout.
 
-mod dynamic;
 mod source;
+mod worker;
 
 use std::sync::Arc;
 
@@ -17,8 +17,8 @@ use rayon::prelude::*;
 use icon::Icon;
 use matcher::{Bonus, ClapItem, MatchScope, Matcher};
 
-pub use self::dynamic::dyn_run;
 pub use self::source::Source;
+pub use self::worker::iterator::dyn_run;
 pub use matcher;
 pub use subprocess;
 pub use types::{CaseMatching, MatchedItem, MultiItem, Query};

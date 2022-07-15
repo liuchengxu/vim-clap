@@ -1,3 +1,5 @@
+//! Convert the source item stream to an iterator and run the filtering sequentially.
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
