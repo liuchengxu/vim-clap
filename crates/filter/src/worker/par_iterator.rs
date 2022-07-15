@@ -2,7 +2,8 @@
 
 #![allow(unused)]
 
-use std::path::Path;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{
     io::BufRead,
@@ -12,7 +13,7 @@ use std::{
 
 use anyhow::Result;
 use parking_lot::Mutex;
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use matcher::Matcher;
@@ -20,10 +21,17 @@ use types::{ClapItem, MatchedItem, MultiItem, Query};
 
 use crate::{sort_initial_filtered, FilterContext, Source};
 
+/// Parallelable source.
+#[derive(Debug)]
+pub enum ParSource {
+    File(PathBuf),
+    Exec(Box<Exec>),
+}
+
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn par_dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
+pub fn par_dyn_run(
     query: &str,
-    source: Source<I>,
+    par_source: ParSource,
     filter_context: FilterContext,
 ) -> Result<()> {
     let FilterContext {
@@ -35,9 +43,11 @@ pub fn par_dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
     let query: Query = query.into();
 
-    let (total_processed, filtered) = match source {
-        Source::File(file) => par_source_file(&matcher, &query, file)?,
-        _ => todo!("Implement par dyn run"),
+    let (total_processed, filtered) = match par_source {
+        ParSource::File(file) => {
+            par_source_file_or_exec(&matcher, &query, std::fs::File::open(file)?)?
+        }
+        ParSource::Exec(exec) => par_source_file_or_exec(&matcher, &query, exec.stream_stdout()?)?,
     };
 
     let total_matched = filtered.len();
@@ -110,11 +120,42 @@ impl BestItems {
     }
 }
 
-/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
-pub fn par_source_file<'a, P: AsRef<Path>>(
+/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
+pub fn par_dyn_run_list<'a, 'b: 'a>(
     matcher: &'a Matcher,
     query: &'a Query,
-    path: P,
+    list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
+) -> (usize, Vec<MatchedItem>) {
+    let matched_count = AtomicUsize::new(0);
+    let processed_count = AtomicUsize::new(0);
+
+    let best_items = Arc::new(Mutex::new(BestItems::new(100)));
+
+    let matched_items = list
+        .into_par_iter()
+        .filter_map(|item| {
+            let processed = processed_count.fetch_add(1, Ordering::Relaxed);
+            matcher.match_item(item, query).map(|matched_item| {
+                let matched = matched_count.fetch_add(1, Ordering::Relaxed);
+
+                let mut best_items = best_items.lock();
+                best_items.try_push_and_notify(matched_item.clone(), matched, processed);
+
+                matched_item
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let total_processed = processed_count.into_inner();
+
+    (total_processed, matched_items)
+}
+
+/// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
+fn par_source_file_or_exec<'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    reader: impl Read + Send,
 ) -> Result<(usize, Vec<MatchedItem>)> {
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
@@ -123,7 +164,7 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.
-    let matched_items = std::io::BufReader::new(std::fs::File::open(path)?)
+    let matched_items = std::io::BufReader::new(reader)
         .lines()
         .par_bridge()
         .filter_map(|x| {
@@ -143,24 +184,7 @@ pub fn par_source_file<'a, P: AsRef<Path>>(
         })
         .collect::<Vec<_>>();
 
-    let total_processed = processed_count.load(Ordering::Relaxed);
+    let total_processed = processed_count.into_inner();
 
     Ok((total_processed, matched_items))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
-pub fn par_source_exec<'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    exec: Box<Exec>,
-) -> Result<impl ParallelIterator<Item = MatchedItem> + 'a> {
-    Ok(std::io::BufReader::new(exec.stream_stdout()?)
-        .lines()
-        .par_bridge()
-        .filter_map(|lines_iter| {
-            lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher.match_item(item, query)
-            })
-        }))
 }

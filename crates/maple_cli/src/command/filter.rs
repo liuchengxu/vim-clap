@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use clap::Parser;
 
+use filter::ParSource;
 use filter::{subprocess::Exec, FilterContext, Source};
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 
@@ -79,6 +80,24 @@ impl Filter {
         }
     }
 
+    fn generate_par_source(&self) -> ParSource {
+        if let Some(ref cmd_str) = self.cmd {
+            let exec = if let Some(ref dir) = self.cmd_dir {
+                Exec::shell(cmd_str).cwd(dir).into()
+            } else {
+                Exec::shell(cmd_str).into()
+            };
+            ParSource::Exec(Box::new(exec))
+        } else {
+            let file = self
+                .input
+                .as_ref()
+                .map(|i| i.deref().clone().into())
+                .expect("Source can not be parallel");
+            ParSource::File(file)
+        }
+    }
+
     fn get_bonuses(&self) -> Vec<Bonus> {
         use std::io::BufRead;
 
@@ -118,20 +137,18 @@ impl Filter {
             )?;
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
+        } else if self.par_run {
+            filter::par_dyn_run(
+                &self.query,
+                self.generate_par_source(),
+                FilterContext::new(icon, number, winwidth, matcher),
+            )?;
         } else {
-            if self.par_run {
-                filter::par_dyn_run::<std::iter::Empty<_>>(
-                    &self.query,
-                    self.generate_source(),
-                    FilterContext::new(icon, number, winwidth, matcher),
-                )?;
-            } else {
-                filter::dyn_run::<std::iter::Empty<_>>(
-                    &self.query,
-                    self.generate_source(),
-                    FilterContext::new(icon, number, winwidth, matcher),
-                )?;
-            }
+            filter::dyn_run::<std::iter::Empty<_>>(
+                &self.query,
+                self.generate_source(),
+                FilterContext::new(icon, number, winwidth, matcher),
+            )?;
         }
         Ok(())
     }
