@@ -57,6 +57,9 @@ pub struct Filter {
     /// Synchronous filtering, returns until the input stream is complete.
     #[clap(long)]
     sync: bool,
+
+    #[clap(long)]
+    par_run: bool,
 }
 
 impl Filter {
@@ -116,11 +119,19 @@ impl Filter {
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else {
-            filter::dyn_run::<std::iter::Empty<_>>(
-                &self.query,
-                self.generate_source(),
-                FilterContext::new(icon, number, winwidth, matcher),
-            )?;
+            if self.par_run {
+                filter::par_dyn_run::<std::iter::Empty<_>>(
+                    &self.query,
+                    self.generate_source(),
+                    FilterContext::new(icon, number, winwidth, matcher),
+                )?;
+            } else {
+                filter::dyn_run::<std::iter::Empty<_>>(
+                    &self.query,
+                    self.generate_source(),
+                    FilterContext::new(icon, number, winwidth, matcher),
+                )?;
+            }
         }
         Ok(())
     }
