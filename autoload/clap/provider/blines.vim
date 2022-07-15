@@ -53,6 +53,9 @@ if clap#maple#is_available()
     endif
     return copy(s:lines_on_empty_query)
   endfunction
+  function! s:blines.init() abort
+    call clap#client#notify_on_init('on_init', {})
+  endfunction
 else
   function! s:blines.init() abort
     let line_count = g:clap.start.line_count()
