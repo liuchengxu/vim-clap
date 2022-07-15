@@ -157,7 +157,7 @@ impl Watcher {
                         indices.push(matched_item.shifted_indices(ICON_LEN));
                         painter.paint(matched_item.display_text())
                     } else {
-                        indices.push(matched_item.match_indices.clone());
+                        indices.push(matched_item.indices.clone());
                         matched_item.display_text().into()
                     };
                     lines.push(text);
@@ -329,13 +329,12 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
         for MatchedItem {
             item,
-            match_indices,
+            indices,
             display_text,
             ..
         } in ranked.into_iter()
         {
             let text = display_text.unwrap_or_else(|| item.display_text().into());
-            let indices = match_indices;
             println_json!(text, indices);
         }
     }

@@ -107,12 +107,7 @@ pub fn decorate_lines<T>(
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
-            .map(|matched_item| {
-                (
-                    matched_item.display_text().into(),
-                    matched_item.match_indices,
-                )
-            })
+            .map(|matched_item| (matched_item.display_text().into(), matched_item.indices))
             .unzip();
 
         DecoratedLines::new(lines, indices, truncated_map, false)
@@ -134,13 +129,12 @@ pub fn print_sync_filter_results(
     } else {
         for MatchedItem {
             item,
-            match_indices,
+            indices,
             display_text,
             ..
         } in ranked.into_iter()
         {
             let text = display_text.unwrap_or_else(|| item.display_text().into());
-            let indices = match_indices;
             println_json!(text, indices);
         }
     }
@@ -233,8 +227,8 @@ pub(crate) mod tests {
         let mut ranked = filter_single_line(text, &query);
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-        let MatchedItem { match_indices, .. } = ranked[0].clone();
-        let truncated_indices = match_indices;
+        let MatchedItem { indices, .. } = ranked[0].clone();
+        let truncated_indices = indices;
 
         let truncated_text_got = ranked[0].display_text();
         assert_eq!(truncated_text, truncated_text_got);

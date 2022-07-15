@@ -5,7 +5,7 @@ use anyhow::Result;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
-use matcher::{MatchResult, Matcher};
+use matcher::Matcher;
 use types::{ClapItem, MatchedItem, MultiItem, Query};
 
 /// Source is anything that can produce an iterator of String.
@@ -51,11 +51,7 @@ pub fn source_list<'a, 'b: 'a>(
     query: &'a Query,
     list: impl Iterator<Item = Arc<dyn ClapItem>> + 'b,
 ) -> impl Iterator<Item = MatchedItem> + 'a {
-    list.filter_map(|item| {
-        matcher
-            .match_item(&item, query)
-            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
-    })
+    list.filter_map(|item| matcher.match_item(item, query))
 }
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
@@ -69,9 +65,7 @@ pub fn source_stdin<'a>(
         .filter_map(move |lines_iter| {
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+                matcher.match_item(item, query)
             })
         })
 }
@@ -89,9 +83,7 @@ pub fn source_file<'a, P: AsRef<Path>>(
         .filter_map(|x| {
             x.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+                matcher.match_item(item, query)
             })
         }))
 }
@@ -107,21 +99,16 @@ pub fn source_exec<'a>(
         .filter_map(|lines_iter| {
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| {
-                        MatchedItem::new(item, score, indices)
-
-                        /* NOTE: downcast_ref has to take place here.
-                        let s = item
-                            .as_any()
-                            .downcast_ref::<String>()
-                            .expect("item is String; qed");
-                        // FIXME: to MatchedItem
-                        let item: types::MultiItem = s.as_str().into();
-                        match_result.from_source_item_concrete(item)
-                        */
-                    })
+                matcher.match_item(item, query)
+                /* NOTE: downcast_ref has to take place here.
+                let s = item
+                    .as_any()
+                    .downcast_ref::<String>()
+                    .expect("item is String; qed");
+                // FIXME: to MatchedItem
+                let item: types::MultiItem = s.as_str().into();
+                match_result.from_source_item_concrete(item)
+                */
             })
         }))
 }
@@ -138,9 +125,7 @@ pub fn par_source_exec<'a>(
         .filter_map(|lines_iter| {
             lines_iter.ok().and_then(|line: String| {
                 let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher
-                    .match_item(&item, query)
-                    .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+                matcher.match_item(item, query)
             })
         }))
 }

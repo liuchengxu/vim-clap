@@ -5,7 +5,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{ClapItem, MatchScope, MatchedItem, MultiItem, Query};
+use types::{ClapItem, MatchScope, MultiItem, Query};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -104,20 +104,17 @@ fn fuzzy_match(
     let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, match_scope);
 
     let query: Query = query.into();
-    let do_match = |line: String| {
-        let item: Arc<dyn ClapItem> = if enable_icon {
-            Arc::new(LineWithIcon(line))
-        } else {
-            Arc::new(MultiItem::from(line))
-        };
-        matcher
-            .match_item(&item, &query)
-            .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
-    };
 
     let mut ranked = candidates
         .into_iter()
-        .filter_map(do_match)
+        .filter_map(|line: String| {
+            let item: Arc<dyn ClapItem> = if enable_icon {
+                Arc::new(LineWithIcon(line))
+            } else {
+                Arc::new(MultiItem::from(line))
+            };
+            matcher.match_item(item, &query)
+        })
         .collect::<Vec<_>>();
 
     ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
@@ -132,7 +129,7 @@ fn fuzzy_match(
         .map(|matched_item| {
             (
                 matched_item.display_text().to_string(),
-                matched_item.match_indices,
+                matched_item.indices,
             )
         })
         .unzip();

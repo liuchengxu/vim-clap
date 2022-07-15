@@ -221,7 +221,7 @@ pub struct MatchedItem<T = i64> {
     /// Indices of matched elements.
     ///
     /// The indices may be truncated when truncating the text.
-    pub match_indices: Vec<usize>,
+    pub indices: Vec<usize>,
     /// Text for showing the final filtered result.
     ///
     /// Usually in a truncated form for fitting into the display window.
@@ -229,11 +229,11 @@ pub struct MatchedItem<T = i64> {
 }
 
 impl<T> MatchedItem<T> {
-    pub fn new(item: Arc<dyn ClapItem>, score: T, match_indices: Vec<usize>) -> Self {
+    pub fn new(item: Arc<dyn ClapItem>, score: T, indices: Vec<usize>) -> Self {
         Self {
             item,
             score,
-            match_indices,
+            indices,
             display_text: None,
         }
     }
@@ -249,6 +249,6 @@ impl<T> MatchedItem<T> {
 
     /// Returns the match indices shifted by `offset`.
     pub fn shifted_indices(&self, offset: usize) -> Vec<usize> {
-        self.match_indices.iter().map(|x| x + offset).collect()
+        self.indices.iter().map(|x| x + offset).collect()
     }
 }

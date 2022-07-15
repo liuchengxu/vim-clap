@@ -37,7 +37,7 @@ pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-use types::CaseMatching;
+use types::{CaseMatching, MatchedItem};
 // Re-export types
 pub use types::{
     ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchResult, MatchScope, MultiItem, Query,
@@ -180,7 +180,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_item(&self, item: &Arc<dyn ClapItem>, query: &Query) -> Option<MatchResult> {
+    pub fn match_item(&self, item: Arc<dyn ClapItem>, query: &Query) -> Option<MatchedItem> {
         let match_text = item.match_text();
 
         // Try the inverse terms against the full search line.
@@ -214,7 +214,7 @@ impl Matcher {
         }
 
         let match_result = if fuzzy_indices.is_empty() {
-            let bonus_score = self.calc_bonus(item, exact_score, &indices);
+            let bonus_score = self.calc_bonus(&item, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
@@ -224,7 +224,7 @@ impl Matcher {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
 
-            let bonus_score = self.calc_bonus(item, fuzzy_score, &fuzzy_indices);
+            let bonus_score = self.calc_bonus(&item, fuzzy_score, &fuzzy_indices);
 
             indices.extend_from_slice(fuzzy_indices.as_slice());
             indices.sort_unstable();
@@ -233,7 +233,9 @@ impl Matcher {
             MatchResult::new(exact_score + bonus_score + fuzzy_score, indices)
         };
 
-        Some(item.match_result_callback(match_result))
+        let MatchResult { score, indices } = item.match_result_callback(match_result);
+
+        Some(MatchedItem::new(item, score, indices))
     }
 }
 
@@ -272,32 +274,32 @@ mod tests {
     fn test_match_scope_grep_line() {
         let query = "rules";
         let line = "crates/maple_cli/src/lib.rs:2:1:macro_rules! println_json {";
-        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
+        let matched_item1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
         let item = MultiItem::from(line.to_string());
         let fuzzy_text = item.fuzzy_text(MatchScope::GrepLine).unwrap();
-        let match_result2 = FuzzyAlgorithm::Fzy
+        let matched_item2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
 
-        assert_eq!(match_result1.indices, match_result2.indices);
-        assert!(match_result2.score > match_result1.score);
+        assert_eq!(matched_item1.indices, matched_item2.indices);
+        assert!(matched_item2.score > matched_item1.score);
     }
 
     #[test]
     fn test_match_scope_filename() {
         let query = "lib";
         let line = "crates/extracted_fzy/src/lib.rs";
-        let match_result1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
+        let matched_item1 = fzy::fuzzy_indices(line, query, CaseMatching::Smart).unwrap();
 
         let item = MultiItem::from(line.to_string());
         let fuzzy_text = item.fuzzy_text(MatchScope::FileName).unwrap();
-        let match_result2 = FuzzyAlgorithm::Fzy
+        let matched_item2 = FuzzyAlgorithm::Fzy
             .fuzzy_match(query, &fuzzy_text, CaseMatching::Smart)
             .unwrap();
 
-        assert_eq!(match_result1.indices, match_result2.indices);
-        assert!(match_result2.score > match_result1.score);
+        assert_eq!(matched_item1.indices, matched_item2.indices);
+        assert!(matched_item2.score > matched_item1.score);
     }
 
     #[test]
@@ -316,7 +318,7 @@ mod tests {
                 .fuzzy_algo
                 .fuzzy_match(query, &fuzzy_text, matcher.case_matching)
                 .unwrap();
-            let match_result_with_bonus = matcher.match_item(&item, &query.into()).unwrap();
+            let match_result_with_bonus = matcher.match_item(item, &query.into()).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
             assert!(match_result_with_bonus.score > match_result_base.score);
         }
@@ -331,14 +333,14 @@ mod tests {
             MatchScope::Full,
         );
         let query: Query = "fo".into();
-        let match_result1 = matcher
-            .match_item(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+        let matched_item1 = matcher
+            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>, &query)
             .unwrap();
-        let match_result2 = matcher
-            .match_item(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+        let matched_item2 = matcher
+            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>, &query)
             .unwrap();
-        assert!(match_result1.indices == match_result2.indices);
-        assert!(match_result1.score < match_result2.score);
+        assert!(matched_item1.indices == matched_item2.indices);
+        assert!(matched_item1.score < matched_item2.score);
     }
 
     #[test]
@@ -346,14 +348,14 @@ mod tests {
         let lines = vec!["function foo qwer", "function foo"];
         let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
-        let match_result1 = matcher
-            .match_item(&(Arc::new(lines[0]) as Arc<dyn ClapItem>), &query)
+        let matched_item1 = matcher
+            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>, &query)
             .unwrap();
-        let match_result2 = matcher
-            .match_item(&(Arc::new(lines[1]) as Arc<dyn ClapItem>), &query)
+        let matched_item2 = matcher
+            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>, &query)
             .unwrap();
-        assert!(match_result1.indices == match_result2.indices);
-        assert!(match_result1.score < match_result2.score);
+        assert!(matched_item1.indices == matched_item2.indices);
+        assert!(matched_item1.score < matched_item2.score);
     }
 
     #[test]
@@ -367,16 +369,26 @@ mod tests {
 
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
-        let query: Query = "clap .vim$ ^auto".into();
-        let matched_results: Vec<_> = items
-            .clone()
-            .into_iter()
-            .map(|item| {
-                let item: Arc<dyn ClapItem> = item;
-                matcher.match_item(&item, &query)
-            })
-            .collect();
+        let match_with_query = |query: &Query| {
+            items
+                .clone()
+                .into_iter()
+                .map(|item| {
+                    let item: Arc<dyn ClapItem> = item;
+                    matcher.match_item(item, &query)
+                })
+                .map(|maybe_matched_item| {
+                    if let Some(matched_item) = maybe_matched_item {
+                        Some(MatchResult::new(matched_item.score, matched_item.indices))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
 
+        let query: Query = "clap .vim$ ^auto".into();
+        let match_results: Vec<_> = match_with_query(&query);
         assert_eq!(
             vec![
                 Some(MatchResult::new(
@@ -390,19 +402,11 @@ mod tests {
                 None,
                 None
             ],
-            matched_results
+            match_results
         );
 
         let query: Query = ".rs$".into();
-        let matched_results: Vec<_> = items
-            .clone()
-            .into_iter()
-            .map(|item| {
-                let item: Arc<dyn ClapItem> = item;
-                matcher.match_item(&item, &query)
-            })
-            .collect();
-
+        let match_results: Vec<_> = match_with_query(&query);
         assert_eq!(
             vec![
                 None,
@@ -410,19 +414,11 @@ mod tests {
                 Some(MatchResult::new(24, [32, 33, 34].to_vec())),
                 None
             ],
-            matched_results
+            match_results
         );
 
         let query: Query = "py".into();
-        let matched_results: Vec<_> = items
-            .clone()
-            .into_iter()
-            .map(|item| {
-                let item: Arc<dyn ClapItem> = item;
-                matcher.match_item(&item, &query)
-            })
-            .collect();
-
+        let match_results: Vec<_> = match_with_query(&query);
         assert_eq!(
             vec![
                 Some(MatchResult::new(138, [14, 36].to_vec())),
@@ -430,19 +426,11 @@ mod tests {
                 None,
                 Some(MatchResult::new(383, [0, 1].to_vec()))
             ],
-            matched_results
+            match_results
         );
 
         let query: Query = "'py".into();
-        let matched_results: Vec<_> = items
-            .clone()
-            .into_iter()
-            .map(|item| {
-                let item: Arc<dyn ClapItem> = item;
-                matcher.match_item(&item, &query)
-            })
-            .collect();
-
+        let match_results: Vec<_> = match_with_query(&query);
         assert_eq!(
             vec![
                 None,
@@ -450,7 +438,7 @@ mod tests {
                 None,
                 Some(MatchResult::new(25, [0, 1].to_vec()))
             ],
-            matched_results
+            match_results
         );
     }
 }

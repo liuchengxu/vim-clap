@@ -77,22 +77,22 @@ pub fn truncate_long_matched_lines<T>(
         if origin_display_text.len() > MAX_LINE_LEN {
             let display_text: String = origin_display_text.chars().take(1000).collect();
             matched_item.display_text = Some(display_text);
-            matched_item.match_indices = matched_item
-                .match_indices
+            matched_item.indices = matched_item
+                .indices
                 .iter()
                 .filter(|x| **x < 1000)
                 .copied()
                 .collect();
         } else if let Some((truncated, truncated_indices)) = truncate_line_v1(
             &origin_display_text,
-            &mut matched_item.match_indices,
+            &mut matched_item.indices,
             winwidth,
             skipped,
         ) {
             truncated_map.insert(lnum + 1, origin_display_text.to_string());
 
             matched_item.display_text = Some(truncated);
-            matched_item.match_indices = truncated_indices;
+            matched_item.indices = truncated_indices;
         }
     });
     truncated_map
@@ -109,12 +109,12 @@ pub fn truncate_long_matched_lines_v0<T>(
         let line = matched_item.item.display_text();
 
         if let Some((truncated, truncated_indices)) =
-            crate::trimmer::v0::trim_text(&line, &matched_item.match_indices, winwidth, skipped)
+            crate::trimmer::v0::trim_text(&line, &matched_item.indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, line.to_string());
 
             matched_item.display_text = Some(truncated);
-            matched_item.match_indices = truncated_indices;
+            matched_item.indices = truncated_indices;
         }
     });
     truncated_map
