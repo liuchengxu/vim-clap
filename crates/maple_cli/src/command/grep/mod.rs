@@ -8,6 +8,7 @@ use std::process::Command;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use filter::ParSource;
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -74,12 +75,43 @@ pub struct Grep {
     /// Synchronous filtering, returns after the input stream is complete.
     #[clap(long)]
     sync: bool,
+
+    #[clap(long)]
+    par_run: bool,
 }
 
 impl Grep {
     pub fn run(&self, params: Params) -> Result<()> {
         if self.sync {
             self.sync_run(params)?;
+        } else if self.par_run {
+            let no_cache = params.no_cache;
+
+            let par_dyn_dun = |par_source: ParSource| {
+                filter::par_dyn_run(
+                    &self.grep_query,
+                    par_source,
+                    params
+                        .into_filter_context()
+                        .match_scope(MatchScope::GrepLine),
+                )
+            };
+
+            let par_source = if let Some(ref tempfile) = self.input {
+                ParSource::File(tempfile.clone())
+            } else if let Some(ref dir) = self.cmd_dir {
+                if !no_cache {
+                    let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                    if let Some(cache_file) = base_cmd.cache_file() {
+                        return par_dyn_dun(ParSource::File(cache_file));
+                    }
+                }
+                ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
+            } else {
+                ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
+            };
+
+            par_dyn_dun(par_source)?;
         } else {
             self.dyn_run(params)?;
         }

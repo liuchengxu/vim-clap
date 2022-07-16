@@ -16,8 +16,10 @@ use parking_lot::Mutex;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
+use icon::{Icon, ICON_LEN};
 use matcher::Matcher;
 use types::{ClapItem, MatchedItem, MultiItem, Query};
+use utility::println_json_with_length;
 
 use crate::{sort_initial_filtered, FilterContext, Source};
 
@@ -45,9 +47,11 @@ pub fn par_dyn_run(
 
     let (total_processed, filtered) = match par_source {
         ParSource::File(file) => {
-            par_source_file_or_exec(&matcher, &query, std::fs::File::open(file)?)?
+            par_source_file_or_exec(&matcher, &query, icon, std::fs::File::open(file)?)?
         }
-        ParSource::Exec(exec) => par_source_file_or_exec(&matcher, &query, exec.stream_stdout()?)?,
+        ParSource::Exec(exec) => {
+            par_source_file_or_exec(&matcher, &query, icon, exec.stream_stdout()?)?
+        }
     };
 
     let total_matched = filtered.len();
@@ -69,21 +73,23 @@ pub fn par_dyn_run(
 const UPDATE_INTERVAL: Duration = Duration::from_millis(300);
 
 #[derive(Debug)]
-pub struct BestItems {
+struct BestItems {
     /// Time of last notification.
     past: Instant,
     items: Vec<MatchedItem>,
     last_lines: Vec<String>,
     max_capacity: usize,
+    icon: Icon,
 }
 
 impl BestItems {
-    fn new(max_capacity: usize) -> Self {
+    fn new(max_capacity: usize, icon: Icon) -> Self {
         Self {
             past: Instant::now(),
             items: Vec::new(),
             last_lines: Vec::new(),
             max_capacity,
+            icon,
         }
     }
 
@@ -105,13 +111,32 @@ impl BestItems {
             if matched % 16 == 0 || processed % 16 == 0 {
                 let now = Instant::now();
                 if now > self.past + UPDATE_INTERVAL {
-                    // if let Some(ref last_seen) = self.last_seen {
-                    // TODO: calculate diff beween last_seen and current results.
-                    // Send the diff to the client?
-                    // }
+                    let mut indices = Vec::with_capacity(self.max_capacity);
+                    let mut lines = Vec::with_capacity(self.max_capacity);
+                    for matched_item in self.items.iter() {
+                        let text = if let Some(painter) = self.icon.painter() {
+                            indices.push(matched_item.shifted_indices(ICON_LEN));
+                            painter.paint(matched_item.display_text())
+                        } else {
+                            indices.push(matched_item.indices.clone());
+                            matched_item.display_text().into()
+                        };
+                        lines.push(text);
+                    }
 
-                    // self.last_seen.replace(self.items.clone());
-                    println!("====== [{matched}/{processed}]");
+                    #[allow(non_upper_case_globals)]
+                    const method: &str = "s:process_filter_message";
+                    if self.last_lines != lines.as_slice() {
+                        let icon_added = self.icon.enabled();
+                        println_json_with_length!(
+                            matched, processed, lines, indices, method, icon_added
+                        );
+                        self.past = now;
+                        self.last_lines = lines;
+                    } else {
+                        self.past = now;
+                        println_json_with_length!(matched, processed, method);
+                    }
 
                     self.past = now;
                 }
@@ -124,12 +149,13 @@ impl BestItems {
 pub fn par_dyn_run_list<'a, 'b: 'a>(
     matcher: &'a Matcher,
     query: &'a Query,
+    icon: Icon,
     list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
 ) -> (usize, Vec<MatchedItem>) {
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Arc::new(Mutex::new(BestItems::new(100)));
+    let best_items = Arc::new(Mutex::new(BestItems::new(100, icon)));
 
     let matched_items = list
         .into_par_iter()
@@ -155,12 +181,13 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 fn par_source_file_or_exec<'a>(
     matcher: &'a Matcher,
     query: &'a Query,
+    icon: Icon,
     reader: impl Read + Send,
 ) -> Result<(usize, Vec<MatchedItem>)> {
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Arc::new(Mutex::new(BestItems::new(100)));
+    let best_items = Arc::new(Mutex::new(BestItems::new(100, icon)));
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.

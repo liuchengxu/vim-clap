@@ -7,6 +7,8 @@ set cpoptions&vim
 " Currently this is not configurable.
 let s:DYN_ITEMS_TO_SHOW = 40
 
+let s:PAR_RUN = v:true
+
 function! s:handle_message(msg) abort
   if !g:clap.display.win_is_valid()
         \ || g:clap.input.get() !=# s:last_query
@@ -42,8 +44,8 @@ function! s:prepare_grep_cmd() abort
   if has_key(g:clap.context, 'no-cache')
     call add(subcmd, '--no-cache')
   endif
-  let opts = [
-        \ '--number', s:DYN_ITEMS_TO_SHOW,
+  let opts = s:PAR_RUN ? [] : ['--number', s:DYN_ITEMS_TO_SHOW]
+  let opts += [
         \ '--winwidth', winwidth(g:clap.display.winid),
         \ 'grep', g:clap.input.get(),
         \ ]
@@ -51,14 +53,20 @@ function! s:prepare_grep_cmd() abort
 endfunction
 
 function! clap#filter#async#dyn#start_grep() abort
-  let grep_cmd = s:prepare_grep_cmd()
-  let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--cmd-dir', clap#rooter#working_dir()])
+  let grep_cmd = s:prepare_grep_cmd() + ['--cmd-dir', clap#rooter#working_dir()]
+  if s:PAR_RUN
+    call add(grep_cmd, '--par-run')
+  endif
+  let grep_cmd = clap#maple#build_cmd_list(grep_cmd)
   call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
 endfunction
 
 function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
-  let grep_cmd = s:prepare_grep_cmd()
-  let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--input', a:tempfile])
+  let grep_cmd = s:prepare_grep_cmd() + ['--input', a:tempfile]
+  if s:PAR_RUN
+    call add(grep_cmd, '--par-run')
+  endif
+  let grep_cmd = clap#maple#build_cmd_list(grep_cmd)
   call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
 endfunction
 

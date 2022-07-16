@@ -25,6 +25,10 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     call clap#indicator#set_matches_number(decoded.total)
   endif
 
+  if has_key(decoded, 'matched')
+    call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
+  endif
+
   if has_key(decoded, 'lines')
     call g:clap.display.set_lines(decoded.lines)
     if empty(decoded.lines)
