@@ -465,11 +465,7 @@ impl<'a> OnMoveHandler<'a> {
 async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTagInfo> {
     const TIMEOUT: Duration = Duration::from_millis(300);
 
-    match tokio::time::timeout(TIMEOUT, async move {
-        current_context_tag_async(path.as_path(), lnum).await
-    })
-    .await
-    {
+    match tokio::time::timeout(TIMEOUT, current_context_tag_async(path.as_path(), lnum)).await {
         Ok(res) => res,
         Err(_) => {
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");

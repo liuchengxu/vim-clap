@@ -64,15 +64,19 @@ impl DecoratedLines {
 
         #[allow(non_upper_case_globals)]
         const method: &str = "s:process_filter_message";
-        println_json_with_length!(
-            method,
-            lines,
-            indices,
-            icon_added,
-            truncated_map,
-            matched,
-            processed
-        );
+        if truncated_map.is_empty() {
+            println_json_with_length!(method, lines, indices, icon_added, matched, processed);
+        } else {
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                truncated_map,
+                matched,
+                processed
+            );
+        }
     }
 
     fn print_on_filter_finished(&self, total: usize) {

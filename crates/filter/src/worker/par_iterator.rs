@@ -50,8 +50,8 @@ pub fn par_dyn_run(
     Ok(())
 }
 
-/// Refresh the top filtered results per 300 ms.
-const UPDATE_INTERVAL: Duration = Duration::from_millis(300);
+/// Refresh the top filtered results per 200 ms.
+const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 #[derive(Debug)]
 struct BestItems {

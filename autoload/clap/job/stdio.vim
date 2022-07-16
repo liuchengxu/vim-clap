@@ -167,6 +167,7 @@ function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
         \ '--winwidth', winwidth(g:clap.display.winid),
         \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
         \ 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir(),
+        \ '--par-run',
         \ ]
 
   call s:start_service_job(clap#maple#build_cmd_list(filter_cmd))
