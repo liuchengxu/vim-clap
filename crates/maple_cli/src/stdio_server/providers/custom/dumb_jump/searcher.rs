@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::path::Path;
+use std::process::Stdio;
 
 use anyhow::Result;
 use dumb_analyzer::resolve_reference_kind;
@@ -9,6 +11,7 @@ use super::QueryInfo;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
+use crate::process::rstd::StdCommand;
 use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
@@ -123,12 +126,14 @@ pub(super) enum SearchEngine {
 
 impl SearchEngine {
     pub async fn run(&self, searching_worker: SearchingWorker) -> Result<Usages> {
+        let cwd = searching_worker.cwd.clone();
+
         let ctags_future = {
             let searching_worker = searching_worker.clone();
             async move { searching_worker.ctags_search() }
         };
 
-        let addressable_usages = match self {
+        let mut addressable_usages = match self {
             SearchEngine::Ctags => searching_worker.ctags_search()?,
             SearchEngine::Regex => searching_worker.regex_search().await?,
             SearchEngine::CtagsAndRegex => {
@@ -169,6 +174,35 @@ impl SearchEngine {
                 )
             }
         };
+
+        // TODO: make this configurable.
+        // If cwd is a git repo, ignore the results from the untracked files.
+        if utility::is_git_repo(cwd.as_ref()) {
+            let files = addressable_usages
+                .iter()
+                .map(|x| x.path.as_str())
+                .collect::<HashSet<_>>();
+
+            let git_tracked = files
+                .into_par_iter()
+                .filter(|file| {
+                    let mut command =
+                        StdCommand::from(format!("git ls-files --error-unmatch {file}"));
+                    command.current_dir(&cwd);
+                    // Only the exit status matters.
+                    command
+                        .into_inner()
+                        .stderr(Stdio::null())
+                        .stdout(Stdio::null())
+                        .status()
+                        .map(|status| status.success())
+                        .unwrap_or(false)
+                })
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
+
+            addressable_usages.retain(|usage| git_tracked.contains(&usage.path));
+        }
 
         Ok(addressable_usages.into())
     }
