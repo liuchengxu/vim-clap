@@ -54,6 +54,27 @@ impl DecoratedLines {
         println_json_with_length!(method, lines, icon_added, truncated_map);
     }
 
+    pub fn print_on_filter_ongoing(&self, matched: usize, processed: usize) {
+        let Self {
+            lines,
+            indices,
+            truncated_map,
+            icon_added,
+        } = self;
+
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
+        println_json_with_length!(
+            method,
+            lines,
+            indices,
+            icon_added,
+            truncated_map,
+            matched,
+            processed
+        );
+    }
+
     fn print_on_filter_finished(&self, total: usize) {
         let Self {
             lines,
@@ -81,10 +102,11 @@ impl DecoratedLines {
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn decorate_lines<T>(
-    mut top_list: Vec<MatchedItem<T>>,
+    top_list: Vec<MatchedItem<T>>,
     winwidth: usize,
     icon: Icon,
 ) -> DecoratedLines {
+    let mut top_list = top_list;
     let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
