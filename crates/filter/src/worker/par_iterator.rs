@@ -138,7 +138,10 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
-    let matched_items = Arc::try_unwrap(best_items).unwrap().into_inner().items;
+    let matched_items = Arc::try_unwrap(best_items)
+        .expect("More than one strong reference")
+        .into_inner()
+        .items;
 
     (total_matched, total_processed, matched_items)
 }
@@ -187,7 +190,10 @@ fn par_dyn_run_inner(
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
 
-    let matched_items = Arc::try_unwrap(best_items).unwrap().into_inner().items;
+    let matched_items = Arc::try_unwrap(best_items)
+        .expect("More than one strong reference")
+        .into_inner()
+        .items;
 
     printer::print_dyn_filter_results(
         matched_items,
