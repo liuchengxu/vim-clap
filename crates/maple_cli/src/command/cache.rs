@@ -1,74 +1,40 @@
 use std::fs::read_dir;
 use std::io::Write;
-use std::path::{self, Path, PathBuf};
+use std::path::{self, PathBuf};
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 use utility::{clap_cache_dir, remove_dir_contents};
 
 use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// List and remove all the cached contents.
-#[derive(Parser, Debug, Clone)]
-pub struct Cache {
-    /// List the current cached entries.
-    #[clap(short, long)]
-    list: bool,
-
-    /// Purge all the cached contents.
-    #[clap(short, long)]
-    purge: bool,
-}
-
-// The cache directory is not huge and pretty deep, hence the recursive version is acceptable.
-fn dir_size(path: impl Into<PathBuf>) -> std::io::Result<u64> {
-    fn dir_size(mut dir: std::fs::ReadDir) -> std::io::Result<u64> {
-        dir.try_fold(0, |acc, file| {
-            let file = file?;
-            let size = match file.metadata()? {
-                data if data.is_dir() => dir_size(std::fs::read_dir(file.path())?)?,
-                data => data.len(),
-            };
-            Ok(acc + size)
-        })
-    }
-
-    dir_size(read_dir(path.into())?)
+#[derive(Subcommand, Debug, Clone)]
+pub enum Cache {
+    List(List),
+    Purge(Purge),
 }
 
 impl Cache {
     pub fn run(&self) -> Result<()> {
-        let cache_dir = clap_cache_dir()?;
-        if self.purge {
-            if let Ok(cache_size) = dir_size(&cache_dir) {
-                let readable_size = if cache_size > 1024 * 1024 {
-                    format!("{}MB", cache_size / 1024 / 1024)
-                } else if cache_size > 1024 {
-                    format!("{}KB", cache_size / 1024)
-                } else {
-                    format!("{}B", cache_size)
-                };
-                println!("Cache size: {:?}", readable_size);
-            }
-            if let Some(f) = crate::datastore::cache_metadata_path() {
-                std::fs::remove_file(f)?;
-                println!("Cache metadata {} has been deleted", f.display());
-            }
-            remove_dir_contents(&cache_dir)?;
-            println!(
-                "Current cache directory {} has been purged",
-                cache_dir.display()
-            );
-            return Ok(());
+        match self {
+            Self::List(list) => list.run(),
+            Self::Purge(purge) => purge.run(),
         }
-        if self.list {
-            self.list(&cache_dir)?;
-        }
-        Ok(())
     }
+}
 
-    fn list(&self, cache_dir: &Path) -> Result<()> {
+#[derive(Parser, Debug, Clone)]
+pub struct List {
+    /// Display all the cached info, including the current cached entries.
+    #[clap(long)]
+    all: bool,
+}
+
+impl List {
+    fn run(&self) -> Result<()> {
+        let cache_dir = clap_cache_dir()?;
         let stdout = std::io::stdout();
         let mut lock = stdout.lock();
 
@@ -81,9 +47,9 @@ impl Cache {
         digests.sort_unstable_by_key(|digest| digest.total);
         writeln!(lock, "{:#?}\n", digests)?;
 
-        if self.list {
+        if self.all {
             writeln!(lock, "Cached entries:")?;
-            let mut entries = read_dir(cache_dir)?
+            let mut entries = read_dir(&cache_dir)?
                 .map(|res| {
                     res.map(|e| {
                         e.path()
@@ -103,4 +69,60 @@ impl Cache {
         }
         Ok(())
     }
+}
+
+#[derive(Parser, Debug, Clone)]
+pub struct Purge {
+    /// Purge all the cached contents.
+    #[clap(long)]
+    all: bool,
+}
+
+impl Purge {
+    fn run(&self) -> Result<()> {
+        let cache_dir = clap_cache_dir()?;
+
+        if let Ok(cache_size) = dir_size(&cache_dir) {
+            let readable_size = if cache_size > 1024 * 1024 {
+                format!("{}MB", cache_size / 1024 / 1024)
+            } else if cache_size > 1024 {
+                format!("{}KB", cache_size / 1024)
+            } else {
+                format!("{}B", cache_size)
+            };
+            println!("Cache size: {:?}", readable_size);
+        }
+
+        if let Some(f) = crate::datastore::cache_metadata_path() {
+            match std::fs::remove_file(f) {
+                Ok(()) => println!("Cache metadata {} has been deleted", f.display()),
+                Err(e) => println!("Faild to delete {}: {e}", f.display()),
+            }
+        }
+
+        remove_dir_contents(&cache_dir)?;
+
+        println!(
+            "Current cache directory {} has been purged sucessfully",
+            cache_dir.display()
+        );
+
+        Ok(())
+    }
+}
+
+// The cache directory is not huge and pretty deep, hence the recursive version is acceptable.
+fn dir_size(path: impl Into<PathBuf>) -> std::io::Result<u64> {
+    fn dir_size(mut dir: std::fs::ReadDir) -> std::io::Result<u64> {
+        dir.try_fold(0, |acc, file| {
+            let file = file?;
+            let size = match file.metadata()? {
+                data if data.is_dir() => dir_size(std::fs::read_dir(file.path())?)?,
+                data => data.len(),
+            };
+            Ok(acc + size)
+        })
+    }
+
+    dir_size(read_dir(path.into())?)
 }

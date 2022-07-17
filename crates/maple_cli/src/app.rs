@@ -51,7 +51,7 @@ pub enum Cmd {
     #[clap(name = "ctags", subcommand)]
     Ctags(command::ctags::Ctags),
     /// Interact with the cache info.
-    #[clap(name = "cache")]
+    #[clap(name = "cache", subcommand)]
     Cache(command::cache::Cache),
     /// Fuzzy filter the input.
     #[clap(name = "filter")]
