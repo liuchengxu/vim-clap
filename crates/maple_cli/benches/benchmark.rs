@@ -3,7 +3,7 @@ use std::sync::Arc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 use filter::{MatchedItem, MultiItem, Query};
-use matcher::{FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
+use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 use types::ClapItem;
 
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
@@ -23,9 +23,7 @@ fn filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<Matched
     list.into_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher
-                .match_item(&item, &query)
-                .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+            matcher.match_item(item, &query)
         })
         .map(Into::into)
         .collect()
@@ -38,9 +36,7 @@ fn par_filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<Mat
     list.into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher
-                .match_item(&item, &query)
-                .map(|MatchResult { score, indices }| MatchedItem::new(item, score, indices))
+            matcher.match_item(item, &query)
         })
         .map(Into::into)
         .collect()

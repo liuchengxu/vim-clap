@@ -168,31 +168,28 @@ fn par_dyn_run_inner(
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.
-    let matched_items = std::io::BufReader::new(reader)
+    std::io::BufReader::new(reader)
         .lines()
+        .filter_map(Result::ok)
         .par_bridge()
-        .filter_map(|x| {
-            x.ok().and_then(|line: String| {
-                let processed = processed_count.fetch_add(1, Ordering::Relaxed);
+        .for_each(|line: String| {
+            let processed = processed_count.fetch_add(1, Ordering::Relaxed);
 
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                matcher.match_item(item, query).map(|matched_item| {
-                    let matched = matched_count.fetch_add(1, Ordering::Relaxed);
+            let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
 
-                    let mut best_items = best_items.lock();
-                    best_items.try_push_and_notify(matched_item.clone(), matched, processed);
+            if let Some(matched_item) = matcher.match_item(item, query) {
+                let matched = matched_count.fetch_add(1, Ordering::Relaxed);
 
-                    matched_item
-                })
-            })
-        })
-        .collect::<Vec<_>>();
+                let mut best_items = best_items.lock();
+                best_items.try_push_and_notify(matched_item, matched, processed);
+                drop(best_items);
+            }
+        });
 
+    let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
 
-    let total_matched = matched_items.len();
-
-    let matched_items = sort_initial_filtered(matched_items);
+    let matched_items = Arc::try_unwrap(best_items).unwrap().into_inner().items;
 
     printer::print_dyn_filter_results(
         matched_items,
