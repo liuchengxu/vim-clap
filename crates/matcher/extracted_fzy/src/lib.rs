@@ -27,6 +27,13 @@ pub fn match_and_score_with_positions(
     haystack: &str,
     case_matching: CaseMatching,
 ) -> Option<MatchWithPositions> {
+    let haystack_length = haystack.chars().count();
+
+    // unreasonably large haystack, return early to avoid `to_lowercase` below.
+    if haystack_length > 1024 {
+        return None;
+    }
+
     let lowercased_haystack;
     let lowercased_needle;
     let (needle, haystack) = match case_matching {
@@ -61,7 +68,7 @@ pub fn match_and_score_with_positions(
     */
 
     matches(needle, haystack)
-        .map(|needle_length| score_with_positions(needle, needle_length, haystack))
+        .map(|needle_length| score_with_positions(needle, needle_length, haystack, haystack_length))
 }
 
 /// Searches for needle's chars in the haystack.
@@ -94,22 +101,20 @@ fn matches(needle: &str, haystack: &str) -> Option<usize> {
     Some(needle_length)
 }
 
-fn score_with_positions(needle: &str, needle_length: usize, haystack: &str) -> (Score, Vec<usize>) {
+fn score_with_positions(
+    needle: &str,
+    needle_length: usize,
+    haystack: &str,
+    haystack_length: usize,
+) -> (Score, Vec<usize>) {
     // empty needle
     if needle_length == 0 {
         return (SCORE_MIN, vec![]);
     }
 
-    let haystack_length = haystack.chars().count();
-
     // perfect match
     if needle_length == haystack_length {
         return (SCORE_MAX, (0..needle_length).collect());
-    }
-
-    // unreasonably large haystack
-    if haystack_length > 1024 {
-        return (SCORE_MIN, vec![]);
     }
 
     #[allow(non_snake_case)]
