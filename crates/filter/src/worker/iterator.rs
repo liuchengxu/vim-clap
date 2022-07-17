@@ -303,7 +303,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     } = filter_context;
     let query: Query = query.into();
     if let Some(number) = number {
-        let (total, filtered) = match source {
+        let (total_matched, matched_items) = match source {
             Source::List(list) => {
                 dyn_collect_number(source_list(&matcher, &query, list), number, icon)
             }
@@ -316,9 +316,16 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             }
         };
 
-        let ranked = sort_initial_filtered(filtered);
+        let ranked = sort_initial_filtered(matched_items);
 
-        printer::print_dyn_filter_results(ranked, total, number, winwidth.unwrap_or(100), icon);
+        printer::print_dyn_filter_results(
+            ranked,
+            total_matched,
+            None,
+            number,
+            winwidth.unwrap_or(100),
+            icon,
+        );
     } else {
         let filtered = match source {
             Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),

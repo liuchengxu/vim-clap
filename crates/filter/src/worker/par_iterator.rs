@@ -126,22 +126,22 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 
     let best_items = Arc::new(Mutex::new(BestItems::new(100, icon, winwidth)));
 
-    let matched_items = list
-        .into_par_iter()
-        .filter_map(|item| {
-            let processed = processed_count.fetch_add(1, Ordering::Relaxed);
-            matcher.match_item(item, query).map(|matched_item| {
-                let matched = matched_count.fetch_add(1, Ordering::Relaxed);
+    list.into_par_iter().for_each(|item| {
+        let processed = processed_count.fetch_add(1, Ordering::Relaxed);
 
-                let mut best_items = best_items.lock();
-                best_items.try_push_and_notify(matched_item.clone(), matched, processed);
+        if let Some(matched_item) = matcher.match_item(item, query) {
+            let matched = matched_count.fetch_add(1, Ordering::Relaxed);
 
-                matched_item
-            })
-        })
-        .collect::<Vec<_>>();
+            let mut best_items = best_items.lock();
+            best_items.try_push_and_notify(matched_item, matched, processed);
+            drop(best_items);
+        }
+    });
 
+    let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
+
+    let matched_items = Arc::try_unwrap(best_items).unwrap().into_inner().items;
 
     (total_processed, matched_items)
 }
@@ -194,6 +194,7 @@ fn par_dyn_run_inner(
     printer::print_dyn_filter_results(
         matched_items,
         total_matched,
+        Some(total_processed),
         number.unwrap_or(100),
         winwidth,
         icon,

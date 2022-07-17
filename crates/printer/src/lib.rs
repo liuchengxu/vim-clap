@@ -79,7 +79,7 @@ impl DecoratedLines {
         }
     }
 
-    fn print_on_filter_finished(&self, total: usize) {
+    fn print_on_filter_finished(&self, total_matched: usize, maybe_total_processed: Option<usize>) {
         let Self {
             lines,
             indices,
@@ -89,7 +89,26 @@ impl DecoratedLines {
 
         #[allow(non_upper_case_globals)]
         const method: &str = "s:process_filter_message";
-        println_json_with_length!(method, lines, indices, icon_added, truncated_map, total);
+        if let Some(total_processed) = maybe_total_processed {
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                truncated_map,
+                total_matched,
+                total_processed
+            );
+        } else {
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                truncated_map,
+                total_matched
+            );
+        }
     }
 
     fn print_json(&self, total: usize) {
@@ -169,13 +188,15 @@ pub fn print_sync_filter_results(
 /// Prints the results of filter::dyn_run() to stdout.
 pub fn print_dyn_filter_results(
     ranked: Vec<MatchedItem>,
-    total: usize,
+    total_matched: usize,
+    total_processed: Option<usize>,
     number: usize,
     winwidth: usize,
     icon: Icon,
 ) {
     let top_items = ranked.into_iter().take(number).collect();
-    decorate_lines(top_items, winwidth, icon).print_on_filter_finished(total);
+    decorate_lines(top_items, winwidth, icon)
+        .print_on_filter_finished(total_matched, total_processed);
 }
 
 #[cfg(test)]
