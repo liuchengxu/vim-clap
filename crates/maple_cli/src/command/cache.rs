@@ -51,7 +51,7 @@ impl Cache {
                 };
                 println!("Cache size: {:?}", readable_size);
             }
-            if let Some(f) = crate::datastore::CACHE_JSON_PATH.as_deref() {
+            if let Some(f) = crate::datastore::cache_metadata_path() {
                 std::fs::remove_file(f)?;
                 println!("Cache metadata {} has been deleted", f.display());
             }
@@ -77,7 +77,9 @@ impl Cache {
         writeln!(lock, "\t{}\n", cache_dir_str)?;
 
         let cache_info = CACHE_INFO_IN_MEMORY.lock();
-        writeln!(lock, "{:#?}\n", cache_info)?;
+        let mut digests = cache_info.digests();
+        digests.sort_unstable_by_key(|digest| digest.total);
+        writeln!(lock, "{:#?}\n", digests)?;
 
         if self.list {
             writeln!(lock, "Cached entries:")?;

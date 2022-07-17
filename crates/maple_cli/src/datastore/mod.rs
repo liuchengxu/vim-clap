@@ -10,22 +10,22 @@ use crate::cache::{CacheInfo, MAX_DIGESTS};
 use crate::recent_files::SortedRecentFiles;
 use crate::utils::{generate_data_file_path, load_json};
 
-// TODO: use mmap?
-
+/// Linux: ~/.local/share/vimclap/cache.json
 const CACHE_FILENAME: &str = "cache.json";
 
-pub static CACHE_JSON_PATH: Lazy<Option<PathBuf>> =
+static CACHE_METADATA_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
-    let maybe_persistent = load_json::<CacheInfo, _>(CACHE_JSON_PATH.as_deref())
+    let maybe_persistent = load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref())
         .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
     Arc::new(Mutex::new(maybe_persistent))
 });
 
+/// Linux: ~/.local/share/vimclap/recent_files.json
 const RECENT_FILES_FILENAME: &str = "recent_files.json";
 
-pub static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
+static RECENT_FILES_JSON_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(RECENT_FILES_FILENAME).ok());
 
 pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(|| {
@@ -36,9 +36,13 @@ pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(||
 });
 
 pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
-    crate::utils::write_json(cache_info, CACHE_JSON_PATH.as_ref())
+    crate::utils::write_json(cache_info, CACHE_METADATA_PATH.as_ref())
 }
 
 pub fn store_recent_files(recent_files: &SortedRecentFiles) -> std::io::Result<()> {
     crate::utils::write_json(&recent_files, RECENT_FILES_JSON_PATH.as_ref())
+}
+
+pub fn cache_metadata_path() -> Option<&'static PathBuf> {
+    CACHE_METADATA_PATH.as_ref()
 }

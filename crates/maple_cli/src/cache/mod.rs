@@ -143,6 +143,10 @@ impl CacheInfo {
 
         Ok(())
     }
+
+    pub fn digests(&self) -> Vec<Digest> {
+        self.digests.clone()
+    }
 }
 
 /// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
