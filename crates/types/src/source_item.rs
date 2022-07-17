@@ -3,7 +3,7 @@ use std::{any::Any, borrow::Cow};
 
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
-use crate::MatchResult;
+use crate::{MatchResult, Score};
 
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;
@@ -213,11 +213,11 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
 
 /// This struct represents the filtered result of [`MultiItem`].
 #[derive(Debug, Clone)]
-pub struct MatchedItem<T = i64> {
+pub struct MatchedItem {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
     pub item: Arc<dyn ClapItem>,
     /// Filtering score.
-    pub score: T,
+    pub score: Score,
     /// Indices of matched elements.
     ///
     /// The indices may be truncated when truncating the text.
@@ -228,8 +228,8 @@ pub struct MatchedItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<T> MatchedItem<T> {
-    pub fn new(item: Arc<dyn ClapItem>, score: T, indices: Vec<usize>) -> Self {
+impl MatchedItem {
+    pub fn new(item: Arc<dyn ClapItem>, score: Score, indices: Vec<usize>) -> Self {
         Self {
             item,
             score,

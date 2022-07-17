@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use filter::MatchedItem;
+use types::Score;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::providers::builtin::OnMoveHandler;
@@ -53,7 +54,8 @@ async fn handle_recent_files_message(
             .iter()
             .map(|entry| {
                 let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
-                MatchedItem::new(item, entry.frecent_score as i64, Default::default())
+                // frecent_score will not be larger than i32::MAX.
+                MatchedItem::new(item, entry.frecent_score as Score, Default::default())
             })
             .collect::<Vec<_>>()
     } else {

@@ -57,7 +57,7 @@ fn process_source_scale(source_scale: SourceScale, context: Arc<SessionContext>)
     }
 
     if let Some(lines) = source_scale.initial_lines(100) {
-        printer::decorate_lines::<i64>(lines, context.display_winwidth as usize, context.icon)
+        printer::decorate_lines(lines, context.display_winwidth as usize, context.icon)
             .print_on_session_create();
     }
 

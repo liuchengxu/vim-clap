@@ -5,8 +5,8 @@ pub(crate) type Score = i32;
 pub(crate) const SCORE_STARTER: Score = 0;
 
 pub(crate) const SCORE_DEFAULT_BONUS: Score = 0;
-pub(crate) const SCORE_MAX: Score = Score::max_value();
-pub(crate) const SCORE_MIN: Score = Score::min_value();
+pub(crate) const SCORE_MAX: Score = Score::MAX;
+pub(crate) const SCORE_MIN: Score = Score::MIN;
 pub(crate) const SCORE_GAP_LEADING: Score = -1;
 pub(crate) const SCORE_GAP_TRAILING: Score = -1;
 pub(crate) const SCORE_GAP_INNER: Score = -2;

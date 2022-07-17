@@ -7,7 +7,7 @@ use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{ClapItem, MatchedItem, Query};
+use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};
@@ -64,9 +64,6 @@ macro_rules! insert_both {
         $top_scores.pop_and_insert($index, $score);
     }};
 }
-
-/// Type of matcher scoring.
-type Score = i64;
 
 type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
 

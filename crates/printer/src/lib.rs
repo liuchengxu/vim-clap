@@ -124,8 +124,8 @@ impl DecoratedLines {
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines<T>(
-    top_list: Vec<MatchedItem<T>>,
+pub fn decorate_lines(
+    top_list: Vec<MatchedItem>,
     winwidth: usize,
     icon: Icon,
 ) -> DecoratedLines {

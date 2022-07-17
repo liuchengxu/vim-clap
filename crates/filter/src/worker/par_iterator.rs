@@ -1,9 +1,7 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
-#![allow(unused)]
-
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::{
     io::BufRead,
@@ -16,12 +14,15 @@ use parking_lot::Mutex;
 use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
-use icon::{Icon, ICON_LEN};
+use icon::Icon;
 use matcher::Matcher;
 use types::{ClapItem, MatchedItem, MultiItem, Query};
 use utility::println_json_with_length;
 
-use crate::{sort_initial_filtered, FilterContext, Source};
+use crate::FilterContext;
+
+/// Refresh the top filtered results per 200 ms.
+const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 /// Parallelable source.
 #[derive(Debug)]
@@ -49,9 +50,6 @@ pub fn par_dyn_run(
 
     Ok(())
 }
-
-/// Refresh the top filtered results per 200 ms.
-const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 #[derive(Debug)]
 struct BestItems {
@@ -120,7 +118,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
     icon: Icon,
     winwidth: usize,
     list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
-) -> (usize, Vec<MatchedItem>) {
+) -> (usize, usize, Vec<MatchedItem>) {
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
@@ -140,10 +138,9 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
-
     let matched_items = Arc::try_unwrap(best_items).unwrap().into_inner().items;
 
-    (total_processed, matched_items)
+    (total_matched, total_processed, matched_items)
 }
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.

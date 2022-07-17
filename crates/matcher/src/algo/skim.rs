@@ -1,5 +1,5 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-use types::CaseMatching;
+use types::{CaseMatching, Score};
 
 use crate::MatchResult;
 
@@ -12,7 +12,8 @@ pub fn fuzzy_indices(text: &str, query: &str, case_matching: CaseMatching) -> Op
         CaseMatching::Respect => skim_matcher.respect_case(),
         CaseMatching::Smart => skim_matcher.smart_case(),
     };
+    // skim as i64 as Score, but we use i32.
     skim_matcher
         .fuzzy_indices(text, query)
-        .map(|(score, indices)| MatchResult::new(score, indices))
+        .map(|(score, indices)| MatchResult::new(score as Score, indices))
 }

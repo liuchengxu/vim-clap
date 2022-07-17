@@ -63,8 +63,8 @@ const MAX_LINE_LEN: usize = 500;
 ///
 /// - winwidth: width of the display window.
 /// - skipped: number of skipped chars, used when need to skip the leading icons.
-pub fn truncate_long_matched_lines<T>(
-    items: IterMut<MatchedItem<T>>,
+pub fn truncate_long_matched_lines(
+    items: IterMut<MatchedItem>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
@@ -98,8 +98,8 @@ pub fn truncate_long_matched_lines<T>(
     truncated_map
 }
 
-pub fn truncate_long_matched_lines_v0<T>(
-    items: IterMut<MatchedItem<T>>,
+pub fn truncate_long_matched_lines_v0(
+    items: IterMut<MatchedItem>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
