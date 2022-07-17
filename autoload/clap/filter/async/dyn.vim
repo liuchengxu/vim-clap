@@ -4,9 +4,9 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" Currently this is not configurable.
+" Deprecated, s:PAR_RUN is encouraged.
 let s:DYN_ITEMS_TO_SHOW = 40
-
+" TODO: make this confiurable?
 let s:PAR_RUN = v:true
 
 function! s:handle_message(msg) abort
@@ -24,9 +24,23 @@ function! clap#filter#async#dyn#start_directly(maple_cmd) abort
   call clap#job#stdio#start_service(function('s:handle_message'), a:maple_cmd)
 endfunction
 
-function! clap#filter#async#dyn#start(cmd) abort
+function! clap#filter#async#dyn#start_filter(cmd) abort
   let s:last_query = g:clap.input.get()
-  call clap#job#stdio#start_dyn_filter_service(function('s:handle_message'), a:cmd)
+
+  let filter_cmd = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? ['--icon=File'] : []
+  let filter_cmd += [
+        \ '--number', s:PAR_RUN ? g:clap.display.preload_capacity : 100,
+        \ '--winwidth', winwidth(g:clap.display.winid),
+        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
+        \ 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir(),
+        \ ]
+
+  if s:PAR_RUN
+    call add(filter_cmd, '--par-run')
+  endif
+
+  let filter_cmd = clap#maple#build_cmd_list(filter_cmd)
+  call clap#job#stdio#start_service(function('s:handle_message'), filter_cmd)
 endfunction
 
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
@@ -44,7 +58,7 @@ function! s:prepare_grep_cmd() abort
   if has_key(g:clap.context, 'no-cache')
     call add(subcmd, '--no-cache')
   endif
-  let opts = s:PAR_RUN ? [] : ['--number', s:DYN_ITEMS_TO_SHOW]
+  let opts = s:PAR_RUN ? ['--number', g:clap.display.preload_capacity] : ['--number', s:DYN_ITEMS_TO_SHOW]
   let opts += [
         \ '--winwidth', winwidth(g:clap.display.winid),
         \ 'grep', g:clap.input.get(),

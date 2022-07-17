@@ -158,21 +158,5 @@ function! clap#job#stdio#start_rpc_service(MessageHandler) abort
   return
 endfunction
 
-function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
-  let s:MessageHandler = a:MessageHandler
-
-  let filter_cmd = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? ['--icon=File'] : []
-  let filter_cmd += [
-        \ '--number', '100',
-        \ '--winwidth', winwidth(g:clap.display.winid),
-        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
-        \ 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir(),
-        \ '--par-run',
-        \ ]
-
-  call s:start_service_job(clap#maple#build_cmd_list(filter_cmd))
-  return
-endfunction
-
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

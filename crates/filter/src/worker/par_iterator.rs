@@ -157,11 +157,12 @@ fn par_dyn_run_inner(
     } = filter_context;
 
     let winwidth = winwidth.unwrap_or(100);
+    let number = number.unwrap_or(100);
 
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Arc::new(Mutex::new(BestItems::new(100, icon, winwidth)));
+    let best_items = Arc::new(Mutex::new(BestItems::new(number, icon, winwidth)));
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
     // The line stream can contain invalid UTF-8 data.
@@ -192,7 +193,7 @@ fn par_dyn_run_inner(
         matched_items,
         total_matched,
         Some(total_processed),
-        number.unwrap_or(100),
+        number,
         winwidth,
         icon,
     );
