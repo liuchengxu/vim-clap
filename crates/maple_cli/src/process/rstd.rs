@@ -63,6 +63,7 @@ impl StdCommand {
     }
 
     /// Executes the command and collect the stdout in lines.
+    #[allow(unused)]
     pub fn lines(&mut self) -> std::io::Result<Vec<String>> {
         let output = self.0.output()?;
         super::process_output(output)

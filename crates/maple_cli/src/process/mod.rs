@@ -2,7 +2,7 @@ pub mod light;
 pub mod rstd;
 pub mod tokio;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use rayon::prelude::*;
@@ -38,28 +38,7 @@ pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<Strin
 }
 
 /// Wrapper type of [`StdCommand`].
-#[derive(Debug)]
-pub struct AsyncCommand(StdCommand);
-
-impl AsyncCommand {
-    pub fn new(command: impl AsRef<str>) -> Self {
-        Self(command.as_ref().into())
-    }
-
-    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
-        self.0.current_dir(dir);
-        self
-    }
-
-    #[allow(unused)]
-    pub async fn lines(&mut self) -> std::io::Result<Vec<String>> {
-        self.0.lines()
-    }
-
-    pub fn stdout(&mut self) -> std::io::Result<Vec<u8>> {
-        self.0.stdout()
-    }
-}
+pub type AsyncCommand = StdCommand;
 
 /// Shell command for executing with cache.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
