@@ -66,8 +66,8 @@ impl BestItems {
     fn new(max_capacity: usize, icon: Icon, winwidth: usize) -> Self {
         Self {
             past: Instant::now(),
-            items: Vec::new(),
-            last_lines: Vec::new(),
+            items: Vec::with_capacity(max_capacity),
+            last_lines: Vec::with_capacity(max_capacity),
             max_capacity,
             icon,
             winwidth,
