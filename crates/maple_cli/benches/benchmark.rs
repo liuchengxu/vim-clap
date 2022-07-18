@@ -1,6 +1,8 @@
+use std::io::BufRead;
 use std::sync::Arc;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use rayon::prelude::*;
 
 use filter::{MatchedItem, MultiItem, Query};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
@@ -9,8 +11,6 @@ use types::ClapItem;
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 
 fn prepare_source_items() -> Vec<MultiItem> {
-    use std::io::BufRead;
-
     std::io::BufReader::new(
         std::fs::File::open("/home/xlc/.cache/vimclap/3289946909090762716").unwrap(), // 1 million +
     )
@@ -23,22 +23,18 @@ fn filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<Matched
     list.into_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher.match_item(item, &query)
+            matcher.match_item(item, query)
         })
-        .map(Into::into)
         .collect()
 }
 
 // 3 times faster than filter
 fn par_filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
-    use rayon::prelude::*;
-
     list.into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
-            matcher.match_item(item, &query)
+            matcher.match_item(item, query)
         })
-        .map(Into::into)
         .collect()
 }
 
@@ -52,7 +48,7 @@ fn bench_filter(c: &mut Criterion) {
     let source_items_100k = take_items(100_000);
     let source_items_1m = take_items(1_000_000);
 
-    let matcher = matcher::Matcher::with_bonuses(Vec::new(), FuzzyAlgorithm::Fzy, MatchScope::Full);
+    let matcher = Matcher::with_bonuses(Vec::new(), FuzzyAlgorithm::Fzy, MatchScope::Full);
     let query: Query = "executor".into();
 
     c.bench_function("filter 1k", |b| {
