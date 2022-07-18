@@ -7,11 +7,12 @@ use clap::Parser;
 
 use filter::{FilterContext, Source};
 use matcher::{ClapItem, MatchScope, Matcher};
+use rayon::prelude::*;
 
 use super::SharedParams;
 use crate::app::Params;
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, DEFAULT_EXCLUDE_OPT};
+use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo, DEFAULT_EXCLUDE_OPT};
 use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -26,6 +27,10 @@ pub struct RecursiveTags {
     /// Runs as the forerunner job, create cache when neccessary.
     #[clap(long)]
     forerunner: bool,
+
+    /// Run in parallel.
+    #[clap(long)]
+    par_run: bool,
 
     /// Shared parameters arouns ctags.
     #[clap(flatten)]
@@ -55,7 +60,15 @@ impl RecursiveTags {
         )))
     }
 
-    pub fn run(&self, Params { no_cache, icon, .. }: Params) -> Result<()> {
+    pub fn run(
+        &self,
+        Params {
+            no_cache,
+            icon,
+            number,
+            ..
+        }: Params,
+    ) -> Result<()> {
         ensure_has_json_support()?;
 
         let ctags_cmd = self.assemble_ctags_cmd()?;
@@ -69,21 +82,40 @@ impl RecursiveTags {
                 ctags_cmd.par_create_cache()?
             };
             send_response_from_cache(&cache, total, SendResponse::Json, icon);
-            return Ok(());
         } else {
-            filter::dyn_run(
-                self.query.as_deref().unwrap_or_default(),
-                Source::List(ctags_cmd.formatted_tags_iter()?.map(|tag_line| {
-                    let item: Arc<dyn ClapItem> = Arc::new(tag_line);
-                    item
-                })),
-                FilterContext::new(
-                    icon,
-                    Some(30),
-                    None,
-                    Matcher::default().set_match_scope(MatchScope::TagName),
-                ),
-            )?;
+            let filter_context = FilterContext::new(
+                icon,
+                number,
+                None,
+                Matcher::default().set_match_scope(MatchScope::TagName),
+            );
+
+            if self.par_run {
+                filter::par_dyn_run_list(
+                    self.query.as_deref().unwrap_or_default(),
+                    filter_context,
+                    ctags_cmd
+                        .stdout()?
+                        .par_split(|x| x == &b'\n')
+                        .filter_map(|tag| {
+                            if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
+                                let item: Arc<dyn ClapItem> = Arc::new(tag.format_proj_tags());
+                                Some(item)
+                            } else {
+                                None
+                            }
+                        }),
+                );
+            } else {
+                filter::dyn_run(
+                    self.query.as_deref().unwrap_or_default(),
+                    Source::List(ctags_cmd.formatted_tags_iter()?.map(|tag_line| {
+                        let item: Arc<dyn ClapItem> = Arc::new(tag_line);
+                        item
+                    })),
+                    filter_context,
+                )?;
+            }
         }
 
         Ok(())

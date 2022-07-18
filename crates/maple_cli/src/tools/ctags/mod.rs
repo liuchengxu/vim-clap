@@ -153,6 +153,11 @@ impl CtagsCommand {
         Self { inner }
     }
 
+    pub fn into_exec_cmd(self) -> subprocess::Exec {
+        let BaseCommand { command, cwd } = self.inner;
+        Exec::shell(command).cwd(cwd)
+    }
+
     /// Returns an iterator of tag line in a formatted form.
     pub fn formatted_lines(&self) -> Result<Vec<String>> {
         Ok(self
@@ -183,6 +188,14 @@ impl CtagsCommand {
                 }
             })
             .collect::<Vec<_>>())
+    }
+
+    pub fn stdout(&self) -> Result<Vec<u8>> {
+        let stdout = StdCommand::new(&self.inner.command)
+            .current_dir(&self.inner.cwd)
+            .stdout()?;
+
+        Ok(stdout)
     }
 
     /// Returns an iterator of raw line of ctags output.

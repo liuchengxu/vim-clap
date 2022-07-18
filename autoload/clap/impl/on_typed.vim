@@ -78,7 +78,7 @@ endfunction
 
 function! s:dyn_run_is_ok() abort
   if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+    call clap#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
     return v:true
   elseif g:clap.provider.source_type == g:__t_string
     call clap#filter#async#dyn#start_filter(g:clap.provider._().source)

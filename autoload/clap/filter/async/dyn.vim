@@ -33,6 +33,26 @@ function! clap#filter#async#dyn#start_blines() abort
   call clap#job#stdio#start_service(function('s:handle_stdio_message'), blines_cmd)
 endfunction
 
+function! clap#filter#async#dyn#start_ctags_recursive() abort
+  let s:last_query = g:clap.input.get()
+  if exists('g:__clap_forerunner_tempfile')
+    call clap#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
+  else
+    let ctags_cmd = g:clap_enable_icon ? ['--icon=ProjTags'] : []
+    let ctags_cmd += [
+          \ '--number', s:PAR_RUN ? g:clap.display.preload_capacity : s:DYN_ITEMS_TO_SHOW,
+          \ 'ctags', 'recursive-tags',
+          \ '--dir', clap#rooter#working_dir(),
+          \ '--query', g:clap.input.get(),
+          \ ]
+    if s:PAR_RUN
+      call add(ctags_cmd, '--par-run')
+    endif
+    let ctags_cmd = clap#maple#build_cmd_list(ctags_cmd)
+    call clap#job#stdio#start_service(function('s:handle_stdio_message'), ctags_cmd)
+  endif
+endfunction
+
 function! clap#filter#async#dyn#start_filter(cmd) abort
   let s:last_query = g:clap.input.get()
 
@@ -52,7 +72,7 @@ function! clap#filter#async#dyn#start_filter(cmd) abort
   call clap#job#stdio#start_service(function('s:handle_stdio_message'), filter_cmd)
 endfunction
 
-function! clap#filter#async#dyn#from_tempfile(tempfile) abort
+function! clap#filter#async#dyn#start_filter_with_cache(tempfile) abort
   let s:last_query = g:clap.input.get()
 
   call clap#job#stdio#start_service(
