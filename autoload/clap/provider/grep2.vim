@@ -12,11 +12,7 @@ if !executable('rg')
 endif
 
 function! s:grep2.on_typed()
-  if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#grep_from_cache(g:__clap_forerunner_tempfile)
-  else
-    call clap#filter#async#dyn#start_grep()
-  endif
+  call clap#filter#async#dyn#start_grep()
 endfunction
 
 function! s:grep2.init() abort

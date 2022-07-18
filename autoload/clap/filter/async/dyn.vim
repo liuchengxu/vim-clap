@@ -76,20 +76,20 @@ function! s:prepare_grep_cmd() abort
 endfunction
 
 function! clap#filter#async#dyn#start_grep() abort
-  let grep_cmd = s:prepare_grep_cmd() + ['--cmd-dir', clap#rooter#working_dir()]
-  if s:PAR_RUN
-    call add(grep_cmd, '--par-run')
-  endif
-  let grep_cmd = clap#maple#build_cmd_list(grep_cmd)
-  call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
-endfunction
+  let grep_cmd = s:prepare_grep_cmd()
 
-function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
-  let grep_cmd = s:prepare_grep_cmd() + ['--input', a:tempfile]
+  if exists('g:__clap_forerunner_tempfile')
+    let grep_cmd += ['--input', g:__clap_forerunner_tempfile]
+  else
+    let grep_cmd += ['--cmd-dir', clap#rooter#working_dir()]
+    call clap#filter#async#dyn#start_grep()
+  endif
+
   if s:PAR_RUN
     call add(grep_cmd, '--par-run')
   endif
   let grep_cmd = clap#maple#build_cmd_list(grep_cmd)
+
   call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
 endfunction
 
