@@ -15,7 +15,6 @@ use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use icon::Icon;
-use matcher::Matcher;
 use types::{ClapItem, MatchedItem, MultiItem, Query};
 use utility::println_json_with_length;
 
@@ -114,19 +113,27 @@ impl BestItems {
 
 /// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
 pub fn par_dyn_run_list<'a, 'b: 'a>(
-    matcher: &'a Matcher,
     query: &'a Query,
-    icon: Icon,
-    winwidth: usize,
+    filter_context: FilterContext,
     list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
-) -> (usize, usize, Vec<MatchedItem>) {
+) {
+    let FilterContext {
+        icon,
+        number,
+        winwidth,
+        matcher,
+    } = filter_context;
+
+    let winwidth = winwidth.unwrap_or(100);
+    let number = number.unwrap_or(100);
+
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Arc::new(Mutex::new(BestItems::new(100, icon, winwidth)));
+    let best_items = Arc::new(Mutex::new(BestItems::new(number, icon, winwidth)));
 
     list.into_par_iter().for_each(|item| {
-        let processed = processed_count.fetch_add(1, Ordering::Relaxed);
+        let processed = processed_count.fetch_add(1, Ordering::SeqCst);
 
         if let Some(matched_item) = matcher.match_item(item, query) {
             let matched = matched_count.fetch_add(1, Ordering::Relaxed);
@@ -139,12 +146,20 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
+
     let matched_items = Arc::try_unwrap(best_items)
         .expect("More than one strong reference")
         .into_inner()
         .items;
 
-    (total_matched, total_processed, matched_items)
+    printer::print_dyn_filter_results(
+        matched_items,
+        total_matched,
+        Some(total_processed),
+        number,
+        winwidth,
+        icon,
+    );
 }
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.

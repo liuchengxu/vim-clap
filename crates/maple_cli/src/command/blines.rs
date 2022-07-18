@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use filter::ParSource;
-use filter::Source;
+use filter::{Query, Source};
 use matcher::{Bonus, MatchResult};
 use types::ClapItem;
 
@@ -72,8 +72,30 @@ impl Blines {
         };
 
         if self.par_run {
-            let par_source = ParSource::File(self.input.clone().into());
-            filter::par_dyn_run(&self.query, par_source, filter_context)
+            let query: Query = self.query.clone().into();
+            filter::par_dyn_run_list(
+                &query,
+                filter_context,
+                std::io::BufReader::new(std::fs::File::open(&self.input)?)
+                    .lines()
+                    .par_bridge()
+                    .filter_map(|x| {
+                        x.ok().and_then(|line: String| {
+                            let index = index.fetch_add(1, Ordering::SeqCst);
+                            if line.trim().is_empty() {
+                                None
+                            } else {
+                                let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
+                                    raw: line,
+                                    line_number: index + 1,
+                                });
+
+                                Some(item)
+                            }
+                        })
+                    }),
+            );
+            Ok(())
         } else {
             filter::dyn_run(
                 &self.query,
