@@ -24,6 +24,15 @@ function! clap#filter#async#dyn#start_directly(maple_cmd) abort
   call clap#job#stdio#start_service(function('s:handle_message'), a:maple_cmd)
 endfunction
 
+function! clap#filter#async#dyn#start_blines() abort
+  let s:last_query = g:clap.input.get()
+  let blines_cmd = clap#maple#command#blines()
+  if s:PAR_RUN
+    call add(blines_cmd, '--par-run')
+  endif
+  call clap#job#stdio#start_service(function('s:handle_message'), blines_cmd)
+endfunction
+
 function! clap#filter#async#dyn#start_filter(cmd) abort
   let s:last_query = g:clap.input.get()
 

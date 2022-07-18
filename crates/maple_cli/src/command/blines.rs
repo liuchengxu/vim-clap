@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::io::BufRead;
 use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
 
+use filter::ParSource;
 use filter::Source;
 use matcher::{Bonus, MatchResult};
 use types::ClapItem;
@@ -23,6 +25,9 @@ pub struct Blines {
     /// File path of current vim buffer.
     #[clap(index = 2, long)]
     input: AbsPathBuf,
+
+    #[clap(long)]
+    par_run: bool,
 }
 
 #[derive(Debug)]
@@ -66,28 +71,33 @@ impl Blines {
             params.into_filter_context()
         };
 
-        filter::dyn_run(
-            &self.query,
-            Source::List(
-                std::io::BufReader::new(std::fs::File::open(&self.input)?)
-                    .lines()
-                    .filter_map(|x| {
-                        x.ok().and_then(|line: String| {
-                            let index = index.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                            if line.trim().is_empty() {
-                                None
-                            } else {
-                                let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
-                                    raw: line,
-                                    line_number: index + 1,
-                                });
+        if self.par_run {
+            let par_source = ParSource::File(self.input.clone().into());
+            filter::par_dyn_run(&self.query, par_source, filter_context)
+        } else {
+            filter::dyn_run(
+                &self.query,
+                Source::List(
+                    std::io::BufReader::new(std::fs::File::open(&self.input)?)
+                        .lines()
+                        .filter_map(|x| {
+                            x.ok().and_then(|line: String| {
+                                let index = index.fetch_add(1, Ordering::SeqCst);
+                                if line.trim().is_empty() {
+                                    None
+                                } else {
+                                    let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
+                                        raw: line,
+                                        line_number: index + 1,
+                                    });
 
-                                Some(item)
-                            }
-                        })
-                    }),
-            ),
-            filter_context,
-        )
+                                    Some(item)
+                                }
+                            })
+                        }),
+                ),
+                filter_context,
+            )
+        }
     }
 }

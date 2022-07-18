@@ -124,11 +124,7 @@ impl DecoratedLines {
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines(
-    top_list: Vec<MatchedItem>,
-    winwidth: usize,
-    icon: Icon,
-) -> DecoratedLines {
+pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DecoratedLines {
     let mut top_list = top_list;
     let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
