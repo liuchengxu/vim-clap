@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+## Improved
+
+- Support filtering in parallel with the dynamic progress update. The filtering time is reduced about 50% from the sequential to the parallel version.
+
 ## Changed
 
 - The spinner will be hidden if it's idle.
@@ -9,6 +13,7 @@
 ## Fixed
 
 - Maple self-upgrade is broken. #847, #848
+- Fix the language bonus matching of `blines` provider.
 
 ## [0.35] 2022-06-12
 
