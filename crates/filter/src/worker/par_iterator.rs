@@ -1,13 +1,10 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
-use std::io::Read;
+use std::io::{BufRead, Read};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::{
-    io::BufRead,
-    sync::atomic::{AtomicUsize, Ordering},
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -111,12 +108,14 @@ impl BestItems {
     }
 }
 
-/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
+/// Generate an iterator of [`MatchedItem`] from a parallelable iterator.
 pub fn par_dyn_run_list<'a, 'b: 'a>(
-    query: &'a Query,
+    query: &'a str,
     filter_context: FilterContext,
     list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
 ) {
+    let query: Query = query.into();
+
     let FilterContext {
         icon,
         number,
@@ -135,7 +134,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
     list.into_par_iter().for_each(|item| {
         let processed = processed_count.fetch_add(1, Ordering::SeqCst);
 
-        if let Some(matched_item) = matcher.match_item(item, query) {
+        if let Some(matched_item) = matcher.match_item(item, &query) {
             let matched = matched_count.fetch_add(1, Ordering::Relaxed);
 
             let mut best_items = best_items.lock();
@@ -190,7 +189,7 @@ fn par_dyn_run_inner(
         .filter_map(Result::ok)
         .par_bridge()
         .for_each(|line: String| {
-            let processed = processed_count.fetch_add(1, Ordering::Relaxed);
+            let processed = processed_count.fetch_add(1, Ordering::SeqCst);
 
             let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
 

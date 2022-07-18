@@ -8,7 +8,7 @@ use anyhow::Result;
 use clap::Parser;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use filter::{Query, Source};
+use filter::Source;
 use matcher::{Bonus, MatchResult};
 use types::ClapItem;
 
@@ -72,9 +72,8 @@ impl Blines {
         };
 
         if self.par_run {
-            let query: Query = self.query.clone().into();
             filter::par_dyn_run_list(
-                &query,
+                &self.query,
                 filter_context,
                 std::io::BufReader::new(std::fs::File::open(&self.input)?)
                     .lines()
