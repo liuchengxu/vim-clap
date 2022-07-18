@@ -4,9 +4,9 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use filter::subprocess::{Exec, Redirection};
 use itertools::Itertools;
 use rayon::prelude::*;
+use subprocess::{Exec, Redirection};
 
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;

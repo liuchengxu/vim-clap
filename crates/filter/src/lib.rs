@@ -21,7 +21,6 @@ pub use self::source::Source;
 pub use self::worker::iterator::dyn_run;
 pub use self::worker::par_iterator::{par_dyn_run, par_dyn_run_list, ParSource};
 pub use matcher;
-pub use subprocess;
 pub use types::{CaseMatching, MatchedItem, MultiItem, Query};
 
 /// Context for running the filter.

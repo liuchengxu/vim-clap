@@ -1,9 +1,10 @@
 use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::{anyhow, Result};
-use dumb_analyzer::resolve_reference_kind;
-use filter::subprocess::Exec;
 use rayon::prelude::*;
+use subprocess::Exec;
+
+use dumb_analyzer::resolve_reference_kind;
 
 use super::Symbol;
 use crate::utils::ExactOrInverseTerms;

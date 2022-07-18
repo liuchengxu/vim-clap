@@ -771,6 +771,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "subprocess",
  "tokio",
  "tracing",
  "tracing-appender",

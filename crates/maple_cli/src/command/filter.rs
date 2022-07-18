@@ -4,9 +4,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
+use subprocess::Exec;
 
 use filter::ParSource;
-use filter::{subprocess::Exec, FilterContext, Source};
+use filter::{FilterContext, Source};
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 
 use crate::app::Params;

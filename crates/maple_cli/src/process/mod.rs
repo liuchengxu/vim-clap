@@ -77,7 +77,7 @@ impl BaseCommand {
 
     /// Executes and returns an value that implements `Read` trait.
     pub fn stream_stdout(&self) -> Result<impl std::io::Read> {
-        let stdout_stream = filter::subprocess::Exec::shell(&self.command)
+        let stdout_stream = subprocess::Exec::shell(&self.command)
             .cwd(&self.cwd)
             .stream_stdout()?;
 

@@ -5,11 +5,11 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use filter::subprocess::{Exec, NullFile};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use subprocess::{Exec, NullFile};
 
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};

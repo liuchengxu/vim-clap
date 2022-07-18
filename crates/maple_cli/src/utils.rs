@@ -7,8 +7,8 @@ use chrono::prelude::*;
 use directories::ProjectDirs;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
+use subprocess::Exec;
 
-use filter::subprocess::Exec;
 use icon::Icon;
 use types::{CaseMatching, ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
