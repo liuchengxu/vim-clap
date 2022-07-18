@@ -11,7 +11,7 @@ use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};
-use crate::{sort_initial_filtered, FilterContext, Source};
+use crate::{sort_matched_items, FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -247,7 +247,7 @@ fn dyn_collect_number(
 ) -> (usize, Vec<MatchedItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
-    let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
+    let mut buffer = Vec::with_capacity(2 * ITEMS_TO_SHOW.max(number));
 
     let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
@@ -313,10 +313,10 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             }
         };
 
-        let ranked = sort_initial_filtered(matched_items);
+        let matched_items = sort_matched_items(matched_items);
 
         printer::print_dyn_filter_results(
-            ranked,
+            matched_items,
             total_matched,
             None,
             number,
@@ -324,21 +324,21 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             icon,
         );
     } else {
-        let filtered = match source {
+        let matched_items = match source {
             Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),
             Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
             Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
             Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
         };
 
-        let ranked = sort_initial_filtered(filtered);
+        let matched_items = sort_matched_items(matched_items);
 
         for MatchedItem {
             item,
             indices,
             display_text,
             ..
-        } in ranked.into_iter()
+        } in matched_items.into_iter()
         {
             let text = display_text.unwrap_or_else(|| item.display_text().into());
             println_json!(text, indices);

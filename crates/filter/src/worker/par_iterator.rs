@@ -95,6 +95,7 @@ impl BestItems {
                     let decorated_lines =
                         printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
 
+                    // TODO: the lines are the same, but the highlights are not.
                     if self.last_lines != decorated_lines.lines.as_slice() {
                         decorated_lines.print_on_filter_ongoing(matched, processed);
                         self.last_lines = decorated_lines.lines;
