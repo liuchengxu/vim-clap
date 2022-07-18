@@ -181,7 +181,7 @@ impl CtagsCommand {
         Ok(stdout
             .par_split(|x| x == &b'\n')
             .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
+                if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
                     Some(tag.format_proj_tags())
                 } else {
                     None
