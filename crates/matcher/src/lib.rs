@@ -183,6 +183,10 @@ impl Matcher {
     pub fn match_item(&self, item: Arc<dyn ClapItem>, query: &Query) -> Option<MatchedItem> {
         let match_text = item.match_text();
 
+        if match_text.is_empty() {
+            return None;
+        }
+
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(match_text) {
