@@ -62,7 +62,7 @@ jobs:
 
   crates:
     name: Rust Tests
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, windows-latest]
     strategy:
       fail-fast: false
 

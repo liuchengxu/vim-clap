@@ -1,6 +1,6 @@
 use std::fs::read_dir;
 use std::io::Write;
-use std::path::{self, PathBuf};
+use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -38,9 +38,9 @@ impl List {
         let stdout = std::io::stdout();
         let mut lock = stdout.lock();
 
-        let cache_dir_str = cache_dir.display();
+        let cache_dir_display = cache_dir.display();
         writeln!(lock, "Current cache directory:")?;
-        writeln!(lock, "\t{}\n", cache_dir_str)?;
+        writeln!(lock, "\t{cache_dir_display}\n")?;
 
         let cache_info = CACHE_INFO_IN_MEMORY.lock();
         let mut digests = cache_info.digests();
@@ -64,9 +64,10 @@ impl List {
             entries.sort();
 
             for fname in entries {
-                writeln!(lock, "\t{}{}{}", cache_dir_str, path::MAIN_SEPARATOR, fname)?;
+                writeln!(lock, "\t{cache_dir_display}{MAIN_SEPARATOR}{fname}")?;
             }
         }
+
         Ok(())
     }
 }
