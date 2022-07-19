@@ -15,16 +15,16 @@ pub struct Digest {
     /// Base command.
     #[serde(flatten)]
     pub base: BaseCommand,
-    /// Time of last execution.
-    pub execution_time: UtcTime,
     /// Time of last visit.
     pub last_visit: UtcTime,
+    /// Time of last execution.
+    pub execution_time: UtcTime,
+    /// Number of results from last execution.
+    pub total: usize,
     /// Number of times the base command was visited.
     pub total_visits: usize,
     /// Number of times the command was executed so far.
     pub total_executions: usize,
-    /// Number of results from last execution.
-    pub total: usize,
     /// File persistent on the disk for caching the results.
     pub cached_path: PathBuf,
 }
@@ -88,9 +88,16 @@ impl CacheInfo {
     /// Remove the entries whose `cwd` no longer exists.
     ///
     /// The original directory for the cache can be deleted or moved to another place.
-    pub fn remove_invalid_entries(&mut self) {
+    pub fn remove_invalid_and_old_entries(&mut self) {
+        let now = Utc::now();
+
+        const MAX_DAYS: i64 = 30;
+
         self.digests.retain(|digest| {
-            if digest.base.cwd.exists() {
+            if digest.base.cwd.exists()
+                && digest.cached_path.exists()
+                && now.signed_duration_since(digest.last_visit).num_days() < MAX_DAYS
+            {
                 true
             } else {
                 // Remove the cache file accordingly.
