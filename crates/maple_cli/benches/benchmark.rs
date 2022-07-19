@@ -88,6 +88,8 @@ fn bench_ctags(c: &mut Criterion) {
     let ctags_cmd =
         build_recursive_ctags_cmd("/home/xlc/src/github.com/paritytech/substrate".into());
 
+    // TODO: Make the parallel version faster, the previous benchmark result in the initial PR
+    // https://github.com/liuchengxu/vim-clap/pull/755 is incorrect due to the cwd set incorrectly.
     c.bench_function("parallel recursive ctags", |b| {
         b.iter(|| ctags_cmd.par_formatted_lines())
     });

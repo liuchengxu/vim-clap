@@ -17,8 +17,9 @@ static CACHE_METADATA_PATH: Lazy<Option<PathBuf>> =
     Lazy::new(|| generate_data_file_path(CACHE_FILENAME).ok());
 
 pub static CACHE_INFO_IN_MEMORY: Lazy<Arc<Mutex<CacheInfo>>> = Lazy::new(|| {
-    let maybe_persistent = load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref())
+    let mut maybe_persistent = load_json::<CacheInfo, _>(CACHE_METADATA_PATH.as_deref())
         .unwrap_or_else(|| CacheInfo::with_capacity(MAX_DIGESTS));
+    maybe_persistent.remove_invalid_entries();
     Arc::new(Mutex::new(maybe_persistent))
 });
 

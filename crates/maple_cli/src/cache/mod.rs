@@ -85,6 +85,21 @@ impl CacheInfo {
         }
     }
 
+    /// Remove the entries whose `cwd` no longer exists.
+    ///
+    /// The original directory for the cache can be deleted or moved to another place.
+    pub fn remove_invalid_entries(&mut self) {
+        self.digests.retain(|digest| {
+            if digest.base.cwd.exists() {
+                true
+            } else {
+                // Remove the cache file accordingly.
+                let _ = std::fs::remove_file(&digest.cached_path);
+                false
+            }
+        });
+    }
+
     /// Finds the digest given `base_cmd`.
     fn find_digest(&self, base_cmd: &BaseCommand) -> Option<usize> {
         self.digests.iter().position(|d| &d.base == base_cmd)
