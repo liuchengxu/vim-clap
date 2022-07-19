@@ -10,6 +10,7 @@ mod stdio_server;
 mod tools;
 mod utils;
 
+/// For benchmarks.
 pub mod command;
 /// Re-exports.
 pub use {

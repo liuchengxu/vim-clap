@@ -82,7 +82,9 @@ fn bench_filter(c: &mut Criterion) {
     c.bench_function("par filter 1m", |b| {
         b.iter(|| par_filter(black_box(source_items_1m.clone()), &matcher, &query))
     });
+}
 
+fn bench_ctags(c: &mut Criterion) {
     let ctags_cmd =
         build_recursive_ctags_cmd("/home/xlc/src/github.com/paritytech/substrate".into());
 
@@ -95,5 +97,5 @@ fn bench_filter(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_filter);
+criterion_group!(benches, bench_filter, bench_ctags);
 criterion_main!(benches);
