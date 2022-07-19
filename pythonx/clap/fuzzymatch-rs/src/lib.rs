@@ -179,13 +179,13 @@ mod tests {
         ];
 
         for (needle, haystack) in test_cases.into_iter() {
-            let py_result: (i64, Vec<usize>) = py_scorer
+            let py_result: (i32, Vec<usize>) = py_scorer
                 .getattr("substr_scorer")
                 .unwrap()
                 .call1((needle, haystack))
                 .unwrap()
                 .extract()
-                .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
+                .map(|(score, positions): (f64, Vec<usize>)| (score as i32, positions))
                 .unwrap();
             let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
             assert_eq!(py_result, rs_result);
