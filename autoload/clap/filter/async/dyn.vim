@@ -15,7 +15,13 @@ function! s:handle_stdio_message(msg) abort
     return
   endif
 
-  call clap#state#process_dyn_message(a:msg)
+  let decoded = json_decode(a:msg)
+
+  if type(decoded) != v:t_dict
+    return
+  endif
+
+  call clap#state#process_filter_message(decoded, v:false)
   call clap#preview#async_open_with_delay()
 endfunction
 
@@ -81,28 +87,24 @@ function! clap#filter#async#dyn#start_filter_with_cache(tempfile) abort
         \ )
 endfunction
 
-function! s:prepare_grep_cmd() abort
+function! clap#filter#async#dyn#start_grep() abort
   let s:last_query = g:clap.input.get()
-  let subcmd = g:clap_enable_icon ? ['--icon=Grep'] : []
+
+  let grep_cmd = g:clap_enable_icon ? ['--icon=Grep'] : []
   if has_key(g:clap.context, 'no-cache')
-    call add(subcmd, '--no-cache')
+    call add(grep_cmd, '--no-cache')
   endif
-  let opts = s:PAR_RUN ? ['--number', g:clap.display.preload_capacity] : ['--number', s:DYN_ITEMS_TO_SHOW]
-  let opts += [
+  let grep_cmd += [
+        \ '--number', s:PAR_RUN ? g:clap.display.preload_capacity : s:DYN_ITEMS_TO_SHOW,
         \ '--winwidth', winwidth(g:clap.display.winid),
+        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
         \ 'grep', g:clap.input.get(),
         \ ]
-  return subcmd + opts
-endfunction
-
-function! clap#filter#async#dyn#start_grep() abort
-  let grep_cmd = s:prepare_grep_cmd()
 
   if exists('g:__clap_forerunner_tempfile')
     let grep_cmd += ['--input', g:__clap_forerunner_tempfile]
   else
     let grep_cmd += ['--cmd-dir', clap#rooter#working_dir()]
-    call clap#filter#async#dyn#start_grep()
   endif
 
   if s:PAR_RUN

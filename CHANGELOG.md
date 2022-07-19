@@ -12,6 +12,7 @@
 ## Changed
 
 - The spinner will be hidden if it's idle.
+- `dumb_jump`: ignore the results from the files not trcked by git if the project is a git repo.
 
 ## Fixed
 

@@ -60,16 +60,6 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
-function! clap#state#process_dyn_message(msg) abort
-  let decoded = json_decode(a:msg)
-
-  if type(decoded) != v:t_dict
-    return
-  endif
-
-  call clap#state#process_filter_message(decoded, v:false)
-endfunction
-
 function! clap#state#process_preview_result(result) abort
   if has_key(a:result, 'lines')
     try
