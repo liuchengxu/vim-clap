@@ -19,14 +19,14 @@ use crate::utils::ExactOrInverseTerms;
 #[derive(Debug, Clone, Default)]
 pub(super) struct SearchingWorker {
     pub cwd: String,
-    pub extension: String,
     pub query_info: QueryInfo,
+    pub source_file_extension: String,
 }
 
 impl SearchingWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
         let mut tags_generator = TagsGenerator::with_dir(self.cwd);
-        if let Some(language) = get_language(&self.extension) {
+        if let Some(language) = get_language(&self.source_file_extension) {
             tags_generator.set_languages(language.into());
         }
 
@@ -53,7 +53,7 @@ impl SearchingWorker {
         GtagsSearcher::new(self.cwd.into()).search_usages(
             &keyword,
             &filtering_terms,
-            &self.extension,
+            &self.source_file_extension,
         )
     }
 
@@ -65,7 +65,7 @@ impl SearchingWorker {
         } = self.query_info;
         let searcher = RegexSearcher {
             word: keyword,
-            extension: self.extension,
+            extension: self.source_file_extension,
             dir: Some(self.cwd.into()),
         };
         searcher.search_usages(false, &filtering_terms).await
@@ -90,8 +90,6 @@ fn merge_all(
     }
 
     results.append(&mut regex_results);
-
-    // TODO: remove the usages of which the source file is not tracked by git in a git repo.
 
     results
 }
@@ -202,6 +200,12 @@ impl SearchEngine {
                 .collect::<Vec<_>>();
 
             addressable_usages.retain(|usage| git_tracked.contains(&usage.path));
+        }
+
+        // Ignore the results from the file whose path contains `test`
+        let ignore_test = true;
+        if ignore_test {
+            addressable_usages.retain(|usage| !usage.path.contains("test"));
         }
 
         Ok(addressable_usages.into())
