@@ -773,6 +773,7 @@ dependencies = [
  "serde_json",
  "subprocess",
  "tokio",
+ "toml",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

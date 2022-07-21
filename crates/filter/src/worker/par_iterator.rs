@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use parking_lot::Mutex;
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use icon::Icon;
@@ -30,21 +30,40 @@ pub enum ParSource {
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn par_dyn_run(
     query: &str,
-    par_source: ParSource,
     filter_context: FilterContext,
+    par_source: ParSource,
 ) -> Result<()> {
     let query: Query = query.into();
 
     match par_source {
         ParSource::File(file) => {
-            par_dyn_run_inner(&query, filter_context, std::fs::File::open(file)?)?;
+            par_dyn_run_inner::<Empty<_>, _>(
+                &query,
+                filter_context,
+                ParSourceInner::Lines(std::fs::File::open(file)?),
+            )?;
         }
         ParSource::Exec(exec) => {
-            par_dyn_run_inner(&query, filter_context, exec.stream_stdout()?)?;
+            par_dyn_run_inner::<Empty<_>, _>(
+                &query,
+                filter_context,
+                ParSourceInner::Lines(exec.stream_stdout()?),
+            )?;
         }
     }
 
     Ok(())
+}
+
+/// Generate an iterator of [`MatchedItem`] from a parallelable iterator.
+pub fn par_dyn_run_list<'a, 'b: 'a>(
+    query: &'a str,
+    filter_context: FilterContext,
+    items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
+) {
+    let query: Query = query.into();
+    par_dyn_run_inner::<_, std::io::Empty>(&query, filter_context, ParSourceInner::Items(items))
+        .expect("Matching items in parallel can not fail");
 }
 
 #[derive(Debug)]
@@ -108,64 +127,16 @@ impl BestItems {
     }
 }
 
-/// Generate an iterator of [`MatchedItem`] from a parallelable iterator.
-pub fn par_dyn_run_list<'a, 'b: 'a>(
-    query: &'a str,
-    filter_context: FilterContext,
-    list: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
-) {
-    let query: Query = query.into();
-
-    let FilterContext {
-        icon,
-        number,
-        winwidth,
-        matcher,
-    } = filter_context;
-
-    let winwidth = winwidth.unwrap_or(100);
-    let number = number.unwrap_or(100);
-
-    let matched_count = AtomicUsize::new(0);
-    let processed_count = AtomicUsize::new(0);
-
-    let best_items = Arc::new(Mutex::new(BestItems::new(number, icon, winwidth)));
-
-    list.into_par_iter().for_each(|item| {
-        let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-
-        if let Some(matched_item) = matcher.match_item(item, &query) {
-            let matched = matched_count.fetch_add(1, Ordering::Relaxed);
-
-            let mut best_items = best_items.lock();
-            best_items.try_push_and_notify(matched_item, matched, processed);
-            drop(best_items);
-        }
-    });
-
-    let total_matched = matched_count.into_inner();
-    let total_processed = processed_count.into_inner();
-
-    let matched_items = Arc::try_unwrap(best_items)
-        .expect("More than one strong reference")
-        .into_inner()
-        .items;
-
-    printer::print_dyn_filter_results(
-        matched_items,
-        total_matched,
-        Some(total_processed),
-        number,
-        winwidth,
-        icon,
-    );
+enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send> {
+    Items(I),
+    Lines(R),
 }
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
-fn par_dyn_run_inner(
+fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send>(
     query: &Query,
     filter_context: FilterContext,
-    reader: impl Read + Send,
+    parallel_source: ParSourceInner<I, R>,
 ) -> Result<()> {
     let FilterContext {
         icon,
@@ -182,25 +153,37 @@ fn par_dyn_run_inner(
 
     let best_items = Arc::new(Mutex::new(BestItems::new(number, icon, winwidth)));
 
-    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-    // The line stream can contain invalid UTF-8 data.
-    std::io::BufReader::new(reader)
-        .lines()
-        .filter_map(Result::ok)
-        .par_bridge()
-        .for_each(|line: String| {
-            let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+    let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
+        if let Some(matched_item) = matcher.match_item(item, query) {
+            let matched = matched_count.fetch_add(1, Ordering::Relaxed);
 
-            let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+            let mut best_items = best_items.lock();
+            best_items.try_push_and_notify(matched_item, matched, processed);
+            drop(best_items);
+        }
+    };
 
-            if let Some(matched_item) = matcher.match_item(item, query) {
-                let matched = matched_count.fetch_add(1, Ordering::Relaxed);
-
-                let mut best_items = best_items.lock();
-                best_items.try_push_and_notify(matched_item, matched, processed);
-                drop(best_items);
-            }
-        });
+    match parallel_source {
+        ParSourceInner::Items(items) => {
+            items.into_par_iter().for_each(|item| {
+                let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                process_item(item, processed);
+            });
+        }
+        ParSourceInner::Lines(reader) => {
+            // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+            // The line stream can contain invalid UTF-8 data.
+            std::io::BufReader::new(reader)
+                .lines()
+                .filter_map(Result::ok)
+                .par_bridge()
+                .for_each(|line: String| {
+                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                    let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                    process_item(item, processed);
+                });
+        }
+    }
 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();

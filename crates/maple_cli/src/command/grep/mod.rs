@@ -91,10 +91,10 @@ impl Grep {
             let par_dyn_dun = |par_source: ParSource| {
                 filter::par_dyn_run(
                     &self.grep_query,
-                    par_source,
                     params
                         .into_filter_context()
                         .match_scope(MatchScope::GrepLine),
+                    par_source,
                 )
             };
 

@@ -239,6 +239,7 @@ function! g:clap#floating_win#input.open() abort
   call setbufvar(s:input_bufnr, 'autopairs_enabled', 0)
   call setbufvar(s:input_bufnr, 'pear_tree_enabled', 0)
   call setwinvar(s:input_winid, '&spell', 0)
+  call setwinvar(s:input_winid, '&cursorline', 0)
   let g:clap.input.winid = s:input_winid
 endfunction
 
@@ -331,7 +332,7 @@ function! s:adjust_display_for_border_symbol() abort
 endfunction
 
 function! s:get_config_preview(height) abort
-  let preview_direction = clap#preview#direction() 
+  let preview_direction = clap#preview#direction()
   if preview_direction ==# 'LR'
     let opts = nvim_win_get_config(s:display_winid)
     let opts.row -= 1

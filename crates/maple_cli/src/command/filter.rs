@@ -140,8 +140,8 @@ impl Filter {
         } else if self.par_run {
             filter::par_dyn_run(
                 &self.query,
-                self.generate_par_source(),
                 FilterContext::new(icon, number, winwidth, matcher),
+                self.generate_par_source(),
             )?;
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(

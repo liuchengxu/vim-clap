@@ -7,6 +7,9 @@ set cpoptions&vim
 
 let s:job_id = -1
 
+let s:stdio_job_timer = -1
+let s:stdio_job_delay = 100
+
 if has('nvim')
 
   let s:round_message = ''
@@ -149,7 +152,14 @@ function! clap#job#stdio#start_service(MessageHandler, maple_cmd) abort
   let s:MessageHandler = a:MessageHandler
   let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
   call s:start_service_job(a:maple_cmd)
-  return
+endfunction
+
+function! clap#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abort
+  if s:stdio_job_timer != -1
+    call timer_stop(s:stdio_job_timer)
+  endif
+
+  let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
 endfunction
 
 function! clap#job#stdio#start_rpc_service(MessageHandler) abort

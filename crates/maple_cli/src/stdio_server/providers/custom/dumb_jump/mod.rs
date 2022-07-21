@@ -164,14 +164,12 @@ async fn search_for_usages(
 
     let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
 
-    let (response, usages) = match search_engine
-        .run(SearchingWorker {
-            cwd,
-            query_info: query_info.clone(),
-            source_file_extension: extension,
-        })
-        .await
-    {
+    let searching_worker = SearchingWorker {
+        cwd,
+        query_info: query_info.clone(),
+        source_file_extension: extension,
+    };
+    let (response, usages) = match search_engine.run(searching_worker).await {
         Ok(usages) => {
             let response = {
                 let total = usages.len();
