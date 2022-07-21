@@ -4,26 +4,29 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use filter::subprocess::{Exec, Redirection};
 use itertools::Itertools;
 use rayon::prelude::*;
+use subprocess::{Exec, Redirection};
 
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;
-use crate::tools::ctags::TagsConfig;
+use crate::tools::ctags::TagsGenerator;
 use crate::utils::ExactOrInverseTerms;
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CtagsSearcher<'a, P> {
-    config: TagsConfig<'a, P>,
     tags_path: PathBuf,
+    tags_generator: TagsGenerator<'a, P>,
 }
 
 impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
-    pub fn new(config: TagsConfig<'a, P>) -> Self {
-        let tags_path = config.tags_path();
-        Self { config, tags_path }
+    pub fn new(tags_generator: TagsGenerator<'a, P>) -> Self {
+        let tags_path = tags_generator.tags_path();
+        Self {
+            tags_path,
+            tags_generator,
+        }
     }
 
     /// Returns `true` if the tags file already exists.
@@ -33,7 +36,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
 
     /// Generate the `tags` file.
     pub fn generate_tags(&self) -> Result<()> {
-        self.config.generate_tags()
+        self.tags_generator.generate_tags()
     }
 
     pub fn search_usages(

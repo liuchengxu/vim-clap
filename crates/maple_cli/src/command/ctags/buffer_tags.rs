@@ -5,10 +5,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use filter::subprocess::{Exec as SubprocessCommand, Redirection};
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use subprocess::{Exec as SubprocessCommand, Redirection};
 use tokio::process::Command as TokioCommand;
 
 use crate::app::Params;

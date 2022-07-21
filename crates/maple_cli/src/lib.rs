@@ -16,6 +16,4 @@ pub use {
     anyhow::{Context, Result},
     app::{Cmd, Maple},
     clap::Parser,
-    filter::{subprocess, Source},
-    icon::{Icon, IconKind},
 };

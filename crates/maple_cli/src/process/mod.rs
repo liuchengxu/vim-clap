@@ -2,9 +2,9 @@ pub mod light;
 pub mod rstd;
 pub mod tokio;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -15,9 +15,12 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
 /// Remove the last line if it's empty.
-pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
+pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<String>> {
     if !output.status.success() && !output.stderr.is_empty() {
-        return Err(anyhow!("Error in output: {:?}", output.stderr));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Error in output: {:?}", output.stderr),
+        ));
     }
 
     let mut lines = output
@@ -34,29 +37,7 @@ pub fn process_output(output: std::process::Output) -> Result<Vec<String>> {
     Ok(lines)
 }
 
-/// Wrapper type of [`StdCommand`].
-#[derive(Debug)]
-pub struct AsyncCommand(StdCommand);
-
-impl AsyncCommand {
-    pub fn new(command: impl AsRef<str>) -> Self {
-        Self(command.as_ref().into())
-    }
-
-    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
-        self.0.current_dir(dir);
-        self
-    }
-
-    #[allow(unused)]
-    pub async fn lines(&mut self) -> Result<Vec<String>> {
-        self.0.lines()
-    }
-
-    pub fn stdout(&mut self) -> Result<Vec<u8>> {
-        self.0.stdout()
-    }
-}
+pub type AsyncCommand = StdCommand;
 
 /// Shell command for executing with cache.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -95,7 +76,7 @@ impl BaseCommand {
 
     /// Executes and returns an value that implements `Read` trait.
     pub fn stream_stdout(&self) -> Result<impl std::io::Read> {
-        let stdout_stream = filter::subprocess::Exec::shell(&self.command)
+        let stdout_stream = subprocess::Exec::shell(&self.command)
             .cwd(&self.cwd)
             .stream_stdout()?;
 

@@ -5,11 +5,11 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-use filter::subprocess::{Exec, NullFile};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use subprocess::{Exec, NullFile};
 
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
@@ -25,7 +25,7 @@ pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
 });
 
 /// Directory for the `tags` files.
-pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
+pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let mut tags_dir = PROJECT_DIRS.data_dir().to_path_buf();
     tags_dir.push("tags");
 
@@ -34,20 +34,83 @@ pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     tags_dir
 });
 
+pub static CTAGS_EXISTS: Lazy<bool> = Lazy::new(|| {
+    std::process::Command::new("ctags")
+        .arg("--version")
+        .stderr(std::process::Stdio::inherit())
+        .output()
+        .ok()
+        .and_then(|output| {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            stdout
+                .split('\n')
+                .next()
+                .map(|line| line.starts_with("Universal Ctags"))
+        })
+        .unwrap_or(false)
+});
+
 /// If the ctags executable supports `--output-format=json`.
-pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> =
-    Lazy::new(|| detect_json_feature().unwrap_or(false));
+pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> = Lazy::new(|| {
+    fn detect_json_feature() -> std::io::Result<bool> {
+        let output = std::process::Command::new("ctags")
+            .arg("--list-features")
+            .stderr(std::process::Stdio::inherit())
+            .output()?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if stdout.split('\n').any(|x| x.starts_with("json")) {
+            Ok(true)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "ctags executable has no +json feature",
+            ))
+        }
+    }
+
+    detect_json_feature().unwrap_or(false)
+});
 
 /// Used to specify the language when working with `readtags`.
-pub static LANG_MAPS: Lazy<HashMap<String, String>> =
-    Lazy::new(|| generate_lang_maps().expect("Failed to process the output of `--list-maps`"));
+pub static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
+    fn generate_lang_maps() -> Result<HashMap<String, String>> {
+        let output = std::process::Command::new("ctags")
+            .arg("--list-maps")
+            .stderr(std::process::Stdio::inherit())
+            .output()?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
 
-pub fn get_language(extension: &str) -> Option<&str> {
-    LANG_MAPS.get(extension).map(AsRef::as_ref)
+        let mut lang_maps = HashMap::new();
+        for line in stdout.split('\n') {
+            let mut items = line.split_whitespace();
+
+            if let Some(lang) = items.next() {
+                for item in items {
+                    // There are a few edge cases that the item is not like `*.rs`, e.g.,
+                    // Asm      *.A51 *.29[kK] *.[68][68][kKsSxX] *.[xX][68][68] *.asm *.ASM *.s *.Shh
+                    // it's okay to ignore them and only take care of the most common cases.
+                    if let Some(ext) = item.strip_prefix("*.") {
+                        lang_maps.insert(ext.to_string(), lang.to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(lang_maps)
+    }
+
+    generate_lang_maps().expect("Failed to process the output of `--list-maps`")
+});
+
+/// Returns the ctags language given the file extension.
+///
+/// So that we can search the tags by specifying the language later.
+pub fn get_language(file_extension: &str) -> Option<&str> {
+    LANG_MAPS.get(file_extension).map(AsRef::as_ref)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct TagsConfig<'a, P> {
+pub struct TagsGenerator<'a, P> {
     languages: Option<String>,
     kinds_all: &'a str,
     fields: &'a str,
@@ -57,7 +120,7 @@ pub struct TagsConfig<'a, P> {
     dir: P,
 }
 
-impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
+impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     pub fn new(
         languages: Option<String>,
         kinds_all: &'a str,
@@ -90,7 +153,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         }
     }
 
-    pub fn languages(&mut self, languages: String) {
+    pub fn set_languages(&mut self, languages: String) {
         self.languages = Some(languages);
     }
 
@@ -98,7 +161,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
     ///
     /// The file path of generated tags is determined by the hash of command itself.
     pub fn tags_path(&self) -> PathBuf {
-        let mut tags_path = TAGS_DIR.deref().clone();
+        let mut tags_path = CTAGS_TAGS_DIR.deref().clone();
         tags_path.push(utility::calculate_hash(self).to_string());
         tags_path
     }
@@ -109,7 +172,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsConfig<'a, P> {
         let languages_opt = self
             .languages
             .as_ref()
-            .map(|v| format!("--languages={}", v))
+            .map(|language| format!("--languages={language}"))
             .unwrap_or_default();
 
         let mut cmd = format!(
@@ -176,13 +239,21 @@ impl CtagsCommand {
         Ok(stdout
             .par_split(|x| x == &b'\n')
             .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<TagInfo>(&String::from_utf8_lossy(tag)) {
+                if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
                     Some(tag.format_proj_tags())
                 } else {
                     None
                 }
             })
             .collect::<Vec<_>>())
+    }
+
+    pub fn stdout(&self) -> Result<Vec<u8>> {
+        let stdout = StdCommand::new(&self.inner.command)
+            .current_dir(&self.inner.cwd)
+            .stdout()?;
+
+        Ok(stdout)
     }
 
     /// Returns an iterator of raw line of ctags output.
@@ -241,50 +312,14 @@ impl CtagsCommand {
     }
 }
 
-fn detect_json_feature() -> Result<bool> {
-    let output = std::process::Command::new("ctags")
-        .arg("--list-features")
-        .stderr(std::process::Stdio::inherit())
-        .output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-    if stdout.split('\n').any(|x| x.starts_with("json")) {
-        Ok(true)
-    } else {
-        Err(anyhow!("ctags executable has no +json feature"))
-    }
-}
-
-fn generate_lang_maps() -> Result<HashMap<String, String>> {
-    let output = std::process::Command::new("ctags")
-        .arg("--list-maps")
-        .stderr(std::process::Stdio::inherit())
-        .output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-
-    let mut lang_maps = HashMap::new();
-    for line in stdout.split('\n') {
-        let mut items = line.split_whitespace();
-
-        if let Some(lang) = items.next() {
-            for ext in items {
-                // We only take care of the most common cases, `*.rs`.
-                if let Some(stripped) = ext.strip_prefix("*.") {
-                    lang_maps.insert(stripped.to_string(), lang.to_string());
-                }
-            }
-        }
-    }
-
-    Ok(lang_maps)
-}
-
 /// Returns true if the ctags executable is compiled with +json feature.
-pub fn ensure_has_json_support() -> Result<()> {
+pub fn ensure_has_json_support() -> std::io::Result<()> {
     if *CTAGS_HAS_JSON_FEATURE.deref() {
         Ok(())
     } else {
-        Err(anyhow!(
-            "The found ctags executable is not compiled with +json feature, please recompile it."
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "The found ctags executable is not compiled with +json feature, please recompile it.",
         ))
     }
 }

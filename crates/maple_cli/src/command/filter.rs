@@ -3,8 +3,9 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+use subprocess::Exec;
 
-use filter::{subprocess::Exec, FilterContext, Source};
+use filter::{FilterContext, Source};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::SourceItem;
 

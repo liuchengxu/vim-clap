@@ -34,7 +34,7 @@ fn trim_left(text: &str, width: usize, tabstop: usize) -> (String, usize) {
     let chars_count = text.chars().count();
     let (mut text, mut trimmed_len) = if chars_count > width + 2 {
         let diff = chars_count - width - 2;
-        (String::from(&text[diff..]), diff)
+        (text.chars().skip(diff).collect::<String>(), diff)
     } else {
         (text.into(), 0)
     };
@@ -116,7 +116,7 @@ pub fn trim_text(
         // right-fixed, ..ring
         let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
 
-        let text = format!("..{}", trimmed_text);
+        let text = format!("..{trimmed_text}");
         let indices = indices
             .iter()
             .filter_map(|x| (x + 2).checked_sub(trimmed_len))
@@ -128,7 +128,7 @@ pub fn trim_text(
         // left-fixed, Stri..
         let trimmed_text = trim_right(text, container_width - 2, tabstop);
 
-        let text = format!("{}..", trimmed_text);
+        let text = format!("{trimmed_text}..");
         let indices = indices
             .iter()
             .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
@@ -141,7 +141,7 @@ pub fn trim_text(
         let left_truncated_text = &text[match_start..];
         let trimmed_text = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
-        let text = format!("..{}..", trimmed_text);
+        let text = format!("..{trimmed_text}..");
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)

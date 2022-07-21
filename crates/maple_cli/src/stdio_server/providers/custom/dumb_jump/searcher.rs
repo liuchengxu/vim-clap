@@ -9,22 +9,22 @@ use super::QueryInfo;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
-use crate::tools::ctags::{get_language, TagsConfig};
+use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Context for performing a search.
 #[derive(Debug, Clone, Default)]
 pub(super) struct SearchingWorker {
     pub cwd: String,
-    pub extension: String,
     pub query_info: QueryInfo,
+    pub source_file_extension: String,
 }
 
 impl SearchingWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
-        let mut tags_config = TagsConfig::with_dir(self.cwd);
-        if let Some(language) = get_language(&self.extension) {
-            tags_config.languages(language.into());
+        let mut tags_generator = TagsGenerator::with_dir(self.cwd);
+        if let Some(language) = get_language(&self.source_file_extension) {
+            tags_generator.set_languages(language.into());
         }
 
         let QueryInfo {
@@ -33,7 +33,12 @@ impl SearchingWorker {
             filtering_terms,
         } = self.query_info;
 
-        CtagsSearcher::new(tags_config).search_usages(&keyword, &filtering_terms, query_type, true)
+        CtagsSearcher::new(tags_generator).search_usages(
+            &keyword,
+            &filtering_terms,
+            query_type,
+            true,
+        )
     }
 
     fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
@@ -45,7 +50,7 @@ impl SearchingWorker {
         GtagsSearcher::new(self.cwd.into()).search_usages(
             &keyword,
             &filtering_terms,
-            &self.extension,
+            &self.source_file_extension,
         )
     }
 
@@ -57,7 +62,7 @@ impl SearchingWorker {
         } = self.query_info;
         let searcher = RegexSearcher {
             word: keyword,
-            extension: self.extension,
+            extension: self.source_file_extension,
             dir: Some(self.cwd.into()),
         };
         searcher.search_usages(false, &filtering_terms).await
@@ -73,14 +78,15 @@ fn merge_all(
     let mut regex_results = regex_results;
     regex_results.retain(|r| !ctag_results.contains(r));
 
-    let mut ctag_results = ctag_results;
+    let mut results = ctag_results;
     if let Some(mut gtags_results) = maybe_gtags_results {
         regex_results.retain(|r| !gtags_results.contains(r));
-        ctag_results.append(&mut gtags_results);
+        results.append(&mut gtags_results);
     }
 
-    ctag_results.append(&mut regex_results);
-    ctag_results
+    results.append(&mut regex_results);
+
+    results
 }
 
 /// These is no best option here, each search engine has its own advantages and

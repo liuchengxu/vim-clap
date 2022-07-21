@@ -19,10 +19,7 @@ fn build_raw_line<S: AsRef<OsStr> + ?Sized>(p: &S, const_name: &str) -> String {
         .map(|k| format!("(\"{}\", '{}')", k, icon_map[k]))
         .join(",");
 
-    format!(
-        "pub const {}: &[(&str, char)] = &[{}];",
-        const_name, sorted_icon_tuples
-    )
+    format!("pub const {const_name}: &[(&str, char)] = &[{sorted_icon_tuples}];",)
 }
 
 fn main() {

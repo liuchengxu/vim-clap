@@ -2,8 +2,8 @@ use std::path::{PathBuf, MAIN_SEPARATOR};
 
 use anyhow::{anyhow, Result};
 use dumb_analyzer::resolve_reference_kind;
-use filter::subprocess::Exec;
 use rayon::prelude::*;
+use subprocess::Exec;
 
 use super::Symbol;
 use crate::utils::ExactOrInverseTerms;
@@ -75,8 +75,7 @@ impl GtagsSearcher {
             Ok(())
         } else {
             Err(anyhow!(
-                "Creating gtags failed, exit_status: {:?}",
-                exit_status
+                "Creating gtags failed, exit_status: {exit_status:?}",
             ))
         }
     }
@@ -95,8 +94,7 @@ impl GtagsSearcher {
             Ok(())
         } else {
             Err(anyhow!(
-                "Updating gtags failed, exit_status: {:?}",
-                exit_status
+                "Updating gtags failed, exit_status: {exit_status:?}",
             ))
         }
     }

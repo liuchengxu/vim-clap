@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use futures::Future;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -20,7 +21,8 @@ use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, EventHandle, SessionContext,
 };
 use crate::stdio_server::{write_response, MethodCall};
-use crate::tools::ctags::{get_language, TagsConfig};
+use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
+use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::ExactOrInverseTerms;
 
 /// Internal reprentation of user input.
@@ -163,8 +165,8 @@ async fn search_for_usages(
     let (response, usages) = match search_engine
         .run(SearchingWorker {
             cwd,
-            extension,
             query_info: query_info.clone(),
+            source_file_extension: extension,
         })
         .await
     {
@@ -254,15 +256,15 @@ impl EventHandle for DumbJumpHandle {
             let ctags_future = {
                 let ctags_regenerated = self.ctags_regenerated.clone();
                 let cwd = params.cwd.clone();
-                let mut tags_config = TagsConfig::with_dir(cwd.clone());
+                let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
                 if let Some(language) = get_language(&params.extension) {
-                    tags_config.languages(language.into());
+                    tags_generator.set_languages(language.into());
                 }
 
                 // TODO: smarter strategy to regenerate the tags?
                 async move {
                     let now = std::time::Instant::now();
-                    let ctags_searcher = CtagsSearcher::new(tags_config);
+                    let ctags_searcher = CtagsSearcher::new(tags_generator);
                     match ctags_searcher.generate_tags() {
                         Ok(()) => {
                             ctags_regenerated.store(true, Ordering::Relaxed);
@@ -311,24 +313,27 @@ impl EventHandle for DumbJumpHandle {
                 }
             };
 
-            if *crate::tools::gtags::GTAGS_EXISTS.deref() {
+            fn run(job_future: impl Send + Sync + 'static + Future<Output = ()>, job_id: u64) {
                 tokio::task::spawn({
                     async move {
                         let now = std::time::Instant::now();
+                        job_future.await;
+                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
+                        note_job_is_finished(job_id);
+                    }
+                });
+            }
+
+            match (*CTAGS_EXISTS, *GTAGS_EXISTS) {
+                (true, true) => run(
+                    async move {
                         futures::future::join(ctags_future, gtags_future).await;
-                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
-                        note_job_is_finished(job_id);
-                    }
-                });
-            } else {
-                tokio::task::spawn({
-                    async move {
-                        let now = std::time::Instant::now();
-                        ctags_future.await;
-                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
-                        note_job_is_finished(job_id);
-                    }
-                });
+                    },
+                    job_id,
+                ),
+                (false, false) => {}
+                (true, false) => run(ctags_future, job_id),
+                (false, true) => run(gtags_future, job_id),
             }
         }
     }
