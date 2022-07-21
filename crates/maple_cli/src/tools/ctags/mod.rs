@@ -25,7 +25,7 @@ pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
 });
 
 /// Directory for the `tags` files.
-pub static TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
+pub static CTAGS_TAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let mut tags_dir = PROJECT_DIRS.data_dir().to_path_buf();
     tags_dir.push("tags");
 
@@ -85,10 +85,12 @@ pub static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
             let mut items = line.split_whitespace();
 
             if let Some(lang) = items.next() {
-                for ext in items {
-                    // We only take care of the most common cases, `*.rs`.
-                    if let Some(stripped) = ext.strip_prefix("*.") {
-                        lang_maps.insert(stripped.to_string(), lang.to_string());
+                for item in items {
+                    // There are a few edge cases that the item is not like `*.rs`, e.g.,
+                    // Asm      *.A51 *.29[kK] *.[68][68][kKsSxX] *.[xX][68][68] *.asm *.ASM *.s *.Shh
+                    // it's okay to ignore them and only take care of the most common cases.
+                    if let Some(ext) = item.strip_prefix("*.") {
+                        lang_maps.insert(ext.to_string(), lang.to_string());
                     }
                 }
             }
@@ -100,8 +102,11 @@ pub static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
     generate_lang_maps().expect("Failed to process the output of `--list-maps`")
 });
 
-pub fn get_language(extension: &str) -> Option<&str> {
-    LANG_MAPS.get(extension).map(AsRef::as_ref)
+/// Returns the ctags language given the file extension.
+///
+/// So that we can search the tags by specifying the language later.
+pub fn get_language(file_extension: &str) -> Option<&str> {
+    LANG_MAPS.get(file_extension).map(AsRef::as_ref)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -156,7 +161,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     ///
     /// The file path of generated tags is determined by the hash of command itself.
     pub fn tags_path(&self) -> PathBuf {
-        let mut tags_path = TAGS_DIR.deref().clone();
+        let mut tags_path = CTAGS_TAGS_DIR.deref().clone();
         tags_path.push(utility::calculate_hash(self).to_string());
         tags_path
     }

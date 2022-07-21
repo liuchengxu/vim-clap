@@ -167,8 +167,8 @@ async fn search_for_usages(
     let (response, usages) = match search_engine
         .run(SearchingWorker {
             cwd,
-            extension,
             query_info: query_info.clone(),
+            source_file_extension: extension,
         })
         .await
     {

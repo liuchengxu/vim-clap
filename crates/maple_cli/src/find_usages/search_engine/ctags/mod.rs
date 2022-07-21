@@ -16,16 +16,16 @@ use crate::utils::ExactOrInverseTerms;
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CtagsSearcher<'a, P> {
-    tags_generator: TagsGenerator<'a, P>,
     tags_path: PathBuf,
+    tags_generator: TagsGenerator<'a, P>,
 }
 
 impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     pub fn new(tags_generator: TagsGenerator<'a, P>) -> Self {
         let tags_path = tags_generator.tags_path();
         Self {
-            tags_generator,
             tags_path,
+            tags_generator,
         }
     }
 

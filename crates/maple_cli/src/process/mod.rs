@@ -37,7 +37,6 @@ pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<Strin
     Ok(lines)
 }
 
-/// Wrapper type of [`StdCommand`].
 pub type AsyncCommand = StdCommand;
 
 /// Shell command for executing with cache.

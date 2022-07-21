@@ -152,7 +152,6 @@ impl Match {
             offset += icon.len_utf8() + 1;
             format!("{icon} {path}:{line_number}:{column}:{pattern}")
         } else {
-            let pattern = pattern.trim_end();
             format!("{path}:{line_number}:{column}:{pattern}")
         };
 
@@ -186,11 +185,10 @@ impl Match {
         let path = self.path();
         let line_number = self.line_number();
         let column = self.column();
+        let pattern = self.pattern();
+        let pattern = pattern.trim_end();
 
-        let formatted_line = format!(
-            "[r{kind}]{path}:{line_number}:{column}:{}",
-            self.pattern().trim_end()
-        );
+        let formatted_line = format!("[r{kind}]{path}:{line_number}:{column}:{pattern}",);
 
         let offset = kind.len()
             + path.len()
@@ -210,8 +208,10 @@ impl Match {
     fn jump_line_format_bare(&self) -> (String, usize) {
         let line_number = self.line_number();
         let column = self.column();
+        let pattern = self.pattern();
+        let pattern = pattern.trim_end();
 
-        let formatted_string = format!("  {line_number}:{column}:{}", self.pattern().trim_end());
+        let formatted_string = format!("  {line_number}:{column}:{pattern}");
 
         let offset = display_width(line_number as usize) + display_width(column) + 2 + 2;
 
