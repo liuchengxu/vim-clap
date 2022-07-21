@@ -68,7 +68,7 @@ impl EventHandle for BuiltinHandle {
 
         match source_scale.deref() {
             SourceScale::Small { ref lines, .. } => {
-                let results = filter::par_filter(
+                let mut matched_items = filter::par_filter(
                     query,
                     lines.iter().map(|s| s.to_string().into()).collect(), // TODO: avoid `to_string()`
                     &context.fuzzy_matcher(),
@@ -80,13 +80,13 @@ impl EventHandle for BuiltinHandle {
                     indices,
                     truncated_map,
                     icon_added,
-                } = printer::decorate_lines(
-                    results.iter().take(200).cloned().collect(),
+                } = printer::decorate_matched_items(
+                    &mut matched_items,
                     context.display_winwidth as usize,
                     context.icon,
                 );
 
-                let total = results.len();
+                let total = matched_items.len();
 
                 let method = "s:process_filter_message";
                 utility::println_json_with_length!(
@@ -99,7 +99,7 @@ impl EventHandle for BuiltinHandle {
                 );
 
                 let mut current_results = self.current_results.lock();
-                *current_results = results;
+                *current_results = matched_items;
             }
             SourceScale::Cache { ref path, .. } => {
                 if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(

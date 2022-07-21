@@ -93,6 +93,15 @@ impl BestItems {
         if self.items.len() <= self.max_capacity {
             self.items.push(new);
             self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+
+            let now = Instant::now();
+            if now > self.past + UPDATE_INTERVAL {
+                let decorated_lines =
+                    printer::decorate_par_run_items(&mut self.items, self.winwidth, self.icon);
+                decorated_lines.print_on_par_run(matched, processed);
+                self.last_lines = decorated_lines.lines;
+                self.past = now;
+            }
         } else {
             let last = self
                 .items
@@ -108,11 +117,11 @@ impl BestItems {
                 let now = Instant::now();
                 if now > self.past + UPDATE_INTERVAL {
                     let decorated_lines =
-                        printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
+                        printer::decorate_par_run_items(&mut self.items, self.winwidth, self.icon);
 
                     // TODO: the lines are the same, but the highlights are not.
                     if self.last_lines != decorated_lines.lines.as_slice() {
-                        decorated_lines.print_on_filter_ongoing(matched, processed);
+                        decorated_lines.print_on_par_run(matched, processed);
                         self.last_lines = decorated_lines.lines;
                     } else {
                         #[allow(non_upper_case_globals)]
@@ -193,11 +202,10 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
         .into_inner()
         .items;
 
-    printer::print_dyn_filter_results(
+    printer::decorate_and_print_on_dyn_matched_items(
         matched_items,
         total_matched,
         Some(total_processed),
-        number,
         winwidth,
         icon,
     );

@@ -72,9 +72,9 @@ async fn handle_recent_files_message(
     if let Some(lnum) = lnum {
         // process the new preview
         if let Some(new_entry) = ranked.get(lnum as usize - 1) {
-            let new_curline = new_entry.display_text().to_string();
+            let new_curline = new_entry.display_text();
             if let Ok((lines, fname)) = crate::previewer::preview_file(
-                new_curline,
+                new_curline.as_ref(),
                 context.sensible_preview_size(),
                 winwidth,
             ) {
@@ -83,14 +83,16 @@ async fn handle_recent_files_message(
         }
     }
 
+    let mut matched_items = ranked;
+
     // Take the first 200 entries and add an icon to each of them.
     let printer::DecoratedLines {
         lines,
         indices,
         truncated_map,
         icon_added,
-    } = printer::decorate_lines(
-        ranked.iter().take(200).cloned().collect(),
+    } = printer::decorate_matched_items(
+        &mut matched_items,
         winwidth,
         if enable_icon.unwrap_or(true) {
             icon::Icon::Enabled(icon::IconKind::File)
@@ -137,7 +139,7 @@ async fn handle_recent_files_message(
 
     write_response(result);
 
-    ranked
+    matched_items
 }
 
 #[derive(Debug, Clone, Default)]
