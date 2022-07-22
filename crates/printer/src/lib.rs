@@ -167,47 +167,6 @@ pub fn decorate_matched_items(
     }
 }
 
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_par_run_items(
-    matched_items: &mut [MatchedItem],
-    winwidth: usize,
-    icon: Icon,
-) -> DecoratedLines {
-    let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
-    if let Some(painter) = icon.painter() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
-            .iter()
-            .enumerate()
-            .map(|(idx, matched_item)| {
-                let text = matched_item.display_text();
-                let iconized = if let Some(origin_text) = truncated_map.get_mut(&(idx + 1)) {
-                    let icon = painter.icon(origin_text);
-                    // Prepend the icon to the text and use that as the original text in Vim.
-                    *origin_text = format!("{icon} {origin_text}");
-                    origin_text.clone()
-                } else {
-                    painter.paint(&text)
-                };
-                (iconized, matched_item.shifted_indices(ICON_LEN))
-            })
-            .unzip();
-
-        DecoratedLines::new(lines, indices, truncated_map, true)
-    } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
-            .iter()
-            .map(|matched_item| {
-                (
-                    matched_item.display_text().to_string(),
-                    matched_item.indices.clone(),
-                )
-            })
-            .unzip();
-
-        DecoratedLines::new(lines, indices, truncated_map, false)
-    }
-}
-
 /// Prints the results of filter::sync_run() to stdout.
 pub fn print_sync_filter_results(
     ranked: Vec<MatchedItem>,

@@ -97,7 +97,7 @@ impl BestItems {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
                 let decorated_lines =
-                    printer::decorate_par_run_items(&mut self.items, self.winwidth, self.icon);
+                    printer::decorate_matched_items(&mut self.items, self.winwidth, self.icon);
                 decorated_lines.print_on_par_run(matched, processed);
                 self.last_lines = decorated_lines.lines;
                 self.past = now;
@@ -117,7 +117,7 @@ impl BestItems {
                 let now = Instant::now();
                 if now > self.past + UPDATE_INTERVAL {
                     let decorated_lines =
-                        printer::decorate_par_run_items(&mut self.items, self.winwidth, self.icon);
+                        printer::decorate_matched_items(&mut self.items, self.winwidth, self.icon);
 
                     // TODO: the lines are the same, but the highlights are not.
                     if self.last_lines != decorated_lines.lines.as_slice() {
