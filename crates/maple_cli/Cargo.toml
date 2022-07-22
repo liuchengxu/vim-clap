@@ -43,7 +43,7 @@ upgrade = { path = "../upgrade" }
 utility = { path = "../utility" }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { version = "0.3", features = ["async_tokio"] }
 
 [[bench]]
 name = "benchmark"

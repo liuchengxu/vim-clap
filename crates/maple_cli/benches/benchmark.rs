@@ -9,6 +9,7 @@ use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 use types::ClapItem;
 
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
+use maple_cli::command::dumb_jump::DumbJump;
 use maple_cli::CACHE_INFO_IN_MEMORY;
 
 fn prepare_source_items() -> Vec<MultiItem> {
@@ -112,5 +113,26 @@ fn bench_ctags(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_filter, bench_ctags);
+fn bench_regex_searcher(c: &mut Criterion) {
+    let dumb_jump = DumbJump {
+        word: "unsigned".to_string(),
+        extension: "rs".to_string(),
+        kind: None,
+        cmd_dir: Some("/home/xlc/src/github.com/paritytech/substrate".into()),
+    };
+
+    c.bench_function("regex searcher", move |b| {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        b.to_async(rt).iter(|| async {
+            dumb_jump
+                .references_or_occurrences(false, &Default::default())
+                .await
+                .unwrap();
+        })
+    });
+}
+
+// criterion_group!(benches, bench_filter, bench_ctags, bench_regex_searcher);
+criterion_group!(benches, bench_regex_searcher);
 criterion_main!(benches);
