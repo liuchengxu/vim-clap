@@ -18,4 +18,5 @@ pub use {
     anyhow::{Context, Result},
     app::{Cmd, Maple},
     clap::Parser,
+    datastore::CACHE_INFO_IN_MEMORY,
 };
