@@ -42,7 +42,7 @@ impl<'a> MatchFinder<'a> {
     /// Executes `command` as a child process.
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
-    fn find_matches(&self, command: String, comments: Option<&[&str]>) -> Result<Vec<Match>> {
+    fn find_matches(&self, command: String, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
         let mut cmd = AsyncCommand::new(command);
 
         if let Some(ref dir) = self.dir {
@@ -51,21 +51,16 @@ impl<'a> MatchFinder<'a> {
 
         let stdout = cmd.stdout()?;
 
-        if let Some(comments) = comments {
-            Ok(stdout
-                .par_split(|x| x == &b'\n')
-                .filter_map(|s| {
-                    Match::try_from(s)
-                        .ok()
-                        .filter(|matched| !is_comment(matched, comments))
+        Ok(stdout
+            .par_split(|x| x == &b'\n')
+            .filter_map(|s| {
+                Match::try_from(s).ok().filter(|matched| {
+                    maybe_comments
+                        .map(|comments| !is_comment(matched, comments))
+                        .unwrap_or(true)
                 })
-                .collect())
-        } else {
-            Ok(stdout
-                .par_split(|x| x == &b'\n')
-                .filter_map(|s| Match::try_from(s).ok())
-                .collect())
-        }
+            })
+            .collect())
     }
 }
 
