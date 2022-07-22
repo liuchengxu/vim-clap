@@ -31,17 +31,22 @@ pub struct DumbJump {
 }
 
 impl DumbJump {
-    pub async fn run(self) -> Result<()> {
+    pub fn run(self) -> Result<()> {
+        let Self {
+            word,
+            extension,
+            cmd_dir,
+            ..
+        } = self;
         RegexSearcher {
-            word: self.word.to_string(),
-            extension: self.extension.to_string(),
-            dir: self.cmd_dir.clone(),
+            word,
+            extension,
+            dir: cmd_dir,
         }
         .print_usages(&Default::default())
-        .await
     }
 
-    pub async fn references_or_occurrences(
+    pub fn references_or_occurrences(
         &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
@@ -52,8 +57,7 @@ impl DumbJump {
             dir: self.cmd_dir.clone(),
         };
         Ok(searcher
-            .search_usages(classify, exact_or_inverse_terms)
-            .await?
+            .search_usages(classify, exact_or_inverse_terms)?
             .into())
     }
 }

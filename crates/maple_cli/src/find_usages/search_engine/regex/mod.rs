@@ -91,11 +91,8 @@ pub struct RegexSearcher {
 }
 
 impl RegexSearcher {
-    pub async fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
-        let usages: Usages = self
-            .search_usages(false, exact_or_inverse_terms)
-            .await?
-            .into();
+    pub fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
+        let usages: Usages = self.search_usages(false, exact_or_inverse_terms)?.into();
 
         usages.print();
 
@@ -104,7 +101,7 @@ impl RegexSearcher {
 
     /// Search the definitions and references if language type is detected, otherwise
     /// search the occurrences.
-    pub async fn search_usages(
+    pub fn search_usages(
         &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
@@ -127,7 +124,7 @@ impl RegexSearcher {
             Ok(lang) => lang,
             Err(_) => {
                 // Search the occurrences if no language detected.
-                let occurrences = match_finder.find_occurrences(true).await?;
+                let occurrences = match_finder.find_occurrences(true)?;
                 let mut usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
@@ -149,7 +146,7 @@ impl RegexSearcher {
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(regex_runner, comments).await?;
+            let res = definitions_and_references(regex_runner, comments)?;
 
             let _usages = res
                 .into_par_iter()
@@ -161,20 +158,19 @@ impl RegexSearcher {
             // Ok(usages.into())
         } else {
             self.regex_search(regex_runner, comments, exact_or_inverse_terms)
-                .await
         }
     }
 
     /// Search the usages using the pre-defined regex matching rules.
     ///
     /// If the result from regex matching is empty, try the pure grep approach.
-    async fn regex_search<'a>(
+    fn regex_search<'a>(
         &'a self,
         regex_runner: RegexRunner<'a>,
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Vec<AddressableUsage>> {
-        let (definitions, occurrences) = regex_runner.all(comments).await;
+        let (definitions, occurrences) = regex_runner.all(comments);
 
         let defs = definitions.flatten();
 
@@ -227,7 +223,7 @@ impl RegexSearcher {
 
         // Pure results by grepping the word.
         if regex_usages.is_empty() {
-            let lines = regex_runner.regexp_search(comments).await?;
+            let lines = regex_runner.regexp_search(comments)?;
             let mut grep_usages = lines
                 .into_par_iter()
                 .filter_map(|matched| {
@@ -297,10 +293,7 @@ mod tests {
                 .map(|path| path.to_path_buf()),
         };
         // FIXME: somehow it's Err in CI https://github.com/liuchengxu/vim-clap/runs/6146828485?check_suite_focus=true
-        if let Ok(usages) = regex_searcher
-            .search_usages(false, &ExactOrInverseTerms::default())
-            .await
-        {
+        if let Ok(usages) = regex_searcher.search_usages(false, &ExactOrInverseTerms::default()) {
             assert!(usages[0]
                 .line
                 .contains("function! clap#filter#async#dyn#start"));

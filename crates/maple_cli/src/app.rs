@@ -134,7 +134,7 @@ impl Maple {
             Cmd::Blines(blines) => blines.run(self.params)?,
             Cmd::Filter(filter) => filter.run(self.params)?,
             Cmd::Helptags(helptags) => helptags.run()?,
-            Cmd::DumbJump(dumb_jump) => dumb_jump.run().await?,
+            Cmd::DumbJump(dumb_jump) => dumb_jump.run()?,
             Cmd::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(self.params)?,
             Cmd::Rpc => {
                 let maybe_log = if let Some(log_path) = self.log {

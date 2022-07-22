@@ -24,7 +24,7 @@ pub struct MatchFinder<'a> {
 }
 
 impl<'a> MatchFinder<'a> {
-    pub(super) async fn find_occurrences(&self, ignore_comment: bool) -> Result<Vec<Match>> {
+    pub(super) fn find_occurrences(&self, ignore_comment: bool) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json --word-regexp '{}' -g '*.{}'",
             self.word.raw, self.file_ext
@@ -79,9 +79,8 @@ impl<'a> RegexRunner<'a> {
     }
 
     /// Finds the occurrences and all definitions concurrently.
-    pub async fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
-        let (definitions, occurrences) =
-            futures::future::join(self.definitions(), self.occurrences(comments)).await;
+    pub fn all(&self, comments: &[&str]) -> (Definitions, Occurrences) {
+        let (definitions, occurrences) = (self.definitions(), self.occurrences(comments));
 
         (
             Definitions {
@@ -92,16 +91,12 @@ impl<'a> RegexRunner<'a> {
     }
 
     /// Returns all kinds of definitions.
-    pub async fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        let all_def_futures = get_definition_rules(self.lang)?
+    pub fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
+        Ok(get_definition_rules(self.lang)?
             .0
             .keys()
-            .map(|kind| self.find_definitions(kind));
-
-        let maybe_defs = futures::future::join_all(all_def_futures).await;
-
-        Ok(maybe_defs
-            .into_par_iter()
+            .map(|kind| self.find_definitions(kind))
+            .par_bridge()
             .filter_map(|def| {
                 def.ok()
                     .map(|(kind, matches)| DefinitionSearchResult { kind, matches })
@@ -112,7 +107,7 @@ impl<'a> RegexRunner<'a> {
     /// Finds all the occurrences of `word`.
     ///
     /// Basically the occurrences are composed of definitions and usages.
-    async fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
+    fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json --word-regexp '{}' --type {}",
             self.finder.word.raw, self.lang
@@ -121,7 +116,7 @@ impl<'a> RegexRunner<'a> {
         self.finder.find_matches(command, Some(comments))
     }
 
-    pub(super) async fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
+    pub(super) fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
         let command = format!(
             "rg --json -e '{}' --type {}",
             self.finder.word.raw.replace(char::is_whitespace, ".*"),
@@ -131,10 +126,7 @@ impl<'a> RegexRunner<'a> {
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
-    async fn find_definitions(
-        &self,
-        kind: &DefinitionKind,
-    ) -> Result<(DefinitionKind, Vec<Match>)> {
+    fn find_definitions(&self, kind: &DefinitionKind) -> Result<(DefinitionKind, Vec<Match>)> {
         let regexp = build_full_regexp(self.lang, kind, self.finder.word)?;
         let command = format!(
             "rg --trim --json --pcre2 --type {} -e '{}'",

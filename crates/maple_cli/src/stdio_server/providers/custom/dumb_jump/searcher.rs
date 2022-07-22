@@ -57,7 +57,7 @@ impl SearchingWorker {
         )
     }
 
-    async fn regex_search(self) -> Result<Vec<AddressableUsage>> {
+    fn regex_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
             filtering_terms,
@@ -68,7 +68,7 @@ impl SearchingWorker {
             extension: self.source_file_extension,
             dir: Some(self.cwd.into()),
         };
-        searcher.search_usages(false, &filtering_terms).await
+        searcher.search_usages(false, &filtering_terms)
     }
 }
 
@@ -131,11 +131,15 @@ impl SearchEngine {
             async move { searching_worker.ctags_search() }
         };
 
+        let regex_future = {
+            let searching_worker = searching_worker.clone();
+            async move { searching_worker.regex_search() }
+        };
+
         let mut addressable_usages = match self {
             SearchEngine::Ctags => searching_worker.ctags_search()?,
-            SearchEngine::Regex => searching_worker.regex_search().await?,
+            SearchEngine::Regex => searching_worker.regex_search()?,
             SearchEngine::CtagsAndRegex => {
-                let regex_future = searching_worker.regex_search();
                 let (ctags_results, regex_results) = futures::join!(ctags_future, regex_future);
 
                 merge_all(
@@ -150,7 +154,7 @@ impl SearchEngine {
                 let try_regex =
                     results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
                 if try_regex {
-                    searching_worker.regex_search().await?
+                    searching_worker.regex_search()?
                 } else {
                     results?
                 }
@@ -160,7 +164,6 @@ impl SearchEngine {
                     let searching_worker = searching_worker.clone();
                     async move { searching_worker.gtags_search() }
                 };
-                let regex_future = searching_worker.regex_search();
 
                 let (ctags_results, gtags_results, regex_results) =
                     futures::join!(ctags_future, gtags_future, regex_future);

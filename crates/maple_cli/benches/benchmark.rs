@@ -121,18 +121,10 @@ fn bench_regex_searcher(c: &mut Criterion) {
         cmd_dir: Some("/home/xlc/src/github.com/paritytech/substrate".into()),
     };
 
-    c.bench_function("regex searcher", move |b| {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-
-        b.to_async(rt).iter(|| async {
-            dumb_jump
-                .references_or_occurrences(false, &Default::default())
-                .await
-                .unwrap();
-        })
+    c.bench_function("regex searcher", |b| {
+        b.iter(|| dumb_jump.references_or_occurrences(false, &Default::default()))
     });
 }
 
-// criterion_group!(benches, bench_filter, bench_ctags, bench_regex_searcher);
-criterion_group!(benches, bench_regex_searcher);
+criterion_group!(benches, bench_filter, bench_ctags, bench_regex_searcher);
 criterion_main!(benches);
