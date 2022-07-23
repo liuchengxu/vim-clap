@@ -56,13 +56,9 @@ fn process_source_scale(source_scale: SourceScale, context: Arc<SessionContext>)
         utility::println_json_with_length!(total, method);
     }
 
-    if let Some(mut lines) = source_scale.initial_lines(100) {
-        printer::decorate_matched_items(
-            &mut lines,
-            context.display_winwidth as usize,
-            context.icon,
-        )
-        .print_on_session_create();
+    if let Some(lines) = source_scale.initial_lines(100) {
+        printer::decorate_lines(lines, context.display_winwidth as usize, context.icon)
+            .print_on_session_create();
     }
 
     context.set_source_scale(source_scale);

@@ -71,18 +71,27 @@ pub fn truncate_long_matched_lines(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut matched_item)| {
-        let display_text = matched_item.item.display_text();
+        let origin_display_text = matched_item.item.display_text();
 
         // Truncate the text simply if it's too long.
-        if display_text.len() > MAX_LINE_LEN {
-            let truncated_display_text: String = display_text.chars().take(MAX_LINE_LEN).collect();
-            matched_item.display_text = Some(truncated_display_text);
-            matched_item.indices.retain(|x| *x < MAX_LINE_LEN);
-        } else if let Some((truncated_display_text, truncated_indices)) =
-            truncate_line_v1(&display_text, &mut matched_item.indices, winwidth, skipped)
-        {
-            truncated_map.insert(lnum + 1, display_text.to_string());
-            matched_item.display_text = Some(truncated_display_text);
+        if origin_display_text.len() > MAX_LINE_LEN {
+            let display_text: String = origin_display_text.chars().take(1000).collect();
+            matched_item.display_text = Some(display_text);
+            matched_item.indices = matched_item
+                .indices
+                .iter()
+                .filter(|x| **x < 1000)
+                .copied()
+                .collect();
+        } else if let Some((truncated, truncated_indices)) = truncate_line_v1(
+            &origin_display_text,
+            &mut matched_item.indices,
+            winwidth,
+            skipped,
+        ) {
+            truncated_map.insert(lnum + 1, origin_display_text.to_string());
+
+            matched_item.display_text = Some(truncated);
             matched_item.indices = truncated_indices;
         }
     });

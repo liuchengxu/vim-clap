@@ -54,7 +54,7 @@ impl DecoratedLines {
         println_json_with_length!(method, lines, icon_added, truncated_map);
     }
 
-    pub fn print_on_par_run(&self, matched: usize, processed: usize) {
+    pub fn print_on_filter_ongoing(&self, matched: usize, processed: usize) {
         let Self {
             lines,
             indices,
@@ -79,11 +79,7 @@ impl DecoratedLines {
         }
     }
 
-    fn print_on_dyn_run_finished(
-        &self,
-        total_matched: usize,
-        maybe_total_processed: Option<usize>,
-    ) {
+    fn print_on_filter_finished(&self, total_matched: usize, maybe_total_processed: Option<usize>) {
         let Self {
             lines,
             indices,
@@ -128,22 +124,19 @@ impl DecoratedLines {
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_matched_items(
-    matched_items: &mut [MatchedItem],
-    winwidth: usize,
-    icon: Icon,
-) -> DecoratedLines {
-    let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
+pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DecoratedLines {
+    let mut top_list = top_list;
+    let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
-            .iter()
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
+            .into_iter()
             .enumerate()
             .map(|(idx, matched_item)| {
                 let text = matched_item.display_text();
                 let iconized = if let Some(origin_text) = truncated_map.get_mut(&(idx + 1)) {
                     let icon = painter.icon(origin_text);
                     *origin_text = format!("{icon} {origin_text}");
-                    origin_text.clone()
+                    format!("{icon} {text}")
                 } else {
                     painter.paint(&text)
                 };
@@ -153,14 +146,9 @@ pub fn decorate_matched_items(
 
         DecoratedLines::new(lines, indices, truncated_map, true)
     } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
-            .iter_mut()
-            .map(|matched_item| {
-                (
-                    matched_item.display_text().to_string(),
-                    matched_item.indices.clone(),
-                )
-            })
+        let (lines, indices): (Vec<_>, Vec<_>) = top_list
+            .into_iter()
+            .map(|matched_item| (matched_item.display_text().into(), matched_item.indices))
             .unzip();
 
         DecoratedLines::new(lines, indices, truncated_map, false)
@@ -178,7 +166,7 @@ pub fn print_sync_filter_results(
         let total = ranked.len();
         let mut ranked = ranked;
         ranked.truncate(number);
-        decorate_matched_items(&mut ranked, winwidth, icon).print_json(total);
+        decorate_lines(ranked, winwidth, icon).print_json(total);
     } else {
         for MatchedItem {
             item,
@@ -194,18 +182,17 @@ pub fn print_sync_filter_results(
 }
 
 /// Prints the results of filter::dyn_run() to stdout.
-///
-/// `matched_items` are already limited to the best items.
-pub fn decorate_and_print_on_dyn_matched_items(
-    matched_items: Vec<MatchedItem>,
+pub fn print_dyn_filter_results(
+    ranked: Vec<MatchedItem>,
     total_matched: usize,
     total_processed: Option<usize>,
+    number: usize,
     winwidth: usize,
     icon: Icon,
 ) {
-    let mut matched_items = matched_items;
-    decorate_matched_items(&mut matched_items, winwidth, icon)
-        .print_on_dyn_run_finished(total_matched, total_processed);
+    let top_items = ranked.into_iter().take(number).collect();
+    decorate_lines(top_items, winwidth, icon)
+        .print_on_filter_finished(total_matched, total_processed);
 }
 
 #[cfg(test)]

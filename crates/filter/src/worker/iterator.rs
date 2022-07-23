@@ -315,10 +315,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
         let matched_items = sort_matched_items(matched_items);
 
-        printer::decorate_and_print_on_dyn_matched_items(
+        printer::print_dyn_filter_results(
             matched_items,
             total_matched,
             None,
+            number,
             winwidth.unwrap_or(100),
             icon,
         );
