@@ -122,7 +122,7 @@ fn bench_regex_searcher(c: &mut Criterion) {
     };
 
     c.bench_function("regex searcher", |b| {
-        b.iter(|| dumb_jump.references_or_occurrences(false, &Default::default()))
+        b.iter(|| dumb_jump.regex_usages(false, &Default::default()))
     });
 }
 

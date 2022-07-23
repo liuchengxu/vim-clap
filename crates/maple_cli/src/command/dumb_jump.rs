@@ -7,7 +7,8 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 
-use crate::find_usages::{RegexSearcher, Usages};
+use crate::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
+use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Search-based jump.
@@ -28,6 +29,10 @@ pub struct DumbJump {
     /// Specify the working directory.
     #[clap(long, parse(from_os_str))]
     pub cmd_dir: Option<PathBuf>,
+
+    /// Use RegexSearcher instead of CtagsSearcher
+    #[clap(long)]
+    regex: bool,
 }
 
 impl DumbJump {
@@ -38,15 +43,38 @@ impl DumbJump {
             cmd_dir,
             ..
         } = self;
-        RegexSearcher {
-            word,
-            extension,
-            dir: cmd_dir,
+
+        if self.regex {
+            let regex_searcher = RegexSearcher {
+                word,
+                extension,
+                dir: cmd_dir,
+            };
+            regex_searcher.print_usages(&Default::default())?;
+        } else {
+            let cwd = match cmd_dir {
+                Some(cwd) => cwd,
+                None => std::env::current_dir()?,
+            };
+            let mut tags_generator = TagsGenerator::with_dir(cwd);
+            if let Some(language) = get_language(&extension) {
+                tags_generator.set_languages(language.into());
+            }
+
+            let ctags_searcher = CtagsSearcher::new(tags_generator);
+            let usages = ctags_searcher.search_usages(
+                &word,
+                &Default::default(),
+                QueryType::Exact,
+                false,
+            )?;
+            println!("usages: {:#?}", usages);
         }
-        .print_usages(&Default::default())
+
+        Ok(())
     }
 
-    pub fn references_or_occurrences(
+    pub fn regex_usages(
         &self,
         classify: bool,
         exact_or_inverse_terms: &ExactOrInverseTerms,
