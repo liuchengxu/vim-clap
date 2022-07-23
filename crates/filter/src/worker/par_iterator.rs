@@ -202,11 +202,10 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
         .into_inner()
         .items;
 
-    printer::print_dyn_filter_results(
+    printer::print_dyn_matched_items(
         matched_items,
         total_matched,
         Some(total_processed),
-        number,
         winwidth,
         icon,
     );

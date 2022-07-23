@@ -182,16 +182,14 @@ pub fn print_sync_filter_results(
 }
 
 /// Prints the results of filter::dyn_run() to stdout.
-pub fn print_dyn_filter_results(
-    ranked: Vec<MatchedItem>,
+pub fn print_dyn_matched_items(
+    matched_items: Vec<MatchedItem>,
     total_matched: usize,
     total_processed: Option<usize>,
-    number: usize,
     winwidth: usize,
     icon: Icon,
 ) {
-    let top_items = ranked.into_iter().take(number).collect();
-    decorate_lines(top_items, winwidth, icon)
+    decorate_lines(matched_items, winwidth, icon)
         .print_on_filter_finished(total_matched, total_processed);
 }
 
