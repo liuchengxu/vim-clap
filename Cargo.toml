@@ -12,9 +12,11 @@ categories = ["command-line-utilities"]
 description = "Rust backend for the vim plugin vim-clap"
 
 [dependencies]
+clap = { version = "3.2", features = ["derive"] }
 tokio = { version = "1.19", features = ["rt"] }
 
 maple_cli = { path = "crates/maple_cli" }
+upgrade = { path = "crates/upgrade" }
 
 [build-dependencies]
 built = { package = "built", version = "0.5", features = ["git2"] }

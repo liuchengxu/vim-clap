@@ -162,11 +162,5 @@ function! clap#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abo
   let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
 endfunction
 
-function! clap#job#stdio#start_rpc_service(MessageHandler) abort
-  let s:MessageHandler = a:MessageHandler
-  call s:start_service_job(clap#maple#build_cmd('rpc'))
-  return
-endfunction
-
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
