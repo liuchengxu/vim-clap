@@ -96,10 +96,10 @@ impl BestItems {
 
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
-                let decorated_lines =
+                let display_lines =
                     printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
-                decorated_lines.print_on_filter_ongoing(matched, processed);
-                self.last_lines = decorated_lines.lines;
+                display_lines.print_on_dyn_run(matched, processed);
+                self.last_lines = display_lines.lines;
                 self.past = now;
             }
         } else {
@@ -116,13 +116,13 @@ impl BestItems {
             if matched % 16 == 0 || processed % 16 == 0 {
                 let now = Instant::now();
                 if now > self.past + UPDATE_INTERVAL {
-                    let decorated_lines =
+                    let display_lines =
                         printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
 
                     // TODO: the lines are the same, but the highlights are not.
-                    if self.last_lines != decorated_lines.lines.as_slice() {
-                        decorated_lines.print_on_filter_ongoing(matched, processed);
-                        self.last_lines = decorated_lines.lines;
+                    if self.last_lines != display_lines.lines.as_slice() {
+                        display_lines.print_on_dyn_run(matched, processed);
+                        self.last_lines = display_lines.lines;
                     } else {
                         #[allow(non_upper_case_globals)]
                         const method: &str = "s:process_filter_message";

@@ -16,10 +16,12 @@ pub use self::truncation::{
 /// 1. Truncate the line.
 /// 2. Add an icon.
 #[derive(Debug, Clone)]
-pub struct DecoratedLines {
-    /// Maybe truncated.
+pub struct DisplayLines {
+    /// Lines to display, maybe truncated.
     pub lines: Vec<String>,
+    /// Position of highlights in the lines above.
     pub indices: Vec<Vec<usize>>,
+    /// A map of the line number to the original untruncated line.
     pub truncated_map: LinesTruncatedMap,
     /// An icon is added to the head of line.
     ///
@@ -27,7 +29,7 @@ pub struct DecoratedLines {
     pub icon_added: bool,
 }
 
-impl DecoratedLines {
+impl DisplayLines {
     pub fn new(
         lines: Vec<String>,
         indices: Vec<Vec<usize>>,
@@ -54,7 +56,7 @@ impl DecoratedLines {
         println_json_with_length!(method, lines, icon_added, truncated_map);
     }
 
-    pub fn print_on_filter_ongoing(&self, matched: usize, processed: usize) {
+    pub fn print_on_dyn_run(&self, matched: usize, processed: usize) {
         let Self {
             lines,
             indices,
@@ -72,9 +74,9 @@ impl DecoratedLines {
                 lines,
                 indices,
                 icon_added,
-                truncated_map,
                 matched,
-                processed
+                processed,
+                truncated_map
             );
         }
     }
@@ -124,7 +126,7 @@ impl DecoratedLines {
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DecoratedLines {
+pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DisplayLines {
     let mut top_list = top_list;
     let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
@@ -144,14 +146,14 @@ pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -
             })
             .unzip();
 
-        DecoratedLines::new(lines, indices, truncated_map, true)
+        DisplayLines::new(lines, indices, truncated_map, true)
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
             .map(|matched_item| (matched_item.display_text().into(), matched_item.indices))
             .unzip();
 
-        DecoratedLines::new(lines, indices, truncated_map, false)
+        DisplayLines::new(lines, indices, truncated_map, false)
     }
 }
 
