@@ -3,7 +3,7 @@ use clap::Parser;
 
 use crate::app::Params;
 
-/// Parse and display Vim helptags.
+/// Starts a RPC service using stdio.
 #[derive(Parser, Debug, Clone)]
 pub struct Rpc;
 

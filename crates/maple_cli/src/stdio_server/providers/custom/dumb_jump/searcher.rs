@@ -8,6 +8,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
+use crate::config::DumbJumpConfig;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
@@ -136,7 +137,7 @@ impl SearchEngine {
             async move { searching_worker.regex_search() }
         };
 
-        let mut addressable_usages = match self {
+        let addressable_usages = match self {
             SearchEngine::Ctags => searching_worker.ctags_search()?,
             SearchEngine::Regex => searching_worker.regex_search()?,
             SearchEngine::CtagsAndRegex => {
@@ -176,41 +177,51 @@ impl SearchEngine {
             }
         };
 
-        // TODO: make this configurable.
-        // If cwd is a git repo, ignore the results from the untracked files.
-        if utility::is_git_repo(cwd.as_ref()) {
-            let files = addressable_usages
-                .iter()
-                .map(|x| x.path.as_str())
-                .collect::<HashSet<_>>();
-
-            let git_tracked = files
-                .into_par_iter()
-                .filter(|file| {
-                    let mut command =
-                        StdCommand::from(format!("git ls-files --error-unmatch {file}"));
-                    command.current_dir(&cwd);
-                    // Only the exit status matters.
-                    command
-                        .into_inner()
-                        .stderr(Stdio::null())
-                        .stdout(Stdio::null())
-                        .status()
-                        .map(|status| status.success())
-                        .unwrap_or(false)
-                })
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            addressable_usages.retain(|usage| git_tracked.contains(&usage.path));
-        }
-
-        // Ignore the results from the file whose path contains `test`
-        let ignore_test = true;
-        if ignore_test {
-            addressable_usages.retain(|usage| !usage.path.contains("test"));
-        }
+        let addressable_usages = filter_usages(cwd.as_ref(), addressable_usages);
 
         Ok(addressable_usages.into())
     }
+}
+
+fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<AddressableUsage> {
+    let DumbJumpConfig {
+        ignore_files_not_git_tracked,
+        ignore_pattern_file_path,
+    } = &crate::config::config().provider.dumb_jump;
+
+    let mut addressable_usages = addressable_usages;
+
+    if *ignore_files_not_git_tracked && utility::is_git_repo(cwd) {
+        let files = addressable_usages
+            .iter()
+            .map(|x| x.path.as_str())
+            .collect::<HashSet<_>>();
+
+        let git_tracked = files
+            .into_par_iter()
+            .filter(|file| {
+                let mut command = StdCommand::from(format!("git ls-files --error-unmatch {file}"));
+                command.current_dir(cwd);
+                // Only the exit status matters.
+                command
+                    .into_inner()
+                    .stderr(Stdio::null())
+                    .stdout(Stdio::null())
+                    .status()
+                    .map(|status| status.success())
+                    .unwrap_or(false)
+            })
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>();
+
+        addressable_usages.retain(|usage| git_tracked.contains(&usage.path));
+    }
+
+    // Ignore the results from the file whose path contains `test`
+    if let Some(ignore_pattern) = ignore_pattern_file_path {
+        // TODO: "test,build,tmp"
+        addressable_usages.retain(|usage| !usage.path.contains(ignore_pattern));
+    }
+
+    addressable_usages
 }
