@@ -177,7 +177,7 @@ pub fn print_sync_filter_results(
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| item.display_text().into());
+            let text = display_text.unwrap_or_else(|| item.output_text().into());
             println_json!(text, indices);
         }
     }

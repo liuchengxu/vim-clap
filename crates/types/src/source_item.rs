@@ -101,7 +101,7 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
         self.match_text()
     }
 
-    fn display_text(&self) -> Cow<'_, str> {
+    fn output_text(&self) -> Cow<'_, str> {
         self.raw_text().into()
     }
 
@@ -123,6 +123,62 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     }
 }
 
+/// This type represents multiple kinds of concrete Clap item from providers like grep,
+/// proj_tags, files, etc.
+#[derive(Debug, Clone)]
+pub struct MultiItem {
+    /// Raw line from the initial input stream.
+    pub raw: String,
+    /// Text for performing the fuzzy match algorithm.
+    ///
+    /// Could be initialized on creating a new [`MultiItem`].
+    pub fuzzy_text: Option<(String, usize)>,
+    /// Text for displaying.
+    pub output_text: Option<String>,
+}
+
+impl From<String> for MultiItem {
+    fn from(raw: String) -> Self {
+        Self {
+            raw,
+            fuzzy_text: None,
+            output_text: None,
+        }
+    }
+}
+
+impl MultiItem {
+    /// Constructs a new instance of [`MultiItem`].
+    pub fn new(
+        raw: String,
+        fuzzy_text: Option<(String, usize)>,
+        output_text: Option<String>,
+    ) -> Self {
+        Self {
+            raw,
+            fuzzy_text,
+            output_text,
+        }
+    }
+
+    pub fn output_text_or_raw(&self) -> &str {
+        match self.output_text {
+            Some(ref text) => text,
+            None => &self.raw,
+        }
+    }
+
+    pub fn fuzzy_text_or_exact_using_match_scope(
+        &self,
+        match_scope: MatchScope,
+    ) -> Option<FuzzyText> {
+        match self.fuzzy_text {
+            Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
+            None => extract_fuzzy_text(self.raw.as_str(), match_scope),
+        }
+    }
+}
+
 // TODO: Deprecate MultiItem with various wrappers:
 // - FullItem
 // - BLinesItem
@@ -137,64 +193,8 @@ impl ClapItem for MultiItem {
         self.fuzzy_text_or_exact_using_match_scope(match_scope)
     }
 
-    fn display_text(&self) -> Cow<'_, str> {
-        self.display_text_or_raw().into()
-    }
-}
-
-/// This type represents multiple kinds of concrete Clap item from providers like grep,
-/// proj_tags, files, etc.
-#[derive(Debug, Clone)]
-pub struct MultiItem {
-    /// Raw line from the initial input stream.
-    pub raw: String,
-    /// Text for performing the fuzzy match algorithm.
-    ///
-    /// Could be initialized on creating a new [`MultiItem`].
-    pub fuzzy_text: Option<(String, usize)>,
-    /// Text for displaying on a window with limited size.
-    pub display_text: Option<String>,
-}
-
-impl From<String> for MultiItem {
-    fn from(raw: String) -> Self {
-        Self {
-            raw,
-            fuzzy_text: None,
-            display_text: None,
-        }
-    }
-}
-
-impl MultiItem {
-    /// Constructs a new instance of [`MultiItem`].
-    pub fn new(
-        raw: String,
-        fuzzy_text: Option<(String, usize)>,
-        display_text: Option<String>,
-    ) -> Self {
-        Self {
-            raw,
-            fuzzy_text,
-            display_text,
-        }
-    }
-
-    pub fn display_text_or_raw(&self) -> &str {
-        match self.display_text {
-            Some(ref text) => text,
-            None => &self.raw,
-        }
-    }
-
-    pub fn fuzzy_text_or_exact_using_match_scope(
-        &self,
-        match_scope: MatchScope,
-    ) -> Option<FuzzyText> {
-        match self.fuzzy_text {
-            Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
-            None => extract_fuzzy_text(self.raw.as_str(), match_scope),
-        }
+    fn output_text(&self) -> Cow<'_, str> {
+        self.output_text_or_raw().into()
     }
 }
 
@@ -243,7 +243,7 @@ impl MatchedItem {
         if let Some(ref text) = self.display_text {
             text.into()
         } else {
-            self.item.display_text()
+            self.item.output_text()
         }
     }
 

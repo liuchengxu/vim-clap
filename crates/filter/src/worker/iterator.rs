@@ -339,7 +339,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             ..
         } in matched_items.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| item.display_text().into());
+            let text = display_text.unwrap_or_else(|| item.output_text().into());
             println_json!(text, indices);
         }
     }

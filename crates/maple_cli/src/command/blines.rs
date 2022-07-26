@@ -41,7 +41,7 @@ impl ClapItem for BlinesItem {
         self.raw.as_str()
     }
 
-    fn display_text(&self) -> Cow<'_, str> {
+    fn output_text(&self) -> Cow<'_, str> {
         format!("{} {}", self.line_number, self.raw).into()
     }
 
