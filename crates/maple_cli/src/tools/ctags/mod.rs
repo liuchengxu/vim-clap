@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
@@ -10,6 +11,9 @@ use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use subprocess::{Exec, NullFile};
+
+use matcher::{ClapItem, MatchScope};
+use types::FuzzyText;
 
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
@@ -278,6 +282,16 @@ impl CtagsCommand {
         }))
     }
 
+    pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = TagItem>> {
+        Ok(self.run()?.filter_map(|tag| {
+            if let Ok(tag_info) = serde_json::from_str::<TagInfo>(&tag) {
+                Some(tag_info.into_tag_item())
+            } else {
+                None
+            }
+        }))
+    }
+
     /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
         self.inner.cache_info()
@@ -351,6 +365,34 @@ impl TagInfo {
             kind_width = 30,
             pattern = &self.pattern[2..pat_len - 2].trim(),
         )
+    }
+
+    pub fn into_tag_item(self) -> TagItem {
+        let output_text = self.format_proj_tags();
+        TagItem {
+            name: self.name,
+            output_text,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TagItem {
+    pub name: String,
+    pub output_text: String,
+}
+
+impl ClapItem for TagItem {
+    fn raw_text(&self) -> &str {
+        &self.output_text
+    }
+
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText::new(&self.name, 0))
+    }
+
+    fn output_text(&self) -> Cow<'_, str> {
+        Cow::Borrowed(&self.output_text)
     }
 }
 

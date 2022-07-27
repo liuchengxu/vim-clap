@@ -41,12 +41,20 @@ endfunction
 
 function! clap#filter#async#dyn#start_ctags_recursive() abort
   let s:last_query = g:clap.input.get()
-  if exists('g:__clap_forerunner_tempfile')
+
+  let no_cache = has_key(g:clap.context, 'no-cache')
+
+  if !no_cache && exists('g:__clap_forerunner_tempfile')
     call clap#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
   else
     let ctags_cmd = g:clap_enable_icon ? ['--icon=ProjTags'] : []
+    if no_cache
+      let ctags_cmd += ['--no-cache']
+    endif
     let ctags_cmd += [
+          \ '--winwidth', winwidth(g:clap.display.winid),
           \ '--number', s:PAR_RUN ? g:clap.display.preload_capacity : s:DYN_ITEMS_TO_SHOW,
+          \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
           \ 'ctags', 'recursive-tags',
           \ '--dir', clap#rooter#working_dir(),
           \ '--query', g:clap.input.get(),

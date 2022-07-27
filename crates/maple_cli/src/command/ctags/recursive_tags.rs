@@ -97,9 +97,9 @@ impl RecursiveTags {
                     ctags_cmd
                         .stdout()?
                         .par_split(|x| x == &b'\n')
-                        .filter_map(|tag| {
-                            if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
-                                let item: Arc<dyn ClapItem> = Arc::new(tag.format_proj_tags());
+                        .filter_map(|line| {
+                            if let Ok(tag_info) = serde_json::from_slice::<TagInfo>(line) {
+                                let item: Arc<dyn ClapItem> = Arc::new(tag_info.into_tag_item());
                                 Some(item)
                             } else {
                                 None
@@ -110,8 +110,8 @@ impl RecursiveTags {
                 filter::dyn_run(
                     self.query.as_deref().unwrap_or_default(),
                     filter_context,
-                    Source::List(ctags_cmd.formatted_tags_iter()?.map(|tag_line| {
-                        let item: Arc<dyn ClapItem> = Arc::new(tag_line);
+                    Source::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
+                        let item: Arc<dyn ClapItem> = Arc::new(tag_item);
                         item
                     })),
                 )?;
