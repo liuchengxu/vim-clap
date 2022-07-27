@@ -238,6 +238,8 @@ function! g:clap#floating_win#input.open() abort
   call setbufvar(s:input_bufnr, 'autopairs_loaded', 1)
   call setbufvar(s:input_bufnr, 'autopairs_enabled', 0)
   call setbufvar(s:input_bufnr, 'pear_tree_enabled', 0)
+  " Set filetype explicitly so that the plugins like vim-polyglot won't attempt to detect it incorrectly.
+  call setbufvar(s:input_bufnr, '&filetype', 'clap_input')
   call setwinvar(s:input_winid, '&spell', 0)
   call setwinvar(s:input_winid, '&cursorline', 0)
   let g:clap.input.winid = s:input_winid
