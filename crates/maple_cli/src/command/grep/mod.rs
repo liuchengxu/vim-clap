@@ -206,10 +206,10 @@ impl Grep {
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
-                source,
                 params
                     .into_filter_context()
                     .match_scope(MatchScope::GrepLine),
+                source,
             )
         };
 

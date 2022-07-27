@@ -146,8 +146,8 @@ impl Filter {
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,
-                self.generate_source(),
                 FilterContext::new(icon, number, winwidth, matcher),
+                self.generate_source(),
             )?;
         }
         Ok(())

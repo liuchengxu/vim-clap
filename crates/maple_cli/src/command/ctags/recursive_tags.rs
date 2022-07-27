@@ -109,11 +109,11 @@ impl RecursiveTags {
             } else {
                 filter::dyn_run(
                     self.query.as_deref().unwrap_or_default(),
+                    filter_context,
                     Source::List(ctags_cmd.formatted_tags_iter()?.map(|tag_line| {
                         let item: Arc<dyn ClapItem> = Arc::new(tag_line);
                         item
                     })),
-                    filter_context,
                 )?;
             }
         }

@@ -104,7 +104,6 @@ impl EventHandle for BuiltinHandle {
             SourceScale::Cache { ref path, .. } => {
                 if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(
                     &query,
-                    path.clone().into(),
                     FilterContext::new(
                         context.icon,
                         Some(40),
@@ -113,6 +112,7 @@ impl EventHandle for BuiltinHandle {
                             .set_match_scope(context.match_scope)
                             .set_bonuses(context.match_bonuses.clone()),
                     ),
+                    path.clone().into(),
                 ) {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }

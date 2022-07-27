@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use rayon::iter::ParallelBridge;
 
 use filter::Source;
 use matcher::{Bonus, MatchResult};
@@ -57,7 +57,28 @@ impl ClapItem for BlinesItem {
 impl Blines {
     /// Looks for matches of `query` in lines of the current vim buffer.
     pub fn run(&self, params: Params) -> Result<()> {
+        let source_file = std::fs::File::open(&self.input)?;
+
         let index = AtomicUsize::new(0);
+        let blines_item_stream = || {
+            std::io::BufReader::new(source_file)
+                .lines()
+                .filter_map(|x| {
+                    x.ok().and_then(|line: String| {
+                        let index = index.fetch_add(1, Ordering::SeqCst);
+                        if line.trim().is_empty() {
+                            None
+                        } else {
+                            let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
+                                raw: line,
+                                line_number: index + 1,
+                            });
+
+                            Some(item)
+                        }
+                    })
+                })
+        };
 
         let filter_context = if let Some(extension) = self
             .input
@@ -75,50 +96,16 @@ impl Blines {
             filter::par_dyn_run_list(
                 &self.query,
                 filter_context,
-                std::io::BufReader::new(std::fs::File::open(&self.input)?)
-                    .lines()
-                    .par_bridge()
-                    .filter_map(|x| {
-                        x.ok().and_then(|line: String| {
-                            let index = index.fetch_add(1, Ordering::SeqCst);
-                            if line.trim().is_empty() {
-                                None
-                            } else {
-                                let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
-                                    raw: line,
-                                    line_number: index + 1,
-                                });
-
-                                Some(item)
-                            }
-                        })
-                    }),
+                blines_item_stream().par_bridge(),
             );
-            Ok(())
         } else {
             filter::dyn_run(
                 &self.query,
-                Source::List(
-                    std::io::BufReader::new(std::fs::File::open(&self.input)?)
-                        .lines()
-                        .filter_map(|x| {
-                            x.ok().and_then(|line: String| {
-                                let index = index.fetch_add(1, Ordering::SeqCst);
-                                if line.trim().is_empty() {
-                                    None
-                                } else {
-                                    let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
-                                        raw: line,
-                                        line_number: index + 1,
-                                    });
-
-                                    Some(item)
-                                }
-                            })
-                        }),
-                ),
                 filter_context,
-            )
+                Source::List(blines_item_stream()),
+            )?;
         }
+
+        Ok(())
     }
 }

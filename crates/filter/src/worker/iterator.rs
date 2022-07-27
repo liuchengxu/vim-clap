@@ -289,8 +289,8 @@ fn dyn_collect_number(
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
-    source: Source<I>,
     filter_context: FilterContext,
+    source: Source<I>,
 ) -> Result<()> {
     let FilterContext {
         icon,
@@ -380,6 +380,7 @@ mod tests {
         let mut total_lines_created: usize = 0;
         dyn_run(
             "abc",
+            FilterContext::default().number(Some(100)),
             Source::List(
                 std::iter::repeat_with(|| {
                     bytes = bytes.reverse_bits().rotate_right(3).wrapping_add(1);
@@ -409,7 +410,6 @@ mod tests {
                 })
                 .take(usize::max_value() >> 8),
             ),
-            FilterContext::default().number(Some(100)),
         )
         .unwrap()
     }
