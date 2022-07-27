@@ -156,6 +156,10 @@ impl Matcher {
         self
     }
 
+    pub fn match_scope(&self) -> MatchScope {
+        self.match_scope
+    }
+
     pub fn set_match_scope(mut self, match_scope: MatchScope) -> Self {
         self.match_scope = match_scope;
         self

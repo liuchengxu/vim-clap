@@ -135,9 +135,12 @@ pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -
             .enumerate()
             .map(|(idx, matched_item)| {
                 let text = matched_item.display_text();
-                let iconized = if let Some(origin_text) = truncated_map.get_mut(&(idx + 1)) {
-                    let icon = painter.icon(origin_text);
-                    *origin_text = format!("{icon} {origin_text}");
+                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+                    let icon = matched_item
+                        .item
+                        .icon()
+                        .unwrap_or_else(|| painter.icon(output_text));
+                    *output_text = format!("{icon} {output_text}");
                     format!("{icon} {text}")
                 } else {
                     painter.paint(&text)

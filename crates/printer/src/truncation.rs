@@ -75,8 +75,8 @@ pub fn truncate_long_matched_lines(
 
         // Truncate the text simply if it's too long.
         if output_text.len() > MAX_LINE_LEN {
-            let display_text: String = output_text.chars().take(1000).collect();
-            matched_item.display_text = Some(display_text);
+            let truncated_output_text: String = output_text.chars().take(1000).collect();
+            matched_item.display_text = Some(truncated_output_text);
             matched_item.indices = matched_item
                 .indices
                 .iter()

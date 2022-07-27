@@ -7,12 +7,13 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use matcher::MatchScope;
 use parking_lot::Mutex;
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
 use icon::Icon;
-use types::{ClapItem, MatchedItem, MultiItem, Query};
+use types::{ClapItem, GrepItem, MatchedItem, MultiItem, Query};
 use utility::println_json_with_length;
 
 use crate::FilterContext;
@@ -188,8 +189,18 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
                 .par_bridge()
                 .for_each(|line: String| {
                     let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
-                    process_item(item, processed);
+                    match matcher.match_scope() {
+                        MatchScope::GrepLine => {
+                            if let Some(grep_item) = GrepItem::try_new(line) {
+                                let item: Arc<dyn ClapItem> = Arc::new(grep_item);
+                                process_item(item, processed);
+                            }
+                        }
+                        _ => {
+                            let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                            process_item(item, processed);
+                        }
+                    };
                 });
         }
     }

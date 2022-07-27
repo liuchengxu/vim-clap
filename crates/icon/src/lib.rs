@@ -3,11 +3,18 @@
 // pub use constants::*;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-use std::{fmt::Display, path::Path};
+use std::fmt::Display;
+use std::path::Path;
 
-pub const DEFAULT_ICON: char = '';
-pub const FOLDER_ICON: char = '';
-pub const DEFAULT_FILER_ICON: char = '';
+/// The type used to represent icons.
+///
+/// This could be changed into different type later,
+/// so functions take and return this type, not `char` or `&str` directly.
+pub type IconType = char;
+
+pub const DEFAULT_ICON: IconType = '';
+pub const FOLDER_ICON: IconType = '';
+pub const DEFAULT_FILER_ICON: IconType = '';
 
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
@@ -109,12 +116,6 @@ impl IconKind {
     }
 }
 
-/// The type used to represent icons.
-///
-/// This could be changed into different type later,
-/// so functions take and return this type, not `char` or `&str` directly.
-type IconType = char;
-
 /// Return appropriate icon for the path. If no icon matched, return the specified default one.
 ///
 /// Try matching the exactmatch map against the file name, and then the extension map.
@@ -142,6 +143,10 @@ pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
 pub fn file_icon(line: &str) -> IconType {
     let path = Path::new(line);
     get_icon_or(&path, DEFAULT_ICON)
+}
+
+pub fn icon_file_path(file_path: &str) -> IconType {
+    get_icon_or(&Path::new(file_path), DEFAULT_ICON)
 }
 
 pub fn prepend_icon(line: &str) -> String {

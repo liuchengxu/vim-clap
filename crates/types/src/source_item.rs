@@ -96,20 +96,31 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     }
 
     // TODO: Each bonus can have its own range of `bonus_text`, make use of MatchScope.
-    /// Text for calculating the bonus score.
+    /// Text for calculating the bonus score to tweak the initial matching score.
     fn bonus_text(&self) -> &str {
         self.match_text()
     }
 
+    /// Callback for the result of `matcher::match_item`.
+    ///
+    /// Sometimes we need to tweak the indices of matched item for custom output text, e.g.,
+    /// `BlinesItem`.
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        match_result
+    }
+
+    /// Constructs a text intended to be displayed on the screen without any decoration (truncation,
+    /// icon, etc).
+    ///
+    /// A concrete type of ClapItem can be structural to facilitate the matching process, in which
+    /// case it's necessary to make a formatted String for displaying in the end.
     fn output_text(&self) -> Cow<'_, str> {
         self.raw_text().into()
     }
 
-    /// Callback for the result of `matcher::match_item`.
-    ///
-    /// Sometimes we need to tweak the indices of matched item for custom display text.
-    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
-        match_result
+    /// Returns the icon if enabled and possible.
+    fn icon(&self) -> Option<icon::IconType> {
+        None
     }
 }
 
@@ -120,6 +131,50 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     fn raw_text(&self) -> &str {
         self.as_ref()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GrepItem {
+    pub raw: String,
+    end_of_path: usize,
+    start_of_line: usize,
+}
+
+impl GrepItem {
+    pub fn try_new(raw: String) -> Option<Self> {
+        let (end_of_path, start_of_line) = pattern::parse_grep_item(&raw)?;
+        Some(Self {
+            raw,
+            end_of_path,
+            start_of_line,
+        })
+    }
+
+    fn path(&self) -> &str {
+        &self.raw[..self.end_of_path]
+    }
+
+    fn line(&self) -> &str {
+        &self.raw[self.start_of_line..]
+    }
+}
+
+impl ClapItem for GrepItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText::new(self.line(), self.start_of_line))
+    }
+
+    fn bonus_text(&self) -> &str {
+        self.line()
+    }
+
+    fn icon(&self) -> Option<icon::IconType> {
+        Some(icon::icon_file_path(self.path()))
     }
 }
 
