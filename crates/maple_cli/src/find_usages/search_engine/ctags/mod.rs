@@ -35,7 +35,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     }
 
     /// Generate the `tags` file.
-    pub fn generate_tags(&self) -> Result<()> {
+    pub fn generate_tags(&self) -> std::io::Result<()> {
         self.tags_generator.generate_tags()
     }
 

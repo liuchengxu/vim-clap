@@ -59,7 +59,7 @@ function! s:adjust_indicator_width() abort
   if width < 45
     let g:__clap_indicator_winwidth = 5
   else
-    let g:__clap_indicator_winwidth = min([width / 5, 18])
+    let g:__clap_indicator_winwidth = min([width / 4, 20])
   endif
 endfunction
 
@@ -87,7 +87,7 @@ function! clap#layout#indicator_width() abort
     let width = width / 2
   endif
 
-  let indicator_width = width < 30 ? 5 : min([width / 5, 18])
+  let indicator_width = width < 30 ? 5 : min([width / 4, 20])
 
   let g:__clap_indicator_winwidth = indicator_width
 
