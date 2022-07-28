@@ -12,6 +12,7 @@ let s:prompt_format = get(g:, 'clap_prompt_format', ' %spinner%%forerunner_statu
 let s:IDLE = ' '
 
 let s:frame_index = 0
+let s:is_busy = 0
 let s:spinner = s:IDLE
 
 " The spinner and current provider prompt are actually displayed in a same window.
