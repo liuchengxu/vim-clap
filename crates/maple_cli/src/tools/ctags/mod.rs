@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -72,8 +72,8 @@ pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> = Lazy::new(|| {
 });
 
 /// Used to specify the language when working with `readtags`.
-pub static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
-    fn generate_lang_maps() -> Result<HashMap<String, String>> {
+static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
+    fn generate_lang_maps() -> std::io::Result<HashMap<String, String>> {
         let output = std::process::Command::new("ctags")
             .arg("--list-maps")
             .stderr(std::process::Stdio::inherit())
@@ -167,7 +167,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     }
 
     /// Executes the command to generate the tags file.
-    pub fn generate_tags(&self) -> Result<()> {
+    pub fn generate_tags(&self) -> std::io::Result<()> {
         // TODO: detect the languages by dir if not explicitly specified?
         let languages_opt = self
             .languages
@@ -194,10 +194,14 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
         let exit_status = Exec::shell(&cmd)
             .stderr(NullFile) // ignore the line: ctags: warning...
             .cwd(self.dir.as_ref())
-            .join()?;
+            .join()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
         if !exit_status.success() {
-            return Err(anyhow!("Error occured when creating tags file"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Error occured when creating tags file",
+            ));
         }
 
         Ok(())

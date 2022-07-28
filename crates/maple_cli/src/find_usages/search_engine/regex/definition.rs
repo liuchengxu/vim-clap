@@ -209,11 +209,11 @@ impl Occurrences {
     }
 }
 
-pub(super) async fn definitions_and_references<'a>(
+pub(super) fn definitions_and_references<'a>(
     regex_runner: RegexRunner<'a>,
     comments: &[&str],
 ) -> Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) = regex_runner.all(comments).await;
+    let (definitions, mut occurrences) = regex_runner.all(comments);
 
     let defs = definitions.flatten();
 
@@ -243,7 +243,6 @@ pub(super) async fn definitions_and_references<'a>(
     if res.is_empty() {
         regex_runner
             .regexp_search(comments)
-            .await
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {
         Ok(res)

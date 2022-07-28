@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::io::{BufRead, Lines};
+use std::io::{BufRead, BufReader, Lines};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
@@ -109,9 +109,7 @@ pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<P
     Ok(file)
 }
 
-pub fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> Result<T> {
-    use std::io::BufReader;
-
+fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> Result<T> {
     let file = std::fs::File::open(path)?;
     let reader = BufReader::new(file);
     let deserializd = serde_json::from_reader(reader)?;
@@ -122,7 +120,7 @@ pub fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> 
 pub fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {
     path.and_then(|json_path| {
         if json_path.as_ref().exists() {
-            crate::utils::read_json_as::<_, T>(json_path).ok()
+            read_json_as::<_, T>(json_path).ok()
         } else {
             None
         }

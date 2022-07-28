@@ -740,8 +740,10 @@ name = "maple"
 version = "0.1.35"
 dependencies = [
  "built",
+ "clap",
  "maple_cli",
  "tokio",
+ "upgrade",
 ]
 
 [[package]]

@@ -77,11 +77,11 @@ impl Ctags {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::Maple;
+    use crate::app::RunCmd;
 
     #[test]
     fn test_ctags_command() {
-        let app = Maple::parse_from(&[
+        let run_cmd = RunCmd::parse_from(&[
             "",
             "ctags",
             "recursive-tags",
@@ -90,8 +90,8 @@ mod tests {
             "--exclude",
             ".git,target",
         ]);
-        match app.command {
-            crate::app::Cmd::Ctags(Ctags::RecursiveTags(rtags)) => {
+        match run_cmd {
+            RunCmd::Ctags(Ctags::RecursiveTags(rtags)) => {
                 assert_eq!(
                     rtags.shared.exclude_opt(),
                     "--exclude=.git --exclude=target".to_string(),

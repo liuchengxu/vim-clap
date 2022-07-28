@@ -162,14 +162,12 @@ async fn search_for_usages(
 
     let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
 
-    let (response, usages) = match search_engine
-        .run(SearchingWorker {
-            cwd,
-            query_info: query_info.clone(),
-            source_file_extension: extension,
-        })
-        .await
-    {
+    let searching_worker = SearchingWorker {
+        cwd,
+        query_info: query_info.clone(),
+        source_file_extension: extension,
+    };
+    let (response, usages) = match search_engine.run(searching_worker).await {
         Ok(usages) => {
             let response = {
                 let total = usages.len();
@@ -254,12 +252,12 @@ impl EventHandle for DumbJumpHandle {
 
         if register_job_successfully(job_id) {
             let ctags_future = {
-                let ctags_regenerated = self.ctags_regenerated.clone();
                 let cwd = params.cwd.clone();
                 let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
                 if let Some(language) = get_language(&params.extension) {
                     tags_generator.set_languages(language.into());
                 }
+                let ctags_regenerated = self.ctags_regenerated.clone();
 
                 // TODO: smarter strategy to regenerate the tags?
                 async move {
@@ -267,7 +265,7 @@ impl EventHandle for DumbJumpHandle {
                     let ctags_searcher = CtagsSearcher::new(tags_generator);
                     match ctags_searcher.generate_tags() {
                         Ok(()) => {
-                            ctags_regenerated.store(true, Ordering::Relaxed);
+                            ctags_regenerated.store(true, Ordering::SeqCst);
                         }
                         Err(e) => {
                             tracing::error!(error = ?e, "💔 Error at generating the tags file for dumb_jump");
