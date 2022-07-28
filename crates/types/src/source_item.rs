@@ -136,7 +136,7 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
 
 #[derive(Debug, Clone)]
 pub struct GrepItem {
-    pub raw: String,
+    raw: String,
     end_of_path: usize,
     start_of_line: usize,
 }

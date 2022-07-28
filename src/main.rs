@@ -8,11 +8,12 @@ mod built_info {
 
 #[derive(Parser, Debug)]
 pub enum Cmd {
-    /// Display the current version
+    /// Display the current version.
     #[clap(name = "version")]
     Version,
-    /// This command is only invoked when user uses the prebuilt binary,
-    /// more specifically, executable in vim-clap/bin/maple.
+    /// Upgrade the prebuilt binary to the latest GitHub release if any.
+    ///
+    /// Only available for the executable in `vim-clap/bin/maple`.
     #[clap(name = "upgrade")]
     Upgrade {
         /// Download if the local version mismatches the latest remote version.
@@ -24,25 +25,24 @@ pub enum Cmd {
     },
     /// Run the maple.
     #[clap(flatten)]
-    Run(RunCmd),
+    Run(Box<RunCmd>),
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "maple")]
-#[clap(global_setting(AppSettings::NoAutoVersion))]
+#[clap(name = "maple", global_setting(AppSettings::NoAutoVersion))]
 pub struct Maple {
     #[clap(flatten)]
     pub params: Params,
 
     #[clap(subcommand)]
-    pub command: Cmd,
+    pub cmd: Cmd,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let maple = Maple::parse();
 
-    match maple.command {
+    match maple.cmd {
         Cmd::Version => {
             println!(
                 "version {}{}, built for {} by {}.",
