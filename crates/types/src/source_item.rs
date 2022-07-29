@@ -65,7 +65,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// Text used in the matching algorithm.
-pub trait MatchingText {
+pub trait ClapItem {
     /// Initial full text.
     fn full_text(&self) -> &str;
 
@@ -77,25 +77,25 @@ pub trait MatchingText {
     /// Text for applying the fuzzy match algorithm.
     ///
     /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText>;
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText>;
 }
 
-impl MatchingText for SourceItem {
+impl ClapItem for SourceItem {
     fn full_text(&self) -> &str {
         &self.raw
     }
 
-    fn fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
         self.get_fuzzy_text(match_scope)
     }
 }
 
-impl MatchingText for &str {
+impl ClapItem for &str {
     fn full_text(&self) -> &str {
         self
     }
 
-    fn fuzzy_text(&self, _match_scope: &MatchScope) -> Option<FuzzyText> {
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
         Some(FuzzyText {
             text: self,
             matching_start: 0,
@@ -163,7 +163,7 @@ impl SourceItem {
         }
     }
 
-    pub fn get_fuzzy_text(&self, match_scope: &MatchScope) -> Option<FuzzyText> {
+    pub fn get_fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
         if let Some((ref text, offset)) = self.fuzzy_text {
             return Some(FuzzyText::new(text, offset));
         }

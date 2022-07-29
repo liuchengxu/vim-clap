@@ -17,7 +17,7 @@ fn prepare_source_items() -> Vec<SourceItem> {
 }
 
 fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
-    let scorer = |item: &SourceItem| matcher.match_item(item, query);
+    let scorer = |item: SourceItem| matcher.match_item(item, query);
     list.into_iter()
         .filter_map(|item| {
             scorer(&item).map(|MatchResult { score, indices }| (item, score, indices))
@@ -30,7 +30,7 @@ fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Matche
 fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     use rayon::prelude::*;
 
-    let scorer = |item: &SourceItem| matcher.match_item(item, query);
+    let scorer = |item: SourceItem| matcher.match_item(item, query);
     list.into_par_iter()
         .filter_map(|item| {
             scorer(&item).map(|MatchResult { score, indices }| (item, score, indices))

@@ -13,7 +13,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{MatchResult, MatchScope, Matcher};
+use matcher::{MatchScope, Matcher};
 
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
@@ -95,11 +95,7 @@ pub fn par_filter(
     let query: Query = query.into();
     let matched_items: Vec<MatchedItem> = source_items
         .into_par_iter()
-        .filter_map(|item| {
-            fuzzy_matcher
-                .match_item(&item, &query)
-                .map(|MatchResult { score, indices }| (item, score, indices).into())
-        })
+        .filter_map(|item| fuzzy_matcher.match_item(item, &query))
         .collect();
     sort_matched_items(matched_items)
 }

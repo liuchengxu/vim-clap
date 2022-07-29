@@ -3,7 +3,7 @@ pub mod filename;
 pub mod language;
 pub mod recent_files;
 
-use types::MatchingText;
+use types::ClapItem;
 
 use self::cwd::Cwd;
 use self::filename::calc_bonus_file_name;
@@ -55,7 +55,7 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_score<T: MatchingText>(&self, item: &T, score: Score, indices: &[usize]) -> Score {
+    pub fn bonus_score<T: ClapItem>(&self, item: &T, score: Score, indices: &[usize]) -> Score {
         // Ignore the long line.
         if item.full_text().len() > 1024 {
             return 0;

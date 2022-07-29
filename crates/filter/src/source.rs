@@ -1,5 +1,5 @@
 use std::io::BufRead;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use subprocess::Exec;
@@ -28,87 +28,77 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
     }
 }
 
-/// macros for `dyn_collect_number` and `dyn_collect_number`
-///
-/// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
-#[macro_export]
-macro_rules! source_iter_stdin {
-    ( $scorer:ident ) => {
-        std::io::stdin().lock().lines().filter_map(|lines_iter| {
-            lines_iter
-                .ok()
-                .map(Into::<SourceItem>::into)
-                .and_then(|item| {
-                    $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
-                })
-                .map(Into::into)
-        })
-    };
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
-#[macro_export]
-macro_rules! source_iter_exec {
-    ( $scorer:ident, $exec:ident ) => {
-        std::io::BufReader::new($exec.stream_stdout()?)
-            .lines()
-            .filter_map(|lines_iter| {
-                lines_iter
-                    .ok()
-                    .map(Into::<SourceItem>::into)
-                    .and_then(|item| {
-                        $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
-                    })
-                    .map(Into::into)
-            })
-    };
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
-#[macro_export]
-macro_rules! source_iter_file {
-    ( $scorer:ident, $fpath:ident ) => {
-        // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-        // The line stream can contain invalid UTF-8 data.
-        std::io::BufReader::new(std::fs::File::open($fpath)?)
-            .lines()
-            .filter_map(|x| {
-                x.ok()
-                    .map(Into::<SourceItem>::into)
-                    .and_then(|item| {
-                        $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
-                    })
-                    .map(Into::into)
-            })
-    };
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
-#[macro_export]
-macro_rules! source_iter_list {
-    ( $scorer:ident, $list:ident ) => {
-        $list
-            .filter_map(|item| {
-                $scorer(&item).map(|match_result| match_result.into_filtered_item(item))
-            })
-            .map(Into::into)
-    };
-}
-
 impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
-        let scorer = |item: &SourceItem| matcher.match_item(item, query);
-
-        let filtered = match self {
-            Self::Stdin => source_iter_stdin!(scorer).collect(),
-            Self::Exec(exec) => source_iter_exec!(scorer, exec).collect(),
-            Self::File(fpath) => source_iter_file!(scorer, fpath).collect(),
-            Self::List(list) => source_iter_list!(scorer, list).collect(),
+        let res = match self {
+            Self::List(list) => source_list(&matcher, query, list).collect(),
+            Self::Stdin => source_stdin(&matcher, query).collect(),
+            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
+            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
         };
 
-        Ok(filtered)
+        Ok(res)
     }
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
+pub fn source_list<'a, 'b: 'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    list: impl Iterator<Item = SourceItem> + 'b,
+) -> impl Iterator<Item = MatchedItem> + 'a {
+    list.filter_map(|item| matcher.match_item(item, query))
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
+pub fn source_stdin<'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+) -> impl Iterator<Item = MatchedItem> + 'a {
+    std::io::stdin()
+        .lock()
+        .lines()
+        .filter_map(move |lines_iter| {
+            lines_iter.ok().and_then(|line: String| {
+                let item = SourceItem::from(line);
+                matcher.match_item(item, query)
+            })
+        })
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
+pub fn source_file<'a, P: AsRef<Path>>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    path: P,
+) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
+    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+    // The line stream can contain invalid UTF-8 data.
+    Ok(std::io::BufReader::new(std::fs::File::open(path)?)
+        .lines()
+        .filter_map(|x| {
+            x.ok().and_then(|line: String| {
+                let item = SourceItem::from(line);
+                matcher.match_item(item, query)
+            })
+        }))
+}
+
+/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
+pub fn source_exec<'a>(
+    matcher: &'a Matcher,
+    query: &'a Query,
+    exec: Box<Exec>,
+) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
+    Ok(std::io::BufReader::new(exec.stream_stdout()?)
+        .lines()
+        .filter_map(|lines_iter| {
+            lines_iter.ok().and_then(|line: String| {
+                let item = SourceItem::from(line);
+                matcher.match_item(item, query)
+            })
+        }))
 }
