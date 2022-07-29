@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::io::BufRead;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
