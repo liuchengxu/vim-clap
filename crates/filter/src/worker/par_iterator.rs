@@ -167,6 +167,7 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
         if let Some(matched_item) = matcher.match_item(item, query) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
+            // TODO: not use mutex?
             let mut best_items = best_items.lock();
             best_items.try_push_and_notify(matched_item, matched, processed);
             drop(best_items);
