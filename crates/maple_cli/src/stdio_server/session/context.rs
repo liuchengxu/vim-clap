@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
-use filter::FilteredItem;
+use filter::MatchedItem;
 use icon::{Icon, IconKind};
 use matcher::MatchScope;
 use parking_lot::Mutex;
@@ -52,7 +52,7 @@ impl SourceScale {
         }
     }
 
-    pub fn initial_lines(&self, n: usize) -> Option<Vec<FilteredItem>> {
+    pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
         match self {
             Self::Small { ref lines, .. } => {
                 Some(lines.iter().take(n).map(|s| s.as_str().into()).collect())

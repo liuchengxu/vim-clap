@@ -18,7 +18,7 @@ use matcher::{MatchResult, MatchScope, Matcher};
 pub use self::dynamic::dyn_run;
 pub use self::source::Source;
 pub use matcher;
-pub use types::{CaseMatching, FilteredItem, Query, SourceItem};
+pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
@@ -68,7 +68,7 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub fn sort_initial_filtered(filtered: Vec<FilteredItem>) -> Vec<FilteredItem> {
+pub fn sort_matched_items(filtered: Vec<MatchedItem>) -> Vec<MatchedItem> {
     let mut filtered = filtered;
     filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
     filtered
@@ -80,11 +80,10 @@ pub fn sync_run<I: Iterator<Item = SourceItem>>(
     query: &str,
     source: Source<I>,
     matcher: Matcher,
-) -> Result<Vec<FilteredItem>> {
+) -> Result<Vec<MatchedItem>> {
     let query: Query = query.into();
-    let filtered = source.filter_and_collect(matcher, &query)?;
-    let ranked = sort_initial_filtered(filtered);
-    Ok(ranked)
+    let matched_items = source.run_and_collect(matcher, &query)?;
+    Ok(sort_matched_items(matched_items))
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
@@ -92,15 +91,15 @@ pub fn par_filter(
     query: impl Into<Query>,
     source_items: Vec<SourceItem>,
     fuzzy_matcher: &Matcher,
-) -> Vec<FilteredItem> {
+) -> Vec<MatchedItem> {
     let query: Query = query.into();
-    let filtered: Vec<FilteredItem> = source_items
+    let matched_items: Vec<MatchedItem> = source_items
         .into_par_iter()
         .filter_map(|item| {
             fuzzy_matcher
-                .match_query(&item, &query)
+                .match_item(&item, &query)
                 .map(|MatchResult { score, indices }| (item, score, indices).into())
         })
         .collect();
-    sort_initial_filtered(filtered)
+    sort_matched_items(matched_items)
 }

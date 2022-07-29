@@ -179,51 +179,51 @@ impl SourceItem {
 
 /// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
-pub struct FilteredItem<T = i64> {
+pub struct MatchedItem<T = i64> {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
-    pub source_item: SourceItem,
+    pub item: SourceItem,
     /// Filtering score.
     pub score: T,
     /// Indices of matched elements.
     ///
     /// The indices may be truncated when truncating the text.
-    pub match_indices: Vec<usize>,
+    pub indices: Vec<usize>,
     /// Text for showing the final filtered result.
     ///
     /// Usually in a truncated form for fitting into the display window.
     pub display_text: Option<String>,
 }
 
-impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for FilteredItem<T> {
-    fn from((item, score, match_indices): (I, T, Vec<usize>)) -> Self {
+impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for MatchedItem<T> {
+    fn from((item, score, indices): (I, T, Vec<usize>)) -> Self {
         Self {
-            source_item: item.into(),
+            item: item.into(),
             score,
-            match_indices,
+            indices,
             display_text: None,
         }
     }
 }
 
-impl<I: Into<SourceItem>, T: Default> From<I> for FilteredItem<T> {
+impl<I: Into<SourceItem>, T: Default> From<I> for MatchedItem<T> {
     fn from(item: I) -> Self {
         Self {
-            source_item: item.into(),
+            item: item.into(),
             score: Default::default(),
-            match_indices: Default::default(),
+            indices: Default::default(),
             display_text: None,
         }
     }
 }
 
-impl<T> FilteredItem<T> {
-    pub fn new<I: Into<SourceItem>>(item: I, score: T, match_indices: Vec<usize>) -> Self {
-        (item, score, match_indices).into()
+impl<T> MatchedItem<T> {
+    pub fn new<I: Into<SourceItem>>(item: I, score: T, indices: Vec<usize>) -> Self {
+        (item, score, indices).into()
     }
 
     /// Untruncated display text.
     pub fn source_item_display_text(&self) -> &str {
-        self.source_item.display_text()
+        self.item.display_text()
     }
 
     /// Maybe truncated display text.
@@ -231,12 +231,12 @@ impl<T> FilteredItem<T> {
         if let Some(ref text) = self.display_text {
             text
         } else {
-            self.source_item.display_text()
+            self.item.display_text()
         }
     }
 
     /// Returns the match indices shifted by `offset`.
     pub fn shifted_indices(&self, offset: usize) -> Vec<usize> {
-        self.match_indices.iter().map(|x| x + offset).collect()
+        self.indices.iter().map(|x| x + offset).collect()
     }
 }

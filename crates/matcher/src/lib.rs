@@ -30,7 +30,7 @@ pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
-use types::{CaseMatching, FilteredItem};
+use types::{CaseMatching, MatchedItem};
 // Re-export types
 pub use types::{
     ExactTerm, ExactTermType, FuzzyTermType, MatchScope, MatchingText, Query, SearchTerm,
@@ -52,7 +52,7 @@ impl MatchResult {
         Self { score, indices }
     }
 
-    pub fn into_filtered_item<I: Into<SourceItem>>(self, item: I) -> FilteredItem {
+    pub fn into_filtered_item<I: Into<SourceItem>>(self, item: I) -> MatchedItem {
         (item, self.score, self.indices).into()
     }
 }
@@ -200,7 +200,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_query<T: MatchingText>(&self, item: &T, query: &Query) -> Option<MatchResult> {
+    pub fn match_item<T: MatchingText>(&self, item: &T, query: &Query) -> Option<MatchResult> {
         // Try the inverse terms against the full search line.
         for inverse_term in query.inverse_terms.iter() {
             if inverse_term.match_full_line(item.full_text()) {
@@ -324,7 +324,7 @@ mod tests {
         let query = "fil";
         for line in lines {
             let match_result_base = matcher.fuzzy_match(&SourceItem::from(line), query).unwrap();
-            let match_result_with_bonus = matcher.match_query(&line, &query.into()).unwrap();
+            let match_result_with_bonus = matcher.match_item(&line, &query.into()).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
             assert!(match_result_with_bonus.score > match_result_base.score);
         }
@@ -339,8 +339,8 @@ mod tests {
             MatchScope::Full,
         );
         let query: Query = "fo".into();
-        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
-        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        let match_result1 = matcher.match_item(&lines[0], &query).unwrap();
+        let match_result2 = matcher.match_item(&lines[1], &query).unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
     }
@@ -350,8 +350,8 @@ mod tests {
         let lines = vec!["function foo qwer", "function foo"];
         let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
-        let match_result1 = matcher.match_query(&lines[0], &query).unwrap();
-        let match_result2 = matcher.match_query(&lines[1], &query).unwrap();
+        let match_result1 = matcher.match_item(&lines[0], &query).unwrap();
+        let match_result2 = matcher.match_item(&lines[1], &query).unwrap();
         assert!(match_result1.indices == match_result2.indices);
         assert!(match_result1.score < match_result2.score);
     }
@@ -370,7 +370,7 @@ mod tests {
         let query: Query = "clap .vim$ ^auto".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .map(|item| matcher.match_item(item, &query))
             .collect();
 
         assert_eq!(
@@ -392,7 +392,7 @@ mod tests {
         let query: Query = ".rs$".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .map(|item| matcher.match_item(item, &query))
             .collect();
 
         assert_eq!(
@@ -408,7 +408,7 @@ mod tests {
         let query: Query = "py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .map(|item| matcher.match_item(item, &query))
             .collect();
 
         assert_eq!(
@@ -424,7 +424,7 @@ mod tests {
         let query: Query = "'py".into();
         let matched_results: Vec<_> = items
             .iter()
-            .map(|item| matcher.match_query(item, &query))
+            .map(|item| matcher.match_item(item, &query))
             .collect();
 
         assert_eq!(

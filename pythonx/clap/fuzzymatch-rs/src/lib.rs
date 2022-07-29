@@ -4,7 +4,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, FuzzyAlgorithm, MatchResult, MatchScope, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{FilteredItem, Query, SourceItem};
+use types::{MatchedItem, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -86,12 +86,12 @@ fn fuzzy_match(
         if enable_icon {
             // " " is 4 bytes, but the offset of highlight is 2.
             matcher
-                .match_query(&SourceItem::from(&line[4..]), &query)
+                .match_item(&SourceItem::from(&line[4..]), &query)
                 .map(|MatchResult { score, indices }| {
                     MatchResult::new(score, indices.into_iter().map(|x| x + 4).collect())
                 })
         } else {
-            matcher.match_query(&SourceItem::from(line), &query)
+            matcher.match_item(&SourceItem::from(line), &query)
         }
     };
 
@@ -102,7 +102,7 @@ fn fuzzy_match(
                 (Into::<SourceItem>::into(line), score, indices)
             })
         })
-        .map(Into::<FilteredItem>::into)
+        .map(Into::<MatchedItem>::into)
         .collect::<Vec<_>>();
 
     ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
@@ -113,12 +113,7 @@ fn fuzzy_match(
 
     let (filtered, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
-        .map(|filtered_item| {
-            (
-                filtered_item.display_text().to_owned(),
-                filtered_item.match_indices,
-            )
-        })
+        .map(|matched_item| (matched_item.display_text().to_owned(), matched_item.indices))
         .unzip();
 
     Ok((

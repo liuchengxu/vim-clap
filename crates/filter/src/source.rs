@@ -5,7 +5,7 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::Matcher;
-use types::{FilteredItem, Query, SourceItem};
+use types::{MatchedItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -30,7 +30,7 @@ impl<I: Iterator<Item = SourceItem>> From<Exec> for Source<I> {
 
 /// macros for `dyn_collect_number` and `dyn_collect_number`
 ///
-/// Generate an iterator of [`FilteredItem`] from [`Source::Stdin`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
 #[macro_export]
 macro_rules! source_iter_stdin {
     ( $scorer:ident ) => {
@@ -46,7 +46,7 @@ macro_rules! source_iter_stdin {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::Exec`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
 #[macro_export]
 macro_rules! source_iter_exec {
     ( $scorer:ident, $exec:ident ) => {
@@ -64,7 +64,7 @@ macro_rules! source_iter_exec {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::File`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
 #[macro_export]
 macro_rules! source_iter_file {
     ( $scorer:ident, $fpath:ident ) => {
@@ -83,7 +83,7 @@ macro_rules! source_iter_file {
     };
 }
 
-/// Generate an iterator of [`FilteredItem`] from [`Source::List(list)`].
+/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
 #[macro_export]
 macro_rules! source_iter_list {
     ( $scorer:ident, $list:ident ) => {
@@ -99,8 +99,8 @@ impl<I: Iterator<Item = SourceItem>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn filter_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<FilteredItem>> {
-        let scorer = |item: &SourceItem| matcher.match_query(item, query);
+    pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
+        let scorer = |item: &SourceItem| matcher.match_item(item, query);
 
         let filtered = match self {
             Self::Stdin => source_iter_stdin!(scorer).collect(),

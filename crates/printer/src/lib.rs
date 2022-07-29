@@ -5,7 +5,7 @@ mod trimmer;
 mod truncation;
 
 use icon::{Icon, ICON_LEN};
-use types::FilteredItem;
+use types::MatchedItem;
 use utility::{println_json, println_json_with_length};
 
 pub use self::truncation::{
@@ -88,7 +88,7 @@ impl DecoratedLines {
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn decorate_lines<T>(
-    mut top_list: Vec<FilteredItem<T>>,
+    mut top_list: Vec<MatchedItem<T>>,
     winwidth: usize,
     icon: Icon,
 ) -> DecoratedLines {
@@ -97,14 +97,14 @@ pub fn decorate_lines<T>(
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
             .into_iter()
             .enumerate()
-            .map(|(idx, filtered_item)| {
-                let text = filtered_item.display_text();
+            .map(|(idx, matched_item)| {
+                let text = matched_item.display_text();
                 let iconized = if let Some(origin_text) = truncated_map.get(&(idx + 1)) {
                     format!("{} {}", painter.icon(origin_text), text)
                 } else {
                     painter.paint(&text)
                 };
-                (iconized, filtered_item.shifted_indices(ICON_LEN))
+                (iconized, matched_item.shifted_indices(ICON_LEN))
             })
             .unzip();
 
@@ -112,12 +112,7 @@ pub fn decorate_lines<T>(
     } else {
         let (lines, indices): (Vec<_>, Vec<_>) = top_list
             .into_iter()
-            .map(|filtered_item| {
-                (
-                    filtered_item.display_text().to_owned(),
-                    filtered_item.match_indices,
-                )
-            })
+            .map(|matched_item| (matched_item.display_text().to_owned(), matched_item.indices))
             .unzip();
 
         DecoratedLines::new(lines, indices, truncated_map, false)
@@ -126,7 +121,7 @@ pub fn decorate_lines<T>(
 
 /// Prints the results of filter::sync_run() to stdout.
 pub fn print_sync_filter_results(
-    ranked: Vec<FilteredItem>,
+    ranked: Vec<MatchedItem>,
     number: Option<usize>,
     winwidth: usize,
     icon: Icon,
@@ -137,15 +132,14 @@ pub fn print_sync_filter_results(
         ranked.truncate(number);
         decorate_lines(ranked, winwidth, icon).print_json(Some(total));
     } else {
-        for FilteredItem {
-            source_item,
-            match_indices,
+        for MatchedItem {
+            item,
+            indices,
             display_text,
             ..
         } in ranked.into_iter()
         {
-            let text = display_text.unwrap_or_else(|| source_item.display_text().into());
-            let indices = match_indices;
+            let text = display_text.unwrap_or_else(|| item.display_text().into());
             println_json!(text, indices);
         }
     }
@@ -153,7 +147,7 @@ pub fn print_sync_filter_results(
 
 /// Prints the results of filter::dyn_run() to stdout.
 pub fn print_dyn_filter_results(
-    ranked: Vec<FilteredItem>,
+    ranked: Vec<MatchedItem>,
     total: usize,
     number: usize,
     winwidth: usize,
@@ -213,11 +207,11 @@ pub(crate) mod tests {
     pub(crate) fn filter_single_line(
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
-    ) -> Vec<FilteredItem> {
+    ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
         let mut ranked = Source::List(std::iter::once(line.into()))
-            .filter_and_collect(matcher, &query.into())
+            .run_and_collect(matcher, &query.into())
             .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
@@ -237,8 +231,8 @@ pub(crate) mod tests {
         let mut ranked = filter_single_line(text, &query);
         let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
 
-        let FilteredItem { match_indices, .. } = ranked[0].clone();
-        let truncated_indices = match_indices;
+        let MatchedItem { indices, .. } = ranked[0].clone();
+        let truncated_indices = indices;
 
         let truncated_text_got = ranked[0].display_text();
         assert_eq!(truncated_text, truncated_text_got);

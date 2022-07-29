@@ -4,7 +4,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::{matcher::Matcher, FilterContext, FilteredItem};
+use filter::{matcher::Matcher, FilterContext, MatchedItem};
 use parking_lot::Mutex;
 use serde_json::json;
 
@@ -18,7 +18,7 @@ pub use on_move::{OnMove, OnMoveHandler};
 
 #[derive(Clone)]
 pub struct BuiltinHandle {
-    pub current_results: Arc<Mutex<Vec<FilteredItem>>>,
+    pub current_results: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl BuiltinHandle {
@@ -43,7 +43,7 @@ impl EventHandle for BuiltinHandle {
                     .current_results
                     .lock()
                     .get((lnum - 1) as usize)
-                    .map(|r| r.source_item.raw.clone())
+                    .map(|r| r.item.raw.clone())
                 {
                     Some(curline)
                 } else {
