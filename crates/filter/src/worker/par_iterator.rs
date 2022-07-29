@@ -161,11 +161,11 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Arc::new(Mutex::new(BestItems::new(number, icon, winwidth)));
+    let best_items = Mutex::new(BestItems::new(number, icon, winwidth));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
         if let Some(matched_item) = matcher.match_item(item, query) {
-            let matched = matched_count.fetch_add(1, Ordering::Relaxed);
+            let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             let mut best_items = best_items.lock();
             best_items.try_push_and_notify(matched_item, matched, processed);
@@ -208,10 +208,7 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
 
-    let matched_items = Arc::try_unwrap(best_items)
-        .expect("More than one strong reference")
-        .into_inner()
-        .items;
+    let matched_items = best_items.into_inner().items;
 
     printer::print_dyn_matched_items(
         matched_items,
