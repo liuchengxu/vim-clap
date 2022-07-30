@@ -30,6 +30,7 @@ pub enum SourceScale {
     /// too many for the synchorous filtering.
     Large(usize),
 
+    // TODO: Use Arc<dyn ClapItem> instead of String.
     /// Small scale, in which case we do not have to use the dynamic filtering.
     Small { total: usize, lines: Vec<String> },
 

@@ -27,6 +27,14 @@ impl BuiltinHandle {
             current_results: Arc::new(Mutex::new(Vec::new())),
         }
     }
+
+    /// `lnum` is 1-based.
+    fn line_at(&self, lnum: usize) -> Option<String> {
+        self.current_results
+            .lock()
+            .get((lnum - 1) as usize)
+            .map(|r| r.item.raw_text().to_string())
+    }
 }
 
 #[async_trait::async_trait]
@@ -39,12 +47,7 @@ impl EventHandle for BuiltinHandle {
             msg.get_u64("lnum").ok(),
         ) {
             (SourceScale::Small { ref lines, .. }, Some(lnum)) => {
-                if let Some(curline) = self
-                    .current_results
-                    .lock()
-                    .get((lnum - 1) as usize)
-                    .map(|r| r.item.raw_text().to_string())
-                {
+                if let Some(curline) = self.line_at(lnum as usize) {
                     Some(curline)
                 } else {
                     lines.get(lnum as usize - 1).cloned()
@@ -73,30 +76,14 @@ impl EventHandle for BuiltinHandle {
                     lines.iter().map(|s| s.to_string().into()).collect(), // TODO: avoid `to_string()`
                     &context.fuzzy_matcher(),
                 );
-
+                let total = results.len();
                 // Take the first 200 entries and add an icon to each of them.
-                let printer::DisplayLines {
-                    lines,
-                    indices,
-                    truncated_map,
-                    icon_added,
-                } = printer::decorate_lines(
+                printer::decorate_lines(
                     results.iter().take(200).cloned().collect(),
                     context.display_winwidth as usize,
                     context.icon,
-                );
-
-                let total = results.len();
-
-                let method = "s:process_filter_message";
-                utility::println_json_with_length!(
-                    total,
-                    lines,
-                    indices,
-                    truncated_map,
-                    icon_added,
-                    method
-                );
+                )
+                .print_on_typed(total);
 
                 let mut current_results = self.current_results.lock();
                 *current_results = results;
