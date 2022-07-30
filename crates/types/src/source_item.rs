@@ -181,18 +181,18 @@ impl ClapItem for GrepItem {
 /// This type represents multiple kinds of concrete Clap item from providers like grep,
 /// proj_tags, files, etc.
 #[derive(Debug, Clone)]
-pub struct MultiItem {
+pub struct SourceItem {
     /// Raw line from the initial input stream.
     pub raw: String,
     /// Text for performing the fuzzy match algorithm.
     ///
-    /// Could be initialized on creating a new [`MultiItem`].
+    /// Could be initialized on creating a new [`SourceItem`].
     pub fuzzy_text: Option<(String, usize)>,
     /// Text for displaying.
     pub output_text: Option<String>,
 }
 
-impl From<String> for MultiItem {
+impl From<String> for SourceItem {
     fn from(raw: String) -> Self {
         Self {
             raw,
@@ -202,8 +202,8 @@ impl From<String> for MultiItem {
     }
 }
 
-impl MultiItem {
-    /// Constructs a new instance of [`MultiItem`].
+impl SourceItem {
+    /// Constructs a new instance of [`SourceItem`].
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,
@@ -234,11 +234,11 @@ impl MultiItem {
     }
 }
 
-// TODO: Deprecate MultiItem with various wrappers:
+// TODO: Deprecate SourceItem with various wrappers:
 // - FullItem
 // - BLinesItem
 // - FileNameItem
-impl ClapItem for MultiItem {
+impl ClapItem for SourceItem {
     fn raw_text(&self) -> &str {
         &self.raw
     }
@@ -265,7 +265,7 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
     }
 }
 
-/// This struct represents the filtered result of [`MultiItem`].
+/// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
 pub struct MatchedItem {
     /// Tuple of (matched line text, filtering score, indices of matched elements)

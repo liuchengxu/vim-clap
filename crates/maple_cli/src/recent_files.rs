@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use chrono::prelude::*;
-use filter::MultiItem;
+use filter::SourceItem;
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope};
 use serde::{Deserialize, Serialize};
 
@@ -172,7 +172,7 @@ impl SortedRecentFiles {
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);
 
-        let source_items: Vec<MultiItem> = self
+        let source_items: Vec<SourceItem> = self
             .entries
             .iter()
             .map(|entry| entry.fpath.replacen(&cwd, "", 1).into())

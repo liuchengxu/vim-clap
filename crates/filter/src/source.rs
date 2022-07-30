@@ -5,7 +5,7 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::Matcher;
-use types::{ClapItem, MatchedItem, MultiItem, Query};
+use types::{ClapItem, MatchedItem, Query, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -63,7 +63,7 @@ pub fn source_stdin<'a>(
         .lines()
         .filter_map(move |lines_iter| {
             lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher.match_item(item, query)
             })
         })
@@ -81,7 +81,7 @@ pub fn source_file<'a, P: AsRef<Path>>(
         .lines()
         .filter_map(|x| {
             x.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher.match_item(item, query)
             })
         }))
@@ -97,7 +97,7 @@ pub fn source_exec<'a>(
         .lines()
         .filter_map(|lines_iter| {
             lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                 matcher.match_item(item, query)
                 /* NOTE: downcast_ref has to take place here.
                 let s = item
@@ -105,7 +105,7 @@ pub fn source_exec<'a>(
                     .downcast_ref::<String>()
                     .expect("item is String; qed");
                 // FIXME: to MatchedItem
-                let item: types::MultiItem = s.as_str().into();
+                let item: types::SourceItem = s.as_str().into();
                 match_result.from_source_item_concrete(item)
                 */
             })

@@ -21,7 +21,7 @@ pub use self::source::Source;
 pub use self::worker::iterator::dyn_run;
 pub use self::worker::par_iterator::{par_dyn_run, par_dyn_run_list, ParSource};
 pub use matcher;
-pub use types::{CaseMatching, MatchedItem, MultiItem, Query};
+pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]
@@ -97,7 +97,7 @@ pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 /// Performs the synchorous filtering on a small scale of source in parallel.
 pub fn par_filter(
     query: impl Into<Query>,
-    source_items: Vec<MultiItem>,
+    source_items: Vec<SourceItem>,
     fuzzy_matcher: &Matcher,
 ) -> Vec<MatchedItem> {
     let query: Query = query.into();

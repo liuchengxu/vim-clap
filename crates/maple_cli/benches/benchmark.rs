@@ -4,7 +4,7 @@ use std::sync::Arc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rayon::prelude::*;
 
-use filter::{MatchedItem, MultiItem, Query};
+use filter::{MatchedItem, Query, SourceItem};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 use types::ClapItem;
 
@@ -12,7 +12,7 @@ use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use maple_cli::command::dumb_jump::DumbJump;
 use maple_cli::CACHE_INFO_IN_MEMORY;
 
-fn prepare_source_items() -> Vec<MultiItem> {
+fn prepare_source_items() -> Vec<SourceItem> {
     let cache_info = CACHE_INFO_IN_MEMORY.lock();
     let mut digests = cache_info.digests();
     digests.sort_unstable_by_key(|digest| digest.total);
@@ -21,11 +21,11 @@ fn prepare_source_items() -> Vec<MultiItem> {
 
     std::io::BufReader::new(std::fs::File::open(&largest_cache.cached_path).unwrap())
         .lines()
-        .filter_map(|x| x.ok().map(Into::<MultiItem>::into))
+        .filter_map(|x| x.ok().map(Into::<SourceItem>::into))
         .collect()
 }
 
-fn filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
@@ -35,7 +35,7 @@ fn filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<Matched
 }
 
 // 3 times faster than filter
-fn par_filter(list: Vec<MultiItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);

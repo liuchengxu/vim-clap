@@ -211,7 +211,7 @@ pub(crate) mod tests {
     use super::*;
     use filter::{
         matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
-        MultiItem, Source,
+        Source, SourceItem,
     };
     use rayon::prelude::*;
     use std::sync::Arc;
@@ -255,7 +255,7 @@ pub(crate) mod tests {
     }
 
     pub(crate) fn filter_single_line(
-        line: impl Into<MultiItem>,
+        line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);

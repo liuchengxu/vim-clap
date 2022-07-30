@@ -13,7 +13,7 @@ use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator}
 use subprocess::Exec;
 
 use icon::Icon;
-use types::{ClapItem, GrepItem, MatchedItem, MultiItem, Query};
+use types::{ClapItem, GrepItem, MatchedItem, Query, SourceItem};
 use utility::println_json_with_length;
 
 use crate::FilterContext;
@@ -198,7 +198,7 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
                             }
                         }
                         _ => {
-                            let item: Arc<dyn ClapItem> = Arc::new(MultiItem::from(line));
+                            let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
                             process_item(item, processed);
                         }
                     };
