@@ -3,11 +3,12 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
-use filter::MatchedItem;
-use icon::{Icon, IconKind};
-use matcher::MatchScope;
 use parking_lot::Mutex;
 use serde::Deserialize;
+
+use icon::{Icon, IconKind};
+use matcher::MatchScope;
+use types::MatchedItem;
 
 use crate::command::ctags::buffer_tags::BufferTagInfo;
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};

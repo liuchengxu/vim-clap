@@ -293,7 +293,7 @@ impl MatchedItem {
     }
 
     /// Maybe truncated display text.
-    pub fn display_text(&self) -> Cow<'_, str> {
+    pub fn display_text(&self) -> Cow<str> {
         if let Some(ref text) = self.display_text {
             text.into()
         } else {

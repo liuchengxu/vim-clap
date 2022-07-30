@@ -7,8 +7,7 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
-use filter::MatchedItem;
-use types::Score;
+use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::providers::builtin::OnMoveHandler;

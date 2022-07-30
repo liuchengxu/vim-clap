@@ -332,16 +332,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
         let matched_items = sort_matched_items(matched_items);
 
-        for MatchedItem {
-            item,
-            indices,
-            display_text,
-            ..
-        } in matched_items.into_iter()
-        {
-            let text = display_text.unwrap_or_else(|| item.output_text().into());
+        matched_items.iter().for_each(|matched_item| {
+            let indices = &matched_item.indices;
+            let text = matched_item.display_text();
             println_json!(text, indices);
-        }
+        });
     }
 
     Ok(())

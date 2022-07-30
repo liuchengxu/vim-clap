@@ -17,7 +17,6 @@ pub struct Priority(usize);
 
 impl Priority {
     pub fn as_i32(self) -> i32 {
-        // It's ok to lose some data.
         self.0 as i32
     }
 }
