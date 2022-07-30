@@ -371,6 +371,7 @@ impl TagInfo {
         let output_text = self.format_proj_tags();
         TagItem {
             name: self.name,
+            kind: self.kind,
             output_text,
         }
     }
@@ -379,6 +380,7 @@ impl TagInfo {
 #[derive(Debug)]
 pub struct TagItem {
     pub name: String,
+    pub kind: String,
     pub output_text: String,
 }
 
@@ -393,6 +395,10 @@ impl ClapItem for TagItem {
 
     fn output_text(&self) -> Cow<'_, str> {
         Cow::Borrowed(&self.output_text)
+    }
+
+    fn icon(&self) -> Option<icon::IconType> {
+        Some(icon::tags_kind_icon(&self.kind))
     }
 }
 
