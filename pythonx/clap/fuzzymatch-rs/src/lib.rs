@@ -124,7 +124,7 @@ fn fuzzy_match(
     let skipped = if enable_icon { Some(2) } else { None };
     let truncated_map = truncate_long_matched_lines_v0(ranked.iter_mut(), winwidth, skipped);
 
-    let (filtered, indices): (Vec<_>, Vec<_>) = ranked
+    let (lines, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
         .map(|matched_item| {
             (
@@ -136,7 +136,7 @@ fn fuzzy_match(
 
     Ok((
         indices,
-        filtered,
+        lines,
         truncated_map
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))

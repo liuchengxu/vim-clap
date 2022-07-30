@@ -81,7 +81,11 @@ impl DisplayLines {
         }
     }
 
-    fn print_on_filter_finished(&self, total_matched: usize, maybe_total_processed: Option<usize>) {
+    fn print_on_dyn_run_finished(
+        &self,
+        total_matched: usize,
+        maybe_total_processed: Option<usize>,
+    ) {
         let Self {
             lines,
             indices,
@@ -126,24 +130,28 @@ impl DisplayLines {
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DisplayLines {
-    let mut top_list = top_list;
-    let mut truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
+pub fn decorate_lines(
+    matched_items: Vec<MatchedItem>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let mut matched_items = matched_items;
+    let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
     if let Some(painter) = icon.painter() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
             .enumerate()
             .map(|(idx, matched_item)| {
-                let text = matched_item.display_text();
+                let display_text = matched_item.display_text();
                 let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
                     let icon = matched_item
                         .item
                         .icon()
                         .unwrap_or_else(|| painter.icon(output_text));
                     *output_text = format!("{icon} {output_text}");
-                    format!("{icon} {text}")
+                    format!("{icon} {display_text}")
                 } else {
-                    painter.paint(&text)
+                    painter.paint(&display_text)
                 };
                 (iconized, matched_item.shifted_indices(ICON_LEN))
             })
@@ -151,9 +159,14 @@ pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -
 
         DisplayLines::new(lines, indices, truncated_map, true)
     } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = top_list
+        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
             .into_iter()
-            .map(|matched_item| (matched_item.display_text().into(), matched_item.indices))
+            .map(|matched_item| {
+                (
+                    matched_item.display_text().to_string(),
+                    matched_item.indices,
+                )
+            })
             .unzip();
 
         DisplayLines::new(lines, indices, truncated_map, false)
@@ -162,27 +175,22 @@ pub fn decorate_lines(top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -
 
 /// Prints the results of filter::sync_run() to stdout.
 pub fn print_sync_filter_results(
-    ranked: Vec<MatchedItem>,
+    matched_items: Vec<MatchedItem>,
     number: Option<usize>,
     winwidth: usize,
     icon: Icon,
 ) {
     if let Some(number) = number {
-        let total = ranked.len();
-        let mut ranked = ranked;
-        ranked.truncate(number);
-        decorate_lines(ranked, winwidth, icon).print_json(total);
+        let total_matched = matched_items.len();
+        let mut matched_items = matched_items;
+        matched_items.truncate(number);
+        decorate_lines(matched_items, winwidth, icon).print_json(total_matched);
     } else {
-        for MatchedItem {
-            item,
-            indices,
-            display_text,
-            ..
-        } in ranked.into_iter()
-        {
-            let text = display_text.unwrap_or_else(|| item.output_text().into());
+        matched_items.iter().for_each(|matched_item| {
+            let indices = &matched_item.indices;
+            let text = matched_item.display_text();
             println_json!(text, indices);
-        }
+        });
     }
 }
 
@@ -195,7 +203,7 @@ pub fn print_dyn_matched_items(
     icon: Icon,
 ) {
     decorate_lines(matched_items, winwidth, icon)
-        .print_on_filter_finished(total_matched, total_processed);
+        .print_on_dyn_run_finished(total_matched, total_processed);
 }
 
 #[cfg(test)]

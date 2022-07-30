@@ -86,7 +86,8 @@ impl Params {
 
 impl RunCmd {
     pub async fn run(self, params: Params) -> Result<()> {
-        // Set the global thread pool to use the number of physical cores.
+        // Set the global thread pool to use the number of physical cores if `RAYON_NUM_THREADS`
+        // does not exist.
         //
         // > By default, Rayon uses the same number of threads as the number of CPUs available.
         // > Note that on systems with hyperthreading enabled this equals the number of logical cores
@@ -95,8 +96,12 @@ impl RunCmd {
         // It's preferred to just use the physical cores instead of the logical cores based on
         // the personal experience, observed by the performance regression (up to 20%) after enabling
         // the virtualization on my AMD 5900x which uses the logical cores instead of the physical ones.
+        let num_threads = std::env::var("RAYON_NUM_THREADS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_else(num_cpus::get_physical);
         rayon::ThreadPoolBuilder::new()
-            .num_threads(num_cpus::get_physical())
+            .num_threads(num_threads)
             .build_global()
             .expect("Failed to configure the rayon global thread pool");
 

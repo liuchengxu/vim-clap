@@ -237,7 +237,6 @@ impl MultiItem {
 // TODO: Deprecate MultiItem with various wrappers:
 // - FullItem
 // - BLinesItem
-// - GrepLineItem
 // - FileNameItem
 impl ClapItem for MultiItem {
     fn raw_text(&self) -> &str {

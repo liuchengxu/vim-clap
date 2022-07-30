@@ -15,7 +15,6 @@ mod utils;
 pub mod command;
 /// Re-exports.
 pub use {
-    anyhow::{Context, Result},
     app::{Params, RunCmd},
     datastore::CACHE_INFO_IN_MEMORY,
 };

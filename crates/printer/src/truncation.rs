@@ -77,12 +77,7 @@ pub fn truncate_long_matched_lines(
         if output_text.len() > MAX_LINE_LEN {
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             matched_item.display_text = Some(truncated_output_text);
-            matched_item.indices = matched_item
-                .indices
-                .iter()
-                .filter(|x| **x < 1000)
-                .copied()
-                .collect();
+            matched_item.indices.retain(|&x| x < 1000);
         } else if let Some((truncated_output_text, truncated_indices)) =
             truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
         {
@@ -132,11 +127,11 @@ pub fn truncate_grep_lines(
         .map(|(line, mut indices)| {
             lnum += 1;
 
-            if let Some((truncated, truncated_indices)) =
+            if let Some((truncated_line, truncated_indices)) =
                 truncate_line_v1(&line, &mut indices, winwidth, skipped)
             {
                 truncated_map.insert(lnum, line);
-                (truncated, truncated_indices)
+                (truncated_line, truncated_indices)
             } else {
                 (line, indices)
             }
