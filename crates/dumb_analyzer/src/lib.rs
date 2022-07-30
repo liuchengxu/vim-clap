@@ -16,8 +16,8 @@ const LOWEST_PRIORITY: usize = 1000usize;
 pub struct Priority(usize);
 
 impl Priority {
-    pub fn as_i64(self) -> i64 {
-        self.0 as i64
+    pub fn as_i32(self) -> i32 {
+        self.0 as i32
     }
 }
 

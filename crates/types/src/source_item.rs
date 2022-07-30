@@ -1,4 +1,8 @@
+use std::borrow::Cow;
+
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
+
+use crate::matcher::Score;
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 #[derive(Debug, Clone)]
@@ -64,42 +68,59 @@ impl<T: AsRef<str>> From<T> for MatchScope {
     }
 }
 
-/// Text used in the matching algorithm.
-pub trait ClapItem {
-    /// Initial full text.
-    fn full_text(&self) -> &str;
+/// This trait represents the items used in the entire filter pipeline.
+pub trait ClapItem: std::fmt::Debug + Send + Sync + 'static {
+    /// Initial raw text.
+    fn raw_text(&self) -> &str;
 
-    /// Text for calculating the bonus score.
-    fn bonus_text(&self) -> &str {
-        self.full_text()
+    /// Text for the matching engine.
+    ///
+    /// Can be used to skip the leading icon, see `LineWithIcon` in `fuzzymatch-rs/src/lib.rs`.
+    fn match_text(&self) -> &str {
+        self.raw_text()
     }
 
-    /// Text for applying the fuzzy match algorithm.
+    /// Text specifically for performing the fuzzy matching, part of the entire
+    /// mathcing pipeline.
     ///
-    /// The fuzzy matching process only happens when Some(_) is returned.
-    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText>;
+    /// The fuzzy matching process only happens when Some(_) is returned
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
+        extract_fuzzy_text(self.match_text(), match_scope)
+    }
+
+    // TODO: Each bonus can have its own range of `bonus_text`, make use of MatchScope.
+    /// Text for calculating the bonus score to tweak the initial matching score.
+    fn bonus_text(&self) -> &str {
+        self.match_text()
+    }
+
+    /// Constructs a text intended to be displayed on the screen without any decoration (truncation,
+    /// icon, etc).
+    ///
+    /// A concrete type of ClapItem can be structural to facilitate the matching process, in which
+    /// case it's necessary to make a formatted String for displaying in the end.
+    fn output_text(&self) -> Cow<'_, str> {
+        self.raw_text().into()
+    }
 }
 
 impl ClapItem for SourceItem {
-    fn full_text(&self) -> &str {
+    fn raw_text(&self) -> &str {
         &self.raw
     }
 
     fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
-        self.get_fuzzy_text(match_scope)
+        self.fuzzy_text_or_exact_using_match_scope(match_scope)
     }
 }
 
-impl ClapItem for &str {
-    fn full_text(&self) -> &str {
-        self
-    }
-
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText {
-            text: self,
-            matching_start: 0,
-        })
+// Impl [`ClapItem`] for raw String.
+//
+// In order to filter/calculate bonus for a substring instead of the whole String, a
+// custom wrapper is necessary to extract the text for matching/calculating bonus/diplaying, etc.
+impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
+    fn raw_text(&self) -> &str {
+        self.as_ref()
     }
 }
 
@@ -147,14 +168,6 @@ impl SourceItem {
         }
     }
 
-    pub fn display_text(&self) -> &str {
-        if let Some(ref text) = self.display_text {
-            text
-        } else {
-            &self.raw
-        }
-    }
-
     pub fn fuzzy_text_or_default(&self) -> &str {
         if let Some((ref text, _)) = self.fuzzy_text {
             text
@@ -163,27 +176,37 @@ impl SourceItem {
         }
     }
 
-    pub fn get_fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
-        if let Some((ref text, offset)) = self.fuzzy_text {
-            return Some(FuzzyText::new(text, offset));
+    pub fn fuzzy_text_or_exact_using_match_scope(
+        &self,
+        match_scope: MatchScope,
+    ) -> Option<FuzzyText> {
+        match self.fuzzy_text {
+            Some((ref text, offset)) => Some(FuzzyText::new(text, offset)),
+            None => extract_fuzzy_text(self.raw.as_str(), match_scope),
         }
-        let full = self.raw.as_str();
-        match match_scope {
-            MatchScope::Full => Some(FuzzyText::new(full, 0)),
-            MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
-            MatchScope::FileName => extract_file_name(full).map(Into::into),
-            MatchScope::GrepLine => extract_grep_pattern(full).map(Into::into),
+    }
+}
+
+pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyText> {
+    match match_scope {
+        MatchScope::Full => Some(FuzzyText::new(full, 0)),
+        MatchScope::TagName => extract_tag_name(full).map(|s| FuzzyText::new(s, 0)),
+        MatchScope::FileName => {
+            extract_file_name(full).map(|(s, offset)| FuzzyText::new(s, offset))
+        }
+        MatchScope::GrepLine => {
+            extract_grep_pattern(full).map(|(s, offset)| FuzzyText::new(s, offset))
         }
     }
 }
 
 /// This struct represents the filtered result of [`SourceItem`].
 #[derive(Debug, Clone)]
-pub struct MatchedItem<T = i64> {
+pub struct MatchedItem {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
     pub item: SourceItem,
     /// Filtering score.
-    pub score: T,
+    pub score: Score,
     /// Indices of matched elements.
     ///
     /// The indices may be truncated when truncating the text.
@@ -194,44 +217,22 @@ pub struct MatchedItem<T = i64> {
     pub display_text: Option<String>,
 }
 
-impl<I: Into<SourceItem>, T> From<(I, T, Vec<usize>)> for MatchedItem<T> {
-    fn from((item, score, indices): (I, T, Vec<usize>)) -> Self {
+impl MatchedItem {
+    pub fn new(item: SourceItem, score: Score, indices: Vec<usize>) -> Self {
         Self {
-            item: item.into(),
+            item,
             score,
             indices,
             display_text: None,
         }
     }
-}
-
-impl<I: Into<SourceItem>, T: Default> From<I> for MatchedItem<T> {
-    fn from(item: I) -> Self {
-        Self {
-            item: item.into(),
-            score: Default::default(),
-            indices: Default::default(),
-            display_text: None,
-        }
-    }
-}
-
-impl<T> MatchedItem<T> {
-    pub fn new<I: Into<SourceItem>>(item: I, score: T, indices: Vec<usize>) -> Self {
-        (item, score, indices).into()
-    }
-
-    /// Untruncated display text.
-    pub fn source_item_display_text(&self) -> &str {
-        self.item.display_text()
-    }
 
     /// Maybe truncated display text.
-    pub fn display_text(&self) -> &str {
+    pub fn display_text(&self) -> Cow<str> {
         if let Some(ref text) = self.display_text {
-            text
+            text.into()
         } else {
-            self.item.display_text()
+            self.item.output_text()
         }
     }
 

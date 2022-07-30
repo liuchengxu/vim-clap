@@ -1,7 +1,9 @@
+mod matcher;
 mod query;
 mod search_term;
 mod source_item;
 
+pub use self::matcher::{MatchResult, Score};
 pub use self::query::Query;
 pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,

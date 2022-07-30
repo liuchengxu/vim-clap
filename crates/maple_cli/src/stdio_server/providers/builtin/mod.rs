@@ -75,7 +75,7 @@ impl EventHandle for BuiltinHandle {
                 );
 
                 // Take the first 200 entries and add an icon to each of them.
-                let printer::DecoratedLines {
+                let printer::DisplayLines {
                     lines,
                     indices,
                     truncated_map,

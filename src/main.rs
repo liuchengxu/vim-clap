@@ -1,6 +1,6 @@
 use clap::{AppSettings, Parser};
 
-use maple_cli::{Context, Params, Result, RunCmd};
+use maple_cli::{Params, RunCmd};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -39,7 +39,7 @@ pub struct Maple {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let maple = Maple::parse();
 
     match maple.cmd {
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
             download,
             no_progress_bar,
         } => {
-            let local_git_tag = built_info::GIT_VERSION.context("Failed to get GIT_VERSION")?;
+            let local_git_tag = built_info::GIT_VERSION.expect("GIT_VERSION does not exist");
             if let Err(e) = upgrade::Upgrade::new(download, no_progress_bar)
                 .run(local_git_tag)
                 .await

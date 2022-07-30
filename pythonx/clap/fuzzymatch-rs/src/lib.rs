@@ -109,14 +109,19 @@ fn fuzzy_match(
     let skipped = if enable_icon { Some(2) } else { None };
     let truncated_map = truncate_long_matched_lines_v0(ranked.iter_mut(), winwidth, skipped);
 
-    let (filtered, indices): (Vec<_>, Vec<_>) = ranked
+    let (lines, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()
-        .map(|matched_item| (matched_item.display_text().to_owned(), matched_item.indices))
+        .map(|matched_item| {
+            (
+                matched_item.display_text().to_string(),
+                matched_item.indices,
+            )
+        })
         .unzip();
 
     Ok((
         indices,
-        filtered,
+        lines,
         truncated_map
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
@@ -159,13 +164,13 @@ mod tests {
         ];
 
         for (needle, haystack) in test_cases.into_iter() {
-            let py_result: (i64, Vec<usize>) = py_scorer
+            let py_result: (i32, Vec<usize>) = py_scorer
                 .getattr("substr_scorer")
                 .unwrap()
                 .call1((needle, haystack))
                 .unwrap()
                 .extract()
-                .map(|(score, positions): (f64, Vec<usize>)| (score as i64, positions))
+                .map(|(score, positions): (f64, Vec<usize>)| (score as i32, positions))
                 .unwrap();
             let rs_result = substr_scorer(haystack, needle, CaseMatching::Smart).unwrap();
             assert_eq!(py_result, rs_result);

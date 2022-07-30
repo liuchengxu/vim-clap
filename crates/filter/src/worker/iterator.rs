@@ -4,7 +4,7 @@ use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{MatchedItem, Query, SourceItem};
+use types::{MatchedItem, Query, Score, SourceItem};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};
@@ -61,9 +61,6 @@ macro_rules! insert_both {
         $top_scores.pop_and_insert($index, $score);
     }};
 }
-
-/// Type of matcher scoring.
-type Score = i64;
 
 type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
 
@@ -157,7 +154,7 @@ impl Watcher {
                         painter.paint(matched_item.display_text())
                     } else {
                         indices.push(matched_item.indices.clone());
-                        matched_item.display_text().to_owned()
+                        matched_item.display_text().into()
                     };
                     lines.push(text);
                 }
@@ -246,7 +243,7 @@ fn dyn_collect_number(
 ) -> (usize, Vec<MatchedItem>) {
     // To not have problems with queues after sorting and truncating the buffer,
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
-    let mut buffer = Vec::with_capacity(2 * std::cmp::max(ITEMS_TO_SHOW, number));
+    let mut buffer = Vec::with_capacity(2 * ITEMS_TO_SHOW.max(number));
 
     let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
 
@@ -330,16 +327,11 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         let matched_items = sort_matched_items(matched_items);
 
-        for MatchedItem {
-            item,
-            indices,
-            display_text,
-            ..
-        } in matched_items.into_iter()
-        {
-            let text = display_text.unwrap_or_else(|| item.display_text().to_owned());
+        matched_items.iter().for_each(|matched_item| {
+            let indices = &matched_item.indices;
+            let text = matched_item.display_text();
             println_json!(text, indices);
-        }
+        });
     }
 
     Ok(())

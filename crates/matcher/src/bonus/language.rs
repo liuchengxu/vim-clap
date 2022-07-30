@@ -23,7 +23,7 @@ impl Language {
             -(base_score / 5)
         } else {
             match dumb_analyzer::calculate_pattern_priority(trimmed, &self.0) {
-                Some(priority) => base_score / priority.as_i64(),
+                Some(priority) => base_score / priority.as_i32(),
                 None => 0,
             }
         }

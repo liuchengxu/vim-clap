@@ -80,7 +80,7 @@ const CONTEXT_SUPERSET: &[&str] = &[
 fn subprocess_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
     // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
     SubprocessCommand::cmd("ctags")
-        .stderr(Redirection::Merge)
+        .stderr(Redirection::None)
         .arg("--fields=+n")
         .arg("--output-format=json")
         .arg(file)
@@ -89,7 +89,7 @@ fn subprocess_cmd_in_json_format(file: impl AsRef<std::ffi::OsStr>) -> Subproces
 fn subprocess_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> SubprocessCommand {
     // Redirect stderr otherwise the warning message might occur `ctags: Warning: ignoring null tag...`
     SubprocessCommand::cmd("ctags")
-        .stderr(Redirection::Merge)
+        .stderr(Redirection::None)
         .arg("--fields=+Kn")
         .arg("-f")
         .arg("-")

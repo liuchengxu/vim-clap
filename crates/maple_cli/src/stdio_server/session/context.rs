@@ -3,11 +3,12 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
-use filter::MatchedItem;
-use icon::{Icon, IconKind};
-use matcher::MatchScope;
 use parking_lot::Mutex;
 use serde::Deserialize;
+
+use icon::{Icon, IconKind};
+use matcher::MatchScope;
+use types::MatchedItem;
 
 use crate::command::ctags::buffer_tags::BufferTagInfo;
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
@@ -54,12 +55,32 @@ impl SourceScale {
 
     pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
         match self {
-            Self::Small { ref lines, .. } => {
-                Some(lines.iter().take(n).map(|s| s.as_str().into()).collect())
-            }
+            Self::Small { ref lines, .. } => Some(
+                lines
+                    .iter()
+                    .take(n)
+                    .map(|s| {
+                        MatchedItem::new(
+                            s.to_string().into(),
+                            Default::default(),
+                            Default::default(),
+                        )
+                    })
+                    .collect(),
+            ),
             Self::Cache { ref path, .. } => {
                 if let Ok(lines_iter) = utility::read_first_lines(path, n) {
-                    Some(lines_iter.map(Into::into).collect::<Vec<_>>())
+                    Some(
+                        lines_iter
+                            .map(|line| {
+                                MatchedItem::new(
+                                    line.into(),
+                                    Default::default(),
+                                    Default::default(),
+                                )
+                            })
+                            .collect::<Vec<_>>(),
+                    )
                 } else {
                     None
                 }
