@@ -160,7 +160,7 @@ impl<'a> LightCommand<'a> {
                 lines,
                 using_cache: false,
                 tempfile: None,
-                icon_added: self.env.icon.painter().is_some(),
+                icon_added: self.env.icon.enabled(),
             });
         }
         Err(anyhow!(
@@ -172,8 +172,8 @@ impl<'a> LightCommand<'a> {
         &self,
         top_n: impl std::iter::Iterator<Item = std::borrow::Cow<'b, str>>,
     ) -> Vec<String> {
-        let mut lines = if let Some(painter) = self.env.icon.painter() {
-            top_n.map(|x| painter.paint(x)).collect()
+        let mut lines = if let Some(icon_kind) = self.env.icon.icon_kind() {
+            top_n.map(|x| icon_kind.add_icon_to_text(x)).collect()
         } else {
             top_n.map(Into::into).collect()
         };
@@ -189,8 +189,8 @@ impl<'a> LightCommand<'a> {
         } = digest;
 
         let lines_iter = read_first_lines(&cached_path, 100)?;
-        let lines = if let Some(painter) = self.env.icon.painter() {
-            lines_iter.map(|x| painter.paint(&x)).collect()
+        let lines = if let Some(icon_kind) = self.env.icon.icon_kind() {
+            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
         } else {
             lines_iter.collect()
         };
@@ -200,7 +200,7 @@ impl<'a> LightCommand<'a> {
             total: *total as usize,
             tempfile: Some(cached_path.clone()),
             lines,
-            icon_added: self.env.icon.painter().is_some(),
+            icon_added: self.env.icon.enabled(),
         })
     }
 
@@ -257,7 +257,7 @@ impl<'a> LightCommand<'a> {
             lines,
             tempfile: cached_path,
             using_cache: false,
-            icon_added: self.env.icon.painter().is_some(),
+            icon_added: self.env.icon.enabled(),
         })
     }
 }

@@ -121,8 +121,8 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
 
     /// Returns the icon if enabled and possible.
     fn icon(&self, icon: icon::Icon) -> Option<icon::IconType> {
-        icon.painter()
-            .map(|painter| painter.icon(&self.output_text()))
+        icon.icon_kind()
+            .map(|icon_kind| icon_kind.icon(&self.output_text()))
     }
 }
 
@@ -153,7 +153,7 @@ impl GrepItem {
         })
     }
 
-    fn path(&self) -> &str {
+    fn file_path(&self) -> &str {
         &self.raw[..self.end_of_path]
     }
 
@@ -176,7 +176,7 @@ impl ClapItem for GrepItem {
     }
 
     fn icon(&self, _icon: Icon) -> Option<icon::IconType> {
-        Some(icon::icon_file_path(self.path()))
+        Some(icon::file_icon(self.file_path()))
     }
 }
 

@@ -154,8 +154,8 @@ pub fn send_response_from_cache(
 ) {
     let using_cache = true;
     if let Ok(iter) = read_first_lines(&tempfile, 100) {
-        let lines: Vec<String> = if let Some(painter) = icon.painter() {
-            iter.map(|x| painter.paint(&x)).collect()
+        let lines: Vec<String> = if let Some(icon_kind) = icon.icon_kind() {
+            iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
         } else {
             iter.collect()
         };

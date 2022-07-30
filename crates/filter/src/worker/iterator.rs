@@ -152,9 +152,9 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let matched_item = std::ops::Index::index(buffer, idx);
-                    let text = if let Some(painter) = self.icon.painter() {
+                    let text = if let Some(icon_kind) = self.icon.icon_kind() {
                         indices.push(matched_item.shifted_indices(ICON_LEN));
-                        painter.paint(matched_item.display_text())
+                        icon_kind.add_icon_to_text(matched_item.display_text())
                     } else {
                         indices.push(matched_item.indices.clone());
                         matched_item.display_text().into()

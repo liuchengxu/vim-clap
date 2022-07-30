@@ -150,7 +150,7 @@ pub fn decorate_lines(
 ) -> DisplayLines {
     let mut matched_items = matched_items;
     let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
-    if let Some(painter) = icon.painter() {
+    if let Some(icon_kind) = icon.icon_kind() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
             .enumerate()
@@ -164,7 +164,7 @@ pub fn decorate_lines(
                     *output_text = format!("{icon} {output_text}");
                     format!("{icon} {display_text}")
                 } else {
-                    painter.paint(&display_text)
+                    icon_kind.add_icon_to_text(&display_text)
                 };
                 (iconized, matched_item.shifted_indices(ICON_LEN))
             })
