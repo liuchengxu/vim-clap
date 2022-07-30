@@ -159,8 +159,8 @@ pub fn decorate_lines(
                 let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
                     let icon = matched_item
                         .item
-                        .icon()
-                        .unwrap_or_else(|| painter.icon(output_text));
+                        .icon(icon)
+                        .expect("Icon must be provided if specified");
                     *output_text = format!("{icon} {output_text}");
                     format!("{icon} {display_text}")
                 } else {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::{any::Any, borrow::Cow};
 
+use icon::Icon;
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
 use crate::{MatchResult, Score};
@@ -119,8 +120,9 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     }
 
     /// Returns the icon if enabled and possible.
-    fn icon(&self) -> Option<icon::IconType> {
-        None
+    fn icon(&self, icon: icon::Icon) -> Option<icon::IconType> {
+        icon.painter()
+            .map(|painter| painter.icon(&self.output_text()))
     }
 }
 
@@ -173,7 +175,7 @@ impl ClapItem for GrepItem {
         self.line()
     }
 
-    fn icon(&self) -> Option<icon::IconType> {
+    fn icon(&self, _icon: Icon) -> Option<icon::IconType> {
         Some(icon::icon_file_path(self.path()))
     }
 }

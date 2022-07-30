@@ -397,7 +397,7 @@ impl ClapItem for TagItem {
         Cow::Borrowed(&self.output_text)
     }
 
-    fn icon(&self) -> Option<icon::IconType> {
+    fn icon(&self, _icon: icon::Icon) -> Option<icon::IconType> {
         Some(icon::tags_kind_icon(&self.kind))
     }
 }
