@@ -51,7 +51,7 @@ impl Default for DumbJumpConfig {
     fn default() -> Self {
         Self {
             ignore_files_not_git_tracked: true,
-            ignore_pattern_file_path: Some("test".to_string()),
+            ignore_pattern_file_path: None,
         }
     }
 }
@@ -61,8 +61,11 @@ pub struct Grep2Config {
     #[serde(default = "default_true")]
     pub ignore_comment_line: bool,
     #[serde(default)]
+    /// Ignore the results from the files whose name contains this pattern.
+    // TODO: project-wise ignore pattern.
     pub ignore_pattern_file_name: Option<String>,
     #[serde(default)]
+    /// Ignore the results from the files whose path contains this pattern.
     pub ignore_pattern_file_path: Option<String>,
 }
 
@@ -70,8 +73,8 @@ impl Default for Grep2Config {
     fn default() -> Self {
         Self {
             ignore_comment_line: true,
-            ignore_pattern_file_name: Some("test".to_string()),
-            ignore_pattern_file_path: Some("test".to_string()),
+            ignore_pattern_file_name: None,
+            ignore_pattern_file_path: None,
         }
     }
 }
