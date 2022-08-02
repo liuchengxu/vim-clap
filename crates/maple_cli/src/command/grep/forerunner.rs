@@ -65,6 +65,7 @@ impl RipGrepForerunner {
             return Ok(());
         }
 
+        // Can not use StdCommand as it joins the args which does work somehow.
         let mut cmd = Command::new(RG_ARGS[0]);
         // Do not use --vimgrep here.
         cmd.args(&RG_ARGS[1..]);
