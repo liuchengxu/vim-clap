@@ -6,6 +6,7 @@ use clap::Parser;
 
 use filter::Source;
 use types::SourceItem;
+use matcher::Bonus;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -44,10 +45,22 @@ impl Blines {
                 })
         };
 
+        let filter_context = if let Some(extension) = self
+            .input
+            .extension()
+            .and_then(|s| s.to_str().map(|s| s.to_string()))
+        {
+            params
+                .into_filter_context()
+                .bonuses(vec![Bonus::Language(extension.into())])
+        } else {
+            params.into_filter_context()
+        };
+
         filter::dyn_run(
             &self.query,
+            filter_context,
             Source::List(blines_item_stream()),
-            params.into_filter_context(),
         )
     }
 }

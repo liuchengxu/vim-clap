@@ -131,19 +131,6 @@ impl<'a> LightCommand<'a> {
         Self { cmd, env }
     }
 
-    /// Collect the output of command, exit directly if any error happened.
-    fn collect_stdout(&mut self) -> std::io::Result<Vec<u8>> {
-        match crate::process::rstd::collect_stdout(self.cmd) {
-            Ok(stdout) => Ok(stdout),
-            Err(e) => {
-                // vim-clap does not handle the stderr stream, we just pass the error info via stdout.
-                let error = e.to_string();
-                println_json!(error);
-                Err(e)
-            }
-        }
-    }
-
     /// Normally we only care about the top N items and number of total results if it's not a
     /// forerunner job.
     fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<ExecutedInfo> {
@@ -231,7 +218,7 @@ impl<'a> LightCommand<'a> {
     pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         self.env.dir = Some(base_cmd.cwd.clone());
 
-        let cmd_stdout = self.collect_stdout()?;
+        let cmd_stdout = crate::process::rstd::collect_stdout(self.cmd)?;
 
         self.env.total = bytecount::count(&cmd_stdout, b'\n');
 

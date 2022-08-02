@@ -72,13 +72,13 @@ impl RecursiveTags {
         } else {
             filter::dyn_run(
                 self.query.as_deref().unwrap_or_default(),
-                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
                 FilterContext::new(
                     icon,
                     Some(30),
                     None,
                     Matcher::default().set_match_scope(MatchScope::TagName),
                 ),
+                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
             )?;
         }
 

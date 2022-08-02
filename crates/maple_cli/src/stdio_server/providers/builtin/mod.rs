@@ -27,6 +27,14 @@ impl BuiltinHandle {
             current_results: Arc::new(Mutex::new(Vec::new())),
         }
     }
+
+    /// `lnum` is 1-based.
+    fn line_at(&self, lnum: usize) -> Option<String> {
+        self.current_results
+            .lock()
+            .get((lnum - 1) as usize)
+            .map(|r| r.item.raw.clone())
+    }
 }
 
 #[async_trait::async_trait]
@@ -39,12 +47,7 @@ impl EventHandle for BuiltinHandle {
             msg.get_u64("lnum").ok(),
         ) {
             (SourceScale::Small { ref lines, .. }, Some(lnum)) => {
-                if let Some(curline) = self
-                    .current_results
-                    .lock()
-                    .get((lnum - 1) as usize)
-                    .map(|r| r.item.raw.clone())
-                {
+                if let Some(curline) = self.line_at(lnum as usize) {
                     Some(curline)
                 } else {
                     lines.get(lnum as usize - 1).cloned()
@@ -70,7 +73,7 @@ impl EventHandle for BuiltinHandle {
             SourceScale::Small { ref lines, .. } => {
                 let results = filter::par_filter(
                     query,
-                    lines.iter().map(|s| s.as_str().into()).collect(),
+                    lines.iter().cloned().map(Into::into).collect(),
                     &context.fuzzy_matcher(),
                 );
 
@@ -104,7 +107,6 @@ impl EventHandle for BuiltinHandle {
             SourceScale::Cache { ref path, .. } => {
                 if let Err(e) = filter::dyn_run::<std::iter::Empty<_>>(
                     &query,
-                    path.clone().into(),
                     FilterContext::new(
                         context.icon,
                         Some(40),
@@ -113,6 +115,7 @@ impl EventHandle for BuiltinHandle {
                             .set_match_scope(context.match_scope)
                             .set_bonuses(context.match_bonuses.clone()),
                     ),
+                    path.clone().into(),
                 ) {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }

@@ -329,10 +329,10 @@ mod tests {
         );
         let query: Query = "fo".into();
         let matched_item1 = matcher
-            .match_item(SourceItem::from(lines[0]), &query)
+            .match_item(SourceItem::from(String::from(lines[0])), &query)
             .unwrap();
         let matched_item2 = matcher
-            .match_item(SourceItem::from(lines[1]), &query)
+            .match_item(SourceItem::from(String::from(lines[1])), &query)
             .unwrap();
         assert!(matched_item1.indices == matched_item2.indices);
         assert!(matched_item1.score < matched_item2.score);
@@ -344,10 +344,10 @@ mod tests {
         let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
         let matched_item1 = matcher
-            .match_item(SourceItem::from(lines[0]), &query)
+            .match_item(SourceItem::from(String::from(lines[0])), &query)
             .unwrap();
         let matched_item2 = matcher
-            .match_item(SourceItem::from(lines[1]), &query)
+            .match_item(SourceItem::from(String::from(lines[1])), &query)
             .unwrap();
         assert!(matched_item1.indices == matched_item2.indices);
         assert!(matched_item1.score < matched_item2.score);
@@ -356,10 +356,10 @@ mod tests {
     #[test]
     fn test_search_syntax() {
         let items: Vec<SourceItem> = vec![
-            "autoload/clap/provider/search_history.vim".into(),
-            "autoload/clap/provider/files.vim".into(),
-            "vim-clap/crates/matcher/src/algo.rs".into(),
-            "pythonx/clap/scorer.py".into(),
+            "autoload/clap/provider/search_history.vim".to_string().into(),
+            "autoload/clap/provider/files.vim".to_string().into(),
+            "vim-clap/crates/matcher/src/algo.rs".to_string().into(),
+            "pythonx/clap/scorer.py".to_string().into(),
         ];
 
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);

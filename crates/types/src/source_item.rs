@@ -20,15 +20,6 @@ impl<'a> FuzzyText<'a> {
     }
 }
 
-impl<'a> From<(&'a str, usize)> for FuzzyText<'a> {
-    fn from((text, matching_start): (&'a str, usize)) -> Self {
-        Self {
-            text,
-            matching_start,
-        }
-    }
-}
-
 /// The location that a match should look in.
 ///
 /// Given a query, the match scope can refer to a full string or a substring.
@@ -83,7 +74,7 @@ pub trait ClapItem: std::fmt::Debug + Send + Sync + 'static {
     /// Text specifically for performing the fuzzy matching, part of the entire
     /// mathcing pipeline.
     ///
-    /// The fuzzy matching process only happens when Some(_) is returned
+    /// The fuzzy matching process only happens when Some(_) is returned.
     fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
         extract_fuzzy_text(self.match_text(), match_scope)
     }
@@ -133,15 +124,8 @@ pub struct SourceItem {
     ///
     /// Could be initialized on creating a new [`SourceItem`].
     pub fuzzy_text: Option<(String, usize)>,
-    /// Text for displaying on a window with limited size.
-    pub display_text: Option<String>,
-}
-
-// NOTE: do not use it when you are dealing with a large number of items.
-impl From<&str> for SourceItem {
-    fn from(s: &str) -> Self {
-        String::from(s).into()
-    }
+    /// Text for displaying.
+    pub output_text: Option<String>,
 }
 
 impl From<String> for SourceItem {
@@ -149,7 +133,7 @@ impl From<String> for SourceItem {
         Self {
             raw,
             fuzzy_text: None,
-            display_text: None,
+            output_text: None,
         }
     }
 }
@@ -159,20 +143,19 @@ impl SourceItem {
     pub fn new(
         raw: String,
         fuzzy_text: Option<(String, usize)>,
-        display_text: Option<String>,
+        output_text: Option<String>,
     ) -> Self {
         Self {
             raw,
             fuzzy_text,
-            display_text,
+            output_text,
         }
     }
 
-    pub fn fuzzy_text_or_default(&self) -> &str {
-        if let Some((ref text, _)) = self.fuzzy_text {
-            text
-        } else {
-            &self.raw
+    pub fn output_text_or_raw(&self) -> &str {
+        match self.output_text {
+            Some(ref text) => text,
+            None => &self.raw,
         }
     }
 

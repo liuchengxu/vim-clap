@@ -15,7 +15,6 @@ use subprocess::Exec;
 use filter::Source;
 use icon::Icon;
 use matcher::MatchScope;
-use utility::is_git_repo;
 
 use crate::app::Params;
 use crate::process::{
@@ -25,7 +24,6 @@ use crate::process::{
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
-use crate::utils::{send_response_from_cache, SendResponse};
 
 const RG_ARGS: &[&str] = &[
     "rg",
@@ -173,10 +171,10 @@ impl Grep {
         let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
-                source,
                 params
                     .into_filter_context()
                     .match_scope(MatchScope::GrepLine),
+                source,
             )
         };
 

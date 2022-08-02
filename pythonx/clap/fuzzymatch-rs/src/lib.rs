@@ -88,7 +88,7 @@ fn fuzzy_match(
         .filter_map(|line: String| {
             if enable_icon {
                 matcher
-                    .match_item(SourceItem::from(&line[4..]), &query)
+                    .match_item(SourceItem::from(String::from(&line[4..])), &query)
                     .map(|matched_item| {
                         let indices = matched_item.indices.iter().map(|x| x + 4).collect();
                         MatchedItem {
