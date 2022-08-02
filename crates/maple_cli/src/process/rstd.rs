@@ -74,6 +74,7 @@ impl StdCommand {
         collect_stdout(&mut self.0)
     }
 
+    #[allow(unused)]
     pub fn args<I, S>(&mut self, args: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,

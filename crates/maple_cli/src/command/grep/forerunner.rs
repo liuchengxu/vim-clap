@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::Result;
 use clap::Parser;
@@ -8,7 +9,6 @@ use utility::is_git_repo;
 use super::{RG_ARGS, RG_EXEC_CMD};
 use crate::app::Params;
 use crate::process::light::{CommandEnv, LightCommand};
-use crate::process::rstd::StdCommand;
 use crate::process::BaseCommand;
 use crate::utils::{send_response_from_cache, SendResponse};
 
@@ -65,15 +65,13 @@ impl RipGrepForerunner {
             return Ok(());
         }
 
-        let mut std_cmd = StdCommand::new(RG_ARGS[0]);
+        let mut cmd = Command::new(RG_ARGS[0]);
         // Do not use --vimgrep here.
-        std_cmd.args(&RG_ARGS[1..]);
+        cmd.args(&RG_ARGS[1..]);
 
         if let Some(ref dir) = self.cmd_dir {
-            std_cmd.current_dir(dir);
+            cmd.current_dir(dir);
         }
-
-        let mut cmd = std_cmd.into_inner();
 
         let mut light_cmd = LightCommand::new(
             &mut cmd,
