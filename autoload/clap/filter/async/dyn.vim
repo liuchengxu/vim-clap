@@ -76,8 +76,10 @@ function! clap#filter#async#dyn#start_filter(cmd) abort
         \ '--winwidth', winwidth(g:clap.display.winid),
         \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
         \ 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir(),
-        \ ]
-
+        \]
+  if has_key(g:clap.context, 'name-only')
+    call add(filter_cmd, '--match-scope=FileName')
+  endif
   if s:PAR_RUN
     call add(filter_cmd, '--par-run')
   endif

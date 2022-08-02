@@ -1,5 +1,6 @@
 use types::Score;
 
+// TODO: calculate the file name bonus efficiently.
 /// Returns a bonus score if the match indices of an item include the file name part.
 ///
 /// Formula:

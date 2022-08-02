@@ -10,7 +10,8 @@ pub use self::search_term::{
     TermType,
 };
 pub use self::source_item::{
-    extract_fuzzy_text, AsAny, ClapItem, FuzzyText, GrepItem, MatchScope, MatchedItem, SourceItem,
+    extract_fuzzy_text, AsAny, ClapItem, FileNameItem, FuzzyText, GrepItem, MatchScope,
+    MatchedItem, SourceItem,
 };
 
 /// The preview content is usually part of a file.

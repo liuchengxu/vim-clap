@@ -180,6 +180,41 @@ impl ClapItem for GrepItem {
     }
 }
 
+/// Item of `:Clap files`, but only matches the file name instead of the entire file path.
+#[derive(Debug, Clone)]
+pub struct FileNameItem {
+    raw: String,
+    file_name_offset: usize,
+}
+
+impl FileNameItem {
+    pub fn try_new(raw: String) -> Option<Self> {
+        let (_file_name, file_name_offset) = pattern::extract_file_name(&raw)?;
+        Some(Self {
+            raw,
+            file_name_offset,
+        })
+    }
+
+    fn file_name(&self) -> &str {
+        &self.raw[self.file_name_offset..]
+    }
+}
+
+impl ClapItem for FileNameItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText::new(self.file_name(), self.file_name_offset))
+    }
+
+    fn icon(&self, _icon: Icon) -> Option<icon::IconType> {
+        Some(icon::file_icon(&self.raw))
+    }
+}
+
 /// This type represents multiple kinds of concrete Clap item from providers like grep,
 /// proj_tags, files, etc.
 #[derive(Debug, Clone)]

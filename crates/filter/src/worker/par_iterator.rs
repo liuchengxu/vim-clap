@@ -13,7 +13,7 @@ use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator}
 use subprocess::Exec;
 
 use icon::Icon;
-use types::{ClapItem, GrepItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, FileNameItem, GrepItem, MatchedItem, Query, SourceItem};
 use utility::println_json_with_length;
 
 use crate::FilterContext;
@@ -190,18 +190,24 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
                 .par_bridge()
                 .for_each(|line: String| {
                     let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    match matcher.match_scope() {
+                    let item: Arc<dyn ClapItem> = match matcher.match_scope() {
                         MatchScope::GrepLine => {
                             if let Some(grep_item) = GrepItem::try_new(line) {
-                                let item: Arc<dyn ClapItem> = Arc::new(grep_item);
-                                process_item(item, processed);
+                                Arc::new(grep_item)
+                            } else {
+                                return;
                             }
                         }
-                        _ => {
-                            let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
-                            process_item(item, processed);
+                        MatchScope::FileName => {
+                            if let Some(file_name_item) = FileNameItem::try_new(line) {
+                                Arc::new(file_name_item)
+                            } else {
+                                return;
+                            }
                         }
+                        _ => Arc::new(SourceItem::from(line)),
                     };
+                    process_item(item, processed);
                 });
         }
     }

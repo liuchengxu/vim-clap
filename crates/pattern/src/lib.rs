@@ -287,4 +287,10 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_extract_file_name() {
+        let line = "crates/maple_cli/src/app.rs";
+        assert_eq!(("app.rs", 21), extract_file_name(line).unwrap());
+    }
 }
