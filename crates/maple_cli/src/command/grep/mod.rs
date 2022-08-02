@@ -16,7 +16,6 @@ use subprocess::Exec;
 use filter::Source;
 use icon::Icon;
 use matcher::MatchScope;
-use utility::is_git_repo;
 
 use crate::app::Params;
 use crate::process::{
@@ -26,7 +25,6 @@ use crate::process::{
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
-use crate::utils::{send_response_from_cache, SendResponse};
 
 const RG_ARGS: &[&str] = &[
     "rg",
