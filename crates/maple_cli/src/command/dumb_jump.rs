@@ -32,7 +32,7 @@ pub struct DumbJump {
 
     /// Use RegexSearcher instead of CtagsSearcher
     #[clap(long)]
-    regex: bool,
+    pub regex: bool,
 }
 
 impl DumbJump {

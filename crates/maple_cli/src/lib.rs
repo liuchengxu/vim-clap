@@ -13,8 +13,10 @@ mod utils;
 
 /// For benchmarks.
 pub mod command;
+
+/// For benchmarks.
+pub use self::cache::find_largest_cache_digest;
+pub use self::utils::count_lines;
+
 /// Re-exports.
-pub use {
-    app::{Params, RunCmd},
-    datastore::CACHE_INFO_IN_MEMORY,
-};
+pub use app::{Params, RunCmd};
