@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use filter::ParSource;
 use itertools::Itertools;
@@ -75,42 +75,30 @@ pub struct Grep {
     #[clap(long)]
     sync: bool,
 
+    /// Recreate the cache, only intended for the test purpose.
+    #[clap(long)]
+    refresh_cache: bool,
+
     #[clap(long)]
     par_run: bool,
 }
 
 impl Grep {
     pub fn run(&self, params: Params) -> Result<()> {
+        if self.refresh_cache {
+            let dir = match self.cmd_dir {
+                Some(ref dir) => dir.clone(),
+                None => std::env::current_dir()?,
+            };
+            println!("Recreating the grep cache for {}", dir.display());
+            refresh_cache(&dir)?;
+            return Ok(());
+        }
+
         if self.sync {
             self.sync_run(params)?;
         } else if self.par_run {
-            let no_cache = params.no_cache;
-
-            let par_dyn_dun = |par_source: ParSource| {
-                filter::par_dyn_run(
-                    &self.grep_query,
-                    params
-                        .into_filter_context()
-                        .match_scope(MatchScope::GrepLine),
-                    par_source,
-                )
-            };
-
-            let par_source = if let Some(ref tempfile) = self.input {
-                ParSource::File(tempfile.clone())
-            } else if let Some(ref dir) = self.cmd_dir {
-                if !no_cache {
-                    let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                    if let Some(cache_file) = base_cmd.cache_file() {
-                        return par_dyn_dun(ParSource::File(cache_file));
-                    }
-                }
-                ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
-            } else {
-                ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
-            };
-
-            par_dyn_dun(par_source)?;
+            self.par_run(params)?;
         } else {
             self.dyn_run(params)?;
         }
@@ -227,6 +215,36 @@ impl Grep {
 
         do_dyn_filter(source)
     }
+
+    fn par_run(&self, params: Params) -> Result<()> {
+        let no_cache = params.no_cache;
+
+        let par_dyn_dun = |par_source: ParSource| {
+            filter::par_dyn_run(
+                &self.grep_query,
+                params
+                    .into_filter_context()
+                    .match_scope(MatchScope::GrepLine),
+                par_source,
+            )
+        };
+
+        let par_source = if let Some(ref tempfile) = self.input {
+            ParSource::File(tempfile.clone())
+        } else if let Some(ref dir) = self.cmd_dir {
+            if !no_cache {
+                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                if let Some(cache_file) = base_cmd.cache_file() {
+                    return par_dyn_dun(ParSource::File(cache_file));
+                }
+            }
+            ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
+        } else {
+            ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
+        };
+
+        par_dyn_dun(par_source)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -264,13 +282,34 @@ pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
     // Do not use --vimgrep here.
     cmd.args(&RG_ARGS[1..]).current_dir(dir.as_ref());
 
-    let stdout = crate::process::rstd::collect_stdout(&mut cmd)?;
-
-    let total = bytecount::count(&stdout, b'\n');
-
     let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()));
 
-    base_cmd.create_cache(total, &stdout)?;
+    let cached_path = base_cmd.cached_path()?;
 
-    Ok(total)
+    let tempfile = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&cached_path)?;
+
+    let exit_status = cmd.stdout(tempfile).spawn()?.wait()?;
+
+    if exit_status.success() {
+        // TODO: mmap should be faster.
+        let total = crate::utils::count_lines(std::fs::File::open(&cached_path)?)?;
+
+        {
+            let digest = crate::cache::Digest::new(base_cmd, total, cached_path);
+
+            let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
+            let mut cache_info = cache_info.lock();
+            if let Err(e) = cache_info.limited_push(digest) {
+                tracing::error!(?e, "Failed to push the cache digest");
+            }
+        }
+
+        Ok(total)
+    } else {
+        Err(anyhow!("Failed to execute the command: {RG_ARGS:?}"))
+    }
 }
