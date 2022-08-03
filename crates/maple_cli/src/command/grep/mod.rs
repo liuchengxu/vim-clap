@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use clap::Parser;
 use filter::ParSource;
 use itertools::Itertools;
@@ -283,33 +283,10 @@ pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
     cmd.args(&RG_ARGS[1..]).current_dir(dir.as_ref());
 
     let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()));
-
     let cached_path = base_cmd.cached_path()?;
 
-    let tempfile = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&cached_path)?;
+    crate::process::rstd::write_stdout_to_file(&mut cmd, &cached_path)?;
+    let digest = crate::cache::store_cache_digest(base_cmd, cached_path)?;
 
-    let exit_status = cmd.stdout(tempfile).spawn()?.wait()?;
-
-    if exit_status.success() {
-        // TODO: mmap should be faster.
-        let total = crate::utils::count_lines(std::fs::File::open(&cached_path)?)?;
-
-        {
-            let digest = crate::cache::Digest::new(base_cmd, total, cached_path);
-
-            let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
-            let mut cache_info = cache_info.lock();
-            if let Err(e) = cache_info.limited_push(digest) {
-                tracing::error!(?e, "Failed to push the cache digest");
-            }
-        }
-
-        Ok(total)
-    } else {
-        Err(anyhow!("Failed to execute the command: {RG_ARGS:?}"))
-    }
+    Ok(digest.total)
 }
