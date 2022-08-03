@@ -70,6 +70,13 @@ pub struct Params {
     #[clap(long)]
     pub no_cache: bool,
 
+    /// Specify the number of threads used in the rayon global thread pool.
+    ///
+    /// By default, the number of physical cores will be used if the environment variable
+    /// `RAYON_NUM_THREADS` also does not exist.
+    #[clap(long)]
+    pub rayon_num_threads: Option<usize>,
+
     /// Enable the logging system.
     #[clap(long, parse(from_os_str))]
     pub log: Option<std::path::PathBuf>,
@@ -96,10 +103,12 @@ impl RunCmd {
         // It's preferred to just use the physical cores instead of the logical cores based on
         // the personal experience, observed by the performance regression (up to 20%) after enabling
         // the virtualization on my AMD 5900x which uses the logical cores instead of the physical ones.
-        let num_threads = std::env::var("RAYON_NUM_THREADS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_else(num_cpus::get_physical);
+        let num_threads = params.rayon_num_threads.unwrap_or_else(|| {
+            std::env::var("RAYON_NUM_THREADS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(num_cpus::get_physical)
+        });
         rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .build_global()

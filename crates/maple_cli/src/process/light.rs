@@ -229,8 +229,7 @@ impl<'a> LightCommand<'a> {
 
         // Cache the output if there are too many lines.
         let cached_path = if self.env.should_create_cache() {
-            let p = base_cmd.create_cache(self.env.total, &cmd_stdout)?;
-            Some(p)
+            Some(base_cmd.create_cache(self.env.total, &cmd_stdout)?)
         } else {
             None
         };
