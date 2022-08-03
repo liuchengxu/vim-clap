@@ -9,13 +9,10 @@ use types::{ClapItem, MatchedItem, Query, SourceItem};
 
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use maple_cli::command::dumb_jump::DumbJump;
-use maple_cli::CACHE_INFO_IN_MEMORY;
+use maple_cli::find_largest_cache_digest;
 
 fn prepare_source_items() -> Vec<SourceItem> {
-    let cache_info = CACHE_INFO_IN_MEMORY.lock();
-    let mut digests = cache_info.digests();
-    digests.sort_unstable_by_key(|digest| digest.total);
-    let largest_cache = digests.last().expect("Cache is empty");
+    let largest_cache = find_largest_cache_digest().expect("Cache is empty");
     println!("====  Total items: {}  ====", largest_cache.total);
 
     std::io::BufReader::new(std::fs::File::open(&largest_cache.cached_path).unwrap())
@@ -112,6 +109,7 @@ fn bench_regex_searcher(c: &mut Criterion) {
         extension: "rs".to_string(),
         kind: None,
         cmd_dir: Some("/home/xlc/src/github.com/paritytech/substrate".into()),
+        regex: true,
     };
 
     c.bench_function("regex searcher", |b| {
@@ -119,5 +117,18 @@ fn bench_regex_searcher(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_filter, bench_ctags, bench_regex_searcher);
+fn bench_bytecount(c: &mut Criterion) {
+    let largest_cache = find_largest_cache_digest().expect("Cache is empty");
+    c.bench_function("bytecount", |b| {
+        b.iter(|| maple_cli::count_lines(std::fs::File::open(&largest_cache.cached_path).unwrap()))
+    });
+}
+
+criterion_group!(
+    benches,
+    bench_filter,
+    bench_ctags,
+    bench_regex_searcher,
+    bench_bytecount
+);
 criterion_main!(benches);

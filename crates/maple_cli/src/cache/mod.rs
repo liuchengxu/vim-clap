@@ -184,3 +184,10 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
 
     Ok(())
 }
+
+pub fn find_largest_cache_digest() -> Option<Digest> {
+    let cache_info = CACHE_INFO_IN_MEMORY.lock();
+    let mut digests = cache_info.digests();
+    digests.sort_unstable_by_key(|digest| digest.total);
+    digests.last().cloned()
+}

@@ -21,6 +21,12 @@ pub struct RipGrepForerunner {
     /// Specify the threshold for writing the output of command to a tempfile.
     #[clap(long = "output-threshold", default_value = "30000")]
     output_threshold: usize,
+
+    /// Run without checking if cwd is a git repo.
+    ///
+    /// By default this command only works when cwd is a git repo.
+    #[clap(long)]
+    force_run: bool,
 }
 
 impl RipGrepForerunner {
@@ -61,7 +67,7 @@ impl RipGrepForerunner {
             }
         }
 
-        if self.should_skip() {
+        if !self.force_run && self.should_skip() {
             return Ok(());
         }
 
@@ -93,5 +99,34 @@ impl RipGrepForerunner {
         light_cmd.execute(base_cmd)?.print();
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::Params;
+
+    #[test]
+    fn ripgrep_forerunner_command_works() {
+        let params = Params::parse_from(&["--no-cache", "--icon=Grep"]);
+
+        let ripgrep_forerunner = RipGrepForerunner::parse_from(&[
+            "",
+            "--cmd-dir",
+            std::env::current_dir()
+                .unwrap()
+                .into_os_string()
+                .as_os_str()
+                .to_str()
+                .unwrap(),
+            "--output-threshold",
+            "100000",
+            "--force-run",
+        ]);
+
+        ripgrep_forerunner
+            .run(params)
+            .expect("Failed to run command `ripgrep-forerunner`");
     }
 }

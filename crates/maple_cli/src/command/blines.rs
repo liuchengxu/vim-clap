@@ -5,8 +5,8 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::Source;
-use types::SourceItem;
 use matcher::Bonus;
+use types::SourceItem;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;

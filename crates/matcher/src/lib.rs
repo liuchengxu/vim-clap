@@ -356,7 +356,9 @@ mod tests {
     #[test]
     fn test_search_syntax() {
         let items: Vec<SourceItem> = vec![
-            "autoload/clap/provider/search_history.vim".to_string().into(),
+            "autoload/clap/provider/search_history.vim"
+                .to_string()
+                .into(),
             "autoload/clap/provider/files.vim".to_string().into(),
             "vim-clap/crates/matcher/src/algo.rs".to_string().into(),
             "pythonx/clap/scorer.py".to_string().into(),

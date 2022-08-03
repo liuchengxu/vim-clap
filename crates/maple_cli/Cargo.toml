@@ -12,7 +12,7 @@ description = "vim-clap external filter gadget"
 async-trait = "0.1"
 anyhow = "1.0"
 base64 = "0.13"
-bytecount = "0.6"
+bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "3.2", features = ["derive"] }
 crossbeam-channel = "0.5"
