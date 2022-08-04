@@ -19,7 +19,7 @@ pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<Strin
     if !output.status.success() && !output.stderr.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("Error in output: {:?}", output.stderr),
+            String::from_utf8_lossy(&output.stderr),
         ));
     }
 
@@ -83,11 +83,9 @@ impl BaseCommand {
         Ok(stdout_stream)
     }
 
-    pub fn cached_path(&self) -> std::io::Result<PathBuf> {
+    pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
         let cached_filename = utility::calculate_hash(self);
-        let cached_path = crate::utils::generate_cache_file_path(cached_filename.to_string())?;
-
-        Ok(cached_path)
+        crate::utils::generate_cache_file_path(cached_filename.to_string())
     }
 
     /// Writes the whole stdout `cmd_stdout` to a cache file.

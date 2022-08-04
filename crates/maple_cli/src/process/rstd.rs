@@ -3,20 +3,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Collect the output of command, exit directly if any error happened.
-pub fn collect_stdout(cmd: &mut Command) -> std::io::Result<Vec<u8>> {
-    let cmd_output = cmd.output()?;
-
-    if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&cmd_output.stderr),
-        ));
-    }
-
-    Ok(cmd_output.stdout)
-}
-
 /// Executes the command and redirects the output to a file.
 pub fn write_stdout_to_file<P: AsRef<Path>>(
     cmd: &mut Command,
@@ -92,9 +78,18 @@ impl StdCommand {
         super::process_output(output)
     }
 
-    /// Returns the stdout of inner command.
+    /// Returns the stdout of command, exit directly if any error happened.
     pub fn stdout(&mut self) -> std::io::Result<Vec<u8>> {
-        collect_stdout(&mut self.0)
+        let cmd_output = self.0.output()?;
+
+        if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                String::from_utf8_lossy(&cmd_output.stderr),
+            ));
+        }
+
+        Ok(cmd_output.stdout)
     }
 
     #[allow(unused)]

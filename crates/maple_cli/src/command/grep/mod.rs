@@ -247,12 +247,13 @@ impl Grep {
     }
 }
 
+// Used for creating the cache in async context.
 #[derive(Debug, Clone)]
-pub struct RgBaseCommand {
+pub struct RgTokioCommand {
     pub inner: BaseCommand,
 }
 
-impl RgBaseCommand {
+impl RgTokioCommand {
     pub fn new(dir: PathBuf) -> Self {
         let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir);
         Self { inner }
@@ -262,6 +263,7 @@ impl RgBaseCommand {
         self.inner.cache_info()
     }
 
+    // TODO: redirect to file.
     pub async fn create_cache(self) -> Result<(usize, PathBuf)> {
         let lines = TokioCommand::new(&self.inner.command)
             .current_dir(&self.inner.cwd)
@@ -277,16 +279,27 @@ impl RgBaseCommand {
     }
 }
 
-pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+pub fn rg_command<P: AsRef<Path>>(dir: P) -> Command {
+    // Can not use StdCommand as it joins the args which does not work somehow.
     let mut cmd = Command::new(RG_ARGS[0]);
     // Do not use --vimgrep here.
-    cmd.args(&RG_ARGS[1..]).current_dir(dir.as_ref());
+    cmd.args(&RG_ARGS[1..]).current_dir(dir);
+    cmd
+}
 
-    let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()));
-    let cached_path = base_cmd.cached_path()?;
+#[inline]
+pub fn rg_base_command<P: AsRef<Path>>(dir: P) -> BaseCommand {
+    BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()))
+}
 
-    crate::process::rstd::write_stdout_to_file(&mut cmd, &cached_path)?;
-    let digest = crate::cache::store_cache_digest(base_cmd, cached_path)?;
+pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+    let base_cmd = rg_base_command(dir.as_ref());
+    let cache_file_path = base_cmd.cache_file_path()?;
+
+    let mut cmd = rg_command(dir.as_ref());
+    crate::process::rstd::write_stdout_to_file(&mut cmd, &cache_file_path)?;
+
+    let digest = crate::cache::store_cache_digest(base_cmd, cache_file_path)?;
 
     Ok(digest.total)
 }
