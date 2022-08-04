@@ -27,8 +27,12 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 
   if has_key(decoded, 'matched')
     call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
-  elseif has_key(decoded, 'total_matched') && has_key(decoded, 'total_processed')
-    call clap#indicator#set('['.decoded.total_matched.'/'.decoded.total_processed.']')
+  elseif has_key(decoded, 'total_matched')
+    if has_key(decoded, 'total_processed')
+      call clap#indicator#set('['.decoded.total_matched.'/'.decoded.total_processed.']')
+    else
+      call clap#indicator#set_matches_number(decoded.total_matched)
+    endif
   endif
 
   if has_key(decoded, 'lines')
