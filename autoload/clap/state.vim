@@ -25,6 +25,16 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     call clap#indicator#set_matches_number(decoded.total)
   endif
 
+  if has_key(decoded, 'matched')
+    call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
+  elseif has_key(decoded, 'total_matched')
+    if has_key(decoded, 'total_processed')
+      call clap#indicator#set('['.decoded.total_matched.'/'.decoded.total_processed.']')
+    else
+      call clap#indicator#set_matches_number(decoded.total_matched)
+    endif
+  endif
+
   if has_key(decoded, 'lines')
     call g:clap.display.set_lines(decoded.lines)
     if empty(decoded.lines)
@@ -52,16 +62,6 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
       return
     endtry
   endif
-endfunction
-
-function! clap#state#process_dyn_message(msg) abort
-  let decoded = json_decode(a:msg)
-
-  if type(decoded) != v:t_dict
-    return
-  endif
-
-  call clap#state#process_filter_message(decoded, v:false)
 endfunction
 
 function! clap#state#process_preview_result(result) abort

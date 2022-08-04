@@ -3,11 +3,18 @@
 // pub use constants::*;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-use std::{fmt::Display, path::Path};
+use std::fmt::Display;
+use std::path::Path;
 
-pub const DEFAULT_ICON: char = '';
-pub const FOLDER_ICON: char = '';
-pub const DEFAULT_FILER_ICON: char = '';
+/// The type used to represent icons.
+///
+/// This could be changed into different type later,
+/// so functions take and return this type, not `char` or `&str` directly.
+pub type IconType = char;
+
+pub const DEFAULT_ICON: IconType = '';
+pub const FOLDER_ICON: IconType = '';
+pub const DEFAULT_FILER_ICON: IconType = '';
 
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
@@ -30,6 +37,10 @@ impl Icon {
             Self::Null => None,
             Self::Enabled(icon_kind) => Some(icon_kind),
         }
+    }
+
+    pub fn enabled(&self) -> bool {
+        matches!(self, Self::Enabled(_))
     }
 }
 
@@ -104,12 +115,6 @@ impl IconKind {
         }
     }
 }
-
-/// The type used to represent icons.
-///
-/// This could be changed into different type later,
-/// so functions take and return this type, not `char` or `&str` directly.
-type IconType = char;
 
 /// Return appropriate icon for the path. If no icon matched, return the specified default one.
 ///

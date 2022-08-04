@@ -164,7 +164,8 @@ impl Watcher {
                 #[allow(non_upper_case_globals)]
                 const method: &str = "s:process_filter_message";
                 if self.last_lines != lines.as_slice() {
-                    println_json_with_length!(total, lines, indices, method);
+                    let icon_added = self.icon.enabled();
+                    println_json_with_length!(total, lines, indices, method, icon_added);
                     self.past = now;
                     self.last_lines = lines;
                 } else {
@@ -285,14 +286,15 @@ fn dyn_collect_number(
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_run<I: Iterator<Item = SourceItem>>(
     query: &str,
-    FilterContext {
+    filter_context: FilterContext,
+    source: Source<I>,
+) -> Result<()> {
+    let FilterContext {
         icon,
         number,
         winwidth,
         matcher,
-    }: FilterContext,
-    source: Source<I>,
-) -> Result<()> {
+    } = filter_context;
     let query: Query = query.into();
     if let Some(number) = number {
         let (total_matched, matched_items) = match source {
@@ -310,10 +312,10 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
 
         let matched_items = sort_matched_items(matched_items);
 
-        printer::print_dyn_filter_results(
+        printer::print_dyn_matched_items(
             matched_items,
             total_matched,
-            number,
+            None,
             winwidth.unwrap_or(100),
             icon,
         );

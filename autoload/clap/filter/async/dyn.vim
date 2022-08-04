@@ -7,31 +7,37 @@ set cpoptions&vim
 " Currently this is not configurable.
 let s:DYN_ITEMS_TO_SHOW = 40
 
-function! s:handle_message(msg) abort
+function! s:handle_stdio_message(msg) abort
   if !g:clap.display.win_is_valid()
         \ || g:clap.input.get() !=# s:last_query
     return
   endif
 
-  call clap#state#process_dyn_message(a:msg)
+  let decoded = json_decode(a:msg)
+
+  if type(decoded) != v:t_dict
+    return
+  endif
+
+  call clap#state#process_filter_message(decoded, v:false)
   call clap#preview#async_open_with_delay()
 endfunction
 
 function! clap#filter#async#dyn#start_directly(maple_cmd) abort
   let s:last_query = g:clap.input.get()
-  call clap#job#stdio#start_service(function('s:handle_message'), a:maple_cmd)
+  call clap#job#stdio#start_service(function('s:handle_stdio_message'), a:maple_cmd)
 endfunction
 
 function! clap#filter#async#dyn#start(cmd) abort
   let s:last_query = g:clap.input.get()
-  call clap#job#stdio#start_dyn_filter_service(function('s:handle_message'), a:cmd)
+  call clap#job#stdio#start_dyn_filter_service(function('s:handle_stdio_message'), a:cmd)
 endfunction
 
 function! clap#filter#async#dyn#from_tempfile(tempfile) abort
   let s:last_query = g:clap.input.get()
 
   call clap#job#stdio#start_service(
-        \ function('s:handle_message'),
+        \ function('s:handle_stdio_message'),
         \ clap#maple#command#filter_dyn(s:DYN_ITEMS_TO_SHOW, a:tempfile),
         \ )
 endfunction
@@ -53,13 +59,13 @@ endfunction
 function! clap#filter#async#dyn#start_grep() abort
   let grep_cmd = s:prepare_grep_cmd()
   let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--cmd-dir', clap#rooter#working_dir()])
-  call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
+  call clap#job#stdio#start_service(function('s:handle_stdio_message'), grep_cmd)
 endfunction
 
 function! clap#filter#async#dyn#grep_from_cache(tempfile) abort
   let grep_cmd = s:prepare_grep_cmd()
   let grep_cmd = clap#maple#build_cmd_list(grep_cmd + ['--input', a:tempfile])
-  call clap#job#stdio#start_service(function('s:handle_message'), grep_cmd)
+  call clap#job#stdio#start_service(function('s:handle_stdio_message'), grep_cmd)
 endfunction
 
 let &cpoptions = s:save_cpo

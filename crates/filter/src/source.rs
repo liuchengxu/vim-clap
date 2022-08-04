@@ -10,10 +10,10 @@ use types::{MatchedItem, Query, SourceItem};
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
 pub enum Source<I: Iterator<Item = SourceItem>> {
-    Stdin,
-    Exec(Box<Exec>),
-    File(PathBuf),
     List(I),
+    Stdin,
+    File(PathBuf),
+    Exec(Box<Exec>),
 }
 
 impl<I: Iterator<Item = SourceItem>> From<PathBuf> for Source<I> {

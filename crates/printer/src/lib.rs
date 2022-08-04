@@ -44,7 +44,11 @@ impl DisplayLines {
         }
     }
 
-    pub fn print_json_with_length(&self, total: Option<usize>) {
+    fn print_on_dyn_run_finished(
+        &self,
+        total_matched: usize,
+        maybe_total_processed: Option<usize>,
+    ) {
         let Self {
             lines,
             indices,
@@ -54,10 +58,25 @@ impl DisplayLines {
 
         #[allow(non_upper_case_globals)]
         const method: &str = "s:process_filter_message";
-        if let Some(total) = total {
-            println_json_with_length!(method, lines, indices, icon_added, truncated_map, total);
+        if let Some(total_processed) = maybe_total_processed {
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                truncated_map,
+                total_matched,
+                total_processed
+            );
         } else {
-            println_json_with_length!(method, lines, indices, icon_added, truncated_map);
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                truncated_map,
+                total_matched
+            );
         }
     }
 
@@ -144,15 +163,15 @@ pub fn print_sync_filter_results(
 }
 
 /// Prints the results of filter::dyn_run() to stdout.
-pub fn print_dyn_filter_results(
-    ranked: Vec<MatchedItem>,
-    total: usize,
-    number: usize,
+pub fn print_dyn_matched_items(
+    matched_items: Vec<MatchedItem>,
+    total_matched: usize,
+    total_processed: Option<usize>,
     winwidth: usize,
     icon: Icon,
 ) {
-    decorate_lines(ranked.into_iter().take(number).collect(), winwidth, icon)
-        .print_json_with_length(Some(total));
+    decorate_lines(matched_items, winwidth, icon)
+        .print_on_dyn_run_finished(total_matched, total_processed);
 }
 
 #[cfg(test)]

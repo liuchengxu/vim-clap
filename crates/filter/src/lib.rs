@@ -73,10 +73,10 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub fn sort_matched_items(filtered: Vec<MatchedItem>) -> Vec<MatchedItem> {
-    let mut filtered = filtered;
-    filtered.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-    filtered
+pub fn sort_matched_items(matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
+    let mut items = matched_items;
+    items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+    items
 }
 
 /// Returns the ranked results after applying the matcher algo
