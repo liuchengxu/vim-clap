@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.36] 2022-08-06
 ## Improved
 
 - Speed up the cache creation signigicantly. #858
