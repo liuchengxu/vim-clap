@@ -61,12 +61,12 @@ function! clap#maple#command#ripgrep_forerunner() abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! clap#maple#command#exec_forerunner(cmd) abort
+function! clap#maple#command#exec_forerunner(shell_cmd) abort
   " No global --number option.
   let global_opts = s:prepare_global_opts(v:null)
 
   let subcommand = [
-        \ 'exec', a:cmd,
+        \ 'exec', a:shell_cmd,
         \ '--cmd-dir', clap#rooter#working_dir(),
         \ '--output-threshold', s:cache_threshold,
         \ ]

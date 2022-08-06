@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::RgBaseCommand;
+use crate::command::grep::RgTokioCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::session::{EventHandle, SessionContext, SourceScale};
 use crate::stdio_server::{write_response, MethodCall};
@@ -179,7 +179,7 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<SourceSca
             return Ok(scale);
         }
         "grep2" => {
-            let rg_cmd = RgBaseCommand::new(context.cwd.to_path_buf());
+            let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
             let (total, path) = if context.no_cache {
                 rg_cmd.create_cache().await?
             } else {
