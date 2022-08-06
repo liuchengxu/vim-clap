@@ -271,10 +271,6 @@ impl SourceItem {
     }
 }
 
-// TODO: Deprecate SourceItem with various wrappers:
-// - FullItem
-// - BLinesItem
-// - FileNameItem
 impl ClapItem for SourceItem {
     fn raw_text(&self) -> &str {
         &self.raw

@@ -110,3 +110,17 @@ pub fn par_filter(
         .collect::<Vec<_>>();
     sort_matched_items(matched_items)
 }
+
+/// Performs the synchorous filtering on a small scale of source in parallel.
+pub fn par_filter_items(
+    query: impl Into<Query>,
+    source_items: &[Arc<dyn ClapItem>],
+    fuzzy_matcher: &Matcher,
+) -> Vec<MatchedItem> {
+    let query: Query = query.into();
+    let matched_items = source_items
+        .into_par_iter()
+        .filter_map(|item| fuzzy_matcher.match_item(item.clone(), &query))
+        .collect::<Vec<_>>();
+    sort_matched_items(matched_items)
+}

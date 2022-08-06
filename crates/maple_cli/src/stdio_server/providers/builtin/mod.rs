@@ -4,7 +4,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
+use filter::SourceItem;
 use filter::{matcher::Matcher, FilterContext, MatchedItem};
+use matcher::ClapItem;
 use parking_lot::Mutex;
 use serde_json::json;
 
@@ -46,11 +48,13 @@ impl EventHandle for BuiltinHandle {
             context.state.source_scale.lock().deref(),
             msg.get_u64("lnum").ok(),
         ) {
-            (SourceScale::Small { ref lines, .. }, Some(lnum)) => {
+            (SourceScale::Small { ref items, .. }, Some(lnum)) => {
                 if let Some(curline) = self.line_at(lnum as usize) {
                     Some(curline)
                 } else {
-                    lines.get(lnum as usize - 1).cloned()
+                    items
+                        .get(lnum as usize - 1)
+                        .map(|item| item.raw_text().to_string())
                 }
             }
             _ => None,
@@ -70,12 +74,9 @@ impl EventHandle for BuiltinHandle {
         let source_scale = context.state.source_scale.lock();
 
         match source_scale.deref() {
-            SourceScale::Small { ref lines, .. } => {
-                let results = filter::par_filter(
-                    query,
-                    lines.iter().map(|s| s.to_string().into()).collect(), // TODO: avoid `to_string()`
-                    &context.fuzzy_matcher(),
-                );
+            SourceScale::Small { ref items, .. } => {
+                tracing::debug!("====================== [on_typed] Small");
+                let results = filter::par_filter_items(query, items, &context.fuzzy_matcher());
                 let total = results.len();
                 // Take the first 200 entries and add an icon to each of them.
                 printer::decorate_lines(
@@ -122,7 +123,11 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<SourceSca
         if total > LARGE_SCALE {
             SourceScale::Large(total)
         } else {
-            SourceScale::Small { total, lines }
+            let items = lines
+                .into_iter()
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>)
+                .collect::<Vec<_>>();
+            SourceScale::Small { total, items }
         }
     };
 
@@ -136,12 +141,13 @@ pub async fn on_session_create(context: Arc<SessionContext>) -> Result<SourceSca
             });
         }
         "tags" => {
-            let lines =
-                crate::command::ctags::buffer_tags::buffer_tags_lines(&context.start_buffer_path)?;
-
+            let items = crate::command::ctags::buffer_tags::buffer_tag_items(
+                &context.start_buffer_path,
+                false,
+            )?;
             return Ok(SourceScale::Small {
-                total: lines.len(),
-                lines,
+                total: items.len(),
+                items,
             });
         }
         "proj_tags" => {
