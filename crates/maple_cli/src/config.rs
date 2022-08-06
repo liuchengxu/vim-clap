@@ -33,7 +33,9 @@ pub struct Config {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ProviderConfig {
+    #[serde(default)]
     pub dumb_jump: DumbJumpConfig,
+    #[serde(default)]
     pub grep2: Grep2Config,
 }
 
@@ -54,6 +56,7 @@ impl Default for DumbJumpConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Grep2Config {
+    #[serde(default = "default_true")]
     pub ignore_comment_line: bool,
     // TODO: project-wise ignore pattern.
     /// Ignore the results from the files whose name contains this pattern.
@@ -70,6 +73,10 @@ impl Default for Grep2Config {
             ignore_pattern_file_path: None,
         }
     }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[test]
