@@ -12,7 +12,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use crate::stdio_server::providers::builtin::on_session_create;
+use crate::stdio_server::providers::builtin::on_create::initialize;
 use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
 
 pub use self::context::{SessionContext, SourceScale};
@@ -70,13 +70,15 @@ pub trait EventHandle: Send + Sync + 'static {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
         // TODO: blocking on_create for the swift providers like `tags`.
-        match tokio::time::timeout(TIMEOUT, on_session_create(context.clone())).await {
+        match tokio::time::timeout(TIMEOUT, initialize(context.clone())).await {
             Ok(scale_result) => match scale_result {
                 Ok(scale) => process_source_scale(scale, context),
                 Err(e) => tracing::error!(?e, "Error occurred on creating session"),
             },
             Err(_) => {
+                // The initialization was not super fast.
                 tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
+
                 match context.provider_id.as_str() {
                     "grep" | "grep2" => {
                         let rg_cmd =
@@ -89,7 +91,9 @@ pub trait EventHandle: Send + Sync + 'static {
                             job_id,
                         );
                     }
-                    _ => {}
+                    _ => {
+                        // TODO: Note arbitrary shell command and use par_dyn_run later.
+                    }
                 }
             }
         }
