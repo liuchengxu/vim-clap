@@ -1,32 +1,34 @@
-pub mod on_create;
-pub mod on_move;
+mod on_create;
+mod on_move;
 mod providers;
 
 use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::{matcher::Matcher, FilterContext, MatchedItem};
-use filter::{ParSource, SourceItem};
-use matcher::ClapItem;
 use parking_lot::Mutex;
 use serde_json::json;
 
-pub use self::providers::{dumb_jump, filer, recent_files};
+use filter::{FilterContext, ParSource};
+use matcher::Matcher;
+use types::{ClapItem, MatchedItem, SourceItem};
+
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::session::{EventHandle, SessionContext, SourceScale};
 use crate::stdio_server::{write_response, MethodCall};
 
-pub use on_move::{OnMove, OnMoveHandler};
+pub use self::on_create::initialize;
+pub use self::on_move::{OnMove, OnMoveHandler};
+pub use self::providers::{dumb_jump, filer, recent_files};
 
 #[derive(Clone)]
-pub struct BuiltinHandle {
+pub struct DefaultHandle {
     pub current_results: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
-impl BuiltinHandle {
+impl DefaultHandle {
     pub fn new() -> Self {
         Self {
             current_results: Arc::new(Mutex::new(Vec::new())),
@@ -38,12 +40,12 @@ impl BuiltinHandle {
         self.current_results
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.item.raw_text().to_string())
+            .map(|r| r.item.output_text().to_string())
     }
 }
 
 #[async_trait::async_trait]
-impl EventHandle for BuiltinHandle {
+impl EventHandle for DefaultHandle {
     async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
         let msg_id = msg.id;
 
@@ -57,7 +59,7 @@ impl EventHandle for BuiltinHandle {
                 } else {
                     items
                         .get(lnum as usize - 1)
-                        .map(|item| item.raw_text().to_string())
+                        .map(|item| item.output_text().to_string())
                 }
             }
             _ => None,

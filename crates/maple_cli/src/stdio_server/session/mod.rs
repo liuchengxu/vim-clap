@@ -12,7 +12,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use crate::stdio_server::impls::on_create::initialize;
+use crate::stdio_server::impls::initialize;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::types::ProviderId;
 use crate::stdio_server::MethodCall;
