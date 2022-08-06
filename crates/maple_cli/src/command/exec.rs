@@ -14,7 +14,7 @@ use crate::process::BaseCommand;
 pub struct Exec {
     /// Specify the system command to run.
     #[clap(index = 1, long)]
-    cmd: String,
+    shell_cmd: String,
 
     /// Specify the working directory of CMD
     #[clap(long, parse(from_os_str))]
@@ -28,7 +28,7 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = StdCommand::from(self.cmd.as_str());
+        let mut cmd = StdCommand::new(self.shell_cmd.as_str());
 
         if let Some(ref cmd_dir) = self.cmd_dir {
             cmd.current_dir(cmd_dir);
@@ -70,7 +70,7 @@ impl Exec {
             None => std::env::current_dir()?,
         };
 
-        let base_cmd = BaseCommand::new(self.cmd.clone(), cwd);
+        let base_cmd = BaseCommand::new(self.shell_cmd.clone(), cwd);
 
         light_cmd.try_cache_or_execute(base_cmd, no_cache)?.print();
 

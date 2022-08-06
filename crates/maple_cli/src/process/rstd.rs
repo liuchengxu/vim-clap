@@ -27,10 +27,12 @@ pub fn write_stdout_to_file<P: AsRef<Path>>(
     }
 }
 
+// TODO: make it configurable so that it can support powershell easier?
+// https://github.com/liuchengxu/vim-clap/issues/640
 /// Builds [`std::process::Command`] from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-fn build_command(shell_cmd: &str) -> Command {
+fn shell_command(shell_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", shell_cmd]);
@@ -46,16 +48,16 @@ fn build_command(shell_cmd: &str) -> Command {
 #[derive(Debug)]
 pub struct StdCommand(Command);
 
-impl<T: AsRef<str>> From<T> for StdCommand {
-    fn from(cmd: T) -> Self {
-        Self(build_command(cmd.as_ref()))
+impl From<Command> for StdCommand {
+    fn from(cmd: Command) -> Self {
+        Self(cmd)
     }
 }
 
 impl StdCommand {
     /// Constructs a new [`StdCommand`].
-    pub fn new(cmd: impl AsRef<str>) -> Self {
-        cmd.as_ref().into()
+    pub fn new(shell_cmd: impl AsRef<str>) -> Self {
+        Self(shell_command(shell_cmd.as_ref()))
     }
 
     /// Sets the working directory for the inner `Command`.

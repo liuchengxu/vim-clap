@@ -7,7 +7,7 @@ use tokio::process::Command;
 /// Builds `Command` from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
-pub fn build_command(shell_cmd: impl AsRef<str>) -> Command {
+pub fn shell_command(shell_cmd: impl AsRef<str>) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", shell_cmd.as_ref()]);
@@ -23,16 +23,16 @@ pub fn build_command(shell_cmd: impl AsRef<str>) -> Command {
 #[derive(Debug)]
 pub struct TokioCommand(Command);
 
-impl<T: AsRef<str>> From<T> for TokioCommand {
-    fn from(cmd: T) -> Self {
-        Self(build_command(cmd))
+impl From<Command> for TokioCommand {
+    fn from(cmd: Command) -> Self {
+        Self(cmd)
     }
 }
 
 impl TokioCommand {
     /// Constructs a new instance of [`TokioCommand`].
-    pub fn new(cmd: impl AsRef<str>) -> Self {
-        cmd.into()
+    pub fn new(shell_cmd: impl AsRef<str>) -> Self {
+        Self(shell_command(shell_cmd))
     }
 
     pub async fn lines(&mut self) -> std::io::Result<Vec<String>> {
