@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.36] 2022-08-06
 ## Improved
 
 - Support filtering in parallel with the dynamic progress update. The filtering time is reduced about 50% from the sequential to the parallel version.
