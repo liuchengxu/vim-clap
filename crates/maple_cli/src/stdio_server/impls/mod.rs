@@ -1,5 +1,6 @@
 pub mod on_create;
 pub mod on_move;
+mod providers;
 
 use std::ops::Deref;
 use std::sync::Arc;
@@ -11,6 +12,7 @@ use matcher::ClapItem;
 use parking_lot::Mutex;
 use serde_json::json;
 
+pub use self::providers::{dumb_jump, filer, recent_files};
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
 use crate::process::tokio::TokioCommand;

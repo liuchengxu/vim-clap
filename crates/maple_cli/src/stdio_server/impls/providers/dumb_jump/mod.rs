@@ -17,7 +17,7 @@ use tracing::Instrument;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
-use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, EventHandle, SessionContext,

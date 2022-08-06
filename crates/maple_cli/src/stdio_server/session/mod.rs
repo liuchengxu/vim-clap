@@ -12,8 +12,10 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use crate::stdio_server::providers::builtin::on_create::initialize;
-use crate::stdio_server::{rpc::Call, types::ProviderId, MethodCall};
+use crate::stdio_server::impls::on_create::initialize;
+use crate::stdio_server::rpc::Call;
+use crate::stdio_server::types::ProviderId;
+use crate::stdio_server::MethodCall;
 
 pub use self::context::{SessionContext, SourceScale};
 pub use self::manager::SessionManager;

@@ -6,10 +6,10 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::stdio_server::providers::dumb_jump::DumbJumpHandle;
-use crate::stdio_server::providers::filer::FilerHandle;
-use crate::stdio_server::providers::recent_files::RecentFilesHandle;
-use crate::stdio_server::providers::BuiltinHandle;
+use crate::stdio_server::impls::dumb_jump::DumbJumpHandle;
+use crate::stdio_server::impls::filer::FilerHandle;
+use crate::stdio_server::impls::recent_files::RecentFilesHandle;
+use crate::stdio_server::impls::BuiltinHandle;
 use crate::stdio_server::rpc::{Call, RpcClient};
 use crate::stdio_server::session::{SessionEvent, SessionManager};
 

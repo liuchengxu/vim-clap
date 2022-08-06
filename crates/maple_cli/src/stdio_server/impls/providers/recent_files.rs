@@ -10,7 +10,7 @@ use serde_json::json;
 use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{EventHandle, Session, SessionContext, SessionEvent};
 use crate::stdio_server::{write_response, MethodCall};

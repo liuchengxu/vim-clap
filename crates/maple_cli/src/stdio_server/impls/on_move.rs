@@ -13,7 +13,7 @@ use crate::command::ctags::buffer_tags::{
     current_context_tag, current_context_tag_async, BufferTagInfo,
 };
 use crate::previewer::{self, vim_help::HelpTagPreview};
-use crate::stdio_server::providers::filer;
+use crate::stdio_server::impls::providers::filer;
 use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::{global, write_response, MethodCall};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
