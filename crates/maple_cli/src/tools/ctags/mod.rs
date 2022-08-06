@@ -1,3 +1,5 @@
+mod buffer_tag;
+mod context_tag;
 mod project_tag;
 
 use std::collections::HashMap;
@@ -16,6 +18,10 @@ use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
 use crate::utils::PROJECT_DIRS;
 
+pub use self::buffer_tag::{BufferTag, BufferTagItem};
+pub use self::context_tag::{
+    buffer_tag_items, buffer_tags_lines, current_context_tag, current_context_tag_async,
+};
 pub use self::project_tag::{ProjectTag, ProjectTagItem};
 
 pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";

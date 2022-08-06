@@ -10,9 +10,9 @@ use icon::{Icon, IconKind};
 use matcher::{ClapItem, MatchScope};
 use types::MatchedItem;
 
-use crate::command::ctags::buffer_tags::BufferTagInfo;
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
 use crate::stdio_server::types::ProviderId;
+use crate::tools::ctags::BufferTag;
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
@@ -95,7 +95,7 @@ impl SourceScale {
 #[derive(Debug, Clone)]
 pub struct CachedBufTags {
     pub done: bool,
-    pub tags: Vec<BufferTagInfo>,
+    pub tags: Vec<BufferTag>,
 }
 
 #[derive(Debug, Clone)]

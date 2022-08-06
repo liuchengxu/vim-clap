@@ -11,7 +11,7 @@ use tokio::process::Command as TokioCommand;
 
 use types::ClapItem;
 
-use super::BufferTagInfo;
+use super::BufferTag;
 use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
 
 const CONTEXT_KINDS: &[&str] = &[
@@ -76,7 +76,7 @@ fn tokio_cmd_in_raw_format(file: &Path) -> TokioCommand {
     tokio_cmd
 }
 
-fn find_context_tag(superset_tags: Vec<BufferTagInfo>, at: usize) -> Option<BufferTagInfo> {
+fn find_context_tag(superset_tags: Vec<BufferTag>, at: usize) -> Option<BufferTag> {
     match superset_tags.binary_search_by_key(&at, |tag| tag.line) {
         Ok(_l) => None, // Skip if the line is exactly a tag line.
         Err(_l) => {
@@ -97,15 +97,15 @@ fn find_context_tag(superset_tags: Vec<BufferTagInfo>, at: usize) -> Option<Buff
 }
 
 /// Async version of [`current_context_tag`].
-pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTagInfo> {
+pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferTag> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = tokio_cmd_in_json_format(file);
-        collect_superset_context_tags_async(cmd, BufferTagInfo::from_ctags_json, at)
+        collect_superset_context_tags_async(cmd, BufferTag::from_ctags_json, at)
             .await
             .ok()?
     } else {
         let cmd = tokio_cmd_in_raw_format(file);
-        collect_superset_context_tags_async(cmd, BufferTagInfo::from_ctags_raw, at)
+        collect_superset_context_tags_async(cmd, BufferTag::from_ctags_raw, at)
             .await
             .ok()?
     };
@@ -114,13 +114,13 @@ pub async fn current_context_tag_async(file: &Path, at: usize) -> Option<BufferT
 }
 
 /// Returns the method/function context associated with line `at`.
-pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTagInfo> {
+pub fn current_context_tag(file: &Path, at: usize) -> Option<BufferTag> {
     let superset_tags = if *CTAGS_HAS_JSON_FEATURE.deref() {
         let cmd = subprocess_cmd_in_json_format(file);
-        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_json, at).ok()?
+        collect_superset_context_tags(cmd, BufferTag::from_ctags_json, at).ok()?
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);
-        collect_superset_context_tags(cmd, BufferTagInfo::from_ctags_raw, at).ok()?
+        collect_superset_context_tags(cmd, BufferTag::from_ctags_raw, at).ok()?
     };
 
     find_context_tag(superset_tags, at)
@@ -132,10 +132,10 @@ pub fn buffer_tags_lines(
 ) -> Result<Vec<String>> {
     if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
         let cmd = subprocess_cmd_in_json_format(file);
-        buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_json)
+        buffer_tags_lines_inner(cmd, BufferTag::from_ctags_json)
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);
-        buffer_tags_lines_inner(cmd, BufferTagInfo::from_ctags_raw)
+        buffer_tags_lines_inner(cmd, BufferTag::from_ctags_raw)
     }
 }
 
@@ -145,10 +145,10 @@ pub fn buffer_tag_items(
 ) -> Result<Vec<Arc<dyn ClapItem>>> {
     let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
         let cmd = subprocess_cmd_in_json_format(file);
-        collect_buffer_tag_info(cmd, BufferTagInfo::from_ctags_json)?
+        collect_buffer_tag_info(cmd, BufferTag::from_ctags_json)?
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);
-        collect_buffer_tag_info(cmd, BufferTagInfo::from_ctags_raw)?
+        collect_buffer_tag_info(cmd, BufferTag::from_ctags_raw)?
     };
 
     Ok(tags
@@ -159,8 +159,8 @@ pub fn buffer_tag_items(
 
 fn collect_buffer_tag_info(
     cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
-) -> Result<(Vec<BufferTagInfo>, usize)> {
+    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
+) -> Result<(Vec<BufferTag>, usize)> {
     let max_name_len = AtomicUsize::new(0);
 
     let tags = crate::utils::lines(cmd)?
@@ -180,7 +180,7 @@ fn collect_buffer_tag_info(
 
 fn buffer_tags_lines_inner(
     cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
 ) -> Result<Vec<String>> {
     let max_name_len = AtomicUsize::new(0);
 
@@ -200,15 +200,15 @@ fn buffer_tags_lines_inner(
 
     Ok(tags
         .par_iter()
-        .map(|s| s.format_buffer_tags(max_name_len))
+        .map(|s| s.format_buffer_tag(max_name_len))
         .collect::<Vec<_>>())
 }
 
 fn collect_superset_context_tags(
     cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
     target_lnum: usize,
-) -> Result<Vec<BufferTagInfo>> {
+) -> Result<Vec<BufferTag>> {
     let mut tags = crate::utils::lines(cmd)?
         .flatten()
         .par_bridge()
@@ -224,9 +224,9 @@ fn collect_superset_context_tags(
 
 async fn collect_superset_context_tags_async(
     cmd: TokioCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTagInfo> + Send + Sync,
+    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
     target_lnum: usize,
-) -> Result<Vec<BufferTagInfo>> {
+) -> Result<Vec<BufferTag>> {
     let mut cmd = cmd;
 
     let mut tags = cmd

@@ -41,10 +41,7 @@ pub async fn initialize(context: Arc<SessionContext>) -> Result<SourceScale> {
             });
         }
         "tags" => {
-            let items = crate::command::ctags::buffer_tags::buffer_tag_items(
-                &context.start_buffer_path,
-                false,
-            )?;
+            let items = crate::tools::ctags::buffer_tag_items(&context.start_buffer_path, false)?;
             return Ok(SourceScale::Small {
                 total: items.len(),
                 items,
