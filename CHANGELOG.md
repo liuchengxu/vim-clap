@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+## Improved
+
+- Speed up the cache creation signigicantly. #858
+
 ## Changed
 
 - The spinner will be hidden if it's idle.

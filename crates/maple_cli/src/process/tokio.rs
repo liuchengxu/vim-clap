@@ -61,15 +61,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_tokio_command() {
-        let mut tokio_cmd: TokioCommand = format!(
+        let shell_cmd = format!(
             "ls {}",
             std::env::current_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
                 .unwrap()
-        )
-        .into();
+        );
+        let mut tokio_cmd = TokioCommand::new(shell_cmd);
         assert_eq!(
             vec!["Cargo.toml", "benches", "src"]
                 .into_iter()
