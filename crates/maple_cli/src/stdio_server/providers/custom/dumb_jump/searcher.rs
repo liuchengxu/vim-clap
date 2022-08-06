@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::path::Path;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use dumb_analyzer::resolve_reference_kind;
@@ -200,11 +200,12 @@ fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<A
         let git_tracked = files
             .into_par_iter()
             .filter(|file| {
-                let mut command = StdCommand::from(format!("git ls-files --error-unmatch {file}"));
-                command.current_dir(cwd);
                 // Only the exit status matters.
-                command
-                    .into_inner()
+                Command::new("git")
+                    .arg("ls-files")
+                    .arg("--error-unmatch")
+                    .arg(file)
+                    .current_dir(cwd)
                     .stderr(Stdio::null())
                     .stdout(Stdio::null())
                     .status()
