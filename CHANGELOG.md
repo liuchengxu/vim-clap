@@ -8,6 +8,7 @@
   The following providers will be benefited from the parallel filtering:
   - `source` of the provider returns a String command.
   - `blines`, `grep2`, `proj_tags`.
+- Speed up the cache creation signigicantly. #858
 
 ## Changed
 

@@ -102,6 +102,7 @@ impl Grep {
         } else {
             self.dyn_run(params)?;
         }
+
         Ok(())
     }
 

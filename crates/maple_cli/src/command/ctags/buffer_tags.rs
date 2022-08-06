@@ -97,19 +97,24 @@ fn subprocess_cmd_in_raw_format(file: impl AsRef<std::ffi::OsStr>) -> Subprocess
 }
 
 fn tokio_cmd_in_json_format(file: &Path) -> TokioCommand {
-    let mut cmd = crate::process::tokio::build_command(format!(
-        "ctags --fields=+n --output-format=json {}",
-        file.display()
-    ));
-    cmd.stderr(Stdio::null());
-    cmd
+    let mut tokio_cmd = TokioCommand::new("ctags");
+    tokio_cmd
+        .stderr(Stdio::null())
+        .arg("--fields=+n")
+        .arg("--output-format=json")
+        .arg(file);
+    tokio_cmd
 }
 
 fn tokio_cmd_in_raw_format(file: &Path) -> TokioCommand {
-    let mut cmd =
-        crate::process::tokio::build_command(format!("ctags --fields=+Kn -f - {}", file.display()));
-    cmd.stderr(Stdio::null());
-    cmd
+    let mut tokio_cmd = TokioCommand::new("ctags");
+    tokio_cmd
+        .stderr(Stdio::null())
+        .arg("--fields=+Kn")
+        .arg("-f")
+        .arg("-")
+        .arg(file);
+    tokio_cmd
 }
 
 fn find_context_tag(superset_tags: Vec<BufferTagInfo>, at: usize) -> Option<BufferTagInfo> {
