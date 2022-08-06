@@ -1,4 +1,5 @@
-use std::borrow::Cow;
+mod project_tag;
+
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
@@ -9,15 +10,13 @@ use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use subprocess::{Exec, NullFile};
-
-use matcher::{ClapItem, MatchScope};
-use types::FuzzyText;
 
 use crate::paths::AbsPathBuf;
 use crate::process::{rstd::StdCommand, BaseCommand};
 use crate::utils::PROJECT_DIRS;
+
+pub use self::project_tag::{ProjectTag, ProjectTagItem};
 
 pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 
@@ -214,12 +213,12 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
 #[derive(Debug, Clone)]
-pub struct CtagsCommand {
+pub struct ProjectCtagsCommand {
     inner: BaseCommand,
 }
 
-impl CtagsCommand {
-    /// Creates an instance of [`CtagsCommand`].
+impl ProjectCtagsCommand {
+    /// Creates an instance of [`ProjectCtagsCommand`].
     pub fn new(inner: BaseCommand) -> Self {
         Self { inner }
     }
@@ -229,8 +228,8 @@ impl CtagsCommand {
         Ok(self
             .run()?
             .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                    Some(tag.format_proj_tags())
+                if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                    Some(tag.format_proj_tag())
                 } else {
                     None
                 }
@@ -247,8 +246,8 @@ impl CtagsCommand {
         Ok(stdout
             .par_split(|x| x == &b'\n')
             .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
-                    Some(tag.format_proj_tags())
+                if let Ok(tag) = serde_json::from_slice::<ProjectTag>(tag) {
+                    Some(tag.format_proj_tag())
                 } else {
                     None
                 }
@@ -274,18 +273,18 @@ impl CtagsCommand {
     /// Returns an iterator of tag line in a formatted form.
     pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
         Ok(self.run()?.filter_map(|tag| {
-            if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.format_proj_tags())
+            if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                Some(tag.format_proj_tag())
             } else {
                 None
             }
         }))
     }
 
-    pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = TagItem>> {
+    pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = ProjectTagItem>> {
         Ok(self.run()?.filter_map(|tag| {
-            if let Ok(tag_info) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag_info.into_tag_item())
+            if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                Some(tag.into_project_tag_item())
             } else {
                 None
             }
@@ -339,86 +338,5 @@ pub fn ensure_has_json_support() -> std::io::Result<()> {
             std::io::ErrorKind::Other,
             "The found ctags executable is not compiled with +json feature, please recompile it.",
         ))
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct TagInfo {
-    name: String,
-    path: String,
-    pattern: String,
-    line: usize,
-    kind: String,
-}
-
-impl TagInfo {
-    /// Builds the line for displaying the tag info.
-    pub fn format_proj_tags(&self) -> String {
-        let pat_len = self.pattern.len();
-        let name_lnum = format!("{}:{}", self.name, self.line);
-        let kind = format!("[{}@{}]", self.kind, self.path);
-        format!(
-            "{text:<text_width$} {kind:<kind_width$} {pattern}",
-            text = name_lnum,
-            text_width = 30,
-            kind = kind,
-            kind_width = 30,
-            pattern = &self.pattern[2..pat_len - 2].trim(),
-        )
-    }
-
-    pub fn into_tag_item(self) -> TagItem {
-        let output_text = self.format_proj_tags();
-        TagItem {
-            name: self.name,
-            kind: self.kind,
-            output_text,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct TagItem {
-    pub name: String,
-    pub kind: String,
-    pub output_text: String,
-}
-
-impl ClapItem for TagItem {
-    fn raw_text(&self) -> &str {
-        &self.output_text
-    }
-
-    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
-        Some(FuzzyText::new(&self.name, 0))
-    }
-
-    fn output_text(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.output_text)
-    }
-
-    fn icon(&self, _icon: icon::Icon) -> Option<icon::IconType> {
-        Some(icon::tags_kind_icon(&self.kind))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_deserialize_ctags_line() {
-        let data = r#"{"_type": "tag", "name": "Exec", "path": "crates/maple_cli/src/cmd/exec.rs", "pattern": "/^pub struct Exec {$/", "line": 10, "kind": "struct"}"#;
-        let tag: TagInfo = serde_json::from_str(&data).unwrap();
-        assert_eq!(
-            tag,
-            TagInfo {
-                name: "Exec".into(),
-                path: "crates/maple_cli/src/cmd/exec.rs".into(),
-                pattern: "/^pub struct Exec {$/".into(),
-                line: 10,
-                kind: "struct".into()
-            }
-        );
     }
 }

@@ -12,7 +12,9 @@ use rayon::prelude::*;
 use super::SharedParams;
 use crate::app::Params;
 use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, TagInfo, DEFAULT_EXCLUDE_OPT};
+use crate::tools::ctags::{
+    ensure_has_json_support, ProjectCtagsCommand, ProjectTag, DEFAULT_EXCLUDE_OPT,
+};
 use crate::utils::{send_response_from_cache, SendResponse};
 
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -37,14 +39,14 @@ pub struct RecursiveTags {
     pub(super) shared: SharedParams,
 }
 
-pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
+pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> ProjectCtagsCommand {
     let command = format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref());
 
-    CtagsCommand::new(BaseCommand::new(command, cwd))
+    ProjectCtagsCommand::new(BaseCommand::new(command, cwd))
 }
 
 impl RecursiveTags {
-    fn assemble_ctags_cmd(&self) -> Result<CtagsCommand> {
+    fn assemble_ctags_cmd(&self) -> Result<ProjectCtagsCommand> {
         let exclude = self.shared.exclude_opt();
 
         let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
@@ -54,7 +56,7 @@ impl RecursiveTags {
             command.push_str(languages);
         };
 
-        Ok(CtagsCommand::new(BaseCommand::new(
+        Ok(ProjectCtagsCommand::new(BaseCommand::new(
             command,
             self.shared.dir()?,
         )))
@@ -98,8 +100,8 @@ impl RecursiveTags {
                         .stdout()?
                         .par_split(|x| x == &b'\n')
                         .filter_map(|line| {
-                            if let Ok(tag_info) = serde_json::from_slice::<TagInfo>(line) {
-                                let item: Arc<dyn ClapItem> = Arc::new(tag_info.into_tag_item());
+                            if let Ok(tag) = serde_json::from_slice::<ProjectTag>(line) {
+                                let item: Arc<dyn ClapItem> = Arc::new(tag.into_project_tag_item());
                                 Some(item)
                             } else {
                                 None
