@@ -130,13 +130,18 @@ pub fn buffer_tags_lines(
     file: impl AsRef<std::ffi::OsStr>,
     force_raw: bool,
 ) -> Result<Vec<String>> {
-    if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
+    let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
         let cmd = subprocess_cmd_in_json_format(file);
-        buffer_tags_lines_inner(cmd, BufferTag::from_ctags_json)
+        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);
-        buffer_tags_lines_inner(cmd, BufferTag::from_ctags_raw)
-    }
+        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
+    };
+
+    Ok(tags
+        .par_iter()
+        .map(|s| s.format_buffer_tag(max_name_len))
+        .collect::<Vec<_>>())
 }
 
 pub fn buffer_tag_items(
@@ -145,21 +150,21 @@ pub fn buffer_tag_items(
 ) -> Result<Vec<Arc<dyn ClapItem>>> {
     let (tags, max_name_len) = if *CTAGS_HAS_JSON_FEATURE.deref() && !force_raw {
         let cmd = subprocess_cmd_in_json_format(file);
-        collect_buffer_tag_info(cmd, BufferTag::from_ctags_json)?
+        collect_buffer_tags(cmd, BufferTag::from_ctags_json)?
     } else {
         let cmd = subprocess_cmd_in_raw_format(file);
-        collect_buffer_tag_info(cmd, BufferTag::from_ctags_raw)?
+        collect_buffer_tags(cmd, BufferTag::from_ctags_raw)?
     };
 
     Ok(tags
         .into_par_iter()
-        .map(|tag_info| Arc::new(tag_info.into_buffer_tag_item(max_name_len)) as Arc<dyn ClapItem>)
+        .map(|tag| Arc::new(tag.into_buffer_tag_item(max_name_len)) as Arc<dyn ClapItem>)
         .collect::<Vec<_>>())
 }
 
-fn collect_buffer_tag_info(
+fn collect_buffer_tags(
     cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
+    parse_tag: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
 ) -> Result<(Vec<BufferTag>, usize)> {
     let max_name_len = AtomicUsize::new(0);
 
@@ -167,52 +172,26 @@ fn collect_buffer_tag_info(
         .flatten()
         .par_bridge()
         .filter_map(|s| {
-            let maybe_tag_info = parse_fn(&s);
-            if let Some(ref tag_info) = maybe_tag_info {
-                max_name_len.fetch_max(tag_info.name.len(), Ordering::SeqCst);
+            let maybe_tag = parse_tag(&s);
+            if let Some(ref tag) = maybe_tag {
+                max_name_len.fetch_max(tag.name.len(), Ordering::SeqCst);
             }
-            maybe_tag_info
+            maybe_tag
         })
         .collect::<Vec<_>>();
 
     Ok((tags, max_name_len.into_inner()))
 }
 
-fn buffer_tags_lines_inner(
-    cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
-) -> Result<Vec<String>> {
-    let max_name_len = AtomicUsize::new(0);
-
-    let tags = crate::utils::lines(cmd)?
-        .flatten()
-        .par_bridge()
-        .filter_map(|s| {
-            let maybe_tag_info = parse_fn(&s);
-            if let Some(ref tag_info) = maybe_tag_info {
-                max_name_len.fetch_max(tag_info.name.len(), Ordering::SeqCst);
-            }
-            maybe_tag_info
-        })
-        .collect::<Vec<_>>();
-
-    let max_name_len = max_name_len.into_inner();
-
-    Ok(tags
-        .par_iter()
-        .map(|s| s.format_buffer_tag(max_name_len))
-        .collect::<Vec<_>>())
-}
-
 fn collect_superset_context_tags(
     cmd: SubprocessCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
+    parse_tag: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
     target_lnum: usize,
 ) -> Result<Vec<BufferTag>> {
     let mut tags = crate::utils::lines(cmd)?
         .flatten()
         .par_bridge()
-        .filter_map(|s| parse_fn(&s))
+        .filter_map(|s| parse_tag(&s))
         // the line of method/function name is lower.
         .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
         .collect::<Vec<_>>();
@@ -224,7 +203,7 @@ fn collect_superset_context_tags(
 
 async fn collect_superset_context_tags_async(
     cmd: TokioCommand,
-    parse_fn: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
+    parse_tag: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
     target_lnum: usize,
 ) -> Result<Vec<BufferTag>> {
     let mut cmd = cmd;
@@ -234,7 +213,7 @@ async fn collect_superset_context_tags_async(
         .await?
         .stdout
         .par_split(|x| x == &b'\n')
-        .filter_map(|s| parse_fn(&String::from_utf8_lossy(s)))
+        .filter_map(|s| parse_tag(&String::from_utf8_lossy(s)))
         // the line of method/function name is lower.
         .filter(|tag| tag.line <= target_lnum && CONTEXT_SUPERSET.contains(&tag.kind.as_ref()))
         .collect::<Vec<_>>();
