@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use icon::Icon;
 use utility::{println_json, read_first_lines};
@@ -13,17 +13,6 @@ use crate::process::BaseCommand;
 
 /// Threshold for making a cache for the results.
 const OUTPUT_THRESHOLD: usize = 50_000;
-
-/// Remove the last element if it's empty string.
-#[inline]
-fn trim_trailing(lines: &mut Vec<String>) {
-    if let Some(last_line) = lines.last() {
-        // " " len is 4.
-        if last_line.is_empty() || last_line.len() == 4 {
-            lines.remove(lines.len() - 1);
-        }
-    }
-}
 
 /// This struct represents all the info about the processed result of executed command.
 #[derive(Debug, Clone)]
@@ -105,13 +94,6 @@ impl CommandEnv {
             ..Default::default()
         }
     }
-
-    /// Returns true if the number of total results is larger than the output threshold.
-    // TODO: add a cache upper bound?
-    #[inline]
-    pub fn should_create_cache(&self) -> bool {
-        self.total > self.output_threshold
-    }
 }
 
 /// A wrapper of std::process::Command with more more functions, including:
@@ -129,45 +111,6 @@ impl<'a> LightCommand<'a> {
     /// Contructs LightCommand from various common opts.
     pub fn new(cmd: &'a mut Command, env: CommandEnv) -> Self {
         Self { cmd, env }
-    }
-
-    /// Normally we only care about the top N items and number of total results if it's not a
-    /// forerunner job.
-    fn minimalize_job_overhead(&self, stdout: &[u8]) -> Result<ExecutedInfo> {
-        if let Some(number) = self.env.number {
-            let lines = self.try_prepend_icon(
-                stdout
-                    .split(|x| x == &b'\n')
-                    .map(String::from_utf8_lossy)
-                    .take(number),
-            );
-            let total = self.env.total;
-            return Ok(ExecutedInfo {
-                total,
-                lines,
-                using_cache: false,
-                tempfile: None,
-                icon_added: self.env.icon.painter().is_some(),
-            });
-        }
-        Err(anyhow!(
-            "--number is unspecified, no overhead minimalization"
-        ))
-    }
-
-    fn try_prepend_icon<'b>(
-        &self,
-        top_n: impl std::iter::Iterator<Item = std::borrow::Cow<'b, str>>,
-    ) -> Vec<String> {
-        let mut lines = if let Some(painter) = self.env.icon.painter() {
-            top_n.map(|x| painter.paint(x)).collect()
-        } else {
-            top_n.map(Into::into).collect()
-        };
-
-        trim_trailing(&mut lines);
-
-        lines
     }
 
     fn exec_info_from_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
@@ -209,42 +152,39 @@ impl<'a> LightCommand<'a> {
         }
     }
 
-    /// Execute the command directly and capture the output.
-    ///
-    /// Truncate the results to `self.number` if specified,
-    /// otherwise print the total results or write them to
-    /// a tempfile if they are more than `self.output_threshold`.
-    /// This cached tempfile can be reused on the following runs.
+    /// Execute the command and redirect the stdout to a file.
     pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
-        self.env.dir = Some(base_cmd.cwd.clone());
+        let cache_file_path = base_cmd.cache_file_path()?;
 
-        let cmd_stdout = crate::process::rstd::collect_stdout(self.cmd)?;
+        crate::process::rstd::write_stdout_to_file(self.cmd, &cache_file_path)?;
 
-        self.env.total = bytecount::count(&cmd_stdout, b'\n');
+        let lines_iter = read_first_lines(&cache_file_path, 100)?;
+        let lines = if let Some(icon_kind) = self.env.icon.painter() {
+            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
+        } else {
+            lines_iter.collect()
+        };
 
-        if let Ok(executed_info) = self.minimalize_job_overhead(&cmd_stdout) {
-            return Ok(executed_info);
+        let total = crate::utils::count_lines(std::fs::File::open(&cache_file_path)?)?;
+
+        // Store the cache file if the total number of items exceeds the threshold, so that the
+        // cache can be reused if the identical command is executed again.
+        if total > self.env.output_threshold {
+            let digest = Digest::new(base_cmd, total, cache_file_path.clone());
+
+            {
+                let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
+                let mut cache_info = cache_info.lock();
+                cache_info.limited_push(digest)?;
+            }
         }
 
-        // Cache the output if there are too many lines.
-        let cached_path = if self.env.should_create_cache() {
-            let p = base_cmd.create_cache(self.env.total, &cmd_stdout)?;
-            Some(p)
-        } else {
-            None
-        };
-        let lines = self.try_prepend_icon(
-            cmd_stdout
-                .split(|n| n == &b'\n')
-                .map(String::from_utf8_lossy),
-        );
-
         Ok(ExecutedInfo {
-            total: self.env.total,
-            lines,
-            tempfile: cached_path,
             using_cache: false,
-            icon_added: self.env.icon.painter().is_some(),
+            total,
+            tempfile: Some(cache_file_path),
+            lines,
+            icon_added: self.env.icon.enabled(),
         })
     }
 }

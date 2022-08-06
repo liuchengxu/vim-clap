@@ -73,15 +73,30 @@ pub struct Grep {
     /// Synchronous filtering, returns after the input stream is complete.
     #[clap(long)]
     sync: bool,
+
+    /// Recreate the cache, only intended for the test purpose.
+    #[clap(long)]
+    refresh_cache: bool,
 }
 
 impl Grep {
     pub fn run(&self, params: Params) -> Result<()> {
+        if self.refresh_cache {
+            let dir = match self.cmd_dir {
+                Some(ref dir) => dir.clone(),
+                None => std::env::current_dir()?,
+            };
+            println!("Recreating the grep cache for {}", dir.display());
+            refresh_cache(&dir)?;
+            return Ok(());
+        }
+
         if self.sync {
             self.sync_run(params)?;
         } else {
             self.dyn_run(params)?;
         }
+
         Ok(())
     }
 
@@ -196,12 +211,13 @@ impl Grep {
     }
 }
 
+// Used for creating the cache in async context.
 #[derive(Debug, Clone)]
-pub struct RgBaseCommand {
+pub struct RgTokioCommand {
     pub inner: BaseCommand,
 }
 
-impl RgBaseCommand {
+impl RgTokioCommand {
     pub fn new(dir: PathBuf) -> Self {
         let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir);
         Self { inner }
@@ -211,6 +227,7 @@ impl RgBaseCommand {
         self.inner.cache_info()
     }
 
+    // TODO: redirect to file.
     pub async fn create_cache(self) -> Result<(usize, PathBuf)> {
         let lines = TokioCommand::new(&self.inner.command)
             .current_dir(&self.inner.cwd)
@@ -226,18 +243,27 @@ impl RgBaseCommand {
     }
 }
 
-pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+pub fn rg_command<P: AsRef<Path>>(dir: P) -> Command {
+    // Can not use StdCommand as it joins the args which does not work somehow.
     let mut cmd = Command::new(RG_ARGS[0]);
     // Do not use --vimgrep here.
-    cmd.args(&RG_ARGS[1..]).current_dir(dir.as_ref());
+    cmd.args(&RG_ARGS[1..]).current_dir(dir);
+    cmd
+}
 
-    let stdout = crate::process::rstd::collect_stdout(&mut cmd)?;
+#[inline]
+pub fn rg_base_command<P: AsRef<Path>>(dir: P) -> BaseCommand {
+    BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()))
+}
 
-    let total = bytecount::count(&stdout, b'\n');
+pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+    let base_cmd = rg_base_command(dir.as_ref());
+    let cache_file_path = base_cmd.cache_file_path()?;
 
-    let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()));
+    let mut cmd = rg_command(dir.as_ref());
+    crate::process::rstd::write_stdout_to_file(&mut cmd, &cache_file_path)?;
 
-    base_cmd.create_cache(total, &stdout)?;
+    let digest = crate::cache::store_cache_digest(base_cmd, cache_file_path)?;
 
-    Ok(total)
+    Ok(digest.total)
 }

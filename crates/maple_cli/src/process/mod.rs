@@ -83,6 +83,11 @@ impl BaseCommand {
         Ok(stdout_stream)
     }
 
+    pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
+        let cached_filename = utility::calculate_hash(self);
+        crate::utils::generate_cache_file_path(cached_filename.to_string())
+    }
+
     /// Writes the whole stdout `cmd_stdout` to a cache file.
     fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;

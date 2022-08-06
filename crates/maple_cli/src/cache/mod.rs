@@ -191,3 +191,16 @@ pub fn find_largest_cache_digest() -> Option<Digest> {
     digests.sort_unstable_by_key(|digest| digest.total);
     digests.last().cloned()
 }
+
+pub fn store_cache_digest(base_cmd: BaseCommand, new_created_cache: PathBuf) -> Result<Digest> {
+    // TODO: mmap should be faster.
+    let total = crate::utils::count_lines(std::fs::File::open(&new_created_cache)?)?;
+
+    let digest = Digest::new(base_cmd, total, new_created_cache);
+
+    let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
+    let mut cache_info = cache_info.lock();
+    cache_info.limited_push(digest.clone())?;
+
+    Ok(digest)
+}

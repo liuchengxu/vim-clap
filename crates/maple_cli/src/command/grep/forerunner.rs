@@ -1,15 +1,13 @@
 use std::path::PathBuf;
-use std::process::Command;
 
 use anyhow::Result;
 use clap::Parser;
 
 use utility::is_git_repo;
 
-use super::{RG_ARGS, RG_EXEC_CMD};
+use super::{rg_base_command, rg_command};
 use crate::app::Params;
 use crate::process::light::{CommandEnv, LightCommand};
-use crate::process::BaseCommand;
 use crate::utils::{send_response_from_cache, SendResponse};
 
 #[derive(Parser, Debug, Clone)]
@@ -57,7 +55,7 @@ impl RipGrepForerunner {
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
-                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                let base_cmd = rg_base_command(dir);
                 if let Some((total, cache)) = base_cmd.cache_info() {
                     if total > 100000 {
                         send_response_from_cache(&cache, total as usize, SendResponse::Json, icon);
@@ -71,32 +69,19 @@ impl RipGrepForerunner {
             return Ok(());
         }
 
-        // Can not use StdCommand as it joins the args which does work somehow.
-        let mut cmd = Command::new(RG_ARGS[0]);
-        // Do not use --vimgrep here.
-        cmd.args(&RG_ARGS[1..]);
+        let dir = match self.cmd_dir {
+            Some(ref dir) => dir.clone(),
+            None => std::env::current_dir()?,
+        };
 
-        if let Some(ref dir) = self.cmd_dir {
-            cmd.current_dir(dir);
-        }
+        let mut cmd = rg_command(&dir);
 
         let mut light_cmd = LightCommand::new(
             &mut cmd,
-            CommandEnv::new(
-                self.cmd_dir.clone(),
-                number,
-                icon,
-                Some(self.output_threshold),
-            ),
+            CommandEnv::new(Some(dir.clone()), number, icon, Some(self.output_threshold)),
         );
 
-        let cwd = match self.cmd_dir {
-            Some(d) => d,
-            None => std::env::current_dir()?,
-        };
-        let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), cwd);
-
-        light_cmd.execute(base_cmd)?.print();
+        light_cmd.execute(rg_base_command(dir))?.print();
 
         Ok(())
     }
