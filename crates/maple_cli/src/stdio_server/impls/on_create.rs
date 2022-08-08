@@ -67,14 +67,15 @@ pub async fn initialize(context: Arc<SessionContext>) -> Result<SourceScale> {
         }
         "grep2" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
-            let (total, path) = if context.no_cache {
+            let digest = if context.no_cache {
                 rg_cmd.create_cache().await?
             } else {
-                match rg_cmd.cache_info() {
-                    Some(cache) => cache,
+                match rg_cmd.cache_digest() {
+                    Some(digest) => digest,
                     None => rg_cmd.create_cache().await?,
                 }
             };
+            let (total, path) = (digest.total, digest.cached_path);
             let method = "clap#state#set_variable_string";
             let name = "g:__clap_forerunner_tempfile";
             let value = &path;

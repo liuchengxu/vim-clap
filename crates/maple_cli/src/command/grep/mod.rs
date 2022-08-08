@@ -9,7 +9,6 @@ use std::process::Command;
 use anyhow::{Context, Result};
 use clap::Parser;
 use filter::ParSource;
-use itertools::Itertools;
 use rayon::prelude::*;
 use subprocess::Exec;
 
@@ -18,10 +17,10 @@ use icon::Icon;
 use matcher::MatchScope;
 
 use crate::app::Params;
+use crate::cache::Digest;
 use crate::process::{
     light::{CommandEnv, LightCommand},
     rstd::StdCommand,
-    tokio::TokioCommand,
     BaseCommand,
 };
 use crate::tools::ripgrep::Match;
@@ -204,7 +203,7 @@ impl Grep {
             Source::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                let base_cmd = rg_base_command(dir);
                 if let Some(cache_file) = base_cmd.cache_file() {
                     return do_dyn_filter(Source::File(cache_file));
                 }
@@ -260,23 +259,22 @@ impl RgTokioCommand {
         Self { inner }
     }
 
-    pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
-        self.inner.cache_info()
+    pub fn cache_digest(&self) -> Option<Digest> {
+        self.inner.cache_digest()
     }
 
     // TODO: redirect to file.
-    pub async fn create_cache(self) -> Result<(usize, PathBuf)> {
-        let lines = TokioCommand::new(&self.inner.command)
-            .current_dir(&self.inner.cwd)
-            .lines()
-            .await?;
+    pub async fn create_cache(self) -> Result<Digest> {
+        let base_cmd = rg_base_command(&self.inner.cwd);
+        let cache_file = base_cmd.cache_file_path()?;
 
-        let total = lines.len();
-        let lines = lines.into_iter().join("\n");
+        let mut tokio_cmd = tokio::process::Command::from(rg_command(&self.inner.cwd));
 
-        let cache_path = self.inner.create_cache(total, lines.as_bytes())?;
+        crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
 
-        Ok((total, cache_path))
+        let digest = crate::cache::store_cache_digest(base_cmd, cache_file)?;
+
+        Ok(digest)
     }
 }
 
@@ -303,4 +301,50 @@ pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
     let digest = crate::cache::store_cache_digest(base_cmd, cache_file_path)?;
 
     Ok(digest.total)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::process::tokio::TokioCommand;
+    use itertools::Itertools;
+    use std::time::Instant;
+
+    // 3X faster than the deprecated version.
+    async fn create_cache_deprecated(dir: &Path) -> (usize, PathBuf) {
+        let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir.to_path_buf());
+
+        let lines = TokioCommand::new(RG_EXEC_CMD)
+            .current_dir(dir)
+            .lines()
+            .await
+            .unwrap();
+
+        let total = lines.len();
+        let lines = lines.into_iter().join("\n");
+        let cache_path = inner.create_cache(total, lines.as_bytes()).unwrap();
+
+        (total, cache_path)
+    }
+
+    #[tokio::test]
+    async fn test_create_grep_cache_async() {
+        let dir = std::env::current_dir().unwrap();
+
+        let now = Instant::now();
+        let res = create_cache_deprecated(&dir).await;
+        println!("Cache creation result(old): {res:?}");
+        let elapsed = now.elapsed();
+        println!("Elapsed: {:.3?}", elapsed);
+
+        let now = Instant::now();
+        let rg_cmd = RgTokioCommand::new(dir);
+        let res = rg_cmd.create_cache().await.unwrap();
+        println!(
+            "Cache creation result(new): {:?}",
+            (res.total, res.cached_path)
+        );
+        let elapsed = now.elapsed();
+        println!("Elapsed: {:.3?}", elapsed);
+    }
 }

@@ -4,6 +4,32 @@ use std::path::Path;
 
 use tokio::process::Command;
 
+/// Executes the command and redirects the output to a file.
+pub async fn write_stdout_to_file<P: AsRef<Path>>(
+    cmd: &mut Command,
+    output_file: P,
+) -> std::io::Result<()> {
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(output_file)?;
+
+    let exit_status = cmd.stdout(file).spawn()?.wait().await?;
+
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "Failed to execute the command: {cmd:?}, exit code: {:?}",
+                exit_status.code()
+            ),
+        ))
+    }
+}
+
 /// Builds `Command` from a cmd string which can use pipe.
 ///
 /// This can work with the piped command, e.g., `git ls-files | uniq`.
@@ -23,9 +49,9 @@ pub fn shell_command(shell_cmd: impl AsRef<str>) -> Command {
 #[derive(Debug)]
 pub struct TokioCommand(Command);
 
-impl From<Command> for TokioCommand {
-    fn from(cmd: Command) -> Self {
-        Self(cmd)
+impl From<std::process::Command> for TokioCommand {
+    fn from(std_cmd: std::process::Command) -> Self {
+        Self(std_cmd.into())
     }
 }
 
