@@ -108,7 +108,10 @@ static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
         Ok(lang_maps)
     }
 
-    generate_lang_maps().expect("Failed to process the output of `--list-maps`")
+    generate_lang_maps().unwrap_or_else(|e| {
+        tracing::error!(error = ?e, "Failed to initialize LANG_MAPS from `ctags --list-maps`");
+        Default::default()
+    })
 });
 
 /// Returns the ctags language given the file extension.
