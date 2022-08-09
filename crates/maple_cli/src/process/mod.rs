@@ -8,7 +8,6 @@ use anyhow::Result;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use self::rstd::StdCommand;
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::CACHE_INFO_IN_MEMORY;
 
@@ -36,8 +35,6 @@ pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<Strin
 
     Ok(lines)
 }
-
-pub type AsyncCommand = StdCommand;
 
 /// Shell command for executing with cache.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]

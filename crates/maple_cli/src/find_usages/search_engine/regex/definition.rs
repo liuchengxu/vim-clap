@@ -106,40 +106,31 @@ impl DefinitionRegexp {
 pub struct DefinitionRules(pub HashMap<DefinitionKind, DefinitionRegexp>);
 
 impl DefinitionRules {
-    fn kind_rules_for(&self, kind: &DefinitionKind) -> Result<impl Iterator<Item = &str>> {
-        self.0
-            .get(kind)
-            .ok_or_else(|| anyhow!("invalid definition kind {:?} for the rules", kind))
-            .map(|x| x.iter().map(|x| x.as_str()))
+    fn kind_rules_for(&self, kind: &DefinitionKind) -> Option<impl Iterator<Item = &str>> {
+        self.0.get(kind).map(|x| x.iter().map(|x| x.as_str()))
     }
 }
 
 /// Returns the definition rules given `lang`.
-pub fn get_definition_rules(lang: &str) -> Result<&DefinitionRules> {
+pub fn get_definition_rules(lang: &str) -> Option<&DefinitionRules> {
     /// A map of extension => ripgrep language.
     static EXTENSION_LANGUAGE_MAP: Lazy<HashMap<&str, &str>> =
         Lazy::new(|| [("js", "javascript")].iter().cloned().collect());
 
     match RG_PCRE2_REGEX_RULES.get(lang) {
-        Some(rules) => Ok(rules),
+        Some(rules) => Some(rules),
         None => EXTENSION_LANGUAGE_MAP
             .get(lang)
-            .and_then(|l| RG_PCRE2_REGEX_RULES.get(l))
-            .ok_or_else(|| {
-                anyhow!(
-                    "Language {} can not be found in dumb_jump/rg_pcre2_regex.json",
-                    lang
-                )
-            }),
+            .and_then(|l| RG_PCRE2_REGEX_RULES.get(l)),
     }
 }
 
-pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Result<String> {
+pub(super) fn build_full_regexp(lang: &str, kind: &DefinitionKind, word: &Word) -> Option<String> {
     let regexp = get_definition_rules(lang)?
         .kind_rules_for(kind)?
         .map(|x| x.replace("\\\\", "\\").replace("JJJ", &word.raw))
         .join("|");
-    Ok(regexp)
+    Some(regexp)
 }
 
 /// Returns true if the ripgrep match is a comment line.
@@ -212,7 +203,7 @@ impl Occurrences {
 pub(super) fn definitions_and_references<'a>(
     regex_runner: RegexRunner<'a>,
     comments: &[&str],
-) -> Result<HashMap<MatchKind, Vec<Match>>> {
+) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, mut occurrences) = regex_runner.all(comments);
 
     let defs = definitions.flatten();

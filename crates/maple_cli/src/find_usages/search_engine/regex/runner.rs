@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::Result;
 use dumb_analyzer::get_comment_syntax;
@@ -9,7 +10,6 @@ use super::definition::{
     build_full_regexp, get_definition_rules, is_comment, DefinitionKind, DefinitionSearchResult,
     Definitions, Occurrences,
 };
-use crate::process::AsyncCommand;
 use crate::tools::ripgrep::{Match, Word};
 
 /// Searches a directory for pattern matches using ripgrep.
@@ -24,11 +24,14 @@ pub struct MatchFinder<'a> {
 }
 
 impl<'a> MatchFinder<'a> {
-    pub(super) fn find_occurrences(&self, ignore_comment: bool) -> Result<Vec<Match>> {
-        let command = format!(
-            "rg --json --word-regexp '{}' -g '*.{}'",
-            self.word.raw, self.file_ext
-        );
+    pub(super) fn find_occurrences(&self, ignore_comment: bool) -> std::io::Result<Vec<Match>> {
+        let mut command = Command::new("rg");
+        command
+            .arg("--json")
+            .arg("--word-regexp")
+            .arg(&self.word.raw)
+            .arg("-g")
+            .arg(format!("*.{}", self.file_ext));
         self.find_matches(
             command,
             if ignore_comment {
@@ -42,16 +45,28 @@ impl<'a> MatchFinder<'a> {
     /// Executes `command` as a child process.
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
-    fn find_matches(&self, command: String, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
-        let mut cmd = AsyncCommand::new(command);
+    fn find_matches(
+        &self,
+        cmd: Command,
+        maybe_comments: Option<&[&str]>,
+    ) -> std::io::Result<Vec<Match>> {
+        let mut cmd = cmd;
 
         if let Some(ref dir) = self.dir {
             cmd.current_dir(dir);
         }
 
-        let stdout = cmd.stdout()?;
+        let cmd_output = cmd.output()?;
 
-        Ok(stdout
+        if !cmd_output.status.success() && !cmd_output.stderr.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                String::from_utf8_lossy(&cmd_output.stderr),
+            ));
+        }
+
+        Ok(cmd_output
+            .stdout
             .par_split(|x| x == &b'\n')
             .filter_map(|s| {
                 Match::try_from(s).ok().filter(|matched| {
@@ -92,7 +107,13 @@ impl<'a> RegexRunner<'a> {
 
     /// Returns all kinds of definitions.
     pub fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        Ok(get_definition_rules(self.lang)?
+        Ok(get_definition_rules(self.lang)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Can not find the definition rules",
+                )
+            })?
             .0
             .keys()
             .map(|kind| self.find_definitions(kind))
@@ -107,31 +128,48 @@ impl<'a> RegexRunner<'a> {
     /// Finds all the occurrences of `word`.
     ///
     /// Basically the occurrences are composed of definitions and usages.
-    fn occurrences(&self, comments: &[&str]) -> Result<Vec<Match>> {
-        let command = format!(
-            "rg --json --word-regexp '{}' --type {}",
-            self.finder.word.raw, self.lang
-        );
-
+    fn occurrences(&self, comments: &[&str]) -> std::io::Result<Vec<Match>> {
+        let mut command = Command::new("rg");
+        command
+            .arg("--json")
+            .arg("--word-regexp")
+            .arg(&self.finder.word.raw)
+            .arg("--type")
+            .arg(self.lang);
         self.finder.find_matches(command, Some(comments))
     }
 
-    pub(super) fn regexp_search(&self, comments: &[&str]) -> Result<Vec<Match>> {
-        let command = format!(
-            "rg --json -e '{}' --type {}",
-            self.finder.word.raw.replace(char::is_whitespace, ".*"),
-            self.lang
-        );
+    pub(super) fn regexp_search(&self, comments: &[&str]) -> std::io::Result<Vec<Match>> {
+        let mut command = Command::new("rg");
+        command
+            .arg("--json")
+            .arg("--regexp")
+            .arg(self.finder.word.raw.replace(char::is_whitespace, ".*"))
+            .arg("--type")
+            .arg(self.lang);
         self.finder.find_matches(command, Some(comments))
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
-    fn find_definitions(&self, kind: &DefinitionKind) -> Result<(DefinitionKind, Vec<Match>)> {
-        let regexp = build_full_regexp(self.lang, kind, self.finder.word)?;
-        let command = format!(
-            "rg --trim --json --pcre2 --type {} -e '{}'",
-            self.lang, regexp
-        );
+    fn find_definitions(
+        &self,
+        kind: &DefinitionKind,
+    ) -> std::io::Result<(DefinitionKind, Vec<Match>)> {
+        let regexp = build_full_regexp(self.lang, kind, self.finder.word).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Can not find the definition rule",
+            )
+        })?;
+        let mut command = Command::new("rg");
+        command
+            .arg("--trim")
+            .arg("--json")
+            .arg("--pcre2")
+            .arg("--regexp")
+            .arg(regexp)
+            .arg("--type")
+            .arg(self.lang);
         self.finder
             .find_matches(command, None)
             .map(|defs| (kind.clone(), defs))
