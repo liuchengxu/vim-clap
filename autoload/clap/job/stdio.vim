@@ -158,7 +158,7 @@ function! clap#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abo
   if s:stdio_job_timer != -1
     call timer_stop(s:stdio_job_timer)
   endif
-
+  let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
   let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
 endfunction
 

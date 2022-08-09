@@ -338,14 +338,22 @@ impl ProjectCtagsCommand {
     }
 }
 
-/// Returns true if the ctags executable is compiled with +json feature.
-pub fn ensure_has_json_support() -> std::io::Result<()> {
-    if *CTAGS_HAS_JSON_FEATURE.deref() {
-        Ok(())
+// /description/
+// /^description$/
+pub fn trim_pattern(pattern: &str) -> &str {
+    let description = &pattern[1..pattern.len() - 1];
+
+    let description = if let Some(stripped) = description.strip_prefix('^') {
+        stripped
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "The found ctags executable is not compiled with +json feature, please recompile it.",
-        ))
-    }
+        description
+    };
+
+    let description = if let Some(stripped) = description.strip_suffix('$') {
+        stripped
+    } else {
+        description
+    };
+
+    description.trim()
 }

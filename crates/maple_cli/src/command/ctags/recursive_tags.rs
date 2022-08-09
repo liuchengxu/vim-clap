@@ -13,7 +13,7 @@ use super::SharedParams;
 use crate::app::Params;
 use crate::process::BaseCommand;
 use crate::tools::ctags::{
-    ensure_has_json_support, ProjectCtagsCommand, ProjectTag, DEFAULT_EXCLUDE_OPT,
+    ProjectCtagsCommand, ProjectTag, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT,
 };
 use crate::utils::{send_response_from_cache, SendResponse};
 
@@ -71,7 +71,11 @@ impl RecursiveTags {
             ..
         }: Params,
     ) -> Result<()> {
-        ensure_has_json_support()?;
+        if !CTAGS_HAS_JSON_FEATURE.deref() {
+            return Err(anyhow::anyhow!(
+                "ctags executable is not compiled with +json feature, please recompile it."
+            ));
+        }
 
         let ctags_cmd = self.assemble_ctags_cmd()?;
 

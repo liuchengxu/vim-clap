@@ -341,7 +341,7 @@ impl<'a> OnMoveHandler<'a> {
 
                                     // Truncate the right of pattern, 2 whitespaces + 💡
                                     let max_pattern_len = container_width - 4;
-                                    let pattern = tag.extract_pattern();
+                                    let pattern = crate::tools::ctags::trim_pattern(&tag.pattern);
                                     let (mut context_line, to_push) = if pattern.len()
                                         > max_pattern_len
                                     {

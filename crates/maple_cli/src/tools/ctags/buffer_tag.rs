@@ -17,13 +17,13 @@ impl BufferTag {
         let name_line = format!("{}:{}", self.name, self.line);
 
         let kind = format!("[{}]", self.kind);
+        let pattern = super::trim_pattern(&self.pattern);
         format!(
             "{name_group:<name_group_width$} {kind:<kind_width$} {pattern}",
             name_group = name_line,
             name_group_width = max_name_len + 6,
             kind = kind,
             kind_width = 10,
-            pattern = self.extract_pattern().trim()
         )
     }
 
@@ -73,11 +73,6 @@ impl BufferTag {
         } else {
             None
         }
-    }
-
-    pub fn extract_pattern(&self) -> &str {
-        let pattern_len = self.pattern.len();
-        &self.pattern[2..pattern_len - 2]
     }
 }
 

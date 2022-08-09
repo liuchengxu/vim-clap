@@ -17,16 +17,15 @@ pub struct ProjectTag {
 impl ProjectTag {
     /// Builds the line for displaying the tag info.
     pub fn format_proj_tag(&self) -> String {
-        let pat_len = self.pattern.len();
         let name_lnum = format!("{}:{}", self.name, self.line);
         let kind = format!("[{}@{}]", self.kind, self.path);
+        let pattern = super::trim_pattern(&self.pattern);
         format!(
             "{text:<text_width$} {kind:<kind_width$} {pattern}",
             text = name_lnum,
             text_width = 30,
             kind = kind,
             kind_width = 30,
-            pattern = &self.pattern[2..pat_len - 2].trim(),
         )
     }
 
