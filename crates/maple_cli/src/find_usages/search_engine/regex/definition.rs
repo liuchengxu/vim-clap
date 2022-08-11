@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fmt::Display};
+use std::collections::HashMap;
+use std::fmt::Display;
 
-use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -18,37 +18,6 @@ static RG_PCRE2_REGEX_RULES: Lazy<HashMap<&str, DefinitionRules>> = Lazy::new(||
     ))
     .expect("Wrong path for rg_pcre2_regex.json")
 });
-
-/// Map of file extension to ripgrep language.
-///
-/// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
-static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
-    super::default_types::DEFAULT_TYPES
-        .par_iter()
-        .flat_map(|(lang, values)| {
-            values
-                .par_iter()
-                .filter_map(|v| {
-                    v.split('.').last().and_then(|ext| {
-                        // Simply ignore the abnormal cases.
-                        if ext.contains('[') || ext.contains('*') {
-                            None
-                        } else {
-                            Some((ext, *lang))
-                        }
-                    })
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect()
-});
-
-/// Finds the ripgrep language given the file extension `ext`.
-pub fn get_language_by_ext(ext: &str) -> Result<&&str> {
-    RG_LANGUAGE_EXT_TABLE
-        .get(ext)
-        .ok_or_else(|| anyhow!("dumb_analyzer is unsupported for {}", ext))
-}
 
 /// Type of match result of ripgrep.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]

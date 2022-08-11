@@ -8,7 +8,6 @@
 //!
 //! The executable rg with `--json` and `--pcre2` is required to be installed on the system.
 
-mod default_types;
 mod definition;
 mod runner;
 
@@ -19,12 +18,10 @@ use anyhow::Result;
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 
-use self::definition::{
-    definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
-};
+use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
 use self::runner::{MatchFinder, RegexRunner};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
-use crate::tools::ripgrep::{Match, Word};
+use crate::tools::ripgrep::{get_language, Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 /// [`Usage`] with some structured information.
@@ -120,9 +117,9 @@ impl RegexSearcher {
             dir: dir.as_ref(),
         };
 
-        let lang = match get_language_by_ext(extension) {
-            Ok(lang) => lang,
-            Err(_) => {
+        let lang = match get_language(extension) {
+            Some(lang) => lang,
+            None => {
                 // Search the occurrences if no language detected.
                 let occurrences = match_finder.find_occurrences(true)?;
                 let mut usages = occurrences
