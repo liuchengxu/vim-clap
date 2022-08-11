@@ -97,6 +97,11 @@ impl CacheInfo {
             if digest.base.cwd.exists()
                 && digest.cached_path.exists()
                 && now.signed_duration_since(digest.last_visit).num_days() < MAX_DAYS
+                // In case the cache was not created completely.
+                && std::fs::File::open(&digest.cached_path)
+                    .and_then(crate::utils::count_lines)
+                    .map(|total| total == digest.total)
+                    .unwrap_or(false)
             {
                 true
             } else {
@@ -136,7 +141,7 @@ impl CacheInfo {
     /// Pushes `digest` to the digests queue with max capacity constraint.
     ///
     /// Also writes the memory cached info back to the disk.
-    pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
+    pub fn limited_push(&mut self, digest: Digest) -> std::io::Result<()> {
         // The digest already exists.
         if let Some(index) = self.find_digest(&digest.base) {
             let old_executions = self.digests[index].total_executions;
@@ -152,21 +157,16 @@ impl CacheInfo {
             }
         }
 
-        crate::datastore::store_cache_info(self)?;
-
-        Ok(())
+        crate::datastore::store_cache_info(self)
     }
 
     /// Prunes the stale digest at index of `stale_index`.
-    pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
+    pub fn prune_stale(&mut self, stale_index: usize) -> std::io::Result<()> {
         self.digests.swap_remove(stale_index);
-
-        crate::datastore::store_cache_info(self)?;
-
-        Ok(())
+        crate::datastore::store_cache_info(self)
     }
 
-    pub fn digests(&self) -> Vec<Digest> {
+    pub fn to_digests(&self) -> Vec<Digest> {
         self.digests.clone()
     }
 }
@@ -187,7 +187,7 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
 
 pub fn find_largest_cache_digest() -> Option<Digest> {
     let cache_info = CACHE_INFO_IN_MEMORY.lock();
-    let mut digests = cache_info.digests();
+    let mut digests = cache_info.to_digests();
     digests.sort_unstable_by_key(|digest| digest.total);
     digests.last().cloned()
 }
