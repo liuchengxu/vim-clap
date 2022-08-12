@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::process::light::{CommandEnv, LightCommand};
+use crate::process::light::LightCommand;
 use crate::process::rstd::StdCommand;
 use crate::process::BaseCommand;
 
@@ -60,10 +60,7 @@ impl Exec {
             self.output_threshold
         };
 
-        let mut light_cmd = LightCommand::new(
-            &mut exec_cmd,
-            CommandEnv::new(None, number, icon, Some(output_threshold)),
-        );
+        let mut light_cmd = LightCommand::new(&mut exec_cmd, number, icon, Some(output_threshold));
 
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),

@@ -57,45 +57,6 @@ impl ExecutedInfo {
     }
 }
 
-/// Environment for running [`LightCommand`].
-#[derive(Debug, Clone)]
-pub struct CommandEnv {
-    pub dir: Option<PathBuf>,
-    pub total: usize,
-    pub number: Option<usize>,
-    pub icon: Icon,
-    pub output_threshold: usize,
-}
-
-impl Default for CommandEnv {
-    fn default() -> Self {
-        Self {
-            dir: None,
-            total: 0usize,
-            number: None,
-            icon: Default::default(),
-            output_threshold: OUTPUT_THRESHOLD,
-        }
-    }
-}
-
-impl CommandEnv {
-    pub fn new(
-        dir: Option<PathBuf>,
-        number: Option<usize>,
-        icon: Icon,
-        output_threshold: Option<usize>,
-    ) -> Self {
-        Self {
-            dir,
-            number,
-            icon,
-            output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
-            ..Default::default()
-        }
-    }
-}
-
 /// A wrapper of std::process::Command with more more functions, including:
 ///
 /// - Build cache for the larger results.
@@ -104,34 +65,25 @@ impl CommandEnv {
 #[derive(Debug)]
 pub struct LightCommand<'a> {
     cmd: &'a mut Command,
-    env: CommandEnv,
+    number: usize,
+    icon: Icon,
+    output_threshold: usize,
 }
 
 impl<'a> LightCommand<'a> {
     /// Contructs LightCommand from various common opts.
-    pub fn new(cmd: &'a mut Command, env: CommandEnv) -> Self {
-        Self { cmd, env }
-    }
-
-    fn exec_info_from_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
-        let Digest {
-            total, cached_path, ..
-        } = digest;
-
-        let lines_iter = read_first_lines(&cached_path, 100)?;
-        let lines = if let Some(icon_kind) = self.env.icon.icon_kind() {
-            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
-        } else {
-            lines_iter.collect()
-        };
-
-        Ok(ExecutedInfo {
-            using_cache: true,
-            total: *total as usize,
-            tempfile: Some(cached_path.clone()),
-            lines,
-            icon_added: self.env.icon.enabled(),
-        })
+    pub fn new(
+        cmd: &'a mut Command,
+        number: Option<usize>,
+        icon: Icon,
+        output_threshold: Option<usize>,
+    ) -> Self {
+        Self {
+            cmd,
+            number: number.unwrap_or(100),
+            icon,
+            output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
+        }
     }
 
     /// Checks if the cache exists given `base_cmd` and `no_cache` flag.
@@ -152,6 +104,27 @@ impl<'a> LightCommand<'a> {
         }
     }
 
+    fn exec_info_from_cache_digest(&self, digest: &Digest) -> Result<ExecutedInfo> {
+        let Digest {
+            total, cached_path, ..
+        } = digest;
+
+        let lines_iter = read_first_lines(&cached_path, self.number)?;
+        let lines = if let Some(icon_kind) = self.icon.icon_kind() {
+            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
+        } else {
+            lines_iter.collect()
+        };
+
+        Ok(ExecutedInfo {
+            using_cache: true,
+            total: *total as usize,
+            tempfile: Some(cached_path.clone()),
+            lines,
+            icon_added: self.icon.enabled(),
+        })
+    }
+
     /// Execute the command and redirect the stdout to a file.
     pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
         let cache_file_path = base_cmd.cache_file_path()?;
@@ -159,7 +132,7 @@ impl<'a> LightCommand<'a> {
         crate::process::rstd::write_stdout_to_file(self.cmd, &cache_file_path)?;
 
         let lines_iter = read_first_lines(&cache_file_path, 100)?;
-        let lines = if let Some(icon_kind) = self.env.icon.icon_kind() {
+        let lines = if let Some(icon_kind) = self.icon.icon_kind() {
             lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
         } else {
             lines_iter.collect()
@@ -169,7 +142,7 @@ impl<'a> LightCommand<'a> {
 
         // Store the cache file if the total number of items exceeds the threshold, so that the
         // cache can be reused if the identical command is executed again.
-        if total > self.env.output_threshold {
+        if total > self.output_threshold {
             let digest = Digest::new(base_cmd, total, cache_file_path.clone());
 
             {
@@ -184,7 +157,7 @@ impl<'a> LightCommand<'a> {
             total,
             tempfile: Some(cache_file_path),
             lines,
-            icon_added: self.env.icon.enabled(),
+            icon_added: self.icon.enabled(),
         })
     }
 }
