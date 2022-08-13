@@ -6,17 +6,19 @@ use anyhow::Result;
 use clap::Parser;
 
 use filter::{FilterContext, Source};
+use itertools::Itertools;
 use matcher::{ClapItem, MatchScope, Matcher};
 use rayon::prelude::*;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::process::BaseCommand;
+use crate::process::ShellCommand;
 use crate::tools::ctags::{
-    ProjectCtagsCommand, ProjectTag, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT,
+    ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT, EXCLUDE,
 };
 use crate::utils::{send_response_from_cache, SendResponse};
 
+const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
@@ -40,26 +42,40 @@ pub struct RecursiveTags {
 }
 
 pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> ProjectCtagsCommand {
-    let command = format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref());
-
-    ProjectCtagsCommand::new(BaseCommand::new(command, cwd))
+    let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
+    std_cmd.current_dir(&cwd).args(&TAGS_CMD[1..]).args(
+        EXCLUDE
+            .split(',')
+            .map(|exclude| format!("--exclude={exclude}")),
+    );
+    let shell_cmd = ShellCommand::new(
+        format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref()),
+        cwd,
+    );
+    ProjectCtagsCommand::new(std_cmd, shell_cmd)
 }
 
 impl RecursiveTags {
-    fn assemble_ctags_cmd(&self) -> Result<ProjectCtagsCommand> {
-        let exclude = self.shared.exclude_opt();
+    fn project_ctags_cmd(&self) -> Result<ProjectCtagsCommand> {
+        let dir = self.shared.dir()?;
+        let exclude_args = self.shared.exclude_args();
 
-        let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
-
+        let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
+        std_cmd
+            .current_dir(&dir)
+            .args(&TAGS_CMD[1..])
+            .args(&exclude_args);
         if let Some(ref languages) = self.shared.languages {
-            command.push_str(" --languages=");
-            command.push_str(languages);
-        };
+            std_cmd.arg(format!("--languages={languages}"));
+        }
 
-        Ok(ProjectCtagsCommand::new(BaseCommand::new(
-            command,
-            self.shared.dir()?,
-        )))
+        let shell_cmd = std::iter::once(std_cmd.get_program())
+            .chain(std_cmd.get_args())
+            .map(|s| s.to_string_lossy())
+            .join(" ");
+        let shell_cmd = ShellCommand::new(shell_cmd, dir);
+
+        Ok(ProjectCtagsCommand::new(std_cmd, shell_cmd))
     }
 
     pub fn run(
@@ -77,7 +93,7 @@ impl RecursiveTags {
             ));
         }
 
-        let ctags_cmd = self.assemble_ctags_cmd()?;
+        let mut ctags_cmd = self.project_ctags_cmd()?;
 
         if self.forerunner {
             let (total, cache) = if no_cache {
@@ -101,16 +117,9 @@ impl RecursiveTags {
                     self.query.as_deref().unwrap_or_default(),
                     filter_context,
                     ctags_cmd
-                        .stdout()?
-                        .par_split(|x| x == &b'\n')
-                        .filter_map(|line| {
-                            if let Ok(tag) = serde_json::from_slice::<ProjectTag>(line) {
-                                let item: Arc<dyn ClapItem> = Arc::new(tag.into_project_tag_item());
-                                Some(item)
-                            } else {
-                                None
-                            }
-                        }),
+                        .tag_item_iter()?
+                        .map(|tag_item| Arc::new(tag_item) as Arc<dyn ClapItem>)
+                        .par_bridge(),
                 );
             } else {
                 filter::dyn_run(

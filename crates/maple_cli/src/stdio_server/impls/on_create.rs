@@ -48,17 +48,15 @@ pub async fn initialize(context: Arc<SessionContext>) -> Result<SourceScale> {
             });
         }
         "proj_tags" => {
-            let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
+            let mut ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
             let scale = if context.no_cache {
-                let lines = ctags_cmd.par_formatted_lines()?;
-                ctags_cmd.create_cache_async(lines.clone()).await?;
+                let lines = ctags_cmd.execute_and_write_cache().await?;
                 to_scale(lines)
             } else {
                 match ctags_cmd.ctags_cache() {
                     Some((total, path)) => SourceScale::Cache { total, path },
                     None => {
-                        let lines = ctags_cmd.par_formatted_lines()?;
-                        ctags_cmd.create_cache_async(lines.clone()).await?;
+                        let lines = ctags_cmd.execute_and_write_cache().await?;
                         to_scale(lines)
                     }
                 }

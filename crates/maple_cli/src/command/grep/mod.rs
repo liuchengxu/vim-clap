@@ -18,7 +18,7 @@ use matcher::MatchScope;
 
 use crate::app::Params;
 use crate::cache::Digest;
-use crate::process::{light::LightCommand, rstd::StdCommand, BaseCommand};
+use crate::process::{light::LightCommand, rstd::StdCommand, ShellCommand};
 use crate::tools::ripgrep::Match;
 
 const RG_ARGS: &[&str] = &[
@@ -139,11 +139,10 @@ impl Grep {
         }
 
         let mut cmd = std_cmd.into_inner();
-
-        let mut light_cmd = LightCommand::new(&mut cmd, number, Default::default(), None);
-
-        let base_cmd = BaseCommand::new(grep_cmd, std::env::current_dir()?);
-        let execute_info = light_cmd.execute(base_cmd)?;
+        let shell_cmd = ShellCommand::new(grep_cmd, std::env::current_dir()?);
+        let mut light_cmd =
+            LightCommand::new(&mut cmd, shell_cmd, number, Default::default(), None);
+        let execute_info = light_cmd.execute()?;
 
         let enable_icon = !matches!(icon, Icon::Null);
 
@@ -196,8 +195,8 @@ impl Grep {
             Source::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                let base_cmd = rg_base_command(dir);
-                if let Some(cache_file) = base_cmd.cache_file() {
+                let shell_cmd = rg_shell_command(dir);
+                if let Some(cache_file) = shell_cmd.cache_file() {
                     return do_dyn_filter(Source::File(cache_file));
                 }
             }
@@ -226,8 +225,8 @@ impl Grep {
             ParSource::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
-                let base_cmd = BaseCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some(cache_file) = base_cmd.cache_file() {
+                let shell_cmd = ShellCommand::new(RG_EXEC_CMD.into(), dir.clone());
+                if let Some(cache_file) = shell_cmd.cache_file() {
                     return par_dyn_dun(ParSource::File(cache_file));
                 }
             }
@@ -243,12 +242,12 @@ impl Grep {
 // Used for creating the cache in async context.
 #[derive(Debug, Clone)]
 pub struct RgTokioCommand {
-    pub inner: BaseCommand,
+    pub inner: ShellCommand,
 }
 
 impl RgTokioCommand {
     pub fn new(dir: PathBuf) -> Self {
-        let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir);
+        let inner = ShellCommand::new(RG_EXEC_CMD.into(), dir);
         Self { inner }
     }
 
@@ -258,14 +257,14 @@ impl RgTokioCommand {
 
     // TODO: redirect to file.
     pub async fn create_cache(self) -> Result<Digest> {
-        let base_cmd = rg_base_command(&self.inner.cwd);
-        let cache_file = base_cmd.cache_file_path()?;
+        let shell_cmd = rg_shell_command(&self.inner.cwd);
+        let cache_file = shell_cmd.cache_file_path()?;
 
         let mut tokio_cmd = tokio::process::Command::from(rg_command(&self.inner.cwd));
 
         crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
 
-        let digest = crate::cache::store_cache_digest(base_cmd, cache_file)?;
+        let digest = crate::cache::store_cache_digest(shell_cmd, cache_file)?;
 
         Ok(digest)
     }
@@ -280,18 +279,18 @@ pub fn rg_command<P: AsRef<Path>>(dir: P) -> Command {
 }
 
 #[inline]
-pub fn rg_base_command<P: AsRef<Path>>(dir: P) -> BaseCommand {
-    BaseCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()))
+pub fn rg_shell_command<P: AsRef<Path>>(dir: P) -> ShellCommand {
+    ShellCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()))
 }
 
 pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
-    let base_cmd = rg_base_command(dir.as_ref());
-    let cache_file_path = base_cmd.cache_file_path()?;
+    let shell_cmd = rg_shell_command(dir.as_ref());
+    let cache_file_path = shell_cmd.cache_file_path()?;
 
     let mut cmd = rg_command(dir.as_ref());
     crate::process::rstd::write_stdout_to_file(&mut cmd, &cache_file_path)?;
 
-    let digest = crate::cache::store_cache_digest(base_cmd, cache_file_path)?;
+    let digest = crate::cache::store_cache_digest(shell_cmd, cache_file_path)?;
 
     Ok(digest.total)
 }
@@ -305,7 +304,7 @@ mod tests {
 
     // 3X faster than the deprecated version.
     async fn create_cache_deprecated(dir: &Path) -> (usize, PathBuf) {
-        let inner = BaseCommand::new(RG_EXEC_CMD.into(), dir.to_path_buf());
+        let inner = ShellCommand::new(RG_EXEC_CMD.into(), dir.to_path_buf());
 
         let lines = TokioCommand::new(RG_EXEC_CMD)
             .current_dir(dir)
@@ -315,7 +314,7 @@ mod tests {
 
         let total = lines.len();
         let lines = lines.into_iter().join("\n");
-        let cache_path = inner.create_cache(total, lines.as_bytes()).unwrap();
+        let cache_path = inner.write_cache(total, lines.as_bytes()).unwrap();
 
         (total, cache_path)
     }

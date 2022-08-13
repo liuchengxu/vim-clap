@@ -84,6 +84,7 @@ impl StdCommand {
     }
 
     /// Returns the stdout of command, exit directly if any error happened.
+    #[allow(unused)]
     pub fn stdout(&mut self) -> std::io::Result<Vec<u8>> {
         let cmd_output = self.0.output()?;
 

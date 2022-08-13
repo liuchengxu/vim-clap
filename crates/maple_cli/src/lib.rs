@@ -8,11 +8,11 @@ mod previewer;
 mod process;
 mod recent_files;
 mod stdio_server;
-mod tools;
 mod utils;
 
 /// For benchmarks.
 pub mod command;
+pub mod tools;
 
 /// For benchmarks.
 pub use self::cache::find_largest_cache_digest;

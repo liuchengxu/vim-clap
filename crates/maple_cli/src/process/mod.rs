@@ -36,9 +36,17 @@ pub fn process_output(output: std::process::Output) -> std::io::Result<Vec<Strin
     Ok(lines)
 }
 
-/// Shell command for executing with cache.
+/// This type represents an identifier of an unique user-invoked shell command.
+///
+/// It's only used to determine the cache location for this command and should
+/// never be used to be executed directly, in which case it's encouraged to use
+/// `std::process::Command` or `subprocess::Exec:shell` instead.
+/// Furthermore, it's recommended to execute the command directly instead of using
+/// running in a shell like ['cmd', '/C'] due to some issue on Windows like [1].
+///
+/// [1] https://stackoverflow.com/questions/44757893/cmd-c-doesnt-work-in-rust-when-command-includes-spaces
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct BaseCommand {
+pub struct ShellCommand {
     /// Raw shell command string.
     pub command: String,
     /// Working directory of command.
@@ -48,8 +56,8 @@ pub struct BaseCommand {
     pub cwd: PathBuf,
 }
 
-impl BaseCommand {
-    /// Creates a new instance of [`BaseCommand`].
+impl ShellCommand {
+    /// Creates a new instance of [`ShellCommand`].
     pub fn new(command: String, cwd: PathBuf) -> Self {
         Self { command, cwd }
     }
@@ -71,35 +79,19 @@ impl BaseCommand {
             .map(|d| (d.total, d.cached_path))
     }
 
-    /// Executes and returns an value that implements `Read` trait.
-    pub fn stream_stdout(&self) -> Result<impl std::io::Read> {
-        let stdout_stream = subprocess::Exec::shell(&self.command)
-            .cwd(&self.cwd)
-            .stream_stdout()?;
-
-        Ok(stdout_stream)
-    }
-
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
         let cached_filename = utility::calculate_hash(self);
         crate::utils::generate_cache_file_path(cached_filename.to_string())
     }
 
-    /// Writes the whole stdout `cmd_stdout` to a cache file.
-    fn write_stdout_to_disk(&self, cmd_stdout: &[u8]) -> Result<PathBuf> {
+    /// Caches the output into a tempfile and also writes the cache digest to the disk.
+    pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;
 
-        let cached_filename = utility::calculate_hash(self);
-        let cached_path = crate::utils::generate_cache_file_path(cached_filename.to_string())?;
+        let cache_filename = utility::calculate_hash(&self);
+        let cache_file = crate::utils::generate_cache_file_path(cache_filename.to_string())?;
 
-        std::fs::File::create(&cached_path)?.write_all(cmd_stdout)?;
-
-        Ok(cached_path)
-    }
-
-    /// Caches the output into a tempfile and also writes the cache digest to the disk.
-    pub fn create_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
-        let cache_file = self.write_stdout_to_disk(cmd_stdout)?;
+        std::fs::File::create(&cache_file)?.write_all(cmd_stdout)?;
 
         let digest = Digest::new(self, total, cache_file.clone());
 

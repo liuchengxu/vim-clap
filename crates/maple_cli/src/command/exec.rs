@@ -7,7 +7,7 @@ use clap::Parser;
 use crate::app::Params;
 use crate::process::light::LightCommand;
 use crate::process::rstd::StdCommand;
-use crate::process::BaseCommand;
+use crate::process::ShellCommand;
 
 /// Execute the shell command
 #[derive(Parser, Debug, Clone)]
@@ -60,16 +60,22 @@ impl Exec {
             self.output_threshold
         };
 
-        let mut light_cmd = LightCommand::new(&mut exec_cmd, number, icon, Some(output_threshold));
-
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),
             None => std::env::current_dir()?,
         };
 
-        let base_cmd = BaseCommand::new(self.shell_cmd.clone(), cwd);
+        let shell_cmd = ShellCommand::new(self.shell_cmd.clone(), cwd);
 
-        light_cmd.try_cache_or_execute(base_cmd, no_cache)?.print();
+        let mut light_cmd = LightCommand::new(
+            &mut exec_cmd,
+            shell_cmd,
+            number,
+            icon,
+            Some(output_threshold),
+        );
+
+        light_cmd.try_cache_or_execute(no_cache)?.print();
 
         Ok(())
     }

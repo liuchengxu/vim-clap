@@ -9,7 +9,7 @@ use icon::Icon;
 use utility::{println_json, read_first_lines};
 
 use crate::cache::Digest;
-use crate::process::BaseCommand;
+use crate::process::ShellCommand;
 
 /// Threshold for making a cache for the results.
 const OUTPUT_THRESHOLD: usize = 50_000;
@@ -64,7 +64,10 @@ impl ExecutedInfo {
 /// - Minimalize the throughput.
 #[derive(Debug)]
 pub struct LightCommand<'a> {
-    cmd: &'a mut Command,
+    /// Ready to be executed and get the output.
+    std_cmd: &'a mut Command,
+    /// Used to find and reuse the cache if any.
+    shell_cmd: ShellCommand,
     number: usize,
     icon: Icon,
     output_threshold: usize,
@@ -73,34 +76,32 @@ pub struct LightCommand<'a> {
 impl<'a> LightCommand<'a> {
     /// Contructs LightCommand from various common opts.
     pub fn new(
-        cmd: &'a mut Command,
+        std_cmd: &'a mut Command,
+        shell_cmd: ShellCommand,
         number: Option<usize>,
         icon: Icon,
         output_threshold: Option<usize>,
     ) -> Self {
         Self {
-            cmd,
+            std_cmd,
+            shell_cmd,
             number: number.unwrap_or(100),
             icon,
             output_threshold: output_threshold.unwrap_or(OUTPUT_THRESHOLD),
         }
     }
 
-    /// Checks if the cache exists given `base_cmd` and `no_cache` flag.
+    /// Checks if the cache exists given `shell_cmd` and `no_cache` flag.
     /// If the cache exists, return the cached info, otherwise execute
     /// the command.
-    pub fn try_cache_or_execute(
-        &mut self,
-        base_cmd: BaseCommand,
-        no_cache: bool,
-    ) -> Result<ExecutedInfo> {
+    pub fn try_cache_or_execute(&mut self, no_cache: bool) -> Result<ExecutedInfo> {
         if no_cache {
-            self.execute(base_cmd)
+            self.execute()
         } else {
-            base_cmd
+            self.shell_cmd
                 .cache_digest()
                 .map(|digest| self.exec_info_from_cache_digest(&digest))
-                .unwrap_or_else(|| self.execute(base_cmd))
+                .unwrap_or_else(|| self.execute())
         }
     }
 
@@ -126,10 +127,10 @@ impl<'a> LightCommand<'a> {
     }
 
     /// Execute the command and redirect the stdout to a file.
-    pub fn execute(&mut self, base_cmd: BaseCommand) -> Result<ExecutedInfo> {
-        let cache_file_path = base_cmd.cache_file_path()?;
+    pub fn execute(&mut self) -> Result<ExecutedInfo> {
+        let cache_file_path = self.shell_cmd.cache_file_path()?;
 
-        crate::process::rstd::write_stdout_to_file(self.cmd, &cache_file_path)?;
+        crate::process::rstd::write_stdout_to_file(self.std_cmd, &cache_file_path)?;
 
         let lines_iter = read_first_lines(&cache_file_path, 100)?;
         let lines = if let Some(icon_kind) = self.icon.icon_kind() {
@@ -143,7 +144,7 @@ impl<'a> LightCommand<'a> {
         // Store the cache file if the total number of items exceeds the threshold, so that the
         // cache can be reused if the identical command is executed again.
         if total > self.output_threshold {
-            let digest = Digest::new(base_cmd, total, cache_file_path.clone());
+            let digest = Digest::new(self.shell_cmd.clone(), total, cache_file_path.clone());
 
             {
                 let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();

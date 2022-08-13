@@ -15,7 +15,7 @@ use rayon::prelude::*;
 use subprocess::{Exec, NullFile};
 
 use crate::paths::AbsPathBuf;
-use crate::process::{rstd::StdCommand, BaseCommand};
+use crate::process::ShellCommand;
 use crate::utils::PROJECT_DIRS;
 
 pub use self::buffer_tag::{BufferTag, BufferTagItem};
@@ -221,67 +221,50 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
 }
 
 /// Unit type wrapper of [`BaseCommand`] for ctags.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ProjectCtagsCommand {
-    inner: BaseCommand,
+    std_cmd: std::process::Command,
+    shell_cmd: ShellCommand,
 }
 
 impl ProjectCtagsCommand {
     /// Creates an instance of [`ProjectCtagsCommand`].
-    pub fn new(inner: BaseCommand) -> Self {
-        Self { inner }
-    }
-
-    /// Returns an iterator of tag line in a formatted form.
-    pub fn formatted_lines(&self) -> Result<Vec<String>> {
-        Ok(self
-            .run()?
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
-                    Some(tag.format_proj_tag())
-                } else {
-                    None
-                }
-            })
-            .collect())
+    pub fn new(std_cmd: std::process::Command, shell_cmd: ShellCommand) -> Self {
+        Self { std_cmd, shell_cmd }
     }
 
     /// Parallel version of [`formatted_lines`].
-    pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
-        let stdout = StdCommand::new(&self.inner.command)
-            .current_dir(&self.inner.cwd)
-            .stdout()?;
-
-        Ok(stdout
-            .par_split(|x| x == &b'\n')
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_slice::<ProjectTag>(tag) {
-                    Some(tag.format_proj_tag())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>())
+    pub fn par_formatted_lines(&mut self) -> std::io::Result<Vec<String>> {
+        self.std_cmd.output().map(|output| {
+            output
+                .stdout
+                .par_split(|x| x == &b'\n')
+                .filter_map(|tag| {
+                    if let Ok(tag) = serde_json::from_slice::<ProjectTag>(tag) {
+                        Some(tag.format_proj_tag())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
     }
 
-    pub fn stdout(&self) -> Result<Vec<u8>> {
-        let stdout = StdCommand::new(&self.inner.command)
-            .current_dir(&self.inner.cwd)
-            .stdout()?;
-
+    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+        let stdout = self.std_cmd.output()?.stdout;
         Ok(stdout)
     }
 
     /// Returns an iterator of raw line of ctags output.
-    fn run(&self) -> Result<impl Iterator<Item = String>> {
-        Ok(BufReader::new(self.inner.stream_stdout()?)
-            .lines()
-            .flatten())
+    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
+        let exec_cmd = Exec::cmd(self.std_cmd.get_program())
+            .args(self.std_cmd.get_args().collect::<Vec<_>>().as_slice());
+        Ok(BufReader::new(exec_cmd.stream_stdout()?).lines().flatten())
     }
 
     /// Returns an iterator of tag line in a formatted form.
-    pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
-        Ok(self.run()?.filter_map(|tag| {
+    fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
+        Ok(self.lines()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
                 Some(tag.format_proj_tag())
             } else {
@@ -291,7 +274,7 @@ impl ProjectCtagsCommand {
     }
 
     pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = ProjectTagItem>> {
-        Ok(self.run()?.filter_map(|tag| {
+        Ok(self.lines()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
                 Some(tag.into_project_tag_item())
             } else {
@@ -302,11 +285,12 @@ impl ProjectCtagsCommand {
 
     /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
-        self.inner.cache_info()
+        self.shell_cmd.cache_info()
     }
 
     /// Runs the command and writes the cache to the disk.
-    pub fn create_cache(&self) -> Result<(usize, PathBuf)> {
+    #[allow(unused)]
+    fn create_cache(&self) -> Result<(usize, PathBuf)> {
         let mut total = 0usize;
         let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
             total += 1;
@@ -314,27 +298,43 @@ impl ProjectCtagsCommand {
         });
         let lines = formatted_tags_iter.join("\n");
 
-        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+        let cache_path = self
+            .shell_cmd
+            .clone()
+            .write_cache(total, lines.as_bytes())?;
 
         Ok((total, cache_path))
     }
 
     /// Parallel version of [`create_cache`].
-    pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
+    pub fn par_create_cache(&mut self) -> Result<(usize, PathBuf)> {
+        // TODO: do not store all the output in memory and redirect them to a file directly.
         let lines = self.par_formatted_lines()?;
         let total = lines.len();
         let lines = lines.into_iter().join("\n");
 
-        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+        let cache_path = self
+            .shell_cmd
+            .clone()
+            .write_cache(total, lines.as_bytes())?;
 
         Ok((total, cache_path))
     }
 
-    pub async fn create_cache_async(self, lines: Vec<String>) -> Result<()> {
-        let total = lines.len();
-        let lines = lines.into_iter().join("\n");
-        self.inner.create_cache(total, lines.as_bytes())?;
-        Ok(())
+    pub async fn execute_and_write_cache(mut self) -> Result<Vec<String>> {
+        let lines = self.par_formatted_lines()?;
+
+        {
+            let lines = lines.clone();
+
+            let total = lines.len();
+            let lines = lines.into_iter().join("\n");
+            if let Err(e) = self.shell_cmd.clone().write_cache(total, lines.as_bytes()) {
+                tracing::error!("Failed to write ctags cache: {e}");
+            }
+        }
+
+        Ok(lines)
     }
 }
 
