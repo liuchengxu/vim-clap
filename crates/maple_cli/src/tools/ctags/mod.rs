@@ -220,7 +220,6 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     }
 }
 
-/// Unit type wrapper of [`BaseCommand`] for ctags.
 #[derive(Debug)]
 pub struct ProjectCtagsCommand {
     std_cmd: std::process::Command,

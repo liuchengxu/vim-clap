@@ -7,7 +7,7 @@ use utility::is_git_repo;
 
 use super::{rg_command, rg_shell_command};
 use crate::app::Params;
-use crate::process::light::LightCommand;
+use crate::process::CacheableCommand;
 use crate::utils::{send_response_from_cache, SendResponse};
 
 #[derive(Parser, Debug, Clone)]
@@ -80,15 +80,15 @@ impl RipGrepForerunner {
         };
 
         let mut std_cmd = rg_command(&dir);
-        let mut light_cmd = LightCommand::new(
+        CacheableCommand::new(
             &mut std_cmd,
             rg_shell_command(dir),
             number,
             icon,
             Some(self.output_threshold),
-        );
-
-        light_cmd.execute()?.print();
+        )
+        .execute()?
+        .print();
 
         Ok(())
     }

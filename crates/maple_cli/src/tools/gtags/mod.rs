@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 
 use crate::utils::PROJECT_DIRS;
@@ -17,15 +16,18 @@ pub static GTAGS_DIR: Lazy<PathBuf> = Lazy::new(|| {
     gtags_dir
 });
 
-fn gtags_executable_exists() -> Result<bool> {
+fn gtags_executable_exists() -> std::io::Result<bool> {
     let output = std::process::Command::new("gtags")
         .arg("--version")
         .stderr(std::process::Stdio::inherit())
         .output()?;
-    let stdout = String::from_utf8(output.stdout)?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
     if let Some(line) = stdout.split('\n').next() {
         Ok(line.starts_with("gtags"))
     } else {
-        Err(anyhow!("ctags executable not found"))
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "gtags executable not found",
+        ))
     }
 }

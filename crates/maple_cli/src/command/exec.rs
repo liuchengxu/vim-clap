@@ -5,9 +5,8 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::process::light::LightCommand;
 use crate::process::rstd::StdCommand;
-use crate::process::ShellCommand;
+use crate::process::{CacheableCommand, ShellCommand};
 
 /// Execute the shell command
 #[derive(Parser, Debug, Clone)]
@@ -67,15 +66,15 @@ impl Exec {
 
         let shell_cmd = ShellCommand::new(self.shell_cmd.clone(), cwd);
 
-        let mut light_cmd = LightCommand::new(
+        CacheableCommand::new(
             &mut exec_cmd,
             shell_cmd,
             number,
             icon,
             Some(output_threshold),
-        );
-
-        light_cmd.try_cache_or_execute(no_cache)?.print();
+        )
+        .try_cache_or_execute(no_cache)?
+        .print();
 
         Ok(())
     }

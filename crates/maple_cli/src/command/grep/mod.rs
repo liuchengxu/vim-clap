@@ -18,7 +18,8 @@ use matcher::MatchScope;
 
 use crate::app::Params;
 use crate::cache::Digest;
-use crate::process::{light::LightCommand, rstd::StdCommand, ShellCommand};
+use crate::process::rstd::StdCommand;
+use crate::process::{CacheableCommand, ShellCommand};
 use crate::tools::ripgrep::Match;
 
 const RG_ARGS: &[&str] = &[
@@ -140,9 +141,9 @@ impl Grep {
 
         let mut cmd = std_cmd.into_inner();
         let shell_cmd = ShellCommand::new(grep_cmd, std::env::current_dir()?);
-        let mut light_cmd =
-            LightCommand::new(&mut cmd, shell_cmd, number, Default::default(), None);
-        let execute_info = light_cmd.execute()?;
+        let execute_info =
+            CacheableCommand::new(&mut cmd, shell_cmd, number, Default::default(), None)
+                .execute()?;
 
         let enable_icon = !matches!(icon, Icon::Null);
 

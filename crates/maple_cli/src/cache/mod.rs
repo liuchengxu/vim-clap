@@ -112,12 +112,12 @@ impl CacheInfo {
         });
     }
 
-    /// Finds the digest given `base_cmd`.
+    /// Finds the digest given `shell_cmd`.
     fn find_digest(&self, shell_cmd: &ShellCommand) -> Option<usize> {
         self.digests.iter().position(|d| &d.shell_cmd == shell_cmd)
     }
 
-    /// Finds the usable digest given `base_cmd`.
+    /// Finds the usable digest given `shell_cmd`.
     pub fn find_digest_usable(&mut self, shell_cmd: &ShellCommand) -> Option<Digest> {
         match self.find_digest(shell_cmd) {
             Some(index) => {
@@ -192,11 +192,10 @@ pub fn find_largest_cache_digest() -> Option<Digest> {
     digests.last().cloned()
 }
 
-pub fn store_cache_digest(base_cmd: ShellCommand, new_created_cache: PathBuf) -> Result<Digest> {
-    // TODO: mmap should be faster.
+pub fn store_cache_digest(shell_cmd: ShellCommand, new_created_cache: PathBuf) -> Result<Digest> {
     let total = crate::utils::count_lines(std::fs::File::open(&new_created_cache)?)?;
 
-    let digest = Digest::new(base_cmd, total, new_created_cache);
+    let digest = Digest::new(shell_cmd, total, new_created_cache);
 
     let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
     let mut cache_info = cache_info.lock();
