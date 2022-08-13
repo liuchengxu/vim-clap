@@ -90,9 +90,12 @@ pub struct RegexSearcher {
 impl RegexSearcher {
     pub fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
         let usages: Usages = self.search_usages(false, exact_or_inverse_terms)?.into();
-
-        usages.print();
-
+        let total = usages.len();
+        let (lines, indices): (Vec<_>, Vec<_>) = usages
+            .into_iter()
+            .map(|usage| (usage.line, usage.indices))
+            .unzip();
+        utility::println_json_with_length!(total, lines, indices);
         Ok(())
     }
 
@@ -161,9 +164,9 @@ impl RegexSearcher {
     /// Search the usages using the pre-defined regex matching rules.
     ///
     /// If the result from regex matching is empty, try the pure grep approach.
-    fn regex_search<'a>(
-        &'a self,
-        regex_runner: RegexRunner<'a>,
+    fn regex_search(
+        &self,
+        regex_runner: RegexRunner,
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Vec<AddressableUsage>> {

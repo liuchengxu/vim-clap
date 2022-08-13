@@ -5,7 +5,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::process::rstd::StdCommand;
+use crate::process::shell_command;
 use crate::process::{CacheableCommand, ShellCommand};
 
 /// Execute the shell command
@@ -27,13 +27,13 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = StdCommand::new(self.shell_cmd.as_str());
+        let mut cmd = shell_command(self.shell_cmd.as_str());
 
         if let Some(ref cmd_dir) = self.cmd_dir {
             cmd.current_dir(cmd_dir);
         }
 
-        cmd.into_inner()
+        cmd
     }
 
     pub fn run(

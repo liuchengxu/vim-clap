@@ -18,7 +18,7 @@ use matcher::MatchScope;
 
 use crate::app::Params;
 use crate::cache::Digest;
-use crate::process::rstd::StdCommand;
+use crate::process::shell_command;
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::tools::ripgrep::Match;
 
@@ -133,16 +133,15 @@ impl Grep {
         grep_cmd.push_str(" .");
 
         // Shell command avoids https://github.com/liuchengxu/vim-clap/issues/595
-        let mut std_cmd = StdCommand::new(&grep_cmd);
+        let mut std_cmd = shell_command(&grep_cmd);
 
         if let Some(ref dir) = self.cmd_dir {
             std_cmd.current_dir(dir);
         }
 
-        let mut cmd = std_cmd.into_inner();
         let shell_cmd = ShellCommand::new(grep_cmd, std::env::current_dir()?);
         let execute_info =
-            CacheableCommand::new(&mut cmd, shell_cmd, number, Default::default(), None)
+            CacheableCommand::new(&mut std_cmd, shell_cmd, number, Default::default(), None)
                 .execute()?;
 
         let enable_icon = !matches!(icon, Icon::Null);
@@ -291,7 +290,7 @@ pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
     let cache_file_path = shell_cmd.cache_file_path()?;
 
     let mut cmd = rg_command(dir.as_ref());
-    crate::process::rstd::write_stdout_to_file(&mut cmd, &cache_file_path)?;
+    crate::process::write_stdout_to_file(&mut cmd, &cache_file_path)?;
 
     let digest = crate::cache::store_cache_digest(shell_cmd, cache_file_path)?;
 

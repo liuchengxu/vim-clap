@@ -12,7 +12,6 @@ use crate::config::DumbJumpConfig;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
-use crate::process::rstd::StdCommand;
 use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 

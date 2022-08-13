@@ -1,7 +1,6 @@
-pub mod rstd;
 pub mod tokio;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
@@ -13,6 +12,49 @@ use utility::{println_json, read_first_lines};
 
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::CACHE_INFO_IN_MEMORY;
+
+// TODO: make it configurable so that it can support powershell easier?
+// https://github.com/liuchengxu/vim-clap/issues/640
+/// Builds [`std::process::Command`] from a cmd string which can use pipe.
+///
+/// This can work with the piped command, e.g., `git ls-files | uniq`.
+pub fn shell_command(shell_cmd: &str) -> Command {
+    if cfg!(target_os = "windows") {
+        let mut cmd = Command::new("cmd");
+        cmd.args(&["/C", shell_cmd]);
+        cmd
+    } else {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c").arg(shell_cmd);
+        cmd
+    }
+}
+
+/// Executes the command and redirects the output to a file.
+pub fn write_stdout_to_file<P: AsRef<Path>>(
+    cmd: &mut Command,
+    output_file: P,
+) -> std::io::Result<()> {
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(output_file)?;
+
+    let exit_status = cmd.stdout(file).spawn()?.wait()?;
+
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "Failed to execute the command: {cmd:?}, exit code: {:?}",
+                exit_status.code()
+            ),
+        ))
+    }
+}
 
 /// Converts [`std::process::Output`] to a Vec of String.
 ///
@@ -212,7 +254,7 @@ impl<'a> CacheableCommand<'a> {
     pub fn execute(&mut self) -> Result<ExecInfo> {
         let cache_file_path = self.shell_cmd.cache_file_path()?;
 
-        crate::process::rstd::write_stdout_to_file(self.std_cmd, &cache_file_path)?;
+        write_stdout_to_file(self.std_cmd, &cache_file_path)?;
 
         let lines_iter = read_first_lines(&cache_file_path, 100)?;
         let lines = if let Some(icon_kind) = self.icon.icon_kind() {
