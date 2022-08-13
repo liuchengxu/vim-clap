@@ -285,7 +285,9 @@ impl ProjectCtagsCommand {
 
     /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
-        self.shell_cmd.cache_info()
+        self.shell_cmd
+            .cache_digest()
+            .map(|digest| (digest.total, digest.cached_path))
     }
 
     /// Runs the command and writes the cache to the disk.

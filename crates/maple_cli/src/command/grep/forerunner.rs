@@ -56,9 +56,14 @@ impl RipGrepForerunner {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
                 let shell_cmd = rg_shell_command(dir);
-                if let Some((total, cache)) = shell_cmd.cache_info() {
-                    if total > 100000 {
-                        send_response_from_cache(&cache, total as usize, SendResponse::Json, icon);
+                if let Some(digest) = shell_cmd.cache_digest() {
+                    if digest.total > 100000 {
+                        send_response_from_cache(
+                            &digest.cached_path,
+                            digest.total as usize,
+                            SendResponse::Json,
+                            icon,
+                        );
                         return Ok(());
                     }
                 }

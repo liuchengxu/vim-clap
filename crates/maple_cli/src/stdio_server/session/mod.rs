@@ -85,7 +85,7 @@ pub trait EventHandle: Send + Sync + 'static {
                     "grep" | "grep2" => {
                         let rg_cmd =
                             crate::command::grep::RgTokioCommand::new(context.cwd.to_path_buf());
-                        let job_id = utility::calculate_hash(&rg_cmd.inner);
+                        let job_id = utility::calculate_hash(&rg_cmd);
                         spawn_singleton_job(
                             async move {
                                 let _ = rg_cmd.create_cache().await;

@@ -196,8 +196,8 @@ impl Grep {
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let shell_cmd = rg_shell_command(dir);
-                if let Some(cache_file) = shell_cmd.cache_file() {
-                    return do_dyn_filter(Source::File(cache_file));
+                if let Some(digest) = shell_cmd.cache_digest() {
+                    return do_dyn_filter(Source::File(digest.cached_path));
                 }
             }
             Exec::shell(RG_EXEC_CMD).cwd(dir).into()
@@ -226,8 +226,8 @@ impl Grep {
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let shell_cmd = ShellCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some(cache_file) = shell_cmd.cache_file() {
-                    return par_dyn_dun(ParSource::File(cache_file));
+                if let Some(digest) = shell_cmd.cache_digest() {
+                    return par_dyn_dun(ParSource::File(digest.cached_path));
                 }
             }
             ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
@@ -235,36 +235,38 @@ impl Grep {
             ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
         };
 
+        // TODO: Improve the responsiveness of ripgrep as it can emit the items after some time.
+        // When running the command below, a few seconds before showing the progress, might be
+        // mitigated by using the libripgrep instead of using the rg executable.
+        // time /home/xlc/.vim/plugged/vim-clap/target/release/maple --icon=Grep --no-cache --number 136 --winwidth 122 --case-matching smart grep srlss --cmd-dir /home/xlc/src/github.com/subspace/subspace --par-run
         par_dyn_dun(par_source)
     }
 }
 
 // Used for creating the cache in async context.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct RgTokioCommand {
-    pub inner: ShellCommand,
+    shell_cmd: ShellCommand,
 }
 
 impl RgTokioCommand {
     pub fn new(dir: PathBuf) -> Self {
-        let inner = ShellCommand::new(RG_EXEC_CMD.into(), dir);
-        Self { inner }
+        let shell_cmd = ShellCommand::new(RG_EXEC_CMD.into(), dir);
+        Self { shell_cmd }
     }
 
     pub fn cache_digest(&self) -> Option<Digest> {
-        self.inner.cache_digest()
+        self.shell_cmd.cache_digest()
     }
 
-    // TODO: redirect to file.
     pub async fn create_cache(self) -> Result<Digest> {
-        let shell_cmd = rg_shell_command(&self.inner.cwd);
-        let cache_file = shell_cmd.cache_file_path()?;
+        let cache_file = self.shell_cmd.cache_file_path()?;
 
-        let mut tokio_cmd = tokio::process::Command::from(rg_command(&self.inner.cwd));
-
+        let std_cmd = rg_command(&self.shell_cmd.cwd);
+        let mut tokio_cmd = tokio::process::Command::from(std_cmd);
         crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
 
-        let digest = crate::cache::store_cache_digest(shell_cmd, cache_file)?;
+        let digest = crate::cache::store_cache_digest(self.shell_cmd.clone(), cache_file)?;
 
         Ok(digest)
     }

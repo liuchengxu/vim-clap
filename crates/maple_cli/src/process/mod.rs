@@ -68,22 +68,12 @@ impl ShellCommand {
         info.find_digest_usable(self)
     }
 
-    pub fn cache_file(&self) -> Option<PathBuf> {
-        let mut info = CACHE_INFO_IN_MEMORY.lock();
-        info.find_digest_usable(self).map(|d| d.cached_path)
-    }
-
-    pub fn cache_info(&self) -> Option<(usize, PathBuf)> {
-        let mut info = CACHE_INFO_IN_MEMORY.lock();
-        info.find_digest_usable(self)
-            .map(|d| (d.total, d.cached_path))
-    }
-
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
         let cached_filename = utility::calculate_hash(self);
         crate::utils::generate_cache_file_path(cached_filename.to_string())
     }
 
+    // TODO: remove this.
     /// Caches the output into a tempfile and also writes the cache digest to the disk.
     pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;

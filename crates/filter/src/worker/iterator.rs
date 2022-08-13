@@ -313,7 +313,8 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             }
         };
 
-        let matched_items = sort_matched_items(matched_items);
+        let mut matched_items = sort_matched_items(matched_items);
+        matched_items.truncate(number);
 
         printer::print_dyn_matched_items(
             matched_items,
