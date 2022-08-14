@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
 use chrono::prelude::*;
 
 use crate::datastore::CACHE_INFO_IN_MEMORY;
@@ -172,7 +171,7 @@ impl CacheInfo {
 }
 
 /// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
-pub fn push_cache_digest(digest: Digest) -> Result<()> {
+pub fn push_cache_digest(digest: Digest) {
     let cache_info = CACHE_INFO_IN_MEMORY.clone();
 
     tokio::spawn(async move {
@@ -181,8 +180,6 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
             tracing::error!(?e, "Failed to push the cache digest");
         }
     });
-
-    Ok(())
 }
 
 pub fn find_largest_cache_digest() -> Option<Digest> {
@@ -192,7 +189,10 @@ pub fn find_largest_cache_digest() -> Option<Digest> {
     digests.last().cloned()
 }
 
-pub fn store_cache_digest(shell_cmd: ShellCommand, new_created_cache: PathBuf) -> Result<Digest> {
+pub fn store_cache_digest(
+    shell_cmd: ShellCommand,
+    new_created_cache: PathBuf,
+) -> std::io::Result<Digest> {
     let total = crate::utils::count_lines(std::fs::File::open(&new_created_cache)?)?;
 
     let digest = Digest::new(shell_cmd, total, new_created_cache);

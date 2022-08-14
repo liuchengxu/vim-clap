@@ -130,7 +130,7 @@ impl ShellCommand {
 
         let digest = Digest::new(self, total, cache_file.clone());
 
-        push_cache_digest(digest)?;
+        push_cache_digest(digest);
 
         Ok(cache_file)
     }
