@@ -32,10 +32,10 @@ impl Default for Icon {
 }
 
 impl Icon {
-    pub fn painter(&self) -> Option<&IconKind> {
+    pub fn icon_kind(&self) -> Option<IconKind> {
         match self {
             Self::Null => None,
-            Self::Enabled(icon_kind) => Some(icon_kind),
+            Self::Enabled(icon_kind) => Some(*icon_kind),
         }
     }
 
@@ -99,18 +99,6 @@ impl IconKind {
         format!("{icon} {text}")
     }
 
-    /// Returns a `String` of raw str with icon added.
-    pub fn paint<S: AsRef<str>>(&self, raw_str: S) -> String {
-        let fmt = |s| format!("{} {}", s, raw_str.as_ref());
-        match *self {
-            Self::File => prepend_icon(raw_str.as_ref()),
-            Self::Grep => prepend_grep_icon(raw_str.as_ref()),
-            Self::ProjTags => fmt(proj_tags_icon(raw_str.as_ref())),
-            Self::BufferTags => fmt(buffer_tags_icon(raw_str.as_ref())),
-            Self::Unknown => fmt(DEFAULT_ICON),
-        }
-    }
-
     /// Returns appropriate icon for the given text.
     pub fn icon(&self, text: &str) -> IconType {
         match *self {
@@ -152,19 +140,6 @@ pub fn file_icon(line: &str) -> IconType {
     get_icon_or(&path, DEFAULT_ICON)
 }
 
-pub fn prepend_icon(line: &str) -> String {
-    format!("{} {}", file_icon(line), line)
-}
-
-#[inline]
-pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
-    if path.as_ref().is_dir() {
-        FOLDER_ICON
-    } else {
-        get_icon_or(path, DEFAULT_FILER_ICON)
-    }
-}
-
 pub fn tags_kind_icon(kind: &str) -> IconType {
     bsearch_icon_table(kind, TAGKIND_ICON_TABLE)
         .map(|idx| TAGKIND_ICON_TABLE[idx].1)
@@ -175,6 +150,15 @@ fn buffer_tags_icon(line: &str) -> IconType {
     pattern::extract_buffer_tags_kind(line)
         .map(tags_kind_icon)
         .unwrap_or(DEFAULT_ICON)
+}
+
+#[inline]
+pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
+    if path.as_ref().is_dir() {
+        FOLDER_ICON
+    } else {
+        get_icon_or(path, DEFAULT_FILER_ICON)
+    }
 }
 
 pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: impl Display) -> String {

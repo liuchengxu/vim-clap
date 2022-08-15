@@ -5,9 +5,9 @@ use clap::Parser;
 
 use utility::is_git_repo;
 
-use super::{rg_base_command, rg_command};
+use super::{rg_command, rg_shell_command};
 use crate::app::Params;
-use crate::process::light::{CommandEnv, LightCommand};
+use crate::process::CacheableCommand;
 use crate::utils::{send_response_from_cache, SendResponse};
 
 #[derive(Parser, Debug, Clone)]
@@ -55,10 +55,15 @@ impl RipGrepForerunner {
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
-                let base_cmd = rg_base_command(dir);
-                if let Some((total, cache)) = base_cmd.cache_info() {
-                    if total > 100000 {
-                        send_response_from_cache(&cache, total as usize, SendResponse::Json, icon);
+                let shell_cmd = rg_shell_command(dir);
+                if let Some(digest) = shell_cmd.cache_digest() {
+                    if digest.total > 100000 {
+                        send_response_from_cache(
+                            &digest.cached_path,
+                            digest.total as usize,
+                            SendResponse::Json,
+                            icon,
+                        );
                         return Ok(());
                     }
                 }
@@ -74,14 +79,16 @@ impl RipGrepForerunner {
             None => std::env::current_dir()?,
         };
 
-        let mut cmd = rg_command(&dir);
-
-        let mut light_cmd = LightCommand::new(
-            &mut cmd,
-            CommandEnv::new(Some(dir.clone()), number, icon, Some(self.output_threshold)),
-        );
-
-        light_cmd.execute(rg_base_command(dir))?.print();
+        let mut std_cmd = rg_command(&dir);
+        CacheableCommand::new(
+            &mut std_cmd,
+            rg_shell_command(dir),
+            number,
+            icon,
+            Some(self.output_threshold),
+        )
+        .execute()?
+        .print();
 
         Ok(())
     }

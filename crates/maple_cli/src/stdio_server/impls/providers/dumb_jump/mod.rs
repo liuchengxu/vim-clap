@@ -1,6 +1,7 @@
 mod searcher;
 
 use std::ops::Deref;
+use std::process::Output;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -12,10 +13,11 @@ use serde::Deserialize;
 use serde_json::json;
 
 use filter::Query;
+use tracing::Instrument;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
-use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, EventHandle, SessionContext,
@@ -278,8 +280,8 @@ impl EventHandle for DumbJumpHandle {
             let gtags_future = {
                 let gtags_regenerated = self.gtags_regenerated.clone();
                 let cwd = params.cwd;
+                let span = tracing::span!(tracing::Level::INFO, "gtags");
                 async move {
-                    let now = std::time::Instant::now();
                     let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
                     match tokio::task::spawn_blocking({
                         let gtags_searcher = gtags_searcher.clone();
@@ -307,8 +309,7 @@ impl EventHandle for DumbJumpHandle {
                             }
                         }
                     }
-                    tracing::debug!(?cwd, "⏱️  Gtags elapsed: {:?}", now.elapsed());
-                }
+                }.instrument(span)
             };
 
             fn run(job_future: impl Send + Sync + 'static + Future<Output = ()>, job_id: u64) {

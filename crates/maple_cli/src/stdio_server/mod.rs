@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 mod deprecated_runner;
-mod providers;
+mod impls;
 mod rpc;
 mod session;
 mod session_client;

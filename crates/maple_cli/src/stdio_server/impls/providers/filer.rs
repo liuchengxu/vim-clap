@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use icon::prepend_filer_icon;
 
-use crate::stdio_server::providers::builtin::{OnMove, OnMoveHandler};
+use crate::stdio_server::impls::{OnMove, OnMoveHandler};
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{EventHandle, SessionContext};
 use crate::stdio_server::{write_response, MethodCall};

@@ -1,15 +1,45 @@
-pub mod jsont;
+mod default_types;
+mod jsont;
 pub mod stats;
 pub mod util;
 
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::ops::Range;
-use std::{borrow::Cow, convert::TryFrom};
 
 use anyhow::Result;
+use once_cell::sync::Lazy;
 
 use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
+
+/// Map of file extension to ripgrep language.
+///
+/// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
+static RG_LANGUAGE_EXT_TABLE: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+    default_types::DEFAULT_TYPES
+        .iter()
+        .flat_map(|(lang, values)| {
+            values.iter().filter_map(|v| {
+                v.split('.').last().and_then(|ext| {
+                    // Simply ignore the abnormal cases.
+                    if ext.contains('[') || ext.contains('*') {
+                        None
+                    } else {
+                        Some((ext, *lang))
+                    }
+                })
+            })
+        })
+        .collect()
+});
+
+/// Finds the ripgrep language given the file extension `ext`.
+pub fn get_language(file_extension: &str) -> Option<&&str> {
+    RG_LANGUAGE_EXT_TABLE.get(file_extension)
+}
 
 /// Word represents the input query around by word boundries.
 #[derive(Clone, Debug)]

@@ -317,6 +317,8 @@ dependencies = [
  "anyhow",
  "icon",
  "matcher",
+ "parking_lot",
+ "pattern",
  "printer",
  "rayon",
  "serde",
@@ -764,6 +766,7 @@ dependencies = [
  "icon",
  "itertools",
  "matcher",
+ "num_cpus",
  "once_cell",
  "parking_lot",
  "pattern",
@@ -774,6 +777,7 @@ dependencies = [
  "serde_json",
  "subprocess",
  "tokio",
+ "toml",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -1588,6 +1592,7 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 name = "types"
 version = "0.1.0"
 dependencies = [
+ "icon",
  "pattern",
 ]
 

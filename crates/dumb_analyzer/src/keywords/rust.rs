@@ -17,7 +17,7 @@ impl KeywordPriority for Rust {
 
     fn keyword_priority(token: &str) -> Option<usize> {
         if Self::DEFINITION.contains(&token) {
-            Some(4)
+            Some(3)
         } else if Self::REFERENCE.contains(&token) {
             Some(6)
         } else if token.starts_with("pub") {

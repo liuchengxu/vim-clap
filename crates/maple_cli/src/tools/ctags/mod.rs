@@ -1,3 +1,7 @@
+mod buffer_tag;
+mod context_tag;
+mod project_tag;
+
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
@@ -8,12 +12,17 @@ use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use subprocess::{Exec, NullFile};
 
 use crate::paths::AbsPathBuf;
-use crate::process::{rstd::StdCommand, BaseCommand};
+use crate::process::ShellCommand;
 use crate::utils::PROJECT_DIRS;
+
+pub use self::buffer_tag::{BufferTag, BufferTagItem};
+pub use self::context_tag::{
+    buffer_tag_items, buffer_tags_lines, current_context_tag, current_context_tag_async,
+};
+pub use self::project_tag::{ProjectTag, ProjectTagItem};
 
 pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 
@@ -99,7 +108,10 @@ static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
         Ok(lang_maps)
     }
 
-    generate_lang_maps().expect("Failed to process the output of `--list-maps`")
+    generate_lang_maps().unwrap_or_else(|e| {
+        tracing::error!(error = ?e, "Failed to initialize LANG_MAPS from `ctags --list-maps`");
+        Default::default()
+    })
 });
 
 /// Returns the ctags language given the file extension.
@@ -208,70 +220,62 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     }
 }
 
-/// Unit type wrapper of [`BaseCommand`] for ctags.
-#[derive(Debug, Clone)]
-pub struct CtagsCommand {
-    inner: BaseCommand,
+#[derive(Debug)]
+pub struct ProjectCtagsCommand {
+    std_cmd: std::process::Command,
+    shell_cmd: ShellCommand,
 }
 
-impl CtagsCommand {
-    /// Creates an instance of [`CtagsCommand`].
-    pub fn new(inner: BaseCommand) -> Self {
-        Self { inner }
-    }
-
-    /// Returns an iterator of tag line in a formatted form.
-    pub fn formatted_lines(&self) -> Result<Vec<String>> {
-        Ok(self
-            .run()?
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                    Some(tag.format_proj_tags())
-                } else {
-                    None
-                }
-            })
-            .collect())
+impl ProjectCtagsCommand {
+    /// Creates an instance of [`ProjectCtagsCommand`].
+    pub fn new(std_cmd: std::process::Command, shell_cmd: ShellCommand) -> Self {
+        Self { std_cmd, shell_cmd }
     }
 
     /// Parallel version of [`formatted_lines`].
-    pub fn par_formatted_lines(&self) -> Result<Vec<String>> {
-        let stdout = StdCommand::new(&self.inner.command)
-            .current_dir(&self.inner.cwd)
-            .stdout()?;
-
-        Ok(stdout
-            .par_split(|x| x == &b'\n')
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_slice::<TagInfo>(tag) {
-                    Some(tag.format_proj_tags())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>())
+    pub fn par_formatted_lines(&mut self) -> std::io::Result<Vec<String>> {
+        self.std_cmd.output().map(|output| {
+            output
+                .stdout
+                .par_split(|x| x == &b'\n')
+                .filter_map(|tag| {
+                    if let Ok(tag) = serde_json::from_slice::<ProjectTag>(tag) {
+                        Some(tag.format_proj_tag())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
     }
 
-    pub fn stdout(&self) -> Result<Vec<u8>> {
-        let stdout = StdCommand::new(&self.inner.command)
-            .current_dir(&self.inner.cwd)
-            .stdout()?;
-
+    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+        let stdout = self.std_cmd.output()?.stdout;
         Ok(stdout)
     }
 
     /// Returns an iterator of raw line of ctags output.
-    fn run(&self) -> Result<impl Iterator<Item = String>> {
-        Ok(BufReader::new(self.inner.stream_stdout()?)
-            .lines()
-            .flatten())
+    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
+        let exec_cmd = Exec::cmd(self.std_cmd.get_program())
+            .args(self.std_cmd.get_args().collect::<Vec<_>>().as_slice());
+        Ok(BufReader::new(exec_cmd.stream_stdout()?).lines().flatten())
     }
 
     /// Returns an iterator of tag line in a formatted form.
-    pub fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
-        Ok(self.run()?.filter_map(|tag| {
-            if let Ok(tag) = serde_json::from_str::<TagInfo>(&tag) {
-                Some(tag.format_proj_tags())
+    fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
+        Ok(self.lines()?.filter_map(|tag| {
+            if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                Some(tag.format_proj_tag())
+            } else {
+                None
+            }
+        }))
+    }
+
+    pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = ProjectTagItem>> {
+        Ok(self.lines()?.filter_map(|tag| {
+            if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                Some(tag.into_project_tag_item())
             } else {
                 None
             }
@@ -280,11 +284,14 @@ impl CtagsCommand {
 
     /// Returns a tuple of (total, cache_path) if the cache exists.
     pub fn ctags_cache(&self) -> Option<(usize, PathBuf)> {
-        self.inner.cache_info()
+        self.shell_cmd
+            .cache_digest()
+            .map(|digest| (digest.total, digest.cached_path))
     }
 
     /// Runs the command and writes the cache to the disk.
-    pub fn create_cache(&self) -> Result<(usize, PathBuf)> {
+    #[allow(unused)]
+    fn create_cache(&self) -> Result<(usize, PathBuf)> {
         let mut total = 0usize;
         let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
             total += 1;
@@ -292,85 +299,62 @@ impl CtagsCommand {
         });
         let lines = formatted_tags_iter.join("\n");
 
-        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+        let cache_path = self
+            .shell_cmd
+            .clone()
+            .write_cache(total, lines.as_bytes())?;
 
         Ok((total, cache_path))
     }
 
     /// Parallel version of [`create_cache`].
-    pub fn par_create_cache(&self) -> Result<(usize, PathBuf)> {
+    pub fn par_create_cache(&mut self) -> Result<(usize, PathBuf)> {
+        // TODO: do not store all the output in memory and redirect them to a file directly.
         let lines = self.par_formatted_lines()?;
         let total = lines.len();
         let lines = lines.into_iter().join("\n");
 
-        let cache_path = self.inner.clone().create_cache(total, lines.as_bytes())?;
+        let cache_path = self
+            .shell_cmd
+            .clone()
+            .write_cache(total, lines.as_bytes())?;
 
         Ok((total, cache_path))
     }
 
-    pub async fn create_cache_async(self, lines: Vec<String>) -> Result<()> {
-        let total = lines.len();
-        let lines = lines.into_iter().join("\n");
-        self.inner.create_cache(total, lines.as_bytes())?;
-        Ok(())
-    }
-}
+    pub async fn execute_and_write_cache(mut self) -> Result<Vec<String>> {
+        let lines = self.par_formatted_lines()?;
 
-/// Returns true if the ctags executable is compiled with +json feature.
-pub fn ensure_has_json_support() -> std::io::Result<()> {
-    if *CTAGS_HAS_JSON_FEATURE.deref() {
-        Ok(())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "The found ctags executable is not compiled with +json feature, please recompile it.",
-        ))
-    }
-}
+        {
+            let lines = lines.clone();
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct TagInfo {
-    name: String,
-    path: String,
-    pattern: String,
-    line: usize,
-    kind: String,
-}
-
-impl TagInfo {
-    /// Builds the line for displaying the tag info.
-    pub fn format_proj_tags(&self) -> String {
-        let pat_len = self.pattern.len();
-        let name_lnum = format!("{}:{}", self.name, self.line);
-        let kind = format!("[{}@{}]", self.kind, self.path);
-        format!(
-            "{text:<text_width$} {kind:<kind_width$} {pattern}",
-            text = name_lnum,
-            text_width = 30,
-            kind = kind,
-            kind_width = 30,
-            pattern = &self.pattern[2..pat_len - 2].trim(),
-        )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_deserialize_ctags_line() {
-        let data = r#"{"_type": "tag", "name": "Exec", "path": "crates/maple_cli/src/cmd/exec.rs", "pattern": "/^pub struct Exec {$/", "line": 10, "kind": "struct"}"#;
-        let tag: TagInfo = serde_json::from_str(&data).unwrap();
-        assert_eq!(
-            tag,
-            TagInfo {
-                name: "Exec".into(),
-                path: "crates/maple_cli/src/cmd/exec.rs".into(),
-                pattern: "/^pub struct Exec {$/".into(),
-                line: 10,
-                kind: "struct".into()
+            let total = lines.len();
+            let lines = lines.into_iter().join("\n");
+            if let Err(e) = self.shell_cmd.clone().write_cache(total, lines.as_bytes()) {
+                tracing::error!("Failed to write ctags cache: {e}");
             }
-        );
+        }
+
+        Ok(lines)
     }
+}
+
+// /description/
+// /^description$/
+pub fn trim_pattern(pattern: &str) -> &str {
+    let description = &pattern[1..pattern.len() - 1];
+
+    let description = if let Some(stripped) = description.strip_prefix('^') {
+        stripped
+    } else {
+        description
+    };
+
+    let description = if let Some(stripped) = description.strip_suffix('$') {
+        stripped
+    } else {
+        description
+    };
+
+    description.trim()
 }

@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use dumb_analyzer::resolve_reference_kind;
@@ -6,6 +8,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
+use crate::config::DumbJumpConfig;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
@@ -70,6 +73,8 @@ impl SearchingWorker {
 }
 
 /// Returns a combo of various results in the order of [ctags, gtags, regex].
+///
+/// The regex results will be deduplicated from the results of ctags and gtags.
 fn merge_all(
     ctag_results: Vec<AddressableUsage>,
     maybe_gtags_results: Option<Vec<AddressableUsage>>,
@@ -119,6 +124,8 @@ pub(super) enum SearchEngine {
 
 impl SearchEngine {
     pub async fn run(&self, searching_worker: SearchingWorker) -> Result<Usages> {
+        let cwd = searching_worker.cwd.clone();
+
         let ctags_future = {
             let searching_worker = searching_worker.clone();
             async move { searching_worker.ctags_search() }
@@ -169,6 +176,52 @@ impl SearchEngine {
             }
         };
 
+        let addressable_usages = filter_usages(cwd.as_ref(), addressable_usages);
+
         Ok(addressable_usages.into())
     }
+}
+
+fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<AddressableUsage> {
+    let DumbJumpConfig {
+        ignore_files_not_git_tracked,
+        ignore_pattern_file_path,
+    } = &crate::config::config().provider.dumb_jump;
+
+    let mut addressable_usages = addressable_usages;
+
+    if *ignore_files_not_git_tracked && utility::is_git_repo(cwd) {
+        let files = addressable_usages
+            .iter()
+            .map(|x| x.path.as_str())
+            .collect::<HashSet<_>>();
+
+        let git_tracked = files
+            .into_par_iter()
+            .filter(|file| {
+                // Only the exit status matters.
+                Command::new("git")
+                    .arg("ls-files")
+                    .arg("--error-unmatch")
+                    .arg(file)
+                    .current_dir(cwd)
+                    .stderr(Stdio::null())
+                    .stdout(Stdio::null())
+                    .status()
+                    .map(|status| status.success())
+                    .unwrap_or(false)
+            })
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>();
+
+        addressable_usages.retain(|usage| git_tracked.contains(&usage.path));
+    }
+
+    // Ignore the results from the file whose path contains `test`
+    if let Some(ignore_pattern) = ignore_pattern_file_path {
+        // TODO: "test,build,tmp"
+        addressable_usages.retain(|usage| !usage.path.contains(ignore_pattern));
+    }
+
+    addressable_usages
 }

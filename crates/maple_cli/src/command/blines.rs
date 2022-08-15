@@ -1,12 +1,15 @@
+use std::borrow::Cow;
 use std::io::BufRead;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
+use rayon::iter::ParallelBridge;
 
 use filter::Source;
-use matcher::Bonus;
-use types::SourceItem;
+use matcher::{Bonus, MatchResult};
+use types::ClapItem;
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -21,6 +24,33 @@ pub struct Blines {
     /// File path of current vim buffer.
     #[clap(index = 2, long)]
     input: AbsPathBuf,
+
+    #[clap(long)]
+    par_run: bool,
+}
+
+#[derive(Debug)]
+struct BlinesItem {
+    raw: String,
+    line_number: usize,
+}
+
+impl ClapItem for BlinesItem {
+    fn raw_text(&self) -> &str {
+        self.raw.as_str()
+    }
+
+    fn output_text(&self) -> Cow<'_, str> {
+        format!("{} {}", self.line_number, self.raw).into()
+    }
+
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        let mut match_result = match_result;
+        match_result.indices.iter_mut().for_each(|x| {
+            *x += crate::utils::display_width(self.line_number) + 1;
+        });
+        match_result
+    }
 }
 
 impl Blines {
@@ -38,7 +68,11 @@ impl Blines {
                         if line.trim().is_empty() {
                             None
                         } else {
-                            let item = SourceItem::from(format!("{index} {line}"));
+                            let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
+                                raw: line,
+                                line_number: index + 1,
+                            });
+
                             Some(item)
                         }
                     })
@@ -57,10 +91,20 @@ impl Blines {
             params.into_filter_context()
         };
 
-        filter::dyn_run(
-            &self.query,
-            filter_context,
-            Source::List(blines_item_stream()),
-        )
+        if self.par_run {
+            filter::par_dyn_run_list(
+                &self.query,
+                filter_context,
+                blines_item_stream().par_bridge(),
+            );
+        } else {
+            filter::dyn_run(
+                &self.query,
+                filter_context,
+                Source::List(blines_item_stream()),
+            )?;
+        }
+
+        Ok(())
     }
 }

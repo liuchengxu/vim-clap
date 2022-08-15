@@ -7,6 +7,9 @@ set cpoptions&vim
 
 let s:job_id = -1
 
+let s:stdio_job_timer = -1
+let s:stdio_job_delay = 100
+
 if has('nvim')
 
   let s:round_message = ''
@@ -149,28 +152,14 @@ function! clap#job#stdio#start_service(MessageHandler, maple_cmd) abort
   let s:MessageHandler = a:MessageHandler
   let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
   call s:start_service_job(a:maple_cmd)
-  return
 endfunction
 
-function! clap#job#stdio#start_rpc_service(MessageHandler) abort
-  let s:MessageHandler = a:MessageHandler
-  call s:start_service_job(clap#maple#build_cmd('rpc'))
-  return
-endfunction
-
-function! clap#job#stdio#start_dyn_filter_service(MessageHandler, cmd) abort
-  let s:MessageHandler = a:MessageHandler
-
-  let filter_cmd = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? ['--icon=File'] : []
-  let filter_cmd += [
-        \ '--number', '100',
-        \ '--winwidth', winwidth(g:clap.display.winid),
-        \ '--case-matching', has_key(g:clap.context, 'ignorecase') ? 'ignore' : 'smart',
-        \ 'filter', g:clap.input.get(), '--cmd', a:cmd, '--cmd-dir', clap#rooter#working_dir(),
-        \ ]
-
-  call s:start_service_job(clap#maple#build_cmd_list(filter_cmd))
-  return
+function! clap#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abort
+  if s:stdio_job_timer != -1
+    call timer_stop(s:stdio_job_timer)
+  endif
+  let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
+  let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
 endfunction
 
 let &cpoptions = s:save_cpo

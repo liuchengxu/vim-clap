@@ -6,15 +6,21 @@
 ## [0.36] 2022-08-06
 ## Improved
 
+- Support filtering in parallel with the dynamic progress update. The filtering time is reduced about 50% from the sequential to the parallel version.
+  The following providers will be benefited from the parallel filtering:
+  - `source` of the provider returns a String command.
+  - `blines`, `grep2`, `proj_tags`.
 - Speed up the cache creation signigicantly. #858
 
 ## Changed
 
 - The spinner will be hidden if it's idle.
+- `dumb_jump`: ignore the results from the files not trcked by git if the project is a git repo.
 
 ## Fixed
 
 - Maple self-upgrade is broken. #847, #848
+- Fix the language bonus matching of `blines` provider.
 
 ## [0.35] 2022-06-12
 

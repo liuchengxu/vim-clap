@@ -68,6 +68,24 @@ pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize, &str)
     Some((fpath, lnum, col, line_content))
 }
 
+/// Returns a tuple of (end_of_path, start_of_line).
+pub fn parse_grep_item(line: &str) -> Option<(usize, usize)> {
+    GREP_STRIP_FPATH.find(line).and_then(|mat| {
+        let line_offset = mat.end();
+
+        let path_lnum_col = &line[..line_offset - 1];
+        match path_lnum_col.rfind(':') {
+            Some(path_lnum_offset) => {
+                let path_lnum = &line[..path_lnum_offset];
+                path_lnum
+                    .rfind(':')
+                    .map(|end_of_path| (end_of_path, line_offset))
+            }
+            None => None,
+        }
+    })
+}
+
 /// Returns a tuple of (fpath, lnum, col).
 pub fn extract_jump_line_info(line: &str) -> Option<(&str, PathBuf, usize, usize)> {
     let cap = DUMB_JUMP_LINE.captures(line)?;
@@ -162,6 +180,16 @@ mod tests {
         assert_eq!(
             "/home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs",
             extract_grep_file_path(line).unwrap()
+        );
+
+        let (end_of_path, start_of_line) = parse_grep_item(line).unwrap();
+        assert_eq!(
+            "/home/xlc/.vim/plugged/vim-clap/crates/pattern/src/lib.rs",
+            &line[..end_of_path]
+        );
+        assert_eq!(
+            r#"/// // crates/printer/src/lib.rs:199:26:        let query = "srlisrlisrsr"#,
+            &line[start_of_line..]
         );
     }
 
@@ -258,5 +286,11 @@ mod tests {
                 31
             )
         );
+    }
+
+    #[test]
+    fn test_extract_file_name() {
+        let line = "crates/maple_cli/src/app.rs";
+        assert_eq!(("app.rs", 21), extract_file_name(line).unwrap());
     }
 }

@@ -1,18 +1,24 @@
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
 
 use filter::{FilterContext, Source};
-use matcher::{MatchScope, Matcher};
+use itertools::Itertools;
+use matcher::{ClapItem, MatchScope, Matcher};
+use rayon::prelude::*;
 
 use super::SharedParams;
 use crate::app::Params;
-use crate::process::BaseCommand;
-use crate::tools::ctags::{ensure_has_json_support, CtagsCommand, DEFAULT_EXCLUDE_OPT};
+use crate::process::ShellCommand;
+use crate::tools::ctags::{
+    ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT, EXCLUDE,
+};
 use crate::utils::{send_response_from_cache, SendResponse};
 
+const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
@@ -26,38 +32,68 @@ pub struct RecursiveTags {
     #[clap(long)]
     forerunner: bool,
 
+    /// Run in parallel.
+    #[clap(long)]
+    par_run: bool,
+
     /// Shared parameters arouns ctags.
     #[clap(flatten)]
     pub(super) shared: SharedParams,
 }
 
-pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> CtagsCommand {
-    let command = format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref());
-
-    CtagsCommand::new(BaseCommand::new(command, cwd))
+pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> ProjectCtagsCommand {
+    let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
+    std_cmd.current_dir(&cwd).args(&TAGS_CMD[1..]).args(
+        EXCLUDE
+            .split(',')
+            .map(|exclude| format!("--exclude={exclude}")),
+    );
+    let shell_cmd = ShellCommand::new(
+        format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref()),
+        cwd,
+    );
+    ProjectCtagsCommand::new(std_cmd, shell_cmd)
 }
 
 impl RecursiveTags {
-    fn assemble_ctags_cmd(&self) -> Result<CtagsCommand> {
-        let exclude = self.shared.exclude_opt();
+    fn project_ctags_cmd(&self) -> Result<ProjectCtagsCommand> {
+        let dir = self.shared.dir()?;
+        let exclude_args = self.shared.exclude_args();
 
-        let mut command = format!("{} {}", BASE_TAGS_CMD, exclude);
-
+        let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
+        std_cmd
+            .current_dir(&dir)
+            .args(&TAGS_CMD[1..])
+            .args(&exclude_args);
         if let Some(ref languages) = self.shared.languages {
-            command.push_str(" --languages=");
-            command.push_str(languages);
-        };
+            std_cmd.arg(format!("--languages={languages}"));
+        }
 
-        Ok(CtagsCommand::new(BaseCommand::new(
-            command,
-            self.shared.dir()?,
-        )))
+        let shell_cmd = std::iter::once(std_cmd.get_program())
+            .chain(std_cmd.get_args())
+            .map(|s| s.to_string_lossy())
+            .join(" ");
+        let shell_cmd = ShellCommand::new(shell_cmd, dir);
+
+        Ok(ProjectCtagsCommand::new(std_cmd, shell_cmd))
     }
 
-    pub fn run(&self, Params { no_cache, icon, .. }: Params) -> Result<()> {
-        ensure_has_json_support()?;
+    pub fn run(
+        &self,
+        Params {
+            no_cache,
+            icon,
+            number,
+            ..
+        }: Params,
+    ) -> Result<()> {
+        if !CTAGS_HAS_JSON_FEATURE.deref() {
+            return Err(anyhow::anyhow!(
+                "ctags executable is not compiled with +json feature, please recompile it."
+            ));
+        }
 
-        let ctags_cmd = self.assemble_ctags_cmd()?;
+        let mut ctags_cmd = self.project_ctags_cmd()?;
 
         if self.forerunner {
             let (total, cache) = if no_cache {
@@ -68,18 +104,33 @@ impl RecursiveTags {
                 ctags_cmd.par_create_cache()?
             };
             send_response_from_cache(&cache, total, SendResponse::Json, icon);
-            return Ok(());
         } else {
-            filter::dyn_run(
-                self.query.as_deref().unwrap_or_default(),
-                FilterContext::new(
-                    icon,
-                    Some(30),
-                    None,
-                    Matcher::default().set_match_scope(MatchScope::TagName),
-                ),
-                Source::List(ctags_cmd.formatted_tags_iter()?.map(Into::into)),
-            )?;
+            let filter_context = FilterContext::new(
+                icon,
+                number,
+                None,
+                Matcher::default().set_match_scope(MatchScope::TagName),
+            );
+
+            if self.par_run {
+                filter::par_dyn_run_list(
+                    self.query.as_deref().unwrap_or_default(),
+                    filter_context,
+                    ctags_cmd
+                        .tag_item_iter()?
+                        .map(|tag_item| Arc::new(tag_item) as Arc<dyn ClapItem>)
+                        .par_bridge(),
+                );
+            } else {
+                filter::dyn_run(
+                    self.query.as_deref().unwrap_or_default(),
+                    filter_context,
+                    Source::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
+                        let item: Arc<dyn ClapItem> = Arc::new(tag_item);
+                        item
+                    })),
+                )?;
+            }
         }
 
         Ok(())

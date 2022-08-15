@@ -80,7 +80,7 @@ function! s:on_complete_maple() abort
     endif
 
     if has_key(decoded, 'icon_added')
-      let g:__clap_icon_added = decoded.icon_added
+      let g:__clap_icon_added_by_maple = decoded.icon_added
     endif
   endif
 endfunction

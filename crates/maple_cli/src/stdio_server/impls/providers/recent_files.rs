@@ -1,3 +1,4 @@
+use matcher::ClapItem;
 use parking_lot::Mutex;
 use std::sync::Arc;
 
@@ -6,10 +7,10 @@ use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
-use types::{MatchedItem, Score, SourceItem};
+use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
-use crate::stdio_server::providers::builtin::OnMoveHandler;
+use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{EventHandle, Session, SessionContext, SessionEvent};
 use crate::stdio_server::{write_response, MethodCall};
@@ -51,7 +52,7 @@ async fn handle_recent_files_message(
             .entries
             .iter()
             .map(|entry| {
-                let item: SourceItem = entry.fpath.replacen(&cwd, "", 1).into();
+                let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
                 // frecent_score will not be larger than i32::MAX.
                 MatchedItem::new(item, entry.frecent_score as Score, Default::default())
             })
@@ -162,7 +163,7 @@ impl EventHandle for RecentFilesHandle {
             .lines
             .lock()
             .get((lnum - 1) as usize)
-            .map(|r| r.item.raw.clone());
+            .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
             let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline))?;

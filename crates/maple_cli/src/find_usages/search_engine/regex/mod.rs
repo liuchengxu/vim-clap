@@ -8,7 +8,6 @@
 //!
 //! The executable rg with `--json` and `--pcre2` is required to be installed on the system.
 
-mod default_types;
 mod definition;
 mod runner;
 
@@ -19,12 +18,10 @@ use anyhow::Result;
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 
-use self::definition::{
-    definitions_and_references, get_language_by_ext, DefinitionSearchResult, MatchKind,
-};
+use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
 use self::runner::{MatchFinder, RegexRunner};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
-use crate::tools::ripgrep::{Match, Word};
+use crate::tools::ripgrep::{get_language, Match, Word};
 use crate::utils::ExactOrInverseTerms;
 
 /// [`Usage`] with some structured information.
@@ -93,9 +90,12 @@ pub struct RegexSearcher {
 impl RegexSearcher {
     pub fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
         let usages: Usages = self.search_usages(false, exact_or_inverse_terms)?.into();
-
-        usages.print();
-
+        let total = usages.len();
+        let (lines, indices): (Vec<_>, Vec<_>) = usages
+            .into_iter()
+            .map(|usage| (usage.line, usage.indices))
+            .unzip();
+        utility::println_json_with_length!(total, lines, indices);
         Ok(())
     }
 
@@ -120,9 +120,9 @@ impl RegexSearcher {
             dir: dir.as_ref(),
         };
 
-        let lang = match get_language_by_ext(extension) {
-            Ok(lang) => lang,
-            Err(_) => {
+        let lang = match get_language(extension) {
+            Some(lang) => lang,
+            None => {
                 // Search the occurrences if no language detected.
                 let occurrences = match_finder.find_occurrences(true)?;
                 let mut usages = occurrences
@@ -164,9 +164,9 @@ impl RegexSearcher {
     /// Search the usages using the pre-defined regex matching rules.
     ///
     /// If the result from regex matching is empty, try the pure grep approach.
-    fn regex_search<'a>(
-        &'a self,
-        regex_runner: RegexRunner<'a>,
+    fn regex_search(
+        &self,
+        regex_runner: RegexRunner,
         comments: &[&str],
         exact_or_inverse_terms: &ExactOrInverseTerms,
     ) -> Result<Vec<AddressableUsage>> {
@@ -280,10 +280,10 @@ fn render_classify(
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_regex_runner_language_keyword_ordering() {
+    #[test]
+    fn test_regex_runner_language_keyword_ordering() {
         let regex_searcher = RegexSearcher {
-            word: "clap#filter#async#dyn#start".into(),
+            word: "clap#filter#async#dyn#start_filter_with_cache".into(),
             extension: "vim".into(),
             dir: std::env::current_dir()
                 .unwrap()
@@ -296,9 +296,10 @@ mod tests {
         if let Ok(usages) = regex_searcher.search_usages(false, &ExactOrInverseTerms::default()) {
             assert!(usages[0]
                 .line
-                .contains("function! clap#filter#async#dyn#start"));
-            assert!(usages[1].line.contains("call clap#filter#async#dyn#start"));
-            assert!(usages[2].line.contains("call clap#filter#async#dyn#start"));
+                .contains("function! clap#filter#async#dyn#start_filter_with_cache"));
+            assert!(usages[1]
+                .line
+                .contains("call clap#filter#async#dyn#start_filter_with_cache"));
         }
     }
 }

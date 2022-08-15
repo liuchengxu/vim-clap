@@ -43,7 +43,7 @@ impl List {
         writeln!(lock, "\t{cache_dir_display}\n")?;
 
         let cache_info = CACHE_INFO_IN_MEMORY.lock();
-        let mut digests = cache_info.digests();
+        let mut digests = cache_info.to_digests();
         digests.sort_unstable_by_key(|digest| digest.total);
         writeln!(lock, "{:#?}\n", digests)?;
 

@@ -1,13 +1,13 @@
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use clap::Parser;
 use subprocess::Exec;
 
-use filter::{FilterContext, Source};
-use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
-use types::SourceItem;
+use filter::{FilterContext, ParSource, Source};
+use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
@@ -58,11 +58,14 @@ pub struct Filter {
     /// Synchronous filtering, returns until the input stream is complete.
     #[clap(long)]
     sync: bool,
+
+    #[clap(long)]
+    par_run: bool,
 }
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = SourceItem>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = Arc<dyn ClapItem>>>(&self) -> Source<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir).into()
@@ -74,6 +77,24 @@ impl Filter {
                 .as_ref()
                 .map(|i| i.deref().clone().into())
                 .unwrap_or(Source::<I>::Stdin)
+        }
+    }
+
+    fn generate_par_source(&self) -> ParSource {
+        if let Some(ref cmd_str) = self.cmd {
+            let exec = if let Some(ref dir) = self.cmd_dir {
+                Exec::shell(cmd_str).cwd(dir)
+            } else {
+                Exec::shell(cmd_str)
+            };
+            ParSource::Exec(Box::new(exec))
+        } else {
+            let file = self
+                .input
+                .as_ref()
+                .map(|i| i.deref().clone())
+                .expect("Only File and Exec source can be parallel");
+            ParSource::File(file)
         }
     }
 
@@ -116,6 +137,12 @@ impl Filter {
             )?;
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
+        } else if self.par_run {
+            filter::par_dyn_run(
+                &self.query,
+                FilterContext::new(icon, number, winwidth, matcher),
+                self.generate_par_source(),
+            )?;
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,

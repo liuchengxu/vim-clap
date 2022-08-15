@@ -44,6 +44,56 @@ impl DisplayLines {
         }
     }
 
+    pub fn print_on_session_create(&self) {
+        let Self {
+            lines,
+            truncated_map,
+            icon_added,
+            ..
+        } = self;
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:init_display";
+        println_json_with_length!(method, lines, icon_added, truncated_map);
+    }
+
+    pub fn print_on_typed(&self, total: usize) {
+        let Self {
+            lines,
+            indices,
+            truncated_map,
+            icon_added,
+        } = self;
+
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
+        println_json_with_length!(total, lines, indices, truncated_map, icon_added, method);
+    }
+
+    pub fn print_on_dyn_run(&self, matched: usize, processed: usize) {
+        let Self {
+            lines,
+            indices,
+            truncated_map,
+            icon_added,
+        } = self;
+
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
+        if truncated_map.is_empty() {
+            println_json_with_length!(method, lines, indices, icon_added, matched, processed);
+        } else {
+            println_json_with_length!(
+                method,
+                lines,
+                indices,
+                icon_added,
+                matched,
+                processed,
+                truncated_map
+            );
+        }
+    }
+
     fn print_on_dyn_run_finished(
         &self,
         total_matched: usize,
@@ -80,7 +130,7 @@ impl DisplayLines {
         }
     }
 
-    pub fn print_json(&self, total: Option<usize>) {
+    fn print_json(&self, total: usize) {
         let Self {
             lines,
             indices,
@@ -88,38 +138,33 @@ impl DisplayLines {
             icon_added,
         } = self;
 
-        if let Some(total) = total {
-            println_json!(lines, indices, truncated_map, icon_added, total);
-        } else {
-            println_json!(lines, indices, truncated_map, icon_added, total);
-        }
-    }
-
-    pub fn print_on_session_create(&self) {
-        let Self {
-            lines,
-            truncated_map,
-            icon_added,
-            ..
-        } = self;
-        let method = "s:init_display";
-        println_json_with_length!(lines, truncated_map, icon_added, method);
+        println_json!(lines, indices, truncated_map, icon_added, total);
     }
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines(mut top_list: Vec<MatchedItem>, winwidth: usize, icon: Icon) -> DisplayLines {
-    let truncated_map = truncate_long_matched_lines(top_list.iter_mut(), winwidth, None);
-    if let Some(painter) = icon.painter() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = top_list
+pub fn decorate_lines(
+    matched_items: Vec<MatchedItem>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let mut matched_items = matched_items;
+    let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
+    if let Some(icon_kind) = icon.icon_kind() {
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
             .enumerate()
             .map(|(idx, matched_item)| {
                 let display_text = matched_item.display_text();
-                let iconized = if let Some(output_text) = truncated_map.get(&(idx + 1)) {
-                    format!("{} {}", painter.icon(output_text), display_text)
+                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+                    let icon = matched_item
+                        .item
+                        .icon(icon)
+                        .expect("Icon must be provided if specified");
+                    *output_text = format!("{icon} {output_text}");
+                    format!("{icon} {display_text}")
                 } else {
-                    painter.paint(&display_text)
+                    icon_kind.add_icon_to_text(&display_text)
                 };
                 (iconized, matched_item.shifted_indices(ICON_LEN))
             })
@@ -127,7 +172,7 @@ pub fn decorate_lines(mut top_list: Vec<MatchedItem>, winwidth: usize, icon: Ico
 
         DisplayLines::new(lines, indices, truncated_map, true)
     } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = top_list
+        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
             .into_iter()
             .map(|matched_item| {
                 (
@@ -152,7 +197,7 @@ pub fn print_sync_filter_results(
         let total_matched = matched_items.len();
         let mut matched_items = matched_items;
         matched_items.truncate(number);
-        decorate_lines(matched_items, winwidth, icon).print_json(Some(total_matched));
+        decorate_lines(matched_items, winwidth, icon).print_json(total_matched);
     } else {
         matched_items.iter().for_each(|matched_item| {
             let indices = &matched_item.indices;
@@ -182,7 +227,8 @@ pub(crate) mod tests {
         Source, SourceItem,
     };
     use rayon::prelude::*;
-    use types::Query;
+    use std::sync::Arc;
+    use types::{ClapItem, Query};
 
     pub(crate) fn wrap_matches(line: &str, indices: &[usize]) -> String {
         let mut ret = String::new();
@@ -227,7 +273,7 @@ pub(crate) mod tests {
     ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
-        let mut ranked = Source::List(std::iter::once(line.into()))
+        let mut ranked = Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
             .run_and_collect(matcher, &query.into())
             .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());

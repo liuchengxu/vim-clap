@@ -24,12 +24,7 @@ if g:__clap_development
   endfunction
 else
   function! s:proj_tags.on_typed() abort
-    if exists('g:__clap_forerunner_tempfile')
-      call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
-    else
-      call clap#filter#async#dyn#start_directly(
-            \ clap#maple#build_cmd('ctags', 'recursive-tags', '--dir', clap#rooter#working_dir(), '--query', g:clap.input.get()))
-    endif
+    call clap#filter#async#dyn#start_ctags_recursive()
   endfunction
 
   function! s:proj_tags.init() abort

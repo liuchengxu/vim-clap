@@ -1,8 +1,25 @@
-use std::borrow::Cow;
+use std::sync::Arc;
+use std::{any::Any, borrow::Cow};
 
+use icon::Icon;
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
 
-use crate::matcher::Score;
+use crate::{MatchResult, Score};
+
+pub trait AsAny {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 /// A tuple of match text piece (matching_text, offset_of_matching_text).
 #[derive(Debug, Clone)]
@@ -60,7 +77,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// This trait represents the items used in the entire filter pipeline.
-pub trait ClapItem: std::fmt::Debug + Send + Sync + 'static {
+pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
     /// Initial raw text.
     fn raw_text(&self) -> &str;
 
@@ -85,6 +102,14 @@ pub trait ClapItem: std::fmt::Debug + Send + Sync + 'static {
         self.match_text()
     }
 
+    /// Callback for the result of `matcher::match_item`.
+    ///
+    /// Sometimes we need to tweak the indices of matched item for custom output text, e.g.,
+    /// `BlinesItem`.
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        match_result
+    }
+
     /// Constructs a text intended to be displayed on the screen without any decoration (truncation,
     /// icon, etc).
     ///
@@ -93,15 +118,11 @@ pub trait ClapItem: std::fmt::Debug + Send + Sync + 'static {
     fn output_text(&self) -> Cow<'_, str> {
         self.raw_text().into()
     }
-}
 
-impl ClapItem for SourceItem {
-    fn raw_text(&self) -> &str {
-        &self.raw
-    }
-
-    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
-        self.fuzzy_text_or_exact_using_match_scope(match_scope)
+    /// Returns the icon if enabled and possible.
+    fn icon(&self, icon: icon::Icon) -> Option<icon::IconType> {
+        icon.icon_kind()
+            .map(|icon_kind| icon_kind.icon(&self.output_text()))
     }
 }
 
@@ -115,7 +136,87 @@ impl<T: AsRef<str> + std::fmt::Debug + Send + Sync + 'static> ClapItem for T {
     }
 }
 
-/// This type represents the item for doing the filtering pipeline.
+#[derive(Debug, Clone)]
+pub struct GrepItem {
+    raw: String,
+    end_of_path: usize,
+    start_of_line: usize,
+}
+
+impl GrepItem {
+    pub fn try_new(raw: String) -> Option<Self> {
+        let (end_of_path, start_of_line) = pattern::parse_grep_item(&raw)?;
+        Some(Self {
+            raw,
+            end_of_path,
+            start_of_line,
+        })
+    }
+
+    fn file_path(&self) -> &str {
+        &self.raw[..self.end_of_path]
+    }
+
+    fn line(&self) -> &str {
+        &self.raw[self.start_of_line..]
+    }
+}
+
+impl ClapItem for GrepItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText::new(self.line(), self.start_of_line))
+    }
+
+    fn bonus_text(&self) -> &str {
+        self.line()
+    }
+
+    fn icon(&self, _icon: Icon) -> Option<icon::IconType> {
+        Some(icon::file_icon(self.file_path()))
+    }
+}
+
+/// Item of `:Clap files`, but only matches the file name instead of the entire file path.
+#[derive(Debug, Clone)]
+pub struct FileNameItem {
+    raw: String,
+    file_name_offset: usize,
+}
+
+impl FileNameItem {
+    pub fn try_new(raw: String) -> Option<Self> {
+        let (_file_name, file_name_offset) = pattern::extract_file_name(&raw)?;
+        Some(Self {
+            raw,
+            file_name_offset,
+        })
+    }
+
+    fn file_name(&self) -> &str {
+        &self.raw[self.file_name_offset..]
+    }
+}
+
+impl ClapItem for FileNameItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, _match_scope: MatchScope) -> Option<FuzzyText> {
+        Some(FuzzyText::new(self.file_name(), self.file_name_offset))
+    }
+
+    fn icon(&self, _icon: Icon) -> Option<icon::IconType> {
+        Some(icon::file_icon(&self.raw))
+    }
+}
+
+/// This type represents multiple kinds of concrete Clap item from providers like grep,
+/// proj_tags, files, etc.
 #[derive(Debug, Clone)]
 pub struct SourceItem {
     /// Raw line from the initial input stream.
@@ -170,6 +271,20 @@ impl SourceItem {
     }
 }
 
+impl ClapItem for SourceItem {
+    fn raw_text(&self) -> &str {
+        &self.raw
+    }
+
+    fn fuzzy_text(&self, match_scope: MatchScope) -> Option<FuzzyText> {
+        self.fuzzy_text_or_exact_using_match_scope(match_scope)
+    }
+
+    fn output_text(&self) -> Cow<'_, str> {
+        self.output_text_or_raw().into()
+    }
+}
+
 pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyText> {
     match match_scope {
         MatchScope::Full => Some(FuzzyText::new(full, 0)),
@@ -187,7 +302,7 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
 #[derive(Debug, Clone)]
 pub struct MatchedItem {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
-    pub item: SourceItem,
+    pub item: Arc<dyn ClapItem>,
     /// Filtering score.
     pub score: Score,
     /// Indices of matched elements.
@@ -201,7 +316,7 @@ pub struct MatchedItem {
 }
 
 impl MatchedItem {
-    pub fn new(item: SourceItem, score: Score, indices: Vec<usize>) -> Self {
+    pub fn new(item: Arc<dyn ClapItem>, score: Score, indices: Vec<usize>) -> Self {
         Self {
             item,
             score,

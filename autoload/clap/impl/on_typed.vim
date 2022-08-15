@@ -77,23 +77,16 @@ function! s:on_typed_sync_impl() abort
 endfunction
 
 function! s:dyn_run_is_ok() abort
-  if g:clap.provider.id ==# 'blines' && filereadable(expand('#'.g:clap.start.bufnr.':p'))
-    call clap#filter#async#dyn#start_directly(clap#maple#command#blines())
-    return v:true
-  endif
-
   if exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#from_tempfile(g:__clap_forerunner_tempfile)
+    call clap#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
     return v:true
-  endif
-  if g:clap.provider.source_type == g:__t_string
-    call clap#filter#async#dyn#start(g:clap.provider._().source)
+  elseif g:clap.provider.source_type == g:__t_string
+    call clap#filter#async#dyn#start_filter(g:clap.provider._().source)
     return v:true
   elseif g:clap.provider.source_type == g:__t_func_string
-    call clap#filter#async#dyn#start(g:clap.provider._().source())
+    call clap#filter#async#dyn#start_filter(g:clap.provider._().source())
     return v:true
   endif
-
   return v:false
 endfunction
 
@@ -111,12 +104,6 @@ function! s:on_typed_async_impl() abort
       call clap#sign#toggle_cursorline()
       call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()
-    elseif g:clap.provider.id ==# 'blines'
-      call g:clap.display.set_lines_lazy(clap#provider#blines#on_empty())
-      call clap#indicator#set_matches_number(g:clap.display.initial_size)
-      call clap#sign#toggle_cursorline()
-      call g:clap#display_win.shrink_if_undersize()
-      call g:clap.preview.hide()
     endif
     call clap#highlight#clear()
     return
@@ -129,6 +116,7 @@ function! s:on_typed_async_impl() abort
     if s:dyn_run_is_ok()
       return
     endif
+    " TODO: remove this later since par-run is supported.
     let cmd = g:clap.provider.source_async_or_default()
     call clap#rooter#run(function('clap#job#regular#maple#start'), cmd)
   else

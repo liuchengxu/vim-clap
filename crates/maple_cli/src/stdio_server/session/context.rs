@@ -7,12 +7,12 @@ use parking_lot::Mutex;
 use serde::Deserialize;
 
 use icon::{Icon, IconKind};
-use matcher::MatchScope;
+use matcher::{ClapItem, MatchScope};
 use types::MatchedItem;
 
-use crate::command::ctags::buffer_tags::BufferTagInfo;
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
 use crate::stdio_server::types::ProviderId;
+use crate::tools::ctags::BufferTag;
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
@@ -30,8 +30,12 @@ pub enum SourceScale {
     /// too many for the synchorous filtering.
     Large(usize),
 
+    // TODO: Use Arc<dyn ClapItem> instead of String.
     /// Small scale, in which case we do not have to use the dynamic filtering.
-    Small { total: usize, lines: Vec<String> },
+    Small {
+        total: usize,
+        items: Vec<Arc<dyn ClapItem>>,
+    },
 
     /// Unknown scale, but the cache exists.
     Cache { total: usize, path: PathBuf },
@@ -55,26 +59,23 @@ impl SourceScale {
 
     pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
         match self {
-            Self::Small { ref lines, .. } => Some(
-                lines
+            Self::Small { ref items, .. } => Some(
+                items
                     .iter()
                     .take(n)
-                    .map(|s| {
-                        MatchedItem::new(
-                            s.to_string().into(),
-                            Default::default(),
-                            Default::default(),
-                        )
+                    .map(|item| {
+                        MatchedItem::new(item.clone(), Default::default(), Default::default())
                     })
                     .collect(),
             ),
             Self::Cache { ref path, .. } => {
+                // TODO: Raw line to item
                 if let Ok(lines_iter) = utility::read_first_lines(path, n) {
                     Some(
                         lines_iter
                             .map(|line| {
                                 MatchedItem::new(
-                                    line.into(),
+                                    Arc::new(line),
                                     Default::default(),
                                     Default::default(),
                                 )
@@ -94,7 +95,7 @@ impl SourceScale {
 #[derive(Debug, Clone)]
 pub struct CachedBufTags {
     pub done: bool,
-    pub tags: Vec<BufferTagInfo>,
+    pub tags: Vec<BufferTag>,
 }
 
 #[derive(Debug, Clone)]

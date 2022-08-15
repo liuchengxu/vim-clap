@@ -5,9 +5,8 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::app::Params;
-use crate::process::light::{CommandEnv, LightCommand};
-use crate::process::rstd::StdCommand;
-use crate::process::BaseCommand;
+use crate::process::shell_command;
+use crate::process::{CacheableCommand, ShellCommand};
 
 /// Execute the shell command
 #[derive(Parser, Debug, Clone)]
@@ -28,13 +27,13 @@ pub struct Exec {
 impl Exec {
     // This can work with the piped command, e.g., git ls-files | uniq.
     fn prepare_exec_cmd(&self) -> Command {
-        let mut cmd = StdCommand::new(self.shell_cmd.as_str());
+        let mut cmd = shell_command(self.shell_cmd.as_str());
 
         if let Some(ref cmd_dir) = self.cmd_dir {
             cmd.current_dir(cmd_dir);
         }
 
-        cmd.into_inner()
+        cmd
     }
 
     pub fn run(
@@ -60,19 +59,22 @@ impl Exec {
             self.output_threshold
         };
 
-        let mut light_cmd = LightCommand::new(
-            &mut exec_cmd,
-            CommandEnv::new(None, number, icon, Some(output_threshold)),
-        );
-
         let cwd = match &self.cmd_dir {
             Some(dir) => dir.clone(),
             None => std::env::current_dir()?,
         };
 
-        let base_cmd = BaseCommand::new(self.shell_cmd.clone(), cwd);
+        let shell_cmd = ShellCommand::new(self.shell_cmd.clone(), cwd);
 
-        light_cmd.try_cache_or_execute(base_cmd, no_cache)?.print();
+        CacheableCommand::new(
+            &mut exec_cmd,
+            shell_cmd,
+            number,
+            icon,
+            Some(output_threshold),
+        )
+        .try_cache_or_execute(no_cache)?
+        .print();
 
         Ok(())
     }

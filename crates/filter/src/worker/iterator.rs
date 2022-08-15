@@ -1,10 +1,13 @@
+//! Convert the source item stream to an iterator and run the filtering sequentially.
+
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{MatchedItem, Query, Score, SourceItem};
+use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
 
 use crate::source::{source_exec, source_file, source_list, source_stdin};
@@ -149,9 +152,9 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let matched_item = std::ops::Index::index(buffer, idx);
-                    let text = if let Some(painter) = self.icon.painter() {
+                    let text = if let Some(icon_kind) = self.icon.icon_kind() {
                         indices.push(matched_item.shifted_indices(ICON_LEN));
-                        painter.paint(matched_item.display_text())
+                        icon_kind.add_icon_to_text(matched_item.display_text())
                     } else {
                         indices.push(matched_item.indices.clone());
                         matched_item.display_text().into()
@@ -284,7 +287,7 @@ fn dyn_collect_number(
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn dyn_run<I: Iterator<Item = SourceItem>>(
+pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     filter_context: FilterContext,
     source: Source<I>,
@@ -310,7 +313,8 @@ pub fn dyn_run<I: Iterator<Item = SourceItem>>(
             }
         };
 
-        let matched_items = sort_matched_items(matched_items);
+        let mut matched_items = sort_matched_items(matched_items);
+        matched_items.truncate(number);
 
         printer::print_dyn_matched_items(
             matched_items,
@@ -395,9 +399,10 @@ mod tests {
                         println!("Total lines created: {}", total_lines_created)
                     }
 
-                    String::from_utf8(changing_text.as_ref().to_owned())
-                        .unwrap()
-                        .into()
+                    let item: Arc<dyn ClapItem> =
+                        Arc::new(String::from_utf8(changing_text.as_ref().to_owned()).unwrap());
+
+                    item
                 })
                 .take(usize::max_value() >> 8),
             ),

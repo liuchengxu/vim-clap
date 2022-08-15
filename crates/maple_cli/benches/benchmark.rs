@@ -4,12 +4,14 @@ use std::sync::Arc;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rayon::prelude::*;
 
+use filter::{MatchedItem, Query, SourceItem};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::ClapItem;
 
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use maple_cli::command::dumb_jump::DumbJump;
 use maple_cli::find_largest_cache_digest;
+use maple_cli::tools::ctags::{ProjectCtagsCommand, ProjectTag};
 
 fn prepare_source_items() -> Vec<SourceItem> {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");
@@ -23,14 +25,20 @@ fn prepare_source_items() -> Vec<SourceItem> {
 
 fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_iter()
-        .filter_map(|item| matcher.match_item(item, query))
+        .filter_map(|item| {
+            let item: Arc<dyn ClapItem> = Arc::new(item);
+            matcher.match_item(item, query)
+        })
         .collect()
 }
 
 // 3 times faster than filter
 fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_par_iter()
-        .filter_map(|item| matcher.match_item(item, query))
+        .filter_map(|item| {
+            let item: Arc<dyn ClapItem> = Arc::new(item);
+            matcher.match_item(item, query)
+        })
         .collect()
 }
 
@@ -89,17 +97,37 @@ fn bench_filter(c: &mut Criterion) {
 }
 
 fn bench_ctags(c: &mut Criterion) {
-    let ctags_cmd =
-        build_recursive_ctags_cmd("/home/xlc/src/github.com/paritytech/substrate".into());
+    let build_ctags_cmd =
+        || build_recursive_ctags_cmd("/home/xlc/src/github.com/paritytech/substrate".into());
 
     // TODO: Make the parallel version faster, the previous benchmark result in the initial PR
     // https://github.com/liuchengxu/vim-clap/pull/755 is incorrect due to the cwd set incorrectly.
     c.bench_function("parallel recursive ctags", |b| {
-        b.iter(|| ctags_cmd.par_formatted_lines())
+        b.iter(|| {
+            let mut ctags_cmd = build_ctags_cmd();
+            ctags_cmd.par_formatted_lines()
+        })
     });
 
+    fn formatted_lines(ctags_cmd: ProjectCtagsCommand) -> Vec<String> {
+        ctags_cmd
+            .lines()
+            .unwrap()
+            .filter_map(|tag| {
+                if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+                    Some(tag.format_proj_tag())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     c.bench_function("recursive ctags", |b| {
-        b.iter(|| ctags_cmd.formatted_lines())
+        b.iter(|| {
+            let ctags_cmd = build_ctags_cmd();
+            formatted_lines(ctags_cmd)
+        })
     });
 }
 

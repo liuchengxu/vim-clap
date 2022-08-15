@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
 use chrono::prelude::*;
 
 use crate::datastore::CACHE_INFO_IN_MEMORY;
-use crate::process::BaseCommand;
+use crate::process::ShellCommand;
 use crate::utils::UtcTime;
 
 pub const MAX_DIGESTS: usize = 100;
@@ -14,7 +13,7 @@ pub const MAX_DIGESTS: usize = 100;
 pub struct Digest {
     /// Base command.
     #[serde(flatten)]
-    pub base: BaseCommand,
+    pub shell_cmd: ShellCommand,
     /// Time of last visit.
     pub last_visit: UtcTime,
     /// Time of last execution.
@@ -31,10 +30,10 @@ pub struct Digest {
 
 impl Digest {
     /// Creates an instance of [`Digest`].
-    pub fn new(base: BaseCommand, total: usize, cached_path: PathBuf) -> Self {
+    pub fn new(shell_cmd: ShellCommand, total: usize, cached_path: PathBuf) -> Self {
         let now = Utc::now();
         Self {
-            base,
+            shell_cmd,
             total,
             cached_path,
             last_visit: now,
@@ -94,9 +93,14 @@ impl CacheInfo {
         const MAX_DAYS: i64 = 30;
 
         self.digests.retain(|digest| {
-            if digest.base.cwd.exists()
+            if digest.shell_cmd.cwd.exists()
                 && digest.cached_path.exists()
                 && now.signed_duration_since(digest.last_visit).num_days() < MAX_DAYS
+                // In case the cache was not created completely.
+                && std::fs::File::open(&digest.cached_path)
+                    .and_then(crate::utils::count_lines)
+                    .map(|total| total == digest.total)
+                    .unwrap_or(false)
             {
                 true
             } else {
@@ -107,14 +111,14 @@ impl CacheInfo {
         });
     }
 
-    /// Finds the digest given `base_cmd`.
-    fn find_digest(&self, base_cmd: &BaseCommand) -> Option<usize> {
-        self.digests.iter().position(|d| &d.base == base_cmd)
+    /// Finds the digest given `shell_cmd`.
+    fn find_digest(&self, shell_cmd: &ShellCommand) -> Option<usize> {
+        self.digests.iter().position(|d| &d.shell_cmd == shell_cmd)
     }
 
-    /// Finds the usable digest given `base_cmd`.
-    pub fn find_digest_usable(&mut self, base_cmd: &BaseCommand) -> Option<Digest> {
-        match self.find_digest(base_cmd) {
+    /// Finds the usable digest given `shell_cmd`.
+    pub fn find_digest_usable(&mut self, shell_cmd: &ShellCommand) -> Option<Digest> {
+        match self.find_digest(shell_cmd) {
             Some(index) => {
                 let mut d = &mut self.digests[index];
                 if d.is_usable() {
@@ -136,9 +140,9 @@ impl CacheInfo {
     /// Pushes `digest` to the digests queue with max capacity constraint.
     ///
     /// Also writes the memory cached info back to the disk.
-    pub fn limited_push(&mut self, digest: Digest) -> Result<()> {
+    pub fn limited_push(&mut self, digest: Digest) -> std::io::Result<()> {
         // The digest already exists.
-        if let Some(index) = self.find_digest(&digest.base) {
+        if let Some(index) = self.find_digest(&digest.shell_cmd) {
             let old_executions = self.digests[index].total_executions;
             let mut new_digest = digest;
             new_digest.total_executions += old_executions;
@@ -152,27 +156,22 @@ impl CacheInfo {
             }
         }
 
-        crate::datastore::store_cache_info(self)?;
-
-        Ok(())
+        crate::datastore::store_cache_info(self)
     }
 
     /// Prunes the stale digest at index of `stale_index`.
-    pub fn prune_stale(&mut self, stale_index: usize) -> Result<()> {
+    pub fn prune_stale(&mut self, stale_index: usize) -> std::io::Result<()> {
         self.digests.swap_remove(stale_index);
-
-        crate::datastore::store_cache_info(self)?;
-
-        Ok(())
+        crate::datastore::store_cache_info(self)
     }
 
-    pub fn digests(&self) -> Vec<Digest> {
+    pub fn to_digests(&self) -> Vec<Digest> {
         self.digests.clone()
     }
 }
 
 /// Pushes the digest of the results of new fresh run to [`CACHE_INFO_IN_MEMORY`].
-pub fn push_cache_digest(digest: Digest) -> Result<()> {
+pub fn push_cache_digest(digest: Digest) {
     let cache_info = CACHE_INFO_IN_MEMORY.clone();
 
     tokio::spawn(async move {
@@ -181,22 +180,22 @@ pub fn push_cache_digest(digest: Digest) -> Result<()> {
             tracing::error!(?e, "Failed to push the cache digest");
         }
     });
-
-    Ok(())
 }
 
 pub fn find_largest_cache_digest() -> Option<Digest> {
     let cache_info = CACHE_INFO_IN_MEMORY.lock();
-    let mut digests = cache_info.digests();
+    let mut digests = cache_info.to_digests();
     digests.sort_unstable_by_key(|digest| digest.total);
     digests.last().cloned()
 }
 
-pub fn store_cache_digest(base_cmd: BaseCommand, new_created_cache: PathBuf) -> Result<Digest> {
-    // TODO: mmap should be faster.
+pub fn store_cache_digest(
+    shell_cmd: ShellCommand,
+    new_created_cache: PathBuf,
+) -> std::io::Result<Digest> {
     let total = crate::utils::count_lines(std::fs::File::open(&new_created_cache)?)?;
 
-    let digest = Digest::new(base_cmd, total, new_created_cache);
+    let digest = Digest::new(shell_cmd, total, new_created_cache);
 
     let cache_info = crate::datastore::CACHE_INFO_IN_MEMORY.clone();
     let mut cache_info = cache_info.lock();

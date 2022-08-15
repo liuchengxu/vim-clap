@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
+use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
 use printer::truncate_long_matched_lines_v0;
-use types::{MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchScope, SourceItem, Query};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -60,6 +61,27 @@ impl From<HashMap<String, String>> for MatchContext {
     }
 }
 
+#[derive(Debug)]
+struct LineWithIcon(String);
+
+impl ClapItem for LineWithIcon {
+    fn raw_text(&self) -> &str {
+        self.0.as_str()
+    }
+
+    fn match_text(&self) -> &str {
+        &self.0[4..]
+    }
+
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        let mut match_result = match_result;
+        match_result.indices.iter_mut().for_each(|x| {
+            *x += 4;
+        });
+        match_result
+    }
+}
+
 /// Filter the candidates synchorously given `query` and `candidates`.
 ///
 /// `recent_files` and `context` are the full context for matching each item.
@@ -86,19 +108,12 @@ fn fuzzy_match(
     let mut ranked = candidates
         .into_iter()
         .filter_map(|line: String| {
-            if enable_icon {
-                matcher
-                    .match_item(SourceItem::from(String::from(&line[4..])), &query)
-                    .map(|matched_item| {
-                        let indices = matched_item.indices.iter().map(|x| x + 4).collect();
-                        MatchedItem {
-                            indices,
-                            ..matched_item
-                        }
-                    })
+            let item: Arc<dyn ClapItem> = if enable_icon {
+                Arc::new(LineWithIcon(line))
             } else {
-                matcher.match_item(SourceItem::from(line), &query)
-            }
+                Arc::new(SourceItem::from(line))
+            };
+            matcher.match_item(item, &query)
         })
         .collect::<Vec<_>>();
 

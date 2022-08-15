@@ -110,18 +110,4 @@ impl Usages {
         let mut other_usages = other.0;
         self.0.append(&mut other_usages);
     }
-
-    /// Prints the lines info to stdout.
-    pub fn print(self) {
-        let total = self.0.len();
-        let (lines, indices) = self.deconstruct();
-        utility::println_json_with_length!(total, lines, indices);
-    }
-
-    pub fn deconstruct(self) -> (Vec<String>, Vec<Vec<usize>>) {
-        self.0
-            .into_par_iter()
-            .map(|usage| (usage.line, usage.indices))
-            .unzip()
-    }
 }

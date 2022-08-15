@@ -9,7 +9,10 @@ pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,
     TermType,
 };
-pub use self::source_item::{ClapItem, FuzzyText, MatchScope, MatchedItem, SourceItem};
+pub use self::source_item::{
+    extract_fuzzy_text, AsAny, ClapItem, FileNameItem, FuzzyText, GrepItem, MatchScope,
+    MatchedItem, SourceItem,
+};
 
 /// The preview content is usually part of a file.
 #[derive(Clone, Debug)]

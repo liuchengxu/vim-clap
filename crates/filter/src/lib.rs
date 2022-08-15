@@ -9,14 +9,17 @@
 mod source;
 mod worker;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
-use matcher::{Bonus, MatchScope, Matcher};
+use matcher::{Bonus, ClapItem, MatchScope, Matcher};
 
 pub use self::source::Source;
 pub use self::worker::iterator::dyn_run;
+pub use self::worker::par_iterator::{par_dyn_run, par_dyn_run_list, ParSource};
 pub use matcher;
 pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
@@ -81,7 +84,7 @@ pub fn sort_matched_items(matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
 
 /// Returns the ranked results after applying the matcher algo
 /// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = SourceItem>>(
+pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     source: Source<I>,
     matcher: Matcher,
@@ -98,9 +101,26 @@ pub fn par_filter(
     fuzzy_matcher: &Matcher,
 ) -> Vec<MatchedItem> {
     let query: Query = query.into();
-    let matched_items: Vec<MatchedItem> = source_items
+    let matched_items = source_items
         .into_par_iter()
-        .filter_map(|item| fuzzy_matcher.match_item(item, &query))
-        .collect();
+        .filter_map(|item| {
+            let item: Arc<dyn ClapItem> = Arc::new(item);
+            fuzzy_matcher.match_item(item, &query)
+        })
+        .collect::<Vec<_>>();
+    sort_matched_items(matched_items)
+}
+
+/// Performs the synchorous filtering on a small scale of source in parallel.
+pub fn par_filter_items(
+    query: impl Into<Query>,
+    source_items: &[Arc<dyn ClapItem>],
+    fuzzy_matcher: &Matcher,
+) -> Vec<MatchedItem> {
+    let query: Query = query.into();
+    let matched_items = source_items
+        .into_par_iter()
+        .filter_map(|item| fuzzy_matcher.match_item(item.clone(), &query))
+        .collect::<Vec<_>>();
     sort_matched_items(matched_items)
 }

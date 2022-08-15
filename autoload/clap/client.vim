@@ -12,17 +12,16 @@ let s:last_recent_file = v:null
 
 function! s:set_total_size(msg) abort
   let g:clap.display.initial_size = a:msg.total
-  if g:clap.provider.id ==# 'blines'
-    call clap#provider#blines#initialize()
-  endif
 endfunction
 
 function! s:init_display(msg) abort
   if empty(g:clap.input.get())
-    if g:clap.provider.id !=# 'blines'
+    if g:clap.provider.id ==# 'blines'
+      call clap#provider#blines#initialize(a:msg.lines)
+    else
       call g:clap.display.set_lines_lazy(a:msg.lines)
-      call g:clap#display_win.shrink_if_undersize()
     endif
+    call g:clap#display_win.shrink_if_undersize()
   endif
 
   call clap#indicator#update_matches_on_forerunner_done()

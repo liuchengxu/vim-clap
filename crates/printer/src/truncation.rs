@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::slice::IterMut;
 
-use types::{ClapItem, MatchedItem};
+use types::MatchedItem;
 
 /// Line number of Vim is 1-based.
 pub type VimLineNumber = usize;
