@@ -6,7 +6,11 @@ use parking_lot::Mutex;
 use serde_json::{json, Value};
 
 use super::session::SessionManager;
+use super::Notification;
 use crate::stdio_server::impls::dumb_jump::DumbJumpHandle;
+use crate::stdio_server::impls::filer::FilerHandle;
+use crate::stdio_server::impls::recent_files::RecentFilesHandle;
+use crate::stdio_server::impls::DefaultHandle;
 use crate::stdio_server::rpc::{Call, MethodCall};
 use crate::stdio_server::state::State;
 
@@ -41,7 +45,7 @@ impl SessionClient {
     async fn handle_vim_message(self, call: Call) -> Result<()> {
         match call {
             Call::Notification(notification) => {
-                if let Err(e) = notification.process().await {
+                if let Err(e) = self.process_notification(notification).await {
                     tracing::error!(?e, "Error when handling notification");
                 }
             }
@@ -56,6 +60,25 @@ impl SessionClient {
             }
         }
         Ok(())
+    }
+
+    /// Process the notification message from Vim.
+    async fn process_notification(&self, notification: Notification) -> Result<()> {
+        match notification.method.as_str() {
+            "initialize_global_env" => notification.initialize_global_env(), // should be called only once.
+            "note_recent_files" => notification.note_recent_file().await,
+            "on_init" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.new_session(Call::Notification(notification), DefaultHandle::new());
+                Ok(())
+            }
+            "exit" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.terminate(notification.session_id);
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Unknown notification: {notification:?}")),
+        }
     }
 
     /// Process the method call message from Vim.
@@ -90,20 +113,52 @@ impl SessionClient {
                 None
             }
 
-            /*
-            "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
-            "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-            "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
+            "on_typed" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnTyped(msg));
+                None
+            }
+            "on_move" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnMove(msg));
+                None
+            }
 
-            "filer" => filer::handle_filer_message(msg),
-            "filer/on_init" => manager.new_session::<FilerSession>(msg),
-            "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
+            "recent_files/on_init" => {
+                use crate::stdio_server::rpc::Call;
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.new_session(Call::MethodCall(msg), RecentFilesHandle::default());
+                None
+            }
+            "recent_files/on_typed" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnTyped(msg));
+                None
+            }
+            "recent_files/on_move" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnMove(msg));
+                None
+            }
 
-            "on_init" => manager.new_session::<BuiltinSession>(msg),
-            "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-            "on_move" => manager.send(msg.session_id, OnMove(msg)),
-            "exit" => manager.terminate(msg.session_id),
-            */
+            "filer/on_init" => {
+                use crate::stdio_server::rpc::Call;
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.new_session(Call::MethodCall(msg), FilerHandle);
+                None
+            }
+            "filer/on_move" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, OnMove(msg));
+                None
+            }
+            "filer/on_typed" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                // TODO: send_and_wait_result
+                session_manager.send(msg.session_id, OnMove(msg));
+                None
+            }
+
             _ => Some(json!({
                 "error": format!("Unknown method call: {}", msg.method)
             })),
