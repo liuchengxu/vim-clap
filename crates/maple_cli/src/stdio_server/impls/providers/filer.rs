@@ -119,18 +119,18 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Debug)]
-pub struct FilerHandle {
+pub struct FilerProvider {
     context: SessionContext,
 }
 
-impl FilerHandle {
+impl FilerProvider {
     pub fn new(context: SessionContext) -> Self {
         Self { context }
     }
 }
 
 #[async_trait::async_trait]
-impl ClapProvider for FilerHandle {
+impl ClapProvider for FilerProvider {
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

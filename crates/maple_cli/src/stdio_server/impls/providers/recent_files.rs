@@ -12,7 +12,7 @@ use types::{MatchedItem, Score};
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{ClapProvider, Session, SessionContext, SessionEvent};
+use crate::stdio_server::session::{ClapProvider, ProviderEvent, Session, SessionContext};
 use crate::stdio_server::{write_response, MethodCall};
 
 async fn handle_recent_files_message(
@@ -140,12 +140,12 @@ async fn handle_recent_files_message(
 }
 
 #[derive(Debug)]
-pub struct RecentFilesHandle {
+pub struct RecentFilesProvider {
     context: Arc<SessionContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
-impl RecentFilesHandle {
+impl RecentFilesProvider {
     pub fn new(context: SessionContext) -> Self {
         Self {
             context: Arc::new(context),
@@ -155,7 +155,7 @@ impl RecentFilesHandle {
 }
 
 #[async_trait::async_trait]
-impl ClapProvider for RecentFilesHandle {
+impl ClapProvider for RecentFilesProvider {
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

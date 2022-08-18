@@ -6,12 +6,12 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::stdio_server::impls::dumb_jump::DumbJumpHandle;
-use crate::stdio_server::impls::filer::FilerHandle;
-use crate::stdio_server::impls::recent_files::RecentFilesHandle;
+use crate::stdio_server::impls::dumb_jump::DumbJumpProvider;
+use crate::stdio_server::impls::filer::FilerProvider;
+use crate::stdio_server::impls::recent_files::RecentFilesProvider;
 use crate::stdio_server::impls::DefaultHandle;
 use crate::stdio_server::rpc::{Call, RpcClient};
-use crate::stdio_server::session::{SessionContext, SessionEvent, SessionManager};
+use crate::stdio_server::session::{ProviderEvent, SessionContext, SessionManager};
 
 /// Writes the response to stdout.
 pub fn write_response<T: Serialize>(msg: T) {
@@ -40,7 +40,7 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
 }
 
 fn loop_handle_rpc_message(rx: &Receiver<String>) {
-    use SessionEvent::*;
+    use ProviderEvent::*;
 
     let mut manager = SessionManager::default();
     for msg in rx.iter() {
@@ -91,21 +91,21 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
 
                         "dumb_jump/on_init" => {
                             let context: SessionContext = call.clone().into();
-                            manager.new_session(call, Box::new(DumbJumpHandle::new(context)))
+                            manager.new_session(call, Box::new(DumbJumpProvider::new(context)))
                         }
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "recent_files/on_init" => {
                             let context: SessionContext = call.clone().into();
-                            manager.new_session(call, Box::new(RecentFilesHandle::new(context)))
+                            manager.new_session(call, Box::new(RecentFilesProvider::new(context)))
                         }
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "filer/on_init" => {
                             let context: SessionContext = call.clone().into();
-                            manager.new_session(call, Box::new(FilerHandle::new(context)))
+                            manager.new_session(call, Box::new(FilerProvider::new(context)))
                         }
                         "filer/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),

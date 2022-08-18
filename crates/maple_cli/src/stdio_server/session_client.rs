@@ -7,9 +7,9 @@ use serde_json::{json, Value};
 
 use super::session::SessionManager;
 use super::Notification;
-use crate::stdio_server::impls::dumb_jump::DumbJumpHandle;
-use crate::stdio_server::impls::filer::FilerHandle;
-use crate::stdio_server::impls::recent_files::RecentFilesHandle;
+use crate::stdio_server::impls::dumb_jump::DumbJumpProvider;
+use crate::stdio_server::impls::filer::FilerProvider;
+use crate::stdio_server::impls::recent_files::RecentFilesProvider;
 use crate::stdio_server::impls::DefaultHandle;
 use crate::stdio_server::rpc::{Call, MethodCall};
 use crate::stdio_server::session::SessionContext;
@@ -86,7 +86,7 @@ impl SessionClient {
 
     /// Process the method call message from Vim.
     async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
-        use super::SessionEvent::*;
+        use super::ProviderEvent::*;
 
         let msg = method_call;
 
@@ -100,11 +100,10 @@ impl SessionClient {
             "quickfix" => Some(msg.preview_quickfix().await?),
 
             "dumb_jump/on_init" => {
-                use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(DumbJumpHandle::new(context)));
+                session_manager.new_session(call, Box::new(DumbJumpProvider::new(context)));
                 None
             }
             "dumb_jump/on_typed" => {
@@ -130,11 +129,10 @@ impl SessionClient {
             }
 
             "recent_files/on_init" => {
-                use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(RecentFilesHandle::new(context)));
+                session_manager.new_session(call, Box::new(RecentFilesProvider::new(context)));
                 None
             }
             "recent_files/on_typed" => {
@@ -149,11 +147,10 @@ impl SessionClient {
             }
 
             "filer/on_init" => {
-                use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(FilerHandle::new(context)));
+                session_manager.new_session(call, Box::new(FilerProvider::new(context)));
                 None
             }
             "filer/on_move" => {

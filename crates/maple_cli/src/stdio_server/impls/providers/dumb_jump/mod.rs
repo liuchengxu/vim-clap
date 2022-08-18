@@ -210,7 +210,7 @@ async fn search_for_usages(
 }
 
 #[derive(Debug)]
-pub struct DumbJumpHandle {
+pub struct DumbJumpProvider {
     context: SessionContext,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
@@ -225,7 +225,7 @@ pub struct DumbJumpHandle {
     first_on_typed_event_received: Arc<AtomicBool>,
 }
 
-impl DumbJumpHandle {
+impl DumbJumpProvider {
     pub fn new(context: SessionContext) -> Self {
         Self {
             context,
@@ -258,7 +258,7 @@ impl DumbJumpHandle {
 }
 
 #[async_trait::async_trait]
-impl ClapProvider for DumbJumpHandle {
+impl ClapProvider for DumbJumpProvider {
     fn session_context(&self) -> &SessionContext {
         &self.context
     }
