@@ -191,11 +191,17 @@ impl<'a> OnMoveHandler<'a> {
     pub async fn handle(&self) -> Result<()> {
         use OnMove::*;
         match &self.inner {
-            Files(path) | Filer(path) | History(path) => self.preview_file(&path)?,
+            Filer(path) => {
+                if path.is_dir() {
+                    self.preview_directory(&path)?
+                } else {
+                    self.preview_file(&path)?;
+                }
+            }
+            Files(path) | History(path) => self.preview_file(&path)?,
             BLines(position) | Grep(position) | ProjTags(position) | BufferTags(position) => {
                 self.preview_file_at(position).await
             }
-            Filer(path) if path.is_dir() => self.preview_directory(&path)?,
             Commit(rev) => self.preview_commits(rev)?,
             HelpTags {
                 subject,
