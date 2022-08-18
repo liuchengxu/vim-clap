@@ -15,7 +15,7 @@ use crate::stdio_server::session::{SessionContext, SourceScale};
 const LARGE_SCALE: usize = 200_000;
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize(context: Arc<SessionContext>) -> Result<SourceScale> {
+pub async fn initialize(context: &SessionContext) -> Result<SourceScale> {
     let to_scale = |lines: Vec<String>| {
         let total = lines.len();
 

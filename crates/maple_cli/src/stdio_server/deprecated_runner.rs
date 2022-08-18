@@ -11,7 +11,7 @@ use crate::stdio_server::impls::filer::FilerHandle;
 use crate::stdio_server::impls::recent_files::RecentFilesHandle;
 use crate::stdio_server::impls::DefaultHandle;
 use crate::stdio_server::rpc::{Call, RpcClient};
-use crate::stdio_server::session::{SessionEvent, SessionManager};
+use crate::stdio_server::session::{SessionContext, SessionEvent, SessionManager};
 
 /// Writes the response to stdout.
 pub fn write_response<T: Serialize>(msg: T) {
@@ -49,7 +49,10 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
             match call.clone() {
                 Call::Notification(notification) => match notification.method.as_str() {
                     "exit" => manager.terminate(notification.session_id),
-                    "on_init" => manager.new_session(call, DefaultHandle::new()),
+                    "on_init" => {
+                        let context: SessionContext = call.clone().into();
+                        manager.new_session(call, Box::new(DefaultHandle::new(context)))
+                    }
                     _ => {
                         tokio::spawn(async move {
                             if let Err(e) = notification.process().await {
@@ -86,17 +89,24 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                             });
                         }
 
-                        "dumb_jump/on_init" => manager.new_session(call, DumbJumpHandle::default()),
+                        "dumb_jump/on_init" => {
+                            let context: SessionContext = call.clone().into();
+                            manager.new_session(call, Box::new(DumbJumpHandle::new(context)))
+                        }
                         "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "recent_files/on_init" => {
-                            manager.new_session(call, RecentFilesHandle::default())
+                            let context: SessionContext = call.clone().into();
+                            manager.new_session(call, Box::new(RecentFilesHandle::new(context)))
                         }
                         "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
-                        "filer/on_init" => manager.new_session(call, FilerHandle),
+                        "filer/on_init" => {
+                            let context: SessionContext = call.clone().into();
+                            manager.new_session(call, Box::new(FilerHandle::new(context)))
+                        }
                         "filer/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
                         "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crossbeam_channel::Sender;
 
-use super::EventHandle;
+use super::{ClapProvider, SessionContext};
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{Session, SessionId};
 use crate::stdio_server::SessionEvent;
@@ -42,7 +42,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Starts a session in a background task.
-    pub fn new_session(&mut self, call: Call, session_event_handle: impl EventHandle) {
+    pub fn new_session(&mut self, call: Call, session_event_handle: Box<dyn ClapProvider>) {
         let session_id = call.session_id();
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");

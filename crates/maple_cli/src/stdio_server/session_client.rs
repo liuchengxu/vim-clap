@@ -12,6 +12,7 @@ use crate::stdio_server::impls::filer::FilerHandle;
 use crate::stdio_server::impls::recent_files::RecentFilesHandle;
 use crate::stdio_server::impls::DefaultHandle;
 use crate::stdio_server::rpc::{Call, MethodCall};
+use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::state::State;
 
 #[derive(Clone)]
@@ -69,7 +70,9 @@ impl SessionClient {
             "note_recent_files" => notification.note_recent_file().await,
             "on_init" => {
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.new_session(Call::Notification(notification), DefaultHandle::new());
+                let call = Call::Notification(notification);
+                let context: SessionContext = call.clone().into();
+                session_manager.new_session(call, Box::new(DefaultHandle::new(context)));
                 Ok(())
             }
             "exit" => {
@@ -99,7 +102,9 @@ impl SessionClient {
             "dumb_jump/on_init" => {
                 use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.new_session(Call::MethodCall(msg), DumbJumpHandle::default());
+                let call = Call::MethodCall(msg);
+                let context: SessionContext = call.clone().into();
+                session_manager.new_session(call, Box::new(DumbJumpHandle::new(context)));
                 None
             }
             "dumb_jump/on_typed" => {
@@ -127,7 +132,9 @@ impl SessionClient {
             "recent_files/on_init" => {
                 use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.new_session(Call::MethodCall(msg), RecentFilesHandle::default());
+                let call = Call::MethodCall(msg);
+                let context: SessionContext = call.clone().into();
+                session_manager.new_session(call, Box::new(RecentFilesHandle::new(context)));
                 None
             }
             "recent_files/on_typed" => {
@@ -144,7 +151,9 @@ impl SessionClient {
             "filer/on_init" => {
                 use crate::stdio_server::rpc::Call;
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.new_session(Call::MethodCall(msg), FilerHandle);
+                let call = Call::MethodCall(msg);
+                let context: SessionContext = call.clone().into();
+                session_manager.new_session(call, Box::new(FilerHandle::new(context)));
                 None
             }
             "filer/on_move" => {

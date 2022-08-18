@@ -9,7 +9,7 @@ use icon::prepend_filer_icon;
 
 use crate::stdio_server::impls::{OnMove, OnMoveHandler};
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{EventHandle, SessionContext};
+use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::{write_response, MethodCall};
 use crate::utils::build_abs_path;
 
@@ -118,19 +118,31 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     Ok(entries)
 }
 
-#[derive(Clone)]
-pub struct FilerHandle;
+#[derive(Debug)]
+pub struct FilerHandle {
+    context: SessionContext,
+}
+
+impl FilerHandle {
+    pub fn new(context: SessionContext) -> Self {
+        Self { context }
+    }
+}
 
 #[async_trait::async_trait]
-impl EventHandle for FilerHandle {
-    async fn on_create(&mut self, call: Call, _context: Arc<SessionContext>) {
+impl ClapProvider for FilerHandle {
+    fn session_context(&self) -> &SessionContext {
+        &self.context
+    }
+
+    async fn on_create(&mut self, call: Call) {
         write_response(
             handle_filer_message(call.unwrap_method_call())
                 .expect("Both Success and Error are returned"),
         );
     }
 
-    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
         #[derive(serde::Deserialize)]
         struct Params {
             // curline: String,
@@ -138,13 +150,13 @@ impl EventHandle for FilerHandle {
         }
         let msg_id = msg.id;
         // Do not use curline directly.
-        let curline = msg.get_curline(&context.provider_id)?;
+        let curline = msg.get_curline(&self.context.provider_id)?;
         let Params { cwd } = msg.parse_unsafe();
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
             msg_id,
-            size: context.sensible_preview_size(),
-            context: &context,
+            size: self.context.sensible_preview_size(),
+            context: &self.context,
             inner: OnMove::Filer(path.clone()),
             cache_line: None,
         };
@@ -160,7 +172,7 @@ impl EventHandle for FilerHandle {
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall, _context: Arc<SessionContext>) -> Result<()> {
+    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
         write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
         Ok(())
     }
