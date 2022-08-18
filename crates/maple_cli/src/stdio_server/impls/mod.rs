@@ -24,12 +24,12 @@ pub use self::on_move::{OnMove, OnMoveHandler};
 pub use self::providers::{dumb_jump, filer, recent_files};
 
 #[derive(Debug)]
-pub struct DefaultHandle {
+pub struct DefaultProvider {
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
-impl DefaultHandle {
+impl DefaultProvider {
     pub fn new(context: SessionContext) -> Self {
         Self {
             context,
@@ -47,7 +47,7 @@ impl DefaultHandle {
 }
 
 #[async_trait::async_trait]
-impl ClapProvider for DefaultHandle {
+impl ClapProvider for DefaultProvider {
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

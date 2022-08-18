@@ -9,7 +9,7 @@ use serde_json::json;
 use crate::stdio_server::impls::dumb_jump::DumbJumpProvider;
 use crate::stdio_server::impls::filer::FilerProvider;
 use crate::stdio_server::impls::recent_files::RecentFilesProvider;
-use crate::stdio_server::impls::DefaultHandle;
+use crate::stdio_server::impls::DefaultProvider;
 use crate::stdio_server::rpc::{Call, RpcClient};
 use crate::stdio_server::session::{ProviderEvent, SessionContext, SessionManager};
 
@@ -51,7 +51,7 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
                     "exit" => manager.terminate(notification.session_id),
                     "on_init" => {
                         let context: SessionContext = call.clone().into();
-                        manager.new_session(call, Box::new(DefaultHandle::new(context)))
+                        manager.new_session(call, Box::new(DefaultProvider::new(context)))
                     }
                     _ => {
                         tokio::spawn(async move {
