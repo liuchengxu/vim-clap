@@ -86,7 +86,6 @@ impl ClapProvider for DefaultProvider {
 
         match source_scale.deref() {
             SourceScale::Small { ref items, .. } => {
-                tracing::debug!("====================== [on_typed] Small");
                 let matched_items =
                     filter::par_filter_items(query, items, &self.context.fuzzy_matcher());
                 let matched = matched_items.len();
