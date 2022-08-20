@@ -126,7 +126,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 pub struct Session {
     pub session_id: u64,
     /// Each provider session can have its own message processing logic.
-    pub provider_handle: Box<dyn ClapProvider>,
+    pub provider: Box<dyn ClapProvider>,
     pub event_recv: crossbeam_channel::Receiver<ProviderEvent>,
 }
 
@@ -151,15 +151,12 @@ impl ProviderEvent {
 }
 
 impl Session {
-    pub fn new(
-        session_id: u64,
-        provider_handle: Box<dyn ClapProvider>,
-    ) -> (Self, Sender<ProviderEvent>) {
+    pub fn new(session_id: u64, provider: Box<dyn ClapProvider>) -> (Self, Sender<ProviderEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {
             session_id,
-            provider_handle,
+            provider,
             event_recv: session_receiver,
         };
 
@@ -168,7 +165,7 @@ impl Session {
 
     pub fn start_event_loop(mut self) {
         tokio::spawn(async move {
-            if self.provider_handle.session_context().debounce {
+            if self.provider.session_context().debounce {
                 self.run_event_loop_with_debounce().await;
             } else {
                 self.run_event_loop_without_debounce().await;
@@ -178,15 +175,15 @@ impl Session {
 
     async fn process_event(&mut self, event: ProviderEvent) -> Result<()> {
         match event {
-            ProviderEvent::Create(call) => self.provider_handle.on_create(call).await,
-            ProviderEvent::Terminate => self.provider_handle.handle_terminate(self.session_id),
+            ProviderEvent::Create(call) => self.provider.on_create(call).await,
+            ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
             ProviderEvent::OnMove(msg) => {
-                self.provider_handle.on_move(msg).await?;
+                self.provider.on_move(msg).await?;
             }
             ProviderEvent::OnTyped(msg) => {
                 // TODO: use a buffered channel here, do not process on every
                 // single char change.
-                self.provider_handle.on_typed(msg).await?;
+                self.provider.on_typed(msg).await?;
             }
         }
         Ok(())
@@ -226,7 +223,7 @@ impl Session {
 
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = %self.provider_handle.session_context().provider_id,
+            provider_id = %self.provider.session_context().provider_id,
             "Spawning a new session task",
         );
 
@@ -240,10 +237,10 @@ impl Session {
                       Ok(event) => {
                           tracing::debug!(event = ?event.short_display(), "Received an event");
                           match event {
-                              ProviderEvent::Terminate => self.provider_handle.handle_terminate(self.session_id),
-                              ProviderEvent::Create(call) => self.provider_handle.on_create(call).await,
+                              ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                              ProviderEvent::Create(call) => self.provider.on_create(call).await,
                               ProviderEvent::OnMove(msg) => {
-                                  if let Err(err) = self.provider_handle.on_move(msg).await {
+                                  if let Err(err) = self.provider.on_move(msg).await {
                                       tracing::error!(?err, "Error processing ProviderEvent::OnMove");
                                   }
                               }
@@ -262,7 +259,7 @@ impl Session {
               default(debounce_timer) => {
                   debounce_timer = NEVER;
                   if let Some(msg) = pending_on_typed.take() {
-                      if let Err(err) = self.provider_handle.on_typed(msg).await {
+                      if let Err(err) = self.provider.on_typed(msg).await {
                           tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
                       }
                   }
