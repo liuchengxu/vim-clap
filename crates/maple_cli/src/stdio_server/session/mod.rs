@@ -3,6 +3,7 @@ mod manager;
 
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::fmt::Debug;
 use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
 
@@ -52,7 +53,7 @@ pub fn note_job_is_finished(job_id: u64) {
 
 pub type SessionId = u64;
 
-fn process_source_scale(source_scale: SourceScale, context: Arc<SessionContext>) {
+fn process_source_scale(source_scale: SourceScale, context: &SessionContext) {
     if let Some(total) = source_scale.total() {
         let method = "s:set_total_size";
         utility::println_json_with_length!(total, method);
@@ -67,12 +68,16 @@ fn process_source_scale(source_scale: SourceScale, context: Arc<SessionContext>)
 }
 
 #[async_trait::async_trait]
-pub trait EventHandle: Send + Sync + 'static {
-    async fn on_create(&mut self, _call: Call, context: Arc<SessionContext>) {
+pub trait ClapProvider: Debug + Send + Sync + 'static {
+    fn session_context(&self) -> &SessionContext;
+
+    async fn on_create(&mut self, _call: Call) {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
+        let context = self.session_context();
+
         // TODO: blocking on_create for the swift providers like `tags`.
-        match tokio::time::timeout(TIMEOUT, initialize(context.clone())).await {
+        match tokio::time::timeout(TIMEOUT, initialize(context)).await {
             Ok(scale_result) => match scale_result {
                 Ok(scale) => process_source_scale(scale, context),
                 Err(e) => tracing::error!(?e, "Error occurred on creating session"),
@@ -101,29 +106,39 @@ pub trait EventHandle: Send + Sync + 'static {
         }
     }
 
-    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
+    async fn on_move(&mut self, msg: MethodCall) -> Result<()>;
 
-    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()>;
+    async fn on_typed(&mut self, msg: MethodCall) -> Result<()>;
+
+    /// Sets the running signal to false, in case of the forerunner thread is still working.
+    fn handle_terminate(&self, session_id: u64) {
+        let context = self.session_context();
+        context.state.is_running.store(false, Ordering::SeqCst);
+        tracing::debug!(
+          session_id,
+            provider_id = %context.provider_id,
+            "Session terminated",
+        );
+    }
 }
 
-#[derive(Debug, Clone)]
-pub struct Session<T> {
+#[derive(Debug)]
+pub struct Session {
     pub session_id: u64,
-    pub context: Arc<SessionContext>,
-    /// Each Session can have its own message processing logic.
-    pub event_handler: T,
-    pub event_recv: crossbeam_channel::Receiver<SessionEvent>,
+    /// Each provider session can have its own message processing logic.
+    pub provider: Box<dyn ClapProvider>,
+    pub event_recv: crossbeam_channel::Receiver<ProviderEvent>,
 }
 
 #[derive(Debug, Clone)]
-pub enum SessionEvent {
+pub enum ProviderEvent {
     OnTyped(MethodCall),
     OnMove(MethodCall),
     Create(Call),
     Terminate,
 }
 
-impl SessionEvent {
+impl ProviderEvent {
     /// Simplified display of session event.
     pub fn short_display(&self) -> Cow<'_, str> {
         match self {
@@ -135,37 +150,22 @@ impl SessionEvent {
     }
 }
 
-impl<T: EventHandle> Session<T> {
-    pub fn new(call: Call, event_handler: T) -> (Self, Sender<SessionEvent>) {
+impl Session {
+    pub fn new(session_id: u64, provider: Box<dyn ClapProvider>) -> (Self, Sender<ProviderEvent>) {
         let (session_sender, session_receiver) = crossbeam_channel::unbounded();
 
         let session = Session {
-            session_id: call.session_id(),
-            context: Arc::new(call.into()),
-            event_handler,
+            session_id,
+            provider,
             event_recv: session_receiver,
         };
 
         (session, session_sender)
     }
 
-    /// Sets the running signal to false, in case of the forerunner thread is still working.
-    pub fn handle_terminate(&mut self) {
-        self.context.state.is_running.store(false, Ordering::SeqCst);
-        tracing::debug!(
-            session_id = self.session_id,
-            provider_id = %self.provider_id(),
-            "Session terminated",
-        );
-    }
-
-    pub fn provider_id(&self) -> &ProviderId {
-        &self.context.provider_id
-    }
-
     pub fn start_event_loop(mut self) {
         tokio::spawn(async move {
-            if self.context.debounce {
+            if self.provider.session_context().debounce {
                 self.run_event_loop_with_debounce().await;
             } else {
                 self.run_event_loop_without_debounce().await;
@@ -173,25 +173,17 @@ impl<T: EventHandle> Session<T> {
         });
     }
 
-    async fn process_event(&mut self, event: SessionEvent) -> Result<()> {
+    async fn process_event(&mut self, event: ProviderEvent) -> Result<()> {
         match event {
-            SessionEvent::Terminate => self.handle_terminate(),
-            SessionEvent::Create(call) => {
-                self.event_handler
-                    .on_create(call, self.context.clone())
-                    .await
+            ProviderEvent::Create(call) => self.provider.on_create(call).await,
+            ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+            ProviderEvent::OnMove(msg) => {
+                self.provider.on_move(msg).await?;
             }
-            SessionEvent::OnMove(msg) => {
-                self.event_handler
-                    .on_move(msg, self.context.clone())
-                    .await?;
-            }
-            SessionEvent::OnTyped(msg) => {
+            ProviderEvent::OnTyped(msg) => {
                 // TODO: use a buffered channel here, do not process on every
                 // single char change.
-                self.event_handler
-                    .on_typed(msg, self.context.clone())
-                    .await?;
+                self.provider.on_typed(msg).await?;
             }
         }
         Ok(())
@@ -203,7 +195,7 @@ impl<T: EventHandle> Session<T> {
                 Ok(event) => {
                     tracing::debug!(event = ?event.short_display(), "Received an event");
                     if let Err(err) = self.process_event(event).await {
-                        tracing::debug!(?err, "Error processing SessionEvent");
+                        tracing::debug!(?err, "Error processing ProviderEvent");
                     }
                 }
                 Err(err) => {
@@ -231,7 +223,7 @@ impl<T: EventHandle> Session<T> {
 
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = %self.provider_id(),
+            provider_id = %self.provider.session_context().provider_id,
             "Spawning a new session task",
         );
 
@@ -245,20 +237,14 @@ impl<T: EventHandle> Session<T> {
                       Ok(event) => {
                           tracing::debug!(event = ?event.short_display(), "Received an event");
                           match event {
-                              SessionEvent::Terminate => self.handle_terminate(),
-                              SessionEvent::Create(call) => {
-                                  self.event_handler
-                                      .on_create(call, self.context.clone())
-                                      .await
-                              }
-                              SessionEvent::OnMove(msg) => {
-                                  if let Err(err) =
-                                      self.event_handler.on_move(msg, self.context.clone()).await
-                                  {
-                                      tracing::error!(?err, "Error processing SessionEvent::OnMove");
+                              ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                              ProviderEvent::Create(call) => self.provider.on_create(call).await,
+                              ProviderEvent::OnMove(msg) => {
+                                  if let Err(err) = self.provider.on_move(msg).await {
+                                      tracing::error!(?err, "Error processing ProviderEvent::OnMove");
                                   }
                               }
-                              SessionEvent::OnTyped(msg) => {
+                              ProviderEvent::OnTyped(msg) => {
                                   pending_on_typed.replace(msg);
                                   debounce_timer = DELAY;
                               }
@@ -273,8 +259,8 @@ impl<T: EventHandle> Session<T> {
               default(debounce_timer) => {
                   debounce_timer = NEVER;
                   if let Some(msg) = pending_on_typed.take() {
-                      if let Err(err) = self.event_handler.on_typed(msg, self.context.clone()).await {
-                          tracing::error!(?err, "Error processing SessionEvent::OnTyped");
+                      if let Err(err) = self.provider.on_typed(msg).await {
+                          tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
                       }
                   }
               }

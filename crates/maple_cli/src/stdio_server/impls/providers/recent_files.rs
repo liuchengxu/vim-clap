@@ -12,7 +12,7 @@ use types::{MatchedItem, Score};
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{EventHandle, Session, SessionContext, SessionEvent};
+use crate::stdio_server::session::{ClapProvider, ProviderEvent, Session, SessionContext};
 use crate::stdio_server::{write_response, MethodCall};
 
 async fn handle_recent_files_message(
@@ -139,22 +139,37 @@ async fn handle_recent_files_message(
     ranked
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct RecentFilesHandle {
+#[derive(Debug)]
+pub struct RecentFilesProvider {
+    context: Arc<SessionContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
+impl RecentFilesProvider {
+    pub fn new(context: SessionContext) -> Self {
+        Self {
+            context: Arc::new(context),
+            lines: Default::default(),
+        }
+    }
+}
+
 #[async_trait::async_trait]
-impl EventHandle for RecentFilesHandle {
-    async fn on_create(&mut self, call: Call, context: Arc<SessionContext>) {
+impl ClapProvider for RecentFilesProvider {
+    fn session_context(&self) -> &SessionContext {
+        &self.context
+    }
+
+    async fn on_create(&mut self, call: Call) {
         let initial_lines =
-            handle_recent_files_message(call.unwrap_method_call(), context, true).await;
+            handle_recent_files_message(call.unwrap_method_call(), self.context.clone(), true)
+                .await;
 
         let mut lines = self.lines.lock();
         *lines = initial_lines;
     }
 
-    async fn on_move(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
+    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
         let msg_id = msg.id;
 
         let lnum = msg.get_u64("lnum").expect("lnum is required");
@@ -166,7 +181,7 @@ impl EventHandle for RecentFilesHandle {
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
-            let on_move_handler = OnMoveHandler::create(&msg, &context, Some(curline))?;
+            let on_move_handler = OnMoveHandler::create(&msg, &self.context, Some(curline))?;
             if let Err(e) = on_move_handler.handle().await {
                 tracing::error!(error = ?e, "Failed to handle OnMove event");
                 write_response(json!({"error": e.to_string(), "id": msg_id }));
@@ -175,13 +190,17 @@ impl EventHandle for RecentFilesHandle {
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall, context: Arc<SessionContext>) -> Result<()> {
-        let new_lines = tokio::spawn(handle_recent_files_message(msg, context, false))
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!(error = ?e, "Failed to spawn task handle_recent_files_message");
-                Default::default()
-            });
+    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
+        let new_lines = tokio::spawn(handle_recent_files_message(
+            msg,
+            self.context.clone(),
+            false,
+        ))
+        .await
+        .unwrap_or_else(|e| {
+            tracing::error!(error = ?e, "Failed to spawn task handle_recent_files_message");
+            Default::default()
+        });
 
         let mut lines = self.lines.lock();
         *lines = new_lines;

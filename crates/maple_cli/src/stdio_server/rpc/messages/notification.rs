@@ -33,7 +33,7 @@ impl Notification {
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 
-    fn initialize_global_env(self) -> Result<()> {
+    pub fn initialize_global_env(self) -> Result<()> {
         #[derive(Deserialize)]
         struct InnerParams {
             is_nvim: Option<bool>,
@@ -60,7 +60,7 @@ impl Notification {
         Ok(())
     }
 
-    async fn note_recent_file(self) -> Result<()> {
+    pub async fn note_recent_file(self) -> Result<()> {
         #[derive(Deserialize)]
         struct InnerParams {
             file: String,

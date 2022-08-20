@@ -21,7 +21,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use self::rpc::{Call, RpcClient};
-use self::session::{SessionEvent, SessionManager};
+use self::session::{ProviderEvent, SessionManager};
 use self::session_client::SessionClient;
 use self::state::State;
 use self::types::GlobalEnv;

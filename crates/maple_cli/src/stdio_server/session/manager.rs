@@ -2,32 +2,32 @@ use std::collections::HashMap;
 
 use crossbeam_channel::Sender;
 
-use super::EventHandle;
+use super::{ClapProvider, SessionContext};
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{Session, SessionId};
-use crate::stdio_server::SessionEvent;
+use crate::stdio_server::ProviderEvent;
 
-/// A small wrapper of Sender<SessionEvent> for logging on sending error.
+/// A small wrapper of Sender<ProviderEvent> for logging on sending error.
 #[derive(Debug)]
-pub struct SessionEventSender {
-    pub sender: Sender<SessionEvent>,
+pub struct ProviderEventSender {
+    pub sender: Sender<ProviderEvent>,
     pub id: SessionId,
 }
 
-impl SessionEventSender {
-    pub fn new(sender: Sender<SessionEvent>, id: SessionId) -> Self {
+impl ProviderEventSender {
+    pub fn new(sender: Sender<ProviderEvent>, id: SessionId) -> Self {
         Self { sender, id }
     }
 }
 
-impl std::fmt::Display for SessionEventSender {
+impl std::fmt::Display for ProviderEventSender {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SessionEventSender for session {}", self.id)
+        write!(f, "ProviderEventSender for session {}", self.id)
     }
 }
 
-impl SessionEventSender {
-    pub fn send(&self, event: SessionEvent) {
+impl ProviderEventSender {
+    pub fn send(&self, event: ProviderEvent) {
         if let Err(error) = self.sender.send(event) {
             tracing::error!(?error, "Failed to send session event");
         }
@@ -37,26 +37,27 @@ impl SessionEventSender {
 /// This structs manages all the created sessions tracked by the session id.
 #[derive(Debug, Default)]
 pub struct SessionManager {
-    sessions: HashMap<SessionId, SessionEventSender>,
+    sessions: HashMap<SessionId, ProviderEventSender>,
 }
 
 impl SessionManager {
     /// Starts a session in a background task.
-    pub fn new_session(&mut self, call: Call, session_event_handle: impl EventHandle) {
-        let session_id = call.session_id();
+    pub fn new_session(&mut self, init_call: Call, provider_handle: Box<dyn ClapProvider>) {
+        let session_id = init_call.session_id();
+
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");
         } else {
-            let (session, session_sender) = Session::new(call.clone(), session_event_handle);
+            let (session, session_sender) = Session::new(session_id, provider_handle);
             session.start_event_loop();
 
             session_sender
-                .send(SessionEvent::Create(call))
+                .send(ProviderEvent::Create(init_call))
                 .expect("Failed to send Create Event");
 
             self.sessions.insert(
                 session_id,
-                SessionEventSender::new(session_sender, session_id),
+                ProviderEventSender::new(session_sender, session_id),
             );
         }
     }
@@ -66,15 +67,15 @@ impl SessionManager {
         self.sessions.contains_key(&session_id)
     }
 
-    /// Stop the session task by sending [`SessionEvent::Terminate`].
+    /// Stop the session task by sending [`ProviderEvent::Terminate`].
     pub fn terminate(&mut self, session_id: SessionId) {
         if let Some(sender) = self.sessions.remove(&session_id) {
-            sender.send(SessionEvent::Terminate);
+            sender.send(ProviderEvent::Terminate);
         }
     }
 
     /// Dispatch the session event to the background session task accordingly.
-    pub fn send(&self, session_id: SessionId, event: SessionEvent) {
+    pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);
         } else {

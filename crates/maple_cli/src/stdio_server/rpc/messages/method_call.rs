@@ -96,7 +96,7 @@ impl MethodCall {
 
 impl MethodCall {
     pub async fn handle(self) -> anyhow::Result<Value> {
-        use crate::stdio_server::session::SessionEvent::*;
+        use crate::stdio_server::session::ProviderEvent::*;
 
         if self.method != "init_ext_map" {
             tracing::debug!(message = ?self, "==> stdio message(in)");
