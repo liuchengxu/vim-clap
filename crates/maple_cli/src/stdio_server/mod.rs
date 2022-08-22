@@ -15,7 +15,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
-use crossbeam_channel::{Receiver, Sender};
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
@@ -43,8 +42,8 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
 }
 
 /// Starts and keep running the server on top of stdio.
-pub fn start() -> Result<()> {
-    let (call_tx, call_rx) = crossbeam_channel::unbounded();
+pub async fn start() -> Result<()> {
+    let (call_tx, call_rx) = tokio::sync::mpsc::unbounded_channel();
 
     let rpc_client = Arc::new(RpcClient::new(
         BufReader::new(std::io::stdin()),
@@ -54,7 +53,7 @@ pub fn start() -> Result<()> {
 
     let state = State::new(call_tx, rpc_client);
     let session_client = SessionClient::new(state);
-    session_client.loop_call(&call_rx);
+    session_client.loop_call(call_rx).await;
 
     Ok(())
 }

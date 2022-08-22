@@ -758,7 +758,6 @@ dependencies = [
  "bytecount",
  "chrono",
  "clap",
- "crossbeam-channel",
  "directories",
  "dumb_analyzer",
  "filter",

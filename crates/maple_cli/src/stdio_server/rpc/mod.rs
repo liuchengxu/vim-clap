@@ -6,9 +6,10 @@ use std::io::{BufRead, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{anyhow, Result};
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::oneshot;
 
 pub use self::messages::method_call::MethodCall;
 pub use self::messages::notification::Notification;
@@ -21,10 +22,10 @@ pub struct RpcClient {
     id: AtomicU64,
     /// Sender for sending message from Rust to Vim.
     #[serde(skip_serializing)]
-    output_writer_tx: Sender<RawMessage>,
+    output_writer_tx: UnboundedSender<RawMessage>,
     /// Sender for passing the Vim response of request initiated from Rust.
     #[serde(skip_serializing)]
-    output_reader_tx: Sender<(u64, Sender<Output>)>,
+    output_reader_tx: UnboundedSender<(u64, oneshot::Sender<Output>)>,
 }
 
 impl RpcClient {
@@ -37,19 +38,22 @@ impl RpcClient {
     pub fn new(
         reader: impl BufRead + Send + 'static,
         writer: impl Write + Send + 'static,
-        sink: Sender<Call>,
+        sink: UnboundedSender<Call>,
     ) -> Self {
         // Channel for passing through the response from Vim.
-        let (output_reader_tx, output_reader_rx): (Sender<(u64, Sender<Output>)>, _) = unbounded();
+        let (output_reader_tx, output_reader_rx): (
+            UnboundedSender<(u64, oneshot::Sender<Output>)>,
+            _,
+        ) = unbounded_channel();
         tokio::spawn(async move {
             if let Err(error) = loop_read(reader, output_reader_rx, &sink) {
                 tracing::error!(?error, "Thread stdio-reader exited");
             }
         });
 
-        let (output_writer_tx, output_writer_rx) = unbounded();
+        let (output_writer_tx, output_writer_rx) = unbounded_channel();
         tokio::spawn(async move {
-            if let Err(error) = loop_write(writer, &output_writer_rx) {
+            if let Err(error) = loop_write(writer, output_writer_rx).await {
                 tracing::error!(?error, "Thread stdio-writer exited");
             }
         });
@@ -64,7 +68,7 @@ impl RpcClient {
     /// Calls into Vim.
     ///
     /// Wait for the Vim response until the timeout.
-    pub fn call<R: DeserializeOwned>(
+    pub async fn call<R: DeserializeOwned>(
         &self,
         method: impl AsRef<str>,
         params: impl Serialize,
@@ -76,11 +80,11 @@ impl RpcClient {
             params: to_params(params)?,
             session_id: 888u64, // FIXME
         };
-        let (tx, rx) = bounded(1);
+        let (tx, rx) = oneshot::channel();
         self.output_reader_tx.send((id, tx))?;
         self.output_writer_tx
             .send(RawMessage::MethodCall(method_call))?;
-        match rx.recv_timeout(std::time::Duration::from_secs(60))? {
+        match rx.await? {
             Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
             Output::Failure(err) => Err(anyhow!("Error: {:?}", err)),
         }
@@ -126,8 +130,8 @@ impl RpcClient {
 /// Keep reading and processing the line from stdin.
 fn loop_read(
     reader: impl BufRead,
-    output_reader_rx: Receiver<(u64, Sender<Output>)>,
-    sink: &Sender<Call>,
+    mut output_reader_rx: UnboundedReceiver<(u64, oneshot::Sender<Output>)>,
+    sink: &UnboundedSender<Call>,
 ) -> Result<()> {
     let mut pending_outputs = HashMap::new();
 
@@ -171,10 +175,10 @@ fn loop_read(
 }
 
 /// Keep writing the response from Rust backend to Vim via stdout.
-fn loop_write(writer: impl Write, rx: &Receiver<RawMessage>) -> Result<()> {
+async fn loop_write(writer: impl Write, mut rx: UnboundedReceiver<RawMessage>) -> Result<()> {
     let mut writer = writer;
 
-    for msg in rx.iter() {
+    while let Some(msg) = rx.recv().await {
         tracing::debug!(?msg, "Sending back to the Vim side");
         let s = serde_json::to_string(&msg)?;
         // Use different convention for two reasons,

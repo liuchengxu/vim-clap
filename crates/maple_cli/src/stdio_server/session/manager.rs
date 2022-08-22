@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crossbeam_channel::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 
 use super::{ClapProvider, SessionContext};
 use crate::stdio_server::rpc::Call;
@@ -10,12 +10,12 @@ use crate::stdio_server::ProviderEvent;
 /// A small wrapper of Sender<ProviderEvent> for logging on sending error.
 #[derive(Debug)]
 pub struct ProviderEventSender {
-    pub sender: Sender<ProviderEvent>,
+    pub sender: UnboundedSender<ProviderEvent>,
     pub id: SessionId,
 }
 
 impl ProviderEventSender {
-    pub fn new(sender: Sender<ProviderEvent>, id: SessionId) -> Self {
+    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
         Self { sender, id }
     }
 }

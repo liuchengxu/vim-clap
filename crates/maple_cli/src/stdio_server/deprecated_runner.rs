@@ -1,10 +1,10 @@
 use std::io::BufRead;
 
 use anyhow::Result;
-use crossbeam_channel::{Receiver, Sender};
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::json;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::stdio_server::impls::dumb_jump::DumbJumpProvider;
 use crate::stdio_server::impls::filer::FilerProvider;
@@ -20,7 +20,7 @@ pub fn write_response<T: Serialize>(msg: T) {
     }
 }
 
-fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
+fn loop_read_rpc_message(reader: impl BufRead, sink: &UnboundedSender<String>) {
     let mut reader = reader;
     loop {
         let mut message = String::new();
@@ -39,11 +39,12 @@ fn loop_read_rpc_message(reader: impl BufRead, sink: &Sender<String>) {
     }
 }
 
-fn loop_handle_rpc_message(rx: &Receiver<String>) {
+async fn loop_handle_rpc_message(mut rx: UnboundedReceiver<String>) {
     use ProviderEvent::*;
 
     let mut manager = SessionManager::default();
-    for msg in rx.iter() {
+
+    while let Some(msg) = rx.recv().await {
         if let Ok(call) = serde_json::from_str::<Call>(msg.trim()) {
             // TODO: fix the clone
             match call.clone() {
@@ -125,11 +126,11 @@ fn loop_handle_rpc_message(rx: &Receiver<String>) {
     }
 }
 
-pub fn run_forever(reader: impl BufRead + Send + 'static) {
-    let (tx, rx) = crossbeam_channel::unbounded();
+pub async fn run_forever(reader: impl BufRead + Send + 'static) {
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     tokio::spawn(async move {
         loop_read_rpc_message(reader, &tx);
     });
 
-    loop_handle_rpc_message(&rx);
+    loop_handle_rpc_message(rx).await;
 }

@@ -8,7 +8,7 @@ use crate::app::Params;
 pub struct Rpc;
 
 impl Rpc {
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub async fn run(&self, params: Params) -> Result<()> {
         let maybe_log = if let Some(log_path) = params.log {
             Some(log_path)
         } else if let Ok(log_path) =
@@ -40,9 +40,9 @@ impl Rpc {
 
             tracing::subscriber::set_global_default(subscriber)?;
 
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
         } else {
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin()));
+            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
         }
 
         Ok(())

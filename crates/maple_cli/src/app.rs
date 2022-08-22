@@ -125,7 +125,7 @@ impl RunCmd {
             Self::Gtags(gtags) => gtags.run(params),
             Self::Helptags(helptags) => helptags.run(),
             Self::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(params),
-            Self::Rpc(rpc) => rpc.run(params),
+            Self::Rpc(rpc) => rpc.run(params).await,
         }
     }
 }

@@ -138,8 +138,4 @@ impl Vim {
     pub fn new(rpc_client: Arc<RpcClient>) -> Self {
         Self { rpc_client }
     }
-
-    pub fn getbufvar<R: DeserializeOwned>(&self, bufname: &str, var: &str) -> Result<R> {
-        self.rpc_client.call("getbufvar", json!([bufname, var]))
-    }
 }

@@ -8,10 +8,11 @@ use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
 
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
 use crate::stdio_server::rpc::Call;
@@ -127,7 +128,7 @@ pub struct Session {
     pub session_id: u64,
     /// Each provider session can have its own message processing logic.
     pub provider: Box<dyn ClapProvider>,
-    pub event_recv: crossbeam_channel::Receiver<ProviderEvent>,
+    pub event_recv: tokio::sync::mpsc::UnboundedReceiver<ProviderEvent>,
 }
 
 #[derive(Debug, Clone)]
@@ -151,8 +152,11 @@ impl ProviderEvent {
 }
 
 impl Session {
-    pub fn new(session_id: u64, provider: Box<dyn ClapProvider>) -> (Self, Sender<ProviderEvent>) {
-        let (session_sender, session_receiver) = crossbeam_channel::unbounded();
+    pub fn new(
+        session_id: u64,
+        provider: Box<dyn ClapProvider>,
+    ) -> (Self, UnboundedSender<ProviderEvent>) {
+        let (session_sender, session_receiver) = tokio::sync::mpsc::unbounded_channel();
 
         let session = Session {
             session_id,
@@ -173,42 +177,7 @@ impl Session {
         });
     }
 
-    async fn process_event(&mut self, event: ProviderEvent) -> Result<()> {
-        match event {
-            ProviderEvent::Create(call) => self.provider.on_create(call).await,
-            ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
-            ProviderEvent::OnMove(msg) => {
-                self.provider.on_move(msg).await?;
-            }
-            ProviderEvent::OnTyped(msg) => {
-                // TODO: use a buffered channel here, do not process on every
-                // single char change.
-                self.provider.on_typed(msg).await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn run_event_loop_without_debounce(mut self) {
-        loop {
-            match self.event_recv.recv() {
-                Ok(event) => {
-                    tracing::debug!(event = ?event.short_display(), "Received an event");
-                    if let Err(err) = self.process_event(event).await {
-                        tracing::debug!(?err, "Error processing ProviderEvent");
-                    }
-                }
-                Err(err) => {
-                    tracing::debug!(?err, "The channel is possibly broken");
-                    break;
-                }
-            }
-        }
-    }
-
     async fn run_event_loop_with_debounce(mut self) {
-        use crossbeam_channel::select;
-
         // https://github.com/denoland/deno/blob/1fb5858009f598ce3f917f9f49c466db81f4d9b0/cli/lsp/diagnostics.rs#L141
         //
         // Debounce timer delay. 150ms between keystrokes is about 45 WPM, so we
@@ -228,42 +197,63 @@ impl Session {
         );
 
         let mut pending_on_typed = None;
-        let mut debounce_timer = NEVER;
+
+        let debounce_timer = tokio::time::sleep(NEVER);
+        tokio::pin!(debounce_timer);
 
         loop {
-            select! {
-              recv(self.event_recv) -> maybe_event => {
-                  match maybe_event {
-                      Ok(event) => {
-                          tracing::debug!(event = ?event.short_display(), "Received an event");
-                          match event {
-                              ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
-                              ProviderEvent::Create(call) => self.provider.on_create(call).await,
-                              ProviderEvent::OnMove(msg) => {
-                                  if let Err(err) = self.provider.on_move(msg).await {
-                                      tracing::error!(?err, "Error processing ProviderEvent::OnMove");
-                                  }
-                              }
-                              ProviderEvent::OnTyped(msg) => {
-                                  pending_on_typed.replace(msg);
-                                  debounce_timer = DELAY;
-                              }
+            tokio::select! {
+                maybe_event = self.event_recv.recv() => {
+                    match maybe_event {
+                        Some(event) => {
+                            tracing::debug!(event = ?event.short_display(), "Received an event");
+
+                            match event {
+                                ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                                ProviderEvent::Create(call) => self.provider.on_create(call).await,
+                                ProviderEvent::OnMove(msg) => {
+                                    if let Err(err) = self.provider.on_move(msg).await {
+                                        tracing::error!(?err, "Error processing ProviderEvent::OnMove");
+                                    }
+                                }
+                                ProviderEvent::OnTyped(msg) => {
+                                    pending_on_typed.replace(msg);
+                                    debounce_timer.as_mut().reset(Instant::now() + DELAY);
+                                }
+                            }
                           }
+                          None => break, // channel has closed.
                       }
-                      Err(err) => {
-                          tracing::debug!(?err, "The channel is possibly broken");
-                          return;
-                      }
-                  }
-              }
-              default(debounce_timer) => {
-                  debounce_timer = NEVER;
-                  if let Some(msg) = pending_on_typed.take() {
-                      if let Err(err) = self.provider.on_typed(msg).await {
-                          tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
-                      }
-                  }
-              }
+                }
+                _ = debounce_timer.as_mut(), if pending_on_typed.is_some() => {
+                    let msg = pending_on_typed.take().expect("Checked as Some above; qed");
+                    debounce_timer.as_mut().reset(Instant::now() + NEVER);
+
+                    if let Err(err) = self.provider.on_typed(msg).await {
+                        tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
+                    }
+                }
+            }
+        }
+    }
+
+    async fn run_event_loop_without_debounce(mut self) {
+        while let Some(event) = self.event_recv.recv().await {
+            tracing::debug!(event = ?event.short_display(), "Received an event");
+
+            match event {
+                ProviderEvent::Create(call) => self.provider.on_create(call).await,
+                ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                ProviderEvent::OnMove(msg) => {
+                    if let Err(err) = self.provider.on_move(msg).await {
+                        tracing::debug!(?err, "Error processing ProviderEvent::OnMove");
+                    }
+                }
+                ProviderEvent::OnTyped(msg) => {
+                    if let Err(err) = self.provider.on_typed(msg).await {
+                        tracing::debug!(?err, "Error processing ProviderEvent::OnTyped");
+                    }
+                }
             }
         }
     }

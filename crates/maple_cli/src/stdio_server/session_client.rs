@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use crossbeam_channel::Receiver;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::session::SessionManager;
 use super::Notification;
@@ -31,8 +31,8 @@ impl SessionClient {
     }
 
     /// Entry of the bridge between Vim and Rust.
-    pub fn loop_call(&self, rx: &Receiver<Call>) {
-        for call in rx.iter() {
+    pub async fn loop_call(&self, mut rx: UnboundedReceiver<Call>) {
+        while let Some(call) = rx.recv().await {
             let session_client = self.clone();
             tokio::spawn(async move {
                 if let Err(e) = session_client.handle_vim_message(call).await {

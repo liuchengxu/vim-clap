@@ -15,12 +15,11 @@ base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "3.2", features = ["derive"] }
-crossbeam-channel = "0.5"
 directories = "4.0"
 futures = "0.3"
 itertools = "0.10"
 num_cpus = "1.13"
-tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread"] }
+tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
 once_cell = "1.7"
 parking_lot = "0.12"
 rayon = "1.5"

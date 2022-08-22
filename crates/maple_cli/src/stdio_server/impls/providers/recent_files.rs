@@ -3,7 +3,6 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 
 use anyhow::Result;
-use crossbeam_channel::Sender;
 use serde::Deserialize;
 use serde_json::json;
 
