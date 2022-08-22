@@ -182,8 +182,8 @@ async fn loop_write(writer: impl Write, mut rx: UnboundedReceiver<RawMessage>) -
     let mut writer = writer;
 
     while let Some(msg) = rx.recv().await {
-        tracing::debug!(?msg, "Sending back to the Vim side");
         let s = serde_json::to_string(&msg)?;
+        tracing::debug!(msg_size = ?s.len(), "Sending back to the Vim side");
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim
         // receives `content`.

@@ -3,7 +3,7 @@ mod searcher;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use futures::Future;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -126,8 +126,6 @@ struct SearchResults {
     /// we cache the last results on Rust to allow passing the line number
     /// from Vim later instead.
     usages: Usages,
-    /// Last raw query.
-    raw_query: String,
     /// Last parsed query info.
     query_info: QueryInfo,
 }
@@ -201,11 +199,7 @@ async fn search_for_usages(
 
     write_response(response);
 
-    SearchResults {
-        usages,
-        raw_query: query,
-        query_info,
-    }
+    SearchResults { usages, query_info }
 }
 
 #[derive(Debug)]
@@ -364,24 +358,26 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        let msg_id = msg.id;
-
-        let lnum = msg
-            .get_u64("lnum")
-            .map_err(|_| anyhow!("Missing `lnum` in {:?}", msg))?;
+        let id = msg.id;
+        let input = self.vim.input_get().await?;
+        let lnum = self.vim.display_getcurlnum().await?;
 
         // lnum is 1-indexed
-        if let Some(curline) = self
+        let curline = self
             .current_usages
             .as_ref()
             .unwrap_or(&self.cached_results.usages)
             .get_line((lnum - 1) as usize)
-        {
-            let on_move_handler = OnMoveHandler::create(&msg, &self.context, Some(curline.into()))?;
-            if let Err(error) = on_move_handler.handle().await {
-                tracing::error!(?error, "Failed to handle OnMove event");
-                write_response(json!({"error": error.to_string(), "id": msg_id }));
-            }
+            .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
+        let on_move_handler =
+            OnMoveHandler::create(&msg, &self.context, Some(curline.to_string()))?;
+        let result = on_move_handler.on_move_process().await;
+
+        let current_input = self.vim.input_get().await?;
+        let current_lnum = self.vim.display_getcurlnum().await?;
+        // Only send back the result if the request is not out-dated.
+        if input == current_input && lnum == current_lnum {
+            self.vim.rpc_client.output(id, result)?;
         }
 
         Ok(())

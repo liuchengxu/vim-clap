@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use once_cell::sync::Lazy;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use pattern::*;
 use types::PreviewInfo;
@@ -189,13 +189,19 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     pub async fn handle(&self) -> Result<()> {
+        let value = self.on_move_process().await?;
+        self.send_response(value);
+        Ok(())
+    }
+
+    pub async fn on_move_process(&self) -> Result<Value> {
         use OnMove::*;
-        match &self.inner {
+        let value = match &self.inner {
             Filer(path) => {
                 if path.is_dir() {
                     self.preview_directory(&path)?
                 } else {
-                    self.preview_file(&path)?;
+                    self.preview_file(&path)?
                 }
             }
             Files(path) | History(path) => self.preview_file(&path)?,
@@ -208,44 +214,41 @@ impl<'a> OnMoveHandler<'a> {
                 doc_filename,
                 runtimepath,
             } => self.preview_help_subject(subject, doc_filename, runtimepath),
-        }
+        };
 
-        Ok(())
+        Ok(value)
     }
 
-    fn preview_commits(&self, rev: &str) -> std::io::Result<()> {
+    fn preview_commits(&self, rev: &str) -> std::io::Result<Value> {
         let stdout = self.context.execute(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
             .take(self.size * 2)
             .collect::<Vec<_>>();
-        self.send_response(json!({ "lines": lines }));
-        Ok(())
+        Ok(json!({ "lines": lines }))
     }
 
-    fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) {
+    fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) -> Value {
         let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
         if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
             let lines = std::iter::once(fname.clone())
                 .chain(lines.into_iter())
                 .collect::<Vec<_>>();
-            self.send_response(
-                json!({ "syntax": "help", "lines": lines, "hi_lnum": 1, "fname": fname }),
-            );
+            json!({ "syntax": "help", "lines": lines, "hi_lnum": 1, "fname": fname })
         } else {
             tracing::debug!(?preview_tag, "Can not find the preview help lines");
+            json!({ "lines": vec!["Can not find the preview help lines"] })
         }
     }
 
-    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let enable_icon = global().enable_icon;
         let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        self.send_response(json!({ "lines": lines, "is_dir": true }));
-        Ok(())
+        Ok(json!({ "lines": lines, "is_dir": true }))
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let handle_io_error = |e: &std::io::Error| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 tracing::debug!(
@@ -283,15 +286,13 @@ impl<'a> OnMoveHandler<'a> {
         };
 
         if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
-            self.send_response(json!({ "lines": lines, "syntax": syntax }));
+            Ok(json!({ "lines": lines, "syntax": syntax }))
         } else {
-            self.send_response(json!({ "lines": lines, "fname": fname }));
+            Ok(json!({ "lines": lines, "fname": fname }))
         }
-
-        Ok(())
     }
 
-    async fn preview_file_at(&self, position: &Position) {
+    async fn preview_file_at(&self, position: &Position) -> Value {
         tracing::debug!(?position, "Previewing file");
 
         let Position { path, lnum } = position;
@@ -386,13 +387,9 @@ impl<'a> OnMoveHandler<'a> {
                 );
 
                 if let Some(syntax) = crate::stdio_server::vim::syntax_for(path) {
-                    self.send_response(
-                        json!({ "lines": lines, "syntax": syntax, "hi_lnum": highlight_lnum }),
-                    );
+                    json!({ "lines": lines, "syntax": syntax, "hi_lnum": highlight_lnum })
                 } else {
-                    self.send_response(
-                        json!({ "lines": lines, "fname": fname, "hi_lnum": highlight_lnum }),
-                    );
+                    json!({ "lines": lines, "fname": fname, "hi_lnum": highlight_lnum })
                 }
             }
             Err(err) => {
@@ -407,7 +404,7 @@ impl<'a> OnMoveHandler<'a> {
                     header_line,
                     format!("Error while previewing the file: {err}"),
                 ];
-                self.send_response(json!({ "lines": lines, "fname": fname }));
+                json!({ "lines": lines, "fname": fname })
             }
         }
     }
