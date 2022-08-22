@@ -106,43 +106,12 @@ impl SessionClient {
                 session_manager.new_session(call, Box::new(DumbJumpProvider::new(context)));
                 None
             }
-            "dumb_jump/on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnTyped(msg));
-                None
-            }
-            "dumb_jump/on_move" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove(msg));
-                None
-            }
-
-            "on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnTyped(msg));
-                None
-            }
-            "on_move" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove(msg));
-                None
-            }
 
             "recent_files/on_init" => {
                 let mut session_manager = self.session_manager_mutex.lock();
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
                 session_manager.new_session(call, Box::new(RecentFilesProvider::new(context)));
-                None
-            }
-            "recent_files/on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnTyped(msg));
-                None
-            }
-            "recent_files/on_move" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
 
@@ -153,14 +122,15 @@ impl SessionClient {
                 session_manager.new_session(call, Box::new(FilerProvider::new(context)));
                 None
             }
-            "filer/on_move" => {
+
+            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove(msg));
+                session_manager.send(msg.session_id, OnTyped(msg));
                 None
             }
-            "filer/on_typed" => {
+
+            "on_move" | "filer/on_move" | "dumb_jump/on_move" | "recent_files/on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
-                // TODO: send_and_wait_result
                 session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
