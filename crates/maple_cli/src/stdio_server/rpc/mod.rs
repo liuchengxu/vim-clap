@@ -15,7 +15,7 @@ pub use self::messages::method_call::MethodCall;
 pub use self::messages::notification::Notification;
 pub use self::types::{Call, Error, ErrorCode, Failure, Output, Params, RawMessage, Success};
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct RpcClient {
     /// Id of request to Vim created from the Rust side.
     #[serde(skip_serializing)]
@@ -40,12 +40,14 @@ impl RpcClient {
         writer: impl Write + Send + 'static,
         sink: UnboundedSender<Call>,
     ) -> Self {
-        // Channel for passing through the response from Vim.
+        // Channel for passing through the response from Vim and the request to Vim.
         let (output_reader_tx, output_reader_rx): (
             UnboundedSender<(u64, oneshot::Sender<Output>)>,
             _,
         ) = unbounded_channel();
-        tokio::spawn(async move {
+
+        // A blocking task is necessary!
+        tokio::task::spawn_blocking(move || {
             if let Err(error) = loop_read(reader, output_reader_rx, &sink) {
                 tracing::error!(?error, "Thread stdio-reader exited");
             }
@@ -78,7 +80,7 @@ impl RpcClient {
             id,
             method: method.as_ref().to_owned(),
             params: to_params(params)?,
-            session_id: 888u64, // FIXME
+            session_id: 0u64, // Unused for now.
         };
         let (tx, rx) = oneshot::channel();
         self.output_reader_tx.send((id, tx))?;
@@ -96,7 +98,7 @@ impl RpcClient {
         let notification = Notification {
             method: method.as_ref().to_owned(),
             params: to_params(params)?,
-            session_id: 888u64, // FIXME
+            session_id: 0u64, // Unused for now.
         };
 
         self.output_writer_tx

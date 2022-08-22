@@ -56,5 +56,48 @@ else
   endfunction
 endif
 
+let s:api = {}
+
+function! s:api.display_getcurline() abort
+  return g:clap.display.getcurline()
+endfunction
+
+function! s:api.display_getcurlnum() abort
+  return g:clap.display.getcurlnum()
+endfunction
+
+function! s:api.input_get() abort
+  return g:clap.input.get()
+endfunction
+
+function! s:api.get_var(var) abort
+  return get(g:, a:var, v:null)
+endfunction
+
+function! s:api.working_dir() abort
+  return clap#rooter#working_dir()
+endfunction
+
+function! s:api.current_provider_id() abort
+  return g:clap.provider.id
+endfunction
+
+function! s:api.context_query_or_input() abort
+  return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
+endfunction
+
+function! s:api.bufname(bufnr) abort
+  echom string(bufname(a:bufnr))
+  return bufname(a:bufnr)
+endfunction
+
+function! s:api.fnamemodify(bufname, mods) abort
+  return fnamemodify(a:bufname, a:mods)
+endfunction
+
+function! clap#api#call(method, args) abort
+  return call(s:api[a:method], a:args)
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

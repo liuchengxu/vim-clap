@@ -49,7 +49,7 @@ pub async fn start() {
         call_tx.clone(),
     ));
 
-    let state = State::new(call_tx, rpc_client);
-    let session_client = SessionClient::new(state);
+    let state = State::new(call_tx, rpc_client.clone());
+    let session_client = SessionClient::new(state, rpc_client);
     session_client.loop_call(call_rx).await;
 }

@@ -43,8 +43,19 @@ endfunction
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
+  " Handle the request from Rust backend.
   if has_key(decoded, 'method')
-    call call(decoded.method, [decoded])
+    let params = get(decoded, 'params', [])
+    try
+      let result = clap#api#call(decoded.method, params)
+      if has_key(decoded, 'id')
+        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'result': result }))
+      endif
+    catch
+      if has_key(decoded, 'id')
+        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'error': {'code': -32603, 'message': string(v:exception) }}))
+      endif
+    endtry
     return
   endif
 
@@ -74,6 +85,9 @@ function! s:base_params() abort
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
+        \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
+        \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
+        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid }
         \ }
   if has_key(g:clap.preview, 'winid')
         \ && clap#api#floating_win_is_valid(g:clap.preview.winid)

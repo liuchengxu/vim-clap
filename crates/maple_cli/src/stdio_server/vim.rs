@@ -1,10 +1,14 @@
+#![allow(unused)]
+
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
+use anyhow::Result;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
+use serde_json::{json, Value};
 
 use crate::stdio_server::rpc::RpcClient;
 
@@ -126,7 +130,7 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
     ext_map
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Vim {
     pub rpc_client: Arc<RpcClient>,
 }
@@ -134,5 +138,49 @@ pub struct Vim {
 impl Vim {
     pub fn new(rpc_client: Arc<RpcClient>) -> Self {
         Self { rpc_client }
+    }
+
+    ///////////////////////////////////////////
+    //  builtin-function-list
+    ///////////////////////////////////////////
+    pub async fn bufname(&self, bufnr: u64) -> Result<String> {
+        self.rpc_client.call("bufname", json!([bufnr])).await
+    }
+
+    // Clap-specific
+    pub async fn display_getcurline(&self) -> Result<String> {
+        self.rpc_client.call("display_getcurline", json!([])).await
+    }
+
+    pub async fn display_getcurlnum(&self) -> Result<u64> {
+        self.rpc_client.call("display_getcurlnum", json!([])).await
+    }
+
+    pub async fn input_get(&self) -> Result<String> {
+        self.rpc_client.call("input_get", json!([])).await
+    }
+
+    pub async fn current_provider_id(&self) -> Result<String> {
+        self.rpc_client.call("current_provider_id", json!([])).await
+    }
+
+    pub async fn working_dir(&self) -> Result<String> {
+        self.rpc_client.call("working_dir", json!([])).await
+    }
+
+    pub async fn context_query_or_input(&self) -> Result<String> {
+        self.rpc_client
+            .call("context_query_or_input", json!([]))
+            .await
+    }
+
+    pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
+        let value: Value = self.rpc_client.call("get_var", json!([var])).await?;
+        let value = match value {
+            Value::Bool(b) => b,
+            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
+            _ => false,
+        };
+        Ok(value)
     }
 }

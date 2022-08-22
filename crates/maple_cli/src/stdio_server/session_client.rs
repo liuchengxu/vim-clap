@@ -5,26 +5,31 @@ use parking_lot::Mutex;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use super::rpc::RpcClient;
 use super::session::SessionManager;
+use super::vim::Vim;
 use super::Notification;
 use crate::stdio_server::impls::dumb_jump::DumbJumpProvider;
 use crate::stdio_server::impls::filer::FilerProvider;
 use crate::stdio_server::impls::recent_files::RecentFilesProvider;
 use crate::stdio_server::impls::DefaultProvider;
 use crate::stdio_server::rpc::{Call, MethodCall};
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::state::State;
 
 #[derive(Clone)]
 pub struct SessionClient {
+    vim: Vim,
     pub state_mutex: Arc<Mutex<State>>,
     pub session_manager_mutex: Arc<Mutex<SessionManager>>,
 }
 
 impl SessionClient {
     /// Creates a new instnace of [`SessionClient`].
-    pub fn new(state: State) -> Self {
+    pub fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
+        let vim = Vim::new(rpc_client);
         Self {
+            vim,
             state_mutex: Arc::new(Mutex::new(state)),
             session_manager_mutex: Arc::new(Mutex::new(SessionManager::default())),
         }
@@ -99,27 +104,22 @@ impl SessionClient {
             "preview/file" => Some(msg.preview_file().await?),
             "quickfix" => Some(msg.preview_quickfix().await?),
 
-            "dumb_jump/on_init" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+            "dumb_jump/on_init" | "recent_files/on_init" | "filer/on_init" => {
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(DumbJumpProvider::new(context)));
-                None
-            }
 
-            "recent_files/on_init" => {
-                let mut session_manager = self.session_manager_mutex.lock();
-                let call = Call::MethodCall(msg);
-                let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(RecentFilesProvider::new(context)));
-                None
-            }
+                let provider_id = self.vim.current_provider_id().await?;
+                let provider: Box<dyn ClapProvider> = match provider_id.as_str() {
+                    "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
+                    "recent_files" => Box::new(RecentFilesProvider::new(context)),
+                    "filer" => Box::new(FilerProvider::new(context)),
+                    _ => Box::new(DefaultProvider::new(context)),
+                };
 
-            "filer/on_init" => {
-                let mut session_manager = self.session_manager_mutex.lock();
-                let call = Call::MethodCall(msg);
-                let context: SessionContext = call.clone().into();
-                session_manager.new_session(call, Box::new(FilerProvider::new(context)));
+                let session_manager = self.session_manager_mutex.clone();
+                let mut session_manager = session_manager.lock();
+                session_manager.new_session(call, provider);
+
                 None
             }
 
