@@ -13,7 +13,7 @@ use crate::previewer::{self, vim_help::HelpTagPreview};
 use crate::stdio_server::impls::providers::filer;
 use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::{global, write_response, MethodCall};
-use crate::tools::ctags::{current_context_tag, current_context_tag_async, BufferTag};
+use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
 static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));

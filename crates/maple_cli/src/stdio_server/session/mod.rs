@@ -16,7 +16,6 @@ use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::types::ProviderId;
 use crate::stdio_server::MethodCall;
 
 pub use self::context::{SessionContext, SourceScale};
@@ -167,7 +166,7 @@ impl Session {
         (session, session_sender)
     }
 
-    pub fn start_event_loop(mut self) {
+    pub fn start_event_loop(self) {
         tokio::spawn(async move {
             if self.provider.session_context().debounce {
                 self.run_event_loop_with_debounce().await;

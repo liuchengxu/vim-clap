@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Result};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::rpc::Params;
@@ -15,24 +15,6 @@ pub struct Notification {
 }
 
 impl Notification {
-    /// Process the notification message from Vim.
-    pub async fn process(self) -> Result<()> {
-        match self.method.as_str() {
-            "initialize_global_env" => self.initialize_global_env(), // should be called only once.
-            "note_recent_files" => self.note_recent_file().await,
-            _ => Err(anyhow!("Unknown notification: {:?}", self)),
-        }
-    }
-
-    pub fn parse<T: DeserializeOwned>(self) -> Result<T> {
-        self.params.parse().map_err(Into::into)
-    }
-
-    pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
-        self.parse()
-            .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
-    }
-
     pub fn initialize_global_env(self) -> Result<()> {
         #[derive(Deserialize)]
         struct InnerParams {

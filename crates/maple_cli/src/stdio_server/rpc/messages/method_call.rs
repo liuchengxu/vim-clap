@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-
 use anyhow::{anyhow, Result};
-use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -95,42 +92,6 @@ impl MethodCall {
 }
 
 impl MethodCall {
-    pub async fn handle(self) -> anyhow::Result<Value> {
-        use crate::stdio_server::session::ProviderEvent::*;
-
-        if self.method != "init_ext_map" {
-            tracing::debug!(message = ?self, "==> stdio message(in)");
-        }
-
-        let value = match self.method.as_str() {
-            "init_ext_map" => self.parse_filetypedetect(),
-            "preview/file" => self.preview_file().await?,
-            // "quickfix" => super::quickfix::preview_quickfix_entry(msg),
-
-            /*
-            "dumb_jump/on_init" => manager.new_session::<DumbJumpSession>(msg),
-            "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-            "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
-
-            "recent_files/on_init" => manager.new_session::<RecentFilesSession>(msg),
-            "recent_files/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-            "recent_files/on_move" => manager.send(msg.session_id, OnMove(msg)),
-
-            "filer" => filer::handle_filer_message(msg),
-            "filer/on_init" => manager.new_session::<FilerSession>(msg),
-            "filer/on_move" => manager.send(msg.session_id, OnMove(msg)),
-
-            "on_init" => manager.new_session::<BuiltinSession>(msg),
-            "on_typed" => manager.send(msg.session_id, OnTyped(msg)),
-            "on_move" => manager.send(msg.session_id, OnMove(msg)),
-            "exit" => manager.terminate(msg.session_id),
-            */
-            _ => json!({ "error": format!("unknown method: {}", self.method), "id": self.id }),
-        };
-
-        Ok(value)
-    }
-
     pub fn parse_filetypedetect(self) -> Value {
         let msg = self;
         let output = msg.get_string_unsafe("autocmd_filetypedetect");

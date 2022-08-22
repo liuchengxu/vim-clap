@@ -3,11 +3,8 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::Result;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
-use serde::de::DeserializeOwned;
-use serde_json::json;
 
 use crate::stdio_server::rpc::RpcClient;
 

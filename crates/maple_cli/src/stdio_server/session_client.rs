@@ -86,7 +86,7 @@ impl SessionClient {
 
     /// Process the method call message from Vim.
     async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
-        use super::ProviderEvent::*;
+        use crate::stdio_server::session::ProviderEvent::*;
 
         let msg = method_call;
 
@@ -107,23 +107,23 @@ impl SessionClient {
                 None
             }
             "dumb_jump/on_typed" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnTyped(msg));
                 None
             }
             "dumb_jump/on_move" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
 
             "on_typed" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnTyped(msg));
                 None
             }
             "on_move" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
@@ -136,12 +136,12 @@ impl SessionClient {
                 None
             }
             "recent_files/on_typed" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnTyped(msg));
                 None
             }
             "recent_files/on_move" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
@@ -154,12 +154,12 @@ impl SessionClient {
                 None
             }
             "filer/on_move" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(msg.session_id, OnMove(msg));
                 None
             }
             "filer/on_typed" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+                let session_manager = self.session_manager_mutex.lock();
                 // TODO: send_and_wait_result
                 session_manager.send(msg.session_id, OnMove(msg));
                 None

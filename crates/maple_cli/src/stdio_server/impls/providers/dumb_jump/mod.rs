@@ -1,7 +1,5 @@
 mod searcher;
 
-use std::ops::Deref;
-use std::process::Output;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -221,8 +219,6 @@ pub struct DumbJumpProvider {
     ctags_regenerated: Arc<AtomicBool>,
     /// Whether the GTAGS file has been (re)-created.
     gtags_regenerated: Arc<AtomicBool>,
-    /// First on_typed event received.
-    first_on_typed_event_received: Arc<AtomicBool>,
 }
 
 impl DumbJumpProvider {
@@ -233,7 +229,6 @@ impl DumbJumpProvider {
             current_usages: None,
             ctags_regenerated: Arc::new(false.into()),
             gtags_regenerated: Arc::new(false.into()),
-            first_on_typed_event_received: Arc::new(false.into()),
         }
     }
 
@@ -264,7 +259,7 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_create(&mut self, call: Call) {
-        let (msg_id, params) = parse_msg(call.unwrap_method_call());
+        let (_msg_id, params) = parse_msg(call.unwrap_method_call());
 
         let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
 
@@ -378,17 +373,6 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
-        /*
-        // TODO: early initialization
-        if !self.first_on_typed_event_received.load(Ordering::Relaxed) {
-            self.first_on_typed_event_received
-                .store(true, Ordering::Relaxed);
-            // Earn some time for the initialization that can be done instantly so that we can have
-            // the results of high quality.
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        }
-        */
-
         let (msg_id, params) = parse_msg(msg);
 
         let query_info = parse_query_info(&params.query);

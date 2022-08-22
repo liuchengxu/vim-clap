@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
-use anyhow::Result;
 use parking_lot::Mutex;
 use serde::Deserialize;
 

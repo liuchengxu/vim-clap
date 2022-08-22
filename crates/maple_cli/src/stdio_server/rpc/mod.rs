@@ -91,6 +91,7 @@ impl RpcClient {
     }
 
     /// Sends a notification message to Vim.
+    #[allow(unused)]
     pub fn notify(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
         let notification = Notification {
             method: method.as_ref().to_owned(),
@@ -161,8 +162,8 @@ fn loop_read(
                                 }
                             }
                         },
-                        Err(e) => {
-                            tracing::error!(?line, "Invalid raw message");
+                        Err(err) => {
+                            tracing::error!(error = ?err, ?line, "Invalid raw message");
                         }
                     }
                 } else {

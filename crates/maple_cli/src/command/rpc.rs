@@ -40,9 +40,9 @@ impl Rpc {
 
             tracing::subscriber::set_global_default(subscriber)?;
 
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
+            crate::stdio_server::start().await;
         } else {
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
+            crate::stdio_server::start().await;
         }
 
         Ok(())

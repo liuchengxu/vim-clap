@@ -1,6 +1,3 @@
-#![allow(unused)]
-
-mod deprecated_runner;
 mod impls;
 mod rpc;
 mod session;
@@ -9,26 +6,27 @@ mod state;
 mod types;
 mod vim;
 
-use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::Result;
 use once_cell::sync::OnceCell;
-use serde::Serialize;
-use serde_json::json;
 
-use self::rpc::{Call, RpcClient};
-use self::session::{ProviderEvent, SessionManager};
+use self::rpc::RpcClient;
 use self::session_client::SessionClient;
 use self::state::State;
 use self::types::GlobalEnv;
 
-pub use self::deprecated_runner::{run_forever, write_response};
 pub use self::rpc::{MethodCall, Notification};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
+
+/// Writes the response to stdout.
+pub fn write_response<T: serde::Serialize>(msg: T) {
+    if let Ok(s) = serde_json::to_string(&msg) {
+        println!("Content-length: {}\n\n{}", s.len(), s);
+    }
+}
 
 /// Ensure GLOBAL_ENV has been instalized before using it.
 pub fn global() -> impl Deref<Target = GlobalEnv> {
@@ -42,7 +40,7 @@ pub fn global() -> impl Deref<Target = GlobalEnv> {
 }
 
 /// Starts and keep running the server on top of stdio.
-pub async fn start() -> Result<()> {
+pub async fn start() {
     let (call_tx, call_rx) = tokio::sync::mpsc::unbounded_channel();
 
     let rpc_client = Arc::new(RpcClient::new(
@@ -54,6 +52,4 @@ pub async fn start() -> Result<()> {
     let state = State::new(call_tx, rpc_client);
     let session_client = SessionClient::new(state);
     session_client.loop_call(call_rx).await;
-
-    Ok(())
 }

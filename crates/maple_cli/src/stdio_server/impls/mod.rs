@@ -11,11 +11,8 @@ use serde_json::json;
 
 use filter::{FilterContext, ParSource};
 use matcher::Matcher;
-use types::{ClapItem, MatchedItem, SourceItem};
+use types::MatchedItem;
 
-use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::RgTokioCommand;
-use crate::process::tokio::TokioCommand;
 use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
 use crate::stdio_server::{write_response, MethodCall};
 

@@ -11,7 +11,7 @@ use types::{MatchedItem, Score};
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{ClapProvider, ProviderEvent, Session, SessionContext};
+use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::{write_response, MethodCall};
 
 async fn handle_recent_files_message(

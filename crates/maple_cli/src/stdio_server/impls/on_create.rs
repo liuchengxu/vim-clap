@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use filter::{ParSource, SourceItem};
+use filter::SourceItem;
 use matcher::ClapItem;
-use parking_lot::Mutex;
-use serde_json::json;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
@@ -48,7 +46,7 @@ pub async fn initialize(context: &SessionContext) -> Result<SourceScale> {
             });
         }
         "proj_tags" => {
-            let mut ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
+            let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
             let scale = if context.no_cache {
                 let lines = ctags_cmd.execute_and_write_cache().await?;
                 to_scale(lines)

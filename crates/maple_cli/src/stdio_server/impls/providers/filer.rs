@@ -1,6 +1,5 @@
+use std::fs;
 use std::path::{Path, MAIN_SEPARATOR};
-use std::sync::Arc;
-use std::{fs, io};
 
 use anyhow::Result;
 use serde_json::{json, Value};
@@ -76,6 +75,7 @@ function! s:goto_parent() abort
 endfunction
 */
 
+#[allow(unused)]
 fn goto_parent(cur_dir: String) {
     // Root directory.
     if Path::new(&cur_dir).parent().is_none() {
@@ -88,7 +88,7 @@ fn goto_parent(cur_dir: String) {
         None => return,
     };
 
-    let new_cur_dir = if parent_dir.parent().is_none() {
+    let _new_cur_dir = if parent_dir.parent().is_none() {
         parent_dir.to_string_lossy().to_string()
     } else {
         format!("{}{}", parent_dir.display(), std::path::MAIN_SEPARATOR)

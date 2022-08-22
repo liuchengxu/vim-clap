@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::{ClapProvider, SessionContext};
+use super::ClapProvider;
 use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{Session, SessionId};
-use crate::stdio_server::ProviderEvent;
+use crate::stdio_server::session::{ProviderEvent, Session, SessionId};
 
 /// A small wrapper of Sender<ProviderEvent> for logging on sending error.
 #[derive(Debug)]
