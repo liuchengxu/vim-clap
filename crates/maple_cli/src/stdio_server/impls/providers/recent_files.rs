@@ -159,13 +159,15 @@ impl ClapProvider for RecentFilesProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, call: Call) {
+    async fn on_create(&mut self, call: Call) -> Result<()> {
         let initial_lines =
             handle_recent_files_message(call.unwrap_method_call(), self.context.clone(), true)
                 .await;
 
         let mut lines = self.lines.lock();
         *lines = initial_lines;
+
+        Ok(())
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {

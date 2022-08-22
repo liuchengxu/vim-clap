@@ -104,8 +104,18 @@ pub struct SessionState {
     pub buf_tags_cache: Arc<Mutex<HashMap<PathBuf, CachedBufTags>>>,
 }
 
+/// bufnr and winid.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BufnrAndWinid {
+    pub bufnr: u64,
+    pub winid: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionContext {
+    pub input: BufnrAndWinid,
+    pub display: BufnrAndWinid,
+    pub start: BufnrAndWinid,
     pub provider_id: ProviderId,
     pub cwd: PathBuf,
     pub no_cache: bool,
@@ -152,6 +162,9 @@ impl SessionContext {
     fn from_params(params: Params) -> Self {
         #[derive(Deserialize)]
         struct InnerParams {
+            input: BufnrAndWinid,
+            display: BufnrAndWinid,
+            start: BufnrAndWinid,
             provider_id: ProviderId,
             cwd: PathBuf,
             no_cache: bool,
@@ -165,6 +178,9 @@ impl SessionContext {
         }
 
         let InnerParams {
+            input,
+            display,
+            start,
             provider_id,
             cwd,
             no_cache,
@@ -203,6 +219,9 @@ impl SessionContext {
         };
 
         Self {
+            input,
+            display,
+            start,
             provider_id,
             cwd,
             no_cache,

@@ -20,6 +20,7 @@ use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, ClapProvider, SessionContext,
 };
+use crate::stdio_server::vim::Vim;
 use crate::stdio_server::{write_response, MethodCall};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
@@ -209,6 +210,7 @@ async fn search_for_usages(
 
 #[derive(Debug)]
 pub struct DumbJumpProvider {
+    vim: Vim,
     context: SessionContext,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
@@ -222,8 +224,9 @@ pub struct DumbJumpProvider {
 }
 
 impl DumbJumpProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: SessionContext, vim: Vim) -> Self {
         Self {
+            vim,
             context,
             cached_results: Default::default(),
             current_usages: None,
@@ -258,8 +261,18 @@ impl ClapProvider for DumbJumpProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, call: Call) {
-        let (_msg_id, params) = parse_msg(call.unwrap_method_call());
+    async fn on_create(&mut self, _call: Call) -> Result<()> {
+        let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+
+        let params = Params {
+            cwd: self.vim.working_dir().await?,
+            query: self.vim.context_query_or_input().await?,
+            extension: std::path::Path::new(&bufname)
+                .extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| anyhow::anyhow!("No extension found"))?,
+        };
 
         let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
 
@@ -346,6 +359,8 @@ impl ClapProvider for DumbJumpProvider {
                 (false, true) => run(gtags_future, job_id),
             }
         }
+
+        Ok(())
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {

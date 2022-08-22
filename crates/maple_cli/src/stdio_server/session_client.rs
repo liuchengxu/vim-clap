@@ -110,7 +110,7 @@ impl SessionClient {
 
                 let provider_id = self.vim.current_provider_id().await?;
                 let provider: Box<dyn ClapProvider> = match provider_id.as_str() {
-                    "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
+                    "dumb_jump" => Box::new(DumbJumpProvider::new(context, self.vim.clone())),
                     "recent_files" => Box::new(RecentFilesProvider::new(context)),
                     "filer" => Box::new(FilerProvider::new(context)),
                     _ => Box::new(DefaultProvider::new(context)),

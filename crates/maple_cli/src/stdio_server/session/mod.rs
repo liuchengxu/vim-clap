@@ -71,7 +71,7 @@ fn process_source_scale(source_scale: SourceScale, context: &SessionContext) {
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     fn session_context(&self) -> &SessionContext;
 
-    async fn on_create(&mut self, _call: Call) {
+    async fn on_create(&mut self, _call: Call) -> Result<()> {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
         let context = self.session_context();
@@ -104,6 +104,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 }
             }
         }
+
+        Ok(())
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()>;
@@ -209,7 +211,11 @@ impl Session {
 
                             match event {
                                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
-                                ProviderEvent::Create(call) => self.provider.on_create(call).await,
+                                ProviderEvent::Create(call) => {
+                                    if let Err(err) = self.provider.on_create(call).await {
+                                        tracing::error!(?err, "Error processing ProviderEvent::Create");
+                                    }
+                                }
                                 ProviderEvent::OnMove(msg) => {
                                     if let Err(err) = self.provider.on_move(msg).await {
                                         tracing::error!(?err, "Error processing ProviderEvent::OnMove");
@@ -241,8 +247,12 @@ impl Session {
             tracing::debug!(event = ?event.short_display(), "Received an event");
 
             match event {
-                ProviderEvent::Create(call) => self.provider.on_create(call).await,
                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                ProviderEvent::Create(call) => {
+                    if let Err(err) = self.provider.on_create(call).await {
+                        tracing::error!(?err, "Error processing ProviderEvent::Create");
+                    }
+                }
                 ProviderEvent::OnMove(msg) => {
                     if let Err(err) = self.provider.on_move(msg).await {
                         tracing::debug!(?err, "Error processing ProviderEvent::OnMove");

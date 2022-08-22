@@ -135,11 +135,12 @@ impl ClapProvider for FilerProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, call: Call) {
+    async fn on_create(&mut self, call: Call) -> Result<()> {
         write_response(
             handle_filer_message(call.unwrap_method_call())
                 .expect("Both Success and Error are returned"),
         );
+        Ok(())
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
