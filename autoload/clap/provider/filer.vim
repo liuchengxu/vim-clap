@@ -376,6 +376,10 @@ function! s:filer.on_move_async() abort
     \ function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
 endfunction
 
+function! clap#provider#filer#current_dir() abort
+  return s:current_dir
+endfunction
+
 function! s:filer_on_no_matches(input) abort
   execute 'edit' s:smart_concatenate(s:current_dir, a:input)
 endfunction

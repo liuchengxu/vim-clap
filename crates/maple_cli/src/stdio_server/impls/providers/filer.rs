@@ -123,11 +123,16 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 pub struct FilerProvider {
     vim: Vim,
     context: SessionContext,
+    icon_enabled: Option<bool>,
 }
 
 impl FilerProvider {
     pub fn new(vim: Vim, context: SessionContext) -> Self {
-        Self { vim, context }
+        Self {
+            vim,
+            context,
+            icon_enabled: None,
+        }
     }
 }
 
@@ -159,15 +164,21 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        #[derive(serde::Deserialize)]
-        struct Params {
-            // curline: String,
-            cwd: String,
-        }
-        // Do not use curline directly.
-        let curline = msg.get_curline(&self.context.provider_id)?;
-        let Params { cwd } = msg.parse_unsafe();
+    async fn on_move(&mut self) -> Result<()> {
+        let icon_enabled = match self.icon_enabled {
+            Some(icon_enabled) => icon_enabled,
+            None => self.vim.get_var_bool("clap_enable_icon").await?,
+        };
+        let curline = if icon_enabled {
+            let line = self.vim.display_getcurline().await?;
+            line.chars().skip(2).collect()
+        } else {
+            self.vim.display_getcurline().await?
+        };
+        let cwd: String = self
+            .vim
+            .call("clap#provider#filer#current_dir", json!([]))
+            .await?;
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
             size: self.context.sensible_preview_size(),
@@ -175,14 +186,10 @@ impl ClapProvider for FilerProvider {
             inner: OnMove::Filer(path.clone()),
             cache_line: None,
         };
-        if let Err(err) = on_move_handler.handle().await {
-            tracing::error!(?err, ?path, "Failed to handle filer OnMove");
-            let res = json!({
-              "provider_id": "filer",
-              "error": { "message": err.to_string(), "dir": path }
-            });
-            write_response(res);
-        }
+        let preview_result = on_move_handler.on_move_process().await?;
+        self.vim
+            .exec("clap#state#process_preview_result", preview_result)?;
+
         Ok(())
     }
 

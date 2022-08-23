@@ -53,12 +53,10 @@ impl ClapProvider for DefaultProvider {
         &self.context
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        let msg_id = msg.id;
-
+    async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
-        let curline = match self.context.state.source_scale.lock().deref() {
+        let maybe_curline = match self.context.state.source_scale.lock().deref() {
             SourceScale::Small { ref items, .. } => {
                 if let Some(curline) = self.line_at(lnum as usize) {
                     Some(curline)
@@ -71,15 +69,16 @@ impl ClapProvider for DefaultProvider {
             _ => None,
         };
 
-        let on_move_handler = on_move::OnMoveHandler::create(
-            &msg,
-            curline.ok_or_else(|| anyhow::anyhow!("curline not found"))?,
-            &self.context,
-        )?;
-        if let Err(error) = on_move_handler.handle().await {
-            tracing::error!(?error, "Failed to handle OnMove event");
-            write_response(json!({"error": error.to_string(), "id": msg_id }));
-        }
+        let curline = match maybe_curline {
+            Some(line) => line,
+            None => self.vim.display_getcurline().await?,
+        };
+
+        let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
+        let preview_result = on_move_handler.on_move_process().await?;
+        self.vim
+            .exec("clap#state#process_preview_result", preview_result)?;
+
         Ok(())
     }
 

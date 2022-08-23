@@ -108,7 +108,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         Ok(())
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()>;
+    async fn on_move(&mut self) -> Result<()>;
 
     async fn on_typed(&mut self, msg: MethodCall) -> Result<()>;
 
@@ -140,8 +140,8 @@ pub struct Session {
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
     OnTyped(MethodCall),
-    OnMove(MethodCall),
     Create(Call),
+    OnMove,
     Terminate,
 }
 
@@ -150,8 +150,8 @@ impl ProviderEvent {
     pub fn short_display(&self) -> Cow<'_, str> {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg_id: {}", msg.id).into(),
-            Self::OnMove(msg) => format!("OnMove, msg_id: {}", msg.id).into(),
             Self::Create(_) => "Create".into(),
+            Self::OnMove => "OnMove".into(),
             Self::Terminate => "Terminate".into(),
         }
     }
@@ -221,8 +221,8 @@ impl Session {
                                         tracing::error!(?err, "Error processing ProviderEvent::Create");
                                     }
                                 }
-                                ProviderEvent::OnMove(msg) => {
-                                    if let Err(err) = self.provider.on_move(msg).await {
+                                ProviderEvent::OnMove => {
+                                    if let Err(err) = self.provider.on_move().await {
                                         tracing::error!(?err, "Error processing ProviderEvent::OnMove");
                                     }
                                 }
@@ -258,8 +258,8 @@ impl Session {
                         tracing::error!(?err, "Error processing ProviderEvent::Create");
                     }
                 }
-                ProviderEvent::OnMove(msg) => {
-                    if let Err(err) = self.provider.on_move(msg).await {
+                ProviderEvent::OnMove => {
+                    if let Err(err) = self.provider.on_move().await {
                         tracing::debug!(?err, "Error processing ProviderEvent::OnMove");
                     }
                 }

@@ -144,7 +144,7 @@ impl SessionClient {
 
             "on_move" | "filer/on_move" | "dumb_jump/on_move" | "recent_files/on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove(msg));
+                session_manager.send(msg.session_id, OnMove);
                 None
             }
 

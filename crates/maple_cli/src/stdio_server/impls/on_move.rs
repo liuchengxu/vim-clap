@@ -51,17 +51,9 @@ pub enum OnMove {
 }
 
 impl OnMove {
-    pub fn new(
-        msg: &MethodCall,
-        curline: String,
-        context: &SessionContext,
-    ) -> Result<(Self, Option<String>)> {
+    pub fn new(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
         let mut line_content = None;
         let context = match context.provider_id.as_str() {
-            "filer" => {
-              let path = build_abs_path(&msg.get_cwd(), curline);
-              OnMove::Filer(path)
-            },
             "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, &curline)),
             "recent_files" => Self::Files(PathBuf::from(&curline)),
             "history" => {
@@ -167,8 +159,8 @@ pub struct OnMoveHandler<'a> {
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn create(msg: &MethodCall, curline: String, context: &'a SessionContext) -> Result<Self> {
-        let (inner, cache_line) = OnMove::new(msg, curline, context)?;
+    pub fn create(curline: String, context: &'a SessionContext) -> Result<Self> {
+        let (inner, cache_line) = OnMove::new(curline, context)?;
         Ok(Self {
             size: context.sensible_preview_size(),
             context,

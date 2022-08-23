@@ -173,7 +173,7 @@ impl ClapProvider for RecentFilesProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
+    async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
         let maybe_curline = self
@@ -183,11 +183,10 @@ impl ClapProvider for RecentFilesProvider {
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
-            let on_move_handler = OnMoveHandler::create(&msg, curline, &self.context)?;
-            if let Err(e) = on_move_handler.handle().await {
-                tracing::error!(error = ?e, "Failed to handle OnMove event");
-                write_response(json!({"error": e.to_string() }));
-            }
+            let on_move_handler = OnMoveHandler::create(curline, &self.context)?;
+            let preview_result = on_move_handler.on_move_process().await?;
+            self.vim
+                .exec("clap#state#process_preview_result", preview_result)?;
         }
 
         Ok(())

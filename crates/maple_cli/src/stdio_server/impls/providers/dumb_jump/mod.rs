@@ -353,7 +353,7 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
+    async fn on_move(&mut self) -> Result<()> {
         let input = self.vim.input_get().await?;
         let lnum = self.vim.display_getcurlnum().await?;
 
@@ -370,7 +370,7 @@ impl ClapProvider for DumbJumpProvider {
         let curline = current_lines
             .get_line((lnum - 1) as usize)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
-        let on_move_handler = OnMoveHandler::create(&msg, curline.to_string(), &self.context)?;
+        let on_move_handler = OnMoveHandler::create(curline.to_string(), &self.context)?;
         let preview_result = on_move_handler.on_move_process().await?;
 
         let current_input = self.vim.input_get().await?;
