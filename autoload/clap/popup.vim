@@ -150,6 +150,8 @@ function! s:create_preview() abort
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
     let g:clap#popup#preview.bufnr = winbufnr(s:preview_winid)
+    let g:clap.preview.winid = s:preview_winid
+    let g:clap.preview.bufnr = winbufnr(s:preview_winid)
   endif
 endfunction
 
@@ -270,6 +272,7 @@ function! s:create_input() abort
       call deoplete#custom#buffer_option('auto_complete', v:false)
     endif
     let g:clap.input.winid = s:input_winid
+    let g:clap.input.bufnr = winbufnr(s:input_winid)
   endif
 endfunction
 
