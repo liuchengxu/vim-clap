@@ -100,6 +100,7 @@ impl OnMove {
                 Self::Grep(Position::new(path, lnum))
             }
             "blines" => {
+              tracing::debug!("================ blines curline: {:?}", curline);
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
                 Self::BLines(Position::new(path, lnum))

@@ -181,15 +181,11 @@ impl Vim {
     // Clap-specific
     /// Returns the cursor line in display window, with icon stripped.
     pub async fn display_getcurline(&self) -> Result<String> {
-        let icon_enabled = match self.icon_enabled {
-            Some(icon_enabled) => icon_enabled,
-            None => self.get_var_bool("clap_enable_icon").await?,
-        };
-        if icon_enabled {
-            let line: String = self.call("display_getcurline", json!([])).await?;
+        let line: String = self.call("display_getcurline", json!([])).await?;
+        if self.get_var_bool("__clap_icon_added_by_maple").await? {
             Ok(line.chars().skip(2).collect())
         } else {
-            self.call("display_getcurline", json!([])).await
+            Ok(line)
         }
     }
 
