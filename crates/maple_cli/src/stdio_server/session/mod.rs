@@ -112,6 +112,11 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_typed(&mut self, msg: MethodCall) -> Result<()>;
 
+    async fn on_tab(&mut self) -> Result<()> {
+        // Most providers don't need this, hence a default impl is provided.
+        Ok(())
+    }
+
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     fn handle_terminate(&self, session_id: u64) {
         let context = self.session_context();

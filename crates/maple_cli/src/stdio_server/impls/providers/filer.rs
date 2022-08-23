@@ -9,6 +9,7 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::impls::{OnMove, OnMoveHandler};
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{ClapProvider, SessionContext};
+use crate::stdio_server::vim::Vim;
 use crate::stdio_server::{write_response, MethodCall};
 use crate::utils::build_abs_path;
 
@@ -120,12 +121,13 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 
 #[derive(Debug)]
 pub struct FilerProvider {
+    vim: Vim,
     context: SessionContext,
 }
 
 impl FilerProvider {
-    pub fn new(context: SessionContext) -> Self {
-        Self { context }
+    pub fn new(context: SessionContext, vim: Vim) -> Self {
+        Self { context, vim }
     }
 }
 
@@ -135,11 +137,25 @@ impl ClapProvider for FilerProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, call: Call) -> Result<()> {
-        write_response(
-            handle_filer_message(call.unwrap_method_call())
-                .expect("Both Success and Error are returned"),
-        );
+    async fn on_create(&mut self, _call: Call) -> Result<()> {
+        let cwd = self.vim.working_dir().await?;
+
+        let value = read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
+            .map(|entries| json!({ "entries": entries, "dir": cwd, "total": entries.len() }))
+            .map_err(|err| {
+                tracing::error!(?cwd, "Failed to read directory entries");
+                json!({ "error": err.to_string() })
+            });
+
+        self.vim
+            .exec("clap#provider#filer#handle_on_create", value)?;
+
+        Ok(())
+    }
+
+    async fn on_tab(&mut self) -> Result<()> {
+        // TODO
+
         Ok(())
     }
 
@@ -175,6 +191,7 @@ impl ClapProvider for FilerProvider {
 
     async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
         write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
+
         Ok(())
     }
 }

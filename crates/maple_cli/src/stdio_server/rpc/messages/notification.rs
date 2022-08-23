@@ -11,7 +11,8 @@ use crate::stdio_server::GLOBAL_ENV;
 pub struct Notification {
     pub method: String,
     pub params: Params,
-    pub session_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<u64>,
 }
 
 impl Notification {

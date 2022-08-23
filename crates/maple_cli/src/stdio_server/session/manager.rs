@@ -42,7 +42,7 @@ pub struct SessionManager {
 impl SessionManager {
     /// Starts a session in a background task.
     pub fn new_session(&mut self, init_call: Call, provider_handle: Box<dyn ClapProvider>) {
-        let session_id = init_call.session_id();
+        let session_id = init_call.session_id().expect("No session_id in the Call");
 
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");

@@ -8,6 +8,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::stdio_server::rpc::RpcClient;
@@ -130,9 +132,10 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
     ext_map
 }
 
+/// Shareable Vim instance.
 #[derive(Debug, Clone)]
 pub struct Vim {
-    pub rpc_client: Arc<RpcClient>,
+    rpc_client: Arc<RpcClient>,
 }
 
 impl Vim {
@@ -140,42 +143,63 @@ impl Vim {
         Self { rpc_client }
     }
 
+    /// Calls the method with given params in Vim and return the call result.
+    ///
+    /// `method`: Must be a valid argument for `clap#api#call(method, args)`.
+    pub async fn call<R: DeserializeOwned>(
+        &self,
+        method: impl AsRef<str>,
+        params: impl Serialize,
+    ) -> Result<R> {
+        self.rpc_client.request(method, params).await
+    }
+
+    /// Executes the method with given params in Vim, ignoring the call result.
+    ///
+    /// `method`: Same with `{func}` in `:h call()`.
+    pub fn exec(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
+        self.rpc_client.notify(method, params)
+    }
+
+    /// Send back the result with specified id.
+    pub fn send(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
+        self.rpc_client.output(id, output_result)
+    }
+
     ///////////////////////////////////////////
     //  builtin-function-list
     ///////////////////////////////////////////
     pub async fn bufname(&self, bufnr: u64) -> Result<String> {
-        self.rpc_client.call("bufname", json!([bufnr])).await
+        self.call("bufname", json!([bufnr])).await
     }
 
     // Clap-specific
     pub async fn display_getcurline(&self) -> Result<String> {
-        self.rpc_client.call("display_getcurline", json!([])).await
+        self.call("display_getcurline", json!([])).await
     }
 
     pub async fn display_getcurlnum(&self) -> Result<u64> {
-        self.rpc_client.call("display_getcurlnum", json!([])).await
+        self.call("display_getcurlnum", json!([])).await
     }
 
     pub async fn input_get(&self) -> Result<String> {
-        self.rpc_client.call("input_get", json!([])).await
+        self.call("input_get", json!([])).await
     }
 
     pub async fn current_provider_id(&self) -> Result<String> {
-        self.rpc_client.call("current_provider_id", json!([])).await
+        self.call("current_provider_id", json!([])).await
     }
 
     pub async fn working_dir(&self) -> Result<String> {
-        self.rpc_client.call("working_dir", json!([])).await
+        self.call("working_dir", json!([])).await
     }
 
     pub async fn context_query_or_input(&self) -> Result<String> {
-        self.rpc_client
-            .call("context_query_or_input", json!([]))
-            .await
+        self.call("context_query_or_input", json!([])).await
     }
 
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
-        let value: Value = self.rpc_client.call("get_var", json!([var])).await?;
+        let value: Value = self.call("get_var", json!([var])).await?;
         let value = match value {
             Value::Bool(b) => b,
             Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),

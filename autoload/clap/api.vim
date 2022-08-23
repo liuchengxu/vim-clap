@@ -87,7 +87,6 @@ function! s:api.context_query_or_input() abort
 endfunction
 
 function! s:api.bufname(bufnr) abort
-  echom string(bufname(a:bufnr))
   return bufname(a:bufnr)
 endfunction
 
@@ -96,7 +95,11 @@ function! s:api.fnamemodify(bufname, mods) abort
 endfunction
 
 function! clap#api#call(method, args) abort
-  return call(s:api[a:method], a:args)
+  if has_key(s:api, a:method)
+    return call(s:api[a:method], a:args)
+  else
+    return call(a:method, a:args)
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

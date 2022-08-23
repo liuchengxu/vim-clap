@@ -36,36 +36,38 @@ impl SessionClient {
     }
 
     /// Entry of the bridge between Vim and Rust.
-    pub async fn loop_call(&self, mut rx: UnboundedReceiver<Call>) {
+    ///
+    /// Handle the message actively initiated from Vim.
+    pub async fn loop_call(self, mut rx: UnboundedReceiver<Call>) {
         while let Some(call) = rx.recv().await {
             let session_client = self.clone();
             tokio::spawn(async move {
-                if let Err(e) = session_client.handle_vim_message(call).await {
-                    tracing::error!(?e, "Error handling request");
+                match call {
+                    Call::Notification(notification) => {
+                        if let Err(e) = session_client.process_notification(notification).await {
+                            tracing::error!(error = ?e, "Error at handling a Vim Notification");
+                        }
+                    }
+                    Call::MethodCall(method_call) => {
+                        let id = method_call.id;
+
+                        match session_client.process_method_call(method_call).await {
+                            Ok(Some(result)) => {
+                                // Send back the result of method call.
+                                let state = session_client.state_mutex.lock();
+                                if let Err(e) = state.vim.send(id, Ok(result)) {
+                                    tracing::debug!(error = ?e, "Failed to send the output result");
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                tracing::error!(error = ?e, "Error at handling a Vim MethodCall");
+                            }
+                        }
+                    }
                 }
             });
         }
-    }
-
-    /// Handle the message actively initiated from Vim.
-    async fn handle_vim_message(self, call: Call) -> Result<()> {
-        match call {
-            Call::Notification(notification) => {
-                if let Err(e) = self.process_notification(notification).await {
-                    tracing::error!(?e, "Error when handling notification");
-                }
-            }
-            Call::MethodCall(method_call) => {
-                let id = method_call.id;
-                let maybe_result = self.process_method_call(method_call).await?;
-                // Send back the result of method call.
-                if let Some(result) = maybe_result {
-                    let state = self.state_mutex.lock();
-                    state.vim.rpc_client.output(id, Ok(result))?;
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Process the notification message from Vim.
@@ -82,7 +84,11 @@ impl SessionClient {
             }
             "exit" => {
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.terminate(notification.session_id);
+                session_manager.terminate(
+                    notification
+                        .session_id
+                        .expect("SessionId should be included in exit message"),
+                );
                 Ok(())
             }
             _ => Err(anyhow::anyhow!("Unknown notification: {notification:?}")),
@@ -108,16 +114,20 @@ impl SessionClient {
                 let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
 
+                tracing::debug!("======================== New context {context:?}");
                 let provider_id = self.vim.current_provider_id().await?;
+                tracing::debug!("======================== New provider id {provider_id:?}");
                 let provider: Box<dyn ClapProvider> = match provider_id.as_str() {
                     "dumb_jump" => Box::new(DumbJumpProvider::new(context, self.vim.clone())),
                     "recent_files" => Box::new(RecentFilesProvider::new(context)),
-                    "filer" => Box::new(FilerProvider::new(context)),
+                    "filer" => Box::new(FilerProvider::new(context, self.vim.clone())),
                     _ => Box::new(DefaultProvider::new(context)),
                 };
 
+                tracing::debug!("======================== Try locking");
                 let session_manager = self.session_manager_mutex.clone();
                 let mut session_manager = session_manager.lock();
+                tracing::debug!("======================== New session");
                 session_manager.new_session(call, provider);
 
                 None

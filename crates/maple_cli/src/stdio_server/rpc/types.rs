@@ -15,9 +15,9 @@ pub enum Call {
 }
 
 impl Call {
-    pub fn session_id(&self) -> u64 {
+    pub fn session_id(&self) -> Option<u64> {
         match self {
-            Self::MethodCall(method_call) => method_call.session_id,
+            Self::MethodCall(method_call) => Some(method_call.session_id),
             Self::Notification(notification) => notification.session_id,
         }
     }

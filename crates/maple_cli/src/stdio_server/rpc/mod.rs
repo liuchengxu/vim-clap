@@ -54,6 +54,7 @@ impl RpcClient {
         });
 
         let (output_writer_tx, output_writer_rx) = unbounded_channel();
+        // No blocking task.
         tokio::spawn(async move {
             if let Err(error) = loop_write(writer, output_writer_rx).await {
                 tracing::error!(?error, "Thread stdio-writer exited");
@@ -67,25 +68,30 @@ impl RpcClient {
         }
     }
 
-    /// Calls into Vim.
-    ///
-    /// Wait for the Vim response until the timeout.
-    pub async fn call<R: DeserializeOwned>(
+    /// Calls `call(method, params)` into Vim and return the result.
+    pub async fn request<R: DeserializeOwned>(
         &self,
         method: impl AsRef<str>,
         params: impl Serialize,
     ) -> Result<R> {
+        tracing::debug!("======================== Calling call");
         let id = self.id.fetch_add(1, Ordering::SeqCst);
+        tracing::debug!("======================== Calling call 1");
         let method_call = MethodCall {
             id,
             method: method.as_ref().to_owned(),
-            params: to_params(params)?,
+            // call(method, args) where args expects a List in Vim, hence convert the params
+            // to List unconditionally.
+            params: to_array_or_none(params)?,
             session_id: 0u64, // Unused for now.
         };
+        tracing::debug!("======================== Calling call 2");
         let (tx, rx) = oneshot::channel();
         self.output_reader_tx.send((id, tx))?;
+        tracing::debug!("======================== Calling call 3");
         self.output_writer_tx
             .send(RawMessage::MethodCall(method_call))?;
+        tracing::debug!("======================== Waiting for call result");
         match rx.await? {
             Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
             Output::Failure(err) => Err(anyhow!("Error: {:?}", err)),
@@ -93,12 +99,13 @@ impl RpcClient {
     }
 
     /// Sends a notification message to Vim.
-    #[allow(unused)]
     pub fn notify(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
         let notification = Notification {
             method: method.as_ref().to_owned(),
-            params: to_params(params)?,
-            session_id: 0u64, // Unused for now.
+            // call(method, args) where args expects a List in Vim, hence convert the params
+            // to List unconditionally.
+            params: to_array_or_none(params)?,
+            session_id: None,
         };
 
         self.output_writer_tx
@@ -165,7 +172,7 @@ fn loop_read(
                             }
                         },
                         Err(err) => {
-                            tracing::error!(error = ?err, ?line, "Invalid raw message");
+                            tracing::error!(error = ?err, ?line, "Invalid raw Vim message");
                         }
                     }
                 } else {
@@ -183,7 +190,7 @@ async fn loop_write(writer: impl Write, mut rx: UnboundedReceiver<RawMessage>) -
 
     while let Some(msg) = rx.recv().await {
         let s = serde_json::to_string(&msg)?;
-        tracing::debug!(msg_size = ?s.len(), "Sending back to the Vim side");
+        tracing::debug!(msg_size = ?s.len(), "Sending message to Vim");
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim
         // receives `content`.
@@ -195,14 +202,15 @@ async fn loop_write(writer: impl Write, mut rx: UnboundedReceiver<RawMessage>) -
     Ok(())
 }
 
-fn to_params(value: impl Serialize) -> Result<Params> {
+fn to_array_or_none(value: impl Serialize) -> Result<Params> {
     let json_value = serde_json::to_value(value)?;
 
     let params = match json_value {
         Value::Null => Params::None,
-        Value::Bool(_) | Value::Number(_) | Value::String(_) => Params::Array(vec![json_value]),
         Value::Array(vec) => Params::Array(vec),
-        Value::Object(map) => Params::Map(map),
+        Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Object(_) => {
+            Params::Array(vec![json_value])
+        }
     };
 
     Ok(params)
