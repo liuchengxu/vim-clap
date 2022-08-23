@@ -65,6 +65,10 @@ function! clap#client#handle(msg) abort
     return
   endif
 
+  if !has_key(decoded, 'id')
+    return
+  endif
+
   " Only process the latest request, drop the outdated responses.
   if s:req_id != decoded.id
     return

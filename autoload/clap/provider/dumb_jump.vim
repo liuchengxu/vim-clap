@@ -47,7 +47,7 @@ function! s:dumb_jump.init() abort
 endfunction
 
 function! s:dumb_jump.on_move_async() abort
-  call clap#client#call_with_lnum('dumb_jump/on_move', function('clap#impl#on_move#handler'))
+  call clap#client#call('dumb_jump/on_move', v:null, v:null)
 endfunction
 
 let s:dumb_jump['sink*'] = function('s:dumb_jump_sink_star')

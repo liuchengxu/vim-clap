@@ -218,7 +218,7 @@ pub struct DumbJumpProvider {
 }
 
 impl DumbJumpProvider {
-    pub fn new(context: SessionContext, vim: Vim) -> Self {
+    pub fn new(vim: Vim, context: SessionContext) -> Self {
         Self {
             vim,
             context,
@@ -258,23 +258,20 @@ impl ClapProvider for DumbJumpProvider {
     async fn on_create(&mut self, _call: Call) -> Result<()> {
         let bufname = self.vim.bufname(self.context.start.bufnr).await?;
 
-        let params = Params {
-            cwd: self.vim.working_dir().await?,
-            query: self.vim.context_query_or_input().await?,
-            extension: std::path::Path::new(&bufname)
-                .extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s.to_string())
-                .ok_or_else(|| anyhow::anyhow!("No extension found"))?,
-        };
+        let cwd = self.vim.working_dir().await?;
+        let extension = std::path::Path::new(&bufname)
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
 
-        let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
+        let job_id = utility::calculate_hash(&(&cwd, "dumb_jump"));
 
         if register_job_successfully(job_id) {
             let ctags_future = {
-                let cwd = params.cwd.clone();
+                let cwd = cwd.clone();
                 let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
-                if let Some(language) = get_language(&params.extension) {
+                if let Some(language) = get_language(&extension) {
                     tags_generator.set_languages(language.into());
                 }
                 let ctags_regenerated = self.ctags_regenerated.clone();
@@ -297,7 +294,6 @@ impl ClapProvider for DumbJumpProvider {
 
             let gtags_future = {
                 let gtags_regenerated = self.gtags_regenerated.clone();
-                let cwd = params.cwd;
                 let span = tracing::span!(tracing::Level::INFO, "gtags");
                 async move {
                     let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
@@ -358,26 +354,31 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        let id = msg.id;
         let input = self.vim.input_get().await?;
         let lnum = self.vim.display_getcurlnum().await?;
 
-        // lnum is 1-indexed
-        let curline = self
+        let current_lines = self
             .current_usages
             .as_ref()
-            .unwrap_or(&self.cached_results.usages)
+            .unwrap_or(&self.cached_results.usages);
+
+        if current_lines.is_empty() {
+            return Ok(());
+        }
+
+        // lnum is 1-indexed
+        let curline = current_lines
             .get_line((lnum - 1) as usize)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
-        let on_move_handler =
-            OnMoveHandler::create(&msg, &self.context, Some(curline.to_string()))?;
-        let result = on_move_handler.on_move_process().await;
+        let on_move_handler = OnMoveHandler::create(&msg, curline.to_string(), &self.context)?;
+        let preview_result = on_move_handler.on_move_process().await?;
 
         let current_input = self.vim.input_get().await?;
         let current_lnum = self.vim.display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
-            self.vim.send(id, result)?;
+            self.vim
+                .exec("clap#state#process_preview_result", preview_result)?;
         }
 
         Ok(())

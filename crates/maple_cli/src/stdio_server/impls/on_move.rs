@@ -155,7 +155,6 @@ impl OnMove {
 }
 
 pub struct OnMoveHandler<'a> {
-    pub msg_id: u64,
     pub size: usize,
     pub inner: OnMove,
     pub context: &'a SessionContext,
@@ -168,19 +167,9 @@ pub struct OnMoveHandler<'a> {
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn create(
-        msg: &MethodCall,
-        context: &'a SessionContext,
-        curline: Option<String>,
-    ) -> Result<Self> {
-        let msg_id = msg.id;
-        let curline = match curline {
-            Some(line) => line,
-            None => msg.get_curline(&context.provider_id)?,
-        };
+    pub fn create(msg: &MethodCall, curline: String, context: &'a SessionContext) -> Result<Self> {
         let (inner, cache_line) = OnMove::new(msg, curline, context)?;
         Ok(Self {
-            msg_id,
             size: context.sensible_preview_size(),
             context,
             inner,
@@ -380,7 +369,6 @@ impl<'a> OnMoveHandler<'a> {
                     .collect::<Vec<_>>();
 
                 tracing::debug!(
-                    msg_id = self.msg_id,
                     provider_id = %self.context.provider_id,
                     lines_len = lines.len(),
                     "<== message(out) preview file content",
@@ -442,7 +430,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn send_response(&self, result: serde_json::value::Value) {
         let provider_id = &self.context.provider_id;
-        write_response(json!({ "id": self.msg_id, "provider_id": provider_id, "result": result }));
+        write_response(json!({ "provider_id": provider_id, "result": result }));
     }
 
     /// Truncates the lines that are awfully long as vim might have some performence issue with

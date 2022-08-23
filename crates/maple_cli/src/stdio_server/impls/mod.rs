@@ -20,15 +20,19 @@ pub use self::on_create::initialize;
 pub use self::on_move::{OnMove, OnMoveHandler};
 pub use self::providers::{dumb_jump, filer, recent_files};
 
+use super::vim::Vim;
+
 #[derive(Debug)]
 pub struct DefaultProvider {
+    vim: Vim,
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl DefaultProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(vim: Vim, context: SessionContext) -> Self {
         Self {
+            vim,
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
         }
@@ -52,11 +56,10 @@ impl ClapProvider for DefaultProvider {
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
         let msg_id = msg.id;
 
-        let curline = match (
-            self.context.state.source_scale.lock().deref(),
-            msg.get_u64("lnum").ok(),
-        ) {
-            (SourceScale::Small { ref items, .. }, Some(lnum)) => {
+        let lnum = self.vim.display_getcurlnum().await?;
+
+        let curline = match self.context.state.source_scale.lock().deref() {
+            SourceScale::Small { ref items, .. } => {
                 if let Some(curline) = self.line_at(lnum as usize) {
                     Some(curline)
                 } else {
@@ -68,7 +71,11 @@ impl ClapProvider for DefaultProvider {
             _ => None,
         };
 
-        let on_move_handler = on_move::OnMoveHandler::create(&msg, &self.context, curline)?;
+        let on_move_handler = on_move::OnMoveHandler::create(
+            &msg,
+            curline.ok_or_else(|| anyhow::anyhow!("curline not found"))?,
+            &self.context,
+        )?;
         if let Err(error) = on_move_handler.handle().await {
             tracing::error!(?error, "Failed to handle OnMove event");
             write_response(json!({"error": error.to_string(), "id": msg_id }));

@@ -12,6 +12,7 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{ClapProvider, SessionContext};
+use crate::stdio_server::vim::Vim;
 use crate::stdio_server::{write_response, MethodCall};
 
 async fn handle_recent_files_message(
@@ -140,13 +141,15 @@ async fn handle_recent_files_message(
 
 #[derive(Debug)]
 pub struct RecentFilesProvider {
+    vim: Vim,
     context: Arc<SessionContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(vim: Vim, context: SessionContext) -> Self {
         Self {
+            vim,
             context: Arc::new(context),
             lines: Default::default(),
         }
@@ -171,9 +174,7 @@ impl ClapProvider for RecentFilesProvider {
     }
 
     async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        let msg_id = msg.id;
-
-        let lnum = msg.get_u64("lnum").expect("lnum is required");
+        let lnum = self.vim.display_getcurlnum().await?;
 
         let maybe_curline = self
             .lines
@@ -182,12 +183,13 @@ impl ClapProvider for RecentFilesProvider {
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
-            let on_move_handler = OnMoveHandler::create(&msg, &self.context, Some(curline))?;
+            let on_move_handler = OnMoveHandler::create(&msg, curline, &self.context)?;
             if let Err(e) = on_move_handler.handle().await {
                 tracing::error!(error = ?e, "Failed to handle OnMove event");
-                write_response(json!({"error": e.to_string(), "id": msg_id }));
+                write_response(json!({"error": e.to_string() }));
             }
         }
+
         Ok(())
     }
 

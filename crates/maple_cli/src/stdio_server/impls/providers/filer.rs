@@ -126,8 +126,8 @@ pub struct FilerProvider {
 }
 
 impl FilerProvider {
-    pub fn new(context: SessionContext, vim: Vim) -> Self {
-        Self { context, vim }
+    pub fn new(vim: Vim, context: SessionContext) -> Self {
+        Self { vim, context }
     }
 }
 
@@ -165,13 +165,11 @@ impl ClapProvider for FilerProvider {
             // curline: String,
             cwd: String,
         }
-        let msg_id = msg.id;
         // Do not use curline directly.
         let curline = msg.get_curline(&self.context.provider_id)?;
         let Params { cwd } = msg.parse_unsafe();
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
-            msg_id,
             size: self.context.sensible_preview_size(),
             context: &self.context,
             inner: OnMove::Filer(path.clone()),
@@ -180,7 +178,6 @@ impl ClapProvider for FilerProvider {
         if let Err(err) = on_move_handler.handle().await {
             tracing::error!(?err, ?path, "Failed to handle filer OnMove");
             let res = json!({
-              "id": msg_id,
               "provider_id": "filer",
               "error": { "message": err.to_string(), "dir": path }
             });
