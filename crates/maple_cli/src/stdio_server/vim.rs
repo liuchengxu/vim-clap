@@ -136,11 +136,16 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
 #[derive(Debug, Clone)]
 pub struct Vim {
     rpc_client: Arc<RpcClient>,
+    // Initialized only once.
+    icon_enabled: Option<bool>,
 }
 
 impl Vim {
     pub fn new(rpc_client: Arc<RpcClient>) -> Self {
-        Self { rpc_client }
+        Self {
+            rpc_client,
+            icon_enabled: None,
+        }
     }
 
     /// Calls the method with given params in Vim and return the call result.
@@ -174,8 +179,18 @@ impl Vim {
     }
 
     // Clap-specific
+    /// Returns the cursor line in display window, with icon stripped.
     pub async fn display_getcurline(&self) -> Result<String> {
-        self.call("display_getcurline", json!([])).await
+        let icon_enabled = match self.icon_enabled {
+            Some(icon_enabled) => icon_enabled,
+            None => self.get_var_bool("clap_enable_icon").await?,
+        };
+        if icon_enabled {
+            let line: String = self.call("display_getcurline", json!([])).await?;
+            Ok(line.chars().skip(2).collect())
+        } else {
+            self.call("display_getcurline", json!([])).await
+        }
     }
 
     pub async fn display_getcurlnum(&self) -> Result<u64> {

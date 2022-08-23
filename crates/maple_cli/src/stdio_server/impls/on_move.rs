@@ -146,6 +146,7 @@ impl OnMove {
     }
 }
 
+#[derive(Debug)]
 pub struct OnMoveHandler<'a> {
     pub size: usize,
     pub inner: OnMove,
@@ -232,6 +233,16 @@ impl<'a> OnMoveHandler<'a> {
                 );
             }
         };
+
+        if !path.as_ref().is_file() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Faile to preview as {} is not a file",
+                    path.as_ref().display()
+                ),
+            ));
+        }
 
         let (lines, fname) = if !global().is_nvim {
             let (lines, abs_path) =

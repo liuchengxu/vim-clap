@@ -212,19 +212,23 @@ impl Session {
                 maybe_event = self.event_recv.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::debug!(event = ?event.short_display(), "Received an event");
+                            tracing::debug!(event = ?event.short_display(), "[with_debounce] Received an event");
 
                             match event {
                                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
                                 ProviderEvent::Create(call) => {
+                                  tracing::debug!("============================= Processing Create");
                                     if let Err(err) = self.provider.on_create(call).await {
                                         tracing::error!(?err, "Error processing ProviderEvent::Create");
                                     }
+                                  tracing::debug!("============================= Processing Create Done!");
                                 }
                                 ProviderEvent::OnMove => {
+                                    tracing::debug!("============================= Processing OnMove");
                                     if let Err(err) = self.provider.on_move().await {
                                         tracing::error!(?err, "Error processing ProviderEvent::OnMove");
                                     }
+                                    tracing::debug!("============================= Processing OnMove Done!");
                                 }
                                 ProviderEvent::OnTyped(msg) => {
                                     pending_on_typed.replace(msg);
@@ -249,7 +253,7 @@ impl Session {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.event_recv.recv().await {
-            tracing::debug!(event = ?event.short_display(), "Received an event");
+            tracing::debug!(event = ?event.short_display(), "[without_debounce] Received an event");
 
             match event {
                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),

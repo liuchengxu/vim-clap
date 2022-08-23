@@ -53,8 +53,10 @@ impl ClapProvider for DefaultProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
+        tracing::debug!("================== [DefaultProvider::on_move] 0");
         let lnum = self.vim.display_getcurlnum().await?;
 
+        tracing::debug!("================== [DefaultProvider::on_move] 1");
         let maybe_curline = match self.context.state.source_scale.lock().deref() {
             SourceScale::Small { ref items, .. } => {
                 if let Some(curline) = self.line_at(lnum as usize) {
@@ -68,15 +70,20 @@ impl ClapProvider for DefaultProvider {
             _ => None,
         };
 
+        tracing::debug!("================== [DefaultProvider::on_move] 2");
         let curline = match maybe_curline {
             Some(line) => line,
             None => self.vim.display_getcurline().await?,
         };
 
+        tracing::debug!("================== [DefaultProvider::on_move] 3");
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
+        tracing::debug!("================== [DefaultProvider::on_move] 4 {on_move_handler:?}");
         let preview_result = on_move_handler.on_move_process().await?;
+        tracing::debug!("================== [DefaultProvider::on_move] 5");
         self.vim
             .exec("clap#state#process_preview_result", preview_result)?;
+        tracing::debug!("================== [DefaultProvider::on_move] 6");
 
         Ok(())
     }

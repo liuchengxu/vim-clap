@@ -123,16 +123,11 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 pub struct FilerProvider {
     vim: Vim,
     context: SessionContext,
-    icon_enabled: Option<bool>,
 }
 
 impl FilerProvider {
     pub fn new(vim: Vim, context: SessionContext) -> Self {
-        Self {
-            vim,
-            context,
-            icon_enabled: None,
-        }
+        Self { vim, context }
     }
 }
 
@@ -165,16 +160,7 @@ impl ClapProvider for FilerProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let icon_enabled = match self.icon_enabled {
-            Some(icon_enabled) => icon_enabled,
-            None => self.vim.get_var_bool("clap_enable_icon").await?,
-        };
-        let curline = if icon_enabled {
-            let line = self.vim.display_getcurline().await?;
-            line.chars().skip(2).collect()
-        } else {
-            self.vim.display_getcurline().await?
-        };
+        let curline = self.vim.display_getcurline().await?;
         let cwd: String = self
             .vim
             .call("clap#provider#filer#current_dir", json!([]))
