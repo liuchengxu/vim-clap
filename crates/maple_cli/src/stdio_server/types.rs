@@ -62,31 +62,15 @@ impl GlobalEnv {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProviderId(String);
 
-const NO_ICON_PROVIDERS: [&str; 5] = ["blines", "commits", "bcommits", "help_tags", "dumb_jump"];
-
 impl ProviderId {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    /// Returns true if the raw line has been decorated with an icon.
-    ///
-    /// We should skip that icon when hoping to get the origin cursorline content.
-    #[inline]
-    pub fn should_skip_leading_icon(&self) -> bool {
-        super::global().enable_icon && self.has_icon_support()
     }
 
     /// Returns the preview size of current provider.
     #[inline]
     pub fn get_preview_size(&self) -> usize {
         super::global().preview_size_of(&self.0)
-    }
-
-    /// Returns true if the provider can have icon.
-    #[inline]
-    pub fn has_icon_support(&self) -> bool {
-        !NO_ICON_PROVIDERS.contains(&self.as_str())
     }
 }
 

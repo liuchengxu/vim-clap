@@ -10,9 +10,9 @@ use pattern::*;
 use types::PreviewInfo;
 
 use crate::previewer::{self, vim_help::HelpTagPreview};
+use crate::stdio_server::global;
 use crate::stdio_server::impls::providers::filer;
 use crate::stdio_server::session::SessionContext;
-use crate::stdio_server::{global, write_response, MethodCall};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
@@ -167,12 +167,6 @@ impl<'a> OnMoveHandler<'a> {
             inner,
             cache_line,
         })
-    }
-
-    pub async fn handle(&self) -> Result<()> {
-        let value = self.on_move_process().await?;
-        self.send_response(value);
-        Ok(())
     }
 
     pub async fn on_move_process(&self) -> Result<Value> {
@@ -418,11 +412,6 @@ impl<'a> OnMoveHandler<'a> {
                 }
             }
         }
-    }
-
-    fn send_response(&self, result: serde_json::value::Value) {
-        let provider_id = &self.context.provider_id;
-        write_response(json!({ "provider_id": provider_id, "result": result }));
     }
 
     /// Truncates the lines that are awfully long as vim might have some performence issue with

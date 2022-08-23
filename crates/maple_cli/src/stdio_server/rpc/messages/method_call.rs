@@ -3,7 +3,6 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::stdio_server::rpc::Params;
-use crate::stdio_server::types::ProviderId;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -30,25 +29,6 @@ impl MethodCall {
 
     pub fn get_cwd(&self) -> String {
         self.get_string_unsafe("cwd")
-    }
-
-    /// Get the current line of display window without the leading icon.
-    pub fn get_curline(&self, provider_id: &ProviderId) -> Result<String> {
-        let display_curline = self.get_string("curline")?;
-
-        let curline = if let Ok(enable_icon) = self.get_bool("enable_icon") {
-            if enable_icon {
-                display_curline.chars().skip(2).collect()
-            } else {
-                display_curline
-            }
-        } else if provider_id.should_skip_leading_icon() {
-            display_curline.chars().skip(2).collect()
-        } else {
-            display_curline
-        };
-
-        Ok(curline)
     }
 
     fn map_params(&self) -> Result<&serde_json::Map<String, Value>> {
@@ -81,13 +61,6 @@ impl MethodCall {
     pub fn get_string_unsafe(&self, key: &str) -> String {
         self.get_string(key)
             .unwrap_or_else(|e| panic!("Get String error: {:?}", e))
-    }
-
-    pub fn get_bool(&self, key: &str) -> Result<bool> {
-        self.map_params()?
-            .get(key)
-            .and_then(|x| x.as_bool())
-            .ok_or_else(|| anyhow!("Missing {} in msg.params", key))
     }
 }
 

@@ -7,14 +7,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use parking_lot::Mutex;
-use serde_json::json;
 
 use filter::{FilterContext, ParSource};
 use matcher::Matcher;
 use types::MatchedItem;
 
 use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
-use crate::stdio_server::{write_response, MethodCall};
+use crate::stdio_server::MethodCall;
 
 pub use self::on_create::initialize;
 pub use self::on_move::{OnMove, OnMoveHandler};
