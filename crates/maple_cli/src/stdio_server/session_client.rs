@@ -14,7 +14,7 @@ use crate::stdio_server::impls::filer::FilerProvider;
 use crate::stdio_server::impls::recent_files::RecentFilesProvider;
 use crate::stdio_server::impls::DefaultProvider;
 use crate::stdio_server::rpc::{Call, MethodCall};
-use crate::stdio_server::session::{ClapProvider, SessionContext};
+use crate::stdio_server::session::{ClapProvider, ProviderEvent, SessionContext};
 use crate::stdio_server::state::State;
 
 #[derive(Clone)]
@@ -72,7 +72,7 @@ impl SessionClient {
 
     /// Process the notification message from Vim.
     async fn process_notification(&self, notification: Notification) -> Result<()> {
-        use crate::stdio_server::session::ProviderEvent::*;
+        use ProviderEvent::*;
 
         match notification.method.as_str() {
             "initialize_global_env" => notification.initialize_global_env(), // should be called only once.
@@ -149,6 +149,13 @@ impl SessionClient {
             "init_ext_map" => Some(msg.parse_filetypedetect()),
             "preview/file" => Some(msg.preview_file().await?),
             "quickfix" => Some(msg.preview_quickfix().await?),
+
+            // Deprecated but not remove them for now.
+            "on_move" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(msg.session_id, ProviderEvent::OnMove);
+                None
+            }
 
             _ => Some(json!({
                 "error": format!("Unknown method call: {}", msg.method)
