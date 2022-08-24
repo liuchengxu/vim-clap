@@ -120,7 +120,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#call('filer/on_typed', function('s:handle_response'), {'cwd': s:current_dir})
+    call clap#client#notify('filer/on_typed', v:null)
   endif
 endfunction
 

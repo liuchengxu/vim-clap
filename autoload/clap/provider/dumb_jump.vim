@@ -32,12 +32,7 @@ function! s:dumb_jump.on_typed() abort
     call clap#highlight#clear()
     return
   endif
-  call clap#client#call('dumb_jump/on_typed', function('clap#state#handle_response_on_typed'), {
-        \ 'provider_id': g:clap.provider.id,
-        \ 'query': query,
-        \ 'extension': fnamemodify(bufname(g:clap.start.bufnr), ':e'),
-        \ 'cwd': clap#rooter#working_dir(),
-        \ })
+  call clap#client#notify('dumb_jump/on_typed', v:null)
 endfunction
 
 function! s:dumb_jump.init() abort

@@ -72,6 +72,8 @@ impl SessionClient {
 
     /// Process the notification message from Vim.
     async fn process_notification(&self, notification: Notification) -> Result<()> {
+        use crate::stdio_server::session::ProviderEvent::*;
+
         match notification.method.as_str() {
             "initialize_global_env" => notification.initialize_global_env(), // should be called only once.
             "note_recent_files" => notification.note_recent_file().await,
@@ -82,6 +84,16 @@ impl SessionClient {
                 session_manager.new_session(
                     call,
                     Box::new(DefaultProvider::new(self.vim.clone(), context)),
+                );
+                Ok(())
+            }
+            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(
+                    notification.session_id.ok_or_else(|| {
+                        anyhow::anyhow!("Each provider notification must contain a session id")
+                    })?,
+                    OnTyped,
                 );
                 Ok(())
             }
@@ -133,12 +145,6 @@ impl SessionClient {
                 tracing::debug!("======================== New session");
                 session_manager.new_session(call, provider);
 
-                None
-            }
-
-            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnTyped);
                 None
             }
 
