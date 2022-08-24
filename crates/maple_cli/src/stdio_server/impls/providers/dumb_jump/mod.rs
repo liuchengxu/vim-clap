@@ -7,7 +7,6 @@ use anyhow::Result;
 use futures::Future;
 use itertools::Itertools;
 use rayon::prelude::*;
-use serde::Deserialize;
 use serde_json::json;
 
 use filter::Query;
@@ -20,7 +19,6 @@ use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, ClapProvider, SessionContext,
 };
 use crate::stdio_server::vim::Vim;
-use crate::stdio_server::{write_response, MethodCall};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::ExactOrInverseTerms;
@@ -129,78 +127,6 @@ struct SearchResults {
     query_info: QueryInfo,
 }
 
-#[derive(Deserialize)]
-struct Params {
-    cwd: String,
-    query: String,
-    extension: String,
-}
-
-#[inline]
-fn parse_msg(msg: MethodCall) -> (u64, Params) {
-    (msg.id, msg.parse_unsafe())
-}
-
-async fn search_for_usages(
-    msg_id: u64,
-    params: Params,
-    maybe_search_info: Option<QueryInfo>,
-    search_engine: SearchEngine,
-    force_execute: bool,
-) -> SearchResults {
-    let Params {
-        cwd,
-        query,
-        extension,
-    } = params;
-
-    if query.is_empty() {
-        return Default::default();
-    }
-
-    let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
-
-    let searching_worker = SearchingWorker {
-        cwd,
-        query_info: query_info.clone(),
-        source_file_extension: extension,
-    };
-    let (response, usages) = match search_engine.run(searching_worker).await {
-        Ok(usages) => {
-            let response = {
-                let total = usages.len();
-                // Only show the top 200 items.
-                let (lines, indices): (Vec<_>, Vec<_>) = usages
-                    .iter()
-                    .take(200)
-                    .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
-                    .unzip();
-                json!({
-                  "id": msg_id,
-                  "provider_id": "dumb_jump",
-                  "force_execute": force_execute,
-                  "result": { "lines": lines, "indices": indices, "total": total },
-                })
-            };
-
-            (response, usages)
-        }
-        Err(e) => {
-            tracing::error!(error = ?e, "Error at running dumb_jump");
-            let response = json!({
-                "id": msg_id,
-                "provider_id": "dumb_jump",
-                "error": { "message": e.to_string() }
-            });
-            (response, Default::default())
-        }
-    };
-
-    write_response(response);
-
-    SearchResults { usages, query_info }
-}
-
 #[derive(Debug)]
 pub struct DumbJumpProvider {
     vim: Vim,
@@ -231,10 +157,11 @@ impl DumbJumpProvider {
     /// Starts a new searching task.
     async fn start_search(
         &self,
-        msg_id: u64,
-        params: Params,
+        cwd: String,
+        query: String,
+        extension: String,
         query_info: QueryInfo,
-    ) -> SearchResults {
+    ) -> Result<SearchResults> {
         let search_engine = match (
             self.ctags_regenerated.load(Ordering::Relaxed),
             self.gtags_regenerated.load(Ordering::Relaxed),
@@ -244,7 +171,41 @@ impl DumbJumpProvider {
             _ => SearchEngine::Regex,
         };
 
-        search_for_usages(msg_id, params, Some(query_info), search_engine, false).await
+        if query.is_empty() {
+            return Ok(Default::default());
+        }
+
+        let searching_worker = SearchingWorker {
+            cwd,
+            query_info: query_info.clone(),
+            source_file_extension: extension,
+        };
+        let (response, usages) = match search_engine.run(searching_worker).await {
+            Ok(usages) => {
+                let response = {
+                    let total = usages.len();
+                    // Only show the top 200 items.
+                    let (lines, indices): (Vec<_>, Vec<_>) = usages
+                        .iter()
+                        .take(200)
+                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+                        .unzip();
+                    json!({ "lines": lines, "indices": indices, "total": total })
+                };
+
+                (response, usages)
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Error at running dumb_jump");
+                let response = json!({ "error": { "message": e.to_string() } });
+                (response, Default::default())
+            }
+        };
+
+        self.vim
+            .exec("clap#state#process_result_on_typed", response)?;
+
+        Ok(SearchResults { usages, query_info })
     }
 }
 
@@ -383,10 +344,18 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
-        let (msg_id, params) = parse_msg(msg);
+    async fn on_typed(&mut self) -> Result<()> {
+        let query = self.vim.input_get().await?;
+        let cwd = self.vim.working_dir().await?;
 
-        let query_info = parse_query_info(&params.query);
+        let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+        let extension = std::path::Path::new(&bufname)
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
+
+        let query_info = parse_query_info(&query);
 
         // Try to refilter the cached results.
         if self.cached_results.query_info.is_superset(&query_info) {
@@ -407,18 +376,14 @@ impl ClapProvider for DumbJumpProvider {
                 .take(200)
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
-            let response = json!({
-                "id": msg_id,
-                "provider_id": "dumb_jump",
-                "force_execute": true,
-                "result": { "lines": lines, "indices": indices, "total": total },
-            });
-            write_response(response);
+            let response = json!({ "lines": lines, "indices": indices, "total": total });
+            self.vim
+                .exec("clap#state#process_result_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }
 
-        self.cached_results = self.start_search(msg_id, params, query_info).await;
+        self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
         self.current_usages.take();
 
         Ok(())

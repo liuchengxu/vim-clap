@@ -13,7 +13,6 @@ use matcher::Matcher;
 use types::MatchedItem;
 
 use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
-use crate::stdio_server::MethodCall;
 
 pub use self::on_create::initialize;
 pub use self::on_move::{OnMove, OnMoveHandler};
@@ -88,7 +87,7 @@ impl ClapProvider for DefaultProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, _msg: MethodCall) -> Result<()> {
+    async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim.input_get().await?;
 
         let source_scale = self.context.state.source_scale.lock();

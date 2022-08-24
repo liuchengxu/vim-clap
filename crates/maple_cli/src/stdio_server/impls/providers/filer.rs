@@ -9,7 +9,6 @@ use icon::prepend_filer_icon;
 use crate::stdio_server::impls::{OnMove, OnMoveHandler};
 use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
-use crate::stdio_server::MethodCall;
 use crate::utils::build_abs_path;
 
 /// Display the inner path in a nicer way.
@@ -183,7 +182,7 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, _msg: MethodCall) -> Result<()> {
+    async fn on_typed(&mut self) -> Result<()> {
         let cwd: String = self
             .vim
             .call("clap#provider#filer#current_dir", json!([]))

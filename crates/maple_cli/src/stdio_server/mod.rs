@@ -21,13 +21,6 @@ pub use self::rpc::{MethodCall, Notification};
 
 static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
 
-/// Writes the response to stdout.
-pub fn write_response<T: serde::Serialize>(msg: T) {
-    if let Ok(s) = serde_json::to_string(&msg) {
-        println!("Content-length: {}\n\n{}", s.len(), s);
-    }
-}
-
 /// Ensure GLOBAL_ENV has been instalized before using it.
 pub fn global() -> impl Deref<Target = GlobalEnv> {
     if let Some(x) = GLOBAL_ENV.get() {

@@ -1,7 +1,6 @@
 mod context;
 mod manager;
 
-use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::sync::{atomic::Ordering, Arc};
@@ -15,7 +14,6 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
-use crate::stdio_server::MethodCall;
 
 pub use self::context::{SessionContext, SourceScale};
 pub use self::manager::SessionManager;
@@ -109,7 +107,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_move(&mut self) -> Result<()>;
 
-    async fn on_typed(&mut self, msg: MethodCall) -> Result<()>;
+    async fn on_typed(&mut self) -> Result<()>;
 
     async fn on_tab(&mut self) -> Result<()> {
         // Most providers don't need this, hence a default impl is provided.
@@ -138,22 +136,10 @@ pub struct Session {
 
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
-    OnTyped(MethodCall),
+    OnTyped,
     Create,
     OnMove,
     Terminate,
-}
-
-impl ProviderEvent {
-    /// Simplified display of session event.
-    pub fn short_display(&self) -> Cow<'_, str> {
-        match self {
-            Self::OnTyped(msg) => format!("OnTyped, msg_id: {}", msg.id).into(),
-            Self::Create => "Create".into(),
-            Self::OnMove => "OnMove".into(),
-            Self::Terminate => "Terminate".into(),
-        }
-    }
 }
 
 impl Session {
@@ -201,7 +187,7 @@ impl Session {
             "Spawning a new session task",
         );
 
-        let mut pending_on_typed = None;
+        let mut dirty = false;
 
         let debounce_timer = tokio::time::sleep(NEVER);
         tokio::pin!(debounce_timer);
@@ -211,7 +197,7 @@ impl Session {
                 maybe_event = self.event_recv.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::debug!(event = ?event.short_display(), "[with_debounce] Received an event");
+                            tracing::debug!(?event, "[with_debounce] Received an event");
 
                             match event {
                                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
@@ -229,8 +215,8 @@ impl Session {
                                     }
                                     tracing::debug!("============================= Processing OnMove Done!");
                                 }
-                                ProviderEvent::OnTyped(msg) => {
-                                    pending_on_typed.replace(msg);
+                                ProviderEvent::OnTyped => {
+                                    dirty = true;
                                     debounce_timer.as_mut().reset(Instant::now() + DELAY);
                                 }
                             }
@@ -238,11 +224,11 @@ impl Session {
                           None => break, // channel has closed.
                       }
                 }
-                _ = debounce_timer.as_mut(), if pending_on_typed.is_some() => {
-                    let msg = pending_on_typed.take().expect("Checked as Some above; qed");
+                _ = debounce_timer.as_mut(), if dirty => {
+                    dirty = false;
                     debounce_timer.as_mut().reset(Instant::now() + NEVER);
 
-                    if let Err(err) = self.provider.on_typed(msg).await {
+                    if let Err(err) = self.provider.on_typed().await {
                         tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
                     }
                 }
@@ -252,7 +238,7 @@ impl Session {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.event_recv.recv().await {
-            tracing::debug!(event = ?event.short_display(), "[without_debounce] Received an event");
+            tracing::debug!(?event, "[without_debounce] Received an event");
 
             match event {
                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
@@ -266,8 +252,8 @@ impl Session {
                         tracing::debug!(?err, "Error processing ProviderEvent::OnMove");
                     }
                 }
-                ProviderEvent::OnTyped(msg) => {
-                    if let Err(err) = self.provider.on_typed(msg).await {
+                ProviderEvent::OnTyped => {
+                    if let Err(err) = self.provider.on_typed().await {
                         tracing::debug!(?err, "Error processing ProviderEvent::OnTyped");
                     }
                 }

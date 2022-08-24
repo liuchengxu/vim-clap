@@ -94,7 +94,7 @@ async fn loop_handle_rpc_message(mut rx: UnboundedReceiver<String>) {
                             let context: SessionContext = call.clone().into();
                             manager.new_session(call, Box::new(DumbJumpProvider::new(context)))
                         }
-                        "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped(msg)),
+                        "dumb_jump/on_typed" => manager.send(msg.session_id, OnTyped),
                         "dumb_jump/on_move" => manager.send(msg.session_id, OnMove(msg)),
 
                         "recent_files/on_init" => {

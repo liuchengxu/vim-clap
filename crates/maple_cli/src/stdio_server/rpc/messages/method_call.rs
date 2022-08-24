@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::stdio_server::rpc::Params;
@@ -14,29 +14,12 @@ pub struct MethodCall {
 }
 
 impl MethodCall {
-    pub fn parse<T: DeserializeOwned>(self) -> Result<T> {
-        self.params.parse().map_err(Into::into)
-    }
-
-    pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
-        self.parse()
-            .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
-    }
-
     fn map_params(&self) -> Result<&serde_json::Map<String, Value>> {
         match &self.params {
             Params::None => Err(anyhow!("None params unsupported")),
             Params::Array(_) => Err(anyhow!("Array params unsupported")),
             Params::Map(map) => Ok(map),
         }
-    }
-
-    #[allow(unused)]
-    pub fn get_u64(&self, key: &str) -> Result<u64> {
-        self.map_params()?
-            .get(key)
-            .and_then(|x| x.as_u64())
-            .ok_or_else(|| anyhow!("Missing {} in msg.params", key))
     }
 
     pub fn get_str(&self, key: &str) -> Result<&str> {

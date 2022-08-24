@@ -11,7 +11,6 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
-use crate::stdio_server::MethodCall;
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
@@ -172,7 +171,7 @@ impl ClapProvider for RecentFilesProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, _msg: MethodCall) -> Result<()> {
+    async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim.input_get().await?;
         let cwd = self.vim.working_dir().await?;
         let lnum = self.vim.display_getcurlnum().await?;

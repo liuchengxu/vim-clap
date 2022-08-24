@@ -138,7 +138,7 @@ impl SessionClient {
 
             "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnTyped(msg));
+                session_manager.send(msg.session_id, OnTyped);
                 None
             }
 
