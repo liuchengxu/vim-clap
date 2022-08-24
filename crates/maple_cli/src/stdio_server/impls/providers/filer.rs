@@ -161,6 +161,11 @@ impl ClapProvider for FilerProvider {
 
     async fn on_move(&mut self) -> Result<()> {
         let curline = self.vim.display_getcurline().await?;
+        let curline = if self.vim.get_var_bool("clap_enable_icon").await? {
+            curline.chars().skip(2).collect()
+        } else {
+            curline
+        };
         let cwd: String = self
             .vim
             .call("clap#provider#filer#current_dir", json!([]))

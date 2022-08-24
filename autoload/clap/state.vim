@@ -98,6 +98,10 @@ function! clap#state#handle_response_on_typed(result, error) abort
     return
   endif
 
+  call clap#state#process_result_on_typed(a:result)
+endfunction
+
+function! clap#state#process_result_on_typed(result) abort
   if has_key(a:result, 'initial_size')
     let g:clap.display.initial_size = a:result.initial_size
   endif

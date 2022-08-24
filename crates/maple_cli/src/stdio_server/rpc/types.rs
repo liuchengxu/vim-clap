@@ -21,13 +21,6 @@ impl Call {
             Self::Notification(notification) => notification.session_id,
         }
     }
-
-    pub fn unwrap_method_call(self) -> MethodCall {
-        match self {
-            Self::MethodCall(method_call) => method_call,
-            _ => unreachable!("Unwrapping MethodCall but met Notification"),
-        }
-    }
 }
 
 /// Message pass through the stdio channel.
