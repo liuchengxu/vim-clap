@@ -377,8 +377,7 @@ function! s:filer.on_move_async() abort
     call g:clap.preview.hide()
     return
   endif
-  call clap#client#call_on_move('filer/on_move',
-    \ function('s:filer_handle_on_move_response'), {'cwd': s:current_dir})
+  call clap#client#notify('filer/on_move', v:null)
 endfunction
 
 function! clap#provider#filer#current_dir() abort
@@ -440,7 +439,7 @@ function! s:start_rpc_service() abort
   call s:set_initial_current_dir()
   call s:set_prompt()
   " TODO: reimplement filer on Rust side.
-  call clap#client#call_on_init('filer/on_init', function('s:handle_response'), {'cwd': s:current_dir, 'debounce': v:false})
+  call clap#client#notify_on_init('filer/on_init', {'cwd': s:current_dir, 'debounce': v:false})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

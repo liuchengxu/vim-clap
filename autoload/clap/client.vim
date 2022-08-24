@@ -90,8 +90,8 @@ function! s:base_params() abort
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),
         \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
+        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
-        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid }
         \ }
   if has_key(g:clap.preview, 'winid')
         \ && clap#api#floating_win_is_valid(g:clap.preview.winid)
@@ -110,28 +110,6 @@ function! clap#client#notify_on_init(method, ...) abort
     call extend(params, a:1)
   endif
   call s:send_notification(a:method, params)
-endfunction
-
-function! clap#client#call_on_init(method, callback, ...) abort
-  let s:session_id += 1
-  let params = s:base_params()
-  if a:0 > 0
-    call extend(params, a:1)
-  endif
-  call s:send_method_call(a:method, params)
-  if a:callback isnot v:null
-    let s:handlers[s:req_id] = a:callback
-  endif
-endfunction
-
-function! clap#client#init_params(extra) abort
-  let opts = {
-        \ 'provider_id': g:clap.provider.id,
-        \ 'query': has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get(),
-        \ 'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \ 'cwd': clap#rooter#working_dir(),
-        \ }
-  return type(a:extra) == v:t_dict ? extend(opts, a:extra) : opts
 endfunction
 
 function! s:send_notification(method, params) abort
@@ -184,30 +162,6 @@ function! clap#client#call_with_delay(method, callback, params) abort
   endif
 
   let s:call_timer = timer_start(s:call_delay, { -> clap#client#call(a:method, a:callback, a:params) })
-endfunction
-
-" One optional argument: Dict, extra params
-function! clap#client#call_on_move(method, callback, ...) abort
-  let curline = g:clap.display.getcurline()
-  if empty(curline)
-    return
-  endif
-  let params = {'curline': curline}
-  if a:0 > 0
-    call extend(params, a:1)
-  endif
-  call clap#client#call(a:method, a:callback, params)
-endfunction
-
-function! clap#client#call_with_lnum(method, callback, ...) abort
-  let params = {'lnum': g:__clap_display_curlnum}
-  if g:clap.provider.id ==# 'grep'
-    let params['enable_icon'] = g:clap_provider_grep_enable_icon ? v:true : v:false
-  endif
-  if a:0 > 0
-    call extend(params, a:1)
-  endif
-  call clap#client#call(a:method, a:callback, params)
 endfunction
 
 function! clap#client#call_preview_file(extra) abort

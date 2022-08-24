@@ -11,12 +11,11 @@ function! s:recent_files.on_typed() abort
 endfunction
 
 function! s:recent_files.on_move_async() abort
-  call clap#client#call_with_lnum('recent_files/on_move', function('clap#impl#on_move#handler'))
+  call clap#client#notify('recent_files/on_move', v:null)
 endfunction
 
 function! s:recent_files.init() abort
-  call clap#client#call_on_init(
-        \ 'recent_files/on_init', function('clap#state#handle_response_on_typed'), clap#client#init_params(v:null))
+  call clap#client#notify_on_init('recent_files/on_init')
 endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')

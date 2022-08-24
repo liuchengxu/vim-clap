@@ -552,19 +552,9 @@ function! s:init_provider() abort
     else
       call self.init_default_impl()
     endif
-    let s:pure_rust_backed = ['filer', 'dumb_jump', 'recent_files']
     " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
-    if clap#maple#is_available() && index(s:pure_rust_backed, self.id) == -1
+    if clap#maple#is_available()
       let extra = {}
-      if g:__clap_development
-        if has_key(self, 'source_type') && has_key(self._(), 'source')
-          if self.source_type == g:__t_string
-            let extra = { 'source_cmd': self._().source }
-          elseif self.source_type == g:__t_func_string
-            let extra = { 'source_cmd': self._().source() }
-          endif
-        endif
-      endif
       if self.id ==# 'tags'
         let extra['debounce'] = v:false
       endif

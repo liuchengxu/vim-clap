@@ -76,57 +76,11 @@ impl SessionClient {
 
         match notification.method.as_str() {
             "initialize_global_env" => notification.initialize_global_env(), // should be called only once.
+
             "note_recent_files" => notification.note_recent_file().await,
-            "on_init" => {
-                let mut session_manager = self.session_manager_mutex.lock();
+
+            "on_init" | "dumb_jump/on_init" | "recent_files/on_init" | "filer/on_init" => {
                 let call = Call::Notification(notification);
-                let context: SessionContext = call.clone().into();
-                session_manager.new_session(
-                    call,
-                    Box::new(DefaultProvider::new(self.vim.clone(), context)),
-                );
-                Ok(())
-            }
-            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(
-                    notification.session_id.ok_or_else(|| {
-                        anyhow::anyhow!("Each provider notification must contain a session id")
-                    })?,
-                    OnTyped,
-                );
-                Ok(())
-            }
-            "exit" => {
-                let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.terminate(
-                    notification
-                        .session_id
-                        .expect("SessionId should be included in exit message"),
-                );
-                Ok(())
-            }
-            _ => Err(anyhow::anyhow!("Unknown notification: {notification:?}")),
-        }
-    }
-
-    /// Process the method call message from Vim.
-    async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
-        use crate::stdio_server::session::ProviderEvent::*;
-
-        let msg = method_call;
-
-        if msg.method != "init_ext_map" {
-            tracing::debug!(?msg, "==> stdio message(in)");
-        }
-
-        let value = match msg.method.as_str() {
-            "init_ext_map" => Some(msg.parse_filetypedetect()),
-            "preview/file" => Some(msg.preview_file().await?),
-            "quickfix" => Some(msg.preview_quickfix().await?),
-
-            "dumb_jump/on_init" | "recent_files/on_init" | "filer/on_init" => {
-                let call = Call::MethodCall(msg);
                 let context: SessionContext = call.clone().into();
 
                 tracing::debug!("======================== New context {context:?}");
@@ -145,14 +99,56 @@ impl SessionClient {
                 tracing::debug!("======================== New session");
                 session_manager.new_session(call, provider);
 
-                None
+                Ok(())
+            }
+
+            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(
+                    notification.session_id.ok_or_else(|| {
+                        anyhow::anyhow!("Each provider notification must contain a session id")
+                    })?,
+                    OnTyped,
+                );
+                Ok(())
             }
 
             "on_move" | "filer/on_move" | "dumb_jump/on_move" | "recent_files/on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, OnMove);
-                None
+                session_manager.send(
+                    notification.session_id.ok_or_else(|| {
+                        anyhow::anyhow!("Each provider notification must contain a session id")
+                    })?,
+                    OnMove,
+                );
+                Ok(())
             }
+
+            "exit" => {
+                let mut session_manager = self.session_manager_mutex.lock();
+                session_manager.terminate(
+                    notification
+                        .session_id
+                        .expect("SessionId should be included in exit message"),
+                );
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Unknown notification: {notification:?}")),
+        }
+    }
+
+    /// Process the method call message from Vim.
+    async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
+        let msg = method_call;
+
+        if msg.method != "init_ext_map" {
+            tracing::debug!(?msg, "==> stdio message(in)");
+        }
+
+        let value = match msg.method.as_str() {
+            "init_ext_map" => Some(msg.parse_filetypedetect()),
+            "preview/file" => Some(msg.preview_file().await?),
+            "quickfix" => Some(msg.preview_quickfix().await?),
 
             _ => Some(json!({
                 "error": format!("Unknown method call: {}", msg.method)

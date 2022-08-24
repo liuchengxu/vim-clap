@@ -36,13 +36,11 @@ function! s:dumb_jump.on_typed() abort
 endfunction
 
 function! s:dumb_jump.init() abort
-  let extension = fnamemodify(bufname(g:clap.start.bufnr), ':e')
-  call clap#client#call_on_init(
-        \ 'dumb_jump/on_init', function('clap#state#handle_response_on_typed'), clap#client#init_params({'extension': extension}))
+  call clap#client#notify_on_init('dumb_jump/on_init')
 endfunction
 
 function! s:dumb_jump.on_move_async() abort
-  call clap#client#call('dumb_jump/on_move', v:null, v:null)
+  call clap#client#notify('dumb_jump/on_move', v:null)
 endfunction
 
 let s:dumb_jump['sink*'] = function('s:dumb_jump_sink_star')

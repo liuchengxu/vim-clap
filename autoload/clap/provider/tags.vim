@@ -75,7 +75,7 @@ else
   endfunction
 
   function! s:tags.on_move_async() abort
-    call clap#client#call_with_lnum('on_move', function('clap#impl#on_move#handler'))
+    call clap#client#notify('on_move', v:null)
   endfunction
 
   function! s:tags.sink(selected) abort

@@ -50,7 +50,7 @@ if clap#maple#is_available()
     call g:clap.display.set_lines_lazy(s:format(a:lines))
   endfunction
   function! s:blines.init() abort
-    call clap#client#notify_on_init('on_init', {})
+    call clap#client#notify_on_init('on_init')
   endfunction
 else
   function! s:blines.init() abort
