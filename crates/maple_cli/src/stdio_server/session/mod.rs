@@ -10,10 +10,13 @@ use anyhow::Result;
 use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use printer::DisplayLines;
+use serde_json::json;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
+use crate::stdio_server::vim::Vim;
 
 pub use self::context::{SessionContext, SourceScale};
 pub use self::manager::SessionManager;
@@ -50,22 +53,10 @@ pub fn note_job_is_finished(job_id: u64) {
 
 pub type SessionId = u64;
 
-fn process_source_scale(source_scale: SourceScale, context: &SessionContext) {
-    if let Some(total) = source_scale.total() {
-        let method = "s:set_total_size";
-        utility::println_json_with_length!(total, method);
-    }
-
-    if let Some(lines) = source_scale.initial_lines(100) {
-        printer::decorate_lines(lines, context.display_winwidth as usize, context.icon)
-            .print_on_session_create();
-    }
-
-    context.set_source_scale(source_scale);
-}
-
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
+    fn vim(&self) -> &Vim;
+
     fn session_context(&self) -> &SessionContext;
 
     async fn on_create(&mut self) -> Result<()> {
@@ -76,7 +67,29 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         // TODO: blocking on_create for the swift providers like `tags`.
         match tokio::time::timeout(TIMEOUT, initialize(context)).await {
             Ok(scale_result) => match scale_result {
-                Ok(scale) => process_source_scale(scale, context),
+                Ok(scale) => {
+                    if let Some(total) = scale.total() {
+                        self.vim()
+                            .exec("set_var", json!(["g:clap.display.initial_size", total]))?;
+                    }
+
+                    if let Some(lines) = scale.initial_lines(100) {
+                        let DisplayLines {
+                            lines,
+                            truncated_map,
+                            icon_added,
+                            ..
+                        } = printer::decorate_lines(
+                            lines,
+                            context.display_winwidth as usize,
+                            context.icon,
+                        );
+
+                        self.vim().exec("clap#state#init_display", json!({ "lines": lines, "truncated_map": truncated_map, "icon_added": icon_added }))?;
+                    }
+
+                    context.set_source_scale(scale);
+                }
                 Err(e) => tracing::error!(?e, "Error occurred on creating session"),
             },
             Err(_) => {

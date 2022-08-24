@@ -49,19 +49,19 @@ pub async fn start() {
     ));
 
     let state = State::new(call_tx, rpc_client.clone());
-    let session_client = SessionClient::new(state, rpc_client);
+    let session_client = Client::new(state, rpc_client);
     session_client.loop_call(call_rx).await;
 }
 
 #[derive(Clone)]
-struct SessionClient {
+struct Client {
     vim: Vim,
-    pub state_mutex: Arc<Mutex<State>>,
-    pub session_manager_mutex: Arc<Mutex<SessionManager>>,
+    state_mutex: Arc<Mutex<State>>,
+    session_manager_mutex: Arc<Mutex<SessionManager>>,
 }
 
-impl SessionClient {
-    /// Creates a new instnace of [`SessionClient`].
+impl Client {
+    /// Creates a new instnace of [`Client`].
     fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
         let vim = Vim::new(rpc_client);
         Self {

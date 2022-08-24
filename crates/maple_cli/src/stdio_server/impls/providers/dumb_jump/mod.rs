@@ -211,6 +211,10 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
+    fn vim(&self) -> &Vim {
+        &self.vim
+    }
+
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

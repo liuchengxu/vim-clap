@@ -47,6 +47,10 @@ impl DefaultProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DefaultProvider {
+    fn vim(&self) -> &Vim {
+        &self.vim
+    }
+
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

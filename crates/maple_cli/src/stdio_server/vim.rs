@@ -178,7 +178,9 @@ impl Vim {
         self.call("bufname", json!([bufnr])).await
     }
 
-    // Clap-specific
+    ///////////////////////////////////////////
+    //  Clap related APIs
+    ///////////////////////////////////////////
     /// Returns the cursor line in display window, with icon stripped.
     pub async fn display_getcurline(&self) -> Result<String> {
         let line: String = self.call("display_getcurline", json!([])).await?;
@@ -209,6 +211,9 @@ impl Vim {
         self.call("context_query_or_input", json!([])).await
     }
 
+    ///////////////////////////////////////////
+    //  General helpers
+    ///////////////////////////////////////////
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
         let value = match value {

@@ -74,6 +74,10 @@ function! s:api.get_var(var) abort
   return get(g:, a:var, v:null)
 endfunction
 
+function! s:api.set_var(name, value) abort
+  execute 'let '.a:name.'= a:value'
+endfunction
+
 function! s:api.working_dir() abort
   return clap#rooter#working_dir()
 endfunction

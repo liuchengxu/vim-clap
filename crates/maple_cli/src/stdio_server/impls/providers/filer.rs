@@ -131,6 +131,10 @@ impl FilerProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
+    fn vim(&self) -> &Vim {
+        &self.vim
+    }
+
     fn session_context(&self) -> &SessionContext {
         &self.context
     }

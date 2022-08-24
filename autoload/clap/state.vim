@@ -135,6 +135,24 @@ function! clap#state#process_result_on_typed(result) abort
   endif
 endfunction
 
+function! clap#state#init_display(msg) abort
+  if empty(g:clap.input.get())
+    if g:clap.provider.id ==# 'blines'
+      call clap#provider#blines#initialize(a:msg.lines)
+    else
+      call g:clap.display.set_lines_lazy(a:msg.lines)
+    endif
+    call g:clap#display_win.shrink_if_undersize()
+  endif
+
+  call clap#indicator#update_matches_on_forerunner_done()
+  call clap#sign#ensure_exists()
+
+  let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  call clap#spinner#refresh()
+  call clap#preview#async_open_with_delay()
+endfunction
+
 " Returns the cached source tmp file.
 "
 " Write the providers whose `source` is list-style into a tempfile.

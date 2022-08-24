@@ -44,12 +44,7 @@ impl Notification {
     }
 
     pub async fn note_recent_file(self) -> Result<()> {
-        #[derive(Deserialize)]
-        struct InnerParams {
-            file: String,
-        }
-
-        let InnerParams { file } = self.params.parse()?;
+        let file: String = self.params.parse()?;
 
         tracing::debug!(?file, "Receive a recent file");
         if file.is_empty() || !std::path::Path::new(&file).exists() {

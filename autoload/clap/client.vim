@@ -10,29 +10,8 @@ let s:handlers = get(s:, 'handlers', {})
 
 let s:last_recent_file = v:null
 
-function! s:set_total_size(msg) abort
-  let g:clap.display.initial_size = a:msg.total
-endfunction
-
-function! s:init_display(msg) abort
-  if empty(g:clap.input.get())
-    if g:clap.provider.id ==# 'blines'
-      call clap#provider#blines#initialize(a:msg.lines)
-    else
-      call g:clap.display.set_lines_lazy(a:msg.lines)
-    endif
-    call g:clap#display_win.shrink_if_undersize()
-  endif
-
-  call clap#indicator#update_matches_on_forerunner_done()
-  call clap#sign#ensure_exists()
-
-  let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
-  call clap#spinner#refresh()
-  call clap#preview#async_open_with_delay()
-endfunction
-
 function! s:process_filter_message(msg) abort
+  echom 'Calling s:process_filter_message'
   if g:clap.display.win_is_valid()
     if !has_key(a:msg, 'query') || a:msg.query ==# g:clap.input.get()
       call clap#state#process_filter_message(a:msg, v:true)
@@ -81,37 +60,6 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! s:base_params() abort
-  let params = {
-        \   'cwd': clap#rooter#working_dir(),
-        \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
-        \   'provider_id': g:clap.provider.id,
-        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
-        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \   'display_winwidth': winwidth(g:clap.display.winid),
-        \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
-        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
-        \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
-        \ }
-  if has_key(g:clap.preview, 'winid')
-        \ && clap#api#floating_win_is_valid(g:clap.preview.winid)
-    let params['preview_winheight'] = winheight(g:clap.preview.winid)
-  endif
-  if g:clap.provider.id ==# 'help_tags'
-    let params['runtimepath'] = &runtimepath
-  endif
-  return params
-endfunction
-
-function! clap#client#notify_on_init(method, ...) abort
-  let s:session_id += 1
-  let params = s:base_params()
-  if a:0 > 0
-    call extend(params, a:1)
-  endif
-  call s:send_notification(a:method, params)
-endfunction
-
 function! s:send_notification(method, params) abort
   call clap#job#daemon#send_message(json_encode({
         \ 'method': a:method,
@@ -130,18 +78,7 @@ function! s:send_method_call(method, params) abort
         \ }))
 endfunction
 
-function! clap#client#notify_recent_file() abort
-  if &buftype ==# 'nofile'
-    return
-  endif
-  let file = expand(expand('<afile>:p'))
-  if s:last_recent_file isnot v:null && s:last_recent_file == file
-    return
-  endif
-  call s:send_notification('note_recent_files', {'file': file})
-  let s:last_recent_file = file
-endfunction
-
+" Recommend API
 function! clap#client#notify(method, params) abort
   call s:send_notification(a:method, a:params)
 endfunction
@@ -151,6 +88,44 @@ function! clap#client#call(method, callback, params) abort
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
+endfunction
+
+function! clap#client#notify_on_init(method, ...) abort
+  let s:session_id += 1
+  let params = {
+        \   'cwd': clap#rooter#working_dir(),
+        \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
+        \   'provider_id': g:clap.provider.id,
+        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
+        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
+        \   'display_winwidth': winwidth(g:clap.display.winid),
+        \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
+        \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
+        \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
+        \ }
+  if has_key(g:clap.preview, 'winid')
+        \ && clap#api#floating_win_is_valid(g:clap.preview.winid)
+    let params['preview_winheight'] = winheight(g:clap.preview.winid)
+  endif
+  if g:clap.provider.id ==# 'help_tags'
+    let params['runtimepath'] = &runtimepath
+  endif
+  if a:0 > 0
+    call extend(params, a:1)
+  endif
+  call s:send_notification(a:method, params)
+endfunction
+
+function! clap#client#notify_recent_file() abort
+  if &buftype ==# 'nofile'
+    return
+  endif
+  let file = expand(expand('<afile>:p'))
+  if s:last_recent_file isnot v:null && s:last_recent_file == file
+    return
+  endif
+  call s:send_notification('note_recent_files', file)
+  let s:last_recent_file = file
 endfunction
 
 let s:call_timer = -1

@@ -44,18 +44,6 @@ impl DisplayLines {
         }
     }
 
-    pub fn print_on_session_create(&self) {
-        let Self {
-            lines,
-            truncated_map,
-            icon_added,
-            ..
-        } = self;
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:init_display";
-        println_json_with_length!(method, lines, icon_added, truncated_map);
-    }
-
     pub fn print_on_typed(&self, total: usize) {
         let Self {
             lines,
