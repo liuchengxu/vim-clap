@@ -88,8 +88,8 @@ impl ClapProvider for DefaultProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
-        let query = msg.get_query();
+    async fn on_typed(&mut self, _msg: MethodCall) -> Result<()> {
+        let query = self.vim.input_get().await?;
 
         let source_scale = self.context.state.source_scale.lock();
 

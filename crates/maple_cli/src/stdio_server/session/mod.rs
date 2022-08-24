@@ -15,7 +15,6 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
-use crate::stdio_server::rpc::Call;
 use crate::stdio_server::MethodCall;
 
 pub use self::context::{SessionContext, SourceScale};
@@ -71,7 +70,7 @@ fn process_source_scale(source_scale: SourceScale, context: &SessionContext) {
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     fn session_context(&self) -> &SessionContext;
 
-    async fn on_create(&mut self, _call: Call) -> Result<()> {
+    async fn on_create(&mut self) -> Result<()> {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
         let context = self.session_context();
@@ -140,7 +139,7 @@ pub struct Session {
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
     OnTyped(MethodCall),
-    Create(Call),
+    Create,
     OnMove,
     Terminate,
 }
@@ -150,7 +149,7 @@ impl ProviderEvent {
     pub fn short_display(&self) -> Cow<'_, str> {
         match self {
             Self::OnTyped(msg) => format!("OnTyped, msg_id: {}", msg.id).into(),
-            Self::Create(_) => "Create".into(),
+            Self::Create => "Create".into(),
             Self::OnMove => "OnMove".into(),
             Self::Terminate => "Terminate".into(),
         }
@@ -216,9 +215,9 @@ impl Session {
 
                             match event {
                                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
-                                ProviderEvent::Create(call) => {
+                                ProviderEvent::Create => {
                                   tracing::debug!("============================= Processing Create");
-                                    if let Err(err) = self.provider.on_create(call).await {
+                                    if let Err(err) = self.provider.on_create().await {
                                         tracing::error!(?err, "Error processing ProviderEvent::Create");
                                     }
                                   tracing::debug!("============================= Processing Create Done!");
@@ -257,8 +256,8 @@ impl Session {
 
             match event {
                 ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
-                ProviderEvent::Create(call) => {
-                    if let Err(err) = self.provider.on_create(call).await {
+                ProviderEvent::Create => {
+                    if let Err(err) = self.provider.on_create().await {
                         tracing::error!(?err, "Error processing ProviderEvent::Create");
                     }
                 }

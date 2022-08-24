@@ -51,7 +51,7 @@ impl SessionManager {
             session.start_event_loop();
 
             session_sender
-                .send(ProviderEvent::Create(init_call))
+                .send(ProviderEvent::Create)
                 .expect("Failed to send Create Event");
 
             self.sessions.insert(

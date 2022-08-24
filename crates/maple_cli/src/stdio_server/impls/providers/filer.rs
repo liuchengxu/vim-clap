@@ -2,15 +2,14 @@ use std::fs;
 use std::path::{Path, MAIN_SEPARATOR};
 
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::json;
 
 use icon::prepend_filer_icon;
 
 use crate::stdio_server::impls::{OnMove, OnMoveHandler};
-use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
-use crate::stdio_server::{write_response, MethodCall};
+use crate::stdio_server::MethodCall;
 use crate::utils::build_abs_path;
 
 /// Display the inner path in a nicer way.
@@ -137,7 +136,7 @@ impl ClapProvider for FilerProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, _call: Call) -> Result<()> {
+    async fn on_create(&mut self) -> Result<()> {
         let cwd = self.vim.working_dir().await?;
 
         let value = read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
@@ -184,26 +183,24 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
-        write_response(handle_filer_message(msg).expect("Both Success and Error are returned"));
+    async fn on_typed(&mut self, _msg: MethodCall) -> Result<()> {
+        let cwd: String = self
+            .vim
+            .call("clap#provider#filer#current_dir", json!([]))
+            .await?;
+
+        let result = read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
+            .map(|entries| json!({ "entries": entries, "dir": cwd, "total": entries.len() }))
+            .map_err(|err| {
+                tracing::error!(?cwd, "Failed to read directory entries");
+                json!({"message": err.to_string(), "dir": cwd});
+            });
+
+        self.vim
+            .exec("clap#provider#filer#handle_result_on_typed", result)?;
 
         Ok(())
     }
-}
-
-fn handle_filer_message(msg: MethodCall) -> std::result::Result<Value, Value> {
-    let cwd = msg.get_cwd();
-
-    read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
-        .map(|entries| {
-            let result = json!({ "entries": entries, "dir": cwd, "total": entries.len() });
-            json!({ "id": msg.id, "provider_id": "filer", "result": result })
-        })
-        .map_err(|err| {
-            tracing::error!(?cwd, "Failed to read directory entries");
-            let error = json!({"message": err.to_string(), "dir": cwd});
-            json!({ "id": msg.id, "provider_id": "filer", "message": error })
-        })
 }
 
 #[cfg(test)]

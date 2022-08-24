@@ -42,19 +42,24 @@ endfunction
 function! clap#provider#filer#handle_on_create(result) abort
   if has_key(a:result, 'Ok')
     let result = a:result.Ok
-    if result.total == 0
-      let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
-      call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-    else
-      let s:filer_cache[result.dir] = result.entries
-      call g:clap.display.set_lines(result.entries)
-    endif
-    call clap#sign#reset_to_first_line()
-    call clap#state#refresh_matches_count(string(result.total))
-    call g:clap#display_win.shrink_if_undersize()
+    call clap#provider#filer#handle_result_on_typed(result)
   else
     call s:handle_error(a:result.error)
   endif
+endfunction
+
+function! clap#provider#filer#handle_result_on_typed(result) abort
+  let result = a:result
+  if result.total == 0
+    let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
+    call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
+  else
+    let s:filer_cache[result.dir] = result.entries
+    call g:clap.display.set_lines(result.entries)
+  endif
+  call clap#sign#reset_to_first_line()
+  call clap#state#refresh_matches_count(string(result.total))
+  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 function! s:set_prompt() abort

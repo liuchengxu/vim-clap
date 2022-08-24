@@ -23,14 +23,6 @@ impl MethodCall {
             .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
     }
 
-    pub fn get_query(&self) -> String {
-        self.get_string_unsafe("query")
-    }
-
-    pub fn get_cwd(&self) -> String {
-        self.get_string_unsafe("cwd")
-    }
-
     fn map_params(&self) -> Result<&serde_json::Map<String, Value>> {
         match &self.params {
             Params::None => Err(anyhow!("None params unsupported")),

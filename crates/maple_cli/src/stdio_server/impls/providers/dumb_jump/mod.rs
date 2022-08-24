@@ -16,7 +16,6 @@ use tracing::Instrument;
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::stdio_server::impls::OnMoveHandler;
-use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{
     note_job_is_finished, register_job_successfully, ClapProvider, SessionContext,
 };
@@ -255,7 +254,7 @@ impl ClapProvider for DumbJumpProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, _call: Call) -> Result<()> {
+    async fn on_create(&mut self) -> Result<()> {
         let bufname = self.vim.bufname(self.context.start.bufnr).await?;
 
         let cwd = self.vim.working_dir().await?;

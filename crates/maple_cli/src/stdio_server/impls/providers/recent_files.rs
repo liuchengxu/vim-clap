@@ -9,7 +9,6 @@ use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
-use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
 use crate::stdio_server::MethodCall;
@@ -140,7 +139,7 @@ impl ClapProvider for RecentFilesProvider {
         &self.context
     }
 
-    async fn on_create(&mut self, _call: Call) -> Result<()> {
+    async fn on_create(&mut self) -> Result<()> {
         let query = self.vim.context_query_or_input().await?;
         let cwd = self.vim.working_dir().await?;
         let enable_icon = self.vim.get_var_bool("clap_enable_icon").await?;
