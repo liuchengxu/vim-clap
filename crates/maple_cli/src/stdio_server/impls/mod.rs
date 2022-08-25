@@ -78,7 +78,10 @@ impl ClapProvider for DefaultProvider {
             None => self.vim.display_getcurline().await?,
         };
 
-        tracing::debug!("======================== [DefaultProvider::on_move] curline: {:?}", curline);
+        if curline.is_empty() {
+            tracing::debug!("[DefaultProvider::on_move] curline is empty, skipping on_move");
+            return Ok(());
+        }
 
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
         let preview_result = on_move_handler.on_move_process().await?;
