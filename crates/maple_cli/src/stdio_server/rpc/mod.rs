@@ -74,9 +74,7 @@ impl RpcClient {
         method: impl AsRef<str>,
         params: impl Serialize,
     ) -> Result<R> {
-        tracing::debug!("======================== Calling call");
         let id = self.id.fetch_add(1, Ordering::SeqCst);
-        tracing::debug!("======================== Calling call 1");
         let method_call = MethodCall {
             id,
             method: method.as_ref().to_owned(),
@@ -85,16 +83,13 @@ impl RpcClient {
             params: to_array_or_none(params)?,
             session_id: 0u64, // Unused for now.
         };
-        tracing::debug!("======================== Calling call 2");
         let (tx, rx) = oneshot::channel();
         self.output_reader_tx.send((id, tx))?;
-        tracing::debug!("======================== Calling call 3");
         self.output_writer_tx
             .send(RawMessage::MethodCall(method_call))?;
-        tracing::debug!("======================== Waiting for call result");
         match rx.await? {
             Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
-            Output::Failure(err) => Err(anyhow!("Error: {:?}", err)),
+            Output::Failure(err) => Err(anyhow!("RpcClient request error: {:?}", err)),
         }
     }
 
