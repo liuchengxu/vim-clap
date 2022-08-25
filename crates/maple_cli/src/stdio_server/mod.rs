@@ -119,9 +119,7 @@ impl Client {
                 let call = Call::Notification(notification);
                 let context: SessionContext = call.clone().into();
 
-                tracing::debug!("======================== New context {context:?}");
                 let provider_id = self.vim.current_provider_id().await?;
-                tracing::debug!("======================== New provider id {provider_id:?}");
                 let provider: Box<dyn ClapProvider> = match provider_id.as_str() {
                     "dumb_jump" => Box::new(DumbJumpProvider::new(self.vim.clone(), context)),
                     "recent_files" => Box::new(RecentFilesProvider::new(self.vim.clone(), context)),
@@ -129,10 +127,8 @@ impl Client {
                     _ => Box::new(DefaultProvider::new(self.vim.clone(), context)),
                 };
 
-                tracing::debug!("======================== Try locking");
                 let session_manager = self.session_manager_mutex.clone();
                 let mut session_manager = session_manager.lock();
-                tracing::debug!("======================== New session");
                 session_manager.new_session(call, provider);
 
                 Ok(())

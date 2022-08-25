@@ -7,9 +7,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use parking_lot::Mutex;
+use serde_json::json;
 
 use filter::{FilterContext, ParSource};
 use matcher::Matcher;
+use printer::DisplayLines;
 use types::MatchedItem;
 
 use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
@@ -56,10 +58,8 @@ impl ClapProvider for DefaultProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        tracing::debug!("================== [DefaultProvider::on_move] 0");
         let lnum = self.vim.display_getcurlnum().await?;
 
-        tracing::debug!("================== [DefaultProvider::on_move] 1");
         let maybe_curline = match self.context.state.source_scale.lock().deref() {
             SourceScale::Small { ref items, .. } => {
                 if let Some(curline) = self.line_at(lnum as usize) {
@@ -73,20 +73,15 @@ impl ClapProvider for DefaultProvider {
             _ => None,
         };
 
-        tracing::debug!("================== [DefaultProvider::on_move] 2");
         let curline = match maybe_curline {
             Some(line) => line,
             None => self.vim.display_getcurline().await?,
         };
 
-        tracing::debug!("================== [DefaultProvider::on_move] 3");
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
-        tracing::debug!("================== [DefaultProvider::on_move] 4 {on_move_handler:?}");
         let preview_result = on_move_handler.on_move_process().await?;
-        tracing::debug!("================== [DefaultProvider::on_move] 5");
         self.vim
             .exec("clap#state#process_preview_result", preview_result)?;
-        tracing::debug!("================== [DefaultProvider::on_move] 6");
 
         Ok(())
     }
@@ -102,16 +97,28 @@ impl ClapProvider for DefaultProvider {
                     filter::par_filter_items(query, items, &self.context.fuzzy_matcher());
                 let matched = matched_items.len();
                 // Take the first 200 entries and add an icon to each of them.
-                printer::decorate_lines(
+                let DisplayLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                    icon_added,
+                } = printer::decorate_lines(
                     matched_items.iter().take(200).cloned().collect(),
                     self.context.display_winwidth as usize,
                     self.context.icon,
-                )
-                .print_on_typed(matched);
-                let mut current_results = self.current_results.lock();
-                *current_results = matched_items;
+                );
+                let msg = json!({
+                    "total": matched,
+                    "lines": lines,
+                    "indices": indices,
+                    "icon_added": icon_added,
+                    "truncated_map": truncated_map,
+                });
+                self.vim()
+                    .exec("clap#state#process_filter_message", json!([msg, true]))?;
             }
             SourceScale::Cache { ref path, .. } => {
+                // TODO: Watcher::Rpc, Watcher::Println
                 if let Err(e) = filter::par_dyn_run(
                     &query,
                     FilterContext::new(

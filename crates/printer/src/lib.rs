@@ -44,19 +44,6 @@ impl DisplayLines {
         }
     }
 
-    pub fn print_on_typed(&self, total: usize) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
-        println_json_with_length!(total, lines, indices, truncated_map, icon_added, method);
-    }
-
     pub fn print_on_dyn_run(&self, matched: usize, processed: usize) {
         let Self {
             lines,
