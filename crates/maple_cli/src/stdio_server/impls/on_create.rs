@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use serde_json::json;
+
 use filter::SourceItem;
 use matcher::ClapItem;
 
@@ -8,12 +10,13 @@ use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
 use crate::process::tokio::TokioCommand;
 use crate::stdio_server::session::{SessionContext, SourceScale};
+use crate::stdio_server::vim::Vim;
 
 /// Threshold for large scale.
 const LARGE_SCALE: usize = 200_000;
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize(context: &SessionContext) -> Result<SourceScale> {
+pub async fn initialize(context: &SessionContext, vim: &Vim) -> Result<SourceScale> {
     let to_scale = |lines: Vec<String>| {
         let total = lines.len();
 
@@ -72,10 +75,8 @@ pub async fn initialize(context: &SessionContext) -> Result<SourceScale> {
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);
-            let method = "clap#state#set_variable_string";
-            let name = "g:__clap_forerunner_tempfile";
-            let value = &path;
-            utility::println_json_with_length!(method, name, value);
+            tracing::debug!("========================= Setting forerunner tempfile");
+            vim.exec("set_var", json!(["g:__clap_forerunner_tempfile", &path]))?;
             return Ok(SourceScale::Cache { total, path });
         }
         _ => {}

@@ -145,6 +145,10 @@ function! clap#state#init_display(msg) abort
     call g:clap#display_win.shrink_if_undersize()
   endif
 
+  if has_key(a:msg, 'icon_added')
+    let g:__clap_icon_added_by_maple = a:msg.icon_added
+  endif
+
   call clap#indicator#update_matches_on_forerunner_done()
   call clap#sign#ensure_exists()
 

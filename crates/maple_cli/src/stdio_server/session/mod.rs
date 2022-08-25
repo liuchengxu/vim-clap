@@ -63,16 +63,17 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
         let context = self.session_context();
+        let vim = self.vim();
 
         // TODO: blocking on_create for the swift providers like `tags`.
-        match tokio::time::timeout(TIMEOUT, initialize(context)).await {
+        match tokio::time::timeout(TIMEOUT, initialize(context, vim)).await {
             Ok(scale_result) => match scale_result {
                 Ok(scale) => {
+                    tracing::debug!("[on_create] ===== Setting scale {scale:?}");
                     if let Some(total) = scale.total() {
                         self.vim()
                             .exec("set_var", json!(["g:clap.display.initial_size", total]))?;
                     }
-
                     if let Some(lines) = scale.initial_lines(100) {
                         let DisplayLines {
                             lines,
@@ -85,7 +86,14 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                             context.icon,
                         );
 
-                        self.vim().exec("clap#state#init_display", json!({ "lines": lines, "truncated_map": truncated_map, "icon_added": icon_added }))?;
+                        self.vim().exec(
+                            "clap#state#init_display",
+                            json!({
+                              "lines": lines,
+                              "icon_added": icon_added,
+                              "truncated_map": truncated_map,
+                            }),
+                        )?;
                     }
 
                     context.set_source_scale(scale);

@@ -18,11 +18,7 @@ endfunction
 function! s:grep2.init() abort
   let g:__clap_match_scope_enum = 'GrepLine'
   call clap#rooter#try_set_cwd()
-  if g:__clap_development
-    call clap#client#notify_on_init('on_init')
-  else
-    call clap#job#regular#forerunner#start_command(clap#maple#command#ripgrep_forerunner())
-  endif
+  call clap#client#notify_on_init('on_init')
 endfunction
 
 function! s:grep2.exit() abort
