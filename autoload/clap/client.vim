@@ -124,7 +124,7 @@ function! clap#client#notify_recent_file() abort
   if s:last_recent_file isnot v:null && s:last_recent_file == file
     return
   endif
-  call s:send_notification('note_recent_files', file)
+  call s:send_notification('note_recent_files', [file])
   let s:last_recent_file = file
 endfunction
 

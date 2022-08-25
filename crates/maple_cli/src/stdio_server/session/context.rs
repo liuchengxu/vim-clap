@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
@@ -11,7 +10,6 @@ use types::MatchedItem;
 
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
 use crate::stdio_server::types::ProviderId;
-use crate::tools::ctags::BufferTag;
 
 const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
 
@@ -68,7 +66,6 @@ impl SourceScale {
                     .collect(),
             ),
             Self::Cache { ref path, .. } => {
-                // TODO: Raw line to item
                 if let Ok(lines_iter) = utility::read_first_lines(path, n) {
                     Some(
                         lines_iter
@@ -90,18 +87,10 @@ impl SourceScale {
     }
 }
 
-// TODO: cache the buffer tags per session.
-#[derive(Debug, Clone)]
-pub struct CachedBufTags {
-    pub done: bool,
-    pub tags: Vec<BufferTag>,
-}
-
 #[derive(Debug, Clone)]
 pub struct SessionState {
     pub is_running: Arc<AtomicBool>,
     pub source_scale: Arc<Mutex<SourceScale>>,
-    pub buf_tags_cache: Arc<Mutex<HashMap<PathBuf, CachedBufTags>>>,
 }
 
 /// bufnr and winid.
@@ -237,7 +226,6 @@ impl SessionContext {
             state: SessionState {
                 is_running: Arc::new(true.into()),
                 source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
-                buf_tags_cache: Arc::new(Mutex::new(HashMap::new())),
             },
         }
     }
@@ -257,7 +245,7 @@ impl From<Notification> for SessionContext {
 
 impl From<Call> for SessionContext {
     fn from(call: Call) -> Self {
-        tracing::debug!(?call, "Creating a new SessionContext from given call");
+        tracing::debug!(?call, "Creating a new SessionContext");
         match call {
             Call::MethodCall(method_call) => method_call.into(),
             Call::Notification(notification) => notification.into(),

@@ -248,8 +248,6 @@ impl Output {
 pub enum Params {
     /// No parameters
     None,
-    /// Any single value.
-    Value(Value),
     /// Array of values
     Array(Vec<Value>),
     /// Map of values
@@ -285,7 +283,6 @@ impl From<Params> for Value {
         match params {
             Params::Array(vec) => Value::Array(vec),
             Params::Map(map) => Value::Object(map),
-            Params::Value(value) => value,
             Params::None => Value::Null,
         }
     }

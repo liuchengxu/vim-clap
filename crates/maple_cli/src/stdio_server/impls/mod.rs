@@ -84,7 +84,10 @@ impl ClapProvider for DefaultProvider {
         }
 
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
+
+        // TODO: preview cache
         let preview_result = on_move_handler.on_move_process().await?;
+
         self.vim
             .exec("clap#state#process_preview_result", preview_result)?;
 

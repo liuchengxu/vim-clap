@@ -52,7 +52,11 @@ impl Notification {
     }
 
     pub async fn note_recent_file(self) -> Result<()> {
-        let file: String = self.params.parse()?;
+        let file: Vec<String> = self.params.parse()?;
+        let file = file
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("files is empty"))?;
 
         tracing::debug!(?file, "Receive a recent file");
         if file.is_empty() || !std::path::Path::new(&file).exists() {
