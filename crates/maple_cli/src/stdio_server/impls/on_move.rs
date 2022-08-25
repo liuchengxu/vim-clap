@@ -226,15 +226,6 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
-        let handle_io_error = |e: &std::io::Error| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                tracing::debug!(
-                    "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
-                    path.as_ref().display()
-                );
-            }
-        };
-
         if !path.as_ref().is_file() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -244,6 +235,15 @@ impl<'a> OnMoveHandler<'a> {
                 ),
             ));
         }
+
+        let handle_io_error = |e: &std::io::Error| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                tracing::debug!(
+                    "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
+                    path.as_ref().display()
+                );
+            }
+        };
 
         let (lines, fname) = if !global().is_nvim {
             let (lines, abs_path) =

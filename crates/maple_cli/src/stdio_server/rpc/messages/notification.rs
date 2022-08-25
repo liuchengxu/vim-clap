@@ -1,9 +1,11 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::types::GlobalEnv;
+use crate::stdio_server::vim::Vim;
 use crate::stdio_server::GLOBAL_ENV;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -16,7 +18,7 @@ pub struct Notification {
 }
 
 impl Notification {
-    pub fn initialize_global_env(self) -> Result<()> {
+    pub async fn initialize_global_env(self, vim: Vim) -> Result<()> {
         #[derive(Deserialize)]
         struct InnerParams {
             is_nvim: Option<bool>,
@@ -28,6 +30,12 @@ impl Notification {
             enable_icon,
             clap_preview_size,
         } = self.params.parse()?;
+
+        let output: String = vim
+            .call("execute", json!(["autocmd filetypedetect"]))
+            .await?;
+        let ext_map = crate::stdio_server::vim::initialize_syntax_map(&output);
+        vim.exec("clap#ext#set", json![ext_map])?;
 
         let is_nvim = is_nvim.unwrap_or(false);
         let enable_icon = enable_icon.unwrap_or(false);

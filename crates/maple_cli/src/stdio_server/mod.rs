@@ -111,7 +111,7 @@ impl Client {
         use ProviderEvent::*;
 
         match notification.method.as_str() {
-            "initialize_global_env" => notification.initialize_global_env(), // should be called only once.
+            "initialize_global_env" => notification.initialize_global_env(self.vim.clone()).await, // should be called only once.
 
             "note_recent_files" => notification.note_recent_file().await,
 
@@ -182,7 +182,6 @@ impl Client {
         }
 
         let value = match msg.method.as_str() {
-            "init_ext_map" => Some(msg.parse_filetypedetect()),
             "preview/file" => Some(msg.preview_file().await?),
             "quickfix" => Some(msg.preview_quickfix().await?),
 

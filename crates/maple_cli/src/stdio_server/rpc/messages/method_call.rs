@@ -14,39 +14,6 @@ pub struct MethodCall {
 }
 
 impl MethodCall {
-    fn map_params(&self) -> Result<&serde_json::Map<String, Value>> {
-        match &self.params {
-            Params::None => Err(anyhow!("None params unsupported")),
-            Params::Array(_) => Err(anyhow!("Array params unsupported")),
-            Params::Map(map) => Ok(map),
-        }
-    }
-
-    pub fn get_str(&self, key: &str) -> Result<&str> {
-        self.map_params()?
-            .get(key)
-            .and_then(|x| x.as_str())
-            .ok_or_else(|| anyhow!("Missing {} in msg.params", key))
-    }
-
-    pub fn get_string(&self, key: &str) -> Result<String> {
-        self.get_str(key).map(Into::into)
-    }
-
-    pub fn get_string_unsafe(&self, key: &str) -> String {
-        self.get_string(key)
-            .unwrap_or_else(|e| panic!("Get String error: {:?}", e))
-    }
-}
-
-impl MethodCall {
-    pub fn parse_filetypedetect(self) -> Value {
-        let msg = self;
-        let output = msg.get_string_unsafe("autocmd_filetypedetect");
-        let ext_map = crate::stdio_server::vim::initialize_syntax_map(&output);
-        json!({ "method": "clap#ext#set", "ext_map": ext_map })
-    }
-
     pub async fn preview_file(self) -> Result<Value> {
         let msg_id = self.id;
 
