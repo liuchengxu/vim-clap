@@ -127,10 +127,10 @@ struct SearchResults {
     query_info: QueryInfo,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
     vim: Vim,
-    context: SessionContext,
+    context: Arc<SessionContext>,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -146,7 +146,7 @@ impl DumbJumpProvider {
     pub fn new(vim: Vim, context: SessionContext) -> Self {
         Self {
             vim,
-            context,
+            context: Arc::new(context),
             cached_results: Default::default(),
             current_usages: None,
             ctags_regenerated: Arc::new(false.into()),
@@ -154,72 +154,7 @@ impl DumbJumpProvider {
         }
     }
 
-    /// Starts a new searching task.
-    async fn start_search(
-        &self,
-        cwd: String,
-        query: String,
-        extension: String,
-        query_info: QueryInfo,
-    ) -> Result<SearchResults> {
-        let search_engine = match (
-            self.ctags_regenerated.load(Ordering::Relaxed),
-            self.gtags_regenerated.load(Ordering::Relaxed),
-        ) {
-            (true, true) => SearchEngine::All,
-            (true, false) => SearchEngine::CtagsAndRegex,
-            _ => SearchEngine::Regex,
-        };
-
-        if query.is_empty() {
-            return Ok(Default::default());
-        }
-
-        let searching_worker = SearchingWorker {
-            cwd,
-            query_info: query_info.clone(),
-            source_file_extension: extension,
-        };
-        let (response, usages) = match search_engine.run(searching_worker).await {
-            Ok(usages) => {
-                let response = {
-                    let total = usages.len();
-                    // Only show the top 200 items.
-                    let (lines, indices): (Vec<_>, Vec<_>) = usages
-                        .iter()
-                        .take(200)
-                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
-                        .unzip();
-                    json!({ "lines": lines, "indices": indices, "total": total })
-                };
-
-                (response, usages)
-            }
-            Err(e) => {
-                tracing::error!(error = ?e, "Error at running dumb_jump");
-                let response = json!({ "error": { "message": e.to_string() } });
-                (response, Default::default())
-            }
-        };
-
-        self.vim
-            .exec("clap#state#process_result_on_typed", response)?;
-
-        Ok(SearchResults { usages, query_info })
-    }
-}
-
-#[async_trait::async_trait]
-impl ClapProvider for DumbJumpProvider {
-    fn vim(&self) -> &Vim {
-        &self.vim
-    }
-
-    fn session_context(&self) -> &SessionContext {
-        &self.context
-    }
-
-    async fn on_create(&mut self) -> Result<()> {
+    async fn initialize(&self) -> Result<()> {
         let bufname = self.vim.bufname(self.context.start.bufnr).await?;
 
         let cwd = self.vim.working_dir().await?;
@@ -312,6 +247,99 @@ impl ClapProvider for DumbJumpProvider {
                 (true, false) => run(ctags_future, job_id),
                 (false, true) => run(gtags_future, job_id),
             }
+        }
+
+        Ok(())
+    }
+
+    /// Starts a new searching task.
+    async fn start_search(
+        &self,
+        cwd: String,
+        query: String,
+        extension: String,
+        query_info: QueryInfo,
+    ) -> Result<SearchResults> {
+        let search_engine = match (
+            self.ctags_regenerated.load(Ordering::Relaxed),
+            self.gtags_regenerated.load(Ordering::Relaxed),
+        ) {
+            (true, true) => SearchEngine::All,
+            (true, false) => SearchEngine::CtagsAndRegex,
+            _ => SearchEngine::Regex,
+        };
+
+        if query.is_empty() {
+            return Ok(Default::default());
+        }
+
+        let searching_worker = SearchingWorker {
+            cwd,
+            query_info: query_info.clone(),
+            source_file_extension: extension,
+        };
+        let (response, usages) = match search_engine.run(searching_worker).await {
+            Ok(usages) => {
+                let response = {
+                    let total = usages.len();
+                    // Only show the top 200 items.
+                    let (lines, indices): (Vec<_>, Vec<_>) = usages
+                        .iter()
+                        .take(200)
+                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+                        .unzip();
+                    json!({ "lines": lines, "indices": indices, "total": total })
+                };
+
+                (response, usages)
+            }
+            Err(e) => {
+                tracing::error!(error = ?e, "Error at running dumb_jump");
+                let response = json!({ "error": { "message": e.to_string() } });
+                (response, Default::default())
+            }
+        };
+
+        self.vim
+            .exec("clap#state#process_result_on_typed", response)?;
+
+        Ok(SearchResults { usages, query_info })
+    }
+}
+
+#[async_trait::async_trait]
+impl ClapProvider for DumbJumpProvider {
+    fn vim(&self) -> &Vim {
+        &self.vim
+    }
+
+    fn session_context(&self) -> &SessionContext {
+        &self.context
+    }
+
+    async fn on_create(&mut self) -> Result<()> {
+        let dumb_jump = self.clone();
+        tokio::task::spawn(async move {
+            if let Err(err) = dumb_jump.initialize().await {
+                tracing::error!(error = ?err, "Failed to initialize dumb_jump provider");
+            }
+        });
+
+        let query = self.vim.context_query_or_input().await?;
+        if !query.is_empty() {
+            let cwd = self.vim.working_dir().await?;
+
+            let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+            let extension = std::path::Path::new(&bufname)
+                .extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
+
+            let query_info = parse_query_info(&query);
+
+            self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
+            self.current_usages.take();
         }
 
         Ok(())
