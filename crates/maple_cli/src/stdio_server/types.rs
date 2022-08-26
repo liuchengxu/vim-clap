@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 
 #[derive(Debug, Clone)]
 pub struct GlobalEnv {
@@ -59,7 +62,7 @@ impl GlobalEnv {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderId(String);
 
 impl ProviderId {
@@ -71,6 +74,21 @@ impl ProviderId {
     #[inline]
     pub fn get_preview_size(&self) -> usize {
         super::global().preview_size_of(&self.0)
+    }
+
+    pub fn matcher(&self) -> Matcher {
+        let match_scope = match self.0.as_str() {
+            "tags" | "proj_tags" => MatchScope::TagName,
+            "grep" | "grep2" => MatchScope::GrepLine,
+            _ => MatchScope::Full,
+        };
+
+        let match_bonuses = match self.0.as_str() {
+            "files" | "git_files" | "filer" => vec![matcher::Bonus::FileName],
+            _ => vec![],
+        };
+
+        Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
     }
 }
 

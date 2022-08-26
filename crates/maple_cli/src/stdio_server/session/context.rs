@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use serde::Deserialize;
 
 use icon::{Icon, IconKind};
-use matcher::{ClapItem, MatchScope};
+use matcher::{ClapItem, Matcher};
 use types::MatchedItem;
 
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
@@ -102,10 +102,10 @@ pub struct BufnrAndWinid {
 
 #[derive(Debug, Clone)]
 pub struct SessionContext {
+    pub provider_id: ProviderId,
+    pub start: BufnrAndWinid,
     pub input: BufnrAndWinid,
     pub display: BufnrAndWinid,
-    pub start: BufnrAndWinid,
-    pub provider_id: ProviderId,
     pub cwd: PathBuf,
     pub no_cache: bool,
     pub debounce: bool,
@@ -113,8 +113,7 @@ pub struct SessionContext {
     pub display_winwidth: u64,
     pub preview_winheight: u64,
     pub icon: Icon,
-    pub match_scope: MatchScope,
-    pub match_bonuses: Vec<matcher::Bonus>,
+    pub matcher: Matcher,
     pub source_cmd: Option<String>,
     pub runtimepath: Option<String>,
     pub state: SessionState,
@@ -135,14 +134,6 @@ impl SessionContext {
         )
     }
 
-    pub fn fuzzy_matcher(&self) -> matcher::Matcher {
-        matcher::Matcher::with_bonuses(
-            Vec::new(), // TODO: bonuses
-            matcher::FuzzyAlgorithm::Fzy,
-            self.match_scope,
-        )
-    }
-
     pub fn set_source_scale(&self, new: SourceScale) {
         let mut source_scale = self.state.source_scale.lock();
         *source_scale = new;
@@ -151,10 +142,10 @@ impl SessionContext {
     fn from_params(params: Params) -> Self {
         #[derive(Deserialize)]
         struct InnerParams {
+            provider_id: ProviderId,
+            start: BufnrAndWinid,
             input: BufnrAndWinid,
             display: BufnrAndWinid,
-            start: BufnrAndWinid,
-            provider_id: ProviderId,
             cwd: PathBuf,
             no_cache: bool,
             debounce: Option<bool>,
@@ -167,10 +158,10 @@ impl SessionContext {
         }
 
         let InnerParams {
+            provider_id,
+            start,
             input,
             display,
-            start,
-            provider_id,
             cwd,
             no_cache,
             debounce,
@@ -184,12 +175,6 @@ impl SessionContext {
             .parse()
             .expect("Failed to deserialize SessionContext");
 
-        let match_scope = match provider_id.as_str() {
-            "tags" | "proj_tags" => MatchScope::TagName,
-            "grep" | "grep2" => MatchScope::GrepLine,
-            _ => MatchScope::Full,
-        };
-
         let icon = if enable_icon.unwrap_or(false) {
             match provider_id.as_str() {
                 "tags" => Icon::Enabled(IconKind::BufferTags),
@@ -202,10 +187,7 @@ impl SessionContext {
             Icon::Null
         };
 
-        let match_bonuses = match provider_id.as_str() {
-            "files" | "git_files" | "filer" => vec![matcher::Bonus::FileName],
-            _ => vec![],
-        };
+        let matcher = provider_id.matcher();
 
         Self {
             input,
@@ -220,8 +202,7 @@ impl SessionContext {
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             source_cmd,
             runtimepath,
-            match_scope,
-            match_bonuses,
+            matcher,
             icon,
             state: SessionState {
                 is_running: Arc::new(true.into()),

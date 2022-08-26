@@ -10,7 +10,6 @@ use parking_lot::Mutex;
 use serde_json::json;
 
 use filter::{FilterContext, ParSource};
-use matcher::Matcher;
 use printer::DisplayLines;
 use types::MatchedItem;
 
@@ -101,8 +100,7 @@ impl ClapProvider for DefaultProvider {
 
         match source_scale.deref() {
             SourceScale::Small { ref items, .. } => {
-                let matched_items =
-                    filter::par_filter_items(query, items, &self.context.fuzzy_matcher());
+                let matched_items = filter::par_filter_items(query, items, &self.context.matcher);
                 let matched = matched_items.len();
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
@@ -133,9 +131,7 @@ impl ClapProvider for DefaultProvider {
                         self.context.icon,
                         Some(40),
                         Some(self.context.display_winwidth as usize),
-                        Matcher::default()
-                            .set_match_scope(self.context.match_scope)
-                            .set_bonuses(self.context.match_bonuses.clone()),
+                        self.context.matcher.clone(),
                     ),
                     ParSource::File(path.clone()),
                 ) {
