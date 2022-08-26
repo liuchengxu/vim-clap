@@ -39,28 +39,35 @@ fn parse_preview_kind(
     curline: String,
     context: &SessionContext,
 ) -> Result<(PreviewKind, Option<String>)> {
+    let err = || {
+        anyhow!(
+            "Failed to parse PreviewKind for provider_id: {} from `{curline}`",
+            context.provider_id.as_str()
+        )
+    };
+
     let mut line_content = None;
+
     let preview_kind = match context.provider_id.as_str() {
             "files" | "git_files" => PreviewKind::File(build_abs_path(&context.cwd, &curline)),
             "recent_files" => PreviewKind::File(PathBuf::from(&curline)),
             "history" => {
-                if curline.starts_with('~') {
-                    PreviewKind::File(crate::utils::expand_tilde(curline))
+                let path = if curline.starts_with('~') {
+                    crate::utils::expand_tilde(curline)
                 } else {
-                    PreviewKind::File(build_abs_path(&context.cwd, &curline))
-                }
+                    build_abs_path(&context.cwd, &curline)
+                };
+                PreviewKind::File(path)
             }
             "proj_tags" => {
-                let (line_number, p) =
-                    extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
+                let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
                 PreviewKind::Line{path, line_number}
             }
             "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
-                    let (fpath, lnum, _col, cache_line) =
-                        extract_grep_position(line).context("Couldn't extract grep position")?;
+                    let (fpath, lnum, _col, cache_line) = extract_grep_position(line).ok_or_else(err)?;
 
                     let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
                         stripped.to_path_buf()
@@ -72,30 +79,33 @@ fn parse_preview_kind(
 
                     let mut path: PathBuf = context.cwd.clone();
                     path.push(&fpath);
+
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
                 };
 
                 let (path, line_number) = try_extract_file_path(&curline)?;
 
-                PreviewKind::Line{path, line_number}
+                PreviewKind::Line{ path, line_number }
             }
             "dumb_jump" => {
-                let (_def_kind, fpath, line_number, _col) =
-                    extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
+                let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                PreviewKind::Line{path, line_number}
+                PreviewKind::Line{ path, line_number }
             }
             "blines" => {
-                let line_number = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
+                let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
-                PreviewKind::Line {path, line_number}
+                PreviewKind::Line { path, line_number }
             }
             "tags" => {
-                let line_number =
-                    extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
+                let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
-                PreviewKind::Line{path, line_number}
+                PreviewKind::Line{ path, line_number }
+            }
+            "commits" | "bcommits" => {
+                let rev = parse_rev(&curline).ok_or_else(err)?;
+                PreviewKind::Commit(rev.into())
             }
             "help_tags" => {
                 let runtimepath = context
@@ -111,10 +121,6 @@ fn parse_preview_kind(
                     doc_filename: items[1].trim().to_string(),
                     runtimepath,
                 }
-            }
-            "commits" | "bcommits" => {
-                let rev = parse_rev(&curline).context("Couldn't extract rev")?;
-                PreviewKind::Commit(rev.into())
             }
             _ => {
                 return Err(anyhow!(
