@@ -9,7 +9,7 @@ use std::io::{BufReader, BufWriter};
 use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -110,62 +110,53 @@ impl Client {
     async fn process_notification(&self, notification: Notification) -> Result<()> {
         use ProviderEvent::*;
 
+        let session_id = || {
+            notification
+                .session_id
+                .ok_or_else(|| anyhow!("Notification must contain `session_id`"))
+        };
+
         match notification.method.as_str() {
             "initialize_global_env" => notification.initialize_global_env(self.vim.clone()).await, // should be called only once.
-
             "note_recent_files" => notification.note_recent_file().await,
 
             "on_init" => {
-                let call = Call::Notification(notification);
-                let context: SessionContext = call.clone().into();
+                let session_id = session_id()?;
 
-                let provider_id = self.vim.current_provider_id().await?;
-                let provider: Box<dyn ClapProvider> = match provider_id.as_str() {
-                    "dumb_jump" => Box::new(DumbJumpProvider::new(self.vim.clone(), context)),
-                    "recent_files" => Box::new(RecentFilesProvider::new(self.vim.clone(), context)),
-                    "filer" => Box::new(FilerProvider::new(self.vim.clone(), context)),
-                    _ => Box::new(DefaultProvider::new(self.vim.clone(), context)),
+                let vim = self.vim.clone();
+                let context = SessionContext::from(notification);
+                let provider: Box<dyn ClapProvider> = match self.vim.provider_id().await?.as_str() {
+                    "filer" => Box::new(FilerProvider::new(vim, context)),
+                    "dumb_jump" => Box::new(DumbJumpProvider::new(vim, context)),
+                    "recent_files" => Box::new(RecentFilesProvider::new(vim, context)),
+                    _ => Box::new(DefaultProvider::new(vim, context)),
                 };
 
                 let session_manager = self.session_manager_mutex.clone();
                 let mut session_manager = session_manager.lock();
-                session_manager.new_session(call, provider);
+                session_manager.new_session(session_id, provider);
 
                 Ok(())
             }
 
             "on_typed" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(
-                    notification.session_id.ok_or_else(|| {
-                        anyhow::anyhow!("Each provider notification must contain a session id")
-                    })?,
-                    OnTyped,
-                );
+                session_manager.send(session_id()?, OnTyped);
                 Ok(())
             }
 
             "on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(
-                    notification.session_id.ok_or_else(|| {
-                        anyhow::anyhow!("Each provider notification must contain a session id")
-                    })?,
-                    OnMove,
-                );
+                session_manager.send(session_id()?, OnMove);
                 Ok(())
             }
 
             "exit" => {
                 let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.terminate(
-                    notification
-                        .session_id
-                        .expect("SessionId should be included in exit message"),
-                );
+                session_manager.terminate(session_id()?);
                 Ok(())
             }
-            _ => Err(anyhow::anyhow!("Unknown notification: {notification:?}")),
+            _ => Err(anyhow!("Unknown notification: {notification:?}")),
         }
     }
 

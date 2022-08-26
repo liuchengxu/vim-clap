@@ -199,8 +199,8 @@ impl Vim {
         self.call("input_get", json!([])).await
     }
 
-    pub async fn current_provider_id(&self) -> Result<String> {
-        self.call("current_provider_id", json!([])).await
+    pub async fn provider_id(&self) -> Result<String> {
+        self.call("provider_id", json!([])).await
     }
 
     pub async fn working_dir(&self) -> Result<String> {

@@ -14,15 +14,6 @@ pub enum Call {
     Notification(Notification),
 }
 
-impl Call {
-    pub fn session_id(&self) -> Option<u64> {
-        match self {
-            Self::MethodCall(method_call) => Some(method_call.session_id),
-            Self::Notification(notification) => notification.session_id,
-        }
-    }
-}
-
 /// Message pass through the stdio channel.
 ///
 /// RawMessage are composed of [`Call`] and the response message

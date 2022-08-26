@@ -82,7 +82,7 @@ function! s:api.working_dir() abort
   return clap#rooter#working_dir()
 endfunction
 
-function! s:api.current_provider_id() abort
+function! s:api.provider_id() abort
   return g:clap.provider.id
 endfunction
 

@@ -15,7 +15,6 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
-use crate::stdio_server::rpc::Call;
 use crate::stdio_server::vim::Vim;
 
 pub use self::context::{SessionContext, SourceScale};
@@ -325,9 +324,7 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Starts a session in a background task.
-    pub fn new_session(&mut self, init_call: Call, provider: Box<dyn ClapProvider>) {
-        let session_id = init_call.session_id().expect("No session_id in the Call");
-
+    pub fn new_session(&mut self, session_id: SessionId, provider: Box<dyn ClapProvider>) {
         if self.exists(session_id) {
             tracing::error!(session_id, "Skipped as given session already exists");
         } else {
