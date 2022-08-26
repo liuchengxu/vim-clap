@@ -64,6 +64,7 @@ impl OnMove {
                 }
             }
             "proj_tags" => {
+              tracing::debug!("================== Extracting proj_tags: {:?}", curline);
                 let (lnum, p) =
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone();

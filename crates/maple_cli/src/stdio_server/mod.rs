@@ -115,7 +115,7 @@ impl Client {
 
             "note_recent_files" => notification.note_recent_file().await,
 
-            "on_init" | "dumb_jump/on_init" | "recent_files/on_init" | "filer/on_init" => {
+            "on_init" => {
                 let call = Call::Notification(notification);
                 let context: SessionContext = call.clone().into();
 
@@ -134,7 +134,7 @@ impl Client {
                 Ok(())
             }
 
-            "on_typed" | "filer/on_typed" | "dumb_jump/on_typed" | "recent_files/on_typed" => {
+            "on_typed" => {
                 let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(
                     notification.session_id.ok_or_else(|| {
@@ -145,7 +145,7 @@ impl Client {
                 Ok(())
             }
 
-            "on_move" | "filer/on_move" | "dumb_jump/on_move" | "recent_files/on_move" => {
+            "on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(
                     notification.session_id.ok_or_else(|| {

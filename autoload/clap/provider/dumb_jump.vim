@@ -32,15 +32,15 @@ function! s:dumb_jump.on_typed() abort
     call clap#highlight#clear()
     return
   endif
-  call clap#client#notify('dumb_jump/on_typed', v:null)
+  call clap#client#notify('on_typed', v:null)
 endfunction
 
 function! s:dumb_jump.init() abort
-  call clap#client#notify_on_init('dumb_jump/on_init')
+  call clap#client#notify_on_init('on_init')
 endfunction
 
 function! s:dumb_jump.on_move_async() abort
-  call clap#client#notify('dumb_jump/on_move', v:null)
+  call clap#client#notify('on_move', v:null)
 endfunction
 
 let s:dumb_jump['sink*'] = function('s:dumb_jump_sink_star')

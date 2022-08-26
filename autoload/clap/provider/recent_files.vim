@@ -7,15 +7,15 @@ set cpoptions&vim
 let s:recent_files = {}
 
 function! s:recent_files.on_typed() abort
-  call clap#client#notify('recent_files/on_typed', v:null)
+  call clap#client#notify('on_typed', v:null)
 endfunction
 
 function! s:recent_files.on_move_async() abort
-  call clap#client#notify('recent_files/on_move', v:null)
+  call clap#client#notify('on_move', v:null)
 endfunction
 
 function! s:recent_files.init() abort
-  call clap#client#notify_on_init('recent_files/on_init')
+  call clap#client#notify_on_init('on_init')
 endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')

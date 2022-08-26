@@ -120,7 +120,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#notify('filer/on_typed', v:null)
+    call clap#client#notify('on_typed', v:null)
   endif
 endfunction
 
@@ -377,7 +377,7 @@ function! s:filer.on_move_async() abort
     call g:clap.preview.hide()
     return
   endif
-  call clap#client#notify('filer/on_move', v:null)
+  call clap#client#notify('on_move', v:null)
 endfunction
 
 function! clap#provider#filer#current_dir() abort
@@ -439,7 +439,7 @@ function! s:start_rpc_service() abort
   call s:set_initial_current_dir()
   call s:set_prompt()
   " TODO: reimplement filer on Rust side.
-  call clap#client#notify_on_init('filer/on_init', {'cwd': s:current_dir, 'debounce': v:false})
+  call clap#client#notify_on_init('on_init', {'cwd': s:current_dir, 'debounce': v:false})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

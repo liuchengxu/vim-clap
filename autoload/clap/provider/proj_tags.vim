@@ -18,23 +18,13 @@ if !s:support_json_format
   finish
 endif
 
-if g:__clap_development
-  function! s:proj_tags.on_typed() abort
-    call clap#client#notify('on_typed', v:null)
-  endfunction
-else
-  function! s:proj_tags.on_typed() abort
-    call clap#filter#async#dyn#start_ctags_recursive()
-  endfunction
+function! s:proj_tags.on_typed() abort
+  call clap#client#notify('on_typed', v:null)
+endfunction
 
-  function! s:proj_tags.init() abort
-    let g:__clap_match_scope_enum = 'TagName'
-    if clap#maple#is_available()
-      call clap#rooter#try_set_cwd()
-      call clap#job#regular#forerunner#start_command(clap#maple#command#tags(v:true))
-    endif
-  endfunction
-endif
+function! s:proj_tags.init() abort
+  call clap#client#notify_on_init('on_init')
+endfunction
 
 function! s:extract(tag_row) abort
   let lnum = matchstr(a:tag_row, '^.*:\zs\(\d\+\)')

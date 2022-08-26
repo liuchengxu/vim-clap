@@ -84,6 +84,11 @@ impl ClapProvider for DefaultProvider {
 
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
 
+        tracing::debug!(
+            "====================== on_move: {:?}",
+            on_move_handler.inner
+        );
+
         // TODO: preview cache
         let preview_result = on_move_handler.on_move_process().await?;
 
@@ -101,7 +106,6 @@ impl ClapProvider for DefaultProvider {
         match source_scale.deref() {
             SourceScale::Small { ref items, .. } => {
                 let matched_items = filter::par_filter_items(query, items, &self.context.matcher);
-                let matched = matched_items.len();
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
                     lines,
@@ -114,7 +118,7 @@ impl ClapProvider for DefaultProvider {
                     self.context.icon,
                 );
                 let msg = json!({
-                    "total": matched,
+                    "total": matched_items.len(),
                     "lines": lines,
                     "indices": indices,
                     "icon_added": icon_added,
@@ -122,6 +126,8 @@ impl ClapProvider for DefaultProvider {
                 });
                 self.vim()
                     .exec("clap#state#process_filter_message", json!([msg, true]))?;
+                let mut current_results = self.current_results.lock();
+                *current_results = matched_items;
             }
             SourceScale::Cache { ref path, .. } => {
                 // TODO: Watcher::Rpc, Watcher::Println
