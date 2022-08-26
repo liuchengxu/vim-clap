@@ -18,31 +18,16 @@ use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
 static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
-/// We want to preview a line of a file.
-#[derive(Debug, Clone)]
-pub struct Position {
-    pub path: PathBuf,
-    pub lnum: usize,
-}
-
-impl Position {
-    pub fn new(path: PathBuf, lnum: usize) -> Self {
-        Self { path, lnum }
-    }
-}
-
-/// Preview environment on Vim CursorMoved event.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub enum OnMove {
+#[derive(Debug)]
+pub enum PreviewKind {
     Commit(String),
-    Files(PathBuf),
-    Filer(PathBuf),
-    History(PathBuf),
-    Grep(Position),
-    BLines(Position),
-    ProjTags(Position),
-    BufferTags(Position),
+    File(PathBuf),
+    FileOrDirectory(PathBuf),
+    /// A specific location in a file.
+    Line {
+        path: PathBuf,
+        line_number: usize,
+    },
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -50,26 +35,27 @@ pub enum OnMove {
     },
 }
 
-impl OnMove {
-    pub fn new(curline: String, context: &SessionContext) -> Result<(Self, Option<String>)> {
-        let mut line_content = None;
-        let context = match context.provider_id.as_str() {
-            "files" | "git_files" => Self::Files(build_abs_path(&context.cwd, &curline)),
-            "recent_files" => Self::Files(PathBuf::from(&curline)),
+fn parse_preview_kind(
+    curline: String,
+    context: &SessionContext,
+) -> Result<(PreviewKind, Option<String>)> {
+    let mut line_content = None;
+    let preview_kind = match context.provider_id.as_str() {
+            "files" | "git_files" => PreviewKind::File(build_abs_path(&context.cwd, &curline)),
+            "recent_files" => PreviewKind::File(PathBuf::from(&curline)),
             "history" => {
                 if curline.starts_with('~') {
-                    Self::History(crate::utils::expand_tilde(curline))
+                    PreviewKind::File(crate::utils::expand_tilde(curline))
                 } else {
-                    Self::History(build_abs_path(&context.cwd, &curline))
+                    PreviewKind::File(build_abs_path(&context.cwd, &curline))
                 }
             }
             "proj_tags" => {
-              tracing::debug!("================== Extracting proj_tags: {:?}", curline);
-                let (lnum, p) =
+                let (line_number, p) =
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                Self::ProjTags(Position::new(path, lnum))
+                PreviewKind::Line{path, line_number}
             }
             "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
@@ -89,27 +75,27 @@ impl OnMove {
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
                 };
 
-                let (path, lnum) = try_extract_file_path(&curline)?;
+                let (path, line_number) = try_extract_file_path(&curline)?;
 
-                Self::Grep(Position::new(path, lnum))
+                PreviewKind::Line{path, line_number}
             }
             "dumb_jump" => {
-                let (_def_kind, fpath, lnum, _col) =
+                let (_def_kind, fpath, line_number, _col) =
                     extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                Self::Grep(Position::new(path, lnum))
+                PreviewKind::Line{path, line_number}
             }
             "blines" => {
-                let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
+                let line_number = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
                 let path = context.start_buffer_path.clone();
-                Self::BLines(Position::new(path, lnum))
+                PreviewKind::Line {path, line_number}
             }
             "tags" => {
-                let lnum =
+                let line_number =
                     extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
                 let path = context.start_buffer_path.clone();
-                Self::BufferTags(Position::new(path, lnum))
+                PreviewKind::Line{path, line_number}
             }
             "help_tags" => {
                 let runtimepath = context
@@ -120,7 +106,7 @@ impl OnMove {
                 if items.len() < 2 {
                     return Err(anyhow!("Couldn't extract subject and doc_filename from the line"));
                 }
-                Self::HelpTags {
+                PreviewKind::HelpTags {
                     subject: items[0].trim().to_string(),
                     doc_filename: items[1].trim().to_string(),
                     runtimepath,
@@ -128,30 +114,37 @@ impl OnMove {
             }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).context("Couldn't extract rev")?;
-                Self::Commit(rev.into())
+                PreviewKind::Commit(rev.into())
             }
             _ => {
                 return Err(anyhow!(
-                    "Couldn't construct an `OnMove` instance, you probably forget to add an implementation for this provider: {:?}",
+                    "Failed to parse PreviewKind, you probably forget to add an implementation for this provider: {:?}",
                     context.provider_id
                 ))
             }
         };
 
-        Ok((context, line_content))
-    }
+    Ok((preview_kind, line_content))
+}
 
-    /// Returns `true` if the file path of preview file should be truncateted relative to cwd.
-    fn should_truncate_cwd_relative(&self) -> bool {
-        matches!(self, Self::Files(_) | Self::Grep(_) | Self::ProjTags(_))
-    }
+/// Returns `true` if the file path of preview file should be truncateted relative to cwd.
+fn should_truncate_cwd_relative(provider_id: &str) -> bool {
+    const SET: &[&str] = &[
+        "files",
+        "git_files",
+        "grep",
+        "grep2",
+        "coc_location",
+        "proj_tags",
+    ];
+    SET.contains(&provider_id)
 }
 
 #[derive(Debug)]
 pub struct OnMoveHandler<'a> {
     pub size: usize,
-    pub inner: OnMove,
     pub context: &'a SessionContext,
+    pub preview_kind: PreviewKind,
     /// When the line extracted from the cache mismatches the latest
     /// preview line content, which means the cache is outdated, we
     /// should refresh the cache.
@@ -162,31 +155,31 @@ pub struct OnMoveHandler<'a> {
 
 impl<'a> OnMoveHandler<'a> {
     pub fn create(curline: String, context: &'a SessionContext) -> Result<Self> {
-        let (inner, cache_line) = OnMove::new(curline, context)?;
+        let (preview_kind, cache_line) = parse_preview_kind(curline, context)?;
+
         Ok(Self {
             size: context.sensible_preview_size(),
             context,
-            inner,
+            preview_kind,
             cache_line,
         })
     }
 
-    pub async fn on_move_process(&self) -> Result<Value> {
-        use OnMove::*;
-        let value = match &self.inner {
-            Filer(path) => {
+    pub async fn get_preview(&self) -> Result<Value> {
+        let value = match &self.preview_kind {
+            PreviewKind::FileOrDirectory(path) => {
                 if path.is_dir() {
                     self.preview_directory(&path)?
                 } else {
                     self.preview_file(&path)?
                 }
             }
-            Files(path) | History(path) => self.preview_file(&path)?,
-            BLines(position) | Grep(position) | ProjTags(position) | BufferTags(position) => {
-                self.preview_file_at(position).await
+            PreviewKind::File(path) => self.preview_file(&path)?,
+            PreviewKind::Line { path, line_number } => {
+                self.preview_file_at(path, *line_number).await
             }
-            Commit(rev) => self.preview_commits(rev)?,
-            HelpTags {
+            PreviewKind::Commit(rev) => self.preview_commits(rev)?,
+            PreviewKind::HelpTags {
                 subject,
                 doc_filename,
                 runtimepath,
@@ -279,28 +272,27 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
-    async fn preview_file_at(&self, position: &Position) -> Value {
-        tracing::debug!(?position, "Previewing file");
-
-        let Position { path, lnum } = position;
+    async fn preview_file_at(&self, path: &Path, lnum: usize) -> Value {
+        tracing::debug!(path=?path.display(), lnum, "Previewing file");
 
         let container_width = self.context.display_winwidth as usize;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !global().is_nvim && self.inner.should_truncate_cwd_relative() {
+            if !global().is_nvim && should_truncate_cwd_relative(self.context.provider_id.as_str())
+            {
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative =
                     fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
                 format!("{cwd_relative}:{lnum}")
             } else {
-                let max_fname_len = container_width - 1 - display_width(*lnum);
+                let max_fname_len = container_width - 1 - display_width(lnum);
                 let truncated_abs_path = truncate_absolute_path(&fname, max_fname_len);
                 format!("{truncated_abs_path}:{lnum}")
             }
         };
 
-        match utility::read_preview_lines(path, *lnum, self.size) {
+        match utility::read_preview_lines(path, lnum, self.size) {
             Ok(PreviewInfo {
                 lines,
                 highlight_lnum,
@@ -320,7 +312,7 @@ impl<'a> OnMoveHandler<'a> {
                         if !BLACK_LIST.contains(&ext)
                             && !dumb_analyzer::is_comment(latest_line, ext)
                         {
-                            match context_tag_with_timeout(path.to_path_buf(), *lnum).await {
+                            match context_tag_with_timeout(path.to_path_buf(), lnum).await {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 

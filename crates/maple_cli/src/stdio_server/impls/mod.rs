@@ -16,7 +16,7 @@ use types::MatchedItem;
 use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
 
 pub use self::on_create::initialize;
-pub use self::on_move::{OnMove, OnMoveHandler};
+pub use self::on_move::{OnMoveHandler, PreviewKind};
 pub use self::providers::{dumb_jump, filer, recent_files};
 
 use super::vim::Vim;
@@ -84,13 +84,8 @@ impl ClapProvider for DefaultProvider {
 
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
 
-        tracing::debug!(
-            "====================== on_move: {:?}",
-            on_move_handler.inner
-        );
-
         // TODO: preview cache
-        let preview_result = on_move_handler.on_move_process().await?;
+        let preview_result = on_move_handler.get_preview().await?;
 
         self.vim
             .exec("clap#state#process_preview_result", preview_result)?;

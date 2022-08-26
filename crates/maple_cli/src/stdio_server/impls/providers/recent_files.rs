@@ -167,7 +167,7 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let on_move_handler = OnMoveHandler::create(curline, &self.context)?;
-            let preview_result = on_move_handler.on_move_process().await?;
+            let preview_result = on_move_handler.get_preview().await?;
             self.vim
                 .exec("clap#state#process_preview_result", preview_result)?;
         }

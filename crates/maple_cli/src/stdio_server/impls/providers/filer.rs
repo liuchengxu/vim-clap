@@ -6,7 +6,7 @@ use serde_json::json;
 
 use icon::prepend_filer_icon;
 
-use crate::stdio_server::impls::{OnMove, OnMoveHandler};
+use crate::stdio_server::impls::{OnMoveHandler, PreviewKind};
 use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
@@ -176,10 +176,10 @@ impl ClapProvider for FilerProvider {
         let on_move_handler = OnMoveHandler {
             size: self.context.sensible_preview_size(),
             context: &self.context,
-            inner: OnMove::Filer(path.clone()),
+            preview_kind: PreviewKind::FileOrDirectory(path.clone()),
             cache_line: None,
         };
-        let preview_result = on_move_handler.on_move_process().await?;
+        let preview_result = on_move_handler.get_preview().await?;
         self.vim
             .exec("clap#state#process_preview_result", preview_result)?;
 
