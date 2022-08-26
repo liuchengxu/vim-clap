@@ -221,7 +221,10 @@ impl Session {
                             tracing::debug!(?event, "[with_debounce] Received an event");
 
                             match event {
-                                ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                                ProviderEvent::Terminate => {
+                                    self.provider.handle_terminate(self.session_id);
+                                    break;
+                                }
                                 ProviderEvent::Create => {
                                   tracing::debug!("============================= Processing Create");
                                     if let Err(err) = self.provider.on_create().await {
@@ -262,7 +265,10 @@ impl Session {
             tracing::debug!(?event, "[without_debounce] Received an event");
 
             match event {
-                ProviderEvent::Terminate => self.provider.handle_terminate(self.session_id),
+                ProviderEvent::Terminate => {
+                    self.provider.handle_terminate(self.session_id);
+                    break;
+                }
                 ProviderEvent::Create => {
                     if let Err(err) = self.provider.on_create().await {
                         tracing::error!(?err, "Error processing ProviderEvent::Create");

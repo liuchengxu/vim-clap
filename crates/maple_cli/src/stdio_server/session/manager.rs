@@ -75,6 +75,7 @@ impl SessionManager {
 
     /// Dispatch the session event to the background session task accordingly.
     pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
+        tracing::debug!("=========== Trying sending session_id: {session_id:?}, event: {event:?}, sessions: {:?}", self.sessions.keys());
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);
         } else {
