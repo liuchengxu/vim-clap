@@ -1,7 +1,6 @@
 mod context;
-mod manager;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::{atomic::Ordering, Arc};
 use std::time::Duration;
@@ -16,10 +15,12 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize;
+use crate::stdio_server::rpc::Call;
 use crate::stdio_server::vim::Vim;
 
 pub use self::context::{SessionContext, SourceScale};
-pub use self::manager::SessionManager;
+
+pub type SessionId = u64;
 
 static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
@@ -51,8 +52,43 @@ pub fn note_job_is_finished(job_id: u64) {
     background_jobs.remove(&job_id);
 }
 
-pub type SessionId = u64;
+#[derive(Debug, Clone)]
+pub enum ProviderEvent {
+    Create,
+    OnMove,
+    OnTyped,
+    // TODO: OnTab for filer
+    Terminate,
+}
 
+/// A small wrapper of Sender<ProviderEvent> for logging on sending error.
+#[derive(Debug)]
+pub struct ProviderEventSender {
+    pub sender: UnboundedSender<ProviderEvent>,
+    pub id: SessionId,
+}
+
+impl ProviderEventSender {
+    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
+        Self { sender, id }
+    }
+}
+
+impl std::fmt::Display for ProviderEventSender {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ProviderEventSender for session {}", self.id)
+    }
+}
+
+impl ProviderEventSender {
+    pub fn send(&self, event: ProviderEvent) {
+        if let Err(error) = self.sender.send(event) {
+            tracing::error!(?error, "Failed to send session event");
+        }
+    }
+}
+
+/// A trait that each Clap provider should implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     fn vim(&self) -> &Vim;
@@ -153,14 +189,6 @@ pub struct Session {
     /// Each provider session can have its own message processing logic.
     pub provider: Box<dyn ClapProvider>,
     pub event_recv: tokio::sync::mpsc::UnboundedReceiver<ProviderEvent>,
-}
-
-#[derive(Debug, Clone)]
-pub enum ProviderEvent {
-    OnTyped,
-    Create,
-    OnMove,
-    Terminate,
 }
 
 impl Session {
@@ -285,6 +313,61 @@ impl Session {
                     }
                 }
             }
+        }
+    }
+}
+
+/// This structs manages all the created sessions tracked by the session id.
+#[derive(Debug, Default)]
+pub struct SessionManager {
+    sessions: HashMap<SessionId, ProviderEventSender>,
+}
+
+impl SessionManager {
+    /// Starts a session in a background task.
+    pub fn new_session(&mut self, init_call: Call, provider: Box<dyn ClapProvider>) {
+        let session_id = init_call.session_id().expect("No session_id in the Call");
+
+        if self.exists(session_id) {
+            tracing::error!(session_id, "Skipped as given session already exists");
+        } else {
+            let (session, session_sender) = Session::new(session_id, provider);
+            session.start_event_loop();
+
+            session_sender
+                .send(ProviderEvent::Create)
+                .expect("Failed to send Create Event");
+
+            self.sessions.insert(
+                session_id,
+                ProviderEventSender::new(session_sender, session_id),
+            );
+        }
+    }
+
+    /// Returns true if the session exists given `session_id`.
+    pub fn exists(&self, session_id: SessionId) -> bool {
+        self.sessions.contains_key(&session_id)
+    }
+
+    /// Stop the session task by sending [`ProviderEvent::Terminate`].
+    pub fn terminate(&mut self, session_id: SessionId) {
+        if let Some(sender) = self.sessions.remove(&session_id) {
+            sender.send(ProviderEvent::Terminate);
+        }
+    }
+
+    /// Dispatch the session event to the background session task accordingly.
+    pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
+        tracing::debug!("=========== Trying sending session_id: {session_id:?}, event: {event:?}, sessions: {:?}", self.sessions.keys());
+        if let Some(sender) = self.sessions.get(&session_id) {
+            sender.send(event);
+        } else {
+            tracing::error!(
+                session_id,
+                sessions = ?self.sessions.keys(),
+                "Couldn't find the sender for given session",
+            );
         }
     }
 }
