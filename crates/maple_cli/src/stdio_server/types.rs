@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use icon::{Icon, IconKind};
 use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 
 #[derive(Debug, Clone)]
@@ -89,6 +90,16 @@ impl ProviderId {
         };
 
         Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
+    }
+
+    pub fn icon(&self) -> Icon {
+        match self.0.as_str() {
+            "tags" => Icon::Enabled(IconKind::BufferTags),
+            "proj_tags" => Icon::Enabled(IconKind::ProjTags),
+            "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
+            "files" | "git_files" => Icon::Enabled(IconKind::File),
+            _ => Icon::Enabled(IconKind::Unknown),
+        }
     }
 }
 

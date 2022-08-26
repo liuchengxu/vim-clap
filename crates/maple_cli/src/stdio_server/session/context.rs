@@ -4,22 +4,22 @@ use std::sync::{atomic::AtomicBool, Arc};
 use parking_lot::Mutex;
 use serde::Deserialize;
 
-use icon::{Icon, IconKind};
+use icon::Icon;
 use matcher::{ClapItem, Matcher};
 use types::MatchedItem;
 
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
 use crate::stdio_server::types::ProviderId;
 
-const DEFAULT_DISPLAY_WINWIDTH: u64 = 100;
+const DEFAULT_DISPLAY_WINWIDTH: usize = 100;
 
-const DEFAULT_PREVIEW_WINHEIGHT: u64 = 30;
+const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
 
 /// This type represents the scale of filtering source.
 #[derive(Debug, Clone)]
 pub enum SourceScale {
     /// We do not know the exact total number of source items.
-    Indefinite,
+    Unknown,
 
     /// Large scale.
     ///
@@ -40,7 +40,7 @@ pub enum SourceScale {
 
 impl Default for SourceScale {
     fn default() -> Self {
-        Self::Indefinite
+        Self::Unknown
     }
 }
 
@@ -65,23 +65,14 @@ impl SourceScale {
                     })
                     .collect(),
             ),
-            Self::Cache { ref path, .. } => {
-                if let Ok(lines_iter) = utility::read_first_lines(path, n) {
-                    Some(
-                        lines_iter
-                            .map(|line| {
-                                MatchedItem::new(
-                                    Arc::new(line),
-                                    Default::default(),
-                                    Default::default(),
-                                )
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    None
-                }
-            }
+            Self::Cache { ref path, .. } => utility::read_first_lines(path, n)
+                .map(|iter| {
+                    iter.map(|line| {
+                        MatchedItem::new(Arc::new(line), Default::default(), Default::default())
+                    })
+                    .collect()
+                })
+                .ok(),
             _ => None,
         }
     }
@@ -110,8 +101,8 @@ pub struct SessionContext {
     pub no_cache: bool,
     pub debounce: bool,
     pub start_buffer_path: PathBuf,
-    pub display_winwidth: u64,
-    pub preview_winheight: u64,
+    pub display_winwidth: usize,
+    pub preview_winheight: usize,
     pub icon: Icon,
     pub matcher: Matcher,
     pub source_cmd: Option<String>,
@@ -150,8 +141,8 @@ impl SessionContext {
             no_cache: bool,
             debounce: Option<bool>,
             source_fpath: PathBuf,
-            display_winwidth: Option<u64>,
-            preview_winheight: Option<u64>,
+            display_winwidth: Option<usize>,
+            preview_winheight: Option<usize>,
             source_cmd: Option<String>,
             runtimepath: Option<String>,
             enable_icon: Option<bool>,
@@ -176,13 +167,7 @@ impl SessionContext {
             .expect("Failed to deserialize SessionContext");
 
         let icon = if enable_icon.unwrap_or(false) {
-            match provider_id.as_str() {
-                "tags" => Icon::Enabled(IconKind::BufferTags),
-                "proj_tags" => Icon::Enabled(IconKind::ProjTags),
-                "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
-                "files" => Icon::Enabled(IconKind::File),
-                _ => Icon::Null,
-            }
+            provider_id.icon()
         } else {
             Icon::Null
         };
@@ -206,7 +191,7 @@ impl SessionContext {
             icon,
             state: SessionState {
                 is_running: Arc::new(true.into()),
-                source_scale: Arc::new(Mutex::new(SourceScale::Indefinite)),
+                source_scale: Arc::new(Mutex::new(SourceScale::Unknown)),
             },
         }
     }

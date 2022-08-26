@@ -147,7 +147,7 @@ impl ClapProvider for DefaultProvider {
             SourceScale::Large(_total) => {
                 //TODO: probably remove this variant?
             }
-            SourceScale::Indefinite => {
+            SourceScale::Unknown => {
                 // TODO: Note arbitrary shell command and use par_dyn_run later.
             }
         }

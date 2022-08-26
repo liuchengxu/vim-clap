@@ -106,14 +106,13 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 Ok(scale) => {
                     tracing::debug!("[on_create] ===== Setting scale {scale:?}");
                     if let Some(total) = scale.total() {
-                        self.vim()
-                            .exec("set_var", json!(["g:clap.display.initial_size", total]))?;
+                        self.vim().set_var("g:clap.display.initial_size", total)?;
                     }
                     if let Some(lines) = scale.initial_lines(100) {
                         let DisplayLines {
                             lines,
-                            truncated_map,
                             icon_added,
+                            truncated_map,
                             ..
                         } = printer::decorate_lines(
                             lines,
@@ -139,6 +138,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 // The initialization was not super fast.
                 tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
+                // Try creating cache for some potential heavy providers.
                 match context.provider_id.as_str() {
                     "grep" | "grep2" => {
                         let rg_cmd =
@@ -175,7 +175,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         let context = self.session_context();
         context.state.is_running.store(false, Ordering::SeqCst);
         tracing::debug!(
-          session_id,
+            session_id,
             provider_id = %context.provider_id,
             "Session terminated",
         );

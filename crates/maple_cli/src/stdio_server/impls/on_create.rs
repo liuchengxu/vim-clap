@@ -96,5 +96,5 @@ pub async fn initialize(context: &SessionContext, vim: &Vim) -> Result<SourceSca
         return Ok(to_scale(lines));
     }
 
-    Ok(SourceScale::Indefinite)
+    Ok(SourceScale::Unknown)
 }

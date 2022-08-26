@@ -223,4 +223,8 @@ impl Vim {
         };
         Ok(value)
     }
+
+    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
+        self.exec("set_var", json!([var_name, value]))
+    }
 }
