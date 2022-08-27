@@ -145,8 +145,8 @@ function! clap#state#init_display(msg) abort
     call g:clap#display_win.shrink_if_undersize()
   endif
 
-  if has_key(a:result, 'truncated_map')
-    let g:__clap_lines_truncated_map = a:result.truncated_map
+  if has_key(a:msg, 'truncated_map')
+    let g:__clap_lines_truncated_map = a:msg.truncated_map
   endif
 
   if has_key(a:msg, 'icon_added')

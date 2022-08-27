@@ -13,9 +13,9 @@ use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
 use types::MatchedItem;
 
-use crate::stdio_server::session::{ClapProvider, SessionContext, SourceScale};
+use crate::stdio_server::session::{ClapProvider, ProviderSource, SessionContext};
 
-pub use self::on_create::initialize;
+pub use self::on_create::initialize_provider_source;
 pub use self::on_move::{OnMoveHandler, PreviewKind};
 pub use self::providers::{dumb_jump, filer, recent_files};
 
@@ -59,23 +59,23 @@ impl ClapProvider for DefaultProvider {
     async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
-        let maybe_curline = match self.context.state.source_scale.lock().deref() {
-            SourceScale::Small { ref items, .. } => {
-                if let Some(curline) = self.line_at(lnum as usize) {
-                    Some(curline)
-                } else {
-                    items
-                        .get(lnum as usize - 1)
-                        .map(|item| item.output_text().to_string())
-                }
-            }
+        let maybe_curline = match self.context.state.provider_source.lock().deref() {
+            ProviderSource::Small { ref items, .. } => self.line_at(lnum as usize).or_else(|| {
+                items
+                    .get(lnum as usize - 1)
+                    .map(|item| item.output_text().to_string())
+            }),
             _ => None,
         };
+
+        tracing::debug!("=========================== maybe_curline: {maybe_curline:?}");
 
         let curline = match maybe_curline {
             Some(line) => line,
             None => self.vim.display_getcurline().await?,
         };
+
+        tracing::debug!("=========================== curline: {curline:?}");
 
         if curline.is_empty() {
             tracing::debug!("[DefaultProvider::on_move] curline is empty, skipping on_move");
@@ -84,11 +84,11 @@ impl ClapProvider for DefaultProvider {
 
         let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
 
-        // TODO: preview cache
-        let preview_result = on_move_handler.get_preview().await?;
+        // TODO: Cache the preview.
+        let preview = on_move_handler.get_preview().await?;
 
         self.vim
-            .exec("clap#state#process_preview_result", preview_result)?;
+            .exec("clap#state#process_preview_result", preview)?;
 
         Ok(())
     }
@@ -96,10 +96,11 @@ impl ClapProvider for DefaultProvider {
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim.input_get().await?;
 
-        let source_scale = self.context.state.source_scale.lock();
+        // TODO: Cancel another on_typed task and start the latest one.
+        let provider_source = self.context.state.provider_source.lock();
 
-        match source_scale.deref() {
-            SourceScale::Small { ref items, .. } => {
+        match provider_source.deref() {
+            ProviderSource::Small { ref items, .. } => {
                 let matched_items = filter::par_filter_items(query, items, &self.context.matcher);
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
@@ -124,7 +125,7 @@ impl ClapProvider for DefaultProvider {
                 let mut current_results = self.current_results.lock();
                 *current_results = matched_items;
             }
-            SourceScale::Cache { ref path, .. } => {
+            ProviderSource::CachedFile { ref path, .. } => {
                 // TODO: Watcher::Rpc, Watcher::Println
                 if let Err(e) = filter::par_dyn_run(
                     &query,
@@ -139,11 +140,14 @@ impl ClapProvider for DefaultProvider {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }
             }
-            SourceScale::Large(_total) => {
-                //TODO: probably remove this variant?
+            ProviderSource::Command(cmd) => {
+                // TODO: par_dyn_run
+                tracing::debug!(
+                    "================= TODO: handle ProviderSource::Command, cmd: {cmd:?}"
+                );
             }
-            SourceScale::Unknown => {
-                // TODO: Note arbitrary shell command and use par_dyn_run later.
+            ProviderSource::Unknown => {
+                // TODO: May generate the source on Vim side and pass them to Rust.
             }
         }
 

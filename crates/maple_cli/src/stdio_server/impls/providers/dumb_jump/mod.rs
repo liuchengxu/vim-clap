@@ -363,14 +363,14 @@ impl ClapProvider for DumbJumpProvider {
             .get_line((lnum - 1) as usize)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
         let on_move_handler = OnMoveHandler::create(curline.to_string(), &self.context)?;
-        let preview_result = on_move_handler.get_preview().await?;
+        let preview = on_move_handler.get_preview().await?;
 
         let current_input = self.vim.input_get().await?;
         let current_lnum = self.vim.display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
             self.vim
-                .exec("clap#state#process_preview_result", preview_result)?;
+                .exec("clap#state#process_preview_result", preview)?;
         }
 
         Ok(())

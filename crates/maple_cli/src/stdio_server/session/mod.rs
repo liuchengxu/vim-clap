@@ -14,10 +14,10 @@ use serde_json::json;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
-use crate::stdio_server::impls::initialize;
+use crate::stdio_server::impls::initialize_provider_source;
 use crate::stdio_server::vim::Vim;
 
-pub use self::context::{SessionContext, SourceScale};
+pub use self::context::{ProviderSource, SessionContext};
 
 pub type SessionId = u64;
 
@@ -101,14 +101,13 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         let vim = self.vim();
 
         // TODO: blocking on_create for the swift providers like `tags`.
-        match tokio::time::timeout(TIMEOUT, initialize(context, vim)).await {
-            Ok(scale_result) => match scale_result {
-                Ok(scale) => {
-                    tracing::debug!("[on_create] ===== Setting scale {scale:?}");
-                    if let Some(total) = scale.total() {
+        match tokio::time::timeout(TIMEOUT, initialize_provider_source(context, vim)).await {
+            Ok(provider_source_result) => match provider_source_result {
+                Ok(provider_source) => {
+                    if let Some(total) = provider_source.total() {
                         self.vim().set_var("g:clap.display.initial_size", total)?;
                     }
-                    if let Some(lines) = scale.initial_lines(100) {
+                    if let Some(lines) = provider_source.initial_lines(100) {
                         let DisplayLines {
                             lines,
                             icon_added,
@@ -130,7 +129,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                         )?;
                     }
 
-                    context.set_source_scale(scale);
+                    context.set_provider_source(provider_source);
                 }
                 Err(e) => tracing::error!(?e, "Error occurred on creating session"),
             },

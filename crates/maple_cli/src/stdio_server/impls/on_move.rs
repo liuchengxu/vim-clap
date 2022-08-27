@@ -20,14 +20,14 @@ static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false
 
 #[derive(Debug)]
 pub enum PreviewKind {
-    Commit(String),
+    /// Should be a file.
     File(PathBuf),
+    /// Maybe a file or a directory.
     FileOrDirectory(PathBuf),
     /// A specific location in a file.
-    Line {
-        path: PathBuf,
-        line_number: usize,
-    },
+    Line { path: PathBuf, line_number: usize },
+    /// Commit revision.
+    Commit(String),
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -46,6 +46,12 @@ fn parse_preview_kind(
         )
     };
 
+    // Store the line context we see in the search result, but it may be out-dated due to the
+    // cacheh is being used, especially for the providers like grep which potentially have tons of
+    // items.
+    //
+    // If the line we see mismatches the actual line content in the preview, the content in which
+    // is always accurate, try to refresh the cache and reload.
     let mut line_content = None;
 
     let preview_kind = match context.provider_id.as_str() {
@@ -58,12 +64,6 @@ fn parse_preview_kind(
                     build_abs_path(&context.cwd, &curline)
                 };
                 PreviewKind::File(path)
-            }
-            "proj_tags" => {
-                let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-                let mut path: PathBuf = context.cwd.clone();
-                path.push(&p);
-                PreviewKind::Line{path, line_number}
             }
             "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
@@ -102,6 +102,12 @@ fn parse_preview_kind(
                 let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
                 PreviewKind::Line{ path, line_number }
+            }
+            "proj_tags" => {
+                let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
+                let mut path: PathBuf = context.cwd.clone();
+                path.push(&p);
+                PreviewKind::Line{path, line_number}
             }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).ok_or_else(err)?;

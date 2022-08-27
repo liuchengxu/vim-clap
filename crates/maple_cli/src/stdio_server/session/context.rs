@@ -17,15 +17,14 @@ const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
 
 /// This type represents the scale of filtering source.
 #[derive(Debug, Clone)]
-pub enum SourceScale {
-    /// We do not know the exact total number of source items.
+pub enum ProviderSource {
+    /// The provider source is unknown, probably a provider whose source is a List or a function
+    /// returning a List.
     Unknown,
 
-    /// Large scale.
-    ///
-    /// The number of total source items is already known, but that's
-    /// too many for the synchorous filtering.
-    Large(usize),
+    /// Shell command to generate the provider source.
+    #[allow(unused)]
+    Command(String),
 
     // TODO: Use Arc<dyn ClapItem> instead of String.
     /// Small scale, in which case we do not have to use the dynamic filtering.
@@ -35,21 +34,19 @@ pub enum SourceScale {
     },
 
     /// Unknown scale, but the cache exists.
-    Cache { total: usize, path: PathBuf },
+    CachedFile { total: usize, path: PathBuf },
 }
 
-impl Default for SourceScale {
+impl Default for ProviderSource {
     fn default() -> Self {
         Self::Unknown
     }
 }
 
-impl SourceScale {
+impl ProviderSource {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Large(total) | Self::Small { total, .. } | Self::Cache { total, .. } => {
-                Some(*total)
-            }
+            Self::Small { total, .. } | Self::CachedFile { total, .. } => Some(*total),
             _ => None,
         }
     }
@@ -65,7 +62,7 @@ impl SourceScale {
                     })
                     .collect(),
             ),
-            Self::Cache { ref path, .. } => utility::read_first_lines(path, n)
+            Self::CachedFile { ref path, .. } => utility::read_first_lines(path, n)
                 .map(|iter| {
                     iter.map(|line| {
                         MatchedItem::new(Arc::new(line), Default::default(), Default::default())
@@ -81,7 +78,8 @@ impl SourceScale {
 #[derive(Debug, Clone)]
 pub struct SessionState {
     pub is_running: Arc<AtomicBool>,
-    pub source_scale: Arc<Mutex<SourceScale>>,
+    // TODO: RwLock
+    pub provider_source: Arc<Mutex<ProviderSource>>,
 }
 
 /// bufnr and winid.
@@ -125,9 +123,9 @@ impl SessionContext {
         )
     }
 
-    pub fn set_source_scale(&self, new: SourceScale) {
-        let mut source_scale = self.state.source_scale.lock();
-        *source_scale = new;
+    pub fn set_provider_source(&self, new: ProviderSource) {
+        let mut provider_source = self.state.provider_source.lock();
+        *provider_source = new;
     }
 
     fn from_params(params: Params) -> Self {
@@ -191,7 +189,7 @@ impl SessionContext {
             icon,
             state: SessionState {
                 is_running: Arc::new(true.into()),
-                source_scale: Arc::new(Mutex::new(SourceScale::Unknown)),
+                provider_source: Arc::new(Mutex::new(ProviderSource::Unknown)),
             },
         }
     }

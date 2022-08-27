@@ -179,9 +179,9 @@ impl ClapProvider for FilerProvider {
             preview_kind: PreviewKind::FileOrDirectory(path.clone()),
             cache_line: None,
         };
-        let preview_result = on_move_handler.get_preview().await?;
+        let preview = on_move_handler.get_preview().await?;
         self.vim
-            .exec("clap#state#process_preview_result", preview_result)?;
+            .exec("clap#state#process_preview_result", preview)?;
 
         Ok(())
     }

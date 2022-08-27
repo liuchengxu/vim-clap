@@ -8,27 +8,22 @@ use matcher::ClapItem;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
-use crate::process::tokio::TokioCommand;
-use crate::stdio_server::session::{SessionContext, SourceScale};
+use crate::process::ShellCommand;
+use crate::stdio_server::session::{ProviderSource, SessionContext};
 use crate::stdio_server::vim::Vim;
 
-/// Threshold for large scale.
-const LARGE_SCALE: usize = 200_000;
-
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize(context: &SessionContext, vim: &Vim) -> Result<SourceScale> {
-    let to_scale = |lines: Vec<String>| {
+pub async fn initialize_provider_source(
+    context: &SessionContext,
+    vim: &Vim,
+) -> Result<ProviderSource> {
+    let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
-
-        if total > LARGE_SCALE {
-            SourceScale::Large(total)
-        } else {
-            let items = lines
-                .into_iter()
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>)
-                .collect::<Vec<_>>();
-            SourceScale::Small { total, items }
-        }
+        let items = lines
+            .into_iter()
+            .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>)
+            .collect::<Vec<_>>();
+        ProviderSource::Small { total, items }
     };
 
     // Known providers.
@@ -36,33 +31,29 @@ pub async fn initialize(context: &SessionContext, vim: &Vim) -> Result<SourceSca
         "blines" => {
             let total =
                 crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-            return Ok(SourceScale::Cache {
-                total,
-                path: context.start_buffer_path.to_path_buf(),
-            });
+            let path = context.start_buffer_path.to_path_buf();
+            return Ok(ProviderSource::CachedFile { total, path });
         }
         "tags" => {
             let items = crate::tools::ctags::buffer_tag_items(&context.start_buffer_path, false)?;
-            return Ok(SourceScale::Small {
-                total: items.len(),
-                items,
-            });
+            let total = items.len();
+            return Ok(ProviderSource::Small { total, items });
         }
         "proj_tags" => {
             let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
-            let scale = if context.no_cache {
+            let provider_source = if context.no_cache {
                 let lines = ctags_cmd.execute_and_write_cache().await?;
-                to_scale(lines)
+                to_small_provider_source(lines)
             } else {
                 match ctags_cmd.ctags_cache() {
-                    Some((total, path)) => SourceScale::Cache { total, path },
+                    Some((total, path)) => ProviderSource::CachedFile { total, path },
                     None => {
                         let lines = ctags_cmd.execute_and_write_cache().await?;
-                        to_scale(lines)
+                        to_small_provider_source(lines)
                     }
                 }
             };
-            return Ok(scale);
+            return Ok(provider_source);
         }
         "grep2" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
@@ -75,26 +66,52 @@ pub async fn initialize(context: &SessionContext, vim: &Vim) -> Result<SourceSca
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);
-            tracing::debug!("========================= Setting forerunner tempfile");
             vim.exec("set_var", json!(["g:__clap_forerunner_tempfile", &path]))?;
-            return Ok(SourceScale::Cache { total, path });
+            return Ok(ProviderSource::CachedFile { total, path });
         }
         _ => {}
     }
 
-    if let Some(ref source_cmd) = context.source_cmd {
-        // TODO: check cache
+    let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
+    if let Some(source_cmd) = source_cmd.into_iter().next() {
+        let mut tokio_cmd = crate::process::tokio::shell_command(&source_cmd);
 
-        // Can not use subprocess::Exec::shell here.
-        //
-        // Must use TokioCommand otherwise the timeout may not work.
-        let lines = TokioCommand::new(source_cmd)
-            .current_dir(&context.cwd)
-            .lines()
-            .await?;
+        let shell_cmd = ShellCommand::new(source_cmd, context.cwd.to_path_buf());
 
-        return Ok(to_scale(lines));
+        let cache_file = shell_cmd.cache_file_path()?;
+
+        let provider_source = if context.no_cache {
+            // Can not use subprocess::Exec::shell here.
+            //
+            // Must use TokioCommand otherwise the timeout may not work.
+
+            crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
+            let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
+            ProviderSource::CachedFile {
+                total,
+                path: cache_file,
+            }
+        } else {
+            match shell_cmd.cache_digest() {
+                Some(digest) => ProviderSource::CachedFile {
+                    total: digest.total,
+                    path: digest.cached_path,
+                },
+                None => {
+                    crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file)
+                        .await?;
+                    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
+
+                    ProviderSource::CachedFile {
+                        total,
+                        path: cache_file,
+                    }
+                }
+            }
+        };
+
+        return Ok(provider_source);
     }
 
-    Ok(SourceScale::Unknown)
+    Ok(ProviderSource::Unknown)
 }

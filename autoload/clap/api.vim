@@ -86,6 +86,17 @@ function! s:api.provider_id() abort
   return g:clap.provider.id
 endfunction
 
+function! s:api.provider_source_cmd() abort
+  if has_key(g:clap.provider, 'source_type') && has_key(g:clap.provider._(), 'source')
+    if g:clap.provider.source_type == g:__t_string
+      return [g:clap.provider._().source]
+    elseif g:clap.provider.source_type == g:__t_func_string
+      return [g:clap.provider._().source()]
+    endif
+  endif
+  return []
+endfunction
+
 function! s:api.context_query_or_input() abort
   return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
 endfunction

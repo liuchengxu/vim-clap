@@ -57,10 +57,12 @@ impl From<std::process::Command> for TokioCommand {
 
 impl TokioCommand {
     /// Constructs a new instance of [`TokioCommand`].
+    #[allow(unused)]
     pub fn new(shell_cmd: impl AsRef<str>) -> Self {
         Self(shell_command(shell_cmd))
     }
 
+    #[allow(unused)]
     pub async fn lines(&mut self) -> std::io::Result<Vec<String>> {
         // Calling `output()` or `spawn().wait_with_output()` directly does not
         // work for Vim.
@@ -74,6 +76,7 @@ impl TokioCommand {
         super::process_output(output)
     }
 
+    #[allow(unused)]
     pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
         self.0.current_dir(dir);
         self
