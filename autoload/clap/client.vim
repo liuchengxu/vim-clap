@@ -94,6 +94,7 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'cwd': clap#rooter#working_dir(),
+        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
         \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
         \   'provider_id': g:clap.provider.id,
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,

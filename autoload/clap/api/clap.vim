@@ -502,27 +502,7 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  function! provider.init_default_impl() abort
-    " TODO: remove the forerunner job
-    if g:__clap_development
-      let return_directly = self.is_pure_async()
-            \ || self.source_type == g:__t_string
-            \ || self.source_type == g:__t_func_string
-      if return_directly
-        return
-      endif
-    endif
-
-    if self.is_pure_async()
-      return
-    elseif self.source_type == g:__t_string
-      call clap#job#regular#forerunner#start(self._().source)
-      return
-    elseif self.source_type == g:__t_func_string
-      call clap#job#regular#forerunner#start(self._().source())
-      return
-    endif
-
+  function! provider.init_list() abort
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
     if self.source_type == g:__t_list
       let lines = self._().source
@@ -549,16 +529,13 @@ function! s:init_provider() abort
   function! provider.init_display_win() abort
     if has_key(self._(), 'init')
       call self._().init()
+    elseif self.is_pure_async() || self.source_type == g:__t_string || self.source_type || g:__t_func_string
+      " These kinds of providers are initialized on Rust backend.
     else
-      call self.init_default_impl()
+      call self.init_list()
     endif
-    " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
     if clap#maple#is_available()
-      let extra = {}
-      if self.id ==# 'tags'
-        let extra['debounce'] = v:false
-      endif
-      call clap#client#notify_on_init('on_init', extra)
+      call clap#client#notify_on_init('on_init')
     endif
     " Try to fill the preview window.
     if clap#preview#is_enabled()

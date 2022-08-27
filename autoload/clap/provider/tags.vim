@@ -100,6 +100,7 @@ else
 endif
 
 let s:tags.syntax = 'clap_tags'
+let s:tags.debounce = v:false
 let g:clap#provider#tags# = s:tags
 
 let &cpoptions = s:save_cpo
