@@ -110,6 +110,10 @@ pub async fn initialize_provider_source(
             }
         };
 
+        if let ProviderSource::CachedFile { total: _, path } = &provider_source {
+            vim.exec("set_var", json!(["g:__clap_forerunner_tempfile", &path]))?;
+        }
+
         return Ok(provider_source);
     }
 
