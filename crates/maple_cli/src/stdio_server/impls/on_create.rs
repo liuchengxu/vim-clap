@@ -74,39 +74,35 @@ pub async fn initialize_provider_source(
 
     let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
     if let Some(source_cmd) = source_cmd.into_iter().next() {
-        let mut tokio_cmd = crate::process::tokio::shell_command(&source_cmd);
-
-        let shell_cmd = ShellCommand::new(source_cmd, context.cwd.to_path_buf());
-
-        let cache_file = shell_cmd.cache_file_path()?;
-
-        let provider_source = if context.no_cache {
+        async fn create_new_source(
+            cmd: &str,
+            cache_file: std::path::PathBuf,
+        ) -> Result<ProviderSource> {
             // Can not use subprocess::Exec::shell here.
             //
             // Must use TokioCommand otherwise the timeout may not work.
 
+            let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
             crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
             let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
-            ProviderSource::CachedFile {
+            Ok(ProviderSource::CachedFile {
                 total,
                 path: cache_file,
-            }
+            })
+        }
+
+        let shell_cmd = ShellCommand::new(source_cmd, context.cwd.to_path_buf());
+        let cache_file = shell_cmd.cache_file_path()?;
+
+        let provider_source = if context.no_cache {
+            create_new_source(&shell_cmd.command, cache_file).await?
         } else {
             match shell_cmd.cache_digest() {
                 Some(digest) => ProviderSource::CachedFile {
                     total: digest.total,
                     path: digest.cached_path,
                 },
-                None => {
-                    crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file)
-                        .await?;
-                    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
-
-                    ProviderSource::CachedFile {
-                        total,
-                        path: cache_file,
-                    }
-                }
+                None => create_new_source(&shell_cmd.command, cache_file).await?,
             }
         };
 
