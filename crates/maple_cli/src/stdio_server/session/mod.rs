@@ -137,6 +137,12 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 // The initialization was not super fast.
                 tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
+                let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
+                let maybe_source_cmd = source_cmd.into_iter().next();
+                if let Some(source_cmd) = maybe_source_cmd {
+                    context.set_provider_source(ProviderSource::Command(source_cmd));
+                }
+
                 // Try creating cache for some potential heavy providers.
                 match context.provider_id.as_str() {
                     "grep" | "grep2" => {
