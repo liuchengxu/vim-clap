@@ -1,4 +1,5 @@
 mod impls;
+mod job;
 mod rpc;
 mod session;
 mod state;
@@ -163,10 +164,6 @@ impl Client {
     /// Process the method call message from Vim.
     async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
         let msg = method_call;
-
-        if msg.method != "init_ext_map" {
-            tracing::debug!(?msg, "==> stdio message(in)");
-        }
 
         let value = match msg.method.as_str() {
             "preview/file" => Some(msg.preview_file().await?),

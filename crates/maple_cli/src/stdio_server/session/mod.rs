@@ -1,55 +1,23 @@
 mod context;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::{atomic::Ordering, Arc};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use anyhow::Result;
-use futures::Future;
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 use printer::DisplayLines;
 use serde_json::json;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::stdio_server::impls::initialize_provider_source;
+use crate::stdio_server::job;
 use crate::stdio_server::vim::Vim;
 
 pub use self::context::{ProviderSource, SessionContext};
 
 pub type SessionId = u64;
-
-static BACKGROUND_JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
-
-pub fn spawn_singleton_job(
-    task_future: impl Future<Output = ()> + Send + Sync + 'static,
-    job_id: u64,
-) {
-    if register_job_successfully(job_id) {
-        tokio::spawn(async move {
-            task_future.await;
-            note_job_is_finished(job_id)
-        });
-    }
-}
-
-pub fn register_job_successfully(job_id: u64) -> bool {
-    let mut background_jobs = BACKGROUND_JOBS.lock();
-    if background_jobs.contains(&job_id) {
-        false
-    } else {
-        background_jobs.insert(job_id);
-        true
-    }
-}
-
-pub fn note_job_is_finished(job_id: u64) {
-    let mut background_jobs = BACKGROUND_JOBS.lock();
-    background_jobs.remove(&job_id);
-}
 
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
@@ -149,7 +117,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                         let rg_cmd =
                             crate::command::grep::RgTokioCommand::new(context.cwd.to_path_buf());
                         let job_id = utility::calculate_hash(&rg_cmd);
-                        spawn_singleton_job(
+                        job::try_start(
                             async move {
                                 let _ = rg_cmd.create_cache().await;
                             },

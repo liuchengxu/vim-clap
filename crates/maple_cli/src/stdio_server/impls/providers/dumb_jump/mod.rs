@@ -15,9 +15,8 @@ use tracing::Instrument;
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::stdio_server::impls::OnMoveHandler;
-use crate::stdio_server::session::{
-    note_job_is_finished, register_job_successfully, ClapProvider, SessionContext,
-};
+use crate::stdio_server::job;
+use crate::stdio_server::session::{ClapProvider, SessionContext};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
@@ -166,7 +165,7 @@ impl DumbJumpProvider {
 
         let job_id = utility::calculate_hash(&(&cwd, "dumb_jump"));
 
-        if register_job_successfully(job_id) {
+        if job::reserve(job_id) {
             let ctags_future = {
                 let cwd = cwd.clone();
                 let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
@@ -231,7 +230,7 @@ impl DumbJumpProvider {
                         let now = std::time::Instant::now();
                         job_future.await;
                         tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
-                        note_job_is_finished(job_id);
+                        job::unreserve(job_id);
                     }
                 });
             }
