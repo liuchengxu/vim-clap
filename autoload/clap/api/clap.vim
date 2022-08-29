@@ -529,7 +529,7 @@ function! s:init_provider() abort
   function! provider.init_display_win() abort
     if has_key(self._(), 'init')
       call self._().init()
-    elseif self.is_pure_async() || self.source_type == g:__t_string || self.source_type || g:__t_func_string
+    elseif self.is_pure_async() || self.source_type == g:__t_string || self.source_type == g:__t_func_string
       " These kinds of providers are initialized on Rust backend.
     else
       call self.init_list()
