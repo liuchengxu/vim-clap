@@ -60,7 +60,7 @@ impl ClapProvider for DefaultProvider {
     async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
-        let maybe_curline = match self.context.state.provider_source.lock().deref() {
+        let maybe_curline = match self.context.provider_source.lock().deref() {
             ProviderSource::Small { ref items, .. } => self.line_at(lnum as usize).or_else(|| {
                 items
                     .get(lnum as usize - 1)
@@ -98,7 +98,7 @@ impl ClapProvider for DefaultProvider {
         let query = self.vim.input_get().await?;
 
         // TODO: Cancel another on_typed task and start the latest one.
-        let provider_source = self.context.state.provider_source.lock();
+        let provider_source = self.context.provider_source.lock();
 
         match provider_source.deref() {
             ProviderSource::Small { ref items, .. } => {

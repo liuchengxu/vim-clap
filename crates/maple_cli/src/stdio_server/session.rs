@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -25,16 +24,9 @@ const DEFAULT_DISPLAY_WINWIDTH: usize = 100;
 
 const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
 
-#[derive(Debug, Clone)]
-pub struct SessionState {
-    pub is_running: Arc<AtomicBool>,
-    // TODO: RwLock
-    pub provider_source: Arc<Mutex<ProviderSource>>,
-}
-
 /// bufnr and winid.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct BufnrAndWinid {
+pub struct BufnrWinid {
     pub bufnr: u64,
     pub winid: u64,
 }
@@ -42,9 +34,9 @@ pub struct BufnrAndWinid {
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
-    pub start: BufnrAndWinid,
-    pub input: BufnrAndWinid,
-    pub display: BufnrAndWinid,
+    pub start: BufnrWinid,
+    pub input: BufnrWinid,
+    pub display: BufnrWinid,
     pub cwd: PathBuf,
     pub no_cache: bool,
     pub debounce: bool,
@@ -54,7 +46,8 @@ pub struct SessionContext {
     pub icon: Icon,
     pub matcher: Matcher,
     pub runtimepath: Option<String>,
-    pub state: SessionState,
+    // TODO: RwLock
+    pub provider_source: Arc<Mutex<ProviderSource>>,
 }
 
 impl SessionContext {
@@ -62,9 +55,9 @@ impl SessionContext {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
-            start: BufnrAndWinid,
-            input: BufnrAndWinid,
-            display: BufnrAndWinid,
+            start: BufnrWinid,
+            input: BufnrWinid,
+            display: BufnrWinid,
             cwd: PathBuf,
             no_cache: bool,
             debounce: Option<bool>,
@@ -101,10 +94,10 @@ impl SessionContext {
         let matcher = provider_id.matcher();
 
         Self {
+            provider_id,
+            start,
             input,
             display,
-            start,
-            provider_id,
             cwd,
             no_cache,
             debounce: debounce.unwrap_or(true),
@@ -114,10 +107,7 @@ impl SessionContext {
             runtimepath,
             matcher,
             icon,
-            state: SessionState {
-                is_running: Arc::new(true.into()),
-                provider_source: Arc::new(Mutex::new(ProviderSource::Unknown)),
-            },
+            provider_source: Arc::new(Mutex::new(ProviderSource::Unknown)),
         }
     }
 
@@ -136,7 +126,7 @@ impl SessionContext {
     }
 
     pub fn set_provider_source(&self, new: ProviderSource) {
-        let mut provider_source = self.state.provider_source.lock();
+        let mut provider_source = self.provider_source.lock();
         *provider_source = new;
     }
 }

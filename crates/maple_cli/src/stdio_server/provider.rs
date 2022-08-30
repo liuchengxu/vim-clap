@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -200,7 +199,6 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     fn handle_terminate(&self, session_id: u64) {
         let context = self.session_context();
-        context.state.is_running.store(false, Ordering::SeqCst);
         tracing::debug!(
             session_id,
             provider_id = %context.provider_id,
