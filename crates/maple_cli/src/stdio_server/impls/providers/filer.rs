@@ -7,7 +7,8 @@ use serde_json::json;
 use icon::prepend_filer_icon;
 
 use crate::stdio_server::impls::{OnMoveHandler, PreviewKind};
-use crate::stdio_server::session::{ClapProvider, SessionContext};
+use crate::stdio_server::provider::ClapProvider;
+use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
 

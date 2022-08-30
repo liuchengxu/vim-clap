@@ -1,157 +1,143 @@
-mod context;
-
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::atomic::Ordering;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
-use printer::DisplayLines;
-use serde_json::json;
+use parking_lot::Mutex;
+use serde::Deserialize;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
-use crate::stdio_server::impls::initialize_provider_source;
-use crate::stdio_server::job;
-use crate::stdio_server::vim::Vim;
+use icon::Icon;
+use matcher::Matcher;
 
-pub use self::context::{ProviderSource, SessionContext};
+use crate::stdio_server::provider::{
+    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
+};
+use crate::stdio_server::rpc::Params;
+use crate::stdio_server::types::ProviderId;
 
 pub type SessionId = u64;
 
+const DEFAULT_DISPLAY_WINWIDTH: usize = 100;
+
+const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
+
 #[derive(Debug, Clone)]
-pub enum ProviderEvent {
-    Create,
-    OnMove,
-    OnTyped,
-    // TODO: OnTab for filer
-    Terminate,
+pub struct SessionState {
+    pub is_running: Arc<AtomicBool>,
+    // TODO: RwLock
+    pub provider_source: Arc<Mutex<ProviderSource>>,
 }
 
-/// A small wrapper of Sender<ProviderEvent> for logging on sending error.
-#[derive(Debug)]
-pub struct ProviderEventSender {
-    pub sender: UnboundedSender<ProviderEvent>,
-    pub id: SessionId,
+/// bufnr and winid.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BufnrAndWinid {
+    pub bufnr: u64,
+    pub winid: u64,
 }
 
-impl ProviderEventSender {
-    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
-        Self { sender, id }
-    }
+#[derive(Debug, Clone)]
+pub struct SessionContext {
+    pub provider_id: ProviderId,
+    pub start: BufnrAndWinid,
+    pub input: BufnrAndWinid,
+    pub display: BufnrAndWinid,
+    pub cwd: PathBuf,
+    pub no_cache: bool,
+    pub debounce: bool,
+    pub start_buffer_path: PathBuf,
+    pub display_winwidth: usize,
+    pub preview_winheight: usize,
+    pub icon: Icon,
+    pub matcher: Matcher,
+    pub runtimepath: Option<String>,
+    pub state: SessionState,
 }
 
-impl std::fmt::Display for ProviderEventSender {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ProviderEventSender for session {}", self.id)
-    }
-}
-
-impl ProviderEventSender {
-    pub fn send(&self, event: ProviderEvent) {
-        if let Err(error) = self.sender.send(event) {
-            tracing::error!(?error, "Failed to send session event");
+impl SessionContext {
+    pub fn from_params(params: Params) -> Self {
+        #[derive(Deserialize)]
+        struct InnerParams {
+            provider_id: ProviderId,
+            start: BufnrAndWinid,
+            input: BufnrAndWinid,
+            display: BufnrAndWinid,
+            cwd: PathBuf,
+            no_cache: bool,
+            debounce: Option<bool>,
+            source_fpath: PathBuf,
+            display_winwidth: Option<usize>,
+            preview_winheight: Option<usize>,
+            runtimepath: Option<String>,
+            enable_icon: Option<bool>,
         }
-    }
-}
 
-/// A trait that each Clap provider should implement.
-#[async_trait::async_trait]
-pub trait ClapProvider: Debug + Send + Sync + 'static {
-    fn vim(&self) -> &Vim;
+        let InnerParams {
+            provider_id,
+            start,
+            input,
+            display,
+            cwd,
+            no_cache,
+            debounce,
+            source_fpath,
+            display_winwidth,
+            preview_winheight,
+            runtimepath,
+            enable_icon,
+        } = params
+            .parse()
+            .expect("Failed to deserialize SessionContext");
 
-    fn session_context(&self) -> &SessionContext;
+        let icon = if enable_icon.unwrap_or(false) {
+            provider_id.icon()
+        } else {
+            Icon::Null
+        };
 
-    async fn on_create(&mut self) -> Result<()> {
-        const TIMEOUT: Duration = Duration::from_millis(300);
+        let matcher = provider_id.matcher();
 
-        let context = self.session_context();
-        let vim = self.vim();
-
-        // TODO: blocking on_create for the swift providers like `tags`.
-        match tokio::time::timeout(TIMEOUT, initialize_provider_source(context, vim)).await {
-            Ok(provider_source_result) => match provider_source_result {
-                Ok(provider_source) => {
-                    if let Some(total) = provider_source.total() {
-                        self.vim().set_var("g:clap.display.initial_size", total)?;
-                    }
-                    if let Some(lines) = provider_source.initial_lines(100) {
-                        let DisplayLines {
-                            lines,
-                            icon_added,
-                            truncated_map,
-                            ..
-                        } = printer::decorate_lines(
-                            lines,
-                            context.display_winwidth as usize,
-                            context.icon,
-                        );
-
-                        self.vim().exec(
-                            "clap#state#init_display",
-                            json!({
-                              "lines": lines,
-                              "icon_added": icon_added,
-                              "truncated_map": truncated_map,
-                            }),
-                        )?;
-                    }
-
-                    context.set_provider_source(provider_source);
-                }
-                Err(e) => tracing::error!(?e, "Error occurred on creating session"),
+        Self {
+            input,
+            display,
+            start,
+            provider_id,
+            cwd,
+            no_cache,
+            debounce: debounce.unwrap_or(true),
+            start_buffer_path: source_fpath,
+            display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
+            preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
+            runtimepath,
+            matcher,
+            icon,
+            state: SessionState {
+                is_running: Arc::new(true.into()),
+                provider_source: Arc::new(Mutex::new(ProviderSource::Unknown)),
             },
-            Err(_) => {
-                // The initialization was not super fast.
-                tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
-
-                let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
-                let maybe_source_cmd = source_cmd.into_iter().next();
-                if let Some(source_cmd) = maybe_source_cmd {
-                    context.set_provider_source(ProviderSource::Command(source_cmd));
-                }
-
-                // Try creating cache for some potential heavy providers.
-                match context.provider_id.as_str() {
-                    "grep" | "grep2" => {
-                        let rg_cmd =
-                            crate::command::grep::RgTokioCommand::new(context.cwd.to_path_buf());
-                        let job_id = utility::calculate_hash(&rg_cmd);
-                        job::try_start(
-                            async move {
-                                let _ = rg_cmd.create_cache().await;
-                            },
-                            job_id,
-                        );
-                    }
-                    _ => {
-                        // TODO: Note arbitrary shell command and use par_dyn_run later.
-                    }
-                }
-            }
         }
-
-        Ok(())
     }
 
-    async fn on_move(&mut self) -> Result<()>;
-
-    async fn on_typed(&mut self) -> Result<()>;
-
-    async fn on_tab(&mut self) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
-        Ok(())
+    /// Executes the command `cmd` and returns the raw bytes of stdout.
+    pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
+        let out = utility::execute_at(cmd, Some(&self.cwd))?;
+        Ok(out.stdout)
     }
 
-    /// Sets the running signal to false, in case of the forerunner thread is still working.
-    fn handle_terminate(&self, session_id: u64) {
-        let context = self.session_context();
-        context.state.is_running.store(false, Ordering::SeqCst);
-        tracing::debug!(
-            session_id,
-            provider_id = %context.provider_id,
-            "Session terminated",
-        );
+    /// Size for fulfilling the preview window.
+    pub fn sensible_preview_size(&self) -> usize {
+        std::cmp::max(
+            self.provider_id.get_preview_size(),
+            (self.preview_winheight / 2) as usize,
+        )
+    }
+
+    pub fn set_provider_source(&self, new: ProviderSource) {
+        let mut provider_source = self.state.provider_source.lock();
+        *provider_source = new;
     }
 }
 

@@ -9,7 +9,8 @@ use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
-use crate::stdio_server::session::{ClapProvider, SessionContext};
+use crate::stdio_server::provider::ClapProvider;
+use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]

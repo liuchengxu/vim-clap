@@ -13,7 +13,8 @@ use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
 use types::MatchedItem;
 
-use crate::stdio_server::session::{ClapProvider, ProviderSource, SessionContext};
+use crate::stdio_server::provider::{ClapProvider, ProviderSource};
+use crate::stdio_server::session::SessionContext;
 
 pub use self::on_create::initialize_provider_source;
 pub use self::on_move::{OnMoveHandler, PreviewKind};

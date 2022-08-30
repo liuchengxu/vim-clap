@@ -9,7 +9,8 @@ use matcher::ClapItem;
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::RgTokioCommand;
 use crate::process::ShellCommand;
-use crate::stdio_server::session::{ProviderSource, SessionContext};
+use crate::stdio_server::provider::ProviderSource;
+use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::vim::Vim;
 
 /// Performs the initialization like collecting the source and total number of source items.
