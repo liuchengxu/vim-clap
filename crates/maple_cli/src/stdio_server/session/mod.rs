@@ -189,10 +189,10 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
 #[derive(Debug)]
 pub struct Session {
-    pub session_id: u64,
+    session_id: u64,
     /// Each provider session can have its own message processing logic.
-    pub provider: Box<dyn ClapProvider>,
-    pub event_recv: tokio::sync::mpsc::UnboundedReceiver<ProviderEvent>,
+    provider: Box<dyn ClapProvider>,
+    event_recv: tokio::sync::mpsc::UnboundedReceiver<ProviderEvent>,
 }
 
 impl Session {
@@ -212,6 +212,12 @@ impl Session {
     }
 
     pub fn start_event_loop(self) {
+        tracing::debug!(
+            session_id = self.session_id,
+            provider_id = %self.provider.session_context().provider_id,
+            "Spawning a new session event loop task",
+        );
+
         tokio::spawn(async move {
             if self.provider.session_context().debounce {
                 self.run_event_loop_with_debounce().await;
@@ -234,12 +240,6 @@ impl Session {
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
-        tracing::debug!(
-            session_id = self.session_id,
-            provider_id = %self.provider.session_context().provider_id,
-            "Spawning a new session task",
-        );
-
         let mut dirty = false;
 
         let debounce_timer = tokio::time::sleep(NEVER);
@@ -258,18 +258,14 @@ impl Session {
                                     break;
                                 }
                                 ProviderEvent::Create => {
-                                  tracing::debug!("============================= Processing Create");
                                     if let Err(err) = self.provider.on_create().await {
-                                        tracing::error!(?err, "Error processing ProviderEvent::Create");
+                                        tracing::error!(?err, "Failed to process {event:?}");
                                     }
-                                  tracing::debug!("============================= Processing Create Done!");
                                 }
                                 ProviderEvent::OnMove => {
-                                    tracing::debug!("============================= Processing OnMove");
                                     if let Err(err) = self.provider.on_move().await {
-                                        tracing::error!(?err, "Error processing ProviderEvent::OnMove");
+                                        tracing::error!(?err, "Failed to process {event:?}");
                                     }
-                                    tracing::debug!("============================= Processing OnMove Done!");
                                 }
                                 ProviderEvent::OnTyped => {
                                     dirty = true;
@@ -285,7 +281,7 @@ impl Session {
                     debounce_timer.as_mut().reset(Instant::now() + NEVER);
 
                     if let Err(err) = self.provider.on_typed().await {
-                        tracing::error!(?err, "Error processing ProviderEvent::OnTyped");
+                        tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
                     }
                 }
             }
@@ -303,17 +299,17 @@ impl Session {
                 }
                 ProviderEvent::Create => {
                     if let Err(err) = self.provider.on_create().await {
-                        tracing::error!(?err, "Error processing ProviderEvent::Create");
+                        tracing::error!(?err, "Failed at process {event:?}");
                     }
                 }
                 ProviderEvent::OnMove => {
                     if let Err(err) = self.provider.on_move().await {
-                        tracing::debug!(?err, "Error processing ProviderEvent::OnMove");
+                        tracing::debug!(?err, "Failed to process {event:?}");
                     }
                 }
                 ProviderEvent::OnTyped => {
                     if let Err(err) = self.provider.on_typed().await {
-                        tracing::debug!(?err, "Error processing ProviderEvent::OnTyped");
+                        tracing::debug!(?err, "Failed to process {event:?}");
                     }
                 }
             }
@@ -361,7 +357,6 @@ impl SessionManager {
 
     /// Dispatch the session event to the background session task accordingly.
     pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
-        tracing::debug!("=========== Trying sending session_id: {session_id:?}, event: {event:?}, sessions: {:?}", self.sessions.keys());
         if let Some(sender) = self.sessions.get(&session_id) {
             sender.send(event);
         } else {

@@ -102,7 +102,10 @@ impl ClapProvider for DefaultProvider {
         match provider_source.deref() {
             ProviderSource::Small { ref items, .. } => {
                 let matched_items = filter::par_filter_items(query, items, &self.context.matcher);
-                tracing::debug!("===================== [Default::provider::on_typed] context icon {:?}", self.context.icon);
+                tracing::debug!(
+                    "===================== [Default::provider::on_typed] context icon {:?}",
+                    self.context.icon
+                );
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
                     lines,
