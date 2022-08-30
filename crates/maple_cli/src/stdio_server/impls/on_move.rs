@@ -1,22 +1,19 @@
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use once_cell::sync::Lazy;
 use serde_json::{json, Value};
 
 use pattern::*;
 use types::PreviewInfo;
 
-use crate::previewer::{self, vim_help::HelpTagPreview};
-use crate::stdio_server::global;
+use crate::previewer;
+use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::impls::providers::filer;
 use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
-
-static IS_FERESHING_CACHE: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 
 #[derive(Debug)]
 pub enum PreviewKind {
@@ -400,31 +397,34 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn try_refresh_cache(&self, latest_line: &str) {
-        if IS_FERESHING_CACHE.load(Ordering::SeqCst) {
-            tracing::debug!(
-                "Skipping the cache refreshing as there is already one running/waitting"
-            );
-            return;
-        }
         if self.context.provider_id.as_str() == "grep2" {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
                     let dir = self.context.cwd.clone();
-                    IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
-                    // Spawn a future in the background
-                    tokio::task::spawn_blocking(|| {
-                        tracing::debug!(?dir, "Attempting to refresh grep2 cache");
-                        match crate::command::grep::refresh_cache(dir) {
-                            Ok(total) => {
-                                tracing::debug!(total, "Refresh the grep2 cache successfully");
+
+                    let shell_cmd = crate::command::grep::rg_shell_command(&dir);
+                    let job_id = utility::calculate_hash(&shell_cmd);
+
+                    if job::reserve(job_id) {
+                        tokio::task::spawn_blocking(move || {
+                            tracing::debug!(?dir, "Refreshing grep2 cache");
+                            match crate::command::grep::refresh_cache(dir) {
+                                Ok(total) => {
+                                    tracing::debug!(total, "Refresh the grep2 cache successfully");
+                                }
+                                Err(e) => {
+                                    tracing::error!(error = ?e, "Failed to refresh grep2 cache")
+                                }
                             }
-                            Err(e) => {
-                                tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
-                            }
-                        }
-                        IS_FERESHING_CACHE.store(false, Ordering::SeqCst);
-                    });
+                            job::unreserve(job_id);
+                        });
+                    } else {
+                        tracing::debug!(
+                            ?dir,
+                            "There is already a grep2 job running, skip freshing the cache"
+                        );
+                    }
                 }
             }
         }
