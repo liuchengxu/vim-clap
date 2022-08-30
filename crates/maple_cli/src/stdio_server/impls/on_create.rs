@@ -67,7 +67,7 @@ pub async fn initialize_provider_source(
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);
-            vim.exec("set_var", json!(["g:__clap_forerunner_tempfile", &path]))?;
+            vim.set_var("g:__clap_forerunner_tempfile", &path)?;
             return Ok(ProviderSource::CachedFile { total, path });
         }
         _ => {}
@@ -108,7 +108,7 @@ pub async fn initialize_provider_source(
         };
 
         if let ProviderSource::CachedFile { total: _, path } = &provider_source {
-            vim.exec("set_var", json!(["g:__clap_forerunner_tempfile", &path]))?;
+            vim.set_var("g:__clap_forerunner_tempfile", &path)?;
         }
 
         return Ok(provider_source);

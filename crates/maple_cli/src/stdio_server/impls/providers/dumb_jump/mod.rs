@@ -202,7 +202,7 @@ impl DumbJumpProvider {
                     })
                     .await
                     {
-                        Ok(_) => gtags_regenerated.store(true, Ordering::Relaxed),
+                        Ok(_) => gtags_regenerated.store(true, Ordering::SeqCst),
                         Err(e) => {
                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");
                             // TODO: creating gtags may take 20s+ for large project
@@ -213,7 +213,7 @@ impl DumbJumpProvider {
                             .await
                             {
                                 Ok(_) => {
-                                    gtags_regenerated.store(true, Ordering::Relaxed);
+                                    gtags_regenerated.store(true, Ordering::SeqCst);
                                     tracing::debug!("Recreating gtags db successfully");
                                 }
                                 Err(e) => {

@@ -143,7 +143,7 @@ impl ClapProvider for FilerProvider {
     async fn on_create(&mut self) -> Result<()> {
         let cwd = self.vim.working_dir().await?;
 
-        let value = read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
+        let value = read_dir_entries(&cwd, self.context.icon.enabled(), None)
             .map(|entries| json!({ "entries": entries, "dir": cwd, "total": entries.len() }))
             .map_err(|err| {
                 tracing::error!(?cwd, "Failed to read directory entries");
@@ -193,7 +193,7 @@ impl ClapProvider for FilerProvider {
             .call("clap#provider#filer#current_dir", json!([]))
             .await?;
 
-        let result = read_dir_entries(&cwd, crate::stdio_server::global().enable_icon, None)
+        let result = read_dir_entries(&cwd, self.context.icon.enabled(), None)
             .map(|entries| json!({ "entries": entries, "dir": cwd, "total": entries.len() }))
             .map_err(|err| {
                 tracing::error!(?cwd, "Failed to read directory entries");

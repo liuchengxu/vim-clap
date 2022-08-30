@@ -56,9 +56,9 @@ impl Notification {
         let file = file
             .into_iter()
             .next()
-            .ok_or_else(|| anyhow::anyhow!("files is empty"))?;
+            .ok_or_else(|| anyhow::anyhow!("file is empty"))?;
 
-        tracing::debug!(?file, "Receive a recent file");
+        tracing::debug!(?file, "Received a recent file notification");
         if file.is_empty() || !std::path::Path::new(&file).exists() {
             return Ok(());
         }

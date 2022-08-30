@@ -1,3 +1,6 @@
+//! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
+
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -5,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
@@ -25,7 +28,7 @@ const DEFAULT_DISPLAY_WINWIDTH: usize = 100;
 const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
 
 /// bufnr and winid.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BufnrWinid {
     pub bufnr: u64,
     pub winid: u64,
@@ -268,11 +271,9 @@ pub struct SessionManager {
 }
 
 impl SessionManager {
-    /// Starts a session in a background task.
+    /// Creates a new session if session_id does not exist.
     pub fn new_session(&mut self, session_id: SessionId, provider: Box<dyn ClapProvider>) {
-        if self.exists(session_id) {
-            tracing::error!(session_id, "Skipped as given session already exists");
-        } else {
+        if let Entry::Vacant(v) = self.sessions.entry(session_id) {
             let (session, session_sender) = Session::new(session_id, provider);
             session.start_event_loop();
 
@@ -280,16 +281,10 @@ impl SessionManager {
                 .send(ProviderEvent::Create)
                 .expect("Failed to send Create Event");
 
-            self.sessions.insert(
-                session_id,
-                ProviderEventSender::new(session_sender, session_id),
-            );
+            v.insert(ProviderEventSender::new(session_sender, session_id));
+        } else {
+            tracing::error!(session_id, "Skipped as given session already exists");
         }
-    }
-
-    /// Returns true if the session exists given `session_id`.
-    pub fn exists(&self, session_id: SessionId) -> bool {
-        self.sessions.contains_key(&session_id)
     }
 
     /// Stop the session task by sending [`ProviderEvent::Terminate`].

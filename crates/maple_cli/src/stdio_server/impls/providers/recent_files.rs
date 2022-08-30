@@ -29,13 +29,7 @@ impl RecentFilesProvider {
         }
     }
 
-    fn process_query(
-        self,
-        cwd: String,
-        query: String,
-        enable_icon: bool,
-        lnum: u64,
-    ) -> Result<Value> {
+    fn process_query(self, cwd: String, query: String, lnum: u64) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
         let ranked = if query.is_empty() {
@@ -90,7 +84,7 @@ impl RecentFilesProvider {
         } = printer::decorate_lines(
             ranked.iter().take(200).cloned().collect(),
             winwidth,
-            if enable_icon {
+            if self.context.icon.enabled() {
                 icon::Icon::Enabled(icon::IconKind::File)
             } else {
                 icon::Icon::Null
@@ -146,9 +140,8 @@ impl ClapProvider for RecentFilesProvider {
     async fn on_create(&mut self) -> Result<()> {
         let query = self.vim.context_query_or_input().await?;
         let cwd = self.vim.working_dir().await?;
-        let enable_icon = self.vim.get_var_bool("clap_enable_icon").await?;
 
-        let response = self.clone().process_query(cwd, query, enable_icon, 1)?;
+        let response = self.clone().process_query(cwd, query, 1)?;
 
         self.vim
             .call("clap#state#process_result_on_typed", response)
@@ -177,20 +170,22 @@ impl ClapProvider for RecentFilesProvider {
     }
 
     async fn on_typed(&mut self) -> Result<()> {
+        let cwd = self.context.cwd.to_string_lossy().to_string();
         let query = self.vim.input_get().await?;
-        let cwd = self.vim.working_dir().await?;
         let lnum = self.vim.display_getcurlnum().await?;
-        let enable_icon = self.vim.get_var_bool("clap_enable_icon").await?;
 
         let recent_files = self.clone();
-        let response = tokio::task::spawn_blocking(move || {
-            recent_files.process_query(cwd, query, enable_icon, lnum)
-        })
-        .await??;
+        let query_clone = query.clone();
+        let response =
+            tokio::task::spawn_blocking(move || recent_files.process_query(cwd, query_clone, lnum))
+                .await??;
 
-        self.vim
-            .call("clap#state#process_result_on_typed", response)
-            .await?;
+        let current_query = self.vim.input_get().await?;
+        if current_query == query {
+            self.vim
+                .call("clap#state#process_result_on_typed", response)
+                .await?;
+        }
 
         Ok(())
     }
