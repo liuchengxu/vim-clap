@@ -5,8 +5,10 @@
 ### Fixed
 
 - Fix the filer preview on backend. #863
+- Make the fallback smooth if there is an error occurred while loading the Python dynamic module. #865
 
 ## [0.36] 2022-08-06
+
 ### Improved
 
 - Support filtering in parallel with the dynamic progress update. The filtering time is reduced about 50% from the sequential to the parallel version.
