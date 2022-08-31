@@ -36,7 +36,11 @@ else
   endif
 endif
 
-execute s:py_exe 'from clap.fzy import' s:py_fn
+try
+  execute s:py_exe 'from clap.fzy import' s:py_fn
+catch
+  let s:using_dynamic_module = v:false
+endtry
 
 function! clap#filter#sync#python#has_dynamic_module() abort
   return s:has_py_dynamic_module
