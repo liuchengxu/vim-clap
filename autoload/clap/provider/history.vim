@@ -20,11 +20,12 @@ function! s:raw_history() abort
 endfunction
 
 function! s:all_files() abort
-  if g:clap_enable_icon
-    return map(s:raw_history(), 'clap#icon#for(v:val). " " .v:val')
-  else
-    return s:raw_history()
-  endif
+  return s:raw_history()
+  " if g:clap_enable_icon
+    " return map(s:raw_history(), 'clap#icon#for(v:val). " " .v:val')
+  " else
+    " return s:raw_history()
+  " endif
 endfunction
 
 function! s:history_sink(selected) abort

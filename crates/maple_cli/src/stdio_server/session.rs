@@ -16,10 +16,9 @@ use icon::Icon;
 use matcher::Matcher;
 
 use crate::stdio_server::provider::{
-    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
+    ClapProvider, ProviderEvent, ProviderEventSender, ProviderId, ProviderSource,
 };
 use crate::stdio_server::rpc::Params;
-use crate::stdio_server::types::ProviderId;
 
 pub type SessionId = u64;
 
@@ -180,9 +179,7 @@ impl Session {
         // Debounce timer delay. 150ms between keystrokes is about 45 WPM, so we
         // want something that is longer than that, but not too long to
         // introduce detectable UI delay; 200ms is a decent compromise.
-        //
-        // Add extra 50ms delay.
-        const DELAY: Duration = Duration::from_millis(200 + 50);
+        const DELAY: Duration = Duration::from_millis(200);
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);

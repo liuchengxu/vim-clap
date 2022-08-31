@@ -60,6 +60,14 @@ endif
 
 let s:api = {}
 
+function! s:api.input_get() abort
+  return g:clap.input.get()
+endfunction
+
+function! s:api.context_query_or_input() abort
+  return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
+endfunction
+
 function! s:api.display_getcurline() abort
   return g:clap.display.getcurline()
 endfunction
@@ -68,8 +76,32 @@ function! s:api.display_getcurlnum() abort
   return g:clap.display.getcurlnum()
 endfunction
 
-function! s:api.input_get() abort
-  return g:clap.input.get()
+function! s:api.provider_id() abort
+  return g:clap.provider.id
+endfunction
+
+function! s:api.provider_source() abort
+  if has_key(g:clap.provider, 'source_type') && has_key(g:clap.provider._(), 'source')
+    if g:clap.provider.source_type == g:__t_string
+      return [g:clap.provider._().source]
+    elseif g:clap.provider.source_type == g:__t_func_string
+      return [g:clap.provider._().source()]
+    elseif g:clap.provider.source_type == g:__t_list
+      return [g:clap.provider._().source]
+    elseif g:clap.provider.source_type == g:__t_func_list
+      " Note that this function call should always be pretty fast and not slow down Vim.
+      return [g:clap.provider._().source()]
+    endif
+  endif
+  return []
+endfunction
+
+function! s:api.working_dir() abort
+  return clap#rooter#working_dir()
+endfunction
+
+function! s:api.bufname(bufnr) abort
+  return bufname(a:bufnr)
 endfunction
 
 function! s:api.get_var(var) abort
@@ -78,33 +110,6 @@ endfunction
 
 function! s:api.set_var(name, value) abort
   execute 'let '.a:name.'= a:value'
-endfunction
-
-function! s:api.working_dir() abort
-  return clap#rooter#working_dir()
-endfunction
-
-function! s:api.provider_id() abort
-  return g:clap.provider.id
-endfunction
-
-function! s:api.provider_source_cmd() abort
-  if has_key(g:clap.provider, 'source_type') && has_key(g:clap.provider._(), 'source')
-    if g:clap.provider.source_type == g:__t_string
-      return [g:clap.provider._().source]
-    elseif g:clap.provider.source_type == g:__t_func_string
-      return [g:clap.provider._().source()]
-    endif
-  endif
-  return []
-endfunction
-
-function! s:api.context_query_or_input() abort
-  return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
-endfunction
-
-function! s:api.bufname(bufnr) abort
-  return bufname(a:bufnr)
 endfunction
 
 function! s:api.fnamemodify(bufname, mods) abort

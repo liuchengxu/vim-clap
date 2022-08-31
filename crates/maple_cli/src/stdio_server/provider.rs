@@ -5,9 +5,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use printer::DisplayLines;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc::UnboundedSender;
 
+use icon::{Icon, IconKind};
+use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
 use crate::stdio_server::impls::initialize_provider_source;
@@ -15,25 +18,77 @@ use crate::stdio_server::job;
 use crate::stdio_server::session::{SessionContext, SessionId};
 use crate::stdio_server::vim::Vim;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderId(String);
+
+impl ProviderId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Returns the preview size of current provider.
+    #[inline]
+    pub fn get_preview_size(&self) -> usize {
+        super::global().preview_size_of(&self.0)
+    }
+
+    pub fn matcher(&self) -> Matcher {
+        let match_scope = match self.0.as_str() {
+            "tags" | "proj_tags" => MatchScope::TagName,
+            "grep" | "grep2" => MatchScope::GrepLine,
+            _ => MatchScope::Full,
+        };
+
+        let match_bonuses = match self.0.as_str() {
+            "files" | "git_files" | "filer" => vec![Bonus::FileName],
+            _ => vec![],
+        };
+
+        Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
+    }
+
+    pub fn icon(&self) -> Icon {
+        match self.0.as_str() {
+            "tags" => Icon::Enabled(IconKind::BufferTags),
+            "proj_tags" => Icon::Enabled(IconKind::ProjTags),
+            "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
+            "files" | "git_files" | "history" => Icon::Enabled(IconKind::File),
+            _ => Icon::Enabled(IconKind::Unknown),
+        }
+    }
+}
+
+impl<T: AsRef<str>> From<T> for ProviderId {
+    fn from(s: T) -> Self {
+        Self(s.as_ref().to_owned())
+    }
+}
+
+impl std::fmt::Display for ProviderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// This type represents the scale of filtering source.
 #[derive(Debug, Clone)]
 pub enum ProviderSource {
-    /// The provider source is unknown, probably a provider whose source is a List or a function
-    /// returning a List.
+    /// The provider source is unknown.
     Unknown,
 
     /// Shell command to generate the provider source.
-    #[allow(unused)]
     Command(String),
 
-    // TODO: Use Arc<dyn ClapItem> instead of String.
     /// Small scale, in which case we do not have to use the dynamic filtering.
+    ///
+    /// The scale can be small for some known swift providers or when a provider's source
+    /// is a List or a function returning a List.
     Small {
         total: usize,
         items: Vec<Arc<dyn ClapItem>>,
     },
 
-    /// Unknown scale, but the cache exists.
+    /// Cache file exists, reuse the cache instead of executing the command again.
     CachedFile { total: usize, path: PathBuf },
 }
 

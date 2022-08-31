@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use filter::SourceItem;
 use matcher::ClapItem;
@@ -73,45 +73,77 @@ pub async fn initialize_provider_source(
         _ => {}
     }
 
-    let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
-    if let Some(source_cmd) = source_cmd.into_iter().next() {
-        async fn create_new_source(
-            cmd: &str,
-            cache_file: std::path::PathBuf,
-        ) -> Result<ProviderSource> {
-            // Can not use subprocess::Exec::shell here.
-            //
-            // Must use TokioCommand otherwise the timeout may not work.
+    let source_cmd: Vec<Value> = vim.call("provider_source", json!([])).await?;
+    if let Some(value) = source_cmd.into_iter().next() {
+        match value {
+            Value::String(command) => {
+                async fn create_new_source(
+                    cmd: &str,
+                    cache_file: std::path::PathBuf,
+                ) -> Result<ProviderSource> {
+                    // Can not use subprocess::Exec::shell here.
+                    //
+                    // Must use TokioCommand otherwise the timeout may not work.
 
-            let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
-            crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
-            let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
-            Ok(ProviderSource::CachedFile {
-                total,
-                path: cache_file,
-            })
-        }
+                    let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
+                    crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file)
+                        .await?;
+                    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
+                    Ok(ProviderSource::CachedFile {
+                        total,
+                        path: cache_file,
+                    })
+                }
 
-        let shell_cmd = ShellCommand::new(source_cmd, context.cwd.to_path_buf());
-        let cache_file = shell_cmd.cache_file_path()?;
+                // Try always recreating the source.
+                if context.provider_id.as_str() == "files" {
+                    let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
+                    tokio_cmd.current_dir(&context.cwd);
+                    let lines = tokio_cmd.lines().await?;
+                    return Ok(to_small_provider_source(lines));
+                }
 
-        let provider_source = if context.no_cache {
-            create_new_source(&shell_cmd.command, cache_file).await?
-        } else {
-            match shell_cmd.cache_digest() {
-                Some(digest) => ProviderSource::CachedFile {
-                    total: digest.total,
-                    path: digest.cached_path,
-                },
-                None => create_new_source(&shell_cmd.command, cache_file).await?,
+                let shell_cmd = ShellCommand::new(command, context.cwd.to_path_buf());
+                let cache_file = shell_cmd.cache_file_path()?;
+
+                const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
+
+                let provider_source =
+                    if DIRECT_CREATE_NEW_SOURCE.contains(&context.provider_id.as_str()) {
+                        create_new_source(&shell_cmd.command, cache_file).await?
+                    } else if context.no_cache {
+                        create_new_source(&shell_cmd.command, cache_file).await?
+                    } else {
+                        match shell_cmd.cache_digest() {
+                            Some(digest) => ProviderSource::CachedFile {
+                                total: digest.total,
+                                path: digest.cached_path,
+                            },
+                            None => create_new_source(&shell_cmd.command, cache_file).await?,
+                        }
+                    };
+
+                if let ProviderSource::CachedFile { total: _, path } = &provider_source {
+                    vim.set_var("g:__clap_forerunner_tempfile", &path)?;
+                }
+
+                return Ok(provider_source);
             }
-        };
-
-        if let ProviderSource::CachedFile { total: _, path } = &provider_source {
-            vim.set_var("g:__clap_forerunner_tempfile", &path)?;
+            Value::Array(arr) => {
+                let lines = arr
+                    .into_iter()
+                    .filter_map(|v| {
+                        if let Value::String(s) = v {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                return Ok(to_small_provider_source(lines));
+            }
+            _ => {}
         }
-
-        return Ok(provider_source);
     }
 
     Ok(ProviderSource::Unknown)

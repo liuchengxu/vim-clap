@@ -502,6 +502,7 @@ function! s:init_provider() abort
     endif
   endfunction
 
+  " Deprecated, the list will be initialized on Rust side.
   function! provider.init_list() abort
     " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
     if self.source_type == g:__t_list
@@ -531,8 +532,6 @@ function! s:init_provider() abort
       call self._().init()
     elseif self.is_pure_async() || self.source_type == g:__t_string || self.source_type == g:__t_func_string
       " These kinds of providers are initialized on Rust backend.
-    else
-      call self.init_list()
     endif
     if clap#maple#is_available()
       call clap#client#notify_on_init('on_init')

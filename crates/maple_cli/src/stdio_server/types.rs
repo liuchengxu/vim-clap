@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use icon::{Icon, IconKind};
-use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
 
 #[derive(Debug, Clone)]
 pub struct GlobalEnv {
@@ -60,58 +56,6 @@ impl GlobalEnv {
     /// Each provider can have its preferred preview size.
     pub fn preview_size_of(&self, provider_id: &str) -> usize {
         self.preview_config.preview_size(provider_id)
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderId(String);
-
-impl ProviderId {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    /// Returns the preview size of current provider.
-    #[inline]
-    pub fn get_preview_size(&self) -> usize {
-        super::global().preview_size_of(&self.0)
-    }
-
-    pub fn matcher(&self) -> Matcher {
-        let match_scope = match self.0.as_str() {
-            "tags" | "proj_tags" => MatchScope::TagName,
-            "grep" | "grep2" => MatchScope::GrepLine,
-            _ => MatchScope::Full,
-        };
-
-        let match_bonuses = match self.0.as_str() {
-            "files" | "git_files" | "filer" => vec![matcher::Bonus::FileName],
-            _ => vec![],
-        };
-
-        Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
-    }
-
-    pub fn icon(&self) -> Icon {
-        match self.0.as_str() {
-            "tags" => Icon::Enabled(IconKind::BufferTags),
-            "proj_tags" => Icon::Enabled(IconKind::ProjTags),
-            "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
-            "files" | "git_files" => Icon::Enabled(IconKind::File),
-            _ => Icon::Enabled(IconKind::Unknown),
-        }
-    }
-}
-
-impl<T: AsRef<str>> From<T> for ProviderId {
-    fn from(s: T) -> Self {
-        Self(s.as_ref().to_owned())
-    }
-}
-
-impl std::fmt::Display for ProviderId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
