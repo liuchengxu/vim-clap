@@ -28,7 +28,11 @@ function! clap#api#get_origin_line_at(lnum) abort
   endif
 endfunction
 
-if s:is_nvim
+if exists('*win_execute')
+  function! clap#api#win_execute(winid, command) abort
+    return win_execute(a:winid, a:command)
+  endfunction
+else
   function! clap#api#win_execute(winid, command) abort
     let cur_winid = bufwinid('')
     if cur_winid != a:winid
@@ -42,15 +46,13 @@ if s:is_nvim
       return execute(a:command)
     endif
   endfunction
+endif
 
+if s:is_nvim
   function! clap#api#floating_win_is_valid(winid) abort
     return nvim_win_is_valid(a:winid)
   endfunction
 else
-  function! clap#api#win_execute(winid, command) abort
-    return win_execute(a:winid, a:command)
-  endfunction
-
   function! clap#api#floating_win_is_valid(winid) abort
     return !empty(popup_getpos(a:winid))
   endfunction
