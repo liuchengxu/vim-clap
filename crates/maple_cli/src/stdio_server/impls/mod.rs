@@ -2,7 +2,6 @@ mod on_create;
 mod on_move;
 mod providers;
 
-use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -60,7 +59,7 @@ impl ClapProvider for DefaultProvider {
     async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
-        let maybe_curline = match self.context.provider_source.lock().deref() {
+        let maybe_curline = match *self.context.provider_source.read() {
             ProviderSource::Small { ref items, .. } => self.line_at(lnum as usize).or_else(|| {
                 items
                     .get(lnum as usize - 1)
@@ -97,16 +96,9 @@ impl ClapProvider for DefaultProvider {
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim.input_get().await?;
 
-        // TODO: Cancel another on_typed task and start the latest one.
-        let provider_source = self.context.provider_source.lock();
-
-        match provider_source.deref() {
-            ProviderSource::Small { ref items, .. } => {
-                let matched_items = filter::par_filter_items(query, items, &self.context.matcher);
-                tracing::debug!(
-                    "===================== [Default::provider::on_typed] context icon {:?}",
-                    self.context.icon
-                );
+        let quick_response =
+            if let ProviderSource::Small { ref items, .. } = *self.context.provider_source.read() {
+                let matched_items = filter::par_filter_items(&query, items, &self.context.matcher);
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
                     lines,
@@ -125,10 +117,30 @@ impl ClapProvider for DefaultProvider {
                     "icon_added": icon_added,
                     "truncated_map": truncated_map,
                 });
+                Some((msg, matched_items))
+            } else {
+                None
+            };
+
+        if let Some((msg, matched_items)) = quick_response {
+            let new_query = self.vim.input_get().await?;
+            if new_query == query {
                 self.vim()
                     .exec("clap#state#process_filter_message", json!([msg, true]))?;
                 let mut current_results = self.current_results.lock();
                 *current_results = matched_items;
+            }
+            return Ok(());
+        }
+
+        // TODO: Cancel another on_typed task and start the latest one.
+
+        match *self.context.provider_source.read() {
+            ProviderSource::Small { .. } => {
+                unreachable!("Small provider source has been handled above; qed")
+            }
+            ProviderSource::Unknown { .. } => {
+                unreachable!("Unknown provider source can not be handled")
             }
             ProviderSource::CachedFile { ref path, .. } => {
                 // TODO: Watcher::Rpc, Watcher::Println
@@ -145,14 +157,11 @@ impl ClapProvider for DefaultProvider {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }
             }
-            ProviderSource::Command(cmd) => {
+            ProviderSource::Command(ref cmd) => {
                 // TODO: par_dyn_run
                 tracing::debug!(
                     "================= TODO: handle ProviderSource::Command, cmd: {cmd:?}"
                 );
-            }
-            ProviderSource::Unknown => {
-                // TODO: May generate the source on Vim side and pass them to Rust.
             }
         }
 

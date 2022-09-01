@@ -3,12 +3,11 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
@@ -49,8 +48,7 @@ pub struct SessionContext {
     pub icon: Icon,
     pub matcher: Matcher,
     pub runtimepath: Option<String>,
-    // TODO: RwLock
-    pub provider_source: Arc<Mutex<ProviderSource>>,
+    pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
 impl SessionContext {
@@ -110,7 +108,7 @@ impl SessionContext {
             runtimepath,
             matcher,
             icon,
-            provider_source: Arc::new(Mutex::new(ProviderSource::Unknown)),
+            provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
         }
     }
 
@@ -129,7 +127,7 @@ impl SessionContext {
     }
 
     pub fn set_provider_source(&self, new: ProviderSource) {
-        let mut provider_source = self.provider_source.lock();
+        let mut provider_source = self.provider_source.write();
         *provider_source = new;
     }
 }
@@ -207,14 +205,12 @@ impl Session {
                                 ProviderEvent::Create => {
                                     match self.provider.on_create().await {
                                         Ok(()) => {
-                                            if let ProviderSource::Small { total, .. } = self
+                                            if let ProviderSource::Small { total, .. } = *self
                                                 .provider
                                                 .session_context()
                                                 .provider_source
-                                                .lock()
-                                                .deref()
+                                                .read()
                                             {
-                                                let total = *total;
                                                 if total < 10_000 {
                                                     delay = Duration::from_millis(10);
                                                 } else if total < 50_000 {
