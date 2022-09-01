@@ -3,6 +3,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -186,6 +187,8 @@ impl Session {
 
         let mut dirty = false;
 
+        let mut delay = DELAY;
+
         let debounce_timer = tokio::time::sleep(NEVER);
         tokio::pin!(debounce_timer);
 
@@ -202,8 +205,28 @@ impl Session {
                                     break;
                                 }
                                 ProviderEvent::Create => {
-                                    if let Err(err) = self.provider.on_create().await {
-                                        tracing::error!(?err, "Failed to process {event:?}");
+                                    match self.provider.on_create().await {
+                                        Ok(()) => {
+                                            if let ProviderSource::Small { total, .. } = self
+                                                .provider
+                                                .session_context()
+                                                .provider_source
+                                                .lock()
+                                                .deref()
+                                            {
+                                                let total = *total;
+                                                if total < 10_000 {
+                                                    delay = Duration::from_millis(10);
+                                                } else if total < 50_000 {
+                                                    delay = Duration::from_millis(50);
+                                                } else if total < 100_000 {
+                                                    delay = Duration::from_millis(100);
+                                                }
+                                            }
+                                        }
+                                        Err(err) => {
+                                            tracing::error!(?err, "Failed to process {event:?}");
+                                        }
                                     }
                                 }
                                 ProviderEvent::OnMove => {
@@ -213,7 +236,7 @@ impl Session {
                                 }
                                 ProviderEvent::OnTyped => {
                                     dirty = true;
-                                    debounce_timer.as_mut().reset(Instant::now() + DELAY);
+                                    debounce_timer.as_mut().reset(Instant::now() + delay);
                                 }
                             }
                           }
