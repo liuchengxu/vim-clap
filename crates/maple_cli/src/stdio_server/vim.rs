@@ -174,8 +174,12 @@ impl Vim {
     ///////////////////////////////////////////
     //  builtin-function-list
     ///////////////////////////////////////////
-    pub async fn bufname(&self, bufnr: u64) -> Result<String> {
+    pub async fn bufname(&self, bufnr: usize) -> Result<String> {
         self.call("bufname", json!([bufnr])).await
+    }
+
+    pub async fn winwidth(&self, winid: usize) -> Result<usize> {
+        self.call("winwidth", json![winid]).await
     }
 
     ///////////////////////////////////////////

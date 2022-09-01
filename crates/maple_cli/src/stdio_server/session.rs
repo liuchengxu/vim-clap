@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::Result;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
@@ -19,18 +20,17 @@ use crate::stdio_server::provider::{
     ClapProvider, ProviderEvent, ProviderEventSender, ProviderId, ProviderSource,
 };
 use crate::stdio_server::rpc::Params;
+use crate::stdio_server::vim::Vim;
 
 pub type SessionId = u64;
-
-const DEFAULT_DISPLAY_WINWIDTH: usize = 100;
 
 const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
 
 /// bufnr and winid.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BufnrWinid {
-    pub bufnr: u64,
-    pub winid: u64,
+    pub bufnr: usize,
+    pub winid: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +52,7 @@ pub struct SessionContext {
 }
 
 impl SessionContext {
-    pub fn from_params(params: Params) -> Self {
+    pub async fn new(params: Params, vim: &Vim) -> Result<Self> {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
@@ -64,7 +64,6 @@ impl SessionContext {
             input: BufnrWinid,
             display: BufnrWinid,
             source_fpath: PathBuf,
-            display_winwidth: Option<usize>,
             preview_winheight: Option<usize>,
             runtimepath: Option<String>,
         }
@@ -78,7 +77,6 @@ impl SessionContext {
             no_cache,
             debounce,
             source_fpath,
-            display_winwidth,
             preview_winheight,
             runtimepath,
             icon,
@@ -95,7 +93,9 @@ impl SessionContext {
 
         let matcher = provider_id.matcher();
 
-        Self {
+        let display_winwidth = vim.winwidth(display.winid).await?;
+
+        Ok(Self {
             provider_id,
             start,
             input,
@@ -104,13 +104,13 @@ impl SessionContext {
             no_cache,
             debounce,
             start_buffer_path: source_fpath,
-            display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
+            display_winwidth,
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             runtimepath,
             matcher,
             icon,
             provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
-        }
+        })
     }
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.

@@ -84,7 +84,6 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
-        \   'display_winwidth': winwidth(g:clap.display.winid),
         \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
         \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },

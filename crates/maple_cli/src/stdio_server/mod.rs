@@ -127,7 +127,7 @@ impl Client {
                 let session_id = session_id()?;
 
                 let vim = self.vim.clone();
-                let context = SessionContext::from_params(notification.params);
+                let context = SessionContext::new(notification.params, &vim).await?;
                 let provider: Box<dyn ClapProvider> = match self.vim.provider_id().await?.as_str() {
                     "filer" => Box::new(FilerProvider::new(vim, context)),
                     "dumb_jump" => Box::new(DumbJumpProvider::new(vim, context)),
