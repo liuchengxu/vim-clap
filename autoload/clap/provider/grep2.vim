@@ -12,17 +12,13 @@ if !executable('rg')
 endif
 
 function! s:grep2.on_typed()
+  " TODO: notify(on_typed)
   call clap#filter#async#dyn#start_grep()
 endfunction
 
 function! s:grep2.init() abort
-  let g:__clap_match_scope_enum = 'GrepLine'
   call clap#rooter#try_set_cwd()
   call clap#client#notify_on_init('on_init')
-endfunction
-
-function! s:grep2.exit() abort
-  unlet g:__clap_match_scope_enum
 endfunction
 
 let s:grep2.sink = g:clap#provider#grep#.sink
@@ -31,6 +27,7 @@ let s:grep2.on_move = g:clap#provider#grep#.on_move
 let s:grep2.on_move_async = function('clap#impl#on_move#async')
 let s:grep2.enable_rooter = v:true
 let s:grep2.support_open_action = v:true
+let s:grep2.icon = 'Grep'
 let s:grep2.syntax = 'clap_grep'
 
 let g:clap#provider#grep2# = s:grep2

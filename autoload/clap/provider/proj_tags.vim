@@ -51,6 +51,7 @@ endfunction
 let s:proj_tags.on_move_async = function('clap#impl#on_move#async')
 let s:proj_tags.enable_rooter = v:true
 let s:proj_tags.support_open_action = v:true
+let s:proj_tags.icon = 'ProjTags'
 let s:proj_tags.syntax = 'clap_proj_tags'
 
 let g:clap#provider#proj_tags# = s:proj_tags

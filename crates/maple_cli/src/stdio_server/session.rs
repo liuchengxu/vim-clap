@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
-use icon::Icon;
+use icon::{Icon, IconKind};
 use matcher::Matcher;
 
 use crate::stdio_server::provider::{
@@ -56,17 +56,17 @@ impl SessionContext {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
+            cwd: PathBuf,
+            icon: String,
+            debounce: bool,
+            no_cache: bool,
             start: BufnrWinid,
             input: BufnrWinid,
             display: BufnrWinid,
-            cwd: PathBuf,
-            no_cache: bool,
-            debounce: Option<bool>,
             source_fpath: PathBuf,
             display_winwidth: Option<usize>,
             preview_winheight: Option<usize>,
             runtimepath: Option<String>,
-            enable_icon: Option<bool>,
         }
 
         let InnerParams {
@@ -81,15 +81,16 @@ impl SessionContext {
             display_winwidth,
             preview_winheight,
             runtimepath,
-            enable_icon,
+            icon,
         } = params
             .parse()
             .expect("Failed to deserialize SessionContext");
 
-        let icon = if enable_icon.unwrap_or(false) {
-            provider_id.icon()
-        } else {
-            Icon::Null
+        let icon = match icon.to_lowercase().as_str() {
+            "buffertags" => Icon::Enabled(IconKind::BufferTags),
+            "projtags" => Icon::Enabled(IconKind::ProjTags),
+            "file" => Icon::Enabled(IconKind::File),
+            _ => Icon::Null,
         };
 
         let matcher = provider_id.matcher();
@@ -101,7 +102,7 @@ impl SessionContext {
             display,
             cwd,
             no_cache,
-            debounce: debounce.unwrap_or(true),
+            debounce,
             start_buffer_path: source_fpath,
             display_winwidth: display_winwidth.unwrap_or(DEFAULT_DISPLAY_WINWIDTH),
             preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),

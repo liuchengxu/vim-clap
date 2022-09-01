@@ -99,6 +99,7 @@ else
   endfunction
 endif
 
+let s:tags.icon = 'BufferTags'
 let s:tags.syntax = 'clap_tags'
 let s:tags.debounce = v:false
 let g:clap#provider#tags# = s:tags

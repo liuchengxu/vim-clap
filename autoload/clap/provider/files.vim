@@ -77,6 +77,7 @@ if g:__clap_development
   endfunction
 endif
 
+let s:files.icon = 'File'
 let s:files.sink = function('clap#provider#files#sink_impl')
 let s:files['sink*'] = function('clap#provider#files#sink_star_impl')
 let s:files.on_move = function('clap#provider#files#on_move_impl')

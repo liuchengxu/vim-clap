@@ -38,22 +38,7 @@ function! clap#client#handle(msg) abort
     return
   endif
 
-  if has_key(decoded, 'force_execute') && has_key(s:handlers, decoded.id)
-    let Handler = remove(s:handlers, decoded.id)
-    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
-    return
-  endif
-
-  if !has_key(decoded, 'id')
-    return
-  endif
-
-  " Only process the latest request, drop the outdated responses.
-  if s:req_id != decoded.id
-    return
-  endif
-
-  if has_key(s:handlers, decoded.id)
+  if has_key(decoded, 'id') && has_key(s:handlers, decoded.id)
     let Handler = remove(s:handlers, decoded.id)
     call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
     return
@@ -93,10 +78,10 @@ endfunction
 function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
-        \   'cwd': clap#rooter#working_dir(),
-        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
-        \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
         \   'provider_id': g:clap.provider.id,
+        \   'cwd': clap#rooter#working_dir(),
+        \   'icon': get(g:clap.provider._(), 'icon', 'Null'),
+        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
         \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
         \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'display_winwidth': winwidth(g:clap.display.winid),

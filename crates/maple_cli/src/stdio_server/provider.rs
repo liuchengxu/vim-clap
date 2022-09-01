@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc::UnboundedSender;
 
-use icon::{Icon, IconKind};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
@@ -45,16 +44,6 @@ impl ProviderId {
         };
 
         Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
-    }
-
-    pub fn icon(&self) -> Icon {
-        match self.0.as_str() {
-            "tags" => Icon::Enabled(IconKind::BufferTags),
-            "proj_tags" => Icon::Enabled(IconKind::ProjTags),
-            "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
-            "files" | "git_files" | "history" => Icon::Enabled(IconKind::File),
-            _ => Icon::Enabled(IconKind::Unknown),
-        }
     }
 }
 
