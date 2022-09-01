@@ -20,6 +20,7 @@ endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')
 let s:recent_files.support_open_action = v:true
+let s:recent_files.icon = 'File'
 let s:recent_files.syntax = 'clap_files'
 
 let g:clap#provider#recent_files# = s:recent_files

@@ -186,6 +186,14 @@ impl Session {
 
         let mut dirty = false;
 
+        // Delay can be adjusted once we know the provider source scale.
+        //
+        // Here is the benchmark result of filtering on AMD 5900X:
+        //
+        // |    Type     |  1k   |  10k   | 100k  |
+        // |    ----     |  ---- | ----   | ----  |
+        // |     filter  | 413us | 12ms   | 75ms  |
+        // | par_filter  | 327us |  3ms   | 20ms  |
         let mut delay = DELAY;
 
         let debounce_timer = tokio::time::sleep(NEVER);
@@ -214,9 +222,9 @@ impl Session {
                                             {
                                                 if total < 10_000 {
                                                     delay = Duration::from_millis(10);
-                                                } else if total < 50_000 {
-                                                    delay = Duration::from_millis(50);
                                                 } else if total < 100_000 {
+                                                    delay = Duration::from_millis(50);
+                                                } else if total < 200_000 {
                                                     delay = Duration::from_millis(100);
                                                 }
                                             }
