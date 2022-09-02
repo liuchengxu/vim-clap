@@ -198,11 +198,23 @@ impl Vim {
     ///////////////////////////////////////////
     /// Returns the cursor line in display window, with icon stripped.
     pub async fn display_getcurline(&self) -> Result<String> {
-        let line: String = self.call("display_getcurline", json!([])).await?;
-        if self.get_var_bool("__clap_icon_added_by_maple").await? {
-            Ok(line.chars().skip(2).collect())
-        } else {
-            Ok(line)
+        let value: Value = self.call("display_getcurline", json!([])).await?;
+        match value {
+            Value::Array(arr) => {
+                let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
+                let curline = match arr.into_iter().next() {
+                    Some(Value::String(s)) => s,
+                    e => return Err(anyhow::anyhow!("curline expects a String, but got {e:?}")),
+                };
+                if icon_added_by_maple {
+                    Ok(curline.chars().skip(2).collect())
+                } else {
+                    Ok(curline)
+                }
+            }
+            _ => Err(anyhow::anyhow!(
+                "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
+            )),
         }
     }
 

@@ -68,8 +68,9 @@ function! s:api.context_query_or_input() abort
   return has_key(g:clap.context, 'query') ? g:clap.context.query : g:clap.input.get()
 endfunction
 
+" The leading icon is stripped.
 function! s:api.display_getcurline() abort
-  return g:clap.display.getcurline()
+  return [g:clap.display.getcurline(), get(g:, '__clap_icon_added_by_maple', v:false)]
 endfunction
 
 function! s:api.display_getcurlnum() abort
