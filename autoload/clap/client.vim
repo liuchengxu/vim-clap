@@ -1,15 +1,16 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
-" Description: Vim client for the daemon job.
+" Description: Vim client talking to the Rust backend.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:req_id = get(s:, 'req_id', 0)
-let s:session_id = get(s:, 'session_id', 0)
 let s:handlers = get(s:, 'handlers', {})
+let s:session_id = get(s:, 'session_id', 0)
 
 let s:last_recent_file = v:null
 
+" TODO: remove this.
 function! s:process_filter_message(msg) abort
   echom 'Calling s:process_filter_message'
   if g:clap.display.win_is_valid()
@@ -63,7 +64,7 @@ function! s:send_method_call(method, params) abort
         \ }))
 endfunction
 
-" Recommend API
+" Recommended API
 function! clap#client#notify(method, params) abort
   call s:send_notification(a:method, a:params)
 endfunction
@@ -87,11 +88,8 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
         \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
+        \   'preview': { 'bufnr': g:clap.preview.bufnr, 'winid': g:clap.preview.winid },
         \ }
-  if has_key(g:clap.preview, 'winid')
-        \ && clap#api#floating_win_is_valid(g:clap.preview.winid)
-    let params['preview_winheight'] = winheight(g:clap.preview.winid)
-  endif
   if g:clap.provider.id ==# 'help_tags'
     let params['runtimepath'] = &runtimepath
   endif
@@ -113,20 +111,9 @@ function! clap#client#notify_recent_file() abort
   let s:last_recent_file = file
 endfunction
 
-let s:call_timer = -1
-let s:call_delay = 150
-
-function! clap#client#call_with_delay(method, callback, params) abort
-  if s:call_timer != -1
-    call timer_stop(s:call_timer)
-  endif
-
-  let s:call_timer = timer_start(s:call_delay, { -> clap#client#call(a:method, a:callback, a:params) })
-endfunction
-
-"""""""""""""""""""""""""""""""""""""""""""""""
-""" Deprecated but let's not remove them.
-"""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""  Deprecated and unused in clap repo, but keep them to not break the users using old version.
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! clap#client#call_preview_file(extra) abort
   call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction

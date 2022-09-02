@@ -100,10 +100,6 @@ function! s:api.working_dir() abort
   return clap#rooter#working_dir()
 endfunction
 
-function! s:api.bufname(bufnr) abort
-  return bufname(a:bufnr)
-endfunction
-
 function! s:api.get_var(var) abort
   return get(g:, a:var, v:null)
 endfunction
@@ -112,8 +108,8 @@ function! s:api.set_var(name, value) abort
   execute 'let '.a:name.'= a:value'
 endfunction
 
-function! s:api.fnamemodify(bufname, mods) abort
-  return fnamemodify(a:bufname, a:mods)
+function! s:api.get_option(name) abort
+  return eval('&'.a:name)
 endfunction
 
 function! clap#api#call(method, args) abort

@@ -38,6 +38,7 @@ impl DefaultProvider {
     }
 
     /// `lnum` is 1-based.
+    #[allow(unused)]
     fn line_at(&self, lnum: usize) -> Option<String> {
         self.current_results
             .lock()
@@ -59,36 +60,29 @@ impl ClapProvider for DefaultProvider {
     async fn on_move(&mut self) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
-        let maybe_curline = match *self.context.provider_source.read() {
-            ProviderSource::Small { ref items, .. } => self.line_at(lnum as usize).or_else(|| {
-                items
-                    .get(lnum as usize - 1)
-                    .map(|item| item.output_text().to_string())
-            }),
-            _ => None,
-        };
-
-        tracing::debug!("=========================== maybe_curline: {maybe_curline:?}");
-
-        let curline = match maybe_curline {
-            Some(line) => line,
-            None => self.vim.display_getcurline().await?,
-        };
-
-        tracing::debug!("=========================== curline: {curline:?}");
+        let curline = self.vim.display_getcurline().await?;
 
         if curline.is_empty() {
-            tracing::debug!("[DefaultProvider::on_move] curline is empty, skipping on_move");
+            tracing::debug!("Skipping preview as curline is empty");
             return Ok(());
         }
 
-        let on_move_handler = on_move::OnMoveHandler::create(curline, &self.context)?;
+        let preview_size = self
+            .vim
+            .preview_size(&self.context.provider_id, self.context.preview.winid)
+            .await?;
+
+        let on_move_handler = on_move::OnMoveHandler::create(curline, preview_size, &self.context)?;
 
         // TODO: Cache the preview.
         let preview = on_move_handler.get_preview().await?;
 
-        self.vim
-            .exec("clap#state#process_preview_result", preview)?;
+        // Ensure the preview result is not out-dated.
+        let curlnum = self.vim.display_getcurlnum().await?;
+        if curlnum == lnum {
+            self.vim
+                .exec("clap#state#process_preview_result", preview)?;
+        }
 
         Ok(())
     }

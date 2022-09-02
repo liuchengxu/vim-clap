@@ -163,11 +163,15 @@ pub struct OnMoveHandler<'a> {
 }
 
 impl<'a> OnMoveHandler<'a> {
-    pub fn create(curline: String, context: &'a SessionContext) -> Result<Self> {
+    pub fn create(
+        curline: String,
+        preview_size: usize,
+        context: &'a SessionContext,
+    ) -> Result<Self> {
         let (preview_kind, cache_line) = parse_preview_kind(curline, context)?;
 
         Ok(Self {
-            size: context.sensible_preview_size(),
+            size: preview_size,
             context,
             preview_kind,
             cache_line,

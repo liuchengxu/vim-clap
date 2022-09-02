@@ -175,7 +175,10 @@ impl ClapProvider for FilerProvider {
             .await?;
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
-            size: self.context.sensible_preview_size(),
+            size: self
+                .vim
+                .preview_size(&self.context.provider_id, self.context.preview.winid)
+                .await?,
             context: &self.context,
             preview_kind: PreviewKind::FileOrDirectory(path.clone()),
             cache_line: None,

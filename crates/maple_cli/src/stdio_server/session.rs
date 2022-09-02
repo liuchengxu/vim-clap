@@ -24,8 +24,6 @@ use crate::stdio_server::vim::Vim;
 
 pub type SessionId = u64;
 
-const DEFAULT_PREVIEW_WINHEIGHT: usize = 30;
-
 /// bufnr and winid.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BufnrWinid {
@@ -39,12 +37,12 @@ pub struct SessionContext {
     pub start: BufnrWinid,
     pub input: BufnrWinid,
     pub display: BufnrWinid,
+    pub preview: BufnrWinid,
     pub cwd: PathBuf,
     pub no_cache: bool,
     pub debounce: bool,
     pub start_buffer_path: PathBuf,
     pub display_winwidth: usize,
-    pub preview_winheight: usize,
     pub icon: Icon,
     pub matcher: Matcher,
     pub runtimepath: Option<String>,
@@ -63,8 +61,8 @@ impl SessionContext {
             start: BufnrWinid,
             input: BufnrWinid,
             display: BufnrWinid,
+            preview: BufnrWinid,
             source_fpath: PathBuf,
-            preview_winheight: Option<usize>,
             runtimepath: Option<String>,
         }
 
@@ -73,11 +71,11 @@ impl SessionContext {
             start,
             input,
             display,
+            preview,
             cwd,
             no_cache,
             debounce,
             source_fpath,
-            preview_winheight,
             runtimepath,
             icon,
         } = params
@@ -100,12 +98,12 @@ impl SessionContext {
             start,
             input,
             display,
+            preview,
             cwd,
             no_cache,
             debounce,
             start_buffer_path: source_fpath,
             display_winwidth,
-            preview_winheight: preview_winheight.unwrap_or(DEFAULT_PREVIEW_WINHEIGHT),
             runtimepath,
             matcher,
             icon,
@@ -117,14 +115,6 @@ impl SessionContext {
     pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
         let out = utility::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
-    }
-
-    /// Size for fulfilling the preview window.
-    pub fn sensible_preview_size(&self) -> usize {
-        std::cmp::max(
-            self.provider_id.get_preview_size(),
-            (self.preview_winheight / 2) as usize,
-        )
     }
 
     pub fn set_provider_source(&self, new: ProviderSource) {
@@ -184,8 +174,12 @@ impl Session {
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
-        let mut dirty = false;
+        let mut on_move_dirty = false;
+        let on_move_delay = Duration::from_millis(50);
+        let on_move_timer = tokio::time::sleep(NEVER);
+        tokio::pin!(on_move_timer);
 
+        let mut on_typed_dirty = false;
         // Delay can be adjusted once we know the provider source scale.
         //
         // Here is the benchmark result of filtering on AMD 5900X:
@@ -194,10 +188,9 @@ impl Session {
         // |    ----     |  ---- | ----   | ----  |
         // |     filter  | 413us | 12ms   | 75ms  |
         // | par_filter  | 327us |  3ms   | 20ms  |
-        let mut delay = DELAY;
-
-        let debounce_timer = tokio::time::sleep(NEVER);
-        tokio::pin!(debounce_timer);
+        let mut on_typed_delay = DELAY;
+        let on_typed_timer = tokio::time::sleep(NEVER);
+        tokio::pin!(on_typed_timer);
 
         loop {
             tokio::select! {
@@ -221,11 +214,11 @@ impl Session {
                                                 .read()
                                             {
                                                 if total < 10_000 {
-                                                    delay = Duration::from_millis(10);
+                                                    on_typed_delay = Duration::from_millis(10);
                                                 } else if total < 100_000 {
-                                                    delay = Duration::from_millis(50);
+                                                    on_typed_delay = Duration::from_millis(50);
                                                 } else if total < 200_000 {
-                                                    delay = Duration::from_millis(100);
+                                                    on_typed_delay = Duration::from_millis(100);
                                                 }
                                             }
                                         }
@@ -235,26 +228,35 @@ impl Session {
                                     }
                                 }
                                 ProviderEvent::OnMove => {
-                                    if let Err(err) = self.provider.on_move().await {
-                                        tracing::error!(?err, "Failed to process {event:?}");
-                                    }
+                                    on_move_dirty = true;
+                                    on_move_timer.as_mut().reset(Instant::now() + on_move_delay);
                                 }
                                 ProviderEvent::OnTyped => {
-                                    dirty = true;
-                                    debounce_timer.as_mut().reset(Instant::now() + delay);
+                                    on_typed_dirty = true;
+                                    on_typed_timer.as_mut().reset(Instant::now() + on_typed_delay);
                                 }
                             }
                           }
                           None => break, // channel has closed.
                       }
                 }
-                _ = debounce_timer.as_mut(), if dirty => {
-                    dirty = false;
-                    debounce_timer.as_mut().reset(Instant::now() + NEVER);
+                _ = on_move_timer.as_mut(), if on_move_dirty => {
+                    on_move_dirty = false;
+                    on_move_timer.as_mut().reset(Instant::now() + NEVER);
+
+                    if let Err(err) = self.provider.on_move().await {
+                        tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
+                    }
+                }
+                _ = on_typed_timer.as_mut(), if on_typed_dirty => {
+                    on_typed_dirty = false;
+                    on_typed_timer.as_mut().reset(Instant::now() + NEVER);
 
                     if let Err(err) = self.provider.on_typed().await {
                         tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
                     }
+
+                    let _ = self.provider.on_move().await;
                 }
             }
         }

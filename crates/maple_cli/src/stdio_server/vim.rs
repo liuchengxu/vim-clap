@@ -12,6 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::rpc::RpcClient;
 
 /// Map of file extension to vim syntax mapping.
@@ -169,6 +170,16 @@ impl Vim {
     /// Send back the result with specified id.
     pub fn send(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
         self.rpc_client.output(id, output_result)
+    }
+
+    /// Size for fulfilling the preview window.
+    pub async fn preview_size(
+        &self,
+        provider_id: &ProviderId,
+        preview_winid: usize,
+    ) -> Result<usize> {
+        let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
+        Ok(provider_id.get_preview_size().max(preview_winheight / 2))
     }
 
     ///////////////////////////////////////////
