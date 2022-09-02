@@ -45,7 +45,6 @@ pub struct SessionContext {
     pub display_winwidth: usize,
     pub icon: Icon,
     pub matcher: Matcher,
-    pub runtimepath: Option<String>,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
@@ -63,7 +62,6 @@ impl SessionContext {
             display: BufnrWinid,
             preview: BufnrWinid,
             source_fpath: PathBuf,
-            runtimepath: Option<String>,
         }
 
         let InnerParams {
@@ -76,7 +74,6 @@ impl SessionContext {
             no_cache,
             debounce,
             source_fpath,
-            runtimepath,
             icon,
         } = params
             .parse()
@@ -104,7 +101,6 @@ impl SessionContext {
             debounce,
             start_buffer_path: source_fpath,
             display_winwidth,
-            runtimepath,
             matcher,
             icon,
             provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),

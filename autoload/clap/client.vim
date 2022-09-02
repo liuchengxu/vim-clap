@@ -90,9 +90,6 @@ function! clap#client#notify_on_init(method, ...) abort
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
         \   'preview': { 'bufnr': g:clap.preview.bufnr, 'winid': g:clap.preview.winid },
         \ }
-  if g:clap.provider.id ==# 'help_tags'
-    let params['runtimepath'] = &runtimepath
-  endif
   if a:0 > 0
     call extend(params, a:1)
   endif

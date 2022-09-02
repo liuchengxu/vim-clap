@@ -26,6 +26,7 @@ pub struct DefaultProvider {
     vim: Vim,
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
+    runtimepath: Option<String>,
 }
 
 impl DefaultProvider {
@@ -34,6 +35,7 @@ impl DefaultProvider {
             vim,
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
+            runtimepath: None,
         }
     }
 
@@ -72,7 +74,35 @@ impl ClapProvider for DefaultProvider {
             .preview_size(&self.context.provider_id, self.context.preview.winid)
             .await?;
 
-        let on_move_handler = on_move::OnMoveHandler::create(curline, preview_size, &self.context)?;
+        let on_move_handler = if self.context.provider_id.as_str() == "help_tags" {
+            let runtimepath = match &self.runtimepath {
+                Some(rtp) => rtp.clone(),
+                None => {
+                    let rtp: String = self.vim.get_option("runtimepath").await?;
+                    self.runtimepath.replace(rtp.clone());
+                    rtp
+                }
+            };
+            let items = curline.split('\t').collect::<Vec<_>>();
+            if items.len() < 2 {
+                return Err(anyhow::anyhow!(
+                    "Couldn't extract subject and doc_filename from the line"
+                ));
+            }
+            let preview_kind = PreviewKind::HelpTags {
+                subject: items[0].trim().to_string(),
+                doc_filename: items[1].trim().to_string(),
+                runtimepath,
+            };
+            OnMoveHandler {
+                size: preview_size,
+                context: &self.context,
+                preview_kind,
+                cache_line: None,
+            }
+        } else {
+            OnMoveHandler::create(curline, preview_size, &self.context)?
+        };
 
         // TODO: Cache the preview.
         let preview = on_move_handler.get_preview().await?;

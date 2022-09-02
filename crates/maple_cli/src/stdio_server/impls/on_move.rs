@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde_json::{json, Value};
 
 use pattern::*;
@@ -109,21 +109,6 @@ fn parse_preview_kind(
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).ok_or_else(err)?;
                 PreviewKind::Commit(rev.into())
-            }
-            "help_tags" => {
-                let runtimepath = context
-                    .runtimepath
-                    .clone()
-                    .context("no runtimepath in the context")?;
-                let items = curline.split('\t').collect::<Vec<_>>();
-                if items.len() < 2 {
-                    return Err(anyhow!("Couldn't extract subject and doc_filename from the line"));
-                }
-                PreviewKind::HelpTags {
-                    subject: items[0].trim().to_string(),
-                    doc_filename: items[1].trim().to_string(),
-                    runtimepath,
-                }
             }
             _ => {
                 return Err(anyhow!(
