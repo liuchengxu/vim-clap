@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use matcher::MatchScope;
 use parking_lot::Mutex;
+use printer::DisplayLines;
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 
@@ -76,6 +77,73 @@ struct BestItems {
     max_capacity: usize,
     icon: Icon,
     winwidth: usize,
+    progressor: StdioProgressor,
+}
+
+#[derive(Debug)]
+pub struct StdioProgressor;
+
+impl StdioProgressor {
+    pub fn update_progress(
+        &self,
+        maybe_display_lines: Option<&DisplayLines>,
+        matched: usize,
+        processed: usize,
+    ) {
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
+
+        if let Some(display_lines) = maybe_display_lines {
+            let DisplayLines {
+                lines,
+                indices,
+                truncated_map,
+                icon_added,
+            } = display_lines;
+
+            if truncated_map.is_empty() {
+                println_json_with_length!(method, lines, indices, icon_added, matched, processed);
+            } else {
+                println_json_with_length!(
+                    method,
+                    lines,
+                    indices,
+                    icon_added,
+                    matched,
+                    processed,
+                    truncated_map
+                );
+            }
+        } else {
+            println_json_with_length!(matched, processed, method);
+        }
+    }
+
+    pub fn update_progress_on_finished(
+        &self,
+        display_lines: DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        let DisplayLines {
+            lines,
+            indices,
+            truncated_map,
+            icon_added,
+        } = display_lines;
+
+        #[allow(non_upper_case_globals)]
+        const method: &str = "s:process_filter_message";
+        println_json_with_length!(
+            method,
+            lines,
+            indices,
+            icon_added,
+            truncated_map,
+            total_matched,
+            total_processed
+        );
+    }
 }
 
 impl BestItems {
@@ -87,6 +155,7 @@ impl BestItems {
             max_capacity,
             icon,
             winwidth,
+            progressor: StdioProgressor,
         }
     }
 
@@ -99,7 +168,8 @@ impl BestItems {
             if now > self.past + UPDATE_INTERVAL {
                 let display_lines =
                     printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
-                display_lines.print_on_dyn_run(matched, processed);
+                self.progressor
+                    .update_progress(Some(&display_lines), matched, processed);
                 self.last_lines = display_lines.lines;
                 self.past = now;
             }
@@ -122,12 +192,11 @@ impl BestItems {
 
                     // TODO: the lines are the same, but the highlights are not.
                     if self.last_lines != display_lines.lines.as_slice() {
-                        display_lines.print_on_dyn_run(matched, processed);
+                        self.progressor
+                            .update_progress(Some(&display_lines), matched, processed);
                         self.last_lines = display_lines.lines;
                     } else {
-                        #[allow(non_upper_case_globals)]
-                        const method: &str = "s:process_filter_message";
-                        println_json_with_length!(matched, processed, method);
+                        self.progressor.update_progress(None, matched, processed)
                     }
 
                     self.past = now;
@@ -215,15 +284,15 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
 
-    let matched_items = best_items.into_inner().items;
+    let BestItems {
+        items, progressor, ..
+    } = best_items.into_inner();
 
-    printer::print_dyn_matched_items(
-        matched_items,
-        total_matched,
-        Some(total_processed),
-        winwidth,
-        icon,
-    );
+    let matched_items = items;
+
+    let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
+
+    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
 }
