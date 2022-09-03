@@ -193,6 +193,10 @@ impl Vim {
         self.call("winwidth", json![winid]).await
     }
 
+    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
+        self.call("eval", json!([s])).await
+    }
+
     ///////////////////////////////////////////
     //  Clap related APIs
     ///////////////////////////////////////////
@@ -219,19 +223,19 @@ impl Vim {
     }
 
     pub async fn display_getcurlnum(&self) -> Result<u64> {
-        self.call("display_getcurlnum", json!([])).await
+        self.eval("g:clap.display.getcurlnum()").await
     }
 
     pub async fn input_get(&self) -> Result<String> {
-        self.call("input_get", json!([])).await
+        self.eval("g:clap.input.get()").await
     }
 
     pub async fn provider_id(&self) -> Result<String> {
-        self.call("provider_id", json!([])).await
+        self.eval("g:clap.provider.id").await
     }
 
     pub async fn working_dir(&self) -> Result<String> {
-        self.call("working_dir", json!([])).await
+        self.call("clap#rooter#working_dir", json!([])).await
     }
 
     pub async fn context_query_or_input(&self) -> Result<String> {
