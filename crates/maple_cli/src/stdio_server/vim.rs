@@ -258,8 +258,4 @@ impl Vim {
     pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
         self.exec("set_var", json!([var_name, value]))
     }
-
-    pub async fn get_option<R: DeserializeOwned>(&self, name: &str) -> Result<R> {
-        self.rpc_client.request("get_option", json![name]).await
-    }
 }

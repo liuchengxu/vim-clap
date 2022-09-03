@@ -78,7 +78,7 @@ impl ClapProvider for DefaultProvider {
             let runtimepath = match &self.runtimepath {
                 Some(rtp) => rtp.clone(),
                 None => {
-                    let rtp: String = self.vim.get_option("runtimepath").await?;
+                    let rtp: String = self.vim.eval("&runtimepath").await?;
                     self.runtimepath.replace(rtp.clone());
                     rtp
                 }

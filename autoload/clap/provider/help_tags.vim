@@ -10,14 +10,12 @@ function! s:get_doc_tags() abort
   return ['/doc/tags'] + map(filter(split(&helplang, ','), 'v:val !=? "en"'), '"/doc/tags-".v:val')
 endfunction
 
-if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
+if clap#maple#is_available()
 
-  function! s:help_tags_source() abort
-    let tmp = tempname()
-    call writefile([join(s:get_doc_tags(), ','), &runtimepath], tmp)
-    let helptags_cmd = clap#maple#build_cmd('helptags', tmp)
-    " Currently the source has to be a String even we use List in job arguments.
-    return printf('"%s" %s', helptags_cmd[0], join(helptags_cmd[1:], ' '))
+  " No source attribute as it's implemented on the Rust side directly.
+
+  function! s:help_tags.on_typed() abort
+    call clap#client#notify('on_typed')
   endfunction
 
   function! s:help_tags_sink(line) abort
@@ -29,6 +27,7 @@ if clap#maple#is_available() && clap#filter#sync#python#has_dynamic_module()
     endif
   endfunction
 
+  let s:help_tags.source_type = g:__t_rpc
   let s:help_tags.on_move_async = function('clap#impl#on_move#async')
 else
 
@@ -79,10 +78,11 @@ else
     let tag = get(split(a:line, "\t"), 0)
     execute 'help' tag
   endfunction
+
+  let s:help_tags.source = function('s:help_tags_source')
 endif
 
 let s:help_tags.sink = function('s:help_tags_sink')
-let s:help_tags.source = function('s:help_tags_source')
 
 let g:clap#provider#help_tags# = s:help_tags
 

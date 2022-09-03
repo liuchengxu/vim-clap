@@ -35,38 +35,47 @@ impl Helptags {
         // line 2:&runtimepath
         if let Some(Ok(doc_tags)) = lines.next() {
             if let Some(Ok(runtimepath)) = lines.next() {
-                for dt in doc_tags.split(',') {
-                    let tags_files = runtimepath
-                        .split(',')
-                        .map(|x| format!("{}{}", strip_trailing_slash(x), dt));
-                    let mut seen = HashMap::new();
-                    let mut v: Vec<String> = Vec::new();
-                    for tags_file in tags_files {
-                        if let Ok(lines) = read_lines(tags_file) {
-                            lines.for_each(|line| {
-                                if let Ok(helptag) = line {
-                                    v = helptag.split('\t').map(Into::into).collect();
-                                    if !seen.contains_key(&v[0]) {
-                                        seen.insert(
-                                            v[0].clone(),
-                                            format!("{:<60}\t{}", v[0], v[1]),
-                                        );
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    let mut tag_lines = seen.values().collect::<Vec<_>>();
-                    tag_lines.sort();
-
-                    let stdout = std::io::stdout();
-                    let mut lock = stdout.lock();
-                    for line in tag_lines {
-                        writeln!(lock, "{}", line)?;
-                    }
+                let lines =
+                    generate_tag_lines(doc_tags.split(',').map(|s| s.to_string()), &runtimepath);
+                let stdout = std::io::stdout();
+                let mut lock = stdout.lock();
+                for line in lines {
+                    writeln!(lock, "{}", line)?;
                 }
             }
         }
         Ok(())
     }
+}
+
+pub fn generate_tag_lines(
+    doc_tags: impl Iterator<Item = String>,
+    runtimepath: &str,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    for doc_tag in doc_tags {
+        let tags_files = runtimepath
+            .split(',')
+            .map(|x| format!("{}{}", strip_trailing_slash(x), doc_tag));
+        let mut seen = HashMap::new();
+        let mut v: Vec<String> = Vec::new();
+        for tags_file in tags_files {
+            if let Ok(lines) = read_lines(tags_file) {
+                lines.for_each(|line| {
+                    if let Ok(helptag) = line {
+                        v = helptag.split('\t').map(Into::into).collect();
+                        if !seen.contains_key(&v[0]) {
+                            seen.insert(v[0].clone(), format!("{:<60}\t{}", v[0], v[1]));
+                        }
+                    }
+                });
+            }
+        }
+        let mut tag_lines = seen.into_values().collect::<Vec<String>>();
+        tag_lines.sort();
+
+        lines.extend(tag_lines);
+    }
+
+    lines
 }

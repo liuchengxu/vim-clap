@@ -104,10 +104,6 @@ function! s:api.set_var(name, value) abort
   execute 'let '.a:name.'= a:value'
 endfunction
 
-function! s:api.get_option(name) abort
-  return eval('&'.a:name)
-endfunction
-
 function! clap#api#call(method, args) abort
   if has_key(s:api, a:method)
     return call(s:api[a:method], a:args)

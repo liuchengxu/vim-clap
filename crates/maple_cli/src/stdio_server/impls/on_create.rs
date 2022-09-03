@@ -70,6 +70,20 @@ pub async fn initialize_provider_source(
             vim.set_var("g:__clap_forerunner_tempfile", &path)?;
             return Ok(ProviderSource::CachedFile { total, path });
         }
+        "help_tags" => {
+            let helplang: String = vim.eval("&helplang").await?;
+            let runtimepath: String = vim.eval("&runtimepath").await?;
+            let doc_tags = std::iter::once("/doc/tags".to_string())
+                .chain(
+                    helplang
+                        .split(',')
+                        .filter(|&lang| lang != "en")
+                        .map(|lang| format!("/doc/tags-{lang}")),
+                )
+                .into_iter();
+            let lines = crate::command::helptags::generate_tag_lines(doc_tags, &runtimepath);
+            return Ok(to_small_provider_source(lines));
+        }
         _ => {}
     }
 
