@@ -177,6 +177,7 @@ impl ClapProvider for DefaultProvider {
                         self.context.matcher.clone(),
                     ),
                     ParSource::File(path.clone()),
+                    filter::StdioProgressor,
                 ) {
                     tracing::error!(error = ?e, "Error occured when filtering the cache source");
                 }

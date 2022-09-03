@@ -142,6 +142,7 @@ impl Filter {
                 &self.query,
                 FilterContext::new(icon, number, winwidth, matcher),
                 self.generate_par_source(),
+                filter::StdioProgressor,
             )?;
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(
