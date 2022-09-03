@@ -83,6 +83,7 @@ impl SessionContext {
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
             "projtags" => Icon::Enabled(IconKind::ProjTags),
             "file" => Icon::Enabled(IconKind::File),
+            "grep" => Icon::Enabled(IconKind::Grep),
             _ => Icon::Null,
         };
 

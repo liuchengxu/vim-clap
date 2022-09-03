@@ -39,6 +39,8 @@ function! s:jumps.on_move() abort
   call clap#provider#marks#preview_impl(matched[2], matched[3], matched[4])
 endfunction
 
+" TODO: add on_move_async()
+
 let s:jumps.syntax = 'clap_jumps'
 let g:clap#provider#jumps# = s:jumps
 
