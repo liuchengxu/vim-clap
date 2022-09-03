@@ -120,7 +120,7 @@ function! s:filter_or_send_message() abort
   if has_key(s:filer_cache, s:current_dir)
     call s:do_filter()
   else
-    call clap#client#notify('on_typed', v:null)
+    call clap#client#notify('on_typed')
   endif
 endfunction
 
@@ -377,7 +377,7 @@ function! s:filer.on_move_async() abort
     call g:clap.preview.hide()
     return
   endif
-  call clap#client#notify('on_move', v:null)
+  call clap#client#notify('on_move')
 endfunction
 
 function! clap#provider#filer#current_dir() abort

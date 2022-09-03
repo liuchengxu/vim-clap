@@ -65,12 +65,14 @@ function! s:send_method_call(method, params) abort
 endfunction
 
 " Recommended API
-function! clap#client#notify(method, params) abort
-  call s:send_notification(a:method, a:params)
+" Optional argument: params: v:null, List, Dict
+function! clap#client#notify(method, ...) abort
+  call s:send_notification(a:method, get(a:000, 0, v:null))
 endfunction
 
-function! clap#client#call(method, callback, params) abort
-  call s:send_method_call(a:method, a:params)
+" Optional argument: params: v:null, List, Dict
+function! clap#client#call(method, callback, ...) abort
+  call s:send_method_call(a:method, get(a:000, 0, v:null))
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif

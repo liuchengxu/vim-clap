@@ -65,7 +65,7 @@ function! clap#provider#commits#on_move_callback(result, error) abort
 endfunction
 
 function! s:commits.on_move_async() abort
-  call clap#client#notify('on_move', v:null)
+  call clap#client#notify('on_move')
 endfunction
 
 function! clap#provider#commits#sink_inner(bang_cmd) abort

@@ -19,7 +19,7 @@ if !s:support_json_format
 endif
 
 function! s:proj_tags.on_typed() abort
-  call clap#client#notify('on_typed', v:null)
+  call clap#client#notify('on_typed')
 endfunction
 
 function! s:proj_tags.init() abort

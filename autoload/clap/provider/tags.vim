@@ -71,11 +71,11 @@ if get(g:, 'clap_provider_tags_force_vista', v:false)
   let s:tags.on_move_async = function('clap#impl#on_move#async')
 else
   function! s:tags.on_typed() abort
-    call clap#client#notify('on_typed', v:null)
+    call clap#client#notify('on_typed')
   endfunction
 
   function! s:tags.on_move_async() abort
-    call clap#client#notify('on_move', v:null)
+    call clap#client#notify('on_move')
   endfunction
 
   function! s:tags.sink(selected) abort

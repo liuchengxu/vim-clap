@@ -71,11 +71,9 @@ function! s:files.on_exit() abort
   endif
 endfunction
 
-if g:__clap_development
-  function! s:files.on_typed() abort
-    call clap#client#notify('on_typed', v:null)
-  endfunction
-endif
+function! s:files.on_typed() abort
+  call clap#client#notify('on_typed')
+endfunction
 
 let s:files.icon = 'File'
 let s:files.sink = function('clap#provider#files#sink_impl')

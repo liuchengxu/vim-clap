@@ -31,7 +31,7 @@ if clap#maple#is_available()
   endfunction
 
   function! clap#impl#on_move#async() abort
-    call clap#client#notify('on_move', v:null)
+    call clap#client#notify('on_move')
   endfunction
 else
   function! s:dispatch_on_move_impl() abort

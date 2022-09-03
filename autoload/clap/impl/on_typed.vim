@@ -183,7 +183,7 @@ endfunction
 " typical source, the providers like `blines` whose source can be a file or
 " g:__t_func_list needs to have its own on_typed impl.
 function! clap#impl#on_typed#() abort
-  call clap#client#notify("on_typed", v:null)
+  call clap#client#notify("on_typed")
   return
 
   let source_is_list = g:clap.provider.source_type == g:__t_list

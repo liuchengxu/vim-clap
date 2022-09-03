@@ -24,7 +24,7 @@ endif
 if s:maple_bin isnot v:null
   function! clap#maple#clean_up() abort
     call clap#job#regular#maple#stop()
-    call clap#client#notify('exit', {})
+    call clap#client#notify('exit')
   endfunction
 else
   function! clap#maple#clean_up() abort

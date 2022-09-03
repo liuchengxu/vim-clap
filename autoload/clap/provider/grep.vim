@@ -238,8 +238,7 @@ let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_exit = function('s:grep_exit')
 
 function! s:grep.on_move_async() abort
-  let enable_icon = s:grep_enable_icon ? v:true : v:false
-  call clap#client#notify('on_move', v:null)
+  call clap#client#notify('on_move')
 endfunction
 
 if clap#maple#is_available()

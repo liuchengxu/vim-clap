@@ -22,7 +22,7 @@ function! s:bcommits.on_move() abort
 endfunction
 
 function! s:bcommits.on_move_async() abort
-  call clap#client#notify('on_move', v:null)
+  call clap#client#notify('on_move')
 endfunction
 
 function! s:bcommits.sink(line) abort
