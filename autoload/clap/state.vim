@@ -64,6 +64,51 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
+function! clap#state#process_grep_forerunner_result(decoded) abort
+  let decoded = a:decoded['exec_info']
+
+  call clap#sign#ensure_exists()
+
+  " Using the cached file
+  if has_key(decoded, 'using_cache')
+    let g:__clap_forerunner_tempfile = decoded.tempfile
+    let g:clap.display.initial_size = decoded.total
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
+    call clap#spinner#refresh()
+    if has_key(decoded, 'lines')
+      let cur_lines = g:clap.display.get_lines()
+      if empty(cur_lines) || cur_lines == ['']
+        call g:clap.display.set_lines(decoded.lines)
+      endif
+    endif
+    call clap#indicator#update_matches_on_forerunner_done()
+    return
+  endif
+
+  if empty(g:clap.input.get())
+    call g:clap.display.set_lines_lazy(decoded.lines)
+    call g:clap#display_win.shrink_if_undersize()
+  endif
+
+  let g:clap.display.initial_size = decoded.total
+  call clap#indicator#update_matches_on_forerunner_done()
+
+  let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  call clap#spinner#refresh()
+
+  call clap#preview#async_open_with_delay()
+
+  if has_key(decoded, 'tempfile')
+    let g:__clap_forerunner_tempfile = decoded.tempfile
+  else
+    let g:__clap_forerunner_result = decoded.lines
+  endif
+
+  if has_key(decoded, 'icon_added')
+    let g:__clap_icon_added_by_maple = decoded.icon_added
+  endif
+endfunction
+
 function! clap#state#process_preview_result(result) abort
   if has_key(a:result, 'lines')
     try

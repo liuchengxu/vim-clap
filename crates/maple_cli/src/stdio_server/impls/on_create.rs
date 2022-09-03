@@ -7,8 +7,8 @@ use filter::SourceItem;
 use matcher::ClapItem;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::RgTokioCommand;
-use crate::process::ShellCommand;
+use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
+use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::provider::ProviderSource;
 use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::vim::Vim;
@@ -56,6 +56,21 @@ pub async fn initialize_provider_source(
             };
             return Ok(provider_source);
         }
+        "grep" => {
+            let mut std_cmd = rg_command(&context.cwd);
+            let exec_info = CacheableCommand::new(
+                &mut std_cmd,
+                rg_shell_command(&context.cwd),
+                None,
+                context.icon,
+                Some(100_000),
+            )
+            .execute()?;
+            vim.exec(
+                "clap#state#process_grep_forerunner_result",
+                json!({ "exec_info": exec_info }),
+            )?;
+        }
         "grep2" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
             let digest = if context.no_cache {
@@ -73,14 +88,12 @@ pub async fn initialize_provider_source(
         "help_tags" => {
             let helplang: String = vim.eval("&helplang").await?;
             let runtimepath: String = vim.eval("&runtimepath").await?;
-            let doc_tags = std::iter::once("/doc/tags".to_string())
-                .chain(
-                    helplang
-                        .split(',')
-                        .filter(|&lang| lang != "en")
-                        .map(|lang| format!("/doc/tags-{lang}")),
-                )
-                .into_iter();
+            let doc_tags = std::iter::once("/doc/tags".to_string()).chain(
+                helplang
+                    .split(',')
+                    .filter(|&lang| lang != "en")
+                    .map(|lang| format!("/doc/tags-{lang}")),
+            );
             let lines = crate::command::helptags::generate_tag_lines(doc_tags, &runtimepath);
             return Ok(to_small_provider_source(lines));
         }

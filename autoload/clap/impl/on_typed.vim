@@ -183,6 +183,7 @@ endfunction
 " typical source, the providers like `blines` whose source can be a file or
 " g:__t_func_list needs to have its own on_typed impl.
 function! clap#impl#on_typed#() abort
+  throw 'Remove!!!'
   call clap#client#notify("on_typed")
   return
 

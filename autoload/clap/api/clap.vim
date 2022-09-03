@@ -502,38 +502,10 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  " Deprecated, the list will be initialized on Rust side.
-  function! provider.init_list() abort
-    " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    if self.source_type == g:__t_list
-      let lines = self._().source
-    elseif self.source_type == g:__t_func_list
-      let lines = self._().source()
-    endif
-
-    let initial_size = len(lines)
-    let g:clap.display.initial_size = initial_size
-    if initial_size > 0
-      call g:clap.display.set_lines_lazy(lines)
-      call g:clap#display_win.shrink_if_undersize()
-      call clap#indicator#set_matches_number(initial_size)
-      call clap#sign#toggle_cursorline()
-
-      " For the providers that return a relatively huge List
-      if self.can_async() && clap#filter#beyond_capacity(initial_size)
-        let g:__clap_forerunner_tempfile = tempname()
-        call writefile(lines, g:__clap_forerunner_tempfile)
-      endif
-    endif
-  endfunction
-
   function! provider.init_display_win() abort
     if has_key(self._(), 'init')
       call self._().init()
-    elseif self.is_pure_async() || self.source_type == g:__t_string || self.source_type == g:__t_func_string
-      " These kinds of providers are initialized on Rust backend.
-    endif
-    if clap#maple#is_available()
+    else
       call clap#client#notify_on_init('on_init')
     endif
     " Try to fill the preview window.

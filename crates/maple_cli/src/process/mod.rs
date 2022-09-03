@@ -140,7 +140,7 @@ impl ShellCommand {
 const OUTPUT_THRESHOLD: usize = 200_000;
 
 /// This struct represents all the info about the processed result of executed command.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecInfo {
     /// The number of total output lines.
     pub total: usize,
