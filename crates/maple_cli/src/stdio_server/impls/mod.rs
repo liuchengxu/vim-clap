@@ -40,10 +40,8 @@ struct FilterControl {
 
 impl FilterControl {
     fn kill(self) {
-        tracing::debug!("Killing");
         self.stop_signal.store(true, Ordering::Relaxed);
         self.join_handle.abort();
-        tracing::debug!("Killing finished");
     }
 }
 
@@ -252,7 +250,6 @@ impl ClapProvider for DefaultProvider {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
-            // TODO: Kill the command creating the source ASAP.
             tokio::task::spawn_blocking(move || control.kill());
         }
 
@@ -269,17 +266,15 @@ impl ClapProvider for DefaultProvider {
         Ok(())
     }
 
-    /// Sets the running signal to false, in case of the forerunner thread is still working.
     fn handle_terminate(&mut self, session_id: u64) {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
-        let context = self.session_context();
         tracing::debug!(
             session_id,
-            provider_id = %context.provider_id,
+            provider_id = %self.context.provider_id,
             "Session terminated",
         );
     }

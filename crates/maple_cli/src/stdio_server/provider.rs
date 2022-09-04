@@ -188,11 +188,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
                         self.vim().exec(
                             "clap#state#init_display",
-                            json!({
-                              "lines": lines,
-                              "icon_added": icon_added,
-                              "truncated_map": truncated_map,
-                            }),
+                            json!([lines, truncated_map, icon_added]),
                         )?;
                     }
 

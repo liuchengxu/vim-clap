@@ -210,23 +210,20 @@ function! clap#state#process_result_on_typed(result) abort
   endif
 endfunction
 
-function! clap#state#init_display(msg) abort
+function! clap#state#init_display(lines, truncated_map, icon_added) abort
   if empty(g:clap.input.get())
     if g:clap.provider.id ==# 'blines'
-      call clap#provider#blines#initialize(a:msg.lines)
+      call clap#provider#blines#initialize(a:lines)
     else
-      call g:clap.display.set_lines_lazy(a:msg.lines)
+      call g:clap.display.set_lines_lazy(a:lines)
     endif
     call g:clap#display_win.shrink_if_undersize()
   endif
 
-  if has_key(a:msg, 'truncated_map')
-    let g:__clap_lines_truncated_map = a:msg.truncated_map
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
   endif
-
-  if has_key(a:msg, 'icon_added')
-    let g:__clap_icon_added_by_maple = a:msg.icon_added
-  endif
+  let g:__clap_icon_added_by_maple = a:icon_added
 
   call clap#indicator#update_matches_on_forerunner_done()
   call clap#sign#ensure_exists()

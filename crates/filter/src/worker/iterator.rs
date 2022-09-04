@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
+use printer::DisplayLines;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
@@ -286,6 +287,26 @@ fn dyn_collect_number(
     (watcher.total, buffer)
 }
 
+fn print_on_dyn_run_finished(display_lines: DisplayLines, total_matched: usize) {
+    let DisplayLines {
+        lines,
+        indices,
+        truncated_map,
+        icon_added,
+    } = display_lines;
+
+    #[allow(non_upper_case_globals)]
+    const deprecated_method: &str = "clap#state#process_filter_message";
+    println_json_with_length!(
+        deprecated_method,
+        lines,
+        indices,
+        icon_added,
+        truncated_map,
+        total_matched
+    );
+}
+
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
@@ -316,13 +337,8 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         let mut matched_items = sort_matched_items(matched_items);
         matched_items.truncate(number);
 
-        printer::print_dyn_matched_items(
-            matched_items,
-            total_matched,
-            None,
-            winwidth.unwrap_or(100),
-            icon,
-        );
+        let display_lines = printer::decorate_lines(matched_items, winwidth.unwrap_or(100), icon);
+        print_on_dyn_run_finished(display_lines, total_matched);
     } else {
         let matched_items = match source {
             Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),

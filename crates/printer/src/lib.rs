@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use icon::{Icon, ICON_LEN};
 use types::MatchedItem;
-use utility::{println_json, println_json_with_length};
+use utility::println_json;
 
 pub use self::truncation::{
     truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
@@ -43,67 +43,6 @@ impl DisplayLines {
             indices,
             truncated_map,
             icon_added,
-        }
-    }
-
-    pub fn print_on_dyn_run(&self, matched: usize, processed: usize) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
-        if truncated_map.is_empty() {
-            println_json_with_length!(method, lines, indices, icon_added, matched, processed);
-        } else {
-            println_json_with_length!(
-                method,
-                lines,
-                indices,
-                icon_added,
-                matched,
-                processed,
-                truncated_map
-            );
-        }
-    }
-
-    fn print_on_dyn_run_finished(
-        &self,
-        total_matched: usize,
-        maybe_total_processed: Option<usize>,
-    ) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const deprecated_method: &str = "clap#state#process_filter_message";
-        if let Some(total_processed) = maybe_total_processed {
-            println_json_with_length!(
-                deprecated_method,
-                lines,
-                indices,
-                icon_added,
-                truncated_map,
-                total_matched,
-                total_processed
-            );
-        } else {
-            println_json_with_length!(
-                deprecated_method,
-                lines,
-                indices,
-                icon_added,
-                truncated_map,
-                total_matched
-            );
         }
     }
 
@@ -182,18 +121,6 @@ pub fn print_sync_filter_results(
             println_json!(text, indices);
         });
     }
-}
-
-/// Prints the results of filter::dyn_run() to stdout.
-pub fn print_dyn_matched_items(
-    matched_items: Vec<MatchedItem>,
-    total_matched: usize,
-    total_processed: Option<usize>,
-    winwidth: usize,
-    icon: Icon,
-) {
-    decorate_lines(matched_items, winwidth, icon)
-        .print_on_dyn_run_finished(total_matched, total_processed);
 }
 
 #[cfg(test)]

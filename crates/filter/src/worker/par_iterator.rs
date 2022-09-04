@@ -386,12 +386,18 @@ where
             }
         });
 
-    if res.is_err() {
-        return Ok(());
-    }
-
     let total_matched = matched_count.into_inner();
     let total_processed = processed_count.into_inner();
+
+    if res.is_err() {
+        tracing::debug!(
+            ?query,
+            ?total_matched,
+            ?total_processed,
+            "`par_dyn_run_inprocess` return early due to the stop signal arrived."
+        );
+        return Ok(());
+    }
 
     let BestItems {
         items, progressor, ..
