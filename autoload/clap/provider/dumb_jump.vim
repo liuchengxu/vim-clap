@@ -36,7 +36,7 @@ function! s:dumb_jump.on_typed() abort
 endfunction
 
 function! s:dumb_jump.init() abort
-  call clap#client#notify_on_init('on_init')
+  call clap#client#notify_on_init()
 endfunction
 
 function! s:dumb_jump.on_move_async() abort

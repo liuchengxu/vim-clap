@@ -15,7 +15,7 @@ function! s:recent_files.on_move_async() abort
 endfunction
 
 function! s:recent_files.init() abort
-  call clap#client#notify_on_init('on_init')
+  call clap#client#notify_on_init()
 endfunction
 
 let s:recent_files.sink = function('clap#provider#files#sink_impl')

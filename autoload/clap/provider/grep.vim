@@ -244,7 +244,7 @@ endfunction
 if clap#maple#is_available()
   function! s:grep.init() abort
     call clap#rooter#try_set_cwd()
-    call clap#client#notify_on_init('on_init')
+    call clap#client#notify_on_init()
   endfunction
 
   function! s:clear_job_and_matches() abort

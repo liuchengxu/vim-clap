@@ -74,7 +74,7 @@ function! clap#client#call(method, callback, ...) abort
   endif
 endfunction
 
-function! clap#client#notify_on_init(method, ...) abort
+function! clap#client#notify_on_init(...) abort
   call clap#rooter#try_set_cwd()
   let s:session_id += 1
   let params = {
@@ -92,7 +92,7 @@ function! clap#client#notify_on_init(method, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:send_notification(a:method, params)
+  call s:send_notification('on_init', params)
 endfunction
 
 function! clap#client#notify_recent_file() abort

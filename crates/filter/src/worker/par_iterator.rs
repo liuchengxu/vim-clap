@@ -95,7 +95,7 @@ impl ProgressUpdate<DisplayLines> for StdioProgressor {
         processed: usize,
     ) {
         #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
+        const deprecated_method: &str = "clap#state#process_filter_message";
 
         if let Some(display_lines) = maybe_display_lines {
             let DisplayLines {
@@ -106,10 +106,17 @@ impl ProgressUpdate<DisplayLines> for StdioProgressor {
             } = display_lines;
 
             if truncated_map.is_empty() {
-                println_json_with_length!(method, lines, indices, icon_added, matched, processed);
+                println_json_with_length!(
+                    deprecated_method,
+                    lines,
+                    indices,
+                    icon_added,
+                    matched,
+                    processed
+                );
             } else {
                 println_json_with_length!(
-                    method,
+                    deprecated_method,
                     lines,
                     indices,
                     icon_added,
@@ -119,7 +126,7 @@ impl ProgressUpdate<DisplayLines> for StdioProgressor {
                 );
             }
         } else {
-            println_json_with_length!(matched, processed, method);
+            println_json_with_length!(matched, processed, deprecated_method);
         }
     }
 
@@ -137,9 +144,9 @@ impl ProgressUpdate<DisplayLines> for StdioProgressor {
         } = display_lines;
 
         #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
+        const deprecated_method: &str = "clap#state#process_filter_message";
         println_json_with_length!(
-            method,
+            deprecated_method,
             lines,
             indices,
             icon_added,

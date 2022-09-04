@@ -439,7 +439,7 @@ function! s:start_rpc_service() abort
   call s:set_initial_current_dir()
   call s:set_prompt()
   " TODO: reimplement filer on Rust side.
-  call clap#client#notify_on_init('on_init', {'cwd': s:current_dir, 'debounce': v:false})
+  call clap#client#notify_on_init({'cwd': s:current_dir, 'debounce': v:false})
 endfunction
 
 let s:filer.init = function('s:start_rpc_service')

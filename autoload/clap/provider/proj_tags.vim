@@ -23,7 +23,7 @@ function! s:proj_tags.on_typed() abort
 endfunction
 
 function! s:proj_tags.init() abort
-  call clap#client#notify_on_init('on_init')
+  call clap#client#notify_on_init()
 endfunction
 
 function! s:extract(tag_row) abort

@@ -18,7 +18,7 @@ endfunction
 
 function! s:grep2.init() abort
   call clap#rooter#try_set_cwd()
-  call clap#client#notify_on_init('on_init')
+  call clap#client#notify_on_init()
 endfunction
 
 let s:grep2.sink = g:clap#provider#grep#.sink
