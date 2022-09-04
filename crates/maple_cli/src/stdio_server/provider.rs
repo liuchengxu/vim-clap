@@ -209,12 +209,24 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 // Try creating cache for some potential heavy providers.
                 match context.provider_id.as_str() {
                     "grep" | "grep2" => {
-                        let rg_cmd =
-                            crate::command::grep::RgTokioCommand::new(context.cwd.to_path_buf());
+                        context.set_provider_source(ProviderSource::Command(
+                            crate::command::grep::RG_EXEC_CMD.to_string(),
+                        ));
+
+                        let context = context.clone();
+                        let rg_cmd = crate::command::grep::RgTokioCommand::new(context.cwd.clone());
                         let job_id = utility::calculate_hash(&rg_cmd);
                         job::try_start(
                             async move {
-                                let _ = rg_cmd.create_cache().await;
+                                if let Ok(digest) = rg_cmd.create_cache().await {
+                                    let new = ProviderSource::CachedFile {
+                                        total: digest.total,
+                                        path: digest.cached_path,
+                                    };
+                                    if !context.terminated.load(Ordering::SeqCst) {
+                                        context.set_provider_source(new);
+                                    }
+                                }
                             },
                             job_id,
                         );
