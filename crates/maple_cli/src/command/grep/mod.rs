@@ -219,6 +219,7 @@ impl Grep {
                     .match_scope(MatchScope::GrepLine),
                 par_source,
                 filter::StdioProgressor,
+                None,
             )
         };
 

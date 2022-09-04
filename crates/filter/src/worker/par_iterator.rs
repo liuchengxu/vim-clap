@@ -2,7 +2,7 @@
 
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -12,6 +12,7 @@ use parking_lot::Mutex;
 use printer::DisplayLines;
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
+use types::ProgressUpdate;
 
 use icon::Icon;
 use types::{ClapItem, FileNameItem, GrepItem, MatchedItem, Query, SourceItem};
@@ -35,9 +36,10 @@ pub fn par_dyn_run<P>(
     filter_context: FilterContext,
     par_source: ParSource,
     progressor: P,
+    stop_signal: Option<Arc<AtomicBool>>,
 ) -> Result<()>
 where
-    P: ProgressUpdate + Send,
+    P: ProgressUpdate<DisplayLines> + Send,
 {
     let query: Query = query.into();
 
@@ -48,6 +50,7 @@ where
                 filter_context,
                 ParSourceInner::Lines(std::fs::File::open(file)?),
                 progressor,
+                stop_signal,
             )?;
         }
         ParSource::Exec(exec) => {
@@ -56,6 +59,7 @@ where
                 filter_context,
                 ParSourceInner::Lines(exec.stream_stdout()?),
                 progressor,
+                stop_signal,
             )?;
         }
     }
@@ -70,7 +74,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a, P>(
     items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
     progressor: P,
 ) where
-    P: ProgressUpdate + Send,
+    P: ProgressUpdate<DisplayLines> + Send,
 {
     let query: Query = query.into();
     par_dyn_run_inner::<_, std::io::Empty, _>(
@@ -78,12 +82,13 @@ pub fn par_dyn_run_list<'a, 'b: 'a, P>(
         filter_context,
         ParSourceInner::Items(items),
         progressor,
+        None,
     )
     .expect("Matching items in parallel can not fail");
 }
 
 #[derive(Debug)]
-struct BestItems<P: ProgressUpdate> {
+struct BestItems<P: ProgressUpdate<DisplayLines>> {
     /// Time of last notification.
     past: Instant,
     items: Vec<MatchedItem>,
@@ -94,27 +99,10 @@ struct BestItems<P: ProgressUpdate> {
     progressor: P,
 }
 
-/// Show the filtering progress.
-pub trait ProgressUpdate {
-    fn update_progress(
-        &self,
-        maybe_display_lines: Option<&DisplayLines>,
-        matched: usize,
-        processed: usize,
-    );
-
-    fn update_progress_on_finished(
-        &self,
-        display_lines: DisplayLines,
-        total_matched: usize,
-        total_processed: usize,
-    );
-}
-
 #[derive(Debug)]
 pub struct StdioProgressor;
 
-impl ProgressUpdate for StdioProgressor {
+impl ProgressUpdate<DisplayLines> for StdioProgressor {
     fn update_progress(
         &self,
         maybe_display_lines: Option<&DisplayLines>,
@@ -177,7 +165,7 @@ impl ProgressUpdate for StdioProgressor {
     }
 }
 
-impl<P: ProgressUpdate> BestItems<P> {
+impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
     fn new(max_capacity: usize, icon: Icon, winwidth: usize, progressor: P) -> Self {
         Self {
             past: Instant::now(),
@@ -248,11 +236,12 @@ fn par_dyn_run_inner<I, R, P>(
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
     progressor: P,
+    stop_signal: Option<Arc<AtomicBool>>,
 ) -> Result<()>
 where
     I: IntoParallelIterator<Item = Arc<dyn ClapItem>>,
     R: Read + Send,
-    P: ProgressUpdate + Send,
+    P: ProgressUpdate<DisplayLines> + Send,
 {
     let FilterContext {
         icon,
@@ -282,39 +271,66 @@ where
 
     match parallel_source {
         ParSourceInner::Items(items) => {
-            items.into_par_iter().for_each(|item| {
-                let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                process_item(item, processed);
+            let res = items.into_par_iter().try_for_each(|item| {
+                if stop_signal
+                    .as_ref()
+                    .map(|stop| stop.load(Ordering::Relaxed))
+                    .unwrap_or(false)
+                {
+                    Err(())
+                } else {
+                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                    process_item(item, processed);
+                    Ok(())
+                }
             });
+            if res.is_err() {
+                return Ok(());
+            }
         }
         ParSourceInner::Lines(reader) => {
             // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
             // The line stream can contain invalid UTF-8 data.
-            std::io::BufReader::new(reader)
+            let res = std::io::BufReader::new(reader)
                 .lines()
                 .filter_map(Result::ok)
                 .par_bridge()
-                .for_each(|line: String| {
-                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    let item: Arc<dyn ClapItem> = match matcher.match_scope() {
-                        MatchScope::GrepLine => {
-                            if let Some(grep_item) = GrepItem::try_new(line) {
-                                Arc::new(grep_item)
-                            } else {
-                                return;
+                .try_for_each(|line: String| {
+                    if stop_signal
+                        .as_ref()
+                        .map(|stop| stop.load(Ordering::Relaxed))
+                        .unwrap_or(false)
+                    {
+                        Err(())
+                    } else {
+                        let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                        let item: Arc<dyn ClapItem> = match matcher.match_scope() {
+                            MatchScope::GrepLine => {
+                                if let Some(grep_item) = GrepItem::try_new(line) {
+                                    Arc::new(grep_item)
+                                } else {
+                                    // Continue the next item
+                                    return Ok(());
+                                }
                             }
-                        }
-                        MatchScope::FileName => {
-                            if let Some(file_name_item) = FileNameItem::try_new(line) {
-                                Arc::new(file_name_item)
-                            } else {
-                                return;
+                            MatchScope::FileName => {
+                                if let Some(file_name_item) = FileNameItem::try_new(line) {
+                                    Arc::new(file_name_item)
+                                } else {
+                                    // Continue the next item
+                                    return Ok(());
+                                }
                             }
-                        }
-                        _ => Arc::new(SourceItem::from(line)),
-                    };
-                    process_item(item, processed);
+                            _ => Arc::new(SourceItem::from(line)),
+                        };
+                        process_item(item, processed);
+                        Ok(())
+                    }
                 });
+
+            if res.is_err() {
+                return Ok(());
+            }
         }
     }
 

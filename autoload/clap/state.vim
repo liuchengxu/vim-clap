@@ -64,6 +64,30 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
+function! clap#state#process_progress_with_display_lines(display_lines, matched, processed) abort
+  call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
+  call g:clap.display.set_lines(a:display_lines.lines)
+  let g:__clap_icon_added_by_maple = a:display_lines.icon_added
+  call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  if !empty(a:display_lines.truncated_map)
+    let g:__clap_lines_truncated_map = a:display_lines.truncated_map
+  endif
+endfunction
+
+function! clap#state#process_progress(matched, processed) abort
+  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
+endfunction
+
+function! clap#state#process_progress_finished(display_lines, total_matched, total_processed) abort
+  call clap#indicator#set('['.a:total_matched.'/'.a:total_processed.']')
+  call g:clap.display.set_lines(a:display_lines.lines)
+  let g:__clap_icon_added_by_maple = a:display_lines.icon_added
+  call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  if !empty(a:display_lines.truncated_map)
+    let g:__clap_lines_truncated_map = a:display_lines.truncated_map
+  endif
+endfunction
+
 function! clap#state#process_grep_forerunner_result(decoded) abort
   let decoded = a:decoded['exec_info']
 

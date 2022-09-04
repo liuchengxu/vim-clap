@@ -2,11 +2,15 @@ mod on_create;
 mod on_move;
 mod providers;
 
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use anyhow::Result;
 use parking_lot::Mutex;
 use serde_json::json;
+use std::thread::JoinHandle;
+use subprocess::Exec;
 
 use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
@@ -14,6 +18,7 @@ use types::MatchedItem;
 
 use crate::stdio_server::provider::{ClapProvider, ProviderSource};
 use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::types::VimProgressor;
 
 pub use self::on_create::initialize_provider_source;
 pub use self::on_move::{OnMoveHandler, PreviewKind};
@@ -22,11 +27,70 @@ pub use self::providers::{dumb_jump, filer, recent_files};
 use super::vim::Vim;
 
 #[derive(Debug)]
+enum FilterSource {
+    CachedFile(PathBuf),
+    Command(String),
+}
+
+#[derive(Debug)]
+struct FilterControl {
+    stop_signal: Arc<AtomicBool>,
+    thread_filter: JoinHandle<()>,
+}
+
+impl FilterControl {
+    fn kill(self) {
+        tracing::debug!("Killing");
+        self.stop_signal.store(true, Ordering::Relaxed);
+        let _ = self.thread_filter.join();
+    }
+}
+
+fn run(
+    query: String,
+    filter_source: FilterSource,
+    context: &SessionContext,
+    vim: Vim,
+) -> FilterControl {
+    let stop_signal = Arc::new(AtomicBool::new(false));
+
+    let thread_filter = {
+        let icon = context.icon;
+        let display_winwidth = context.display_winwidth;
+        let matcher = context.matcher.clone();
+        let stop_signal = stop_signal.clone();
+
+        std::thread::spawn(move || {
+            if let Err(e) = filter::par_dyn_run(
+                &query,
+                FilterContext::new(icon, Some(40), Some(display_winwidth), matcher),
+                match filter_source {
+                    FilterSource::CachedFile(path) => ParSource::File(path),
+                    FilterSource::Command(command) => {
+                        ParSource::Exec(Box::new(Exec::shell(command)))
+                    }
+                },
+                VimProgressor::new(&vim),
+                Some(stop_signal),
+            ) {
+                tracing::error!(error = ?e, "Error occured when filtering the cache source");
+            }
+        })
+    };
+
+    FilterControl {
+        stop_signal,
+        thread_filter,
+    }
+}
+
+#[derive(Debug)]
 pub struct DefaultProvider {
     vim: Vim,
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
+    maybe_filter_control: Option<FilterControl>,
 }
 
 impl DefaultProvider {
@@ -36,6 +100,7 @@ impl DefaultProvider {
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
             runtimepath: None,
+            maybe_filter_control: None,
         }
     }
 
@@ -157,38 +222,23 @@ impl ClapProvider for DefaultProvider {
             return Ok(());
         }
 
-        // TODO: Cancel another on_typed task and start the latest one.
+        let filter_source = match *self.context.provider_source.read() {
+            ProviderSource::Small { .. } | ProviderSource::Unknown => {
+                tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unknown.");
+                return Ok(());
+            }
+            ProviderSource::CachedFile { ref path, .. } => FilterSource::CachedFile(path.clone()),
+            ProviderSource::Command(ref cmd) => FilterSource::Command(cmd.to_string()),
+        };
 
-        match *self.context.provider_source.read() {
-            ProviderSource::Small { .. } => {
-                unreachable!("Small provider source has been handled above; qed")
-            }
-            ProviderSource::Unknown { .. } => {
-                unreachable!("Unknown provider source can not be handled")
-            }
-            ProviderSource::CachedFile { ref path, .. } => {
-                // TODO: Watcher::Rpc, Watcher::Println
-                if let Err(e) = filter::par_dyn_run(
-                    &query,
-                    FilterContext::new(
-                        self.context.icon,
-                        Some(40),
-                        Some(self.context.display_winwidth as usize),
-                        self.context.matcher.clone(),
-                    ),
-                    ParSource::File(path.clone()),
-                    filter::StdioProgressor,
-                ) {
-                    tracing::error!(error = ?e, "Error occured when filtering the cache source");
-                }
-            }
-            ProviderSource::Command(ref cmd) => {
-                // TODO: par_dyn_run
-                tracing::debug!(
-                    "================= TODO: handle ProviderSource::Command, cmd: {cmd:?}"
-                );
-            }
+        // Kill the last par_dyn_run job if exists.
+        if let Some(control) = self.maybe_filter_control.take() {
+            control.kill();
         }
+
+        let new_control = run(query, filter_source, &self.context, self.vim.clone());
+
+        self.maybe_filter_control.replace(new_control);
 
         Ok(())
     }

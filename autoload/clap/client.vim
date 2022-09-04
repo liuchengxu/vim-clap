@@ -32,6 +32,7 @@ function! clap#client#handle(msg) abort
         call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'result': result }))
       endif
     catch
+      call clap#helper#echo_error(v:exception)
       if has_key(decoded, 'id')
         call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'error': {'code': -32603, 'message': string(v:exception) }}))
       endif

@@ -4,6 +4,8 @@
 mod trimmer;
 mod truncation;
 
+use serde::Serialize;
+
 use icon::{Icon, ICON_LEN};
 use types::MatchedItem;
 use utility::{println_json, println_json_with_length};
@@ -15,7 +17,7 @@ pub use self::truncation::{
 
 /// 1. Truncate the line.
 /// 2. Add an icon.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DisplayLines {
     /// Lines to display, maybe truncated.
     pub lines: Vec<String>,

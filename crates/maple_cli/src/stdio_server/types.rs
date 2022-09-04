@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
+use serde_json::{json, Value};
+
+use printer::DisplayLines;
+use types::ProgressUpdate;
+
+use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]
 pub struct GlobalEnv {
@@ -56,6 +61,48 @@ impl GlobalEnv {
     /// Each provider can have its preferred preview size.
     pub fn preview_size_of(&self, provider_id: &str) -> usize {
         self.preview_config.preview_size(provider_id)
+    }
+}
+
+pub struct VimProgressor<'a> {
+    vim: &'a Vim,
+}
+
+impl<'a> VimProgressor<'a> {
+    pub fn new(vim: &'a Vim) -> Self {
+        Self { vim }
+    }
+}
+
+impl<'a> ProgressUpdate<DisplayLines> for VimProgressor<'a> {
+    fn update_progress(
+        &self,
+        maybe_display_lines: Option<&DisplayLines>,
+        matched: usize,
+        processed: usize,
+    ) {
+        if let Some(display_lines) = maybe_display_lines {
+            let _ = self.vim.exec(
+                "clap#state#process_progress_with_display_lines",
+                json!([display_lines, matched, processed]),
+            );
+        } else {
+            let _ = self
+                .vim
+                .exec("clap#state#process_progress", json!([matched, processed]));
+        }
+    }
+
+    fn update_progress_on_finished(
+        &self,
+        display_lines: DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        let _ = self.vim.exec(
+            "clap#state#process_progress_finished",
+            json!([display_lines, total_matched, total_processed]),
+        );
     }
 }
 
