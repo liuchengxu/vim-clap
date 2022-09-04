@@ -17,7 +17,7 @@ use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages}
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::ClapProvider;
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
@@ -129,7 +129,7 @@ struct SearchResults {
 
 #[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
-    context: Arc<SessionContext>,
+    context: Arc<ProviderContext>,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -142,7 +142,7 @@ pub struct DumbJumpProvider {
 }
 
 impl DumbJumpProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: ProviderContext) -> Self {
         Self {
             context: Arc::new(context),
             cached_results: Default::default(),
@@ -312,7 +312,7 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    fn session_context(&self) -> &SessionContext {
+    fn context(&self) -> &ProviderContext {
         &self.context
     }
 

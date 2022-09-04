@@ -8,7 +8,7 @@ use icon::prepend_filer_icon;
 
 use crate::stdio_server::impls::{OnMoveHandler, PreviewKind};
 use crate::stdio_server::provider::ClapProvider;
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
 
@@ -120,11 +120,11 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 
 #[derive(Debug)]
 pub struct FilerProvider {
-    context: SessionContext,
+    context: ProviderContext,
 }
 
 impl FilerProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: ProviderContext) -> Self {
         Self { context }
     }
 
@@ -136,7 +136,7 @@ impl FilerProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
-    fn session_context(&self) -> &SessionContext {
+    fn context(&self) -> &ProviderContext {
         &self.context
     }
 

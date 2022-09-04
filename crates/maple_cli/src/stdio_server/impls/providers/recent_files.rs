@@ -10,17 +10,17 @@ use types::{MatchedItem, Score};
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::provider::ClapProvider;
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
-    context: Arc<SessionContext>,
+    context: Arc<ProviderContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: ProviderContext) -> Self {
         Self {
             context: Arc::new(context),
             lines: Default::default(),
@@ -136,7 +136,7 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    fn session_context(&self) -> &SessionContext {
+    fn context(&self) -> &ProviderContext {
         &self.context
     }
 

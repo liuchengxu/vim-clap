@@ -10,10 +10,10 @@ use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::provider::ProviderSource;
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize_provider_source(context: &SessionContext) -> Result<ProviderSource> {
+pub async fn initialize_provider_source(context: &ProviderContext) -> Result<ProviderSource> {
     let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
         let items = lines

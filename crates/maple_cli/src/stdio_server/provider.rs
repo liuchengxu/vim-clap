@@ -15,7 +15,7 @@ use types::{ClapItem, MatchedItem};
 
 use crate::stdio_server::impls::initialize_provider_source;
 use crate::stdio_server::job;
-use crate::stdio_server::session::{SessionContext, SessionId};
+use crate::stdio_server::session::{ProviderContext, SessionId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderId(String);
@@ -158,18 +158,20 @@ impl ProviderEventSender {
 /// A trait that each Clap provider should implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    fn session_context(&self) -> &SessionContext;
+    fn context(&self) -> &ProviderContext;
 
     async fn on_create(&mut self) -> Result<()> {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
-        let context = self.session_context();
+        let context = self.context();
 
         match tokio::time::timeout(TIMEOUT, initialize_provider_source(context)).await {
             Ok(provider_source_result) => match provider_source_result {
                 Ok(provider_source) => {
                     if let Some(total) = provider_source.total() {
-                        context.vim.set_var("g:clap.display.initial_size", total)?;
+                        self.context()
+                            .vim
+                            .set_var("g:clap.display.initial_size", total)?;
                     }
                     if let Some(lines) = provider_source.initial_lines(100) {
                         let DisplayLines {
@@ -236,12 +238,10 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     fn handle_terminate(&mut self, session_id: u64) {
-        self.session_context()
-            .terminated
-            .store(true, Ordering::SeqCst);
+        self.context().terminated.store(true, Ordering::SeqCst);
         tracing::debug!(
             session_id,
-            provider_id = %self.session_context().provider_id,
+            provider_id = %self.context().provider_id,
             "Session terminated",
         );
     }

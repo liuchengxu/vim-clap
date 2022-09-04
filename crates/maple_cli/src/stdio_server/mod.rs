@@ -23,7 +23,7 @@ use self::impls::recent_files::RecentFilesProvider;
 use self::impls::DefaultProvider;
 use self::provider::{ClapProvider, ProviderEvent};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
-use self::session::{SessionContext, SessionManager};
+use self::session::{ProviderContext, SessionManager};
 use self::state::State;
 use self::types::GlobalEnv;
 use self::vim::Vim;
@@ -127,7 +127,7 @@ impl Client {
                 let session_id = session_id()?;
 
                 let vim = self.vim.clone();
-                let context = SessionContext::new(notification.params, vim).await?;
+                let context = ProviderContext::new(notification.params, vim).await?;
                 let provider: Box<dyn ClapProvider> = match self.vim.provider_id().await?.as_str() {
                     "filer" => Box::new(FilerProvider::new(context)),
                     "dumb_jump" => Box::new(DumbJumpProvider::new(context)),

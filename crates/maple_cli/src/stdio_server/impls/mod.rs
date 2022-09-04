@@ -17,7 +17,7 @@ use printer::DisplayLines;
 use types::MatchedItem;
 
 use crate::stdio_server::provider::{ClapProvider, ProviderSource};
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::types::VimProgressor;
 
 pub use self::on_create::initialize_provider_source;
@@ -50,7 +50,7 @@ fn run(
     query: String,
     number: usize,
     filter_source: FilterSource,
-    context: &SessionContext,
+    context: &ProviderContext,
     vim: Vim,
 ) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
@@ -88,7 +88,7 @@ fn run(
 
 #[derive(Debug)]
 pub struct DefaultProvider {
-    context: SessionContext,
+    context: ProviderContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
     display_winheight: Option<usize>,
@@ -96,7 +96,7 @@ pub struct DefaultProvider {
 }
 
 impl DefaultProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: ProviderContext) -> Self {
         Self {
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
@@ -123,7 +123,7 @@ impl DefaultProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DefaultProvider {
-    fn session_context(&self) -> &SessionContext {
+    fn context(&self) -> &ProviderContext {
         &self.context
     }
 

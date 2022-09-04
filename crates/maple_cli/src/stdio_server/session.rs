@@ -33,7 +33,7 @@ pub struct BufnrWinid {
 }
 
 #[derive(Debug, Clone)]
-pub struct SessionContext {
+pub struct ProviderContext {
     pub provider_id: ProviderId,
     pub start: BufnrWinid,
     pub input: BufnrWinid,
@@ -51,7 +51,7 @@ pub struct SessionContext {
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
-impl SessionContext {
+impl ProviderContext {
     pub async fn new(params: Params, vim: Vim) -> Result<Self> {
         #[derive(Deserialize)]
         struct InnerParams {
@@ -150,12 +150,12 @@ impl Session {
     pub fn start_event_loop(self) {
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = %self.provider.session_context().provider_id,
+            provider_id = %self.provider.context().provider_id,
             "Spawning a new session event loop task",
         );
 
         tokio::spawn(async move {
-            if self.provider.session_context().debounce {
+            if self.provider.context().debounce {
                 self.run_event_loop_with_debounce().await;
             } else {
                 self.run_event_loop_without_debounce().await;
@@ -210,7 +210,7 @@ impl Session {
                                             // Set a smaller debounce if the source scale is small.
                                             if let ProviderSource::Small { total, .. } = *self
                                                 .provider
-                                                .session_context()
+                                                .context()
                                                 .provider_source
                                                 .read()
                                             {

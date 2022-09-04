@@ -12,7 +12,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::impls::providers::filer;
 use crate::stdio_server::provider::ProviderSource;
-use crate::stdio_server::session::SessionContext;
+use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
@@ -36,7 +36,7 @@ pub enum PreviewKind {
 
 fn parse_preview_kind(
     curline: String,
-    context: &SessionContext,
+    context: &ProviderContext,
 ) -> Result<(PreviewKind, Option<String>)> {
     let err = || {
         anyhow!(
@@ -139,7 +139,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 #[derive(Debug)]
 pub struct OnMoveHandler<'a> {
     pub size: usize,
-    pub context: &'a SessionContext,
+    pub context: &'a ProviderContext,
     pub preview_kind: PreviewKind,
     /// When the line extracted from the cache mismatches the latest
     /// preview line content, which means the cache is outdated, we
@@ -153,7 +153,7 @@ impl<'a> OnMoveHandler<'a> {
     pub fn create(
         curline: String,
         preview_size: usize,
-        context: &'a SessionContext,
+        context: &'a ProviderContext,
     ) -> Result<Self> {
         let (preview_kind, cache_line) = parse_preview_kind(curline, context)?;
 
