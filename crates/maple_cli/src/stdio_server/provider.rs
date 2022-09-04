@@ -241,7 +241,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     }
 
     /// Sets the running signal to false, in case of the forerunner thread is still working.
-    fn handle_terminate(&self, session_id: u64) {
+    fn handle_terminate(&mut self, session_id: u64) {
         let context = self.session_context();
         tracing::debug!(
             session_id,
