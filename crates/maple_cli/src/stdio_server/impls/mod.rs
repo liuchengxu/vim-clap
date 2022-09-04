@@ -65,7 +65,7 @@ fn run(
         let stop_signal = stop_signal.clone();
 
         tokio::task::spawn_blocking(move || {
-            if let Err(e) = filter::par_dyn_run(
+            if let Err(e) = filter::par_dyn_run_inprocess(
                 &query,
                 FilterContext::new(icon, Some(number), Some(display_winwidth), matcher),
                 match filter_source {
@@ -75,7 +75,7 @@ fn run(
                     }
                 },
                 VimProgressor::new(&vim),
-                Some(stop_signal),
+                stop_signal,
             ) {
                 tracing::error!(error = ?e, "Error occured when filtering the cache source");
             }
@@ -252,6 +252,7 @@ impl ClapProvider for DefaultProvider {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
+            // TODO: Kill the command creating the source ASAP.
             tokio::task::spawn_blocking(move || control.kill());
         }
 

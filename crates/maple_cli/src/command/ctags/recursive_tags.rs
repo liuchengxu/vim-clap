@@ -120,7 +120,6 @@ impl RecursiveTags {
                         .tag_item_iter()?
                         .map(|tag_item| Arc::new(tag_item) as Arc<dyn ClapItem>)
                         .par_bridge(),
-                    filter::StdioProgressor,
                 );
             } else {
                 filter::dyn_run(

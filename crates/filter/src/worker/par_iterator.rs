@@ -31,35 +31,26 @@ pub enum ParSource {
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
-pub fn par_dyn_run<P>(
+pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
     par_source: ParSource,
-    progressor: P,
-    stop_signal: Option<Arc<AtomicBool>>,
-) -> Result<()>
-where
-    P: ProgressUpdate<DisplayLines> + Send,
-{
+) -> Result<()> {
     let query: Query = query.into();
 
     match par_source {
         ParSource::File(file) => {
-            par_dyn_run_inner::<Empty<_>, _, _>(
+            par_dyn_run_inner::<Empty<_>, _>(
                 &query,
                 filter_context,
                 ParSourceInner::Lines(std::fs::File::open(file)?),
-                progressor,
-                stop_signal,
             )?;
         }
         ParSource::Exec(exec) => {
-            par_dyn_run_inner::<Empty<_>, _, _>(
+            par_dyn_run_inner::<Empty<_>, _>(
                 &query,
                 filter_context,
                 ParSourceInner::Lines(exec.stream_stdout()?),
-                progressor,
-                stop_signal,
             )?;
         }
     }
@@ -68,23 +59,14 @@ where
 }
 
 /// Generate an iterator of [`MatchedItem`] from a parallelable iterator.
-pub fn par_dyn_run_list<'a, 'b: 'a, P>(
+pub fn par_dyn_run_list<'a, 'b: 'a>(
     query: &'a str,
     filter_context: FilterContext,
     items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
-    progressor: P,
-) where
-    P: ProgressUpdate<DisplayLines> + Send,
-{
+) {
     let query: Query = query.into();
-    par_dyn_run_inner::<_, std::io::Empty, _>(
-        &query,
-        filter_context,
-        ParSourceInner::Items(items),
-        progressor,
-        None,
-    )
-    .expect("Matching items in parallel can not fail");
+    par_dyn_run_inner::<_, std::io::Empty>(&query, filter_context, ParSourceInner::Items(items))
+        .expect("Matching items in parallel can not fail");
 }
 
 #[derive(Debug)]
@@ -231,18 +213,108 @@ enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read +
 }
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
-fn par_dyn_run_inner<I, R, P>(
+fn par_dyn_run_inner<I, R>(
     query: &Query,
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
-    progressor: P,
-    stop_signal: Option<Arc<AtomicBool>>,
 ) -> Result<()>
 where
     I: IntoParallelIterator<Item = Arc<dyn ClapItem>>,
     R: Read + Send,
+{
+    let FilterContext {
+        icon,
+        number,
+        winwidth,
+        matcher,
+    } = filter_context;
+
+    let winwidth = winwidth.unwrap_or(100);
+    let number = number.unwrap_or(100);
+
+    let matched_count = AtomicUsize::new(0);
+    let processed_count = AtomicUsize::new(0);
+
+    let best_items = Mutex::new(BestItems::new(number, icon, winwidth, StdioProgressor));
+
+    let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
+        if let Some(matched_item) = matcher.match_item(item, query) {
+            let matched = matched_count.fetch_add(1, Ordering::SeqCst);
+
+            // TODO: not use mutex?
+            let mut best_items = best_items.lock();
+            best_items.try_push_and_notify(matched_item, matched, processed);
+            drop(best_items);
+        }
+    };
+
+    match parallel_source {
+        ParSourceInner::Items(items) => items.into_par_iter().for_each(|item| {
+            let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+            process_item(item, processed);
+        }),
+        ParSourceInner::Lines(reader) => {
+            // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+            // The line stream can contain invalid UTF-8 data.
+            std::io::BufReader::new(reader)
+                .lines()
+                .filter_map(Result::ok)
+                .par_bridge()
+                .for_each(|line: String| {
+                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                    let item: Arc<dyn ClapItem> = match matcher.match_scope() {
+                        MatchScope::GrepLine => {
+                            if let Some(grep_item) = GrepItem::try_new(line) {
+                                Arc::new(grep_item)
+                            } else {
+                                // Continue the next item
+                                return;
+                            }
+                        }
+                        MatchScope::FileName => {
+                            if let Some(file_name_item) = FileNameItem::try_new(line) {
+                                Arc::new(file_name_item)
+                            } else {
+                                // Continue the next item
+                                return;
+                            }
+                        }
+                        _ => Arc::new(SourceItem::from(line)),
+                    };
+                    process_item(item, processed);
+                });
+        }
+    }
+
+    let total_matched = matched_count.into_inner();
+    let total_processed = processed_count.into_inner();
+
+    let BestItems {
+        items, progressor, ..
+    } = best_items.into_inner();
+
+    let matched_items = items;
+
+    let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
+    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
+
+    Ok(())
+}
+
+/// Similar to `[par_dyn_run]`, but used in the process which means we need to cancel the command
+/// creating the items manually in order to cancel the task ASAP.
+pub fn par_dyn_run_inprocess<P>(
+    query: &str,
+    filter_context: FilterContext,
+    par_source: ParSource,
+    progressor: P,
+    stop_signal: Arc<AtomicBool>,
+) -> Result<()>
+where
     P: ProgressUpdate<DisplayLines> + Send,
 {
+    let query: Query = query.into();
+
     let FilterContext {
         icon,
         number,
@@ -259,7 +331,7 @@ where
     let best_items = Mutex::new(BestItems::new(number, icon, winwidth, progressor));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
-        if let Some(matched_item) = matcher.match_item(item, query) {
+        if let Some(matched_item) = matcher.match_item(item, &query) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?
@@ -269,71 +341,50 @@ where
         }
     };
 
-    match parallel_source {
-        ParSourceInner::Items(items) => {
-            let res = items.into_par_iter().try_for_each(|item| {
-                if stop_signal
-                    .as_ref()
-                    .map(|stop| stop.load(Ordering::Relaxed))
-                    .unwrap_or(false)
-                {
-                    Err(())
-                } else {
-                    let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    process_item(item, processed);
-                    Ok(())
-                }
-            });
-            if res.is_err() {
-                return Ok(());
-            }
-        }
-        ParSourceInner::Lines(reader) => {
-            // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-            // The line stream can contain invalid UTF-8 data.
-            let res = std::io::BufReader::new(reader)
-                .lines()
-                .filter_map(Result::ok)
-                .par_bridge()
-                .try_for_each(|line: String| {
-                    if stop_signal
-                        .as_ref()
-                        .map(|stop| stop.load(Ordering::Relaxed))
-                        .unwrap_or(false)
-                    {
-                        // Note that even the stop signal has been received, the thread created by
-                        // rayon does not exit actually, it just tries to stop the work ASAP.
-                        Err(())
-                    } else {
-                        let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                        let item: Arc<dyn ClapItem> = match matcher.match_scope() {
-                            MatchScope::GrepLine => {
-                                if let Some(grep_item) = GrepItem::try_new(line) {
-                                    Arc::new(grep_item)
-                                } else {
-                                    // Continue the next item
-                                    return Ok(());
-                                }
-                            }
-                            MatchScope::FileName => {
-                                if let Some(file_name_item) = FileNameItem::try_new(line) {
-                                    Arc::new(file_name_item)
-                                } else {
-                                    // Continue the next item
-                                    return Ok(());
-                                }
-                            }
-                            _ => Arc::new(SourceItem::from(line)),
-                        };
-                        process_item(item, processed);
-                        Ok(())
-                    }
-                });
+    let read: Box<dyn std::io::Read + Send> = match par_source {
+        ParSource::File(file) => Box::new(std::fs::File::open(file)?),
+        ParSource::Exec(exec) => Box::new(exec.stream_stdout()?),
+    };
 
-            if res.is_err() {
-                return Ok(());
+    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
+    // The line stream can contain invalid UTF-8 data.
+    let res = std::io::BufReader::new(read)
+        .lines()
+        .filter_map(Result::ok)
+        .par_bridge()
+        .try_for_each(|line: String| {
+            if stop_signal.load(Ordering::Relaxed) {
+                // Note that even the stop signal has been received, the thread created by
+                // rayon does not exit actually, it just tries to stop the work ASAP.
+                Err(())
+            } else {
+                let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                let item: Arc<dyn ClapItem> = match matcher.match_scope() {
+                    MatchScope::GrepLine => {
+                        if let Some(grep_item) = GrepItem::try_new(line) {
+                            Arc::new(grep_item)
+                        } else {
+                            // Continue the next item
+                            return Ok(());
+                        }
+                    }
+                    MatchScope::FileName => {
+                        if let Some(file_name_item) = FileNameItem::try_new(line) {
+                            Arc::new(file_name_item)
+                        } else {
+                            // Continue the next item
+                            return Ok(());
+                        }
+                    }
+                    _ => Arc::new(SourceItem::from(line)),
+                };
+                process_item(item, processed);
+                Ok(())
             }
-        }
+        });
+
+    if res.is_err() {
+        return Ok(());
     }
 
     let total_matched = matched_count.into_inner();

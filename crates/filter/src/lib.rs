@@ -19,7 +19,9 @@ use matcher::{Bonus, ClapItem, MatchScope, Matcher};
 
 pub use self::source::Source;
 pub use self::worker::iterator::dyn_run;
-pub use self::worker::par_iterator::{par_dyn_run, par_dyn_run_list, ParSource, StdioProgressor};
+pub use self::worker::par_iterator::{
+    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, ParSource, StdioProgressor,
+};
 pub use matcher;
 pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 

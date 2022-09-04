@@ -218,8 +218,6 @@ impl Grep {
                     .into_filter_context()
                     .match_scope(MatchScope::GrepLine),
                 par_source,
-                filter::StdioProgressor,
-                None,
             )
         };
 

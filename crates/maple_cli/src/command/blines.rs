@@ -96,7 +96,6 @@ impl Blines {
                 &self.query,
                 filter_context,
                 blines_item_stream().par_bridge(),
-                filter::StdioProgressor,
             );
         } else {
             filter::dyn_run(
