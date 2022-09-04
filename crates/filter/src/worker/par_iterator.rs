@@ -31,6 +31,9 @@ pub enum ParSource {
 }
 
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
+///
+/// Suitable for invoking the maple CLI command from shell, which will stop everything once the
+/// parent is canceled.
 pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
@@ -343,7 +346,7 @@ where
 
     let read: Box<dyn std::io::Read + Send> = match par_source {
         ParSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParSource::Exec(exec) => Box::new(exec.stream_stdout()?),
+        ParSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?),
     };
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
