@@ -76,9 +76,10 @@ pub async fn initialize_provider_source(
             let digest = if context.no_cache {
                 rg_cmd.create_cache().await?
             } else {
+                // Only directly reuse the cache when it's sort of huge.
                 match rg_cmd.cache_digest() {
-                    Some(digest) => digest,
-                    None => rg_cmd.create_cache().await?,
+                    Some(digest) if digest.total > 100_000 => digest,
+                    _ => rg_cmd.create_cache().await?,
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);

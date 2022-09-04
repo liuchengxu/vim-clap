@@ -272,6 +272,7 @@ impl ClapProvider for DefaultProvider {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
+        self.context.terminated.store(true, Ordering::SeqCst);
         tracing::debug!(
             session_id,
             provider_id = %self.context.provider_id,

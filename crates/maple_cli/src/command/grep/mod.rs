@@ -285,7 +285,7 @@ pub fn rg_shell_command<P: AsRef<Path>>(dir: P) -> ShellCommand {
     ShellCommand::new(RG_EXEC_CMD.into(), PathBuf::from(dir.as_ref()))
 }
 
-pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
+pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<Digest> {
     let shell_cmd = rg_shell_command(dir.as_ref());
     let cache_file_path = shell_cmd.cache_file_path()?;
 
@@ -294,7 +294,7 @@ pub fn refresh_cache(dir: impl AsRef<Path>) -> Result<usize> {
 
     let digest = crate::cache::store_cache_digest(shell_cmd, cache_file_path)?;
 
-    Ok(digest.total)
+    Ok(digest)
 }
 
 #[cfg(test)]

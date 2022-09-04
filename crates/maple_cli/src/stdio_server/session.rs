@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -39,12 +40,13 @@ pub struct SessionContext {
     pub display: BufnrWinid,
     pub preview: BufnrWinid,
     pub cwd: PathBuf,
-    pub no_cache: bool,
-    pub debounce: bool,
-    pub start_buffer_path: PathBuf,
-    pub display_winwidth: usize,
     pub icon: Icon,
     pub matcher: Matcher,
+    pub no_cache: bool,
+    pub debounce: bool,
+    pub display_winwidth: usize,
+    pub start_buffer_path: PathBuf,
+    pub terminated: Arc<AtomicBool>,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
@@ -53,15 +55,15 @@ impl SessionContext {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
-            cwd: PathBuf,
-            icon: String,
-            debounce: bool,
-            no_cache: bool,
             start: BufnrWinid,
             input: BufnrWinid,
             display: BufnrWinid,
             preview: BufnrWinid,
-            source_fpath: PathBuf,
+            cwd: PathBuf,
+            icon: String,
+            no_cache: bool,
+            debounce: bool,
+            start_buffer_path: PathBuf,
         }
 
         let InnerParams {
@@ -73,15 +75,15 @@ impl SessionContext {
             cwd,
             no_cache,
             debounce,
-            source_fpath,
+            start_buffer_path,
             icon,
         } = params.parse()?;
 
         let icon = match icon.to_lowercase().as_str() {
-            "buffertags" => Icon::Enabled(IconKind::BufferTags),
-            "projtags" => Icon::Enabled(IconKind::ProjTags),
             "file" => Icon::Enabled(IconKind::File),
             "grep" => Icon::Enabled(IconKind::Grep),
+            "projtags" => Icon::Enabled(IconKind::ProjTags),
+            "buffertags" => Icon::Enabled(IconKind::BufferTags),
             _ => Icon::Null,
         };
 
@@ -98,10 +100,11 @@ impl SessionContext {
             cwd,
             no_cache,
             debounce,
-            start_buffer_path: source_fpath,
+            start_buffer_path,
             display_winwidth,
             matcher,
             icon,
+            terminated: Arc::new(AtomicBool::new(false)),
             provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
         })
     }
@@ -202,6 +205,7 @@ impl Session {
                                 ProviderEvent::Create => {
                                     match self.provider.on_create().await {
                                         Ok(()) => {
+                                            // Set a smaller debounce if the source scale is small.
                                             if let ProviderSource::Small { total, .. } = *self
                                                 .provider
                                                 .session_context()

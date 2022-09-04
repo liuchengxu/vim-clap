@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -33,8 +34,8 @@ impl ProviderId {
 
     pub fn matcher(&self) -> Matcher {
         let match_scope = match self.0.as_str() {
-            "tags" | "proj_tags" => MatchScope::TagName,
             "grep" | "grep2" => MatchScope::GrepLine,
+            "tags" | "proj_tags" => MatchScope::TagName,
             _ => MatchScope::Full,
         };
 
@@ -238,10 +239,12 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     /// Sets the running signal to false, in case of the forerunner thread is still working.
     fn handle_terminate(&mut self, session_id: u64) {
-        let context = self.session_context();
+        self.session_context()
+            .terminated
+            .store(true, Ordering::SeqCst);
         tracing::debug!(
             session_id,
-            provider_id = %context.provider_id,
+            provider_id = %self.session_context().provider_id,
             "Session terminated",
         );
     }

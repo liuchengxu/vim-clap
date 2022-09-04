@@ -10,6 +10,7 @@ use types::PreviewInfo;
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::impls::providers::filer;
+use crate::stdio_server::provider::ProviderSource;
 use crate::stdio_server::session::SessionContext;
 use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
@@ -390,17 +391,27 @@ impl<'a> OnMoveHandler<'a> {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
-                    let dir = self.context.cwd.clone();
 
-                    let shell_cmd = crate::command::grep::rg_shell_command(&dir);
+                    let shell_cmd = crate::command::grep::rg_shell_command(&self.context.cwd);
                     let job_id = utility::calculate_hash(&shell_cmd);
 
                     if job::reserve(job_id) {
+                        let context = self.context.clone();
+
                         tokio::task::spawn_blocking(move || {
-                            tracing::debug!(?dir, "Refreshing grep2 cache");
-                            match crate::command::grep::refresh_cache(dir) {
-                                Ok(total) => {
-                                    tracing::debug!(total, "Refresh the grep2 cache successfully");
+                            tracing::debug!(cwd = ?context.cwd, "Refreshing grep2 cache");
+                            match crate::command::grep::refresh_cache(&context.cwd) {
+                                Ok(digest) => {
+                                    tracing::debug!(
+                                        total = digest.total,
+                                        "Refresh the grep2 cache successfully"
+                                    );
+                                    let new = ProviderSource::CachedFile {
+                                        total: digest.total,
+                                        path: digest.cached_path,
+                                    };
+                                    context.set_provider_source(new);
+                                    // TODO: Notify Vim the cache has been refreshed.
                                 }
                                 Err(e) => {
                                     tracing::error!(error = ?e, "Failed to refresh grep2 cache")
@@ -410,7 +421,7 @@ impl<'a> OnMoveHandler<'a> {
                         });
                     } else {
                         tracing::debug!(
-                            ?dir,
+                            cwd = ?self.context.cwd,
                             "There is already a grep2 job running, skip freshing the cache"
                         );
                     }

@@ -79,15 +79,15 @@ function! clap#client#notify_on_init(method, ...) abort
   let s:session_id += 1
   let params = {
         \   'provider_id': g:clap.provider.id,
-        \   'cwd': clap#rooter#working_dir(),
-        \   'icon': get(g:clap.provider._(), 'icon', 'Null'),
-        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
-        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
-        \   'source_fpath': expand('#'.g:clap.start.bufnr.':p'),
         \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
         \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
         \   'preview': { 'bufnr': g:clap.preview.bufnr, 'winid': g:clap.preview.winid },
+        \   'cwd': clap#rooter#working_dir(),
+        \   'icon': get(g:clap.provider._(), 'icon', 'Null'),
+        \   'debounce': get(g:clap.provider._(), 'debounce', v:true),
+        \   'no_cache': has_key(g:clap.context, 'no-cache') ? v:true : v:false,
+        \   'start_buffer_path': expand('#'.g:clap.start.bufnr.':p'),
         \ }
   if a:0 > 0
     call extend(params, a:1)
