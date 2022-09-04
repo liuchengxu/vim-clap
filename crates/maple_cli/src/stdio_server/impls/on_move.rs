@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
@@ -400,24 +401,32 @@ impl<'a> OnMoveHandler<'a> {
 
                         tokio::task::spawn_blocking(move || {
                             tracing::debug!(cwd = ?context.cwd, "Refreshing grep2 cache");
-                            match crate::command::grep::refresh_cache(&context.cwd) {
+                            let new_digest = match crate::command::grep::refresh_cache(&context.cwd)
+                            {
                                 Ok(digest) => {
                                     tracing::debug!(
                                         total = digest.total,
                                         "Refresh the grep2 cache successfully"
                                     );
-                                    let new = ProviderSource::CachedFile {
-                                        total: digest.total,
-                                        path: digest.cached_path,
-                                    };
-                                    context.set_provider_source(new);
-                                    // TODO: Notify Vim the cache has been refreshed.
+                                    digest
                                 }
                                 Err(e) => {
-                                    tracing::error!(error = ?e, "Failed to refresh grep2 cache")
+                                    tracing::error!(error = ?e, "Failed to refresh grep2 cache");
+                                    return;
                                 }
-                            }
+                            };
+                            let new = ProviderSource::CachedFile {
+                                total: new_digest.total,
+                                path: new_digest.cached_path,
+                            };
+                            context.set_provider_source(new);
                             job::unreserve(job_id);
+
+                            if !context.terminated.load(Ordering::SeqCst) {
+                                let _ = context
+                                    .vim
+                                    .exec("clap#helper#echo_info", json!(["Cache refreshed"]));
+                            }
                         });
                     } else {
                         tracing::debug!(

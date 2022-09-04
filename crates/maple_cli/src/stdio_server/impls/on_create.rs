@@ -11,13 +11,9 @@ use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::provider::ProviderSource;
 use crate::stdio_server::session::SessionContext;
-use crate::stdio_server::vim::Vim;
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize_provider_source(
-    context: &SessionContext,
-    vim: &Vim,
-) -> Result<ProviderSource> {
+pub async fn initialize_provider_source(context: &SessionContext) -> Result<ProviderSource> {
     let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
         let items = lines
@@ -66,7 +62,7 @@ pub async fn initialize_provider_source(
                 Some(100_000),
             )
             .execute()?;
-            vim.exec(
+            context.vim.exec(
                 "clap#state#process_grep_forerunner_result",
                 json!({ "exec_info": exec_info }),
             )?;
@@ -83,12 +79,12 @@ pub async fn initialize_provider_source(
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);
-            vim.set_var("g:__clap_forerunner_tempfile", &path)?;
+            context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
             return Ok(ProviderSource::CachedFile { total, path });
         }
         "help_tags" => {
-            let helplang: String = vim.eval("&helplang").await?;
-            let runtimepath: String = vim.eval("&runtimepath").await?;
+            let helplang: String = context.vim.eval("&helplang").await?;
+            let runtimepath: String = context.vim.eval("&runtimepath").await?;
             let doc_tags = std::iter::once("/doc/tags".to_string()).chain(
                 helplang
                     .split(',')
@@ -101,7 +97,7 @@ pub async fn initialize_provider_source(
         _ => {}
     }
 
-    let source_cmd: Vec<Value> = vim.call("provider_source", json!([])).await?;
+    let source_cmd: Vec<Value> = context.vim.call("provider_source", json!([])).await?;
     if let Some(value) = source_cmd.into_iter().next() {
         match value {
             Value::String(command) => {
@@ -152,7 +148,7 @@ pub async fn initialize_provider_source(
                     };
 
                 if let ProviderSource::CachedFile { total: _, path } = &provider_source {
-                    vim.set_var("g:__clap_forerunner_tempfile", &path)?;
+                    context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
                 }
 
                 return Ok(provider_source);

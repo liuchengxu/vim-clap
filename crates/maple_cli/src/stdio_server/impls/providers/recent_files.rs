@@ -15,18 +15,21 @@ use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
-    vim: Vim,
     context: Arc<SessionContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new(vim: Vim, context: SessionContext) -> Self {
+    pub fn new(context: SessionContext) -> Self {
         Self {
-            vim,
             context: Arc::new(context),
             lines: Default::default(),
         }
+    }
+
+    #[inline]
+    fn vim(&self) -> &Vim {
+        &self.context.vim
     }
 
     fn process_query(
@@ -133,26 +136,22 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    fn vim(&self) -> &Vim {
-        &self.vim
-    }
-
     fn session_context(&self) -> &SessionContext {
         &self.context
     }
 
     async fn on_create(&mut self) -> Result<()> {
-        let query = self.vim.context_query_or_input().await?;
-        let cwd = self.vim.working_dir().await?;
+        let query = self.vim().context_query_or_input().await?;
+        let cwd = self.vim().working_dir().await?;
 
         let preview_size = self
-            .vim
+            .vim()
             .preview_size(&self.context.provider_id, self.context.preview.winid)
             .await?;
 
         let response = self.clone().process_query(cwd, query, preview_size, 1)?;
 
-        self.vim
+        self.vim()
             .call("clap#state#process_result_on_typed", response)
             .await?;
 
@@ -160,7 +159,7 @@ impl ClapProvider for RecentFilesProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim.display_getcurlnum().await?;
+        let lnum = self.vim().display_getcurlnum().await?;
 
         let maybe_curline = self
             .lines
@@ -170,13 +169,13 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_size = self
-                .vim
+                .vim()
                 .preview_size(&self.context.provider_id, self.context.preview.winid)
                 .await?;
 
             let on_move_handler = OnMoveHandler::create(curline, preview_size, &self.context)?;
             let preview = on_move_handler.get_preview().await?;
-            self.vim
+            self.vim()
                 .exec("clap#state#process_preview_result", preview)?;
         }
 
@@ -185,10 +184,10 @@ impl ClapProvider for RecentFilesProvider {
 
     async fn on_typed(&mut self) -> Result<()> {
         let cwd = self.context.cwd.to_string_lossy().to_string();
-        let query = self.vim.input_get().await?;
-        let lnum = self.vim.display_getcurlnum().await?;
+        let query = self.vim().input_get().await?;
+        let lnum = self.vim().display_getcurlnum().await?;
         let preview_size = self
-            .vim
+            .vim()
             .preview_size(&self.context.provider_id, self.context.preview.winid)
             .await?;
 
@@ -199,9 +198,9 @@ impl ClapProvider for RecentFilesProvider {
         })
         .await??;
 
-        let current_query = self.vim.input_get().await?;
+        let current_query = self.vim().input_get().await?;
         if current_query == query {
-            self.vim
+            self.vim()
                 .call("clap#state#process_result_on_typed", response)
                 .await?;
         }

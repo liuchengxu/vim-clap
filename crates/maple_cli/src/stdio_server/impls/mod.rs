@@ -88,7 +88,6 @@ fn run(
 
 #[derive(Debug)]
 pub struct DefaultProvider {
-    vim: Vim,
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
@@ -97,15 +96,19 @@ pub struct DefaultProvider {
 }
 
 impl DefaultProvider {
-    pub fn new(vim: Vim, context: SessionContext) -> Self {
+    pub fn new(context: SessionContext) -> Self {
         Self {
-            vim,
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
             runtimepath: None,
             display_winheight: None,
             maybe_filter_control: None,
         }
+    }
+
+    #[inline]
+    fn vim(&self) -> &Vim {
+        &self.context.vim
     }
 
     /// `lnum` is 1-based.
@@ -120,18 +123,14 @@ impl DefaultProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DefaultProvider {
-    fn vim(&self) -> &Vim {
-        &self.vim
-    }
-
     fn session_context(&self) -> &SessionContext {
         &self.context
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim.display_getcurlnum().await?;
+        let lnum = self.vim().display_getcurlnum().await?;
 
-        let curline = self.vim.display_getcurline().await?;
+        let curline = self.vim().display_getcurline().await?;
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
@@ -139,7 +138,7 @@ impl ClapProvider for DefaultProvider {
         }
 
         let preview_size = self
-            .vim
+            .vim()
             .preview_size(&self.context.provider_id, self.context.preview.winid)
             .await?;
 
@@ -147,7 +146,7 @@ impl ClapProvider for DefaultProvider {
             let runtimepath = match &self.runtimepath {
                 Some(rtp) => rtp.clone(),
                 None => {
-                    let rtp: String = self.vim.eval("&runtimepath").await?;
+                    let rtp: String = self.vim().eval("&runtimepath").await?;
                     self.runtimepath.replace(rtp.clone());
                     rtp
                 }
@@ -177,9 +176,9 @@ impl ClapProvider for DefaultProvider {
         let preview = on_move_handler.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
-        let curlnum = self.vim.display_getcurlnum().await?;
+        let curlnum = self.vim().display_getcurlnum().await?;
         if curlnum == lnum {
-            self.vim
+            self.vim()
                 .exec("clap#state#process_preview_result", preview)?;
         }
 
@@ -187,7 +186,7 @@ impl ClapProvider for DefaultProvider {
     }
 
     async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim.input_get().await?;
+        let query = self.vim().input_get().await?;
 
         let quick_response =
             if let ProviderSource::Small { ref items, .. } = *self.context.provider_source.read() {
@@ -216,7 +215,7 @@ impl ClapProvider for DefaultProvider {
             };
 
         if let Some((msg, matched_items)) = quick_response {
-            let new_query = self.vim.input_get().await?;
+            let new_query = self.vim().input_get().await?;
             if new_query == query {
                 self.vim()
                     .exec("clap#state#process_filter_message", json!([msg, true]))?;
@@ -239,7 +238,7 @@ impl ClapProvider for DefaultProvider {
             Some(winheight) => winheight,
             None => {
                 let display_winheight = self
-                    .vim
+                    .vim()
                     .call("winheight", json!([self.context.display.winid]))
                     .await?;
                 self.display_winheight.replace(display_winheight);
@@ -258,7 +257,7 @@ impl ClapProvider for DefaultProvider {
             display_winheight,
             filter_source,
             &self.context,
-            self.vim.clone(),
+            self.vim().clone(),
         );
 
         self.maybe_filter_control.replace(new_control);

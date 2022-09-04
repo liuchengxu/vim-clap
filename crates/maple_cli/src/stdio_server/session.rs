@@ -46,12 +46,13 @@ pub struct SessionContext {
     pub debounce: bool,
     pub display_winwidth: usize,
     pub start_buffer_path: PathBuf,
+    pub vim: Vim,
     pub terminated: Arc<AtomicBool>,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
 impl SessionContext {
-    pub async fn new(params: Params, vim: &Vim) -> Result<Self> {
+    pub async fn new(params: Params, vim: Vim) -> Result<Self> {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
@@ -104,6 +105,7 @@ impl SessionContext {
             display_winwidth,
             matcher,
             icon,
+            vim,
             terminated: Arc::new(AtomicBool::new(false)),
             provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
         })

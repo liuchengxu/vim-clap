@@ -16,7 +16,6 @@ use types::{ClapItem, MatchedItem};
 use crate::stdio_server::impls::initialize_provider_source;
 use crate::stdio_server::job;
 use crate::stdio_server::session::{SessionContext, SessionId};
-use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderId(String);
@@ -159,21 +158,18 @@ impl ProviderEventSender {
 /// A trait that each Clap provider should implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    fn vim(&self) -> &Vim;
-
     fn session_context(&self) -> &SessionContext;
 
     async fn on_create(&mut self) -> Result<()> {
         const TIMEOUT: Duration = Duration::from_millis(300);
 
         let context = self.session_context();
-        let vim = self.vim();
 
-        match tokio::time::timeout(TIMEOUT, initialize_provider_source(context, vim)).await {
+        match tokio::time::timeout(TIMEOUT, initialize_provider_source(context)).await {
             Ok(provider_source_result) => match provider_source_result {
                 Ok(provider_source) => {
                     if let Some(total) = provider_source.total() {
-                        self.vim().set_var("g:clap.display.initial_size", total)?;
+                        context.vim.set_var("g:clap.display.initial_size", total)?;
                     }
                     if let Some(lines) = provider_source.initial_lines(100) {
                         let DisplayLines {
@@ -187,7 +183,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                             context.icon,
                         );
 
-                        self.vim().exec(
+                        context.vim.exec(
                             "clap#state#init_display",
                             json!([lines, truncated_map, icon_added]),
                         )?;
@@ -201,7 +197,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 // The initialization was not super fast.
                 tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
-                let source_cmd: Vec<String> = vim.call("provider_source_cmd", json!([])).await?;
+                let source_cmd: Vec<String> =
+                    context.vim.call("provider_source_cmd", json!([])).await?;
                 let maybe_source_cmd = source_cmd.into_iter().next();
                 if let Some(source_cmd) = maybe_source_cmd {
                     context.set_provider_source(ProviderSource::Command(source_cmd));

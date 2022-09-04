@@ -127,12 +127,12 @@ impl Client {
                 let session_id = session_id()?;
 
                 let vim = self.vim.clone();
-                let context = SessionContext::new(notification.params, &vim).await?;
+                let context = SessionContext::new(notification.params, vim).await?;
                 let provider: Box<dyn ClapProvider> = match self.vim.provider_id().await?.as_str() {
-                    "filer" => Box::new(FilerProvider::new(vim, context)),
-                    "dumb_jump" => Box::new(DumbJumpProvider::new(vim, context)),
-                    "recent_files" => Box::new(RecentFilesProvider::new(vim, context)),
-                    _ => Box::new(DefaultProvider::new(vim, context)),
+                    "filer" => Box::new(FilerProvider::new(context)),
+                    "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
+                    "recent_files" => Box::new(RecentFilesProvider::new(context)),
+                    _ => Box::new(DefaultProvider::new(context)),
                 };
 
                 let session_manager = self.session_manager_mutex.clone();

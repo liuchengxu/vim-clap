@@ -120,28 +120,28 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 
 #[derive(Debug)]
 pub struct FilerProvider {
-    vim: Vim,
     context: SessionContext,
 }
 
 impl FilerProvider {
-    pub fn new(vim: Vim, context: SessionContext) -> Self {
-        Self { vim, context }
+    pub fn new(context: SessionContext) -> Self {
+        Self { context }
+    }
+
+    #[inline]
+    fn vim(&self) -> &Vim {
+        &self.context.vim
     }
 }
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
-    fn vim(&self) -> &Vim {
-        &self.vim
-    }
-
     fn session_context(&self) -> &SessionContext {
         &self.context
     }
 
     async fn on_create(&mut self) -> Result<()> {
-        let cwd = self.vim.working_dir().await?;
+        let cwd = self.vim().working_dir().await?;
 
         let value = read_dir_entries(&cwd, self.context.icon.enabled(), None)
             .map(|entries| json!({ "entries": entries, "dir": cwd, "total": entries.len() }))
@@ -150,7 +150,7 @@ impl ClapProvider for FilerProvider {
                 json!({ "error": err.to_string() })
             });
 
-        self.vim
+        self.vim()
             .exec("clap#provider#filer#handle_on_create", value)?;
 
         Ok(())
@@ -163,20 +163,20 @@ impl ClapProvider for FilerProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let curline = self.vim.display_getcurline().await?;
-        let curline = if self.vim.get_var_bool("clap_enable_icon").await? {
+        let curline = self.vim().display_getcurline().await?;
+        let curline = if self.vim().get_var_bool("clap_enable_icon").await? {
             curline.chars().skip(2).collect()
         } else {
             curline
         };
         let cwd: String = self
-            .vim
+            .vim()
             .call("clap#provider#filer#current_dir", json!([]))
             .await?;
         let path = build_abs_path(&cwd, curline);
         let on_move_handler = OnMoveHandler {
             size: self
-                .vim
+                .vim()
                 .preview_size(&self.context.provider_id, self.context.preview.winid)
                 .await?,
             context: &self.context,
@@ -184,7 +184,7 @@ impl ClapProvider for FilerProvider {
             cache_line: None,
         };
         let preview = on_move_handler.get_preview().await?;
-        self.vim
+        self.vim()
             .exec("clap#state#process_preview_result", preview)?;
 
         Ok(())
@@ -192,7 +192,7 @@ impl ClapProvider for FilerProvider {
 
     async fn on_typed(&mut self) -> Result<()> {
         let cwd: String = self
-            .vim
+            .vim()
             .call("clap#provider#filer#current_dir", json!([]))
             .await?;
 
@@ -203,7 +203,7 @@ impl ClapProvider for FilerProvider {
                 json!({"message": err.to_string(), "dir": cwd});
             });
 
-        self.vim
+        self.vim()
             .exec("clap#provider#filer#handle_result_on_typed", result)?;
 
         Ok(())

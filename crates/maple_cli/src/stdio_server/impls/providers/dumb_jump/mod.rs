@@ -129,7 +129,6 @@ struct SearchResults {
 
 #[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
-    vim: Vim,
     context: Arc<SessionContext>,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
@@ -143,9 +142,8 @@ pub struct DumbJumpProvider {
 }
 
 impl DumbJumpProvider {
-    pub fn new(vim: Vim, context: SessionContext) -> Self {
+    pub fn new(context: SessionContext) -> Self {
         Self {
-            vim,
             context: Arc::new(context),
             cached_results: Default::default(),
             current_usages: None,
@@ -154,10 +152,15 @@ impl DumbJumpProvider {
         }
     }
 
-    async fn initialize(&self) -> Result<()> {
-        let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+    #[inline]
+    fn vim(&self) -> &Vim {
+        &self.context.vim
+    }
 
-        let cwd = self.vim.working_dir().await?;
+    async fn initialize(&self) -> Result<()> {
+        let bufname = self.vim().bufname(self.context.start.bufnr).await?;
+
+        let cwd = self.vim().working_dir().await?;
         let extension = std::path::Path::new(&bufname)
             .extension()
             .and_then(|s| s.to_str())
@@ -300,7 +303,7 @@ impl DumbJumpProvider {
             }
         };
 
-        self.vim
+        self.vim()
             .exec("clap#state#process_result_on_typed", response)?;
 
         Ok(SearchResults { usages, query_info })
@@ -309,10 +312,6 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    fn vim(&self) -> &Vim {
-        &self.vim
-    }
-
     fn session_context(&self) -> &SessionContext {
         &self.context
     }
@@ -325,11 +324,11 @@ impl ClapProvider for DumbJumpProvider {
             }
         });
 
-        let query = self.vim.context_query_or_input().await?;
+        let query = self.vim().context_query_or_input().await?;
         if !query.is_empty() {
-            let cwd = self.vim.working_dir().await?;
+            let cwd = self.vim().working_dir().await?;
 
-            let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+            let bufname = self.vim().bufname(self.context.start.bufnr).await?;
             let extension = std::path::Path::new(&bufname)
                 .extension()
                 .and_then(|s| s.to_str())
@@ -346,8 +345,8 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let input = self.vim.input_get().await?;
-        let lnum = self.vim.display_getcurlnum().await?;
+        let input = self.vim().input_get().await?;
+        let lnum = self.vim().display_getcurlnum().await?;
 
         let current_lines = self
             .current_usages
@@ -364,7 +363,7 @@ impl ClapProvider for DumbJumpProvider {
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_size = self
-            .vim
+            .vim()
             .preview_size(&self.context.provider_id, self.context.preview.winid)
             .await?;
 
@@ -372,11 +371,11 @@ impl ClapProvider for DumbJumpProvider {
             OnMoveHandler::create(curline.to_string(), preview_size, &self.context)?;
         let preview = on_move_handler.get_preview().await?;
 
-        let current_input = self.vim.input_get().await?;
-        let current_lnum = self.vim.display_getcurlnum().await?;
+        let current_input = self.vim().input_get().await?;
+        let current_lnum = self.vim().display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
-            self.vim
+            self.vim()
                 .exec("clap#state#process_preview_result", preview)?;
         }
 
@@ -384,10 +383,10 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim.input_get().await?;
-        let cwd = self.vim.working_dir().await?;
+        let query = self.vim().input_get().await?;
+        let cwd = self.vim().working_dir().await?;
 
-        let bufname = self.vim.bufname(self.context.start.bufnr).await?;
+        let bufname = self.vim().bufname(self.context.start.bufnr).await?;
         let extension = std::path::Path::new(&bufname)
             .extension()
             .and_then(|s| s.to_str())
@@ -416,7 +415,7 @@ impl ClapProvider for DumbJumpProvider {
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
             let response = json!({ "lines": lines, "indices": indices, "total": total });
-            self.vim
+            self.vim()
                 .exec("clap#state#process_result_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
