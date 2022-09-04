@@ -301,6 +301,8 @@ where
                         .map(|stop| stop.load(Ordering::Relaxed))
                         .unwrap_or(false)
                     {
+                        // Note that even the stop signal has been received, the thread created by
+                        // rayon does not exit actually, it just tries to stop the work ASAP.
                         Err(())
                     } else {
                         let processed = processed_count.fetch_add(1, Ordering::SeqCst);

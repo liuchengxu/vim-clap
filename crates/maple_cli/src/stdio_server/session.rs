@@ -75,9 +75,7 @@ impl SessionContext {
             debounce,
             source_fpath,
             icon,
-        } = params
-            .parse()
-            .expect("Failed to deserialize SessionContext");
+        } = params.parse()?;
 
         let icon = match icon.to_lowercase().as_str() {
             "buffertags" => Icon::Enabled(IconKind::BufferTags),

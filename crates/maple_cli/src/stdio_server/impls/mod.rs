@@ -9,8 +9,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use parking_lot::Mutex;
 use serde_json::json;
-use std::thread::JoinHandle;
 use subprocess::Exec;
+use tokio::task::JoinHandle;
 
 use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
@@ -35,39 +35,43 @@ enum FilterSource {
 #[derive(Debug)]
 struct FilterControl {
     stop_signal: Arc<AtomicBool>,
-    thread_filter: JoinHandle<()>,
+    join_handle: JoinHandle<()>,
 }
 
 impl FilterControl {
     fn kill(self) {
         tracing::debug!("Killing");
         self.stop_signal.store(true, Ordering::Relaxed);
-        let _ = self.thread_filter.join();
+        self.join_handle.abort();
+        tracing::debug!("Killing finished");
     }
 }
 
+/// Start the parallel filter in a new thread.
 fn run(
     query: String,
+    number: usize,
     filter_source: FilterSource,
     context: &SessionContext,
     vim: Vim,
 ) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
 
-    let thread_filter = {
+    let join_handle = {
         let icon = context.icon;
         let display_winwidth = context.display_winwidth;
+        let cwd = context.cwd.clone();
         let matcher = context.matcher.clone();
         let stop_signal = stop_signal.clone();
 
-        std::thread::spawn(move || {
+        tokio::task::spawn_blocking(move || {
             if let Err(e) = filter::par_dyn_run(
                 &query,
-                FilterContext::new(icon, Some(40), Some(display_winwidth), matcher),
+                FilterContext::new(icon, Some(number), Some(display_winwidth), matcher),
                 match filter_source {
                     FilterSource::CachedFile(path) => ParSource::File(path),
                     FilterSource::Command(command) => {
-                        ParSource::Exec(Box::new(Exec::shell(command)))
+                        ParSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
                 VimProgressor::new(&vim),
@@ -80,7 +84,7 @@ fn run(
 
     FilterControl {
         stop_signal,
-        thread_filter,
+        join_handle,
     }
 }
 
@@ -90,6 +94,7 @@ pub struct DefaultProvider {
     context: SessionContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
+    display_winheight: Option<usize>,
     maybe_filter_control: Option<FilterControl>,
 }
 
@@ -100,6 +105,7 @@ impl DefaultProvider {
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
             runtimepath: None,
+            display_winheight: None,
             maybe_filter_control: None,
         }
     }
@@ -231,12 +237,31 @@ impl ClapProvider for DefaultProvider {
             ProviderSource::Command(ref cmd) => FilterSource::Command(cmd.to_string()),
         };
 
+        let display_winheight = match self.display_winheight {
+            Some(winheight) => winheight,
+            None => {
+                let display_winheight = self
+                    .vim
+                    .call("winheight", json!([self.context.display.winid]))
+                    .await?;
+                self.display_winheight.replace(display_winheight);
+                display_winheight
+            }
+        };
+
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
-            control.kill();
+            // NOTE: The kill operation can not block current task.
+            tokio::task::spawn_blocking(move || control.kill());
         }
 
-        let new_control = run(query, filter_source, &self.context, self.vim.clone());
+        let new_control = run(
+            query,
+            display_winheight,
+            filter_source,
+            &self.context,
+            self.vim.clone(),
+        );
 
         self.maybe_filter_control.replace(new_control);
 

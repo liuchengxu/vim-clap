@@ -16,6 +16,10 @@ function! clap#state#set_variable_string(res) abort
 endfunction
 
 function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+
   let decoded = a:decoded_msg
 
   if has_key(decoded, 'total')
@@ -65,7 +69,7 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 endfunction
 
 function! clap#state#process_progress_with_display_lines(display_lines, matched, processed) abort
-  call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
+  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
   call g:clap.display.set_lines(a:display_lines.lines)
   let g:__clap_icon_added_by_maple = a:display_lines.icon_added
   call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)

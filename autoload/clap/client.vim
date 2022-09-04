@@ -10,18 +10,13 @@ let s:session_id = get(s:, 'session_id', 0)
 
 let s:last_recent_file = v:null
 
-" TODO: remove this.
-function! s:process_filter_message(msg) abort
-  echom 'Calling s:process_filter_message'
-  if g:clap.display.win_is_valid()
-    if !has_key(a:msg, 'query') || a:msg.query ==# g:clap.input.get()
-      call clap#state#process_filter_message(a:msg, v:true)
-    endif
-  endif
-endfunction
-
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
+
+  if has_key(decoded, 'deprecated_method')
+    call call(decoded.deprecated_method, [decoded])
+    return
+  endif
 
   " Handle the request from Rust backend.
   if has_key(decoded, 'method')
@@ -32,7 +27,7 @@ function! clap#client#handle(msg) abort
         call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'result': result }))
       endif
     catch
-      call clap#helper#echo_error(v:exception)
+      call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
       if has_key(decoded, 'id')
         call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'error': {'code': -32603, 'message': string(v:exception) }}))
       endif
@@ -80,6 +75,7 @@ function! clap#client#call(method, callback, ...) abort
 endfunction
 
 function! clap#client#notify_on_init(method, ...) abort
+  call clap#rooter#try_set_cwd()
   let s:session_id += 1
   let params = {
         \   'provider_id': g:clap.provider.id,

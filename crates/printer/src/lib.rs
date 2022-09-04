@@ -84,10 +84,10 @@ impl DisplayLines {
         } = self;
 
         #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
+        const deprecated_method: &str = "clap#state#process_filter_message";
         if let Some(total_processed) = maybe_total_processed {
             println_json_with_length!(
-                method,
+                deprecated_method,
                 lines,
                 indices,
                 icon_added,
@@ -97,7 +97,7 @@ impl DisplayLines {
             );
         } else {
             println_json_with_length!(
-                method,
+                deprecated_method,
                 lines,
                 indices,
                 icon_added,

@@ -165,15 +165,15 @@ impl Watcher {
                 let total = self.total;
 
                 #[allow(non_upper_case_globals)]
-                const method: &str = "s:process_filter_message";
+                const deprecated_method: &str = "clap#state#process_filter_message";
                 if self.last_lines != lines.as_slice() {
                     let icon_added = self.icon.enabled();
-                    println_json_with_length!(total, lines, indices, method, icon_added);
+                    println_json_with_length!(total, lines, indices, deprecated_method, icon_added);
                     self.past = now;
                     self.last_lines = lines;
                 } else {
                     self.past = now;
-                    println_json_with_length!(total, method);
+                    println_json_with_length!(total, deprecated_method);
                 }
             }
         }
