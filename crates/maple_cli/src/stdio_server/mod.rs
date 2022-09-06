@@ -1,4 +1,4 @@
-mod impls;
+mod handler;
 mod job;
 mod provider;
 mod rpc;
@@ -17,11 +17,10 @@ use parking_lot::Mutex;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use self::impls::dumb_jump::DumbJumpProvider;
-use self::impls::filer::FilerProvider;
-use self::impls::recent_files::RecentFilesProvider;
-use self::impls::DefaultProvider;
-use self::provider::{ClapProvider, ProviderEvent};
+use self::provider::{
+    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, ProviderEvent,
+    RecentFilesProvider,
+};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::{ProviderContext, SessionManager};
 use self::state::State;

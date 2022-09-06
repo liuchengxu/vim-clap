@@ -1,7 +1,3 @@
-mod on_create;
-mod on_move;
-mod providers;
-
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -16,15 +12,11 @@ use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
 use types::MatchedItem;
 
+use crate::stdio_server::handler::{OnMoveHandler, PreviewKind};
 use crate::stdio_server::provider::{ClapProvider, ProviderSource};
 use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::types::VimProgressor;
-
-pub use self::on_create::initialize_provider_source;
-pub use self::on_move::{OnMoveHandler, PreviewKind};
-pub use self::providers::{dumb_jump, filer, recent_files};
-
-use super::vim::Vim;
+use crate::stdio_server::vim::Vim;
 
 #[derive(Debug)]
 enum FilterSource {

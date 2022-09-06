@@ -14,7 +14,7 @@ use tracing::Instrument;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
-use crate::stdio_server::impls::OnMoveHandler;
+use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::ClapProvider;
 use crate::stdio_server::session::ProviderContext;

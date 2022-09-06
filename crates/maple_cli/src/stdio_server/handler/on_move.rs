@@ -10,8 +10,7 @@ use types::PreviewInfo;
 
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
-use crate::stdio_server::impls::providers::filer;
-use crate::stdio_server::provider::ProviderSource;
+use crate::stdio_server::provider::{read_dir_entries, ProviderSource};
 use crate::stdio_server::session::ProviderContext;
 use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
@@ -214,7 +213,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let enable_icon = global().enable_icon;
-        let lines = filer::read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let lines = read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
         Ok(json!({ "lines": lines, "is_dir": true }))
     }
 

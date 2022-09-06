@@ -93,6 +93,7 @@ function! s:blines.on_typed() abort
     call g:clap.preview.hide()
   else
     if clap#maple#is_available() && filereadable(expand('#'.g:clap.start.bufnr.':p'))
+      " TODO: notify('on_typed')
       call clap#filter#async#dyn#start_blines()
     else
       let l:raw_lines = s:format(g:clap.start.get_lines())

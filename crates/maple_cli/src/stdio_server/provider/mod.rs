@@ -1,3 +1,8 @@
+mod default_impl;
+mod dumb_jump;
+mod filer;
+mod recent_files;
+
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
@@ -13,9 +18,14 @@ use tokio::sync::mpsc::UnboundedSender;
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
-use crate::stdio_server::impls::initialize_provider_source;
+use crate::stdio_server::handler::initialize_provider_source;
 use crate::stdio_server::job;
 use crate::stdio_server::session::{ProviderContext, SessionId};
+
+pub use self::default_impl::DefaultProvider;
+pub use self::dumb_jump::DumbJumpProvider;
+pub use self::filer::{read_dir_entries, FilerProvider};
+pub use self::recent_files::RecentFilesProvider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderId(String);
