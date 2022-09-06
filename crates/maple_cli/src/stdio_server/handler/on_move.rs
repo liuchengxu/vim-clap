@@ -264,7 +264,11 @@ impl<'a> OnMoveHandler<'a> {
             })?
         };
 
-        if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
+        if std::fs::metadata(path.as_ref())?.len() == 0 {
+            let mut lines = lines;
+            lines.push("<Empty file>".to_string());
+            Ok(json!({ "lines": lines, "fname": fname }))
+        } else if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
             Ok(json!({ "lines": lines, "syntax": syntax }))
         } else {
             Ok(json!({ "lines": lines, "fname": fname }))
