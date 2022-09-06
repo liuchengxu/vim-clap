@@ -9,8 +9,24 @@ use matcher::ClapItem;
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
 use crate::process::{CacheableCommand, ShellCommand};
-use crate::stdio_server::provider::ProviderSource;
-use crate::stdio_server::session::ProviderContext;
+use crate::stdio_server::provider::{ProviderContext, ProviderSource};
+
+async fn execute_and_write_cache(
+    cmd: &str,
+    cache_file: std::path::PathBuf,
+) -> Result<ProviderSource> {
+    // Can not use subprocess::Exec::shell here.
+    //
+    // Must use TokioCommand otherwise the timeout may not work.
+
+    let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
+    crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
+    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
+    Ok(ProviderSource::CachedFile {
+        total,
+        path: cache_file,
+    })
+}
 
 /// Performs the initialization like collecting the source and total number of source items.
 pub async fn initialize_provider_source(context: &ProviderContext) -> Result<ProviderSource> {
@@ -101,24 +117,6 @@ pub async fn initialize_provider_source(context: &ProviderContext) -> Result<Pro
     if let Some(value) = source_cmd.into_iter().next() {
         match value {
             Value::String(command) => {
-                async fn create_new_source(
-                    cmd: &str,
-                    cache_file: std::path::PathBuf,
-                ) -> Result<ProviderSource> {
-                    // Can not use subprocess::Exec::shell here.
-                    //
-                    // Must use TokioCommand otherwise the timeout may not work.
-
-                    let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
-                    crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file)
-                        .await?;
-                    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
-                    Ok(ProviderSource::CachedFile {
-                        total,
-                        path: cache_file,
-                    })
-                }
-
                 // Try always recreating the source.
                 if context.provider_id.as_str() == "files" {
                     let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
@@ -134,16 +132,16 @@ pub async fn initialize_provider_source(context: &ProviderContext) -> Result<Pro
 
                 let provider_source =
                     if DIRECT_CREATE_NEW_SOURCE.contains(&context.provider_id.as_str()) {
-                        create_new_source(&shell_cmd.command, cache_file).await?
+                        execute_and_write_cache(&shell_cmd.command, cache_file).await?
                     } else if context.no_cache {
-                        create_new_source(&shell_cmd.command, cache_file).await?
+                        execute_and_write_cache(&shell_cmd.command, cache_file).await?
                     } else {
                         match shell_cmd.cache_digest() {
                             Some(digest) => ProviderSource::CachedFile {
                                 total: digest.total,
                                 path: digest.cached_path,
                             },
-                            None => create_new_source(&shell_cmd.command, cache_file).await?,
+                            None => execute_and_write_cache(&shell_cmd.command, cache_file).await?,
                         }
                     };
 

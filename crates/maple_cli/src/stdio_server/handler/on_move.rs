@@ -10,8 +10,7 @@ use types::PreviewInfo;
 
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
-use crate::stdio_server::provider::{read_dir_entries, ProviderSource};
-use crate::stdio_server::session::ProviderContext;
+use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
 use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
@@ -83,13 +82,13 @@ fn parse_preview_kind(
 
                 let (path, line_number) = try_extract_file_path(&curline)?;
 
-                PreviewKind::Line{ path, line_number }
+                PreviewKind::Line { path, line_number }
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                PreviewKind::Line{ path, line_number }
+                PreviewKind::Line { path, line_number }
             }
             "blines" => {
                 let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
@@ -99,13 +98,13 @@ fn parse_preview_kind(
             "tags" => {
                 let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
-                PreviewKind::Line{ path, line_number }
+                PreviewKind::Line { path, line_number }
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                PreviewKind::Line{path, line_number}
+                PreviewKind::Line { path, line_number }
             }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).ok_or_else(err)?;

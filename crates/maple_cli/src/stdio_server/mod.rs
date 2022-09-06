@@ -18,11 +18,11 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use self::provider::{
-    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, ProviderEvent,
+    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, ProviderContext, ProviderEvent,
     RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
-use self::session::{ProviderContext, SessionManager};
+use self::session::SessionManager;
 use self::state::State;
 use self::types::GlobalEnv;
 use self::vim::Vim;

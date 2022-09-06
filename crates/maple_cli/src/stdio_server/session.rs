@@ -3,125 +3,16 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
-use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
-use icon::{Icon, IconKind};
-use matcher::Matcher;
-
 use crate::stdio_server::provider::{
-    ClapProvider, ProviderEvent, ProviderEventSender, ProviderId, ProviderSource,
+    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
 };
-use crate::stdio_server::rpc::Params;
-use crate::stdio_server::vim::Vim;
 
 pub type SessionId = u64;
-
-/// bufnr and winid.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BufnrWinid {
-    pub bufnr: usize,
-    pub winid: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProviderContext {
-    pub provider_id: ProviderId,
-    pub start: BufnrWinid,
-    pub input: BufnrWinid,
-    pub display: BufnrWinid,
-    pub preview: BufnrWinid,
-    pub cwd: PathBuf,
-    pub icon: Icon,
-    pub matcher: Matcher,
-    pub no_cache: bool,
-    pub debounce: bool,
-    pub display_winwidth: usize,
-    pub start_buffer_path: PathBuf,
-    pub vim: Vim,
-    pub terminated: Arc<AtomicBool>,
-    pub provider_source: Arc<RwLock<ProviderSource>>,
-}
-
-impl ProviderContext {
-    pub async fn new(params: Params, vim: Vim) -> Result<Self> {
-        #[derive(Deserialize)]
-        struct InnerParams {
-            provider_id: ProviderId,
-            start: BufnrWinid,
-            input: BufnrWinid,
-            display: BufnrWinid,
-            preview: BufnrWinid,
-            cwd: PathBuf,
-            icon: String,
-            no_cache: bool,
-            debounce: bool,
-            start_buffer_path: PathBuf,
-        }
-
-        let InnerParams {
-            provider_id,
-            start,
-            input,
-            display,
-            preview,
-            cwd,
-            no_cache,
-            debounce,
-            start_buffer_path,
-            icon,
-        } = params.parse()?;
-
-        let icon = match icon.to_lowercase().as_str() {
-            "file" => Icon::Enabled(IconKind::File),
-            "grep" => Icon::Enabled(IconKind::Grep),
-            "projtags" => Icon::Enabled(IconKind::ProjTags),
-            "buffertags" => Icon::Enabled(IconKind::BufferTags),
-            _ => Icon::Null,
-        };
-
-        let matcher = provider_id.matcher();
-
-        let display_winwidth = vim.winwidth(display.winid).await?;
-
-        Ok(Self {
-            provider_id,
-            start,
-            input,
-            display,
-            preview,
-            cwd,
-            no_cache,
-            debounce,
-            start_buffer_path,
-            display_winwidth,
-            matcher,
-            icon,
-            vim,
-            terminated: Arc::new(AtomicBool::new(false)),
-            provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
-        })
-    }
-
-    /// Executes the command `cmd` and returns the raw bytes of stdout.
-    pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
-        let out = utility::execute_at(cmd, Some(&self.cwd))?;
-        Ok(out.stdout)
-    }
-
-    pub fn set_provider_source(&self, new: ProviderSource) {
-        let mut provider_source = self.provider_source.write();
-        *provider_source = new;
-    }
-}
 
 #[derive(Debug)]
 pub struct Session {
