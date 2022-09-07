@@ -13,8 +13,7 @@ use printer::DisplayLines;
 use types::MatchedItem;
 
 use crate::stdio_server::handler::{OnMoveHandler, PreviewKind};
-use crate::stdio_server::provider::{ClapProvider, ProviderSource};
-use crate::stdio_server::session::ProviderContext;
+use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
 

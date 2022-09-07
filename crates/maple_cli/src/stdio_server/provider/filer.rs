@@ -11,8 +11,7 @@ use icon::prepend_filer_icon;
 use types::{ClapItem, MatchResult};
 
 use crate::stdio_server::handler::{OnMoveHandler, PreviewKind};
-use crate::stdio_server::provider::ClapProvider;
-use crate::stdio_server::session::ProviderContext;
+use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
 
