@@ -134,7 +134,12 @@ pub enum ProviderEvent {
     Create,
     OnMove,
     OnTyped,
-    // TODO: OnTab for filer
+    // Tab was triggered.
+    Tab,
+    // Backspace was triggered.
+    Backspace,
+    // <CR>/<Enter>/<Return> was triggered.
+    CarriageReturn,
     Terminate,
 }
 
@@ -253,7 +258,18 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_typed(&mut self) -> Result<()>;
 
-    async fn on_tab(&mut self) -> Result<()> {
+    async fn tab(&mut self) -> Result<()> {
+        // Most providers don't need this, hence a default impl is provided.
+        Ok(())
+    }
+
+    async fn backspace(&mut self) -> Result<()> {
+        // Most providers don't need this, hence a default impl is provided.
+        Ok(())
+    }
+
+    // Note that <CR> is same as <Return> and <Enter>, `:h <Enter>`.
+    async fn carriage_return(&mut self) -> Result<()> {
         // Most providers don't need this, hence a default impl is provided.
         Ok(())
     }

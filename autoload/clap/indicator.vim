@@ -70,7 +70,6 @@ function! clap#indicator#update_matches_on_forerunner_done() abort
 endfunction
 
 function! clap#indicator#clear() abort
-  call s:set_indicator('[?/?]')
   silent! unlet s:matches_number
 endfunction
 

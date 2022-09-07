@@ -35,7 +35,8 @@ const RG_ARGS: &[&str] = &[
 
 // Ref https://github.com/liuchengxu/vim-clap/issues/533
 // Now `.` is pushed to the end for all platforms due to https://github.com/liuchengxu/vim-clap/issues/711.
-pub const RG_EXEC_CMD: &str = "rg --column --line-number --no-heading --color=never --smart-case '' .";
+pub const RG_EXEC_CMD: &str =
+    "rg --column --line-number --no-heading --color=never --smart-case '' .";
 
 #[derive(Parser, Debug, Clone)]
 pub struct Grep {

@@ -96,6 +96,10 @@ function! s:api.provider_source_cmd() abort
   return []
 endfunction
 
+function! s:api.input_set(value) abort
+  call g:clap.input.set(a:value)
+endfunction
+
 function! s:api.get_var(var) abort
   return get(g:, a:var, v:null)
 endfunction

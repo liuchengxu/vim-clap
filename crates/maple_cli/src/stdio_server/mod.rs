@@ -153,6 +153,24 @@ impl Client {
                 Ok(())
             }
 
+            "tab" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(session_id()?, Tab);
+                Ok(())
+            }
+
+            "backspace" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(session_id()?, Backspace);
+                Ok(())
+            }
+
+            "cr" => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(session_id()?, CarriageReturn);
+                Ok(())
+            }
+
             "exit" => {
                 let mut session_manager = self.session_manager_mutex.lock();
                 session_manager.terminate(session_id()?);

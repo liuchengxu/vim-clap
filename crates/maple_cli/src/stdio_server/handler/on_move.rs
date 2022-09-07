@@ -214,7 +214,11 @@ impl<'a> OnMoveHandler<'a> {
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let enable_icon = global().enable_icon;
         let lines = read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        Ok(json!({ "lines": lines, "is_dir": true }))
+        if lines.is_empty() {
+            Ok(json!({ "lines": vec!["Directory is empty"], "is_dir": true }))
+        } else {
+            Ok(json!({ "lines": lines, "is_dir": true }))
+        }
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
