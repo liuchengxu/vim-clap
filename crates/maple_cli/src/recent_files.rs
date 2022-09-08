@@ -18,20 +18,15 @@ const MONTH: i64 = DAY * 30;
 const MAX_ENTRIES: u64 = 10_000;
 
 /// Preference for sorting the recent files.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub enum SortPreference {
     /// Sort by the visit time.
+    #[default]
     Frequency,
     /// Sort by the number of visits.
     Recency,
     /// Sort by both `Frecency` and `Recency`.
     Frecency,
-}
-
-impl Default for SortPreference {
-    fn default() -> Self {
-        Self::Frecency
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -19,16 +19,11 @@ pub const DEFAULT_FILER_ICON: IconType = '';
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Icon {
+    #[default]
     Null,
     Enabled(IconKind),
-}
-
-impl Default for Icon {
-    fn default() -> Self {
-        Self::Null
-    }
 }
 
 impl Icon {

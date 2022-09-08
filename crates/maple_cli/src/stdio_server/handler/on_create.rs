@@ -1,14 +1,18 @@
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use serde_json::{json, Value};
 
 use filter::SourceItem;
 use matcher::ClapItem;
+use printer::DisplayLines;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
 use crate::process::{CacheableCommand, ShellCommand};
+use crate::stdio_server::job;
 use crate::stdio_server::provider::{ProviderContext, ProviderSource};
 
 async fn execute_and_write_cache(
@@ -29,7 +33,7 @@ async fn execute_and_write_cache(
 }
 
 /// Performs the initialization like collecting the source and total number of source items.
-pub async fn initialize_provider_source(context: &ProviderContext) -> Result<ProviderSource> {
+async fn initialize_provider_source(context: &ProviderContext) -> Result<ProviderSource> {
     let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
         let items = lines
@@ -169,4 +173,79 @@ pub async fn initialize_provider_source(context: &ProviderContext) -> Result<Pro
     }
 
     Ok(ProviderSource::Unknown)
+}
+
+pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
+    const TIMEOUT: Duration = Duration::from_millis(300);
+
+    match tokio::time::timeout(TIMEOUT, initialize_provider_source(context)).await {
+        Ok(provider_source_result) => match provider_source_result {
+            Ok(provider_source) => {
+                if let Some(total) = provider_source.total() {
+                    context.vim.set_var("g:clap.display.initial_size", total)?;
+                }
+                if let Some(lines) = provider_source.initial_lines(100) {
+                    let DisplayLines {
+                        lines,
+                        icon_added,
+                        truncated_map,
+                        ..
+                    } = printer::decorate_lines(
+                        lines,
+                        context.display_winwidth as usize,
+                        context.icon,
+                    );
+
+                    context.vim.exec(
+                        "clap#state#init_display",
+                        json!([lines, truncated_map, icon_added]),
+                    )?;
+                }
+
+                context.set_provider_source(provider_source);
+            }
+            Err(e) => tracing::error!(?e, "Error occurred on creating session"),
+        },
+        Err(_) => {
+            // The initialization was not super fast.
+            tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
+
+            let source_cmd: Vec<String> =
+                context.vim.call("provider_source_cmd", json!([])).await?;
+            let maybe_source_cmd = source_cmd.into_iter().next();
+            if let Some(source_cmd) = maybe_source_cmd {
+                context.set_provider_source(ProviderSource::Command(source_cmd));
+            }
+
+            // Try creating cache for some potential heavy providers.
+            match context.provider_id.as_str() {
+                "grep" | "grep2" => {
+                    context.set_provider_source(ProviderSource::Command(
+                        crate::command::grep::RG_EXEC_CMD.to_string(),
+                    ));
+
+                    let context = context.clone();
+                    let rg_cmd = crate::command::grep::RgTokioCommand::new(context.cwd.clone());
+                    let job_id = utility::calculate_hash(&rg_cmd);
+                    job::try_start(
+                        async move {
+                            if let Ok(digest) = rg_cmd.create_cache().await {
+                                let new = ProviderSource::CachedFile {
+                                    total: digest.total,
+                                    path: digest.cached_path,
+                                };
+                                if !context.terminated.load(Ordering::SeqCst) {
+                                    context.set_provider_source(new);
+                                }
+                            }
+                        },
+                        job_id,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
 }

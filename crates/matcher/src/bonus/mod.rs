@@ -15,7 +15,7 @@ use self::recent_files::RecentFiles;
 use crate::Score;
 
 /// Tweak the matching score calculated by the base match algorithm.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Bonus {
     /// Give a bonus if the needle matches in the basename of the haystack.
     ///
@@ -32,13 +32,8 @@ pub enum Bonus {
     Cwd(Cwd),
 
     /// No additional bonus.
+    #[default]
     None,
-}
-
-impl Default for Bonus {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl<T: AsRef<str>> From<T> for Bonus {

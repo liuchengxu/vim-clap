@@ -25,17 +25,12 @@ pub struct PreviewInfo {
     pub lines: Vec<String>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CaseMatching {
     Ignore,
     Respect,
+    #[default]
     Smart,
-}
-
-impl Default for CaseMatching {
-    fn default() -> Self {
-        Self::Smart
-    }
 }
 
 impl std::str::FromStr for CaseMatching {

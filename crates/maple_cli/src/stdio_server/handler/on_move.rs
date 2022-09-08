@@ -447,9 +447,7 @@ impl<'a> OnMoveHandler<'a> {
                             job::unreserve(job_id);
 
                             if !context.terminated.load(Ordering::SeqCst) {
-                                let _ = context
-                                    .vim
-                                    .exec("clap#helper#echo_info", json!(["Cache refreshed"]));
+                                let _ = context.vim.echo_info("Out-dated cache refreshed");
                             }
                         });
                     } else {

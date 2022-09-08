@@ -258,4 +258,8 @@ impl Vim {
     pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
         self.exec("set_var", json!([var_name, value]))
     }
+
+    pub fn echo_info(&self, msg: &str) -> Result<()> {
+        self.exec("clap#helper#echo_info", json!([msg]))
+    }
 }
