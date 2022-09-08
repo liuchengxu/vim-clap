@@ -13,12 +13,9 @@ endif
 
 function! s:grep2.on_typed()
   call clap#client#notify('on_typed')
-  " TODO: notify(on_typed)
-  " call clap#filter#async#dyn#start_grep()
 endfunction
 
 function! s:grep2.init() abort
-  call clap#rooter#try_set_cwd()
   call clap#client#notify_on_init()
 endfunction
 

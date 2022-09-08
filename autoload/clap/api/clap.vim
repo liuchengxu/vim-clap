@@ -509,10 +509,6 @@ function! s:init_provider() abort
       " Still create a new session on the Rust side for the general on_move impl.
       call clap#client#notify_on_init()
     endif
-    " Try to fill the preview window.
-    if clap#preview#is_enabled()
-      call timer_start(30, { -> clap#impl#on_move#invoke() })
-    endif
   endfunction
 
   return provider

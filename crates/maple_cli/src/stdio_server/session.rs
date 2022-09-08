@@ -113,6 +113,10 @@ impl Session {
                                                     on_typed_delay = Duration::from_millis(100);
                                                 }
                                             }
+                                            // Try to fulfill the preview window
+                                            if let Err(err) = self.provider.on_move().await {
+                                                tracing::debug!(?err, "Failed to preview after on_create completed");
+                                            }
                                         }
                                         Err(err) => {
                                             tracing::error!(?err, "Failed to process {event:?}");
@@ -171,6 +175,10 @@ impl Session {
                 ProviderEvent::Create => {
                     if let Err(err) = self.provider.on_create().await {
                         tracing::error!(?err, "Failed at process {event:?}");
+                    }
+                    // Try to fulfill the preview window
+                    if let Err(err) = self.provider.on_move().await {
+                        tracing::debug!(?err, "Failed to preview after on_create completed");
                     }
                 }
                 ProviderEvent::KeyTyped(key) => {

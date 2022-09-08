@@ -227,6 +227,7 @@ endfunction
 
 let s:grep = {}
 
+let s:grep.icon = 'Grep'
 let s:grep.syntax = 'clap_grep'
 let s:grep.enable_rooter = v:true
 let s:grep.support_open_action = v:true
@@ -315,7 +316,6 @@ else
   endif
 endif
 
-let s:grep.icon = 'Grep'
 let g:clap#provider#grep# = s:grep
 
 let &cpoptions = s:save_cpo

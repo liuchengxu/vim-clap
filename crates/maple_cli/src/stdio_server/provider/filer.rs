@@ -190,8 +190,10 @@ impl FilerProvider {
         let lines = self.on_query_change(&input)?;
         self.current_lines = lines;
 
+        let mut target_dir = self.current_dir.clone();
         let curline = self.current_line().await?;
-        self.do_preview(PreviewKind::FileOrDirectory(curline.into()))
+        target_dir.push(curline);
+        self.do_preview(PreviewKind::FileOrDirectory(target_dir))
             .await?;
 
         Ok(())
@@ -284,9 +286,34 @@ impl FilerProvider {
             preview_kind,
             cache_line: None,
         };
-        let preview = on_move_handler.get_preview().await?;
-        self.vim()
-            .exec("clap#state#process_preview_result", preview)?;
+
+        let maybe_syntax = on_move_handler.preview_kind.path().and_then(|path| {
+            if path.is_dir() {
+                Some("clap_filer")
+            } else if path.is_file() {
+                crate::stdio_server::vim::syntax_for(path)
+            } else {
+                None
+            }
+        });
+
+        match on_move_handler.get_preview().await {
+            Ok(preview) => {
+                self.vim()
+                    .exec("clap#state#process_preview_result", preview)?;
+
+                if let Some(syntax) = maybe_syntax {
+                    let s = format!("g:clap.preview.set_syntax('{syntax}')");
+                    self.vim().exec("eval", json!([s]))?;
+                }
+            }
+            Err(err) => {
+                self.vim().exec(
+                    "clap#state#process_preview_result",
+                    json!({ "lines": vec![err.to_string()] }),
+                )?;
+            }
+        }
         Ok(())
     }
 

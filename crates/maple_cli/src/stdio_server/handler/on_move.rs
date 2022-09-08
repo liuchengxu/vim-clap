@@ -32,6 +32,15 @@ pub enum PreviewKind {
     },
 }
 
+impl PreviewKind {
+    pub fn path(&self) -> Option<&Path> {
+        match self {
+            Self::File(path) | Self::FileOrDirectory(path) | Self::Line { path, .. } => Some(path),
+            _ => None,
+        }
+    }
+}
+
 fn parse_preview_kind(
     curline: String,
     context: &ProviderContext,
@@ -213,11 +222,20 @@ impl<'a> OnMoveHandler<'a> {
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let enable_icon = global().enable_icon;
         let lines = read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
-        if lines.is_empty() {
-            Ok(json!({ "lines": vec!["Directory is empty"], "is_dir": true }))
+        let mut lines = if lines.is_empty() {
+            vec!["Directory is empty".to_string()]
         } else {
-            Ok(json!({ "lines": lines, "is_dir": true }))
+            lines
+        };
+
+        let mut title = path.as_ref().display().to_string();
+        if title.ends_with(std::path::MAIN_SEPARATOR) {
+            title.pop();
         }
+        title.push(':');
+        lines.insert(0, title);
+
+        Ok(json!({ "lines": lines }))
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {

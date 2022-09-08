@@ -18,25 +18,15 @@ function! clap#provider#filer#hi_empty_dir() abort
 endfunction
 
 function! clap#provider#filer#handle_on_create(result) abort
-  call clap#provider#filer#handle_result_on_typed(a:result)
+  let result = a:result
+  call g:clap.display.set_lines(result.entries)
+  call clap#sign#reset_to_first_line()
+  call clap#state#refresh_matches_count(string(result.total))
+  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 function! clap#provider#filer#handle_error(error) abort
   call g:clap.preview.show([a:error])
-endfunction
-
-function! clap#provider#filer#handle_result_on_typed(result) abort
-  let result = a:result
-  if result.total == 0
-    let s:filer_empty_cache[result.dir] = s:DIRECTORY_IS_EMPTY
-    call g:clap.display.set_lines([s:DIRECTORY_IS_EMPTY])
-  else
-    let s:filer_cache[result.dir] = result.entries
-    call g:clap.display.set_lines(result.entries)
-  endif
-  call clap#sign#reset_to_first_line()
-  call clap#state#refresh_matches_count(string(result.total))
-  call g:clap#display_win.shrink_if_undersize()
 endfunction
 
 function! s:set_prompt(current_dir) abort
@@ -197,10 +187,6 @@ function! s:set_initial_current_dir() abort
 endfunction
 
 function! s:start_rpc_service() abort
-  let s:filer_cache = {}
-  let s:filer_error_cache = {}
-  let s:filer_empty_cache = {}
-  let s:last_input = ''
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
   call s:set_prompt(s:current_dir)
