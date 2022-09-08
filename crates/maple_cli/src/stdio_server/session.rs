@@ -119,18 +119,8 @@ impl Session {
                                         }
                                     }
                                 }
-                                ProviderEvent::Tab => {
-                                        if let Err(err) = self.provider.tab().await {
-                                            tracing::error!(?err, "Failed to process {event:?}");
-                                        }
-                                }
-                                ProviderEvent::Backspace => {
-                                        if let Err(err) = self.provider.backspace().await {
-                                            tracing::error!(?err, "Failed to process {event:?}");
-                                        }
-                                }
-                                ProviderEvent::CarriageReturn => {
-                                        if let Err(err) = self.provider.carriage_return().await {
+                                ProviderEvent::KeyTyped(key) => {
+                                        if let Err(err) = self.provider.on_key_typed(key).await {
                                             tracing::error!(?err, "Failed to process {event:?}");
                                         }
                                 }
@@ -183,19 +173,9 @@ impl Session {
                         tracing::error!(?err, "Failed at process {event:?}");
                     }
                 }
-                ProviderEvent::Tab => {
-                    if let Err(err) = self.provider.tab().await {
-                        tracing::error!(?err, "Failed to process {event:?}");
-                    }
-                }
-                ProviderEvent::Backspace => {
-                    if let Err(err) = self.provider.backspace().await {
-                        tracing::error!(?err, "Failed to process {event:?}");
-                    }
-                }
-                ProviderEvent::CarriageReturn => {
-                    if let Err(err) = self.provider.carriage_return().await {
-                        tracing::error!(?err, "Failed to process {event:?}");
+                ProviderEvent::KeyTyped(key) => {
+                    if let Err(err) = self.provider.on_key_typed(key).await {
+                        tracing::error!(?err, "Failed to process {key:?}");
                     }
                 }
                 ProviderEvent::OnMove => {

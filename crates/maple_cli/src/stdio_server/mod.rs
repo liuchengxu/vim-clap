@@ -18,8 +18,8 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use self::provider::{
-    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, ProviderContext, ProviderEvent,
-    RecentFilesProvider,
+    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, Key, ProviderContext,
+    ProviderEvent, RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
@@ -155,19 +155,19 @@ impl Client {
 
             "tab" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, Tab);
+                session_manager.send(session_id()?, KeyTyped(Key::Tab));
                 Ok(())
             }
 
             "backspace" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, Backspace);
+                session_manager.send(session_id()?, KeyTyped(Key::Backspace));
                 Ok(())
             }
 
             "cr" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, CarriageReturn);
+                session_manager.send(session_id()?, KeyTyped(Key::CarriageReturn));
                 Ok(())
             }
 

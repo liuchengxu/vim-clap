@@ -231,18 +231,21 @@ impl ProviderSource {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Key {
+    Tab,
+    Backspace,
+    // <CR>/<Enter>/<Return> was typed.
+    CarriageReturn,
+}
+
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
     Create,
     OnMove,
     OnTyped,
-    // Tab was triggered.
-    Tab,
-    // Backspace was triggered.
-    Backspace,
-    // <CR>/<Enter>/<Return> was triggered.
-    CarriageReturn,
     Terminate,
+    KeyTyped(Key),
 }
 
 /// A small wrapper of Sender<ProviderEvent> for logging on sending error.
@@ -360,18 +363,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_typed(&mut self) -> Result<()>;
 
-    async fn tab(&mut self) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
-        Ok(())
-    }
-
-    async fn backspace(&mut self) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
-        Ok(())
-    }
-
-    // Note that <CR> is same as <Return> and <Enter>, `:h <Enter>`.
-    async fn carriage_return(&mut self) -> Result<()> {
+    async fn on_key_typed(&mut self, _key: Key) -> Result<()> {
         // Most providers don't need this, hence a default impl is provided.
         Ok(())
     }

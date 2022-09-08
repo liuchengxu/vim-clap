@@ -15,6 +15,8 @@ use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
 
+use super::Key;
+
 /// Display the inner path in a nicer way.
 struct DisplayPath<P> {
     inner: P,
@@ -151,6 +153,82 @@ impl FilerProvider {
             curline
         };
         Ok(curline)
+    }
+
+    async fn on_tab(&mut self) -> Result<()> {
+        // Most providers don't need this, hence a default impl is provided.
+        let mut target_dir = self.current_dir.clone();
+        let curline = self.current_line().await?;
+        target_dir.push(curline);
+
+        if target_dir.is_dir() {
+            self.reset_to(target_dir)?;
+
+            let curline = self.current_line().await?;
+            self.do_preview(PreviewKind::FileOrDirectory(curline.into()))
+                .await?;
+        } else if target_dir.is_file() {
+            self.do_preview(PreviewKind::File(target_dir.clone()))
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn on_backspace(&mut self) -> Result<()> {
+        let mut input = self.vim().input_get().await?;
+
+        if input.is_empty() {
+            self.load_parent()?;
+            self.vim()
+                .exec("clap#provider#filer#set_prompt", json!([&self.current_dir]))?;
+        } else {
+            input.pop();
+            self.vim().exec("input_set", json!([input]))?;
+        }
+
+        let lines = self.on_query_change(&input)?;
+        self.current_lines = lines;
+
+        let curline = self.current_line().await?;
+        self.do_preview(PreviewKind::FileOrDirectory(curline.into()))
+            .await?;
+
+        Ok(())
+    }
+
+    async fn on_carriage_return(&mut self) -> Result<()> {
+        let mut target_dir = self.current_dir.clone();
+        let curline = self.current_line().await?;
+        target_dir.push(curline);
+
+        if target_dir.is_dir() {
+            self.reset_to(target_dir)?;
+            return Ok(());
+        } else if target_dir.is_file() {
+            self.vim().exec("execute", json!(["stopinsert"]))?;
+            self.vim()
+                .exec("clap#provider#filer#sink", json!([target_dir]))?;
+            return Ok(());
+        }
+
+        let mut target_file = self.current_dir.clone();
+        let input = self.vim().input_get().await?;
+        target_file.push(input);
+
+        let handle_special_entries_is_ok: bool = self
+            .vim()
+            .call(
+                "clap#provider#filer#handle_special_entries",
+                json!([target_file]),
+            )
+            .await?;
+
+        if handle_special_entries_is_ok {
+            return Ok(());
+        }
+
+        Ok(())
     }
 
     fn on_query_change(&self, query: &str) -> Result<Vec<String>> {
@@ -314,79 +392,12 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn tab(&mut self) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
-        let mut target_dir = self.current_dir.clone();
-        let curline = self.current_line().await?;
-
-        target_dir.push(curline);
-
-        if target_dir.is_dir() {
-            self.reset_to(target_dir)?;
-
-            let curline = self.current_line().await?;
-            self.do_preview(PreviewKind::FileOrDirectory(curline.into()))
-                .await?;
-        } else if target_dir.is_file() {
-            self.do_preview(PreviewKind::File(target_dir.clone()))
-                .await?;
+    async fn on_key_typed(&mut self, key: Key) -> Result<()> {
+        match key {
+            Key::Tab => self.on_tab().await,
+            Key::Backspace => self.on_backspace().await,
+            Key::CarriageReturn => self.on_carriage_return().await,
         }
-
-        Ok(())
-    }
-
-    async fn backspace(&mut self) -> Result<()> {
-        let mut input = self.vim().input_get().await?;
-
-        tracing::debug!("==================== new input: {:?}", input);
-        if input.is_empty() {
-            self.load_parent()?;
-            self.vim()
-                .exec("clap#provider#filer#set_prompt", json!([&self.current_dir]))?;
-        } else {
-            input.pop();
-            self.vim().exec("input_set", json!([input]))?;
-        }
-
-        let lines = self.on_query_change(&input)?;
-        self.current_lines = lines;
-
-        Ok(())
-    }
-
-    async fn carriage_return(&mut self) -> Result<()> {
-        let mut target_dir = self.current_dir.clone();
-        let curline = self.current_line().await?;
-
-        target_dir.push(curline);
-
-        if target_dir.is_dir() {
-            self.reset_to(target_dir)?;
-            return Ok(());
-        } else if target_dir.is_file() {
-            self.vim().exec("execute", json!(["stopinsert"]))?;
-            self.vim()
-                .exec("clap#provider#filer#sink", json!([target_dir]))?;
-            return Ok(());
-        }
-
-        let mut target_file = self.current_dir.clone();
-        let input = self.vim().input_get().await?;
-        target_file.push(input);
-
-        let handle_special_entries_is_ok: bool = self
-            .vim()
-            .call(
-                "clap#provider#filer#handle_special_entries",
-                json!([target_file]),
-            )
-            .await?;
-
-        if handle_special_entries_is_ok {
-            return Ok(());
-        }
-
-        Ok(())
     }
 }
 
