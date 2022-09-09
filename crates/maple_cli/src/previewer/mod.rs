@@ -80,7 +80,7 @@ pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
 
 pub fn preview_file_at<P: AsRef<Path>>(
     path: P,
-    half_size: usize,
+    winheight: usize,
     max_width: usize,
     lnum: usize,
 ) -> Result<(Vec<String>, usize)> {
@@ -90,7 +90,7 @@ pub fn preview_file_at<P: AsRef<Path>>(
         lines,
         highlight_lnum,
         ..
-    } = read_preview_lines(path.as_ref(), lnum, half_size)?;
+    } = read_preview_lines(path.as_ref(), lnum, winheight)?;
 
     let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))
         .chain(truncate_preview_lines(max_width, lines.into_iter()))

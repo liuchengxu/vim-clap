@@ -278,10 +278,7 @@ impl FilerProvider {
 
     async fn do_preview(&self, preview_kind: PreviewKind) -> Result<()> {
         let on_move_handler = OnMoveHandler {
-            size: self
-                .vim()
-                .preview_size(&self.context.provider_id, self.context.preview.winid)
-                .await?,
+            preview_height: self.context.preview_height().await?,
             context: &self.context,
             preview_kind,
             cache_line: None,

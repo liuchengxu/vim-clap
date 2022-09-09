@@ -82,13 +82,23 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
     ))
 }
 
-/// Returns the lines of (`target_line` - `size`, `target_line` - `size`) given the path.
+/// Returns the lines that can fit into the preview window given its window height.
+///
+/// Center the line at `target_line_number` in the preview window if possible.
+/// (`target_line` - `size`, `target_line` - `size`).
 pub fn read_preview_lines<P: AsRef<Path>>(
     path: P,
-    target_line: usize,
-    size: usize,
+    target_line_number: usize,
+    winheight: usize,
 ) -> Result<PreviewInfo> {
-    read_preview_lines_impl(path, target_line, size)
+    let mid = winheight / 2;
+    let (start, end, highlight_lnum) = if target_line_number > mid {
+        (target_line_number - mid, target_line_number + mid, mid)
+    } else {
+        (0, winheight, target_line_number)
+    };
+
+    read_preview_lines_impl(path, start, end, highlight_lnum)
 }
 
 // Copypasted from stdlib.
@@ -102,15 +112,10 @@ fn initial_buffer_size(file: &File) -> usize {
 
 fn read_preview_lines_impl<P: AsRef<Path>>(
     path: P,
-    target_line: usize,
-    size: usize,
+    start: usize,
+    end: usize,
+    highlight_lnum: usize,
 ) -> Result<PreviewInfo> {
-    let (start, end, highlight_lnum) = if target_line > size {
-        (target_line - size, target_line + size, size)
-    } else {
-        (0, 2 * size, target_line)
-    };
-
     let mut filebuf: Vec<u8> = Vec::new();
 
     File::open(path)
@@ -188,7 +193,7 @@ mod tests {
     fn test_multi_byte_reading() {
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.push("test_673.txt");
-        let PreviewInfo { lines, .. } = read_preview_lines_impl(current_dir, 2, 5).unwrap();
+        let PreviewInfo { lines, .. } = read_preview_lines(current_dir, 2, 10).unwrap();
         assert_eq!(
             lines,
             [

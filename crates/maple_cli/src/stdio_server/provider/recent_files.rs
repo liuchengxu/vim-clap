@@ -167,12 +167,8 @@ impl ClapProvider for RecentFilesProvider {
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
-            let preview_size = self
-                .vim()
-                .preview_size(&self.context.provider_id, self.context.preview.winid)
-                .await?;
-
-            let on_move_handler = OnMoveHandler::create(curline, preview_size, &self.context)?;
+            let preview_height = self.context.preview_height().await?;
+            let on_move_handler = OnMoveHandler::create(curline, preview_height, &self.context)?;
             let preview = on_move_handler.get_preview().await?;
             self.vim()
                 .exec("clap#state#process_preview_result", preview)?;

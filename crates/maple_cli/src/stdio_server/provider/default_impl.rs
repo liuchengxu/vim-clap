@@ -128,11 +128,7 @@ impl ClapProvider for DefaultProvider {
             return Ok(());
         }
 
-        let preview_size = self
-            .vim()
-            .preview_size(&self.context.provider_id, self.context.preview.winid)
-            .await?;
-
+        let preview_height = self.context.preview_height().await?;
         let on_move_handler = if self.context.provider_id.as_str() == "help_tags" {
             let runtimepath = match &self.runtimepath {
                 Some(rtp) => rtp.clone(),
@@ -154,13 +150,13 @@ impl ClapProvider for DefaultProvider {
                 runtimepath,
             };
             OnMoveHandler {
-                size: preview_size,
+                preview_height,
                 context: &self.context,
                 preview_kind,
                 cache_line: None,
             }
         } else {
-            OnMoveHandler::create(curline, preview_size, &self.context)?
+            OnMoveHandler::create(curline, preview_height, &self.context)?
         };
 
         // TODO: Cache the preview.

@@ -361,13 +361,9 @@ impl ClapProvider for DumbJumpProvider {
             .get_line((lnum - 1) as usize)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
-        let preview_size = self
-            .vim()
-            .preview_size(&self.context.provider_id, self.context.preview.winid)
-            .await?;
-
+        let preview_height = self.context.preview_height().await?;
         let on_move_handler =
-            OnMoveHandler::create(curline.to_string(), preview_size, &self.context)?;
+            OnMoveHandler::create(curline.to_string(), preview_height, &self.context)?;
         let preview = on_move_handler.get_preview().await?;
 
         let current_input = self.vim().input_get().await?;

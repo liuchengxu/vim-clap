@@ -61,8 +61,8 @@ impl MethodCall {
         struct InnerParams {
             cwd: String,
             curline: String,
-            winwidth: u64,
-            winheight: u64,
+            winwidth: usize,
+            winheight: usize,
         }
 
         let InnerParams {
@@ -78,12 +78,11 @@ impl MethodCall {
         fpath.push(p);
 
         let result = if lnum == 0 {
-            let size = (winheight + 5) as usize;
-            let (lines, _) = preview_file(fpath.as_path(), size, winwidth as usize)?;
+            let size = winheight + 5;
+            let (lines, _) = preview_file(fpath.as_path(), size, winwidth)?;
             json!({ "event": "on_move", "lines": lines, "fname": fpath })
         } else {
-            let size = (winheight / 2) as usize;
-            let (lines, hi_lnum) = preview_file_at(fpath.as_path(), size, winwidth as usize, lnum)?;
+            let (lines, hi_lnum) = preview_file_at(fpath.as_path(), winheight, winwidth, lnum)?;
             json!({ "event": "on_move", "lines": lines, "fname": fpath, "hi_lnum": hi_lnum })
         };
 

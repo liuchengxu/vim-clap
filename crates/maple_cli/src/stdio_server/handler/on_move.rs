@@ -145,7 +145,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 
 #[derive(Debug)]
 pub struct OnMoveHandler<'a> {
-    pub size: usize,
+    pub preview_height: usize,
     pub context: &'a ProviderContext,
     pub preview_kind: PreviewKind,
     /// When the line extracted from the cache mismatches the latest
@@ -159,13 +159,13 @@ pub struct OnMoveHandler<'a> {
 impl<'a> OnMoveHandler<'a> {
     pub fn create(
         curline: String,
-        preview_size: usize,
+        preview_height: usize,
         context: &'a ProviderContext,
     ) -> Result<Self> {
         let (preview_kind, cache_line) = parse_preview_kind(curline, context)?;
 
         Ok(Self {
-            size: preview_size,
+            preview_height,
             context,
             preview_kind,
             cache_line,
@@ -201,14 +201,14 @@ impl<'a> OnMoveHandler<'a> {
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
-            .take(self.size * 2)
+            .take(self.preview_height)
             .collect::<Vec<_>>();
         Ok(json!({ "lines": lines }))
     }
 
     fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) -> Value {
         let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
-        if let Some((fname, lines)) = preview_tag.get_help_lines(self.size * 2) {
+        if let Some((fname, lines)) = preview_tag.get_help_lines(self.preview_height) {
             let lines = std::iter::once(fname.clone())
                 .chain(lines.into_iter())
                 .collect::<Vec<_>>();
@@ -221,7 +221,7 @@ impl<'a> OnMoveHandler<'a> {
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
         let enable_icon = global().enable_icon;
-        let lines = read_dir_entries(&path, enable_icon, Some(2 * self.size))?;
+        let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
             vec!["Directory is empty".to_string()]
         } else {
@@ -260,7 +260,7 @@ impl<'a> OnMoveHandler<'a> {
 
         let (lines, fname) = if !global().is_nvim {
             let (lines, abs_path) =
-                previewer::preview_file(path.as_ref(), 2 * self.size, self.max_line_width())
+                previewer::preview_file(path.as_ref(), self.preview_height, self.max_line_width())
                     .map_err(|e| {
                         handle_io_error(&e);
                         e
@@ -275,7 +275,7 @@ impl<'a> OnMoveHandler<'a> {
             let max_fname_len = self.context.display_winwidth as usize - 1;
             previewer::preview_file_with_truncated_title(
                 path.as_ref(),
-                2 * self.size,
+                self.preview_height,
                 self.max_line_width(),
                 max_fname_len,
             )
@@ -316,7 +316,7 @@ impl<'a> OnMoveHandler<'a> {
             }
         };
 
-        match utility::read_preview_lines(path, lnum, self.size) {
+        match utility::read_preview_lines(path, lnum, self.preview_height) {
             Ok(PreviewInfo {
                 lines,
                 highlight_lnum,

@@ -123,6 +123,13 @@ impl ProviderContext {
         let mut provider_source = self.provider_source.write();
         *provider_source = new;
     }
+
+    pub async fn preview_height(&self) -> Result<usize> {
+        self.vim
+            .preview_size(&self.provider_id, self.preview.winid)
+            .await
+            .map(|x| 2 * x)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
