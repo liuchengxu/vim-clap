@@ -30,9 +30,11 @@ struct FilterControl {
 }
 
 impl FilterControl {
-    fn kill(self) {
-        self.stop_signal.store(true, Ordering::Relaxed);
+    async fn kill(self) {
+        self.stop_signal.store(true, Ordering::SeqCst);
         self.join_handle.abort();
+        // Wait until it's actually cancelled.
+        let _ = self.join_handle.await;
     }
 }
 
@@ -84,6 +86,7 @@ pub struct DefaultProvider {
     runtimepath: Option<String>,
     display_winheight: Option<usize>,
     maybe_filter_control: Option<FilterControl>,
+    last_filter_control_killed: Arc<AtomicBool>,
 }
 
 impl DefaultProvider {
@@ -94,6 +97,7 @@ impl DefaultProvider {
             runtimepath: None,
             display_winheight: None,
             maybe_filter_control: None,
+            last_filter_control_killed: Arc::new(AtomicBool::new(true)),
         }
     }
 
@@ -262,10 +266,24 @@ impl ClapProvider for DefaultProvider {
             }
         };
 
+        if !self.last_filter_control_killed.load(Ordering::SeqCst) {
+            tracing::debug!(
+                ?query,
+                "============================== Still busy with killing the last filter control, return..."
+            );
+            return Ok(());
+        }
+
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
-            // NOTE: The kill operation can not block current task.
-            tokio::task::spawn_blocking(move || control.kill());
+            self.last_filter_control_killed
+                .store(false, Ordering::SeqCst);
+
+            let last_filter_control_killed = self.last_filter_control_killed.clone();
+            tokio::task::spawn(async move {
+                control.kill().await;
+                last_filter_control_killed.store(true, Ordering::SeqCst);
+            });
         }
 
         let new_control = run(

@@ -353,7 +353,7 @@ where
 
     let read: Box<dyn std::io::Read + Send> = match par_source {
         ParSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?),
+        ParSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
     };
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
@@ -363,7 +363,8 @@ where
         .filter_map(Result::ok)
         .par_bridge()
         .try_for_each(|line: String| {
-            if stop_signal.load(Ordering::Relaxed) {
+            if stop_signal.load(Ordering::SeqCst) {
+                tracing::debug!(?query, "[par_dyn_run_inprocess] stop signal received");
                 // Note that even the stop signal has been received, the thread created by
                 // rayon does not exit actually, it just tries to stop the work ASAP.
                 Err(())
@@ -401,7 +402,7 @@ where
             ?query,
             ?total_matched,
             ?total_processed,
-            "`par_dyn_run_inprocess` return early due to the stop signal arrived."
+            "[par_dyn_run_inprocess] return early due to the stop signal arrived."
         );
         return Ok(());
     }
