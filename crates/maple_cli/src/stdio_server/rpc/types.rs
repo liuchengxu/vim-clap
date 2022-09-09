@@ -27,6 +27,24 @@ pub enum RawMessage {
     Output(Output),
 }
 
+impl RawMessage {
+    pub fn kind(&self) -> &str {
+        match self {
+            Self::MethodCall(_) => "MethodCall",
+            Self::Notification(_) => "Notification",
+            Self::Output(_) => "Output",
+        }
+    }
+
+    pub fn method(&self) -> Option<&str> {
+        match self {
+            Self::MethodCall(method_call) => Some(&method_call.method),
+            Self::Notification(notification) => Some(&notification.method),
+            Self::Output(_) => None,
+        }
+    }
+}
+
 type Id = u64;
 
 /// Successful response
