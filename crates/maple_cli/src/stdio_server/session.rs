@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Duration;
 
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
 use crate::stdio_server::provider::{
@@ -19,7 +19,7 @@ pub struct Session {
     session_id: u64,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
-    event_recv: tokio::sync::mpsc::UnboundedReceiver<ProviderEvent>,
+    event_recv: UnboundedReceiver<ProviderEvent>,
 }
 
 impl Session {
@@ -27,7 +27,7 @@ impl Session {
         session_id: u64,
         provider: Box<dyn ClapProvider>,
     ) -> (Self, UnboundedSender<ProviderEvent>) {
-        let (session_sender, session_receiver) = tokio::sync::mpsc::unbounded_channel();
+        let (session_sender, session_receiver) = unbounded_channel();
 
         let session = Session {
             session_id,
@@ -175,6 +175,7 @@ impl Session {
                 ProviderEvent::Create => {
                     if let Err(err) = self.provider.on_create().await {
                         tracing::error!(?err, "Failed at process {event:?}");
+                        continue;
                     }
                     // Try to fulfill the preview window
                     if let Err(err) = self.provider.on_move().await {

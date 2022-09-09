@@ -36,7 +36,7 @@ impl RecentFilesProvider {
         cwd: String,
         query: String,
         preview_size: usize,
-        lnum: u64,
+        lnum: usize,
     ) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
 
@@ -68,7 +68,7 @@ impl RecentFilesProvider {
         let winwidth = self.context.display_winwidth as usize;
 
         // process the new preview
-        let preview = if let Some(new_entry) = ranked.get(lnum as usize - 1) {
+        let preview = if let Some(new_entry) = ranked.get(lnum - 1) {
             let new_curline = new_entry.display_text().to_string();
             if let Ok((lines, fname)) =
                 crate::previewer::preview_file(new_curline, preview_size, winwidth)
@@ -163,7 +163,7 @@ impl ClapProvider for RecentFilesProvider {
         let maybe_curline = self
             .lines
             .lock()
-            .get((lnum - 1) as usize)
+            .get(lnum - 1)
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {

@@ -110,6 +110,53 @@ impl DefaultProvider {
             .get((lnum - 1) as usize)
             .map(|r| r.item.output_text().to_string())
     }
+
+    async fn nontypical_preview_kind(&mut self, curline: &str) -> Result<Option<PreviewKind>> {
+        let maybe_preview_kind = match self.context.provider_id.as_str() {
+            "help_tags" => {
+                let runtimepath = match &self.runtimepath {
+                    Some(rtp) => rtp.clone(),
+                    None => {
+                        let rtp: String = self.vim().eval("&runtimepath").await?;
+                        self.runtimepath.replace(rtp.clone());
+                        rtp
+                    }
+                };
+                let items = curline.split('\t').collect::<Vec<_>>();
+                if items.len() < 2 {
+                    return Err(anyhow::anyhow!(
+                        "Couldn't extract subject and doc_filename from the line"
+                    ));
+                }
+                Some(PreviewKind::HelpTags {
+                    subject: items[0].trim().to_string(),
+                    doc_filename: items[1].trim().to_string(),
+                    runtimepath,
+                })
+            }
+            "buffers" => {
+                let res: Vec<String> = self
+                    .vim()
+                    .call("clap#provider#buffers#preview_target", json!([]))
+                    .await?;
+                if res.len() != 2 {
+                    return Err(anyhow::anyhow!(
+                        "Can not retrieve the buffers preview target"
+                    ));
+                }
+                let line_number = res[1].parse::<usize>()?;
+                let path = res
+                    .into_iter()
+                    .next()
+                    .expect("Not empty as just checked; qed")
+                    .into();
+                Some(PreviewKind::LineInFile { path, line_number })
+            }
+            _ => None,
+        };
+
+        Ok(maybe_preview_kind)
+    }
 }
 
 #[async_trait::async_trait]
@@ -129,35 +176,17 @@ impl ClapProvider for DefaultProvider {
         }
 
         let preview_height = self.context.preview_height().await?;
-        let on_move_handler = if self.context.provider_id.as_str() == "help_tags" {
-            let runtimepath = match &self.runtimepath {
-                Some(rtp) => rtp.clone(),
-                None => {
-                    let rtp: String = self.vim().eval("&runtimepath").await?;
-                    self.runtimepath.replace(rtp.clone());
-                    rtp
+        let on_move_handler =
+            if let Some(preview_kind) = self.nontypical_preview_kind(&curline).await? {
+                OnMoveHandler {
+                    preview_height,
+                    context: &self.context,
+                    preview_kind,
+                    cache_line: None,
                 }
+            } else {
+                OnMoveHandler::create(curline, preview_height, &self.context)?
             };
-            let items = curline.split('\t').collect::<Vec<_>>();
-            if items.len() < 2 {
-                return Err(anyhow::anyhow!(
-                    "Couldn't extract subject and doc_filename from the line"
-                ));
-            }
-            let preview_kind = PreviewKind::HelpTags {
-                subject: items[0].trim().to_string(),
-                doc_filename: items[1].trim().to_string(),
-                runtimepath,
-            };
-            OnMoveHandler {
-                preview_height,
-                context: &self.context,
-                preview_kind,
-                cache_line: None,
-            }
-        } else {
-            OnMoveHandler::create(curline, preview_height, &self.context)?
-        };
 
         // TODO: Cache the preview.
         let preview = on_move_handler.get_preview().await?;

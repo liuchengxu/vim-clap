@@ -222,7 +222,7 @@ impl Vim {
         }
     }
 
-    pub async fn display_getcurlnum(&self) -> Result<u64> {
+    pub async fn display_getcurlnum(&self) -> Result<usize> {
         self.eval("g:clap.display.getcurlnum()").await
     }
 

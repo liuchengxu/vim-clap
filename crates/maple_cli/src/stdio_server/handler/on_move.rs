@@ -22,7 +22,7 @@ pub enum PreviewKind {
     /// Maybe a file or a directory.
     FileOrDirectory(PathBuf),
     /// A specific location in a file.
-    Line { path: PathBuf, line_number: usize },
+    LineInFile { path: PathBuf, line_number: usize },
     /// Commit revision.
     Commit(String),
     HelpTags {
@@ -35,7 +35,9 @@ pub enum PreviewKind {
 impl PreviewKind {
     pub fn path(&self) -> Option<&Path> {
         match self {
-            Self::File(path) | Self::FileOrDirectory(path) | Self::Line { path, .. } => Some(path),
+            Self::File(path) | Self::FileOrDirectory(path) | Self::LineInFile { path, .. } => {
+                Some(path)
+            }
             _ => None,
         }
     }
@@ -91,29 +93,29 @@ fn parse_preview_kind(
 
                 let (path, line_number) = try_extract_file_path(&curline)?;
 
-                PreviewKind::Line { path, line_number }
+                PreviewKind::LineInFile { path, line_number }
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                PreviewKind::Line { path, line_number }
+                PreviewKind::LineInFile { path, line_number }
             }
             "blines" => {
                 let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
-                PreviewKind::Line { path, line_number }
+                PreviewKind::LineInFile { path, line_number }
             }
             "tags" => {
                 let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
                 let path = context.start_buffer_path.clone();
-                PreviewKind::Line { path, line_number }
+                PreviewKind::LineInFile { path, line_number }
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                PreviewKind::Line { path, line_number }
+                PreviewKind::LineInFile { path, line_number }
             }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).ok_or_else(err)?;
@@ -182,7 +184,7 @@ impl<'a> OnMoveHandler<'a> {
                 }
             }
             PreviewKind::File(path) => self.preview_file(&path)?,
-            PreviewKind::Line { path, line_number } => {
+            PreviewKind::LineInFile { path, line_number } => {
                 self.preview_file_at(path, *line_number).await
             }
             PreviewKind::Commit(rev) => self.preview_commits(rev)?,
