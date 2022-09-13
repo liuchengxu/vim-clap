@@ -143,7 +143,7 @@ function! clap#state#process_preview_result(result) abort
       call g:clap.preview.show(a:result.lines)
     catch
       " Neovim somehow has a bug decoding the lines
-      call g:clap.preview.show(["Error occurred while showing the preview:", v:exception, '', string(a:result.lines)])
+      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:result.lines)])
       return
     endtry
     if has_key(a:result, 'syntax')

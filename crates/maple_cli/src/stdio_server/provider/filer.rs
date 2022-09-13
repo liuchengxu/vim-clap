@@ -10,7 +10,7 @@ use serde_json::json;
 use icon::prepend_filer_icon;
 use types::{ClapItem, MatchResult};
 
-use crate::stdio_server::handler::{OnMoveHandler, PreviewKind};
+use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
@@ -165,10 +165,10 @@ impl FilerProvider {
             self.reset_to(target_dir)?;
 
             let curline = self.current_line().await?;
-            self.do_preview(PreviewKind::FileOrDirectory(curline.into()))
+            self.do_preview(PreviewTarget::FileOrDirectory(curline.into()))
                 .await?;
         } else if target_dir.is_file() {
-            self.do_preview(PreviewKind::File(target_dir.clone()))
+            self.do_preview(PreviewTarget::File(target_dir.clone()))
                 .await?;
         }
 
@@ -193,7 +193,7 @@ impl FilerProvider {
         let mut target_dir = self.current_dir.clone();
         let curline = self.current_line().await?;
         target_dir.push(curline);
-        self.do_preview(PreviewKind::FileOrDirectory(target_dir))
+        self.do_preview(PreviewTarget::FileOrDirectory(target_dir))
             .await?;
 
         Ok(())
@@ -239,7 +239,8 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let matched_items = filter::par_filter_items(query, current_items, &self.context.matcher);
+        let matched_items =
+            filter::par_filter_items(query, current_items, &self.context.env.matcher);
         let total = matched_items.len();
 
         let printer::DisplayLines {
@@ -249,7 +250,7 @@ impl FilerProvider {
             icon_added,
         } = printer::decorate_lines(
             matched_items.iter().take(200).cloned().collect(),
-            self.context.display_winwidth,
+            self.context.env.display_winwidth,
             icon::Icon::Null, // icon is handled inside the provider impl.
         );
 
@@ -276,15 +277,15 @@ impl FilerProvider {
         Ok(())
     }
 
-    async fn do_preview(&self, preview_kind: PreviewKind) -> Result<()> {
+    async fn do_preview(&self, preview_target: PreviewTarget) -> Result<()> {
         let on_move_handler = OnMoveHandler {
             preview_height: self.context.preview_height().await?,
             context: &self.context,
-            preview_kind,
+            preview_target,
             cache_line: None,
         };
 
-        let maybe_syntax = on_move_handler.preview_kind.path().and_then(|path| {
+        let maybe_syntax = on_move_handler.preview_target.path().and_then(|path| {
             if path.is_dir() {
                 Some("clap_filer")
             } else if path.is_file() {
@@ -326,7 +327,7 @@ impl FilerProvider {
     fn load_dir(&mut self, target_dir: PathBuf) -> Result<()> {
         if let Entry::Vacant(v) = self.dir_entries.entry(target_dir) {
             let entries =
-                match read_dir_entries(&self.current_dir, self.context.icon.enabled(), None) {
+                match read_dir_entries(&self.current_dir, self.context.env.icon.enabled(), None) {
                     Ok(entries) => entries,
                     Err(err) => {
                         self.vim()
@@ -359,7 +360,7 @@ impl ClapProvider for FilerProvider {
     async fn on_create(&mut self) -> Result<()> {
         let cwd = &self.context.cwd;
 
-        let entries = match read_dir_entries(cwd, self.context.icon.enabled(), None) {
+        let entries = match read_dir_entries(cwd, self.context.env.icon.enabled(), None) {
             Ok(entries) => entries,
             Err(err) => {
                 tracing::error!(?cwd, "Failed to read directory entries");
@@ -392,7 +393,7 @@ impl ClapProvider for FilerProvider {
     async fn on_move(&mut self) -> Result<()> {
         let curline = self.current_line().await?;
         let path = build_abs_path(&self.current_dir, curline);
-        self.do_preview(PreviewKind::FileOrDirectory(path.clone()))
+        self.do_preview(PreviewTarget::FileOrDirectory(path.clone()))
             .await?;
         Ok(())
     }

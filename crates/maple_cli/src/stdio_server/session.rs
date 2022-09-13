@@ -41,12 +41,12 @@ impl Session {
     pub fn start_event_loop(self) {
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = %self.provider.context().provider_id,
+            provider_id = %self.provider.context().provider_id(),
             "Spawning a new session event loop task",
         );
 
         tokio::spawn(async move {
-            if self.provider.context().debounce {
+            if self.provider.context().env.debounce {
                 self.run_event_loop_with_debounce().await;
             } else {
                 self.run_event_loop_without_debounce().await;

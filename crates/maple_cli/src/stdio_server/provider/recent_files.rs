@@ -65,7 +65,7 @@ impl RecentFilesProvider {
 
         let total = ranked.len();
 
-        let winwidth = self.context.display_winwidth as usize;
+        let winwidth = self.context.env.display_winwidth;
 
         // process the new preview
         let preview = if let Some(new_entry) = ranked.get(lnum - 1) {
@@ -90,7 +90,7 @@ impl RecentFilesProvider {
         } = printer::decorate_lines(
             ranked.iter().take(200).cloned().collect(),
             winwidth,
-            if self.context.icon.enabled() {
+            if self.context.env.icon.enabled() {
                 icon::Icon::Enabled(icon::IconKind::File)
             } else {
                 icon::Icon::Null
@@ -145,7 +145,10 @@ impl ClapProvider for RecentFilesProvider {
 
         let preview_size = self
             .vim()
-            .preview_size(&self.context.provider_id, self.context.preview.winid)
+            .preview_size(
+                &self.context.env.provider_id,
+                self.context.env.preview.winid,
+            )
             .await?;
 
         let response = self.clone().process_query(cwd, query, preview_size, 1)?;
@@ -183,7 +186,10 @@ impl ClapProvider for RecentFilesProvider {
         let lnum = self.vim().display_getcurlnum().await?;
         let preview_size = self
             .vim()
-            .preview_size(&self.context.provider_id, self.context.preview.winid)
+            .preview_size(
+                &self.context.env.provider_id,
+                self.context.env.preview.winid,
+            )
             .await?;
 
         let recent_files = self.clone();

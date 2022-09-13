@@ -16,15 +16,16 @@ use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
 #[derive(Debug)]
-pub enum PreviewKind {
-    /// Should be a file.
-    File(PathBuf),
+pub enum PreviewTarget {
     /// Maybe a file or a directory.
     FileOrDirectory(PathBuf),
+    /// Start from the beginning of a file.
+    File(PathBuf),
     /// A specific location in a file.
     LineInFile { path: PathBuf, line_number: usize },
     /// Commit revision.
     Commit(String),
+    /// For the provider `help_tags`.
     HelpTags {
         subject: String,
         doc_filename: String,
@@ -32,7 +33,7 @@ pub enum PreviewKind {
     },
 }
 
-impl PreviewKind {
+impl PreviewTarget {
     pub fn path(&self) -> Option<&Path> {
         match self {
             Self::File(path) | Self::FileOrDirectory(path) | Self::LineInFile { path, .. } => {
@@ -43,14 +44,14 @@ impl PreviewKind {
     }
 }
 
-fn parse_preview_kind(
+fn parse_preview_target(
     curline: String,
     context: &ProviderContext,
-) -> Result<(PreviewKind, Option<String>)> {
+) -> Result<(PreviewTarget, Option<String>)> {
     let err = || {
         anyhow!(
-            "Failed to parse PreviewKind for provider_id: {} from `{curline}`",
-            context.provider_id.as_str()
+            "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
+            context.provider_id()
         )
     };
 
@@ -62,16 +63,16 @@ fn parse_preview_kind(
     // is always accurate, try to refresh the cache and reload.
     let mut line_content = None;
 
-    let preview_kind = match context.provider_id.as_str() {
-            "files" | "git_files" => PreviewKind::File(build_abs_path(&context.cwd, &curline)),
-            "recent_files" => PreviewKind::File(PathBuf::from(&curline)),
+    let preview_target = match context.provider_id() {
+            "files" | "git_files" => PreviewTarget::File(build_abs_path(&context.cwd, &curline)),
+            "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
             "history" => {
                 let path = if curline.starts_with('~') {
                     crate::utils::expand_tilde(curline)
                 } else {
                     build_abs_path(&context.cwd, &curline)
                 };
-                PreviewKind::File(path)
+                PreviewTarget::File(path)
             }
             "coc_location" | "grep" | "grep2" => {
                 let mut try_extract_file_path = |line: &str| {
@@ -93,43 +94,43 @@ fn parse_preview_kind(
 
                 let (path, line_number) = try_extract_file_path(&curline)?;
 
-                PreviewKind::LineInFile { path, line_number }
+                PreviewTarget::LineInFile { path, line_number }
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&fpath);
-                PreviewKind::LineInFile { path, line_number }
+                PreviewTarget::LineInFile { path, line_number }
             }
             "blines" => {
                 let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
-                let path = context.start_buffer_path.clone();
-                PreviewKind::LineInFile { path, line_number }
+                let path = context.env.start_buffer_path.clone();
+                PreviewTarget::LineInFile { path, line_number }
             }
             "tags" => {
                 let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
-                let path = context.start_buffer_path.clone();
-                PreviewKind::LineInFile { path, line_number }
+                let path = context.env.start_buffer_path.clone();
+                PreviewTarget::LineInFile { path, line_number }
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.clone();
                 path.push(&p);
-                PreviewKind::LineInFile { path, line_number }
+                PreviewTarget::LineInFile { path, line_number }
             }
             "commits" | "bcommits" => {
                 let rev = parse_rev(&curline).ok_or_else(err)?;
-                PreviewKind::Commit(rev.into())
+                PreviewTarget::Commit(rev.into())
             }
             _ => {
                 return Err(anyhow!(
-                    "Failed to parse PreviewKind, you probably forget to add an implementation for this provider: {:?}",
-                    context.provider_id
+                    "Failed to parse PreviewTarget, you probably forget to add an implementation for this provider: {:?}",
+                    context.provider_id()
                 ))
             }
         };
 
-    Ok((preview_kind, line_content))
+    Ok((preview_target, line_content))
 }
 
 /// Returns `true` if the file path of preview file should be truncateted relative to cwd.
@@ -149,7 +150,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 pub struct OnMoveHandler<'a> {
     pub preview_height: usize,
     pub context: &'a ProviderContext,
-    pub preview_kind: PreviewKind,
+    pub preview_target: PreviewTarget,
     /// When the line extracted from the cache mismatches the latest
     /// preview line content, which means the cache is outdated, we
     /// should refresh the cache.
@@ -164,31 +165,31 @@ impl<'a> OnMoveHandler<'a> {
         preview_height: usize,
         context: &'a ProviderContext,
     ) -> Result<Self> {
-        let (preview_kind, cache_line) = parse_preview_kind(curline, context)?;
+        let (preview_target, cache_line) = parse_preview_target(curline, context)?;
 
         Ok(Self {
             preview_height,
             context,
-            preview_kind,
+            preview_target,
             cache_line,
         })
     }
 
     pub async fn get_preview(&self) -> Result<Value> {
-        let value = match &self.preview_kind {
-            PreviewKind::FileOrDirectory(path) => {
+        let value = match &self.preview_target {
+            PreviewTarget::FileOrDirectory(path) => {
                 if path.is_dir() {
                     self.preview_directory(&path)?
                 } else {
                     self.preview_file(&path)?
                 }
             }
-            PreviewKind::File(path) => self.preview_file(&path)?,
-            PreviewKind::LineInFile { path, line_number } => {
+            PreviewTarget::File(path) => self.preview_file(&path)?,
+            PreviewTarget::LineInFile { path, line_number } => {
                 self.preview_file_at(path, *line_number).await
             }
-            PreviewKind::Commit(rev) => self.preview_commits(rev)?,
-            PreviewKind::HelpTags {
+            PreviewTarget::Commit(rev) => self.preview_commits(rev)?,
+            PreviewTarget::HelpTags {
                 subject,
                 doc_filename,
                 runtimepath,
@@ -274,7 +275,7 @@ impl<'a> OnMoveHandler<'a> {
             lines[0] = cwd_relative;
             (lines, abs_path)
         } else {
-            let max_fname_len = self.context.display_winwidth as usize - 1;
+            let max_fname_len = self.context.env.display_winwidth - 1;
             previewer::preview_file_with_truncated_title(
                 path.as_ref(),
                 self.preview_height,
@@ -301,12 +302,11 @@ impl<'a> OnMoveHandler<'a> {
     async fn preview_file_at(&self, path: &Path, lnum: usize) -> Value {
         tracing::debug!(path=?path.display(), lnum, "Previewing file");
 
-        let container_width = self.context.display_winwidth as usize;
+        let container_width = self.context.env.display_winwidth as usize;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !global().is_nvim && should_truncate_cwd_relative(self.context.provider_id.as_str())
-            {
+            if !global().is_nvim && should_truncate_cwd_relative(self.context.provider_id()) {
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative =
                     fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
@@ -384,12 +384,6 @@ impl<'a> OnMoveHandler<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                tracing::debug!(
-                    provider_id = %self.context.provider_id,
-                    lines_len = lines.len(),
-                    "<== message(out) preview file content",
-                );
-
                 if let Some(syntax) = crate::stdio_server::vim::syntax_for(path) {
                     json!({ "lines": lines, "syntax": syntax, "hi_lnum": highlight_lnum })
                 } else {
@@ -399,7 +393,7 @@ impl<'a> OnMoveHandler<'a> {
             Err(err) => {
                 tracing::error!(
                     ?path,
-                    provider_id = %self.context.provider_id,
+                    provider_id = %self.context.provider_id(),
                     ?err,
                     "Couldn't read first lines",
                 );
@@ -414,7 +408,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn try_refresh_cache(&self, latest_line: &str) {
-        if self.context.provider_id.as_str() == "grep2" {
+        if self.context.provider_id() == "grep2" {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
@@ -477,7 +471,7 @@ impl<'a> OnMoveHandler<'a> {
     /// Returns the maximum line width.
     #[inline]
     fn max_line_width(&self) -> usize {
-        2 * self.context.display_winwidth as usize
+        2 * self.context.env.display_winwidth
     }
 }
 

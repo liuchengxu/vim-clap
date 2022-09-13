@@ -10,7 +10,7 @@ use matcher::ClapItem;
 use printer::DisplayLines;
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand};
+use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC_CMD};
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ProviderContext, ProviderSource};
@@ -44,21 +44,22 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
     };
 
     // Known providers.
-    match context.provider_id.as_str() {
+    match context.provider_id() {
         "blines" => {
             let total =
-                crate::utils::count_lines(std::fs::File::open(&context.start_buffer_path)?)?;
-            let path = context.start_buffer_path.to_path_buf();
+                crate::utils::count_lines(std::fs::File::open(&context.env.start_buffer_path)?)?;
+            let path = context.env.start_buffer_path.to_path_buf();
             return Ok(ProviderSource::CachedFile { total, path });
         }
         "tags" => {
-            let items = crate::tools::ctags::buffer_tag_items(&context.start_buffer_path, false)?;
+            let items =
+                crate::tools::ctags::buffer_tag_items(&context.env.start_buffer_path, false)?;
             let total = items.len();
             return Ok(ProviderSource::Small { total, items });
         }
         "proj_tags" => {
             let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
-            let provider_source = if context.no_cache {
+            let provider_source = if context.env.no_cache {
                 let lines = ctags_cmd.execute_and_write_cache().await?;
                 to_small_provider_source(lines)
             } else {
@@ -78,7 +79,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                 &mut std_cmd,
                 rg_shell_command(&context.cwd),
                 None,
-                context.icon,
+                context.env.icon,
                 Some(100_000),
             )
             .execute()?;
@@ -89,7 +90,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         }
         "grep2" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
-            let digest = if context.no_cache {
+            let digest = if context.env.no_cache {
                 rg_cmd.create_cache().await?
             } else {
                 // Only directly reuse the cache when it's sort of huge.
@@ -120,9 +121,10 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
     let source_cmd: Vec<Value> = context.vim.call("provider_source", json!([])).await?;
     if let Some(value) = source_cmd.into_iter().next() {
         match value {
+            // Source is a String: g:__t_string, g:__t_func_string
             Value::String(command) => {
                 // Try always recreating the source.
-                if context.provider_id.as_str() == "files" {
+                if context.provider_id() == "files" {
                     let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
                     tokio_cmd.current_dir(&context.cwd);
                     let lines = tokio_cmd.lines().await?;
@@ -134,20 +136,20 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
 
                 const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
 
-                let provider_source =
-                    if DIRECT_CREATE_NEW_SOURCE.contains(&context.provider_id.as_str()) {
-                        execute_and_write_cache(&shell_cmd.command, cache_file).await?
-                    } else if context.no_cache {
-                        execute_and_write_cache(&shell_cmd.command, cache_file).await?
-                    } else {
-                        match shell_cmd.cache_digest() {
-                            Some(digest) => ProviderSource::CachedFile {
-                                total: digest.total,
-                                path: digest.cached_path,
-                            },
-                            None => execute_and_write_cache(&shell_cmd.command, cache_file).await?,
-                        }
-                    };
+                let direct_create_new_source =
+                    DIRECT_CREATE_NEW_SOURCE.contains(&context.provider_id());
+
+                let provider_source = if direct_create_new_source || context.env.no_cache {
+                    execute_and_write_cache(&shell_cmd.command, cache_file).await?
+                } else {
+                    match shell_cmd.cache_digest() {
+                        Some(digest) => ProviderSource::CachedFile {
+                            total: digest.total,
+                            path: digest.cached_path,
+                        },
+                        None => execute_and_write_cache(&shell_cmd.command, cache_file).await?,
+                    }
+                };
 
                 if let ProviderSource::CachedFile { total: _, path } = &provider_source {
                     context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
@@ -155,6 +157,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
 
                 return Ok(provider_source);
             }
+            // Source is a List: g:__t_list, g:__t_func_list
             Value::Array(arr) => {
                 let lines = arr
                     .into_iter()
@@ -192,8 +195,8 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                         ..
                     } = printer::decorate_lines(
                         lines,
-                        context.display_winwidth as usize,
-                        context.icon,
+                        context.env.display_winwidth as usize,
+                        context.env.icon,
                     );
 
                     context.vim.exec(
@@ -218,14 +221,12 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
             }
 
             // Try creating cache for some potential heavy providers.
-            match context.provider_id.as_str() {
+            match context.provider_id() {
                 "grep" | "grep2" => {
-                    context.set_provider_source(ProviderSource::Command(
-                        crate::command::grep::RG_EXEC_CMD.to_string(),
-                    ));
+                    context.set_provider_source(ProviderSource::Command(RG_EXEC_CMD.to_string()));
 
                     let context = context.clone();
-                    let rg_cmd = crate::command::grep::RgTokioCommand::new(context.cwd.clone());
+                    let rg_cmd = RgTokioCommand::new(context.cwd.clone());
                     let job_id = utility::calculate_hash(&rg_cmd);
                     job::try_start(
                         async move {

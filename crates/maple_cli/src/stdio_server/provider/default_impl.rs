@@ -12,7 +12,7 @@ use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
 use types::MatchedItem;
 
-use crate::stdio_server::handler::{OnMoveHandler, PreviewKind};
+use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
@@ -49,10 +49,10 @@ fn run(
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     let join_handle = {
-        let icon = context.icon;
-        let display_winwidth = context.display_winwidth;
+        let icon = context.env.icon;
+        let display_winwidth = context.env.display_winwidth;
         let cwd = context.cwd.clone();
-        let matcher = context.matcher.clone();
+        let matcher = context.env.matcher.clone();
         let stop_signal = stop_signal.clone();
 
         tokio::task::spawn_blocking(move || {
@@ -115,8 +115,8 @@ impl DefaultProvider {
             .map(|r| r.item.output_text().to_string())
     }
 
-    async fn nontypical_preview_kind(&mut self, curline: &str) -> Result<Option<PreviewKind>> {
-        let maybe_preview_kind = match self.context.provider_id.as_str() {
+    async fn nontypical_preview_target(&mut self, curline: &str) -> Result<Option<PreviewTarget>> {
+        let maybe_preview_kind = match self.context.provider_id() {
             "help_tags" => {
                 let runtimepath = match &self.runtimepath {
                     Some(rtp) => rtp.clone(),
@@ -132,7 +132,7 @@ impl DefaultProvider {
                         "Couldn't extract subject and doc_filename from the line"
                     ));
                 }
-                Some(PreviewKind::HelpTags {
+                Some(PreviewTarget::HelpTags {
                     subject: items[0].trim().to_string(),
                     doc_filename: items[1].trim().to_string(),
                     runtimepath,
@@ -154,7 +154,7 @@ impl DefaultProvider {
                     .next()
                     .expect("Not empty as just checked; qed")
                     .into();
-                Some(PreviewKind::LineInFile { path, line_number })
+                Some(PreviewTarget::LineInFile { path, line_number })
             }
             _ => None,
         };
@@ -181,11 +181,11 @@ impl ClapProvider for DefaultProvider {
 
         let preview_height = self.context.preview_height().await?;
         let on_move_handler =
-            if let Some(preview_kind) = self.nontypical_preview_kind(&curline).await? {
+            if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
                 OnMoveHandler {
                     preview_height,
                     context: &self.context,
-                    preview_kind,
+                    preview_target,
                     cache_line: None,
                 }
             } else {
@@ -208,31 +208,32 @@ impl ClapProvider for DefaultProvider {
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
 
-        let quick_response =
-            if let ProviderSource::Small { ref items, .. } = *self.context.provider_source.read() {
-                let matched_items = filter::par_filter_items(&query, items, &self.context.matcher);
-                // Take the first 200 entries and add an icon to each of them.
-                let DisplayLines {
-                    lines,
-                    indices,
-                    truncated_map,
-                    icon_added,
-                } = printer::decorate_lines(
-                    matched_items.iter().take(200).cloned().collect(),
-                    self.context.display_winwidth as usize,
-                    self.context.icon,
-                );
-                let msg = json!({
-                    "total": matched_items.len(),
-                    "lines": lines,
-                    "indices": indices,
-                    "icon_added": icon_added,
-                    "truncated_map": truncated_map,
-                });
-                Some((msg, matched_items))
-            } else {
-                None
-            };
+        let quick_response = if let ProviderSource::Small { ref items, .. } =
+            *self.context.provider_source.read()
+        {
+            let matched_items = filter::par_filter_items(&query, items, &self.context.env.matcher);
+            // Take the first 200 entries and add an icon to each of them.
+            let DisplayLines {
+                lines,
+                indices,
+                truncated_map,
+                icon_added,
+            } = printer::decorate_lines(
+                matched_items.iter().take(200).cloned().collect(),
+                self.context.env.display_winwidth,
+                self.context.env.icon,
+            );
+            let msg = json!({
+                "total": matched_items.len(),
+                "lines": lines,
+                "indices": indices,
+                "icon_added": icon_added,
+                "truncated_map": truncated_map,
+            });
+            Some((msg, matched_items))
+        } else {
+            None
+        };
 
         if let Some((msg, matched_items)) = quick_response {
             let new_query = self.vim().input_get().await?;
@@ -259,7 +260,7 @@ impl ClapProvider for DefaultProvider {
             None => {
                 let display_winheight = self
                     .vim()
-                    .call("winheight", json!([self.context.display.winid]))
+                    .call("winheight", json!([self.context.env.display.winid]))
                     .await?;
                 self.display_winheight.replace(display_winheight);
                 display_winheight
@@ -308,7 +309,7 @@ impl ClapProvider for DefaultProvider {
         self.context.terminated.store(true, Ordering::SeqCst);
         tracing::debug!(
             session_id,
-            provider_id = %self.context.provider_id,
+            provider_id = %self.context.provider_id(),
             "Session terminated",
         );
     }

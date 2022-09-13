@@ -157,7 +157,7 @@ impl DumbJumpProvider {
     }
 
     async fn initialize(&self) -> Result<()> {
-        let bufname = self.vim().bufname(self.context.start.bufnr).await?;
+        let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
 
         let cwd = self.vim().working_dir().await?;
         let extension = std::path::Path::new(&bufname)
@@ -327,7 +327,7 @@ impl ClapProvider for DumbJumpProvider {
         if !query.is_empty() {
             let cwd = self.vim().working_dir().await?;
 
-            let bufname = self.vim().bufname(self.context.start.bufnr).await?;
+            let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
             let extension = std::path::Path::new(&bufname)
                 .extension()
                 .and_then(|s| s.to_str())
@@ -381,7 +381,7 @@ impl ClapProvider for DumbJumpProvider {
         let query = self.vim().input_get().await?;
         let cwd = self.vim().working_dir().await?;
 
-        let bufname = self.vim().bufname(self.context.start.bufnr).await?;
+        let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
         let extension = std::path::Path::new(&bufname)
             .extension()
             .and_then(|s| s.to_str())
