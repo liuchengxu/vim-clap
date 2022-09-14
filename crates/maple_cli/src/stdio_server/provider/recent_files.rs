@@ -173,29 +173,30 @@ impl ClapProvider for RecentFilesProvider {
             let preview_height = self.context.preview_height().await?;
             let on_move_handler = OnMoveHandler::create(curline, preview_height, &self.context)?;
             let preview = on_move_handler.get_preview().await?;
-            self.vim()
-                .exec("clap#state#process_preview_result", preview)?;
+            self.vim().render_preview(preview)?;
         }
 
         Ok(())
     }
 
     async fn on_typed(&mut self) -> Result<()> {
-        let cwd = self.context.cwd.to_string_lossy().to_string();
         let query = self.vim().input_get().await?;
-        let lnum = self.vim().display_getcurlnum().await?;
-        let preview_size = self
-            .vim()
-            .preview_size(
-                &self.context.env.provider_id,
-                self.context.env.preview.winid,
-            )
-            .await?;
 
-        let recent_files = self.clone();
-        let query_clone = query.clone();
-        let response = tokio::task::spawn_blocking(move || {
-            recent_files.process_query(cwd, query_clone, preview_size, lnum)
+        let response = tokio::task::spawn_blocking({
+            let query = query.clone();
+            let recent_files = self.clone();
+            let cwd = self.context.cwd.to_string_lossy().to_string();
+
+            let lnum = self.vim().display_getcurlnum().await?;
+            let preview_size = self
+                .vim()
+                .preview_size(
+                    &self.context.env.provider_id,
+                    self.context.env.preview.winid,
+                )
+                .await?;
+
+            move || recent_files.process_query(cwd, query, preview_size, lnum)
         })
         .await??;
 

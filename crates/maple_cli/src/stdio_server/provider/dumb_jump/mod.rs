@@ -370,8 +370,7 @@ impl ClapProvider for DumbJumpProvider {
         let current_lnum = self.vim().display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
-            self.vim()
-                .exec("clap#state#process_preview_result", preview)?;
+            self.vim().render_preview(preview)?;
         }
 
         Ok(())

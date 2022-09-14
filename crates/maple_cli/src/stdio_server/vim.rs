@@ -15,6 +15,8 @@ use serde_json::{json, Value};
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::rpc::RpcClient;
 
+use super::handler::Preview;
+
 /// Map of file extension to vim syntax mapping.
 static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
 
@@ -261,5 +263,9 @@ impl Vim {
 
     pub fn echo_info(&self, msg: &str) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    pub fn render_preview(&self, preview: Preview) -> Result<()> {
+        self.exec("clap#state#process_preview_result", preview)
     }
 }

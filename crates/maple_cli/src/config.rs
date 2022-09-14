@@ -39,19 +39,10 @@ pub struct ProviderConfig {
     pub grep2: Grep2Config,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct DumbJumpConfig {
     pub ignore_files_not_git_tracked: bool,
     pub ignore_pattern_file_path: Option<String>,
-}
-
-impl Default for DumbJumpConfig {
-    fn default() -> Self {
-        Self {
-            ignore_files_not_git_tracked: true,
-            ignore_pattern_file_path: None,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

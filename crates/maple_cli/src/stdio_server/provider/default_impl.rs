@@ -192,14 +192,12 @@ impl ClapProvider for DefaultProvider {
                 OnMoveHandler::create(curline, preview_height, &self.context)?
             };
 
-        // TODO: Cache the preview.
         let preview = on_move_handler.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
         let curlnum = self.vim().display_getcurlnum().await?;
         if curlnum == lnum {
-            self.vim()
-                .exec("clap#state#process_preview_result", preview)?;
+            self.vim().render_preview(preview)?;
         }
 
         Ok(())

@@ -3,7 +3,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
 
 use pattern::*;
 use types::PreviewInfo;
@@ -15,7 +15,19 @@ use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
-#[derive(Debug)]
+/// Preview content.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Preview {
+    pub lines: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub syntax: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fname: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hi_lnum: Option<usize>,
+}
+
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum PreviewTarget {
     /// Maybe a file or a directory.
     FileOrDirectory(PathBuf),
@@ -175,8 +187,12 @@ impl<'a> OnMoveHandler<'a> {
         })
     }
 
-    pub async fn get_preview(&self) -> Result<Value> {
-        let value = match &self.preview_target {
+    pub async fn get_preview(&self) -> Result<Preview> {
+        if let Some(preview) = self.context.cached_preview(&self.preview_target) {
+            return Ok(preview);
+        }
+
+        let preview = match &self.preview_target {
             PreviewTarget::FileOrDirectory(path) => {
                 if path.is_dir() {
                     self.preview_directory(&path)?
@@ -196,33 +212,53 @@ impl<'a> OnMoveHandler<'a> {
             } => self.preview_help_subject(subject, doc_filename, runtimepath),
         };
 
-        Ok(value)
+        self.context
+            .insert_preview(self.preview_target.clone(), preview.clone());
+
+        Ok(preview)
     }
 
-    fn preview_commits(&self, rev: &str) -> std::io::Result<Value> {
+    fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {
         let stdout = self.context.execute(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
             .take(self.preview_height)
+            .map(Into::into)
             .collect::<Vec<_>>();
-        Ok(json!({ "lines": lines }))
+        Ok(Preview {
+            lines,
+            ..Default::default()
+        })
     }
 
-    fn preview_help_subject(&self, subject: &str, doc_filename: &str, runtimepath: &str) -> Value {
+    fn preview_help_subject(
+        &self,
+        subject: &str,
+        doc_filename: &str,
+        runtimepath: &str,
+    ) -> Preview {
         let preview_tag = HelpTagPreview::new(subject, doc_filename, runtimepath);
         if let Some((fname, lines)) = preview_tag.get_help_lines(self.preview_height) {
             let lines = std::iter::once(fname.clone())
                 .chain(lines.into_iter())
                 .collect::<Vec<_>>();
-            json!({ "syntax": "help", "lines": lines, "hi_lnum": 1, "fname": fname })
+            Preview {
+                lines,
+                hi_lnum: Some(1),
+                fname: Some(fname),
+                syntax: Some("help".into()),
+            }
         } else {
             tracing::debug!(?preview_tag, "Can not find the preview help lines");
-            json!({ "lines": vec!["Can not find the preview help lines"] })
+            Preview {
+                lines: vec!["Can not find the preview help lines".into()],
+                ..Default::default()
+            }
         }
     }
 
-    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
+    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
         let enable_icon = global().enable_icon;
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
@@ -238,10 +274,13 @@ impl<'a> OnMoveHandler<'a> {
         title.push(':');
         lines.insert(0, title);
 
-        Ok(json!({ "lines": lines }))
+        Ok(Preview {
+            lines,
+            ..Default::default()
+        })
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Value> {
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
         if !path.as_ref().is_file() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -291,15 +330,27 @@ impl<'a> OnMoveHandler<'a> {
         if std::fs::metadata(path.as_ref())?.len() == 0 {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
-            Ok(json!({ "lines": lines, "fname": fname }))
+            Ok(Preview {
+                lines,
+                fname: Some(fname),
+                ..Default::default()
+            })
         } else if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
-            Ok(json!({ "lines": lines, "syntax": syntax }))
+            Ok(Preview {
+                lines,
+                syntax: Some(syntax.into()),
+                ..Default::default()
+            })
         } else {
-            Ok(json!({ "lines": lines, "fname": fname }))
+            Ok(Preview {
+                lines,
+                fname: Some(fname),
+                ..Default::default()
+            })
         }
     }
 
-    async fn preview_file_at(&self, path: &Path, lnum: usize) -> Value {
+    async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
         tracing::debug!(path=?path.display(), lnum, "Previewing file");
 
         let container_width = self.context.env.display_winwidth as usize;
@@ -385,9 +436,19 @@ impl<'a> OnMoveHandler<'a> {
                     .collect::<Vec<_>>();
 
                 if let Some(syntax) = crate::stdio_server::vim::syntax_for(path) {
-                    json!({ "lines": lines, "syntax": syntax, "hi_lnum": highlight_lnum })
+                    Preview {
+                        lines,
+                        syntax: Some(syntax.into()),
+                        hi_lnum: Some(highlight_lnum),
+                        fname: None,
+                    }
                 } else {
-                    json!({ "lines": lines, "fname": fname, "hi_lnum": highlight_lnum })
+                    Preview {
+                        lines,
+                        syntax: None,
+                        hi_lnum: Some(highlight_lnum),
+                        fname: Some(fname),
+                    }
                 }
             }
             Err(err) => {
@@ -402,7 +463,11 @@ impl<'a> OnMoveHandler<'a> {
                     header_line,
                     format!("Error while previewing the file: {err}"),
                 ];
-                json!({ "lines": lines, "fname": fname })
+                Preview {
+                    lines,
+                    fname: Some(fname),
+                    ..Default::default()
+                }
             }
         }
     }

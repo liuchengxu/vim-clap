@@ -12,14 +12,13 @@ use std::sync::Arc;
 use anyhow::Result;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
 use icon::{Icon, IconKind};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
-use crate::stdio_server::handler::{initialize_provider, PreviewTarget};
+use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
 use crate::stdio_server::vim::Vim;
@@ -48,8 +47,8 @@ pub struct ProviderEnvironment {
     pub preview: BufnrWinid,
     pub icon: Icon,
     pub matcher: Matcher,
-    pub no_cache: bool,
     pub debounce: bool,
+    pub no_cache: bool,
     pub display_winwidth: usize,
     pub start_buffer_path: PathBuf,
 }
@@ -60,7 +59,7 @@ pub struct ProviderContext {
     pub env: Arc<ProviderEnvironment>,
     pub vim: Vim,
     pub terminated: Arc<AtomicBool>,
-    pub preview_cache: Arc<HashMap<PreviewTarget, Value>>,
+    pub preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
@@ -75,8 +74,8 @@ impl ProviderContext {
             preview: BufnrWinid,
             cwd: PathBuf,
             icon: String,
-            no_cache: bool,
             debounce: bool,
+            no_cache: bool,
             start_buffer_path: PathBuf,
         }
 
@@ -87,8 +86,8 @@ impl ProviderContext {
             display,
             preview,
             cwd,
-            no_cache,
             debounce,
+            no_cache,
             start_buffer_path,
             icon,
         } = params.parse()?;
@@ -100,9 +99,7 @@ impl ProviderContext {
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
             _ => Icon::Null,
         };
-
         let matcher = provider_id.matcher();
-
         let display_winwidth = vim.winwidth(display.winid).await?;
 
         let env = ProviderEnvironment {
@@ -124,7 +121,7 @@ impl ProviderContext {
             env: Arc::new(env),
             vim,
             terminated: Arc::new(AtomicBool::new(false)),
-            preview_cache: Arc::new(HashMap::new()),
+            preview_cache: Arc::new(RwLock::new(HashMap::new())),
             provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
         })
     }
@@ -149,6 +146,17 @@ impl ProviderContext {
             .preview_size(&self.env.provider_id, self.env.preview.winid)
             .await
             .map(|x| 2 * x)
+    }
+
+    pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
+        let preview_cache = self.preview_cache.read();
+        // TODO: not clone?
+        preview_cache.get(preview_target).cloned()
+    }
+
+    pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
+        let mut preview_cache = self.preview_cache.write();
+        preview_cache.insert(preview_target, preview);
     }
 }
 

@@ -297,8 +297,7 @@ impl FilerProvider {
 
         match on_move_handler.get_preview().await {
             Ok(preview) => {
-                self.vim()
-                    .exec("clap#state#process_preview_result", preview)?;
+                self.vim().render_preview(preview)?;
 
                 if let Some(syntax) = maybe_syntax {
                     let s = format!("g:clap.preview.set_syntax('{syntax}')");
