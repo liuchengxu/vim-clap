@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use serde_json::{json, Value};
 
@@ -66,11 +68,12 @@ impl GlobalEnv {
 
 pub struct VimProgressor<'a> {
     vim: &'a Vim,
+    stopped: Arc<AtomicBool>,
 }
 
 impl<'a> VimProgressor<'a> {
-    pub fn new(vim: &'a Vim) -> Self {
-        Self { vim }
+    pub fn new(vim: &'a Vim, stopped: Arc<AtomicBool>) -> Self {
+        Self { vim, stopped }
     }
 }
 
@@ -81,6 +84,10 @@ impl<'a> ProgressUpdate<DisplayLines> for VimProgressor<'a> {
         matched: usize,
         processed: usize,
     ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+
         if let Some(display_lines) = maybe_display_lines {
             let _ = self.vim.exec(
                 "clap#state#process_progress_with_display_lines",
@@ -99,6 +106,9 @@ impl<'a> ProgressUpdate<DisplayLines> for VimProgressor<'a> {
         total_matched: usize,
         total_processed: usize,
     ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
         let _ = self.vim.exec(
             "clap#state#process_progress_finished",
             json!([display_lines, total_matched, total_processed]),

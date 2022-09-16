@@ -63,7 +63,7 @@ fn run(
                         ParSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
-                VimProgressor::new(&vim),
+                VimProgressor::new(&vim, stop_signal.clone()),
                 stop_signal,
             ) {
                 tracing::error!(error = ?e, "Error occured when filtering the cache source");
