@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 use anyhow::Result;
 use parking_lot::Mutex;
 use serde_json::json;
 use subprocess::Exec;
-use tokio::task::JoinHandle;
 
 use filter::{FilterContext, ParSource};
 use printer::DisplayLines;
@@ -19,7 +19,7 @@ use crate::stdio_server::vim::Vim;
 
 #[derive(Debug)]
 enum FilterSource {
-    CachedFile(PathBuf),
+    File(PathBuf),
     Command(String),
 }
 
@@ -30,11 +30,9 @@ struct FilterControl {
 }
 
 impl FilterControl {
-    async fn kill(self) {
+    fn kill(self) {
         self.stop_signal.store(true, Ordering::SeqCst);
-        self.join_handle.abort();
-        // Wait until it's actually cancelled.
-        let _ = self.join_handle.await;
+        let _ = self.join_handle.join();
     }
 }
 
@@ -55,12 +53,12 @@ fn run(
         let matcher = context.env.matcher.clone();
         let stop_signal = stop_signal.clone();
 
-        tokio::task::spawn_blocking(move || {
+        std::thread::spawn(move || {
             if let Err(e) = filter::par_dyn_run_inprocess(
                 &query,
                 FilterContext::new(icon, Some(number), Some(display_winwidth), matcher),
                 match filter_source {
-                    FilterSource::CachedFile(path) => ParSource::File(path),
+                    FilterSource::File(path) => ParSource::File(path),
                     FilterSource::Command(command) => {
                         ParSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
@@ -245,11 +243,12 @@ impl ClapProvider for DefaultProvider {
         }
 
         let filter_source = match *self.context.provider_source.read() {
-            ProviderSource::Small { .. } | ProviderSource::Unknown => {
-                tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unknown.");
+            ProviderSource::Small { .. } | ProviderSource::Unactionable => {
+                tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unactionable.");
                 return Ok(());
             }
-            ProviderSource::CachedFile { ref path, .. } => FilterSource::CachedFile(path.clone()),
+            ProviderSource::CachedFile { ref path, .. }
+            | ProviderSource::PlainFile { ref path, .. } => FilterSource::File(path.clone()),
             ProviderSource::Command(ref cmd) => FilterSource::Command(cmd.to_string()),
         };
 
@@ -279,8 +278,8 @@ impl ClapProvider for DefaultProvider {
                 .store(false, Ordering::SeqCst);
 
             let last_filter_control_killed = self.last_filter_control_killed.clone();
-            tokio::task::spawn(async move {
-                control.kill().await;
+            tokio::task::spawn_blocking(move || {
+                control.kill();
                 last_filter_control_killed.store(true, Ordering::SeqCst);
             });
         }

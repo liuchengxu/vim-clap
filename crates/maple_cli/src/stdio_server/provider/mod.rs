@@ -122,7 +122,7 @@ impl ProviderContext {
             vim,
             terminated: Arc::new(AtomicBool::new(false)),
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
-            provider_source: Arc::new(RwLock::new(ProviderSource::Unknown)),
+            provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
         })
     }
 
@@ -202,14 +202,11 @@ impl std::fmt::Display for ProviderId {
     }
 }
 
-/// This type represents the scale of filtering source.
+/// This type represents the way to get the source items of a provider.
 #[derive(Debug, Clone)]
 pub enum ProviderSource {
-    /// The provider source is unknown.
-    Unknown,
-
-    /// Shell command to generate the provider source.
-    Command(String),
+    /// The provider source is not actionable on the Rust backend.
+    Unactionable,
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
     ///
@@ -220,22 +217,43 @@ pub enum ProviderSource {
         items: Vec<Arc<dyn ClapItem>>,
     },
 
-    /// Cache file exists, reuse the cache instead of executing the command again.
-    CachedFile { total: usize, path: PathBuf },
+    /// The items are from a plain file.
+    PlainFile { total: usize, path: PathBuf },
+
+    /// Read the items from a cache file created by vim-clap.
+    ///
+    /// The items from this file might be out-dated if not refreshed.
+    CachedFile {
+        total: usize,
+        path: PathBuf,
+        refreshed: bool,
+    },
+
+    /// Shell command to generate the source items.
+    ///
+    /// Execute the shell command to generate the source on each OnTyped event, the last run needs to
+    /// be killed for sure before starting a new run.
+    Command(String),
 }
 
 impl Default for ProviderSource {
     fn default() -> Self {
-        Self::Unknown
+        Self::Unactionable
     }
 }
 
 impl ProviderSource {
     pub fn total(&self) -> Option<usize> {
         match self {
-            Self::Small { total, .. } | Self::CachedFile { total, .. } => Some(*total),
+            Self::Small { total, .. }
+            | Self::PlainFile { total, .. }
+            | Self::CachedFile { total, .. } => Some(*total),
             _ => None,
         }
+    }
+
+    pub fn using_cache(&self) -> bool {
+        matches!(self, Self::CachedFile { refreshed, .. } if !refreshed)
     }
 
     pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
@@ -249,14 +267,16 @@ impl ProviderSource {
                     })
                     .collect(),
             ),
-            Self::CachedFile { ref path, .. } => utility::read_first_lines(path, n)
-                .map(|iter| {
-                    iter.map(|line| {
-                        MatchedItem::new(Arc::new(line), Default::default(), Default::default())
+            Self::PlainFile { ref path, .. } | Self::CachedFile { ref path, .. } => {
+                utility::read_first_lines(path, n)
+                    .map(|iter| {
+                        iter.map(|line| {
+                            MatchedItem::new(Arc::new(line), Default::default(), Default::default())
+                        })
+                        .collect()
                     })
-                    .collect()
-                })
-                .ok(),
+                    .ok()
+            }
             _ => None,
         }
     }

@@ -29,6 +29,7 @@ async fn execute_and_write_cache(
     Ok(ProviderSource::CachedFile {
         total,
         path: cache_file,
+        refreshed: true,
     })
 }
 
@@ -49,7 +50,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
             let total =
                 crate::utils::count_lines(std::fs::File::open(&context.env.start_buffer_path)?)?;
             let path = context.env.start_buffer_path.to_path_buf();
-            return Ok(ProviderSource::CachedFile { total, path });
+            return Ok(ProviderSource::PlainFile { total, path });
         }
         "tags" => {
             let items =
@@ -64,7 +65,11 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                 to_small_provider_source(lines)
             } else {
                 match ctags_cmd.ctags_cache() {
-                    Some((total, path)) => ProviderSource::CachedFile { total, path },
+                    Some((total, path)) => ProviderSource::CachedFile {
+                        total,
+                        path,
+                        refreshed: false,
+                    },
                     None => {
                         let lines = ctags_cmd.execute_and_write_cache().await?;
                         to_small_provider_source(lines)
@@ -90,18 +95,22 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         }
         "grep2" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
-            let digest = if context.env.no_cache {
-                rg_cmd.create_cache().await?
+            let (digest, refreshed) = if context.env.no_cache {
+                (rg_cmd.create_cache().await?, true)
             } else {
                 // Only directly reuse the cache when it's sort of huge.
                 match rg_cmd.cache_digest() {
-                    Some(digest) if digest.total > 100_000 => digest,
-                    _ => rg_cmd.create_cache().await?,
+                    Some(digest) if digest.total > 100_000 => (digest, false),
+                    _ => (rg_cmd.create_cache().await?, true),
                 }
             };
             let (total, path) = (digest.total, digest.cached_path);
             context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
-            return Ok(ProviderSource::CachedFile { total, path });
+            return Ok(ProviderSource::CachedFile {
+                total,
+                path,
+                refreshed,
+            });
         }
         "help_tags" => {
             let helplang: String = context.vim.eval("&helplang").await?;
@@ -146,12 +155,13 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                         Some(digest) => ProviderSource::CachedFile {
                             total: digest.total,
                             path: digest.cached_path,
+                            refreshed: false,
                         },
                         None => execute_and_write_cache(&shell_cmd.command, cache_file).await?,
                     }
                 };
 
-                if let ProviderSource::CachedFile { total: _, path } = &provider_source {
+                if let ProviderSource::CachedFile { path, .. } = &provider_source {
                     context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
                 }
 
@@ -175,7 +185,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         }
     }
 
-    Ok(ProviderSource::Unknown)
+    Ok(ProviderSource::Unactionable)
 }
 
 pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
@@ -187,6 +197,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                 if let Some(total) = provider_source.total() {
                     context.vim.set_var("g:clap.display.initial_size", total)?;
                 }
+
                 if let Some(lines) = provider_source.initial_lines(100) {
                     let DisplayLines {
                         lines,
@@ -199,9 +210,10 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                         context.env.icon,
                     );
 
+                    let using_cache = provider_source.using_cache();
                     context.vim.exec(
                         "clap#state#init_display",
-                        json!([lines, truncated_map, icon_added]),
+                        json!([lines, truncated_map, icon_added, using_cache]),
                     )?;
                 }
 
@@ -234,6 +246,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                                 let new = ProviderSource::CachedFile {
                                     total: digest.total,
                                     path: digest.cached_path,
+                                    refreshed: true,
                                 };
                                 if !context.terminated.load(Ordering::SeqCst) {
                                     context.set_provider_source(new);

@@ -210,7 +210,7 @@ function! clap#state#process_result_on_typed(result) abort
   endif
 endfunction
 
-function! clap#state#init_display(lines, truncated_map, icon_added) abort
+function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
   if empty(g:clap.input.get())
     if g:clap.provider.id ==# 'blines'
       call clap#provider#blines#initialize(a:lines)
@@ -228,7 +228,11 @@ function! clap#state#init_display(lines, truncated_map, icon_added) abort
   call clap#indicator#update_matches_on_forerunner_done()
   call clap#sign#ensure_exists()
 
-  let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  if a:using_cache
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
+  else
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  endif
   call clap#spinner#refresh()
   call clap#preview#async_open_with_delay()
 endfunction

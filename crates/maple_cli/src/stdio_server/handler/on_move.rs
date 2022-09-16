@@ -484,6 +484,7 @@ impl<'a> OnMoveHandler<'a> {
                     if job::reserve(job_id) {
                         let context = self.context.clone();
 
+                        // TODO: Refresh with a timeout.
                         tokio::task::spawn_blocking(move || {
                             tracing::debug!(cwd = ?context.cwd, "Refreshing grep2 cache");
                             let new_digest = match crate::command::grep::refresh_cache(&context.cwd)
@@ -503,6 +504,7 @@ impl<'a> OnMoveHandler<'a> {
                             let new = ProviderSource::CachedFile {
                                 total: new_digest.total,
                                 path: new_digest.cached_path,
+                                refreshed: true,
                             };
                             context.set_provider_source(new);
                             job::unreserve(job_id);

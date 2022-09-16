@@ -370,6 +370,7 @@ where
                 Err(())
             } else {
                 let processed = processed_count.fetch_add(1, Ordering::SeqCst);
+                // TODO: Use proper item type per provider.
                 let item: Arc<dyn ClapItem> = match matcher.match_scope() {
                     MatchScope::GrepLine => {
                         if let Some(grep_item) = GrepItem::try_new(line) {
