@@ -380,12 +380,14 @@ impl ClapProvider for DumbJumpProvider {
         let query = self.vim().input_get().await?;
         let cwd = self.vim().working_dir().await?;
 
-        let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
-        let extension = std::path::Path::new(&bufname)
+        let extension = self
+            .context
+            .env
+            .start_buffer_path
             .extension()
             .and_then(|s| s.to_str())
             .map(|s| s.to_string())
-            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
+            .ok_or_else(|| anyhow::anyhow!("No extension found for start_buffer_path"))?;
 
         let query_info = parse_query_info(&query);
 

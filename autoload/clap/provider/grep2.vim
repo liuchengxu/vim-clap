@@ -12,6 +12,7 @@ if !executable('rg')
 endif
 
 function! s:grep2.on_typed()
+  " call clap#filter#async#dyn#start_grep()
   call clap#client#notify('on_typed')
 endfunction
 

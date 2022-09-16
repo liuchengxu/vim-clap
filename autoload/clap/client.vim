@@ -92,7 +92,7 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:send_notification('on_init', params)
+  call s:send_notification('new_session', params)
 endfunction
 
 function! clap#client#notify_recent_file() abort

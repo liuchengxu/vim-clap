@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::sync::Arc;
 
@@ -10,12 +9,10 @@ use serde_json::json;
 use icon::prepend_filer_icon;
 use types::{ClapItem, MatchResult};
 
-use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
-use crate::stdio_server::provider::{ClapProvider, ProviderContext};
+use crate::stdio_server::handler::{OnMoveHandler, Preview, PreviewTarget};
+use crate::stdio_server::provider::{ClapProvider, Key, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
-
-use super::Key;
 
 /// Display the inner path in a nicer way.
 struct DisplayPath<P> {
@@ -86,7 +83,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     enable_icon: bool,
     max: Option<usize>,
 ) -> std::io::Result<Vec<String>> {
-    let entries_iter = fs::read_dir(dir)?
+    let entries_iter = std::fs::read_dir(dir)?
         .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
 
     let mut entries = if let Some(m) = max {
@@ -181,10 +178,10 @@ impl FilerProvider {
         if input.is_empty() {
             self.load_parent()?;
             self.vim()
-                .exec("clap#provider#filer#set_prompt", json!([&self.current_dir]))?;
+                .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
         } else {
             input.pop();
-            self.vim().exec("input_set", json!([input]))?;
+            self.vim().exec("input_set", [&input])?;
         }
 
         let lines = self.on_query_change(&input)?;
@@ -208,9 +205,8 @@ impl FilerProvider {
             self.reset_to(target_dir)?;
             return Ok(());
         } else if target_dir.is_file() {
-            self.vim().exec("execute", json!(["stopinsert"]))?;
-            self.vim()
-                .exec("clap#provider#filer#sink", json!([target_dir]))?;
+            self.vim().exec("execute", ["stopinsert"])?;
+            self.vim().exec("clap#provider#filer#sink", [target_dir])?;
             return Ok(());
         }
 
@@ -218,17 +214,9 @@ impl FilerProvider {
         let input = self.vim().input_get().await?;
         target_file.push(input);
 
-        let handle_special_entries_is_ok: bool = self
-            .vim()
-            .call(
-                "clap#provider#filer#handle_special_entries",
-                json!([target_file]),
-            )
+        self.vim()
+            .call("clap#provider#filer#handle_special_entries", [target_file])
             .await?;
-
-        if handle_special_entries_is_ok {
-            return Ok(());
-        }
 
         Ok(())
     }
@@ -269,9 +257,9 @@ impl FilerProvider {
     fn reset_to(&mut self, dir: PathBuf) -> Result<()> {
         self.current_dir = dir.clone();
         self.load_dir(dir)?;
-        self.vim().exec("input_set", json!([""]))?;
+        self.vim().exec("input_set", [""])?;
         self.vim()
-            .exec("clap#provider#filer#set_prompt", json!([&self.current_dir]))?;
+            .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
         let lines = self.on_query_change("")?;
         self.current_lines = lines;
         Ok(())
@@ -300,15 +288,14 @@ impl FilerProvider {
                 self.vim().render_preview(preview)?;
 
                 if let Some(syntax) = maybe_syntax {
-                    let s = format!("g:clap.preview.set_syntax('{syntax}')");
-                    self.vim().exec("eval", json!([s]))?;
+                    self.vim().set_preview_syntax(syntax)?;
                 }
             }
             Err(err) => {
-                self.vim().exec(
-                    "clap#state#process_preview_result",
-                    json!({ "lines": vec![err.to_string()] }),
-                )?;
+                self.vim().render_preview(Preview {
+                    lines: vec![err.to_string()],
+                    ..Default::default()
+                })?;
             }
         }
         Ok(())
@@ -330,7 +317,7 @@ impl FilerProvider {
                     Ok(entries) => entries,
                     Err(err) => {
                         self.vim()
-                            .exec("clap#provider#filer#handle_error", json!([err.to_string()]))?;
+                            .exec("clap#provider#filer#handle_error", [err.to_string()])?;
                         return Ok(());
                     }
                 };
@@ -364,7 +351,7 @@ impl ClapProvider for FilerProvider {
             Err(err) => {
                 tracing::error!(?cwd, "Failed to read directory entries");
                 self.vim()
-                    .exec("clap#provider#filer#handle_error", json!([err.to_string()]))?;
+                    .exec("clap#provider#filer#handle_error", [err.to_string()])?;
                 return Ok(());
             }
         };
@@ -421,6 +408,14 @@ impl ClapProvider for FilerProvider {
             Key::Tab => self.on_tab().await,
             Key::Backspace => self.on_backspace().await,
             Key::CarriageReturn => self.on_carriage_return().await,
+            Key::ShiftUp => {
+                tracing::debug!("TODO: ShiftUp, Preview scroll up");
+                Ok(())
+            }
+            Key::ShiftDown => {
+                tracing::debug!("TODO: ShiftDown, Preview scroll down");
+                Ok(())
+            }
         }
     }
 }

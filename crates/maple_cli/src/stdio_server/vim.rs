@@ -228,6 +228,10 @@ impl Vim {
         self.eval("g:clap.display.getcurlnum()").await
     }
 
+    pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
+        self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
+    }
+
     pub async fn input_get(&self) -> Result<String> {
         self.eval("g:clap.input.get()").await
     }

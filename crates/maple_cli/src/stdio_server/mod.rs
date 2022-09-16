@@ -18,7 +18,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use self::provider::{
-    ClapProvider, DefaultProvider, DumbJumpProvider, FilerProvider, Key, ProviderContext,
+    ClapProvider, DefaultProvider, DumbJumpProvider, Event, FilerProvider, ProviderContext,
     ProviderEvent, RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
@@ -110,74 +110,51 @@ impl Client {
 
     /// Process the notification message from Vim.
     async fn process_notification(&self, notification: Notification) -> Result<()> {
-        use ProviderEvent::*;
-
         let session_id = || {
             notification
                 .session_id
                 .ok_or_else(|| anyhow!("Notification must contain `session_id`"))
         };
 
-        match notification.method.as_str() {
-            "initialize_global_env" => notification.initialize_global_env(self.vim.clone()).await, // should be called only once.
-            "note_recent_files" => notification.note_recent_file().await,
+        match Event::from_method(&notification.method) {
+            Event::Provider(provider_event) => match provider_event {
+                ProviderEvent::Create => {
+                    let vim = self.vim.clone();
+                    let context = ProviderContext::new(notification.params, vim).await?;
+                    let provider: Box<dyn ClapProvider> =
+                        match self.vim.provider_id().await?.as_str() {
+                            "filer" => Box::new(FilerProvider::new(context)),
+                            "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
+                            "recent_files" => Box::new(RecentFilesProvider::new(context)),
+                            _ => Box::new(DefaultProvider::new(context)),
+                        };
 
-            "on_init" => {
-                let session_id = session_id()?;
-
-                let vim = self.vim.clone();
-                let context = ProviderContext::new(notification.params, vim).await?;
-                let provider: Box<dyn ClapProvider> = match self.vim.provider_id().await?.as_str() {
-                    "filer" => Box::new(FilerProvider::new(context)),
-                    "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
-                    "recent_files" => Box::new(RecentFilesProvider::new(context)),
-                    _ => Box::new(DefaultProvider::new(context)),
-                };
-
-                let session_manager = self.session_manager_mutex.clone();
-                let mut session_manager = session_manager.lock();
-                session_manager.new_session(session_id, provider);
-
-                Ok(())
+                    let session_manager = self.session_manager_mutex.clone();
+                    let mut session_manager = session_manager.lock();
+                    session_manager.new_session(session_id()?, provider);
+                }
+                ProviderEvent::Terminate => {
+                    let mut session_manager = self.session_manager_mutex.lock();
+                    session_manager.terminate(session_id()?);
+                }
+                to_send => {
+                    let session_manager = self.session_manager_mutex.lock();
+                    session_manager.send(session_id()?, to_send);
+                }
+            },
+            Event::Other(other_method) => {
+                match other_method.as_str() {
+                    "initialize_global_env" => {
+                        // should be called only once.
+                        notification.initialize_global_env(self.vim.clone()).await?;
+                    }
+                    "note_recent_files" => notification.note_recent_file().await?,
+                    _ => return Err(anyhow!("Unknown notification: {notification:?}")),
+                }
             }
-
-            "on_typed" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, OnTyped);
-                Ok(())
-            }
-
-            "on_move" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, OnMove);
-                Ok(())
-            }
-
-            "tab" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, KeyTyped(Key::Tab));
-                Ok(())
-            }
-
-            "backspace" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, KeyTyped(Key::Backspace));
-                Ok(())
-            }
-
-            "cr" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, KeyTyped(Key::CarriageReturn));
-                Ok(())
-            }
-
-            "exit" => {
-                let mut session_manager = self.session_manager_mutex.lock();
-                session_manager.terminate(session_id()?);
-                Ok(())
-            }
-            _ => Err(anyhow!("Unknown notification: {notification:?}")),
         }
+
+        Ok(())
     }
 
     /// Process the method call message from Vim.

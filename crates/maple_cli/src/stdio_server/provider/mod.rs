@@ -268,6 +268,10 @@ pub enum Key {
     Backspace,
     // <CR>/<Enter>/<Return> was typed.
     CarriageReturn,
+    // <S-Up>
+    ShiftUp,
+    // <S-Down>
+    ShiftDown,
 }
 
 #[derive(Debug, Clone)]
@@ -277,6 +281,29 @@ pub enum ProviderEvent {
     OnTyped,
     Terminate,
     KeyTyped(Key),
+}
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    Provider(ProviderEvent),
+    Other(String),
+}
+
+impl Event {
+    pub fn from_method(method: &str) -> Self {
+        match method {
+            "new_session" => Self::Provider(ProviderEvent::Create),
+            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
+            "on_move" => Self::Provider(ProviderEvent::OnMove),
+            "exit" => Self::Provider(ProviderEvent::Terminate),
+            "cr" => Self::Provider(ProviderEvent::KeyTyped(Key::CarriageReturn)),
+            "tab" => Self::Provider(ProviderEvent::KeyTyped(Key::Tab)),
+            "backspace" => Self::Provider(ProviderEvent::KeyTyped(Key::Backspace)),
+            "shift-up" => Self::Provider(ProviderEvent::KeyTyped(Key::ShiftUp)),
+            "shift-down" => Self::Provider(ProviderEvent::KeyTyped(Key::ShiftDown)),
+            other => Self::Other(other.to_string()),
+        }
+    }
 }
 
 /// A small wrapper of Sender<ProviderEvent> for logging on sending error.
@@ -319,8 +346,16 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_typed(&mut self) -> Result<()>;
 
-    async fn on_key_typed(&mut self, _key: Key) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
+    async fn on_key_typed(&mut self, key: Key) -> Result<()> {
+        match key {
+            Key::ShiftUp => {
+                // Preview scroll up
+            }
+            Key::ShiftDown => {
+                // Preview scroll down
+            }
+            _ => {}
+        }
         Ok(())
     }
 
