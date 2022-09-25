@@ -33,7 +33,7 @@ Now, only `maple` binary is mandatory for getting a fast and quite responsive vi
 
 ### `python`
 
-  If you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
+If you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
 
 - Vim: `:pyx print("Hello")` should be `Hello`.
 - NeoVim:
@@ -59,12 +59,12 @@ If you are using macOS or Linux, building the Rust deps is very convenient, just
 
 To install `maple` you can use the installer function and run `:call clap#installer#build_maple()`, or install it manually:
 
-  ```bash
-  cd path/to/vim-clap
+```bash
+cd path/to/vim-clap
 
-  # Compile the release build
-  cargo build --release
-  ```
+# Compile the release build
+cargo build --release
+```
 
 #### Python dynamic module
 
@@ -99,8 +99,8 @@ Run `install.ps1` in the powershell.
 
 1. Download the binary from the latest release https://github.com/liuchengxu/vim-clap/releases/ according to your system.
 2. Rename the downloaded binary to:
-    - Unix: `maple`
-    - Windows: `maple.exe`
+   - Unix: `maple`
+   - Windows: `maple.exe`
 3. Move `maple`/`maple.exe` to `bin` directory. Don't forget to assign execute permission to `maple` via `chmod a+x bin/maple` if you are using the Unix system.
 
 ## Build the Rust binary via Docker
@@ -111,8 +111,8 @@ If you run into the libssl error when using the prebuilt binary from GitHub rele
 
 ```bash
 $ cd path/to/vim-clap
-$ docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
-$ cp target/x86_64-unknown-linux-musl/release/maple bin/maple
+$ docker run --rm -it -v "$(pwd)":/volume clux/muslrust cargo build --profile production --locked
+$ cp target/x86_64-unknown-linux-musl/production/maple bin/maple
 # See if it really works
 $ ./bin/maple version
 ```
