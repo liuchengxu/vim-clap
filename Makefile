@@ -8,4 +8,7 @@ maple:
 python-dynamic-module:
 	cd pythonx/clap && $(MAKE_CMD) build
 
-.PHONY: all maple python-dynamic-module
+install:
+	cp -f target/release/maple bin/
+
+.PHONY: all maple python-dynamic-module install
