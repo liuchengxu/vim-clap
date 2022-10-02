@@ -187,7 +187,7 @@ fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<A
         git_tracked_only,
         file_path_pattern,
         ..
-    } = crate::config::config().ignore_config("dumb_jump", cwd.to_string_lossy().as_ref());
+    } = crate::config::config().provider_ignore_config("dumb_jump", cwd.to_string_lossy().as_ref());
 
     let mut addressable_usages = addressable_usages;
 

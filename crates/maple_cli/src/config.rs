@@ -54,7 +54,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn ignore_config(&self, provider_id: &str, project_dir: &str) -> &IgnoreConfig {
+    pub fn provider_ignore_config(&self, provider_id: &str, project_dir: &str) -> &IgnoreConfig {
         self.provider
             .provider_ignore
             .get(provider_id)
@@ -112,6 +112,5 @@ mod tests {
         let user_config: Config = toml::from_str(toml_content).unwrap();
         println!("{user_config:?}");
         println!("{}", toml::to_string(&user_config).unwrap());
-        println!("config():\n{:?}", config());
     }
 }
