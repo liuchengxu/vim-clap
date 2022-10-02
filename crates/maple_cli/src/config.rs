@@ -12,6 +12,7 @@ static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
         // Linux: ~/.config/vimclap/config.toml
+        // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
         let config_dir = PROJECT_DIRS.config_dir().to_path_buf();
 
         if !config_dir.exists() {
