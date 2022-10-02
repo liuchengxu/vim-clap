@@ -101,6 +101,9 @@ mod tests {
 
           [project-ignore."~/src/github.com/subspace/subspace"]
           comment-line = true
+
+          [provider-ignore.dumb_jump]
+          comment-line = true
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();
         println!("{user_config:?}");
