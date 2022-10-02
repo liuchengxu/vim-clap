@@ -18,7 +18,9 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         } else if let Ok(stripped) = path.strip_prefix("~") {
             Ok(AbsPathBuf(crate::utils::HOME_DIR.clone().join(stripped)))
         } else {
-            let path = std::fs::canonicalize(path).map_err(serde::de::Error::custom)?;
+            let path = std::fs::canonicalize(&path).map_err(|err| {
+                serde::de::Error::custom(format!("Failed to canonicalize {}, error: {err}", path.display()))
+            })?;
             if path.is_absolute() {
                 Ok(AbsPathBuf(path))
             } else {
