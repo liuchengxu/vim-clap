@@ -17,6 +17,7 @@ use tracing::Instrument;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::impls::OnMoveHandler;
 use crate::stdio_server::rpc::Call;
 use crate::stdio_server::session::{
@@ -135,7 +136,7 @@ struct SearchResults {
 
 #[derive(Deserialize)]
 struct Params {
-    cwd: String,
+    cwd: AbsPathBuf,
     query: String,
     extension: String,
 }

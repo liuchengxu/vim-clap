@@ -17,9 +17,9 @@ use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Context for performing a search.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(super) struct SearchingWorker {
-    pub cwd: String,
+    pub cwd: AbsPathBuf,
     pub query_info: QueryInfo,
     pub source_file_extension: String,
 }
@@ -177,23 +177,21 @@ impl SearchEngine {
             }
         };
 
-        let addressable_usages = filter_usages(cwd.as_ref(), addressable_usages);
+        let addressable_usages = filter_usages(&cwd, addressable_usages);
 
         Ok(addressable_usages.into())
     }
 }
 
-fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<AddressableUsage> {
-    let project_dir: AbsPathBuf = match std::path::PathBuf::from(cwd).try_into() {
-        Ok(res) => res,
-        Err(_) => return addressable_usages,
-    };
-
+fn filter_usages(
+    cwd: &AbsPathBuf,
+    addressable_usages: Vec<AddressableUsage>,
+) -> Vec<AddressableUsage> {
     let IgnoreConfig {
         git_tracked_only,
         file_path_pattern,
         ..
-    } = crate::config::config().provider_ignore_config("dumb_jump", &project_dir);
+    } = crate::config::config().provider_ignore_config("dumb_jump", cwd);
 
     let mut addressable_usages = addressable_usages;
 

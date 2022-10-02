@@ -10,6 +10,7 @@ use icon::{Icon, IconKind};
 use matcher::{ClapItem, MatchScope};
 use types::MatchedItem;
 
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::rpc::{Call, MethodCall, Notification, Params};
 use crate::stdio_server::types::ProviderId;
 use crate::tools::ctags::BufferTag;
@@ -108,10 +109,10 @@ pub struct SessionState {
 #[derive(Debug, Clone)]
 pub struct SessionContext {
     pub provider_id: ProviderId,
-    pub cwd: PathBuf,
+    pub cwd: AbsPathBuf,
     pub no_cache: bool,
     pub debounce: bool,
-    pub start_buffer_path: PathBuf,
+    pub start_buffer_path: AbsPathBuf,
     pub display_winwidth: u64,
     pub preview_winheight: u64,
     pub icon: Icon,
@@ -154,10 +155,10 @@ impl SessionContext {
         #[derive(Deserialize)]
         struct InnerParams {
             provider_id: ProviderId,
-            cwd: PathBuf,
+            cwd: AbsPathBuf,
             no_cache: bool,
             debounce: Option<bool>,
-            source_fpath: PathBuf,
+            source_fpath: AbsPathBuf,
             display_winwidth: Option<u64>,
             preview_winheight: Option<u64>,
             source_cmd: Option<String>,
