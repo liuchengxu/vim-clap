@@ -9,8 +9,8 @@ homepage = "https://github.com/liuchengxu/vim-clap"
 description = "vim-clap external filter gadget"
 
 [dependencies]
-async-trait = "0.1"
 anyhow = "1.0"
+async-trait = "0.1"
 base64 = "0.13"
 bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 chrono = { version = "0.4", features = ["serde"] }
