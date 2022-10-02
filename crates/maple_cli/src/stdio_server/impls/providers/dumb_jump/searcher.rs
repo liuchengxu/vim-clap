@@ -12,6 +12,7 @@ use crate::config::IgnoreConfig;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
+use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
@@ -183,11 +184,16 @@ impl SearchEngine {
 }
 
 fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<AddressableUsage> {
+    let project_dir: AbsPathBuf = match std::path::PathBuf::from(cwd).try_into() {
+        Ok(res) => res,
+        Err(_) => return addressable_usages,
+    };
+
     let IgnoreConfig {
         git_tracked_only,
         file_path_pattern,
         ..
-    } = crate::config::config().provider_ignore_config("dumb_jump", cwd.to_string_lossy().as_ref());
+    } = crate::config::config().provider_ignore_config("dumb_jump", &project_dir);
 
     let mut addressable_usages = addressable_usages;
 

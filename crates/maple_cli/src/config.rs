@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::PROJECT_DIRS;
+use crate::{paths::AbsPathBuf, utils::PROJECT_DIRS};
 
 static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 
@@ -49,38 +49,31 @@ pub fn config() -> &'static Config {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
-    #[serde(default)]
-    pub provider: ProviderConfig,
-}
-
-impl Config {
-    pub fn provider_ignore_config(&self, provider_id: &str, project_dir: &str) -> &IgnoreConfig {
-        self.provider
-            .provider_ignore
-            .get(provider_id)
-            .unwrap_or_else(|| {
-                self.provider
-                    .provider_ignore
-                    .get(project_dir)
-                    .unwrap_or(&self.provider.global_ignore)
-            })
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct ProviderConfig {
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
     /// Ignore configuration per project.
     ///
-    /// Absolute path string is recommended.
-    pub project_ignore: HashMap<String, IgnoreConfig>,
+    /// The project path must be specified as absolute path or a path relative to the home directory.
+    pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
     /// Ignore configuration per provider.
     ///
     /// Priorities of the ignore config:
     ///   provider_ignores > provider_ignores > global_ignore
     pub provider_ignore: HashMap<String, IgnoreConfig>,
+}
+
+impl Config {
+    pub fn provider_ignore_config(
+        &self,
+        provider_id: &str,
+        project_dir: &AbsPathBuf,
+    ) -> &IgnoreConfig {
+        self.provider_ignore.get(provider_id).unwrap_or_else(|| {
+            self.project_ignore
+                .get(project_dir)
+                .unwrap_or(&self.global_ignore)
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -103,10 +96,10 @@ mod tests {
     #[test]
     fn test_load_config() {
         let toml_content = r#"
-          [provider.global-ignore]
+          [global-ignore]
           file-path-pattern = ["test", "build"]
 
-          [provider.project-ignore."~/src/github.com/subspace/subspace"]
+          [project-ignore."~/src/github.com/subspace/subspace"]
           comment-line = true
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();
