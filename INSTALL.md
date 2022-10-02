@@ -64,6 +64,14 @@ cd path/to/vim-clap
 
 # Compile the release build
 cargo build --release
+
+# Or:
+make maple
+
+# After so, if you want to update bin/maple, then:
+make install
+
+# though clap may look for the built target/release/maple first.
 ```
 
 #### Python dynamic module
