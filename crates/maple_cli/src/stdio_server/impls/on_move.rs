@@ -109,13 +109,13 @@ impl OnMove {
             }
             "blines" => {
                 let lnum = extract_blines_lnum(&curline).context("Couldn't extract buffer lnum")?;
-                let path: PathBuf = context.start_buffer_path.clone().into();
+                let path = context.start_buffer_path.clone();
                 Self::BLines(Position::new(path, lnum))
             }
             "tags" => {
                 let lnum =
                     extract_buf_tags_lnum(&curline).context("Couldn't extract buffer tags")?;
-                let path: PathBuf = context.start_buffer_path.clone().into();
+                let path = context.start_buffer_path.clone();
                 Self::BufferTags(Position::new(path, lnum))
             }
             "help_tags" => {
