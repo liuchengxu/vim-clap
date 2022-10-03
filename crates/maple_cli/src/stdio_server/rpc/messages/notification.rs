@@ -69,7 +69,8 @@ impl Notification {
         let InnerParams { file } = self.params.parse()?;
 
         tracing::debug!(?file, "Receive a recent file");
-        if file.is_empty() || !std::path::Path::new(&file).exists() {
+        let path = std::path::Path::new(&file);
+        if !path.exists() || !path.is_file() {
             return Ok(());
         }
 
