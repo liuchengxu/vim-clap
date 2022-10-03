@@ -148,7 +148,10 @@ impl SortedRecentFiles {
             entries: self
                 .entries
                 .into_iter()
-                .filter(|entry| Path::new(&entry.fpath).exists())
+                .filter(|entry| {
+                    let path = Path::new(&entry.fpath);
+                    path.exists() && path.is_file()
+                })
                 .collect(),
             ..self
         }
