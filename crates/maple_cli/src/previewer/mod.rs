@@ -52,6 +52,12 @@ pub fn preview_file<P: AsRef<Path>>(
     size: usize,
     max_width: usize,
 ) -> std::io::Result<(Vec<String>, String)> {
+    if !path.as_ref().is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Can not preview if the object is not a file",
+        ));
+    }
     let abs_path = as_absolute_path(path.as_ref())?;
     let lines_iter = read_first_lines(path.as_ref(), size)?;
     let lines = std::iter::once(abs_path.clone())
