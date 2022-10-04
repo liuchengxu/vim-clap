@@ -8,17 +8,18 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::QueryInfo;
-use crate::config::DumbJumpConfig;
+use crate::config::IgnoreConfig;
 use crate::find_usages::{
     AddressableUsage, CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher, Usage, Usages,
 };
+use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::ExactOrInverseTerms;
 
 /// Context for performing a search.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(super) struct SearchingWorker {
-    pub cwd: String,
+    pub cwd: AbsPathBuf,
     pub query_info: QueryInfo,
     pub source_file_extension: String,
 }
@@ -176,21 +177,25 @@ impl SearchEngine {
             }
         };
 
-        let addressable_usages = filter_usages(cwd.as_ref(), addressable_usages);
+        let addressable_usages = filter_usages(&cwd, addressable_usages);
 
         Ok(addressable_usages.into())
     }
 }
 
-fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<AddressableUsage> {
-    let DumbJumpConfig {
-        ignore_files_not_git_tracked,
-        ignore_pattern_file_path,
-    } = &crate::config::config().provider.dumb_jump;
+fn filter_usages(
+    cwd: &AbsPathBuf,
+    addressable_usages: Vec<AddressableUsage>,
+) -> Vec<AddressableUsage> {
+    let IgnoreConfig {
+        git_tracked_only,
+        file_path_pattern,
+        ..
+    } = crate::config::config().provider_ignore_config("dumb_jump", cwd);
 
     let mut addressable_usages = addressable_usages;
 
-    if *ignore_files_not_git_tracked && utility::is_git_repo(cwd) {
+    if *git_tracked_only && utility::is_git_repo(cwd) {
         let files = addressable_usages
             .iter()
             .map(|x| x.path.as_str())
@@ -218,10 +223,11 @@ fn filter_usages(cwd: &Path, addressable_usages: Vec<AddressableUsage>) -> Vec<A
     }
 
     // Ignore the results from the file whose path contains `test`
-    if let Some(ignore_pattern) = ignore_pattern_file_path {
-        // TODO: "test,build,tmp"
-        addressable_usages.retain(|usage| !usage.path.contains(ignore_pattern));
-    }
+    addressable_usages.retain(|usage| {
+        !file_path_pattern
+            .iter()
+            .any(|ignore_pattern| usage.path.contains(ignore_pattern))
+    });
 
     addressable_usages
 }

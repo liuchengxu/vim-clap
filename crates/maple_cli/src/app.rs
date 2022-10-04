@@ -80,6 +80,10 @@ pub struct Params {
     /// Enable the logging system.
     #[clap(long, parse(from_os_str))]
     pub log: Option<std::path::PathBuf>,
+
+    /// Specify the path of the config file.
+    #[clap(long, parse(from_os_str))]
+    pub config_file: Option<std::path::PathBuf>,
 }
 
 impl Params {

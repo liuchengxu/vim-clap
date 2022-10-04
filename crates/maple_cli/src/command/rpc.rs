@@ -19,6 +19,8 @@ impl Rpc {
             None
         };
 
+        crate::config::initialize_config_file(params.config_file.clone());
+
         if let Some(log_path) = maybe_log {
             if let Ok(metadata) = std::fs::metadata(&log_path) {
                 if log_path.is_file() && metadata.len() > 8 * 1024 * 1024 {

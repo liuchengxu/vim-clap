@@ -74,7 +74,7 @@ impl OnMove {
             "proj_tags" => {
                 let (lnum, p) =
                     extract_proj_tags(&curline).context("Couldn't extract proj tags")?;
-                let mut path: PathBuf = context.cwd.clone();
+                let mut path: PathBuf = context.cwd.clone().into();
                 path.push(&p);
                 Self::ProjTags(Position::new(path, lnum))
             }
@@ -91,7 +91,7 @@ impl OnMove {
 
                     line_content.replace(cache_line.into());
 
-                    let mut path: PathBuf = context.cwd.clone();
+                    let mut path: PathBuf = context.cwd.clone().into();
                     path.push(&fpath);
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
                 };
@@ -103,7 +103,7 @@ impl OnMove {
             "dumb_jump" => {
                 let (_def_kind, fpath, lnum, _col) =
                     extract_jump_line_info(&curline).context("Couldn't extract jump line info")?;
-                let mut path: PathBuf = context.cwd.clone();
+                let mut path: PathBuf = context.cwd.clone().into();
                 path.push(&fpath);
                 Self::Grep(Position::new(path, lnum))
             }
