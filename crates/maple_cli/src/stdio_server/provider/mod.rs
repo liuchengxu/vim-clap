@@ -18,6 +18,7 @@ use icon::{Icon, IconKind};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
@@ -55,7 +56,7 @@ pub struct ProviderEnvironment {
 
 #[derive(Debug, Clone)]
 pub struct ProviderContext {
-    pub cwd: PathBuf,
+    pub cwd: AbsPathBuf,
     pub env: Arc<ProviderEnvironment>,
     pub vim: Vim,
     pub terminated: Arc<AtomicBool>,
@@ -72,7 +73,7 @@ impl ProviderContext {
             input: BufnrWinid,
             display: BufnrWinid,
             preview: BufnrWinid,
-            cwd: PathBuf,
+            cwd: AbsPathBuf,
             icon: String,
             debounce: bool,
             no_cache: bool,

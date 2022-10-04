@@ -14,6 +14,7 @@ use tracing::Instrument;
 
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
@@ -257,7 +258,7 @@ impl DumbJumpProvider {
     /// Starts a new searching task.
     async fn start_search(
         &self,
-        cwd: String,
+        cwd: AbsPathBuf,
         query: String,
         extension: String,
         query_info: QueryInfo,
@@ -325,7 +326,7 @@ impl ClapProvider for DumbJumpProvider {
 
         let query = self.vim().context_query_or_input().await?;
         if !query.is_empty() {
-            let cwd = self.vim().working_dir().await?;
+            let cwd: AbsPathBuf = self.vim().working_dir().await?;
 
             let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
             let extension = std::path::Path::new(&bufname)
@@ -378,7 +379,7 @@ impl ClapProvider for DumbJumpProvider {
 
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
-        let cwd = self.vim().working_dir().await?;
+        let cwd: AbsPathBuf = self.vim().working_dir().await?;
 
         let extension = self
             .context

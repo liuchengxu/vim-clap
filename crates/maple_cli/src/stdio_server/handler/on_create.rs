@@ -238,7 +238,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                     context.set_provider_source(ProviderSource::Command(RG_EXEC_CMD.to_string()));
 
                     let context = context.clone();
-                    let rg_cmd = RgTokioCommand::new(context.cwd.clone());
+                    let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
                     let job_id = utility::calculate_hash(&rg_cmd);
                     job::try_start(
                         async move {

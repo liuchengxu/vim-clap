@@ -59,7 +59,9 @@ impl Notification {
             .ok_or_else(|| anyhow::anyhow!("file is empty"))?;
 
         tracing::debug!(?file, "Received a recent file notification");
-        if file.is_empty() || !std::path::Path::new(&file).exists() {
+
+        let path = std::path::Path::new(&file);
+        if !path.exists() || !path.is_file() {
             return Ok(());
         }
 

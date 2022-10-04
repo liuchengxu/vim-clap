@@ -179,9 +179,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
     static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
 
     if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
-        let mut home_dir = HOME_DIR.clone();
-        home_dir.push(stripped);
-        home_dir
+        HOME_DIR.clone().join(stripped)
     } else {
         path.as_ref().into()
     }

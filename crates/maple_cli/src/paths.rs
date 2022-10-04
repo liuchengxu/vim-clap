@@ -1,9 +1,37 @@
 use std::convert::TryFrom;
 use std::path::{Display, Path, PathBuf};
 
+use serde::{Deserialize, Deserializer, Serialize};
+
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize)]
 pub struct AbsPathBuf(PathBuf);
+
+impl<'de> Deserialize<'de> for AbsPathBuf {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let path = PathBuf::deserialize(deserializer)?;
+        if path.is_absolute() {
+            Ok(Self(path))
+        } else if let Ok(stripped) = path.strip_prefix("~") {
+            Ok(Self(crate::utils::HOME_DIR.clone().join(stripped)))
+        } else {
+            let path = std::fs::canonicalize(&path).map_err(|err| {
+                serde::de::Error::custom(format!(
+                    "Failed to canonicalize {}, error: {err}",
+                    path.display()
+                ))
+            })?;
+            if path.is_absolute() {
+                Ok(Self(path))
+            } else {
+                Err(serde::de::Error::custom("Can not convert {path} to absolute form, please specify it as absolute path directly"))
+            }
+        }
+    }
+}
 
 impl AbsPathBuf {
     pub fn display(&self) -> Display<'_> {

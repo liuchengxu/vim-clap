@@ -12,6 +12,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::rpc::RpcClient;
 
@@ -236,7 +237,7 @@ impl Vim {
         self.eval("g:clap.provider.id").await
     }
 
-    pub async fn working_dir(&self) -> Result<String> {
+    pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.call("clap#rooter#working_dir", json!([])).await
     }
 

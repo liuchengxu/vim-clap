@@ -98,7 +98,7 @@ fn parse_preview_target(
 
                     line_content.replace(cache_line.into());
 
-                    let mut path: PathBuf = context.cwd.clone();
+                    let mut path: PathBuf = context.cwd.to_path_buf();
                     path.push(&fpath);
 
                     Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
@@ -110,7 +110,7 @@ fn parse_preview_target(
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
-                let mut path: PathBuf = context.cwd.clone();
+                let mut path: PathBuf = context.cwd.to_path_buf();
                 path.push(&fpath);
                 PreviewTarget::LineInFile { path, line_number }
             }
@@ -126,7 +126,7 @@ fn parse_preview_target(
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-                let mut path: PathBuf = context.cwd.clone();
+                let mut path: PathBuf = context.cwd.to_path_buf();
                 path.push(&p);
                 PreviewTarget::LineInFile { path, line_number }
             }
