@@ -10,8 +10,8 @@ use types::PreviewInfo;
 
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
+use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
-use crate::stdio_server::{global, job};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 
@@ -259,7 +259,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
-        let enable_icon = global().enable_icon;
+        let enable_icon = self.context.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
             vec!["Directory is empty".to_string()]
@@ -300,7 +300,7 @@ impl<'a> OnMoveHandler<'a> {
             }
         };
 
-        let (lines, fname) = if !global().is_nvim {
+        let (lines, fname) = if !self.context.env.is_nvim {
             let (lines, abs_path) =
                 previewer::preview_file(path.as_ref(), self.preview_height, self.max_line_width())
                     .map_err(|e| {
@@ -357,7 +357,8 @@ impl<'a> OnMoveHandler<'a> {
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !global().is_nvim && should_truncate_cwd_relative(self.context.provider_id()) {
+            if !self.context.env.is_nvim && should_truncate_cwd_relative(self.context.provider_id())
+            {
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative =
                     fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
@@ -393,7 +394,7 @@ impl<'a> OnMoveHandler<'a> {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
-                                    let border_line = "─".repeat(if global().is_nvim {
+                                    let border_line = "─".repeat(if self.context.env.is_nvim {
                                         container_width
                                     } else {
                                         // Vim has a different border width.

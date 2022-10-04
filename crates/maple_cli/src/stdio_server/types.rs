@@ -8,13 +8,6 @@ use types::ProgressUpdate;
 use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]
-pub struct GlobalEnv {
-    pub is_nvim: bool,
-    pub enable_icon: bool,
-    pub preview_config: PreviewConfig,
-}
-
-#[derive(Debug, Clone)]
 pub enum PreviewConfig {
     Number(u64),
     Map(HashMap<String, u64>),
@@ -46,21 +39,6 @@ impl PreviewConfig {
                 .unwrap_or_else(|| map.get("*").copied().unwrap_or(DEFAULT_PREVIEW_SIZE))
                 as usize,
         }
-    }
-}
-
-impl GlobalEnv {
-    pub fn new(is_nvim: bool, enable_icon: bool, preview_config: PreviewConfig) -> Self {
-        Self {
-            is_nvim,
-            enable_icon,
-            preview_config,
-        }
-    }
-
-    /// Each provider can have its preferred preview size.
-    pub fn preview_size_of(&self, provider_id: &str) -> usize {
-        self.preview_config.preview_size(provider_id)
     }
 }
 

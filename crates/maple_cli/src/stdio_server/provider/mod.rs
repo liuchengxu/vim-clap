@@ -41,6 +41,7 @@ pub struct BufnrWinid {
 /// Immutable once initialized.
 #[derive(Debug, Clone)]
 pub struct ProviderEnvironment {
+    pub is_nvim: bool,
     pub provider_id: ProviderId,
     pub start: BufnrWinid,
     pub input: BufnrWinid,
@@ -102,8 +103,10 @@ impl ProviderContext {
         };
         let matcher = provider_id.matcher();
         let display_winwidth = vim.winwidth(display.winid).await?;
+        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
 
         let env = ProviderEnvironment {
+            is_nvim: is_nvim == 1,
             provider_id,
             start,
             input,
@@ -167,12 +170,6 @@ pub struct ProviderId(String);
 impl ProviderId {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    /// Returns the preview size of current provider.
-    #[inline]
-    pub fn get_preview_size(&self) -> usize {
-        super::global().preview_size_of(&self.0)
     }
 
     pub fn matcher(&self) -> Matcher {
