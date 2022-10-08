@@ -135,6 +135,9 @@ function! s:send_method_call(method, params) abort
 endfunction
 
 function! clap#client#notify_recent_file() abort
+  if !clap#job#daemon#is_running()
+    return
+  endif
   if &buftype ==# 'nofile'
     return
   endif
