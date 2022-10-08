@@ -96,6 +96,9 @@ function! clap#client#notify_on_init(...) abort
 endfunction
 
 function! clap#client#notify_recent_file() abort
+  if !clap#job#daemon#is_running()
+    return
+  endif
   if &buftype ==# 'nofile'
     return
   endif
