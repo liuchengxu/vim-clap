@@ -129,7 +129,7 @@ pub struct FilerProvider {
 impl FilerProvider {
     pub fn new(context: ProviderContext) -> Self {
         Self {
-            current_dir: context.cwd.clone(),
+            current_dir: context.cwd.to_path_buf(),
             context,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
@@ -361,7 +361,7 @@ impl ClapProvider for FilerProvider {
             .exec("clap#provider#filer#handle_on_create", response)?;
 
         self.dir_entries.insert(
-            cwd.clone(),
+            cwd.to_path_buf(),
             entries
                 .clone()
                 .into_iter()

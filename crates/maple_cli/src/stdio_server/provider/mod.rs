@@ -18,6 +18,7 @@ use icon::{Icon, IconKind};
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
 use types::{ClapItem, MatchedItem};
 
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
@@ -40,6 +41,7 @@ pub struct BufnrWinid {
 /// Immutable once initialized.
 #[derive(Debug, Clone)]
 pub struct ProviderEnvironment {
+    pub is_nvim: bool,
     pub provider_id: ProviderId,
     pub start: BufnrWinid,
     pub input: BufnrWinid,
@@ -55,7 +57,7 @@ pub struct ProviderEnvironment {
 
 #[derive(Debug, Clone)]
 pub struct ProviderContext {
-    pub cwd: PathBuf,
+    pub cwd: AbsPathBuf,
     pub env: Arc<ProviderEnvironment>,
     pub vim: Vim,
     pub terminated: Arc<AtomicBool>,
@@ -72,7 +74,7 @@ impl ProviderContext {
             input: BufnrWinid,
             display: BufnrWinid,
             preview: BufnrWinid,
-            cwd: PathBuf,
+            cwd: AbsPathBuf,
             icon: String,
             debounce: bool,
             no_cache: bool,
@@ -101,8 +103,10 @@ impl ProviderContext {
         };
         let matcher = provider_id.matcher();
         let display_winwidth = vim.winwidth(display.winid).await?;
+        let is_nvim: usize = vim.call("has", ["nvim"]).await?;
 
         let env = ProviderEnvironment {
+            is_nvim: is_nvim == 1,
             provider_id,
             start,
             input,
@@ -166,12 +170,6 @@ pub struct ProviderId(String);
 impl ProviderId {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    /// Returns the preview size of current provider.
-    #[inline]
-    pub fn get_preview_size(&self) -> usize {
-        super::global().preview_size_of(&self.0)
     }
 
     pub fn matcher(&self) -> Matcher {

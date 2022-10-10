@@ -8,11 +8,9 @@ mod types;
 mod vim;
 
 use std::io::{BufReader, BufWriter};
-use std::ops::Deref;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -24,21 +22,7 @@ use self::provider::{
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
-use self::types::GlobalEnv;
 use self::vim::Vim;
-
-static GLOBAL_ENV: OnceCell<GlobalEnv> = OnceCell::new();
-
-/// Ensure GLOBAL_ENV has been instalized before using it.
-pub fn global() -> impl Deref<Target = GlobalEnv> {
-    if let Some(x) = GLOBAL_ENV.get() {
-        x
-    } else if cfg!(debug_assertions) {
-        panic!("Uninitalized static: GLOBAL_ENV")
-    } else {
-        unreachable!("Never forget to intialize before using it!")
-    }
-}
 
 /// Starts and keep running the server on top of stdio.
 pub async fn start() {
@@ -146,7 +130,7 @@ impl Client {
                 match other_method.as_str() {
                     "initialize_global_env" => {
                         // should be called only once.
-                        notification.initialize_global_env(self.vim.clone()).await?;
+                        notification.initialize(self.vim.clone()).await?;
                     }
                     "note_recent_files" => notification.note_recent_file().await?,
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),

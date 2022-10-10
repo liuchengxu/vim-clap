@@ -118,8 +118,8 @@ If you run into the libssl error when using the prebuilt binary from GitHub rele
 
 ```bash
 $ cd path/to/vim-clap
-$ docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --release
-$ cp target/x86_64-unknown-linux-musl/release/maple bin/maple
+$ docker run --rm -it -v "$(pwd)":/volume clux/muslrust cargo build --profile production --locked
+$ cp target/x86_64-unknown-linux-musl/production/maple bin/maple
 # See if it really works
 $ ./bin/maple version
 ```

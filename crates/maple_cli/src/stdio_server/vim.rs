@@ -12,8 +12,10 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::rpc::RpcClient;
+use crate::stdio_server::types::PreviewConfig;
 
 use super::handler::Preview;
 
@@ -181,7 +183,11 @@ impl Vim {
         preview_winid: usize,
     ) -> Result<usize> {
         let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
-        Ok(provider_id.get_preview_size().max(preview_winheight / 2))
+        let preview_size: Value = self.call("get_var", json!(["clap_preview_size"])).await?;
+        let preview_config: PreviewConfig = preview_size.into();
+        Ok(preview_config
+            .preview_size(provider_id.as_str())
+            .max(preview_winheight / 2))
     }
 
     ///////////////////////////////////////////
@@ -236,7 +242,7 @@ impl Vim {
         self.eval("g:clap.provider.id").await
     }
 
-    pub async fn working_dir(&self) -> Result<String> {
+    pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.call("clap#rooter#working_dir", json!([])).await
     }
 

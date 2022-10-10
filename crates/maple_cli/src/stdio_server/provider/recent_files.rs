@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use types::{MatchedItem, Score};
 
 use crate::datastore::RECENT_FILES_IN_MEMORY;
+use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
@@ -33,12 +34,13 @@ impl RecentFilesProvider {
 
     fn process_query(
         self,
-        cwd: String,
+        cwd: AbsPathBuf,
         query: String,
         preview_size: usize,
         lnum: usize,
     ) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
+        let cwd = cwd.to_string();
 
         let ranked = if query.is_empty() {
             // Sort the initial list according to the cwd.
@@ -185,7 +187,7 @@ impl ClapProvider for RecentFilesProvider {
         let response = tokio::task::spawn_blocking({
             let query = query.clone();
             let recent_files = self.clone();
-            let cwd = self.context.cwd.to_string_lossy().to_string();
+            let cwd = self.context.cwd.clone();
 
             let lnum = self.vim().display_getcurlnum().await?;
             let preview_size = self
