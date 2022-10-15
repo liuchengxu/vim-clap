@@ -97,8 +97,8 @@ mod tests {
           [global-ignore]
           file-path-pattern = ["test", "build"]
 
-          [project-ignore."~/src/github.com/subspace/subspace"]
-          comment-line = true
+          # [project-ignore."~/src/github.com/subspace/subspace"]
+          # comment-line = true
 
           [provider-ignore.dumb_jump]
           comment-line = true
