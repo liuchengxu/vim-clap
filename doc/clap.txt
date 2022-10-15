@@ -490,7 +490,8 @@ g:clap_enable_icon                               *g:clap_enable_icon*
   render these icons properly.
 
   This variable is indended for all the providers by default. It has no effect
-  if some clap provider already has its own icon flag, e.g., |g:clap_provider_grep_enable_icon| .
+  if some clap provider already has its own icon flag, e.g.,
+  |g:clap_provider_live_grep_enable_icon| .
 
 
 g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
@@ -693,20 +694,20 @@ The option naming convention for provider is `g:clap_provider_{provider_id}_{opt
 
 
 -------------------------------------------------------------------------------
-6.1. Clap Grep Options                                      *clap-grep-options*
+6.1. Clap Live Grep Options                              *clap-live-grep-options*
 
-g:clap_provider_grep_executable                   *g:clap_provider_grep_executable*
+g:clap_provider_live_grep_executable       *g:clap_provider_live_grep_executable*
 
   Type: |String|
   Default: `'rg'`
 
   The grep tool to be used. If you change it, you may need to adjust the
-  g:clap_provider_grep_opts as well. Please make sure grep_tool has an output
-  or a flag similar to the --vimgrep flag in ag/rg. Otherwise you may
+  g:clap_provider_live_grep_opts as well. Please make sure grep_tool has an
+  output or a flag similar to the --vimgrep flag in ag/rg. Otherwise you may
   encounter issues.
 
 
-g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
+g:clap_provider_live_grep_delay                 *g:clap_provider_live_grep_delay*
 
   Type: |Number|
   Default: `300`
@@ -715,7 +716,7 @@ g:clap_provider_grep_delay                         *g:clap_provider_grep_delay*
   will be spawned in the background.
 
 
-g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
+g:clap_provider_live_grep_blink                 *g:clap_provider_live_grep_blink*
 
   Type: |List|
   Default: `[2, 100]`
@@ -725,7 +726,7 @@ g:clap_provider_grep_blink                         *g:clap_provider_grep_blink*
   Set it to `[0, 0]` to disable this blink.
 
 
-g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
+g:clap_provider_live_grep_opts                   *g:clap_provider_live_grep_opts*
 
   Type: |String|
   Default: `'-H --no-heading --vimgrep --smart-case'`
@@ -740,7 +741,7 @@ g:clap_provider_grep_opts                          *g:clap_provider_grep_opts*
   similar option exists.
 
 
-g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
+g:clap_provider_live_grep_enable_icon     *g:clap_provider_live_grep_enable_icon*
 
   Type: |Number|
   Default: `exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0)`
@@ -748,7 +749,7 @@ g:clap_provider_grep_enable_icon              *g:clap_provider_grep_enable_icon*
   Set this variable to `0` to disable drawing an icon for the returned result.
 
 
-g:clap_provider_grep_cmd_format             *g:clap_provider_grep_cmd_format*
+g:clap_provider_live_grep_cmd_format       *g:clap_provider_live_grep_cmd_format*
 
   Type: |String|
   Default: `'%s %s "%s"'.(has('win32') ? ' .' : '')`
@@ -756,8 +757,8 @@ g:clap_provider_grep_cmd_format             *g:clap_provider_grep_cmd_format*
   The format used to create the command. 3 strings will be passed to the
   format in that order:
 
-  1. |g:clap_provider_grep_executable|
-  2. |g:clap_provider_grep_opts|
+  1. |g:clap_provider_live_grep_executable|
+  2. |g:clap_provider_live_grep_opts|
   3. |g:clap.input.get()|, the query string that the user has entered to search
 
   In most cases this option does not have to be adjusted for tools like Ag &

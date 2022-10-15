@@ -78,7 +78,7 @@ impl OnMove {
                 path.push(&p);
                 Self::ProjTags(Position::new(path, lnum))
             }
-            "coc_location" | "grep" | "grep2" => {
+            "coc_location" | "grep" | "live_grep" => {
                 let mut try_extract_file_path = |line: &str| {
                     let (fpath, lnum, _col, cache_line) =
                         extract_grep_position(line).context("Couldn't extract grep position")?;
@@ -163,7 +163,7 @@ pub struct OnMoveHandler<'a> {
     /// preview line content, which means the cache is outdated, we
     /// should refresh the cache.
     ///
-    /// Currently only for the provider `grep2`.
+    /// Currently only for the provider `grep`.
     pub cache_line: Option<String>,
 }
 
@@ -419,7 +419,7 @@ impl<'a> OnMoveHandler<'a> {
             );
             return;
         }
-        if self.context.provider_id.as_str() == "grep2" {
+        if self.context.provider_id.as_str() == "grep" {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
@@ -427,13 +427,13 @@ impl<'a> OnMoveHandler<'a> {
                     IS_FERESHING_CACHE.store(true, Ordering::SeqCst);
                     // Spawn a future in the background
                     tokio::task::spawn_blocking(|| {
-                        tracing::debug!(?dir, "Attempting to refresh grep2 cache");
+                        tracing::debug!(?dir, "Attempting to refresh grep cache");
                         match crate::command::grep::refresh_cache(dir) {
                             Ok(total) => {
-                                tracing::debug!(total, "Refresh the grep2 cache successfully");
+                                tracing::debug!(total, "Refresh the grep cache successfully");
                             }
                             Err(e) => {
-                                tracing::error!(error = ?e, "Failed to refresh the grep2 cache")
+                                tracing::error!(error = ?e, "Failed to refresh the grep cache")
                             }
                         }
                         IS_FERESHING_CACHE.store(false, Ordering::SeqCst);

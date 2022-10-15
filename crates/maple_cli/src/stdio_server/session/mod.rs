@@ -88,7 +88,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
                 tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
                 match context.provider_id.as_str() {
-                    "grep" | "grep2" => {
+                    "grep" | "live_grep" => {
                         let rg_cmd =
                             crate::command::grep::RgTokioCommand::new(context.cwd.to_path_buf());
                         let job_id = utility::calculate_hash(&rg_cmd);
