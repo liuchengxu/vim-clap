@@ -1,6 +1,8 @@
 use std::convert::TryFrom;
+use std::fs::canonicalize;
 use std::path::{Display, Path, PathBuf};
 
+use serde::de::Error as DeserializeError;
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
@@ -16,18 +18,19 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         if path.is_absolute() {
             Ok(Self(path))
         } else if let Ok(stripped) = path.strip_prefix("~") {
-            Ok(Self(crate::utils::HOME_DIR.clone().join(stripped)))
+            let path = crate::utils::HOME_DIR.clone().join(stripped);
+            // Resolve the symlink.
+            let path =
+                canonicalize(path).map_err(|err| DeserializeError::custom(err.to_string()))?;
+            Ok(Self(path))
         } else {
-            let path = std::fs::canonicalize(&path).map_err(|err| {
-                serde::de::Error::custom(format!(
-                    "Failed to canonicalize {}, error: {err}",
-                    path.display()
-                ))
+            let path = canonicalize(&path).map_err(|err| {
+                DeserializeError::custom(format!("Can not canonicalize {}: {err}", path.display()))
             })?;
             if path.is_absolute() {
                 Ok(Self(path))
             } else {
-                Err(serde::de::Error::custom("Can not convert {path} to absolute form, please specify it as absolute path directly"))
+                Err(DeserializeError::custom("Can not convert {path} to absolute form, please specify it as absolute path directly"))
             }
         }
     }

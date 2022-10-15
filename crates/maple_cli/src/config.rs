@@ -33,6 +33,7 @@ pub fn config() -> &'static Config {
         std::fs::read_to_string(CONFIG_FILE.get().expect("Config file uninitialized!"))
             .and_then(|contents| {
                 toml::from_str(&contents).map_err(|err| {
+                    // TODO: Notify the config error.
                     tracing::debug!(
                         ?err,
                         "Error while deserializing config.toml, using the default config"
@@ -64,11 +65,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn provider_ignore_config(
-        &self,
-        provider_id: &str,
-        project_dir: &AbsPathBuf,
-    ) -> &IgnoreConfig {
+    pub fn ignore_config(&self, provider_id: &str, project_dir: &AbsPathBuf) -> &IgnoreConfig {
         self.provider_ignore.get(provider_id).unwrap_or_else(|| {
             self.project_ignore
                 .get(project_dir)

@@ -191,7 +191,7 @@ fn filter_usages(
         git_tracked_only,
         file_path_pattern,
         ..
-    } = crate::config::config().provider_ignore_config("dumb_jump", cwd);
+    } = crate::config::config().ignore_config("dumb_jump", cwd);
 
     let mut addressable_usages = addressable_usages;
 
