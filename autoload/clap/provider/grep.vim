@@ -11,7 +11,7 @@ if !executable('rg')
   finish
 endif
 
-function! s:grep.on_typed()
+function! s:grep.on_typed() abort
   call clap#filter#async#dyn#start_grep()
 endfunction
 
