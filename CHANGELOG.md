@@ -2,6 +2,8 @@
 
 ## [unreleased]
 
+
+## [0.37] 2022-10-16
 ### Changed
 
 - Rename the provider `grep` and `grep2`. `:Clap grep` becomes `:Clap live_grep`, `:Clap grep2` becomes `:Clap grep`. If you have some grep variables like `g:clap_provider_grep_foo` before, now you need to rename them to `g:clap_provider_live_grep_foo`. #879
