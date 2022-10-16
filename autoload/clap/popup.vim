@@ -115,7 +115,7 @@ function! s:create_preview() abort
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
-    let should_enable_title = ['grep', 'grep2', 'dumb_jump', 'files', 'git_files', 'proj_tags']
+    let should_enable_title = ['grep', 'live_grep', 'dumb_jump', 'files', 'git_files', 'proj_tags']
     if index(should_enable_title, g:clap.provider.id) > -1
       let working_dir = clap#rooter#working_dir()
       let working_dir_len = strwidth(working_dir)

@@ -16,7 +16,7 @@ else
   let s:builtin_filter_capacity = 10000
 endif
 
-let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer', 'grep', 'grep2']
+let s:related_builtin_providers = ['tags', 'buffers', 'files', 'git_files', 'history', 'filer', 'grep', 'live_grep']
 
 function! s:enable_icon() abort
   if g:clap_enable_icon

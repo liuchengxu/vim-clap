@@ -133,8 +133,8 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap filetypes`                       | File types                                             | _none_                                                                                 |
 | `Clap gfiles` or `Clap git_files`      | Files managed by git                                   | **[git][git]**                                                                         |
 | `Clap git_diff_files`                  | Files managed by git and having uncommitted changes    | **[git][git]**                                                                         |
-| `Clap grep`**<sup>+</sup>**            | Grep on the fly                                        | **[rg][rg]**                                                                           |
-| `Clap grep2`**<sup>+</sup>**           | Grep on the fly with cache and dynamic results         | **[maple][maple]**                                                                     |
+| `Clap grep`**<sup>+</sup>**            | Grep using vim-clap fuzzy matcher                      | **[maple][maple]**                                                                     |
+| `Clap live_grep`**<sup>+</sup>**       | Grep on the fly                                        | **[rg][rg]**                                                                           |
 | `Clap history`                         | Open buffers and `v:oldfiles`                          | _none_                                                                                 |
 | `Clap help_tags`                       | Help tags                                              | _none_                                                                                 |
 | `Clap jumps`                           | Jumps                                                  | _none_                                                                                 |
