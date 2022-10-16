@@ -86,7 +86,7 @@ fn parse_preview_target(
                 };
                 PreviewTarget::File(path)
             }
-            "coc_location" | "grep" | "grep2" => {
+            "coc_location" | "grep" | "live_grep" => {
                 let mut try_extract_file_path = |line: &str| {
                     let (fpath, lnum, _col, cache_line) = extract_grep_position(line).ok_or_else(err)?;
 
@@ -151,7 +151,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
         "files",
         "git_files",
         "grep",
-        "grep2",
+        "live_grep",
         "coc_location",
         "proj_tags",
     ];
@@ -167,7 +167,7 @@ pub struct OnMoveHandler<'a> {
     /// preview line content, which means the cache is outdated, we
     /// should refresh the cache.
     ///
-    /// Currently only for the provider `grep2`.
+    /// Currently only for the provider `grep`.
     pub cache_line: Option<String>,
 }
 
@@ -474,7 +474,7 @@ impl<'a> OnMoveHandler<'a> {
     }
 
     fn try_refresh_cache(&self, latest_line: &str) {
-        if self.context.provider_id() == "grep2" {
+        if self.context.provider_id() == "grep" {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
@@ -487,18 +487,18 @@ impl<'a> OnMoveHandler<'a> {
 
                         // TODO: Refresh with a timeout.
                         tokio::task::spawn_blocking(move || {
-                            tracing::debug!(cwd = ?context.cwd, "Refreshing grep2 cache");
+                            tracing::debug!(cwd = ?context.cwd, "Refreshing grep cache");
                             let new_digest = match crate::command::grep::refresh_cache(&context.cwd)
                             {
                                 Ok(digest) => {
                                     tracing::debug!(
                                         total = digest.total,
-                                        "Refresh the grep2 cache successfully"
+                                        "Refresh the grep cache successfully"
                                     );
                                     digest
                                 }
                                 Err(e) => {
-                                    tracing::error!(error = ?e, "Failed to refresh grep2 cache");
+                                    tracing::error!(error = ?e, "Failed to refresh grep cache");
                                     return;
                                 }
                             };
@@ -517,7 +517,7 @@ impl<'a> OnMoveHandler<'a> {
                     } else {
                         tracing::debug!(
                             cwd = ?self.context.cwd,
-                            "There is already a grep2 job running, skip freshing the cache"
+                            "There is already a grep job running, skip freshing the cache"
                         );
                     }
                 }

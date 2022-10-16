@@ -227,6 +227,7 @@ endfunction
 
 let s:grep = {}
 
+let s:grep.icon = 'Grep'
 let s:grep.syntax = 'clap_grep'
 let s:grep.enable_rooter = v:true
 let s:grep.support_open_action = v:true
@@ -238,15 +239,13 @@ let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_exit = function('s:grep_exit')
 
 function! s:grep.on_move_async() abort
-  let enable_icon = s:grep_enable_icon ? v:true : v:false
-  call clap#client#call_on_move(
-        \ 'on_move', function('clap#impl#on_move#handler'), {'enable_icon': enable_icon})
+  call clap#client#notify('on_move')
 endfunction
 
 if clap#maple#is_available()
   function! s:grep.init() abort
     call clap#rooter#try_set_cwd()
-    call clap#job#regular#forerunner#start_command(clap#maple#command#ripgrep_forerunner())
+    call clap#client#notify_on_init()
   endfunction
 
   function! s:clear_job_and_matches() abort

@@ -174,7 +174,7 @@ impl ProviderId {
 
     pub fn matcher(&self) -> Matcher {
         let match_scope = match self.0.as_str() {
-            "grep" | "grep2" => MatchScope::GrepLine,
+            "grep" | "live_grep" => MatchScope::GrepLine,
             "tags" | "proj_tags" => MatchScope::TagName,
             _ => MatchScope::Full,
         };

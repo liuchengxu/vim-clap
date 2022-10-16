@@ -78,7 +78,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
             };
             return Ok(provider_source);
         }
-        "grep" => {
+        "live_grep" => {
             let mut std_cmd = rg_command(&context.cwd);
             let exec_info = CacheableCommand::new(
                 &mut std_cmd,
@@ -93,7 +93,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                 json!({ "exec_info": exec_info }),
             )?;
         }
-        "grep2" => {
+        "grep" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
             let (digest, refreshed) = if context.env.no_cache {
                 (rg_cmd.create_cache().await?, true)
@@ -234,7 +234,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
 
             // Try creating cache for some potential heavy providers.
             match context.provider_id() {
-                "grep" | "grep2" => {
+                "grep" | "live_grep" => {
                     context.set_provider_source(ProviderSource::Command(RG_EXEC_CMD.to_string()));
 
                     let context = context.clone();
