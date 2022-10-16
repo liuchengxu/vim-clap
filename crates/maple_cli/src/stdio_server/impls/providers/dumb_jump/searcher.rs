@@ -191,7 +191,7 @@ fn filter_usages(
         git_tracked_only,
         file_path_pattern,
         ..
-    } = crate::config::config().provider_ignore_config("dumb_jump", cwd);
+    } = crate::config::config().ignore_config("dumb_jump", cwd);
 
     let mut addressable_usages = addressable_usages;
 
@@ -203,19 +203,7 @@ fn filter_usages(
 
         let git_tracked = files
             .into_par_iter()
-            .filter(|file| {
-                // Only the exit status matters.
-                Command::new("git")
-                    .arg("ls-files")
-                    .arg("--error-unmatch")
-                    .arg(file)
-                    .current_dir(cwd)
-                    .stderr(Stdio::null())
-                    .stdout(Stdio::null())
-                    .status()
-                    .map(|status| status.success())
-                    .unwrap_or(false)
-            })
+            .filter(|path| is_git_tracked(path, cwd))
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
 
@@ -230,4 +218,47 @@ fn filter_usages(
     });
 
     addressable_usages
+}
+
+fn is_git_tracked(file_path: &str, git_dir: &Path) -> bool {
+    // Only the exit status matters.
+    Command::new("git")
+        .arg("ls-files")
+        .arg("--error-unmatch")
+        .arg(file_path)
+        .current_dir(git_dir)
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_git_tracked;
+    use std::time::Instant;
+
+    #[tokio::test]
+    async fn test_git2_and_git_executable() {
+        let dir = std::env::current_dir().unwrap();
+
+        let dir = dir.parent().unwrap().parent().unwrap();
+
+        let now = Instant::now();
+        let exists = is_git_tracked("./autoload/clap.vim", &dir);
+        println!("File exists: {exists:?}");
+        let elapsed = now.elapsed();
+        println!("Elapsed: {:.3?}", elapsed);
+
+        let now = Instant::now();
+        let repo = git::Repository::open(&dir).expect("Not a git repo");
+        let elapsed = now.elapsed();
+        println!("Open repository elapsed: {:.3?}", elapsed);
+        let now = Instant::now();
+        let status = repo.status_file(&std::path::Path::new("autoload/clap1.vim"));
+        println!("File status: {status:?}");
+        let elapsed = now.elapsed();
+        println!("Elapsed: {:.3?}", elapsed);
+    }
 }

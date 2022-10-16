@@ -63,7 +63,7 @@ pub async fn initialize(context: &SessionContext) -> Result<SourceScale> {
             };
             return Ok(scale);
         }
-        "grep2" => {
+        "grep" => {
             let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
             let digest = if context.no_cache {
                 rg_cmd.create_cache().await?

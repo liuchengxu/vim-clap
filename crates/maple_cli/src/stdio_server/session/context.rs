@@ -183,7 +183,7 @@ impl SessionContext {
 
         let match_scope = match provider_id.as_str() {
             "tags" | "proj_tags" => MatchScope::TagName,
-            "grep" | "grep2" => MatchScope::GrepLine,
+            "grep" | "live_grep" => MatchScope::GrepLine,
             _ => MatchScope::Full,
         };
 
@@ -191,7 +191,7 @@ impl SessionContext {
             match provider_id.as_str() {
                 "tags" => Icon::Enabled(IconKind::BufferTags),
                 "proj_tags" => Icon::Enabled(IconKind::ProjTags),
-                "grep" | "grep2" => Icon::Enabled(IconKind::Grep),
+                "grep" | "live_grep" => Icon::Enabled(IconKind::Grep),
                 "files" => Icon::Enabled(IconKind::File),
                 _ => Icon::Null,
             }

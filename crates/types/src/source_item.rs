@@ -47,7 +47,7 @@ pub enum MatchScope {
     TagName,
     /// `:Clap files`
     FileName,
-    /// `:Clap grep2`
+    /// `:Clap grep`
     GrepLine,
 }
 

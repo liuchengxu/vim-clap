@@ -23,7 +23,7 @@ function! s:prepare_global_opts(number) abort
       call add(global_opts, '--icon=File')
     elseif 'proj_tags' ==# g:clap.provider.id
       call add(global_opts, '--icon=ProjTags')
-    elseif index(['grep', 'grep2'], g:clap.provider.id) > -1
+    elseif index(['grep', 'live_grep'], g:clap.provider.id) > -1
       call add(global_opts, '--icon=Grep')
     endif
   endif
