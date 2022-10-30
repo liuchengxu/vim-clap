@@ -254,7 +254,7 @@ if clap#maple#is_available()
   function! s:start_job(query) abort
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#command#start_grep_sync(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
+    call clap#maple#command#start_live_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
   endfunction
 
   function! s:strip_icon_and_match(line, pattern) abort
