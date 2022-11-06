@@ -1,5 +1,6 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
+use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -7,10 +8,9 @@ use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{ClapItem, MatchedItem, Query, Score};
+use types::{ClapItem, MatchedItem, Query, Score, SourceItem};
 use utility::{println_json, println_json_with_length};
 
-use crate::source::{source_exec, source_file, source_list, source_stdin};
 use crate::{sort_matched_items, FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
@@ -298,21 +298,36 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         winwidth,
         matcher,
     } = filter_context;
-    let query: Query = query.into();
-    if let Some(number) = number {
-        let (total_matched, matched_items) = match source {
-            Source::List(list) => {
-                dyn_collect_number(source_list(&matcher, &query, list), number, icon)
-            }
-            Source::Stdin => dyn_collect_number(source_stdin(&matcher, &query), number, icon),
-            Source::File(fpath) => {
-                dyn_collect_number(source_file(&matcher, &query, fpath)?, number, icon)
-            }
-            Source::Exec(exec) => {
-                dyn_collect_number(source_exec(&matcher, &query, exec)?, number, icon)
-            }
-        };
 
+    let query: Query = query.into();
+
+    let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
+        Source::List(list) => Box::new(list),
+        Source::Stdin => Box::new(
+            std::io::stdin()
+                .lock()
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+        Source::File(path) => Box::new(
+            std::io::BufReader::new(std::fs::File::open(path)?)
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+        Source::Exec(exec) => Box::new(
+            std::io::BufReader::new(exec.stream_stdout()?)
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+    };
+
+    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item, &query));
+
+    if let Some(number) = number {
+        let (total_matched, matched_items) = dyn_collect_number(matched_item_stream, number, icon);
         let mut matched_items = sort_matched_items(matched_items);
         matched_items.truncate(number);
 
@@ -324,13 +339,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             icon,
         );
     } else {
-        let matched_items = match source {
-            Source::List(list) => dyn_collect_all(source_list(&matcher, &query, list), icon),
-            Source::Stdin => dyn_collect_all(source_stdin(&matcher, &query), icon),
-            Source::File(fpath) => dyn_collect_all(source_file(&matcher, &query, fpath)?, icon),
-            Source::Exec(exec) => dyn_collect_all(source_exec(&matcher, &query, exec)?, icon),
-        };
-
+        let matched_items = dyn_collect_all(matched_item_stream, icon);
         let matched_items = sort_matched_items(matched_items);
 
         matched_items.iter().for_each(|matched_item| {

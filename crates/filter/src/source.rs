@@ -1,5 +1,6 @@
-use std::path::{Path, PathBuf};
-use std::{io::BufRead, sync::Arc};
+use std::io::BufRead;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::Result;
 use subprocess::Exec;
@@ -33,81 +34,31 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
     pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
-        let res = match self {
-            Self::List(list) => source_list(&matcher, query, list).collect(),
-            Self::Stdin => source_stdin(&matcher, query).collect(),
-            Self::File(fpath) => source_file(&matcher, query, fpath)?.collect(),
-            Self::Exec(exec) => source_exec(&matcher, query, exec)?.collect(),
+        let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match self {
+            Self::List(list) => Box::new(list),
+            Self::Stdin => Box::new(
+                std::io::stdin()
+                    .lock()
+                    .lines()
+                    .filter_map(Result::ok)
+                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+            ),
+            Self::File(path) => Box::new(
+                std::io::BufReader::new(std::fs::File::open(path)?)
+                    .lines()
+                    .filter_map(Result::ok)
+                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+            ),
+            Self::Exec(exec) => Box::new(
+                std::io::BufReader::new(exec.stream_stdout()?)
+                    .lines()
+                    .filter_map(Result::ok)
+                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+            ),
         };
 
-        Ok(res)
+        Ok(clap_item_stream
+            .filter_map(|item| matcher.match_item(item, query))
+            .collect())
     }
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::List(list)`].
-pub fn source_list<'a, 'b: 'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    list: impl Iterator<Item = Arc<dyn ClapItem>> + 'b,
-) -> impl Iterator<Item = MatchedItem> + 'a {
-    list.filter_map(|item| matcher.match_item(item, query))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::Stdin`].
-pub fn source_stdin<'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-) -> impl Iterator<Item = MatchedItem> + 'a {
-    std::io::stdin()
-        .lock()
-        .lines()
-        .filter_map(move |lines_iter| {
-            lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
-                matcher.match_item(item, query)
-            })
-        })
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::File`].
-pub fn source_file<'a, P: AsRef<Path>>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    path: P,
-) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
-    // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
-    // The line stream can contain invalid UTF-8 data.
-    Ok(std::io::BufReader::new(std::fs::File::open(path)?)
-        .lines()
-        .filter_map(|x| {
-            x.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
-                matcher.match_item(item, query)
-            })
-        }))
-}
-
-/// Generate an iterator of [`MatchedItem`] from [`Source::Exec`].
-pub fn source_exec<'a>(
-    matcher: &'a Matcher,
-    query: &'a Query,
-    exec: Box<Exec>,
-) -> Result<impl Iterator<Item = MatchedItem> + 'a> {
-    Ok(std::io::BufReader::new(exec.stream_stdout()?)
-        .lines()
-        .filter_map(|lines_iter| {
-            lines_iter.ok().and_then(|line: String| {
-                let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line));
-                matcher.match_item(item, query)
-                /* NOTE: downcast_ref has to take place here.
-                let s = item
-                    .as_any()
-                    .downcast_ref::<String>()
-                    .expect("item is String; qed");
-                // FIXME: to MatchedItem
-                let item: types::SourceItem = s.as_str().into();
-                match_result.from_source_item_concrete(item)
-                */
-            })
-        }))
 }
