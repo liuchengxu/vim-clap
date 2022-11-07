@@ -9,10 +9,12 @@ use printer::DisplayLines;
 use rayon::slice::ParallelSliceMut;
 
 use icon::{Icon, ICON_LEN};
-use types::{ClapItem, MatchedItem, Query, Score, SourceItem};
+use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
 
 use crate::{sort_matched_items, FilterContext, Source};
+
+use super::try_into_clap_item;
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -329,19 +331,19 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
                 .lock()
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| try_into_clap_item(&matcher, line)),
         ),
         Source::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| try_into_clap_item(&matcher, line)),
         ),
         Source::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| try_into_clap_item(&matcher, line)),
         ),
     };
 

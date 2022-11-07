@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use matcher::MatchScope;
 use parking_lot::Mutex;
 use printer::DisplayLines;
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
@@ -15,10 +14,12 @@ use subprocess::Exec;
 use types::ProgressUpdate;
 
 use icon::Icon;
-use types::{ClapItem, FileNameItem, GrepItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchedItem, Query};
 use utility::println_json_with_length;
 
 use crate::FilterContext;
+
+use super::try_into_clap_item;
 
 /// Refresh the top filtered results per 200 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
@@ -272,26 +273,9 @@ where
                 .par_bridge()
                 .for_each(|line: String| {
                     let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    let item: Arc<dyn ClapItem> = match matcher.match_scope() {
-                        MatchScope::GrepLine => {
-                            if let Some(grep_item) = GrepItem::try_new(line) {
-                                Arc::new(grep_item)
-                            } else {
-                                // Continue the next item
-                                return;
-                            }
-                        }
-                        MatchScope::FileName => {
-                            if let Some(file_name_item) = FileNameItem::try_new(line) {
-                                Arc::new(file_name_item)
-                            } else {
-                                // Continue the next item
-                                return;
-                            }
-                        }
-                        _ => Arc::new(SourceItem::from(line)),
-                    };
-                    process_item(item, processed);
+                    if let Some(item) = try_into_clap_item(&matcher, line) {
+                        process_item(item, processed);
+                    }
                 });
         }
     }
@@ -370,27 +354,9 @@ where
                 Err(())
             } else {
                 let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                // TODO: Use proper item type per provider.
-                let item: Arc<dyn ClapItem> = match matcher.match_scope() {
-                    MatchScope::GrepLine => {
-                        if let Some(grep_item) = GrepItem::try_new(line) {
-                            Arc::new(grep_item)
-                        } else {
-                            // Continue the next item
-                            return Ok(());
-                        }
-                    }
-                    MatchScope::FileName => {
-                        if let Some(file_name_item) = FileNameItem::try_new(line) {
-                            Arc::new(file_name_item)
-                        } else {
-                            // Continue the next item
-                            return Ok(());
-                        }
-                    }
-                    _ => Arc::new(SourceItem::from(line)),
-                };
-                process_item(item, processed);
+                if let Some(item) = try_into_clap_item(&matcher, line) {
+                    process_item(item, processed);
+                }
                 Ok(())
             }
         });
