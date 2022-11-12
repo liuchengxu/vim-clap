@@ -74,13 +74,13 @@ if g:clap_insert_mode_only
   finish
 endif
 
-nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
-nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
-nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
-
-nnoremap <silent> <buffer> <Esc> :<c-u>call clap#handler#exit()<CR>
+nnoremap <silent> <buffer> <Esc>     :<c-u>call clap#handler#exit()<CR>
 
 nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers()<CR>
+
+nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
+nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
+nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
 
 nnoremap <silent> <buffer> <Down> :<c-u>call clap#navigation#linewise('down')<CR>
 nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise('up')<CR>
@@ -88,10 +88,11 @@ nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise('up')<CR>
 nnoremap <silent> <buffer> <PageDown> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <PageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
 
+nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#tab_action()<CR>
+nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#back_action()<CR>
+
 nnoremap <silent> <buffer> <C-d> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <C-u> :<c-u>call clap#navigation#scroll('up')<CR>
-
-nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#tab_action()<CR>
 
 nnoremap <silent> <buffer> gg :<c-u>call clap#navigation#scroll('top')<CR>
 nnoremap <silent> <buffer> G  :<c-u>call clap#navigation#scroll('bottom')<CR>
