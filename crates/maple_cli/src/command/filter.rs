@@ -1,16 +1,13 @@
+use crate::app::Params;
+use crate::paths::AbsPathBuf;
+use anyhow::Result;
+use clap::Parser;
+use filter::{FilterContext, ParallelSource, SequentialSource};
+use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use anyhow::Result;
-use clap::Parser;
 use subprocess::Exec;
-
-use filter::{FilterContext, ParallelSource, SequentialSource};
-use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
-
-use crate::app::Params;
-use crate::paths::AbsPathBuf;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {

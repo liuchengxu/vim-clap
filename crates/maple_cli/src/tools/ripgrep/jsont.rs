@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
-use serde::Deserialize;
-
 use super::stats::Stats;
+use serde::Deserialize;
+use std::borrow::Cow;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "type", content = "data")]

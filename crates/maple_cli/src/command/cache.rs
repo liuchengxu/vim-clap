@@ -1,13 +1,10 @@
+use crate::datastore::CACHE_INFO_IN_MEMORY;
+use anyhow::Result;
+use clap::{Parser, Subcommand};
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
-
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-
 use utility::{clap_cache_dir, remove_dir_contents};
-
-use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// List and remove all the cached contents.
 #[derive(Subcommand, Debug, Clone)]

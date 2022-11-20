@@ -1,9 +1,8 @@
+use serde::de::Error as DeserializeError;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::convert::TryFrom;
 use std::fs::canonicalize;
 use std::path::{Display, Path, PathBuf};
-
-use serde::de::Error as DeserializeError;
-use serde::{Deserialize, Deserializer, Serialize};
 
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize)]

@@ -1,7 +1,6 @@
+use crate::app::Params;
 use anyhow::Result;
 use clap::Parser;
-
-use crate::app::Params;
 
 /// Starts a RPC service using stdio.
 #[derive(Parser, Debug, Clone)]

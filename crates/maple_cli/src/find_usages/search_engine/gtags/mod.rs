@@ -1,14 +1,11 @@
-use std::path::{PathBuf, MAIN_SEPARATOR};
-
-use anyhow::{anyhow, Result};
-use rayon::prelude::*;
-use subprocess::Exec;
-
-use dumb_analyzer::resolve_reference_kind;
-
 use super::Symbol;
 use crate::utils::ExactOrInverseTerms;
 use crate::{find_usages::AddressableUsage, tools::gtags::GTAGS_DIR};
+use anyhow::{anyhow, Result};
+use dumb_analyzer::resolve_reference_kind;
+use rayon::prelude::*;
+use std::path::{PathBuf, MAIN_SEPARATOR};
+use subprocess::Exec;
 
 #[derive(Clone, Debug)]
 pub struct GtagsSearcher {

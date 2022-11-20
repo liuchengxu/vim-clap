@@ -11,18 +11,16 @@
 mod definition;
 mod runner;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-
-use anyhow::Result;
-use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
-use rayon::prelude::*;
-
 use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
 use self::runner::{MatchFinder, RegexRunner};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{get_language, Match, Word};
 use crate::utils::ExactOrInverseTerms;
+use anyhow::Result;
+use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
+use rayon::prelude::*;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// [`Usage`] with some structured information.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

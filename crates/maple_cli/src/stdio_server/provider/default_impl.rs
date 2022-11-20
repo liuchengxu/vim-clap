@@ -1,21 +1,18 @@
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread::JoinHandle;
-
-use anyhow::Result;
-use parking_lot::Mutex;
-use serde_json::json;
-use subprocess::Exec;
-
-use filter::{FilterContext, ParallelSource};
-use printer::DisplayLines;
-use types::MatchedItem;
-
 use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
+use anyhow::Result;
+use filter::{FilterContext, ParallelSource};
+use parking_lot::Mutex;
+use printer::DisplayLines;
+use serde_json::json;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread::JoinHandle;
+use subprocess::Exec;
+use types::MatchedItem;
 
 #[derive(Debug)]
 enum FilterSource {

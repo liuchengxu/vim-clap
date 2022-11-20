@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
-use serde::{Deserialize, Serialize};
-
 use matcher::{ClapItem, MatchScope};
+use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use types::FuzzyText;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

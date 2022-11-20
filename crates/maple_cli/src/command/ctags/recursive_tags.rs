@@ -1,15 +1,3 @@
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use anyhow::Result;
-use clap::Parser;
-
-use filter::{FilterContext, SequentialSource};
-use itertools::Itertools;
-use matcher::{ClapItem, MatchScope, Matcher};
-use rayon::prelude::*;
-
 use super::SharedParams;
 use crate::app::Params;
 use crate::process::ShellCommand;
@@ -17,6 +5,15 @@ use crate::tools::ctags::{
     ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT, EXCLUDE,
 };
 use crate::utils::{send_response_from_cache, SendResponse};
+use anyhow::Result;
+use clap::Parser;
+use filter::{FilterContext, SequentialSource};
+use itertools::Itertools;
+use matcher::{ClapItem, MatchScope, Matcher};
+use rayon::prelude::*;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";

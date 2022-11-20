@@ -1,11 +1,10 @@
 //! This module ensures the process of same command won't be spawned multiple times simultaneously.
 
-use std::collections::HashSet;
-use std::sync::Arc;
-
 use futures::Future;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use std::collections::HashSet;
+use std::sync::Arc;
 
 static JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));

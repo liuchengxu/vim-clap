@@ -1,10 +1,8 @@
-use std::path::PathBuf;
-
-use chrono::prelude::*;
-
 use crate::datastore::CACHE_INFO_IN_MEMORY;
 use crate::process::ShellCommand;
 use crate::utils::UtcTime;
+use chrono::prelude::*;
+use std::path::PathBuf;
 
 pub const MAX_DIGESTS: usize = 100;
 

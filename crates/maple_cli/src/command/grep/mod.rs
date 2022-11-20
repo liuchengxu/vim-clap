@@ -2,17 +2,15 @@ mod forerunner;
 mod grep_impl;
 mod live_grep;
 
-pub use self::forerunner::RipGrepForerunner;
-pub use self::grep_impl::Grep;
-pub use self::live_grep::LiveGrep;
-
+use crate::cache::Digest;
+use crate::process::ShellCommand;
+use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::Result;
-
-use crate::cache::Digest;
-use crate::process::ShellCommand;
+pub use self::forerunner::RipGrepForerunner;
+pub use self::grep_impl::Grep;
+pub use self::live_grep::LiveGrep;
 
 const RG_ARGS: &[&str] = &[
     "rg",

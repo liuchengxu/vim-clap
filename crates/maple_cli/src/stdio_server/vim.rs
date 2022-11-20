@@ -1,23 +1,20 @@
 #![allow(unused)]
 
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::path::Path;
-use std::sync::Arc;
-
+use super::handler::Preview;
+use crate::paths::AbsPathBuf;
+use crate::stdio_server::provider::ProviderId;
+use crate::stdio_server::rpc::RpcClient;
+use crate::stdio_server::types::PreviewConfig;
 use anyhow::Result;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
-
-use crate::paths::AbsPathBuf;
-use crate::stdio_server::provider::ProviderId;
-use crate::stdio_server::rpc::RpcClient;
-use crate::stdio_server::types::PreviewConfig;
-
-use super::handler::Preview;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::path::Path;
+use std::sync::Arc;
 
 /// Map of file extension to vim syntax mapping.
 static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();

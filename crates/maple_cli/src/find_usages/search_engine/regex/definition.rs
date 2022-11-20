@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-use std::fmt::Display;
-
+use super::runner::RegexRunner;
+use crate::tools::ripgrep::{Match, Word};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
-
-use super::runner::RegexRunner;
-use crate::tools::ripgrep::{Match, Word};
+use std::collections::HashMap;
+use std::fmt::Display;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///

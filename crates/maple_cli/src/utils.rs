@@ -1,15 +1,13 @@
-use std::borrow::Cow;
-use std::io::{BufRead, BufReader, Lines};
-use std::path::{Path, PathBuf};
-
 use anyhow::Result;
 use chrono::prelude::*;
 use directories::ProjectDirs;
+use icon::Icon;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
+use std::borrow::Cow;
+use std::io::{BufRead, BufReader, Lines};
+use std::path::{Path, PathBuf};
 use subprocess::Exec;
-
-use icon::Icon;
 use types::{CaseMatching, ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
 

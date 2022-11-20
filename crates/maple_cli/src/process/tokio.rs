@@ -1,7 +1,6 @@
 //! Wrapper of [`tokio::process::Command`].
 
 use std::path::Path;
-
 use tokio::process::Command;
 
 /// Executes the command and redirects the output to a file.

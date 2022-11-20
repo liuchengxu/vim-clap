@@ -3,16 +3,13 @@ pub mod filename;
 pub mod language;
 pub mod recent_files;
 
-use std::sync::Arc;
-
-use types::ClapItem;
-
 use self::cwd::Cwd;
 use self::filename::calc_bonus_file_name;
 use self::language::Language;
 use self::recent_files::RecentFiles;
-
 use crate::Score;
+use std::sync::Arc;
+use types::ClapItem;
 
 /// Tweak the matching score calculated by the base match algorithm.
 #[derive(Debug, Clone, Default)]

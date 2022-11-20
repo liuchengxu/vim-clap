@@ -91,10 +91,9 @@ impl FilterContext {
 /// Sorts the filtered result by the filter score.
 ///
 /// The item with highest score first, the item with lowest score last.
-pub fn sort_matched_items(matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
-    let mut items = matched_items;
-    items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-    items
+pub(crate) fn sort_matched_items(mut matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
+    matched_items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+    matched_items
 }
 
 /// Returns the ranked results after applying the matcher algo
@@ -110,7 +109,7 @@ pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
-pub fn par_filter(
+pub fn filter_parallel(
     query: impl Into<Query>,
     source_items: Vec<SourceItem>,
     fuzzy_matcher: &Matcher,

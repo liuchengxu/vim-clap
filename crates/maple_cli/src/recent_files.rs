@@ -1,12 +1,10 @@
-use std::cmp::Ordering;
-use std::path::Path;
-
+use crate::utils::UtcTime;
 use chrono::prelude::*;
 use filter::SourceItem;
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope};
 use serde::{Deserialize, Serialize};
-
-use crate::utils::UtcTime;
+use std::cmp::Ordering;
+use std::path::Path;
 
 // 3600 seconds
 const HOUR: i64 = 3600;
@@ -184,7 +182,7 @@ impl SortedRecentFiles {
             MatchScope::Full,
         );
 
-        filter::par_filter(query, source_items, &matcher)
+        filter::filter_parallel(query, source_items, &matcher)
     }
 
     /// Updates or inserts a new entry in a sorted way.

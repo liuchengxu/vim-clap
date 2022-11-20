@@ -2,9 +2,8 @@ pub mod fzy;
 pub mod skim;
 pub mod substring;
 
-use types::{CaseMatching, FuzzyText};
-
 use crate::MatchResult;
+use types::{CaseMatching, FuzzyText};
 
 /// Supported fuzzy match algorithm.
 #[derive(Debug, Clone, Copy)]

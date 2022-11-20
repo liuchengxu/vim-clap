@@ -2,12 +2,10 @@
 
 mod github;
 
-use std::path::PathBuf;
-
-use indicatif::{ProgressBar, ProgressStyle};
-use tokio::io::AsyncWriteExt;
-
 use crate::github::{asset_download_url, asset_name, retrieve_asset_size, retrieve_latest_release};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::path::PathBuf;
+use tokio::io::AsyncWriteExt;
 
 /// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
 /// vim-clap/bin/maple.

@@ -1,17 +1,14 @@
-use matcher::ClapItem;
-use parking_lot::Mutex;
-use std::sync::Arc;
-
-use anyhow::Result;
-use serde_json::{json, Value};
-
-use types::{MatchedItem, Score};
-
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
+use anyhow::Result;
+use matcher::ClapItem;
+use parking_lot::Mutex;
+use serde_json::{json, Value};
+use std::sync::Arc;
+use types::{MatchedItem, Score};
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {

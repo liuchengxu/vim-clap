@@ -1,15 +1,13 @@
-use std::collections::HashSet;
-use std::path::Path;
-use std::process::{Command, Stdio};
-
-use anyhow::Result;
-use rayon::prelude::*;
-
 use super::QueryInfo;
 use crate::config::IgnoreConfig;
 use crate::find_usages::{AddressableUsage, CtagsSearcher, GtagsSearcher, RegexSearcher, Usages};
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{get_language, TagsGenerator};
+use anyhow::Result;
+use rayon::prelude::*;
+use std::collections::HashSet;
+use std::path::Path;
+use std::process::{Command, Stdio};
 
 /// Context for performing a search.
 #[derive(Debug, Clone)]

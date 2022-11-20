@@ -1,7 +1,6 @@
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::time;
-
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A type that provides "nicer" Display and Serialize impls for
 /// std::time::Duration. The serialization format should actually be compatible

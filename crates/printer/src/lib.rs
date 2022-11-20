@@ -4,9 +4,8 @@
 mod trimmer;
 mod truncation;
 
-use serde::Serialize;
-
 use icon::{Icon, ICON_LEN};
+use serde::Serialize;
 use types::MatchedItem;
 use utility::println_json;
 

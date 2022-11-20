@@ -1,18 +1,15 @@
+use crate::app::Params;
+use crate::paths::AbsPathBuf;
+use anyhow::Result;
+use clap::Parser;
+use filter::SequentialSource;
+use matcher::{Bonus, MatchResult};
+use rayon::iter::ParallelBridge;
 use std::borrow::Cow;
 use std::io::BufRead;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
-use anyhow::Result;
-use clap::Parser;
-use rayon::iter::ParallelBridge;
-
-use filter::SequentialSource;
-use matcher::{Bonus, MatchResult};
 use types::ClapItem;
-
-use crate::app::Params;
-use crate::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(Parser, Debug, Clone)]

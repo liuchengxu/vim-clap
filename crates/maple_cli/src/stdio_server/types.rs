@@ -1,13 +1,10 @@
+use crate::stdio_server::vim::Vim;
+use printer::DisplayLines;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-
-use serde_json::{json, Value};
-
-use printer::DisplayLines;
 use types::ProgressUpdate;
-
-use crate::stdio_server::vim::Vim;
 
 #[derive(Debug, Clone)]
 pub enum PreviewConfig {

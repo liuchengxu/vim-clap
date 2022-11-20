@@ -1,16 +1,14 @@
-use std::convert::TryFrom;
-use std::path::PathBuf;
-use std::process::Command;
-
-use anyhow::Result;
-use dumb_analyzer::get_comment_syntax;
-use rayon::prelude::*;
-
 use super::definition::{
     build_full_regexp, get_definition_rules, is_comment, DefinitionKind, DefinitionSearchResult,
     Definitions, Occurrences,
 };
 use crate::tools::ripgrep::{Match, Word};
+use anyhow::Result;
+use dumb_analyzer::get_comment_syntax;
+use rayon::prelude::*;
+use std::convert::TryFrom;
+use std::path::PathBuf;
+use std::process::Command;
 
 /// Searches a directory for pattern matches using ripgrep.
 #[derive(Debug, Clone)]

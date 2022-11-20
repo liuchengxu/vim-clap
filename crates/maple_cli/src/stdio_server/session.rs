@@ -1,16 +1,14 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
+use crate::stdio_server::provider::{
+    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
+};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Duration;
-
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
-
-use crate::stdio_server::provider::{
-    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
-};
 
 pub type SessionId = u64;
 

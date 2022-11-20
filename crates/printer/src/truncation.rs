@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::slice::IterMut;
-
 use types::MatchedItem;
 
 /// Line number of Vim is 1-based.

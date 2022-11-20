@@ -3,15 +3,13 @@ mod jsont;
 pub mod stats;
 pub mod util;
 
+use crate::utils::display_width;
+use anyhow::Result;
+use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
-
-use anyhow::Result;
-use once_cell::sync::Lazy;
-
-use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
 

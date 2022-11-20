@@ -1,18 +1,15 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
-use std::sync::Arc;
-
-use anyhow::Result;
-use serde_json::json;
-
-use icon::prepend_filer_icon;
-use types::{ClapItem, MatchResult};
-
 use crate::stdio_server::handler::{OnMoveHandler, Preview, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Key, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
+use anyhow::Result;
+use icon::prepend_filer_icon;
+use serde_json::json;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::sync::Arc;
+use types::{ClapItem, MatchResult};
 
 /// Display the inner path in a nicer way.
 struct DisplayPath<P> {

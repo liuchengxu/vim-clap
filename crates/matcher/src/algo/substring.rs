@@ -1,6 +1,5 @@
-use types::CaseMatching;
-
 use crate::Score;
+use types::CaseMatching;
 
 fn find_start_at(slice: &str, start_at: usize, pat: &str) -> Option<usize> {
     slice[start_at..].find(pat).map(|i| start_at + i)

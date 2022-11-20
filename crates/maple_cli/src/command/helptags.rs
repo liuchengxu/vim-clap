@@ -1,13 +1,10 @@
+use crate::paths::AbsPathBuf;
+use anyhow::Result;
+use clap::Parser;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
-
-use anyhow::Result;
-use clap::Parser;
-
 use utility::read_lines;
-
-use crate::paths::AbsPathBuf;
 
 /// Parse and display Vim helptags.
 #[derive(Parser, Debug, Clone)]

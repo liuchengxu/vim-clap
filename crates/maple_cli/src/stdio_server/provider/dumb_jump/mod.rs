@@ -1,17 +1,5 @@
 mod searcher;
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
-use anyhow::Result;
-use futures::Future;
-use itertools::Itertools;
-use rayon::prelude::*;
-use serde_json::json;
-
-use filter::Query;
-use tracing::Instrument;
-
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::paths::AbsPathBuf;
@@ -22,6 +10,15 @@ use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::ExactOrInverseTerms;
+use anyhow::Result;
+use filter::Query;
+use futures::Future;
+use itertools::Itertools;
+use rayon::prelude::*;
+use serde_json::json;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tracing::Instrument;
 
 /// Internal reprentation of user input.
 #[derive(Debug, Clone, Default)]

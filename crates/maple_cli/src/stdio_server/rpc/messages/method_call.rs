@@ -1,8 +1,7 @@
+use crate::stdio_server::rpc::Params;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-
-use crate::stdio_server::rpc::Params;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

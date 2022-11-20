@@ -1,10 +1,9 @@
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

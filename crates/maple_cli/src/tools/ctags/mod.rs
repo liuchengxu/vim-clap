@@ -2,21 +2,19 @@ mod buffer_tag;
 mod context_tag;
 mod project_tag;
 
+use crate::paths::AbsPathBuf;
+use crate::process::ShellCommand;
+use crate::utils::PROJECT_DIRS;
+use anyhow::Result;
+use itertools::Itertools;
+use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::io::{BufRead, BufReader};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use itertools::Itertools;
-use once_cell::sync::Lazy;
-use rayon::prelude::*;
 use subprocess::{Exec, NullFile};
-
-use crate::paths::AbsPathBuf;
-use crate::process::ShellCommand;
-use crate::utils::PROJECT_DIRS;
 
 pub use self::buffer_tag::{BufferTag, BufferTagItem};
 pub use self::context_tag::{

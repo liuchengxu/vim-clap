@@ -1,19 +1,16 @@
-use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering;
-use std::time::Duration;
-
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
-
-use pattern::*;
-use types::PreviewInfo;
-
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
+use anyhow::{anyhow, Result};
+use pattern::*;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
+use std::time::Duration;
+use types::PreviewInfo;
 
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

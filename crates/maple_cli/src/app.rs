@@ -1,11 +1,9 @@
+use crate::command;
 use anyhow::Result;
 use clap::Parser;
-
 use filter::FilterContext;
 use icon::Icon;
 use types::CaseMatching;
-
-use crate::command;
 
 #[derive(Parser, Debug)]
 pub enum RunCmd {

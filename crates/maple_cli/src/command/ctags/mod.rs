@@ -2,15 +2,13 @@ pub mod buffer_tags;
 pub mod recursive_tags;
 pub mod tags_file;
 
-use std::path::PathBuf;
-
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-use itertools::Itertools;
-
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::EXCLUDE;
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+use itertools::Itertools;
+use std::path::PathBuf;
 
 /// Generate ctags recursively given the directory.
 #[derive(Parser, Debug, Clone)]

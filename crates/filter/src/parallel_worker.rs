@@ -1,7 +1,6 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
-use super::to_clap_item;
-use crate::FilterContext;
+use crate::{to_clap_item, FilterContext};
 use anyhow::Result;
 use icon::Icon;
 use parking_lot::Mutex;

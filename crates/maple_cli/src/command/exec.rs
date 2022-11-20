@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-use std::process::Command;
-
-use anyhow::Result;
-use clap::Parser;
-
 use crate::app::Params;
 use crate::process::shell_command;
 use crate::process::{CacheableCommand, ShellCommand};
+use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
+use std::process::Command;
 
 /// Execute the shell command
 #[derive(Parser, Debug, Clone)]

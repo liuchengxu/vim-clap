@@ -3,26 +3,23 @@ mod dumb_jump;
 mod filer;
 mod recent_files;
 
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
-use anyhow::Result;
-use parking_lot::RwLock;
-use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::UnboundedSender;
-
-use icon::{Icon, IconKind};
-use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
-use types::{ClapItem, MatchedItem};
-
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
 use crate::stdio_server::vim::Vim;
+use anyhow::Result;
+use icon::{Icon, IconKind};
+use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
+use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
+use types::{ClapItem, MatchedItem};
 
 pub use self::default_impl::DefaultProvider;
 pub use self::dumb_jump::DumbJumpProvider;

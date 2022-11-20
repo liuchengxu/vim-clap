@@ -1,17 +1,15 @@
 pub mod kinds;
 
-use std::hash::Hash;
-use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use itertools::Itertools;
-use rayon::prelude::*;
-use subprocess::{Exec, Redirection};
-
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;
 use crate::tools::ctags::TagsGenerator;
 use crate::utils::ExactOrInverseTerms;
+use anyhow::Result;
+use itertools::Itertools;
+use rayon::prelude::*;
+use std::hash::Hash;
+use std::path::{Path, PathBuf};
+use subprocess::{Exec, Redirection};
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

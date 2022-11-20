@@ -1,19 +1,16 @@
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::time::Duration;
-
-use anyhow::Result;
-use serde_json::{json, Value};
-
-use filter::SourceItem;
-use matcher::ClapItem;
-use printer::DisplayLines;
-
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC_CMD};
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ProviderContext, ProviderSource};
+use anyhow::Result;
+use filter::SourceItem;
+use matcher::ClapItem;
+use printer::DisplayLines;
+use serde_json::{json, Value};
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::Duration;
 
 async fn execute_and_write_cache(
     cmd: &str,

@@ -1,9 +1,8 @@
 //! Poor man's language analyzer.
 
-use std::collections::HashMap;
-
 use keywords::KeywordPriority;
 use once_cell::sync::OnceCell;
+use std::collections::HashMap;
 
 mod keywords;
 

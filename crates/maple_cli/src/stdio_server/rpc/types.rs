@@ -1,8 +1,7 @@
+use super::{MethodCall, Notification};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
-
-use super::{MethodCall, Notification};
 
 /// Request message actively sent from the Vim side.
 ///

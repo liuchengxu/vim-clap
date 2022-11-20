@@ -7,11 +7,11 @@ mod ctags;
 mod gtags;
 mod regex;
 
+use super::AddressableUsage;
+
 pub use self::ctags::CtagsSearcher;
 pub use self::gtags::GtagsSearcher;
 pub use self::regex::RegexSearcher;
-
-use super::AddressableUsage;
 
 /// When spawning the ctags/gtags request, we can specify the searching strategy.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]

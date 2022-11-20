@@ -1,9 +1,8 @@
 // Re-export the fzy algorithm
 pub use extracted_fzy::{match_and_score_with_positions, MatchWithPositions};
 
-use extracted_fzy::CaseMatching;
-
 use crate::{MatchResult, Score};
+use extracted_fzy::CaseMatching;
 
 /// Make the arguments order same to Skim's `fuzzy_indices()`.
 pub fn fuzzy_indices(

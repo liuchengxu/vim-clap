@@ -1,7 +1,6 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
-use super::to_clap_item;
-use crate::{sort_matched_items, FilterContext, SequentialSource};
+use crate::{sort_matched_items, to_clap_item, FilterContext, SequentialSource};
 use anyhow::Result;
 use icon::{Icon, ICON_LEN};
 use printer::DisplayLines;

@@ -7,14 +7,6 @@ mod state;
 mod types;
 mod vim;
 
-use std::io::{BufReader, BufWriter};
-use std::sync::Arc;
-
-use anyhow::{anyhow, Result};
-use parking_lot::Mutex;
-use serde_json::{json, Value};
-use tokio::sync::mpsc::UnboundedReceiver;
-
 use self::provider::{
     ClapProvider, DefaultProvider, DumbJumpProvider, Event, FilerProvider, ProviderContext,
     ProviderEvent, RecentFilesProvider,
@@ -23,6 +15,12 @@ use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
 use self::vim::Vim;
+use anyhow::{anyhow, Result};
+use parking_lot::Mutex;
+use serde_json::{json, Value};
+use std::io::{BufReader, BufWriter};
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 /// Starts and keep running the server on top of stdio.
 pub async fn start() {

@@ -1,15 +1,12 @@
-use std::path::PathBuf;
-
-use anyhow::Result;
-use clap::Parser;
-use subprocess::Exec;
-
-use filter::{ParallelSource, SequentialSource};
-use matcher::MatchScope;
-
 use crate::app::Params;
 use crate::command::grep::RG_EXEC_CMD;
 use crate::process::ShellCommand;
+use anyhow::Result;
+use clap::Parser;
+use filter::{ParallelSource, SequentialSource};
+use matcher::MatchScope;
+use std::path::PathBuf;
+use subprocess::Exec;
 
 #[derive(Parser, Debug, Clone)]
 pub struct Grep {

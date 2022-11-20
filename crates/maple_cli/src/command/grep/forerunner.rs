@@ -1,14 +1,11 @@
-use std::path::PathBuf;
-
-use anyhow::Result;
-use clap::Parser;
-
-use utility::is_git_repo;
-
 use super::{rg_command, rg_shell_command};
 use crate::app::Params;
 use crate::process::CacheableCommand;
 use crate::utils::{send_response_from_cache, SendResponse};
+use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
+use utility::is_git_repo;
 
 #[derive(Parser, Debug, Clone)]
 pub struct RipGrepForerunner {

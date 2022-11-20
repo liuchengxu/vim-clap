@@ -1,16 +1,13 @@
-use std::convert::TryFrom;
-use std::path::PathBuf;
-
-use anyhow::{Context, Result};
-use clap::Parser;
-use rayon::prelude::*;
-
-use icon::Icon;
-
 use crate::app::Params;
 use crate::process::shell_command;
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::tools::ripgrep::Match;
+use anyhow::{Context, Result};
+use clap::Parser;
+use icon::Icon;
+use rayon::prelude::*;
+use std::convert::TryFrom;
+use std::path::PathBuf;
 
 /// Invoke the rg executable and return the raw output of rg.
 ///
