@@ -12,7 +12,7 @@ use icon::{Icon, ICON_LEN};
 use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
 
-use crate::{sort_matched_items, FilterContext, Source};
+use crate::{sort_matched_items, FilterContext, SequentialSource};
 
 use super::try_into_clap_item;
 
@@ -313,7 +313,7 @@ fn print_on_dyn_run_finished(display_lines: DisplayLines, total_matched: usize) 
 pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     filter_context: FilterContext,
-    source: Source<I>,
+    source: SequentialSource<I>,
 ) -> Result<()> {
     let FilterContext {
         icon,
@@ -325,21 +325,21 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     let query: Query = query.into();
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
-        Source::List(list) => Box::new(list),
-        Source::Stdin => Box::new(
+        SequentialSource::List(list) => Box::new(list),
+        SequentialSource::Stdin => Box::new(
             std::io::stdin()
                 .lock()
                 .lines()
                 .filter_map(Result::ok)
                 .filter_map(|line| try_into_clap_item(&matcher, line)),
         ),
-        Source::File(path) => Box::new(
+        SequentialSource::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
                 .filter_map(Result::ok)
                 .filter_map(|line| try_into_clap_item(&matcher, line)),
         ),
-        Source::Exec(exec) => Box::new(
+        SequentialSource::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
                 .filter_map(Result::ok)
@@ -404,7 +404,7 @@ mod tests {
         dyn_run(
             "abc",
             FilterContext::default().number(Some(100)),
-            Source::List(
+            SequentialSource::List(
                 std::iter::repeat_with(|| {
                     bytes = bytes.reverse_bits().rotate_right(3).wrapping_add(1);
 

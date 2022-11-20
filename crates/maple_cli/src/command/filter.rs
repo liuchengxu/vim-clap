@@ -6,7 +6,7 @@ use anyhow::Result;
 use clap::Parser;
 use subprocess::Exec;
 
-use filter::{FilterContext, ParSource, Source};
+use filter::{FilterContext, ParSource, SequentialSource};
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 
 use crate::app::Params;
@@ -65,7 +65,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = Arc<dyn ClapItem>>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = Arc<dyn ClapItem>>>(&self) -> SequentialSource<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir).into()
@@ -76,7 +76,7 @@ impl Filter {
             self.input
                 .as_ref()
                 .map(|i| i.deref().clone().into())
-                .unwrap_or(Source::<I>::Stdin)
+                .unwrap_or(SequentialSource::<I>::Stdin)
         }
     }
 

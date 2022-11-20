@@ -7,7 +7,7 @@ use anyhow::Result;
 use clap::Parser;
 use rayon::iter::ParallelBridge;
 
-use filter::Source;
+use filter::SequentialSource;
 use matcher::{Bonus, MatchResult};
 use types::ClapItem;
 
@@ -101,7 +101,7 @@ impl Blines {
             filter::dyn_run(
                 &self.query,
                 filter_context,
-                Source::List(blines_item_stream()),
+                SequentialSource::List(blines_item_stream()),
             )?;
         }
 

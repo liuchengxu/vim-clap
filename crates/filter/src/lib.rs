@@ -17,7 +17,7 @@ use rayon::prelude::*;
 use icon::Icon;
 use matcher::{Bonus, ClapItem, MatchScope, Matcher};
 
-pub use self::source::Source;
+pub use self::source::SequentialSource;
 pub use self::worker::iterator::dyn_run;
 pub use self::worker::par_iterator::{
     par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, ParSource, StdioProgressor,
@@ -88,7 +88,7 @@ pub fn sort_matched_items(matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
 /// given the query String and filtering source.
 pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
-    source: Source<I>,
+    source: SequentialSource<I>,
     matcher: Matcher,
 ) -> Result<Vec<MatchedItem>> {
     let query: Query = query.into();

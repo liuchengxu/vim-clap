@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use clap::Parser;
 
-use filter::{FilterContext, Source};
+use filter::{FilterContext, SequentialSource};
 use itertools::Itertools;
 use matcher::{ClapItem, MatchScope, Matcher};
 use rayon::prelude::*;
@@ -125,7 +125,7 @@ impl RecursiveTags {
                 filter::dyn_run(
                     self.query.as_deref().unwrap_or_default(),
                     filter_context,
-                    Source::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
+                    SequentialSource::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
                         let item: Arc<dyn ClapItem> = Arc::new(tag_item);
                         item
                     })),

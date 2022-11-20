@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use subprocess::Exec;
 
-use filter::{ParSource, Source};
+use filter::{ParSource, SequentialSource};
 use matcher::MatchScope;
 
 use crate::app::Params;
@@ -64,7 +64,7 @@ impl Grep {
     fn dyn_run(&self, params: Params) -> Result<()> {
         let no_cache = params.no_cache;
 
-        let do_dyn_filter = |source: Source<std::iter::Empty<_>>| {
+        let do_dyn_filter = |source: SequentialSource<std::iter::Empty<_>>| {
             filter::dyn_run(
                 &self.grep_query,
                 params
@@ -74,13 +74,13 @@ impl Grep {
             )
         };
 
-        let source: Source<std::iter::Empty<_>> = if let Some(ref tempfile) = self.input {
-            Source::File(tempfile.clone())
+        let source: SequentialSource<std::iter::Empty<_>> = if let Some(ref tempfile) = self.input {
+            SequentialSource::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let shell_cmd = super::rg_shell_command(dir);
                 if let Some(digest) = shell_cmd.cache_digest() {
-                    return do_dyn_filter(Source::File(digest.cached_path));
+                    return do_dyn_filter(SequentialSource::File(digest.cached_path));
                 }
             }
             Exec::shell(RG_EXEC_CMD).cwd(dir).into()

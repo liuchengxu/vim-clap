@@ -128,7 +128,7 @@ pub(crate) mod tests {
     use super::*;
     use filter::{
         matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
-        Source, SourceItem,
+        SequentialSource, SourceItem,
     };
     use rayon::prelude::*;
     use std::sync::Arc;
@@ -177,9 +177,10 @@ pub(crate) mod tests {
     ) -> Vec<MatchedItem> {
         let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
 
-        let mut ranked = Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
-            .run_and_collect(matcher, &query.into())
-            .unwrap();
+        let mut ranked =
+            SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
+                .run_and_collect(matcher, &query.into())
+                .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 
         ranked
