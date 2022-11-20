@@ -6,7 +6,7 @@ use anyhow::Result;
 use clap::Parser;
 use subprocess::Exec;
 
-use filter::{FilterContext, ParSource, SequentialSource};
+use filter::{FilterContext, ParallelSource, SequentialSource};
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
 
 use crate::app::Params;
@@ -80,21 +80,21 @@ impl Filter {
         }
     }
 
-    fn generate_par_source(&self) -> ParSource {
+    fn generate_par_source(&self) -> ParallelSource {
         if let Some(ref cmd_str) = self.cmd {
             let exec = if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir)
             } else {
                 Exec::shell(cmd_str)
             };
-            ParSource::Exec(Box::new(exec))
+            ParallelSource::Exec(Box::new(exec))
         } else {
             let file = self
                 .input
                 .as_ref()
                 .map(|i| i.deref().clone())
                 .expect("Only File and Exec source can be parallel");
-            ParSource::File(file)
+            ParallelSource::File(file)
         }
     }
 

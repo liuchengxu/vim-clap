@@ -1,20 +1,16 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
+use super::to_clap_item;
+use crate::{sort_matched_items, FilterContext, SequentialSource};
+use anyhow::Result;
+use icon::{Icon, ICON_LEN};
+use printer::DisplayLines;
+use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use anyhow::Result;
-use printer::DisplayLines;
-use rayon::slice::ParallelSliceMut;
-
-use icon::{Icon, ICON_LEN};
 use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
-
-use crate::{sort_matched_items, FilterContext, SequentialSource};
-
-use super::try_into_clap_item;
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -331,19 +327,19 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
                 .lock()
                 .lines()
                 .filter_map(Result::ok)
-                .filter_map(|line| try_into_clap_item(&matcher, line)),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
         SequentialSource::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
                 .filter_map(Result::ok)
-                .filter_map(|line| try_into_clap_item(&matcher, line)),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
         SequentialSource::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
                 .filter_map(Result::ok)
-                .filter_map(|line| try_into_clap_item(&matcher, line)),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
     };
 

@@ -1,32 +1,28 @@
 //! Convert the source item stream to a parallel iterator and run the filtering in parallel.
 
+use super::to_clap_item;
+use crate::FilterContext;
+use anyhow::Result;
+use icon::Icon;
+use parking_lot::Mutex;
+use printer::DisplayLines;
+use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use anyhow::Result;
-use parking_lot::Mutex;
-use printer::DisplayLines;
-use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use subprocess::Exec;
 use types::ProgressUpdate;
-
-use icon::Icon;
 use types::{ClapItem, MatchedItem, Query};
 use utility::println_json_with_length;
-
-use crate::FilterContext;
-
-use super::try_into_clap_item;
 
 /// Refresh the top filtered results per 200 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
 /// Parallelable source.
 #[derive(Debug)]
-pub enum ParSource {
+pub enum ParallelSource {
     File(PathBuf),
     Exec(Box<Exec>),
 }
@@ -38,19 +34,19 @@ pub enum ParSource {
 pub fn par_dyn_run(
     query: &str,
     filter_context: FilterContext,
-    par_source: ParSource,
+    par_source: ParallelSource,
 ) -> Result<()> {
     let query: Query = query.into();
 
     match par_source {
-        ParSource::File(file) => {
+        ParallelSource::File(file) => {
             par_dyn_run_inner::<Empty<_>, _>(
                 &query,
                 filter_context,
                 ParSourceInner::Lines(std::fs::File::open(file)?),
             )?;
         }
-        ParSource::Exec(exec) => {
+        ParallelSource::Exec(exec) => {
             par_dyn_run_inner::<Empty<_>, _>(
                 &query,
                 filter_context,
@@ -273,7 +269,7 @@ where
                 .par_bridge()
                 .for_each(|line: String| {
                     let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                    if let Some(item) = try_into_clap_item(&matcher, line) {
+                    if let Some(item) = to_clap_item(matcher.match_scope(), line) {
                         process_item(item, processed);
                     }
                 });
@@ -300,7 +296,7 @@ where
 pub fn par_dyn_run_inprocess<P>(
     query: &str,
     filter_context: FilterContext,
-    par_source: ParSource,
+    par_source: ParallelSource,
     progressor: P,
     stop_signal: Arc<AtomicBool>,
 ) -> Result<()>
@@ -336,8 +332,8 @@ where
     };
 
     let read: Box<dyn std::io::Read + Send> = match par_source {
-        ParSource::File(file) => Box::new(std::fs::File::open(file)?),
-        ParSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
+        ParallelSource::File(file) => Box::new(std::fs::File::open(file)?),
+        ParallelSource::Exec(exec) => Box::new(exec.detached().stream_stdout()?), // TODO: kill the exec command ASAP/ Run the exec command in another blocking task.
     };
 
     // To avoid Err(Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" })
@@ -354,7 +350,7 @@ where
                 Err(())
             } else {
                 let processed = processed_count.fetch_add(1, Ordering::SeqCst);
-                if let Some(item) = try_into_clap_item(&matcher, line) {
+                if let Some(item) = to_clap_item(matcher.match_scope(), line) {
                     process_item(item, processed);
                 }
                 Ok(())

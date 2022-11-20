@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use subprocess::Exec;
 
-use filter::{ParSource, SequentialSource};
+use filter::{ParallelSource, SequentialSource};
 use matcher::MatchScope;
 
 use crate::app::Params;
@@ -94,7 +94,7 @@ impl Grep {
     fn par_run(&self, params: Params) -> Result<()> {
         let no_cache = params.no_cache;
 
-        let par_dyn_dun = |par_source: ParSource| {
+        let par_dyn_dun = |par_source: ParallelSource| {
             filter::par_dyn_run(
                 &self.grep_query,
                 params
@@ -105,17 +105,17 @@ impl Grep {
         };
 
         let par_source = if let Some(ref tempfile) = self.input {
-            ParSource::File(tempfile.clone())
+            ParallelSource::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
             if !no_cache {
                 let shell_cmd = ShellCommand::new(RG_EXEC_CMD.into(), dir.clone());
                 if let Some(digest) = shell_cmd.cache_digest() {
-                    return par_dyn_dun(ParSource::File(digest.cached_path));
+                    return par_dyn_dun(ParallelSource::File(digest.cached_path));
                 }
             }
-            ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
+            ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
         } else {
-            ParSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
+            ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
         };
 
         // TODO: Improve the responsiveness of ripgrep as it can emit the items after some time.

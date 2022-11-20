@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 use subprocess::Exec;
 
-use filter::{FilterContext, ParSource};
+use filter::{FilterContext, ParallelSource};
 use printer::DisplayLines;
 use types::MatchedItem;
 
@@ -58,9 +58,9 @@ fn run(
                 &query,
                 FilterContext::new(icon, Some(number), Some(display_winwidth), matcher),
                 match filter_source {
-                    FilterSource::File(path) => ParSource::File(path),
+                    FilterSource::File(path) => ParallelSource::File(path),
                     FilterSource::Command(command) => {
-                        ParSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
+                        ParallelSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
                 VimProgressor::new(&vim, stop_signal.clone()),

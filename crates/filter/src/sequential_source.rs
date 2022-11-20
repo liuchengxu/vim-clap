@@ -1,11 +1,9 @@
+use anyhow::Result;
+use matcher::Matcher;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use anyhow::Result;
 use subprocess::Exec;
-
-use matcher::Matcher;
 use types::{ClapItem, MatchedItem, Query, SourceItem};
 
 /// [`SequentialSource`] provides an iterator of [`ClapItem`] which

@@ -10,17 +10,15 @@ mod parallel_worker;
 mod sequential_source;
 mod sequential_worker;
 
-use std::sync::Arc;
-
 use anyhow::Result;
-use rayon::prelude::*;
-
 use icon::Icon;
 use matcher::{Bonus, ClapItem, MatchScope, Matcher};
+use rayon::prelude::*;
+use std::sync::Arc;
 use types::{FileNameItem, GrepItem};
 
 pub use self::parallel_worker::{
-    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, ParSource, StdioProgressor,
+    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, ParallelSource, StdioProgressor,
 };
 pub use self::sequential_source::{filter_sequential, SequentialSource};
 pub use self::sequential_worker::dyn_run;
@@ -28,8 +26,8 @@ pub use matcher;
 pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
 
 /// Converts the raw line into a clap item.
-pub(crate) fn try_into_clap_item(matcher: &Matcher, line: String) -> Option<Arc<dyn ClapItem>> {
-    match matcher.match_scope() {
+pub(crate) fn to_clap_item(match_scope: MatchScope, line: String) -> Option<Arc<dyn ClapItem>> {
+    match match_scope {
         MatchScope::GrepLine => {
             GrepItem::try_new(line).map(|item| Arc::new(item) as Arc<dyn ClapItem>)
         }
