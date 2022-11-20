@@ -8,7 +8,8 @@ use subprocess::Exec;
 use matcher::Matcher;
 use types::{ClapItem, MatchedItem, Query, SourceItem};
 
-/// Source is anything that can produce an iterator of String.
+/// [`SequentialSource`] provides an iterator of [`ClapItem`] which
+/// will be processed sequentially.
 #[derive(Debug)]
 pub enum SequentialSource<I: Iterator<Item = Arc<dyn ClapItem>>> {
     List(I),
@@ -29,36 +30,35 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for SequentialSource<I> {
     }
 }
 
-impl<I: Iterator<Item = Arc<dyn ClapItem>>> SequentialSource<I> {
-    /// Returns the complete filtered results given `matcher` and `query`.
-    ///
-    /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
-        let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match self {
-            Self::List(list) => Box::new(list),
-            Self::Stdin => Box::new(
-                std::io::stdin()
-                    .lock()
-                    .lines()
-                    .filter_map(Result::ok)
-                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
-            ),
-            Self::File(path) => Box::new(
-                std::io::BufReader::new(std::fs::File::open(path)?)
-                    .lines()
-                    .filter_map(Result::ok)
-                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
-            ),
-            Self::Exec(exec) => Box::new(
-                std::io::BufReader::new(exec.stream_stdout()?)
-                    .lines()
-                    .filter_map(Result::ok)
-                    .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
-            ),
-        };
+pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
+    source: SequentialSource<I>,
+    matcher: Matcher,
+    query: &Query,
+) -> Result<Vec<MatchedItem>> {
+    let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
+        SequentialSource::List(list) => Box::new(list),
+        SequentialSource::Stdin => Box::new(
+            std::io::stdin()
+                .lock()
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+        SequentialSource::File(path) => Box::new(
+            std::io::BufReader::new(std::fs::File::open(path)?)
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+        SequentialSource::Exec(exec) => Box::new(
+            std::io::BufReader::new(exec.stream_stdout()?)
+                .lines()
+                .filter_map(Result::ok)
+                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+        ),
+    };
 
-        Ok(clap_item_stream
-            .filter_map(|item| matcher.match_item(item, query))
-            .collect())
-    }
+    Ok(clap_item_stream
+        .filter_map(|item| matcher.match_item(item, query))
+        .collect())
 }
