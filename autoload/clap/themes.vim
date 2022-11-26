@@ -166,6 +166,7 @@ endfunction
 function! s:init_theme() abort
   hi ClapDefaultShadow guibg=#000000
   hi default link ClapShadow ClapDefaultShadow
+  hi default link FloatBorder ClapPreview
 
   if &background ==# 'dark'
     hi ClapDefaultPreview ctermbg=237 guibg=#3E4452
@@ -192,8 +193,6 @@ function! clap#themes#init() abort
   hi default link ClapMatches Search
   hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapPopupCursor Type
-
-  hi default link FloatBorder ClapPreview
 
   if exists('g:clap_theme')
     " If anything is wrong, just use the default theme.
