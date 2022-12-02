@@ -1,6 +1,5 @@
 use crate::app::Params;
 use crate::command::grep::RG_EXEC_CMD;
-use crate::process::ShellCommand;
 use anyhow::Result;
 use clap::Parser;
 use filter::{ParallelSource, SequentialSource};
@@ -21,10 +20,6 @@ pub struct Grep {
     /// Specify the working directory of CMD
     #[clap(long, parse(from_os_str))]
     cmd_dir: Option<PathBuf>,
-
-    /// Specify the directory for running ripgrep.
-    #[clap(long, parse(from_os_str))]
-    grep_dir: Vec<PathBuf>,
 
     /// Recreate the cache, only intended for the test purpose.
     #[clap(long)]
@@ -55,61 +50,54 @@ impl Grep {
         Ok(())
     }
 
+    fn usable_cache(&self, params: &Params) -> Option<PathBuf> {
+        if !params.no_cache {
+            if let Some(ref dir) = self.cmd_dir {
+                let shell_cmd = super::rg_shell_command(dir);
+                if let Some(digest) = shell_cmd.cache_digest() {
+                    return Some(digest.cached_path);
+                }
+            }
+        }
+        None
+    }
+
     /// Runs grep using the dyn filter.
     ///
     /// Firstly try using the cache.
     fn dyn_run(&self, params: Params) -> Result<()> {
-        let no_cache = params.no_cache;
+        let maybe_usable_cache = self.usable_cache(&params);
 
-        let do_dyn_filter = |source: SequentialSource<std::iter::Empty<_>>| {
-            filter::dyn_run(
-                &self.grep_query,
-                params
-                    .into_filter_context()
-                    .match_scope(MatchScope::GrepLine),
-                source,
-            )
-        };
+        let filter_context = params
+            .into_filter_context()
+            .match_scope(MatchScope::GrepLine);
 
-        let source: SequentialSource<std::iter::Empty<_>> = if let Some(ref tempfile) = self.input {
+        let source: SequentialSource<std::iter::Empty<_>> = if let Some(cache) = maybe_usable_cache
+        {
+            SequentialSource::File(cache)
+        } else if let Some(ref tempfile) = self.input {
             SequentialSource::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
-            if !no_cache {
-                let shell_cmd = super::rg_shell_command(dir);
-                if let Some(digest) = shell_cmd.cache_digest() {
-                    return do_dyn_filter(SequentialSource::File(digest.cached_path));
-                }
-            }
             Exec::shell(RG_EXEC_CMD).cwd(dir).into()
         } else {
             Exec::shell(RG_EXEC_CMD).into()
         };
 
-        do_dyn_filter(source)
+        filter::dyn_run(&self.grep_query, filter_context, source)
     }
 
     fn par_run(&self, params: Params) -> Result<()> {
-        let no_cache = params.no_cache;
+        let maybe_usable_cache = self.usable_cache(&params);
 
-        let par_dyn_dun = |par_source: ParallelSource| {
-            filter::par_dyn_run(
-                &self.grep_query,
-                params
-                    .into_filter_context()
-                    .match_scope(MatchScope::GrepLine),
-                par_source,
-            )
-        };
+        let filter_context = params
+            .into_filter_context()
+            .match_scope(MatchScope::GrepLine);
 
-        let par_source = if let Some(ref tempfile) = self.input {
+        let par_source = if let Some(cache) = maybe_usable_cache {
+            ParallelSource::File(cache)
+        } else if let Some(ref tempfile) = self.input {
             ParallelSource::File(tempfile.clone())
         } else if let Some(ref dir) = self.cmd_dir {
-            if !no_cache {
-                let shell_cmd = ShellCommand::new(RG_EXEC_CMD.into(), dir.clone());
-                if let Some(digest) = shell_cmd.cache_digest() {
-                    return par_dyn_dun(ParallelSource::File(digest.cached_path));
-                }
-            }
             ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD).cwd(dir)))
         } else {
             ParallelSource::Exec(Box::new(Exec::shell(RG_EXEC_CMD)))
@@ -119,6 +107,6 @@ impl Grep {
         // When running the command below, a few seconds before showing the progress, might be
         // mitigated by using the libripgrep instead of using the rg executable.
         // time /home/xlc/.vim/plugged/vim-clap/target/release/maple --icon=Grep --no-cache --number 136 --winwidth 122 --case-matching smart grep srlss --cmd-dir /home/xlc/src/github.com/subspace/subspace --par-run
-        par_dyn_dun(par_source)
+        filter::par_dyn_run(&self.grep_query, filter_context, par_source)
     }
 }

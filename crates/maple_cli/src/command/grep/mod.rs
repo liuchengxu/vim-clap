@@ -1,5 +1,5 @@
 mod forerunner;
-mod grep_impl;
+mod grep;
 mod live_grep;
 
 use crate::cache::Digest;
@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub use self::forerunner::RipGrepForerunner;
-pub use self::grep_impl::Grep;
+pub use self::grep::Grep;
 pub use self::live_grep::LiveGrep;
 
 const RG_ARGS: &[&str] = &[
