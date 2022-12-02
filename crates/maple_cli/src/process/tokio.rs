@@ -35,7 +35,7 @@ pub async fn write_stdout_to_file<P: AsRef<Path>>(
 pub fn shell_command(shell_cmd: impl AsRef<str>) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
-        cmd.args(&["/C", shell_cmd.as_ref()]);
+        cmd.args(["/C", shell_cmd.as_ref()]);
         cmd
     } else {
         let mut cmd = Command::new("bash");

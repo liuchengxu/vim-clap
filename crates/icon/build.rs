@@ -52,7 +52,7 @@ fn main() {
     file.write_all(
         "
 pub fn bsearch_icon_table(c: &str, table: &[(&str, char)]) ->Option<usize> {
-    table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
+    table.binary_search_by(|&(key, _)| key.cmp(c)).ok()
 }
 \n"
         .as_bytes(),

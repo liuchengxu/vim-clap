@@ -124,7 +124,7 @@ fn parse_preview_target(
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
                 let mut path: PathBuf = context.cwd.to_path_buf();
-                path.push(&p);
+                path.push(p);
                 PreviewTarget::LineInFile { path, line_number }
             }
             "commits" | "bcommits" => {
@@ -192,12 +192,12 @@ impl<'a> OnMoveHandler<'a> {
         let preview = match &self.preview_target {
             PreviewTarget::FileOrDirectory(path) => {
                 if path.is_dir() {
-                    self.preview_directory(&path)?
+                    self.preview_directory(path)?
                 } else {
-                    self.preview_file(&path)?
+                    self.preview_file(path)?
                 }
             }
-            PreviewTarget::File(path) => self.preview_file(&path)?,
+            PreviewTarget::File(path) => self.preview_file(path)?,
             PreviewTarget::LineInFile { path, line_number } => {
                 self.preview_file_at(path, *line_number).await
             }
@@ -350,7 +350,7 @@ impl<'a> OnMoveHandler<'a> {
     async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
         tracing::debug!(path=?path.display(), lnum, "Previewing file");
 
-        let container_width = self.context.env.display_winwidth as usize;
+        let container_width = self.context.env.display_winwidth;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {

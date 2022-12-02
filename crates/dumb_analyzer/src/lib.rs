@@ -109,7 +109,6 @@ pub fn calculate_pattern_priority(pattern: impl AsRef<str>, file_ext: &str) -> O
     // 2. Languages like Rust has the visibility before the commen keyword(fn, struct, ...).
     pattern
         .as_ref()
-        .trim_start()
         .split_whitespace()
         .take(3)
         .find_map(weigher)

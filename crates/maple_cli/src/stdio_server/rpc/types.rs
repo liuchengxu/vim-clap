@@ -6,7 +6,7 @@ use serde_json::Value;
 /// Request message actively sent from the Vim side.
 ///
 /// Message sent via `clap#client#notify` or `clap#client#call`.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Call {
     MethodCall(MethodCall),
@@ -17,7 +17,7 @@ pub enum Call {
 ///
 /// RawMessage are composed of [`Call`] and the response message
 /// to a call initiated on Rust side.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum RawMessage {
     MethodCall(MethodCall),
@@ -47,7 +47,7 @@ impl RawMessage {
 type Id = u64;
 
 /// Successful response
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Success {
     /// Result
@@ -57,7 +57,7 @@ pub struct Success {
 }
 
 /// Unsuccessful response
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Failure {
     /// Error
@@ -67,7 +67,7 @@ pub struct Failure {
 }
 
 /// JSONRPC error code
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorCode {
     /// Invalid JSON was received by the server.
     /// An error occurred on the server while parsing the JSON text.
@@ -144,7 +144,7 @@ impl Serialize for ErrorCode {
 }
 
 /// Error object as defined in Spec
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Error {
     /// Code
@@ -229,7 +229,7 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 /// Represents output - failure or success
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Output {
@@ -250,7 +250,7 @@ impl Output {
 }
 
 /// Request parameters
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Params {

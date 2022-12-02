@@ -57,7 +57,7 @@ impl RipGrepForerunner {
                     if digest.total > 100000 {
                         send_response_from_cache(
                             &digest.cached_path,
-                            digest.total as usize,
+                            digest.total,
                             SendResponse::Json,
                             icon,
                         );

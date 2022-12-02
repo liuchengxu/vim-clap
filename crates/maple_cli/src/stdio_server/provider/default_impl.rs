@@ -106,7 +106,7 @@ impl DefaultProvider {
     fn line_at(&self, lnum: usize) -> Option<String> {
         self.current_results
             .lock()
-            .get((lnum - 1) as usize)
+            .get(lnum - 1)
             .map(|r| r.item.output_text().to_string())
     }
 

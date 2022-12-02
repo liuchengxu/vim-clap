@@ -63,15 +63,19 @@ macro_rules! insert_both {
     }};
 }
 
-type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
+struct BufferInitializationResult {
+    // If all items have been processed.
+    finished: bool,
+    total: usize,
+    top_scores: [Score; ITEMS_TO_SHOW],
+    top_results: [usize; ITEMS_TO_SHOW],
+}
 
-/// Returns Ok if all items in the iterator has been processed.
-///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-fn select_top_items_to_show(
+fn initialize_buffer(
     buffer: &mut Vec<MatchedItem>,
     iter: &mut impl Iterator<Item = MatchedItem>,
-) -> std::result::Result<usize, SelectedTopItemsInfo> {
+) -> BufferInitializationResult {
     let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
@@ -94,10 +98,11 @@ fn select_top_items_to_show(
         }
     });
 
-    if res.is_ok() {
-        Ok(total)
-    } else {
-        Err((total, top_scores, top_results))
+    BufferInitializationResult {
+        finished: res.is_ok(),
+        total,
+        top_scores,
+        top_results,
     }
 }
 
@@ -201,12 +206,16 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = MatchedItem>, icon: Icon) -> V
         high.unwrap_or(low)
     });
 
-    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
+    let BufferInitializationResult {
+        finished,
+        total,
+        mut top_scores,
+        mut top_results,
+    } = initialize_buffer(&mut buffer, &mut iter);
 
-    let (total, mut top_scores, mut top_results) = match top_selected_result {
-        Ok(_) => return buffer,
-        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
-    };
+    if finished {
+        return buffer;
+    }
 
     let mut watcher = Watcher::new(total, icon);
 
@@ -247,12 +256,16 @@ fn dyn_collect_number(
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * ITEMS_TO_SHOW.max(number));
 
-    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
+    let BufferInitializationResult {
+        finished,
+        total,
+        mut top_scores,
+        mut top_results,
+    } = initialize_buffer(&mut buffer, &mut iter);
 
-    let (total, mut top_scores, mut top_results) = match top_selected_result {
-        Ok(t) => return (t, buffer),
-        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
-    };
+    if finished {
+        return (total, buffer);
+    }
 
     let mut watcher = Watcher::new(total, icon);
 

@@ -35,7 +35,7 @@ impl<'a> HelpTagPreview<'a> {
     pub fn get_help_lines(&self, size: usize) -> Option<(String, Vec<String>)> {
         let target_tag = format!("*{}*", self.subject);
         for r in self.runtimepath.split(',') {
-            let p = Path::new(r).join("doc").join(&self.doc_filename);
+            let p = Path::new(r).join("doc").join(self.doc_filename);
             if p.exists() {
                 if let Some(line_number) = find_tag_line(&p, &target_tag) {
                     if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, size) {

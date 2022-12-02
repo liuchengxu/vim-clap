@@ -159,7 +159,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                 };
 
                 if let ProviderSource::CachedFile { path, .. } = &provider_source {
-                    context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
+                    context.vim.set_var("g:__clap_forerunner_tempfile", path)?;
                 }
 
                 return Ok(provider_source);
@@ -203,7 +203,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                         ..
                     } = printer::decorate_lines(
                         lines,
-                        context.env.display_winwidth as usize,
+                        context.env.display_winwidth,
                         context.env.icon,
                     );
 

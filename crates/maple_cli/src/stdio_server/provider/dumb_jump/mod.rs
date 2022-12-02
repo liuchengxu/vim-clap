@@ -356,7 +356,7 @@ impl ClapProvider for DumbJumpProvider {
 
         // lnum is 1-indexed
         let curline = current_lines
-            .get_line((lnum - 1) as usize)
+            .get_line(lnum - 1)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_height = self.context.preview_height().await?;

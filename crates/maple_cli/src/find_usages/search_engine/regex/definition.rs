@@ -167,8 +167,8 @@ impl Occurrences {
     }
 }
 
-pub(super) fn definitions_and_references<'a>(
-    regex_runner: RegexRunner<'a>,
+pub(super) fn definitions_and_references(
+    regex_runner: RegexRunner<'_>,
     comments: &[&str],
 ) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {
     let (definitions, mut occurrences) = regex_runner.all(comments);

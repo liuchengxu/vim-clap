@@ -39,7 +39,7 @@ pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
 }
 
 pub fn store_recent_files(recent_files: &SortedRecentFiles) -> std::io::Result<()> {
-    crate::utils::write_json(&recent_files, RECENT_FILES_JSON_PATH.as_ref())
+    crate::utils::write_json(recent_files, RECENT_FILES_JSON_PATH.as_ref())
 }
 
 pub fn cache_metadata_path() -> Option<&'static PathBuf> {
