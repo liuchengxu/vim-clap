@@ -42,7 +42,7 @@ jobs:
             override: true
       - uses: actions-rs/cargo@v1
         with:
-          cmd: fmt
+          command: fmt
           args: --all -- --check
 
   clippy:
@@ -57,7 +57,7 @@ jobs:
             override: true
       - uses: actions-rs/cargo@v1
         with:
-          cmd: clippy
+          command: clippy
           args: --all-features --manifest-path crates/Cargo.toml -- -D warnings
 
   crates:
