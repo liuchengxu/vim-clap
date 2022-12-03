@@ -46,14 +46,12 @@ impl UsageMatcher {
 
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
-        if let Some((_, indices)) = self.exact_matcher.find_matches(line) {
-            if !self.inverse_matcher.match_any(line) {
-                Some(indices)
-            } else {
-                None
-            }
-        } else {
-            None
+        match (
+            self.exact_matcher.find_matches(line),
+            self.inverse_matcher.match_any(line),
+        ) {
+            (Some((_, indices)), false) => Some(indices),
+            _ => None,
         }
     }
 
