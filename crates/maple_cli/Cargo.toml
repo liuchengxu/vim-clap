@@ -32,6 +32,11 @@ tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = "0.3"
 
+ignore = "0.4"
+# ripgrep for global search
+grep-regex = "0.1.10"
+grep-searcher = "0.1.10"
+
 dumb_analyzer = { path = "../dumb_analyzer" }
 filter = { path = "../filter" }
 icon = { path = "../icon" }

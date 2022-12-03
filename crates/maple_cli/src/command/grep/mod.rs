@@ -1,5 +1,6 @@
 mod forerunner;
 mod live_grep;
+mod ripgrep;
 
 use crate::app::Params;
 use crate::cache::Digest;
@@ -51,6 +52,9 @@ pub struct Grep {
 
     #[clap(long)]
     par_run: bool,
+
+    #[clap(long)]
+    ripgrep: bool,
 }
 
 impl Grep {
@@ -62,6 +66,15 @@ impl Grep {
             };
             println!("Recreating the grep cache for {}", dir.display());
             refresh_cache(&dir)?;
+            return Ok(());
+        }
+
+        if self.ripgrep {
+            let dir = match self.cmd_dir {
+                Some(ref dir) => dir.clone(),
+                None => std::env::current_dir()?,
+            };
+            self::ripgrep::run(&self.grep_query, dir);
             return Ok(());
         }
 
