@@ -278,8 +278,8 @@ pub(crate) mod tests {
         Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
             .matched_items(matcher)
             .unwrap()
-            .sort()
-            .into()
+            .par_sort()
+            .inner()
     }
 
     fn run(params: TestParams) {
