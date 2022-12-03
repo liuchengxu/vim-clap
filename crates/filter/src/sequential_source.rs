@@ -1,10 +1,11 @@
+use crate::MatchedItems;
 use anyhow::Result;
 use matcher::Matcher;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::Arc;
 use subprocess::Exec;
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchedItem, SourceItem};
 
 /// [`SequentialSource`] provides an iterator of [`ClapItem`] which
 /// will be processed sequentially.
@@ -31,7 +32,6 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for SequentialSource<I> {
 pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
     source: SequentialSource<I>,
     matcher: Matcher,
-    query: &Query,
 ) -> Result<Vec<MatchedItem>> {
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
         SequentialSource::List(list) => Box::new(list),
@@ -56,7 +56,11 @@ pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
         ),
     };
 
-    Ok(clap_item_stream
-        .filter_map(|item| matcher.match_item(item, query))
-        .collect())
+    Ok(MatchedItems::from(
+        clap_item_stream
+            .filter_map(|item| matcher.match_item(item))
+            .collect::<Vec<_>>(),
+    )
+    .par_sort()
+    .inner())
 }

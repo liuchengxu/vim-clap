@@ -47,13 +47,13 @@ fn run(
         let icon = context.env.icon;
         let display_winwidth = context.env.display_winwidth;
         let cwd = context.cwd.clone();
-        let matcher = context.env.matcher.clone();
+        let matcher_builder = context.env.matcher_builder.clone();
         let stop_signal = stop_signal.clone();
 
         std::thread::spawn(move || {
             if let Err(e) = filter::par_dyn_run_inprocess(
                 &query,
-                FilterContext::new(icon, Some(number), Some(display_winwidth), matcher),
+                FilterContext::new(icon, Some(number), Some(display_winwidth), matcher_builder),
                 match filter_source {
                     FilterSource::File(path) => ParallelSource::File(path),
                     FilterSource::Command(command) => {
@@ -201,32 +201,34 @@ impl ClapProvider for DefaultProvider {
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
 
-        let quick_response = if let ProviderSource::Small { ref items, .. } =
-            *self.context.provider_source.read()
-        {
-            let matched_items = filter::par_filter_items(&query, items, &self.context.env.matcher);
-            // Take the first 200 entries and add an icon to each of them.
-            let DisplayLines {
-                lines,
-                indices,
-                truncated_map,
-                icon_added,
-            } = printer::decorate_lines(
-                matched_items.iter().take(200).cloned().collect(),
-                self.context.env.display_winwidth,
-                self.context.env.icon,
-            );
-            let msg = json!({
-                "total": matched_items.len(),
-                "lines": lines,
-                "indices": indices,
-                "icon_added": icon_added,
-                "truncated_map": truncated_map,
-            });
-            Some((msg, matched_items))
-        } else {
-            None
-        };
+        let quick_response =
+            if let ProviderSource::Small { ref items, .. } = *self.context.provider_source.read() {
+                let matched_items = filter::par_filter_items(
+                    items,
+                    &self.context.env.matcher_builder.clone().build(query.clone().into()),
+                );
+                // Take the first 200 entries and add an icon to each of them.
+                let DisplayLines {
+                    lines,
+                    indices,
+                    truncated_map,
+                    icon_added,
+                } = printer::decorate_lines(
+                    matched_items.iter().take(200).cloned().collect(),
+                    self.context.env.display_winwidth,
+                    self.context.env.icon,
+                );
+                let msg = json!({
+                    "total": matched_items.len(),
+                    "lines": lines,
+                    "indices": indices,
+                    "icon_added": icon_added,
+                    "truncated_map": truncated_map,
+                });
+                Some((msg, matched_items))
+            } else {
+                None
+            };
 
         if let Some((msg, matched_items)) = quick_response {
             let new_query = self.vim().input_get().await?;

@@ -27,26 +27,21 @@ impl SearchingWorker {
         let QueryInfo {
             keyword,
             query_type,
-            filtering_terms,
+            usage_matcher,
         } = self.query_info;
 
-        CtagsSearcher::new(tags_generator).search_usages(
-            &keyword,
-            &filtering_terms,
-            query_type,
-            true,
-        )
+        CtagsSearcher::new(tags_generator).search_usages(&keyword, &usage_matcher, query_type, true)
     }
 
     fn gtags_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
-            filtering_terms,
+            usage_matcher,
             ..
         } = self.query_info;
         GtagsSearcher::new(self.cwd.into()).search_usages(
             &keyword,
-            &filtering_terms,
+            &usage_matcher,
             &self.source_file_extension,
         )
     }
@@ -54,7 +49,7 @@ impl SearchingWorker {
     fn regex_search(self) -> Result<Vec<AddressableUsage>> {
         let QueryInfo {
             keyword,
-            filtering_terms,
+            usage_matcher,
             ..
         } = self.query_info;
         let searcher = RegexSearcher {
@@ -62,7 +57,7 @@ impl SearchingWorker {
             extension: self.source_file_extension,
             dir: Some(self.cwd.into()),
         };
-        searcher.search_usages(false, &filtering_terms)
+        searcher.search_usages(false, &usage_matcher)
     }
 }
 

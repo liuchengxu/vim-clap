@@ -1,5 +1,5 @@
 use super::Symbol;
-use crate::utils::ExactOrInverseTerms;
+use crate::utils::UsageMatcher;
 use crate::{find_usages::AddressableUsage, tools::gtags::GTAGS_DIR};
 use anyhow::{anyhow, Result};
 use dumb_analyzer::resolve_reference_kind;
@@ -113,7 +113,7 @@ impl GtagsSearcher {
     pub fn search_usages(
         &self,
         keyword: &str,
-        filtering_terms: &ExactOrInverseTerms,
+        usage_matcher: &UsageMatcher,
         file_ext: &str,
     ) -> Result<Vec<AddressableUsage>> {
         let mut gtags_usages = self
@@ -122,7 +122,7 @@ impl GtagsSearcher {
             .filter_map(|symbol| {
                 let (kind, kind_weight) = resolve_reference_kind(&symbol.pattern, file_ext);
                 let (line, indices) = symbol.grep_format_gtags(kind, keyword, false);
-                filtering_terms
+                usage_matcher
                     .check_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| GtagsUsage {
                         line,

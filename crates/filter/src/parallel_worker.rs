@@ -40,14 +40,14 @@ pub fn par_dyn_run(
     match par_source {
         ParallelSource::File(file) => {
             par_dyn_run_inner::<Empty<_>, _>(
-                &query,
+                query,
                 filter_context,
                 ParSourceInner::Lines(std::fs::File::open(file)?),
             )?;
         }
         ParallelSource::Exec(exec) => {
             par_dyn_run_inner::<Empty<_>, _>(
-                &query,
+                query,
                 filter_context,
                 ParSourceInner::Lines(exec.stream_stdout()?),
             )?;
@@ -64,7 +64,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
     items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
 ) {
     let query: Query = query.into();
-    par_dyn_run_inner::<_, std::io::Empty>(&query, filter_context, ParSourceInner::Items(items))
+    par_dyn_run_inner::<_, std::io::Empty>(query, filter_context, ParSourceInner::Items(items))
         .expect("Matching items in parallel can not fail");
 }
 
@@ -220,7 +220,7 @@ enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read +
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
 fn par_dyn_run_inner<I, R>(
-    query: &Query,
+    query: Query,
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
 ) -> Result<()>
@@ -232,8 +232,10 @@ where
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
+
+    let matcher = matcher_builder.build(query);
 
     let winwidth = winwidth.unwrap_or(100);
     let number = number.unwrap_or(100);
@@ -244,7 +246,7 @@ where
     let best_items = Mutex::new(BestItems::new(number, icon, winwidth, StdioProgressor));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
-        if let Some(matched_item) = matcher.match_item(item, query) {
+        if let Some(matched_item) = matcher.match_item(item) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?
@@ -308,8 +310,10 @@ where
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
+
+    let matcher = matcher_builder.build(query);
 
     let winwidth = winwidth.unwrap_or(100);
     let number = number.unwrap_or(100);
@@ -320,7 +324,7 @@ where
     let best_items = Mutex::new(BestItems::new(number, icon, winwidth, progressor));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
-        if let Some(matched_item) = matcher.match_item(item, &query) {
+        if let Some(matched_item) = matcher.match_item(item) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?
@@ -343,7 +347,7 @@ where
         .par_bridge()
         .try_for_each(|line: String| {
             if stop_signal.load(Ordering::SeqCst) {
-                tracing::debug!(?query, "[par_dyn_run_inprocess] stop signal received");
+                tracing::debug!(?matcher, "[par_dyn_run_inprocess] stop signal received");
                 // Note that even the stop signal has been received, the thread created by
                 // rayon does not exit actually, it just tries to stop the work ASAP.
                 Err(())
@@ -361,7 +365,6 @@ where
 
     if res.is_err() {
         tracing::debug!(
-            ?query,
             ?total_matched,
             ?total_processed,
             "[par_dyn_run_inprocess] return early due to the stop signal arrived."

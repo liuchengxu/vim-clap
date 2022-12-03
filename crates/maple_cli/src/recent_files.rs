@@ -1,7 +1,7 @@
 use crate::utils::UtcTime;
 use chrono::prelude::*;
 use filter::SourceItem;
-use matcher::{Bonus, FuzzyAlgorithm, MatchScope};
+use matcher::{Bonus, MatcherBuilder};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -176,13 +176,11 @@ impl SortedRecentFiles {
 
         cwd.pop();
 
-        let matcher = matcher::Matcher::with_bonuses(
-            vec![Bonus::cwd(cwd), Bonus::FileName],
-            FuzzyAlgorithm::Fzy,
-            MatchScope::Full,
-        );
+        let matcher = MatcherBuilder::default()
+            .bonuses(vec![Bonus::cwd(cwd), Bonus::FileName])
+            .build(query.into());
 
-        filter::filter_parallel(query, source_items, &matcher)
+        filter::par_filter(source_items, &matcher)
     }
 
     /// Updates or inserts a new entry in a sorted way.

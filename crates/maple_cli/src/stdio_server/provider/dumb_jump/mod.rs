@@ -9,7 +9,7 @@ use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
-use crate::utils::ExactOrInverseTerms;
+use crate::utils::UsageMatcher;
 use anyhow::Result;
 use filter::Query;
 use futures::Future;
@@ -28,7 +28,7 @@ struct QueryInfo {
     /// Query type for `keyword`.
     query_type: QueryType,
     /// Search terms for further filtering.
-    filtering_terms: ExactOrInverseTerms,
+    usage_matcher: UsageMatcher,
 }
 
 impl QueryInfo {
@@ -42,7 +42,7 @@ impl QueryInfo {
     fn is_superset(&self, other: &Self) -> bool {
         self.keyword == other.keyword
             && self.query_type == other.query_type
-            && self.filtering_terms.is_superset(&other.filtering_terms)
+            && self.usage_matcher.is_superset(&other.usage_matcher)
     }
 }
 
@@ -63,31 +63,21 @@ fn parse_query_info(query: &str) -> QueryInfo {
 
     // If there is no fuzzy term, use the full query as the keyword,
     // otherwise restore the fuzzy query as the keyword we are going to search.
-    let (keyword, query_type, filtering_terms) = if fuzzy_terms.is_empty() {
+    let (keyword, query_type, usage_matcher) = if fuzzy_terms.is_empty() {
         if exact_terms.is_empty() {
-            (
-                query.into(),
-                QueryType::StartWith,
-                ExactOrInverseTerms::default(),
-            )
+            (query.into(), QueryType::StartWith, UsageMatcher::default())
         } else {
             (
                 exact_terms[0].word.clone(),
                 QueryType::Exact,
-                ExactOrInverseTerms {
-                    exact_terms,
-                    inverse_terms,
-                },
+                UsageMatcher::new(exact_terms, inverse_terms),
             )
         }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
             QueryType::StartWith,
-            ExactOrInverseTerms {
-                exact_terms,
-                inverse_terms,
-            },
+            UsageMatcher::new(exact_terms, inverse_terms),
         )
     };
 
@@ -107,7 +97,7 @@ fn parse_query_info(query: &str) -> QueryInfo {
     QueryInfo {
         keyword,
         query_type,
-        filtering_terms,
+        usage_matcher,
     }
 }
 
@@ -397,7 +387,7 @@ impl ClapProvider for DumbJumpProvider {
                 .par_iter()
                 .filter_map(|Usage { line, indices }| {
                     query_info
-                        .filtering_terms
+                        .usage_matcher
                         .check_jump_line((line.clone(), indices.clone()))
                         .map(|(line, indices)| Usage::new(line, indices))
                 })

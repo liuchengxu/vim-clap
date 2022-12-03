@@ -1,6 +1,6 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
-use crate::{sort_matched_items, to_clap_item, FilterContext, SequentialSource};
+use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
 use anyhow::Result;
 use icon::{Icon, ICON_LEN};
 use printer::DisplayLines;
@@ -327,10 +327,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
 
     let query: Query = query.into();
+    let matcher = matcher_builder.build(query);
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
         SequentialSource::List(list) => Box::new(list),
@@ -355,18 +356,18 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         ),
     };
 
-    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item, &query));
+    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item));
 
     if let Some(number) = number {
         let (total_matched, matched_items) = dyn_collect_number(matched_item_stream, number, icon);
-        let mut matched_items = sort_matched_items(matched_items);
+        let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
         let display_lines = printer::decorate_lines(matched_items, winwidth.unwrap_or(100), icon);
         print_on_dyn_run_finished(display_lines, total_matched);
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);
-        let matched_items = sort_matched_items(matched_items);
+        let matched_items = MatchedItems::from(matched_items).par_sort().inner();
 
         matched_items.iter().for_each(|matched_item| {
             let indices = &matched_item.indices;

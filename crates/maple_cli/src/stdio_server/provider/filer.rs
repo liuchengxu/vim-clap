@@ -224,8 +224,15 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let matched_items =
-            filter::par_filter_items(query, current_items, &self.context.env.matcher);
+        let matched_items = filter::par_filter_items(
+            current_items,
+            &self
+                .context
+                .env
+                .matcher_builder
+                .clone()
+                .build(query.into()),
+        );
         let total = matched_items.len();
 
         let printer::DisplayLines {

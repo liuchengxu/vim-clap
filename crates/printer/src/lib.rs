@@ -126,8 +126,7 @@ pub fn print_sync_filter_results(
 pub(crate) mod tests {
     use super::*;
     use filter::{
-        filter_sequential,
-        matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
+        matcher::{Bonus, MatcherBuilder},
         SequentialSource, SourceItem,
     };
     use rayon::prelude::*;
@@ -175,17 +174,15 @@ pub(crate) mod tests {
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<MatchedItem> {
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
+        let matcher = MatcherBuilder::default()
+            .bonuses(vec![Bonus::FileName])
+            .build(query.into());
 
-        let mut ranked = filter_sequential(
-            SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>)),
-            matcher,
-            &query.into(),
-        )
-        .unwrap();
-        ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-
-        ranked
+        SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
+            .matched_items(matcher)
+            .unwrap()
+            .par_sort()
+            .inner()
     }
 
     fn run(params: TestParams) {

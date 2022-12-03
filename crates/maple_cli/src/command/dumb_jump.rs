@@ -4,7 +4,7 @@
 
 use crate::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
 use crate::tools::ctags::{get_language, TagsGenerator};
-use crate::utils::ExactOrInverseTerms;
+use crate::utils::UsageMatcher;
 use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
@@ -72,18 +72,12 @@ impl DumbJump {
         Ok(())
     }
 
-    pub fn regex_usages(
-        &self,
-        classify: bool,
-        exact_or_inverse_terms: &ExactOrInverseTerms,
-    ) -> Result<Usages> {
+    pub fn regex_usages(&self, classify: bool, usage_matcher: &UsageMatcher) -> Result<Usages> {
         let searcher = RegexSearcher {
             word: self.word.to_string(),
             extension: self.extension.to_string(),
             dir: self.cmd_dir.clone(),
         };
-        Ok(searcher
-            .search_usages(classify, exact_or_inverse_terms)?
-            .into())
+        Ok(searcher.search_usages(classify, usage_matcher)?.into())
     }
 }

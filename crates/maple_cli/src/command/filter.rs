@@ -2,8 +2,8 @@ use crate::app::Params;
 use crate::paths::AbsPathBuf;
 use anyhow::Result;
 use clap::Parser;
-use filter::{FilterContext, ParallelSource, SequentialSource};
-use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, Matcher};
+use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
+use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -123,27 +123,29 @@ impl Filter {
             ..
         }: Params,
     ) -> Result<()> {
-        let matcher = Matcher::with_bonuses(self.get_bonuses(), self.algo, self.match_scope)
-            .set_case_matching(case_matching);
+        let matcher_builder = MatcherBuilder::default()
+            .bonuses(self.get_bonuses())
+            .match_scope(self.match_scope)
+            .fuzzy_algo(self.algo)
+            .case_matching(case_matching);
 
         if self.sync {
-            let ranked = filter::sync_run::<std::iter::Empty<_>>(
-                &self.query,
-                self.generate_source(),
-                matcher,
+            let ranked = filter_sequential(
+                self.generate_source::<std::iter::Empty<_>>(),
+                matcher_builder.build(self.query.as_str().into()),
             )?;
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else if self.par_run {
             filter::par_dyn_run(
                 &self.query,
-                FilterContext::new(icon, number, winwidth, matcher),
+                FilterContext::new(icon, number, winwidth, matcher_builder),
                 self.generate_par_source(),
             )?;
         } else {
             filter::dyn_run::<std::iter::Empty<_>>(
                 &self.query,
-                FilterContext::new(icon, number, winwidth, matcher),
+                FilterContext::new(icon, number, winwidth, matcher_builder),
                 self.generate_source(),
             )?;
         }

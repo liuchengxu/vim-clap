@@ -10,7 +10,7 @@ use crate::stdio_server::session::SessionId;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use icon::{Icon, IconKind};
-use matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher};
+use matcher::{Bonus, MatchScope, MatcherBuilder};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -45,7 +45,7 @@ pub struct ProviderEnvironment {
     pub display: BufnrWinid,
     pub preview: BufnrWinid,
     pub icon: Icon,
-    pub matcher: Matcher,
+    pub matcher_builder: MatcherBuilder,
     pub debounce: bool,
     pub no_cache: bool,
     pub display_winwidth: usize,
@@ -98,7 +98,7 @@ impl ProviderContext {
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
             _ => Icon::Null,
         };
-        let matcher = provider_id.matcher();
+        let matcher_builder = provider_id.matcher_builder();
         let display_winwidth = vim.winwidth(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
 
@@ -113,7 +113,7 @@ impl ProviderContext {
             debounce,
             start_buffer_path,
             display_winwidth,
-            matcher,
+            matcher_builder,
             icon,
         };
 
@@ -169,7 +169,7 @@ impl ProviderId {
         &self.0
     }
 
-    pub fn matcher(&self) -> Matcher {
+    pub fn matcher_builder(&self) -> MatcherBuilder {
         let match_scope = match self.0.as_str() {
             "grep" | "live_grep" => MatchScope::GrepLine,
             "tags" | "proj_tags" => MatchScope::TagName,
@@ -181,7 +181,9 @@ impl ProviderId {
             _ => vec![],
         };
 
-        Matcher::with_bonuses(match_bonuses, FuzzyAlgorithm::Fzy, match_scope)
+        MatcherBuilder::default()
+            .bonuses(match_bonuses)
+            .match_scope(match_scope)
     }
 }
 
