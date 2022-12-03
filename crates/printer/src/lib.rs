@@ -126,10 +126,10 @@ pub fn print_sync_filter_results(
 pub(crate) mod tests {
     use super::*;
     use filter::{
+        filter_sequential,
         matcher::{Bonus, MatcherBuilder},
         SequentialSource, SourceItem,
     };
-    use rayon::prelude::*;
     use std::sync::Arc;
     use types::{ClapItem, Query};
 
@@ -178,11 +178,11 @@ pub(crate) mod tests {
             .bonuses(vec![Bonus::FileName])
             .build(query.into());
 
-        SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
-            .matched_items(matcher)
-            .unwrap()
-            .par_sort()
-            .inner()
+        filter_sequential(
+            SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>)),
+            matcher,
+        )
+        .unwrap()
     }
 
     fn run(params: TestParams) {
