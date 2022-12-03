@@ -24,14 +24,14 @@ impl BufferTags {
         if let Some(at) = self.current_context {
             let context_tag = current_context_tag(self.file.as_path(), at)
                 .context("Error at finding the context tag info")?;
-            println!("Context: {:?}", context_tag);
+            println!("Context: {context_tag:?}");
             return Ok(());
         }
 
         let lines = buffer_tags_lines(self.file.as_ref(), self.force_raw)?;
 
         for line in lines {
-            println!("{}", line);
+            println!("{line}");
         }
 
         Ok(())

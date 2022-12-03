@@ -18,7 +18,7 @@ impl From<Value> for PreviewConfig {
     fn from(v: Value) -> Self {
         if v.is_object() {
             let m: HashMap<String, u64> = serde_json::from_value(v)
-                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {:?}", e));
+                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {e:?}"));
             return Self::Map(m);
         }
         match v {

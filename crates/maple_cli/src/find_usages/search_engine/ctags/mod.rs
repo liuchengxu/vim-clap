@@ -81,11 +81,11 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             QueryType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
             QueryType::Exact => cmd
                 .arg("-Q")
-                .arg(format!("(eq? (downcase $name) \"{}\")", query))
+                .arg(format!("(eq? (downcase $name) \"{query}\")"))
                 .arg("-l"),
             QueryType::Contain => cmd
                 .arg("-Q")
-                .arg(format!("(substr? (downcase $name) \"{}\")", query))
+                .arg(format!("(substr? (downcase $name) \"{query}\")"))
                 .arg("-l"),
             QueryType::Inherit => {
                 todo!("Inherit")

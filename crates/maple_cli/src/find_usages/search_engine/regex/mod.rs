@@ -261,7 +261,7 @@ fn render_classify(
             let mut inner_group: Vec<(String, Vec<usize>)> = Vec::with_capacity(lines.len() + 1);
 
             if !kind_inserted {
-                inner_group.push((format!("[{}]", kind), vec![]));
+                inner_group.push((format!("[{kind}]"), vec![]));
                 kind_inserted = true;
             }
 

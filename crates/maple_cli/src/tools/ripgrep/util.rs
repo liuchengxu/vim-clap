@@ -32,7 +32,7 @@ impl Serialize for NiceDuration {
         let mut state = ser.serialize_struct("Duration", 2)?;
         state.serialize_field("secs", &self.0.as_secs())?;
         state.serialize_field("nanos", &self.0.subsec_nanos())?;
-        state.serialize_field("human", &format!("{}", self))?;
+        state.serialize_field("human", &format!("{self}"))?;
         state.end()
     }
 }

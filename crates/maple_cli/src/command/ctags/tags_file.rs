@@ -61,7 +61,7 @@ impl TagsFile {
             let symbols =
                 tags_searcher.search_symbols(query, QueryType::StartWith, self.force_generate)?;
             for symbol in symbols {
-                println!("{:?}", symbol);
+                println!("{symbol:?}");
             }
         }
 

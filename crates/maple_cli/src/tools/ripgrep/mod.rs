@@ -49,7 +49,7 @@ pub struct Word {
 
 impl Word {
     pub fn new(word: String) -> Result<Word> {
-        let re = regex::Regex::new(&format!("\\b{}\\b", word))?;
+        let re = regex::Regex::new(&format!("\\b{word}\\b"))?;
         Ok(Self {
             len: word.len(),
             raw: word,
@@ -138,7 +138,7 @@ impl TryFrom<&[u8]> for Match {
     type Error = Cow<'static, str>;
     fn try_from(byte_line: &[u8]) -> Result<Self, Self::Error> {
         let msg = serde_json::from_slice::<Message>(byte_line)
-            .map_err(|e| format!("deserialize error: {:?}", e))?;
+            .map_err(|e| format!("deserialize error: {e:?}"))?;
         if let Message::Match(mat) = msg {
             Ok(mat)
         } else {

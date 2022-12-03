@@ -66,7 +66,7 @@ impl DumbJump {
                 QueryType::Exact,
                 false,
             )?;
-            println!("usages: {:#?}", usages);
+            println!("usages: {usages:#?}");
         }
 
         Ok(())

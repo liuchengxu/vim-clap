@@ -202,7 +202,7 @@ impl Error {
         Error {
             code: ErrorCode::InvalidParams,
             message: format!("Invalid parameters: {}", message.into()),
-            data: Some(Value::String(format!("{:?}", details))),
+            data: Some(Value::String(format!("{details:?}"))),
         }
     }
 
@@ -270,7 +270,7 @@ impl Params {
     {
         let value: Value = self.into();
         serde_json::value::from_value(value)
-            .map_err(|e| Error::invalid_params(format!("Invalid params: {}.", e)))
+            .map_err(|e| Error::invalid_params(format!("Invalid params: {e}.")))
     }
 
     /// Check for no params, returns Err if any params

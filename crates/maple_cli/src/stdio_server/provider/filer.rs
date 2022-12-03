@@ -38,7 +38,7 @@ impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
             if self.enable_icon {
                 write!(f, "{}", prepend_filer_icon(self.inner.as_ref(), path))
             } else {
-                write!(f, "{}", path)
+                write!(f, "{path}")
             }
         };
 

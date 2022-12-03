@@ -37,7 +37,7 @@ impl Helptags {
                 let stdout = std::io::stdout();
                 let mut lock = stdout.lock();
                 for line in lines {
-                    writeln!(lock, "{}", line)?;
+                    writeln!(lock, "{line}")?;
                 }
             }
         }

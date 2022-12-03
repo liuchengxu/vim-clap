@@ -173,7 +173,7 @@ fn loop_read(
                     println!("EOF reached");
                 }
             }
-            Err(error) => println!("Failed to read_line, error: {}", error),
+            Err(error) => println!("Failed to read_line, error: {error}"),
         }
     }
 }
