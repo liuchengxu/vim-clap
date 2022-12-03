@@ -9,20 +9,25 @@
 //! //        |
 //! //        |
 //! //        ↓
-//! //    Apply InverseSearchTerms
+//! //    Apply InverseMatcher
 //! //        |
 //! //        |
 //! //        |
 //! //        ↓
-//! //    Apply ExactSearchTerms
+//! //    Apply ExactMatcher
 //! //        |
 //! //        |
 //! //        |
 //! //        ↓
-//! //    Apply FuzzyTerms
+//! //    Apply FuzzyMatcher
 //! //        |
 //! //        |  MatchScope: extract the content to match.
 //! //        |  FuzzyAlgorithm: run the match algorithm on FuzzyText.
+//! //        |
+//! //        ↓
+//! //    Apply BonusMatcher
+//! //        |
+//! //        |
 //! //        |
 //! //        ↓
 //! //   MatchResult
@@ -202,6 +207,30 @@ impl FuzzyMatcher {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct BonusMatcher {
+    bonuses: Vec<Bonus>,
+}
+
+impl BonusMatcher {
+    pub fn new(bonuses: Vec<Bonus>) -> Self {
+        Self { bonuses }
+    }
+
+    /// Returns the sum of bonus score.
+    pub fn calc_bonus(
+        &self,
+        item: &Arc<dyn ClapItem>,
+        base_score: Score,
+        base_indices: &[usize],
+    ) -> Score {
+        self.bonuses
+            .iter()
+            .map(|b| b.bonus_score(item, base_score, base_indices))
+            .sum()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct MatcherBuilder {
     bonuses: Vec<Bonus>,
     fuzzy_algo: FuzzyAlgorithm,
@@ -259,35 +288,6 @@ impl MatcherBuilder {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct BonusMatcher {
-    bonuses: Vec<Bonus>,
-}
-
-impl BonusMatcher {
-    pub fn new(bonuses: Vec<Bonus>) -> Self {
-        Self { bonuses }
-    }
-
-    /// Returns the sum of bonus score.
-    pub fn calc_bonus(
-        &self,
-        item: &Arc<dyn ClapItem>,
-        base_score: Score,
-        base_indices: &[usize],
-    ) -> Score {
-        self.bonuses
-            .iter()
-            .map(|b| b.bonus_score(item, base_score, base_indices))
-            .sum()
-    }
-}
-
-/// `Matcher` is composed of two components:
-///
-///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
-///   * `algo`: algorithm used for matching the text.
-///   * `bonus`: add a bonus to the result of base `algo`.
-#[derive(Debug, Clone, Default)]
 pub struct Matcher {
     inverse_matcher: InverseMatcher,
     exact_matcher: ExactMatcher,
@@ -314,10 +314,8 @@ impl Matcher {
             return None;
         }
 
-        // Try the exact terms against the full search line.
         let (exact_score, mut indices) = self.exact_matcher.find_matches(match_text)?;
 
-        // Try the fuzzy terms against the matched text.
         let (fuzzy_score, mut fuzzy_indices) = self.fuzzy_matcher.find_matches(&item)?;
 
         // Merge the results from multi matchers.
