@@ -58,7 +58,7 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn match_items(self, matcher: Matcher) -> Result<MatchedItems> {
+    pub fn matched_items(self, matcher: Matcher) -> Result<MatchedItems> {
         let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match self {
             Self::List(list) => Box::new(list),
             Self::Stdin => Box::new(

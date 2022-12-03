@@ -135,7 +135,7 @@ impl Filter {
         if self.sync {
             let ranked = self
                 .generate_source::<std::iter::Empty<_>>()
-                .match_items(matcher_builder.build(self.query.as_str().into()))?
+                .matched_items(matcher_builder.build(self.query.as_str().into()))?
                 .sort()
                 .into();
 
