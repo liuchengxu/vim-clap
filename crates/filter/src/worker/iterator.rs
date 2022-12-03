@@ -330,7 +330,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
 
     if let Some(number) = number {
         let (total_matched, matched_items) = dyn_collect_number(matched_item_stream, number, icon);
-        let mut matched_items: Vec<_> = MatchedItems::from(matched_items).sort().into();
+        let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
         printer::print_dyn_matched_items(
@@ -342,7 +342,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         );
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);
-        let matched_items: Vec<_> = MatchedItems::from(matched_items).sort().into();
+        let matched_items = MatchedItems::from(matched_items).par_sort().inner();
 
         matched_items.iter().for_each(|matched_item| {
             let indices = &matched_item.indices;

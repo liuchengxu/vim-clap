@@ -83,7 +83,7 @@ pub fn par_filter(source_items: Vec<SourceItem>, fuzzy_matcher: &Matcher) -> Vec
         })
         .collect::<Vec<_>>()
         .into();
-    matched_items.sort().into()
+    matched_items.par_sort().inner()
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
@@ -96,5 +96,5 @@ pub fn par_filter_items(
         .filter_map(|item| fuzzy_matcher.match_item(item.clone()))
         .collect::<Vec<_>>()
         .into();
-    matched_items.sort().into()
+    matched_items.par_sort().inner()
 }

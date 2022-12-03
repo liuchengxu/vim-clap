@@ -35,22 +35,20 @@ pub struct MatchedItems(Vec<MatchedItem>);
 
 impl MatchedItems {
     /// The item with highest score first, the item with lowest score last.
-    pub fn sort(self) -> Self {
+    pub fn par_sort(self) -> Self {
         let mut items = self.0;
         items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
         Self(items)
+    }
+
+    pub fn inner(self) -> Vec<MatchedItem> {
+        self.0
     }
 }
 
 impl From<Vec<MatchedItem>> for MatchedItems {
     fn from(items: Vec<MatchedItem>) -> Self {
         Self(items)
-    }
-}
-
-impl From<MatchedItems> for Vec<MatchedItem> {
-    fn from(matched_items: MatchedItems) -> Self {
-        matched_items.0
     }
 }
 

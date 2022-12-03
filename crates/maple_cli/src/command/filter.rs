@@ -136,8 +136,8 @@ impl Filter {
             let ranked = self
                 .generate_source::<std::iter::Empty<_>>()
                 .matched_items(matcher_builder.build(self.query.as_str().into()))?
-                .sort()
-                .into();
+                .par_sort()
+                .inner();
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else if self.par_run {
