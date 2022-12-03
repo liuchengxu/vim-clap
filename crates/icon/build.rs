@@ -41,13 +41,13 @@ fn main() {
     };
 
     let line = build_line("exactmatch_map.json", "EXACTMATCH_ICON_TABLE");
-    file.write_all(format!("{}\n", line).as_bytes()).unwrap();
+    file.write_all(format!("{line}\n").as_bytes()).unwrap();
 
     let line = build_line("extension_map.json", "EXTENSION_ICON_TABLE");
-    file.write_all(format!("\n{}\n", line).as_bytes()).unwrap();
+    file.write_all(format!("\n{line}\n").as_bytes()).unwrap();
 
     let line = build_line("tagkind_map.json", "TAGKIND_ICON_TABLE");
-    file.write_all(format!("\n{}\n", line).as_bytes()).unwrap();
+    file.write_all(format!("\n{line}\n").as_bytes()).unwrap();
 
     file.write_all(
         "
