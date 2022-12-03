@@ -133,10 +133,11 @@ impl Filter {
             .case_matching(case_matching);
 
         if self.sync {
-            let ranked = filter::sync_run::<std::iter::Empty<_>>(
-                self.generate_source(),
-                matcher_builder.build(self.query.as_str().into()),
-            )?;
+            let ranked = self
+                .generate_source::<std::iter::Empty<_>>()
+                .match_items(matcher_builder.build(self.query.as_str().into()))?
+                .sort()
+                .into();
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else if self.par_run {

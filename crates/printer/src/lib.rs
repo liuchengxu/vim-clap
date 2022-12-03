@@ -276,7 +276,7 @@ pub(crate) mod tests {
             .build(query.into());
 
         let mut ranked = Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
-            .run_and_collect(matcher)
+            .match_items(matcher)
             .unwrap();
         ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
 

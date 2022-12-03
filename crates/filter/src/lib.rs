@@ -11,11 +11,11 @@ mod worker;
 
 use std::sync::Arc;
 
-use anyhow::Result;
 use rayon::prelude::*;
 
 use icon::Icon;
 use matcher::{Bonus, ClapItem, MatchScope, Matcher, MatcherBuilder};
+use source::MatchedItems;
 
 pub use self::source::Source;
 pub use self::worker::iterator::dyn_run;
@@ -73,35 +73,17 @@ impl FilterContext {
     }
 }
 
-/// Sorts the filtered result by the filter score.
-///
-/// The item with highest score first, the item with lowest score last.
-pub fn sort_matched_items(matched_items: Vec<MatchedItem>) -> Vec<MatchedItem> {
-    let mut items = matched_items;
-    items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-    items
-}
-
-/// Returns the ranked results after applying the matcher algo
-/// given the query String and filtering source.
-pub fn sync_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
-    source: Source<I>,
-    matcher: Matcher,
-) -> Result<Vec<MatchedItem>> {
-    let matched_items = source.run_and_collect(matcher)?;
-    Ok(sort_matched_items(matched_items))
-}
-
 /// Performs the synchorous filtering on a small scale of source in parallel.
 pub fn par_filter(source_items: Vec<SourceItem>, fuzzy_matcher: &Matcher) -> Vec<MatchedItem> {
-    let matched_items = source_items
+    let matched_items: MatchedItems = source_items
         .into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
             fuzzy_matcher.match_item(item)
         })
-        .collect::<Vec<_>>();
-    sort_matched_items(matched_items)
+        .collect::<Vec<_>>()
+        .into();
+    matched_items.sort().into()
 }
 
 /// Performs the synchorous filtering on a small scale of source in parallel.
@@ -109,9 +91,10 @@ pub fn par_filter_items(
     source_items: &[Arc<dyn ClapItem>],
     fuzzy_matcher: &Matcher,
 ) -> Vec<MatchedItem> {
-    let matched_items = source_items
+    let matched_items: MatchedItems = source_items
         .into_par_iter()
         .filter_map(|item| fuzzy_matcher.match_item(item.clone()))
-        .collect::<Vec<_>>();
-    sort_matched_items(matched_items)
+        .collect::<Vec<_>>()
+        .into();
+    matched_items.sort().into()
 }
