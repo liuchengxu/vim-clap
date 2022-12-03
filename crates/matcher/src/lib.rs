@@ -64,7 +64,7 @@ impl InverseMatcher {
     pub fn match_any(&self, match_text: &str) -> bool {
         self.inverse_terms
             .iter()
-            .any(|inverse_term| inverse_term.match_full_line(match_text))
+            .any(|inverse_term| inverse_term.is_match(match_text))
     }
 }
 
