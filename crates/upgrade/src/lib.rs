@@ -136,7 +136,7 @@ async fn download_prebuilt_binary(
     let asset_name = asset_name().ok_or_else(binary_unavailable)?;
 
     let mut tmp = std::env::temp_dir();
-    tmp.push(format!("{}-{}", version, asset_name));
+    tmp.push(format!("{version}-{asset_name}"));
 
     let total_size = retrieve_asset_size(asset_name, version).await?;
 

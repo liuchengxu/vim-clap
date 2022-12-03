@@ -151,7 +151,7 @@ impl TryFrom<&str> for Match {
     type Error = Cow<'static, str>;
     fn try_from(line: &str) -> Result<Self, Self::Error> {
         let msg = serde_json::from_str::<Message>(line)
-            .map_err(|e| format!("deserialize error: {:?}", e))?;
+            .map_err(|e| format!("deserialize error: {e:?}"))?;
         if let Message::Match(mat) = msg {
             Ok(mat)
         } else {

@@ -194,7 +194,7 @@ mod tests {
     fn test_icon_length() {
         for table in [EXTENSION_ICON_TABLE, EXACTMATCH_ICON_TABLE].iter() {
             for (_, i) in table.iter() {
-                let icon = format!("{} ", i);
+                let icon = format!("{i} ");
                 assert_eq!(icon.len(), 4);
             }
         }

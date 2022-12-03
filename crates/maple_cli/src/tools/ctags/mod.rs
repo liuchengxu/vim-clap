@@ -27,7 +27,7 @@ pub const EXCLUDE: &str = ".git,*.json,node_modules,target,_build,build,dist";
 pub static DEFAULT_EXCLUDE_OPT: Lazy<String> = Lazy::new(|| {
     EXCLUDE
         .split(',')
-        .map(|x| format!("--exclude={}", x))
+        .map(|x| format!("--exclude={x}"))
         .join(" ")
 });
 

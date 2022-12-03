@@ -41,14 +41,14 @@ impl SharedParams {
     pub fn exclude_opt(&self) -> String {
         self.exclude
             .split(',')
-            .map(|x| format!("--exclude={}", x))
+            .map(|x| format!("--exclude={x}"))
             .join(" ")
     }
 
     pub fn exclude_args(&self) -> Vec<String> {
         self.exclude
             .split(',')
-            .map(|x| format!("--exclude={}", x))
+            .map(|x| format!("--exclude={x}"))
             .collect()
     }
 
