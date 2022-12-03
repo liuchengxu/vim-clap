@@ -226,12 +226,7 @@ impl FilerProvider {
 
         let matched_items = filter::par_filter_items(
             current_items,
-            &self
-                .context
-                .env
-                .matcher_builder
-                .clone()
-                .build(query.into()),
+            &self.context.env.matcher_builder.clone().build(query.into()),
         );
         let total = matched_items.len();
 
