@@ -3,7 +3,7 @@ use std::path::Path;
 
 use chrono::prelude::*;
 use filter::SourceItem;
-use matcher::Bonus;
+use matcher::{Bonus, MatcherBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::UtcTime;
@@ -183,7 +183,7 @@ impl SortedRecentFiles {
 
         cwd.pop();
 
-        let matcher = matcher::MatcherBuilder::default()
+        let matcher = MatcherBuilder::default()
             .bonuses(vec![Bonus::cwd(cwd), Bonus::FileName])
             .build(query.into());
 

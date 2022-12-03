@@ -245,32 +245,29 @@ impl MatcherBuilder {
         let inverse_matcher = InverseMatcher::new(inverse_terms);
         let exact_matcher = ExactMatcher::new(exact_terms, case_matching);
         let fuzzy_matcher = FuzzyMatcher::new(fuzzy_terms, case_matching, fuzzy_algo, match_scope);
+        let bonus_matcher = BonusMatcher::new(bonuses);
 
         Matcher {
-            bonuses,
             inverse_matcher,
             exact_matcher,
             fuzzy_matcher,
+            bonus_matcher,
         }
     }
 }
 
-/// `Matcher` is composed of two components:
-///
-///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
-///   * `algo`: algorithm used for matching the text.
-///   * `bonus`: add a bonus to the result of base `algo`.
 #[derive(Debug, Clone, Default)]
-pub struct Matcher {
+pub struct BonusMatcher {
     bonuses: Vec<Bonus>,
-    inverse_matcher: InverseMatcher,
-    exact_matcher: ExactMatcher,
-    fuzzy_matcher: FuzzyMatcher,
 }
 
-impl Matcher {
+impl BonusMatcher {
+    pub fn new(bonuses: Vec<Bonus>) -> Self {
+        Self { bonuses }
+    }
+
     /// Returns the sum of bonus score.
-    fn calc_bonus(
+    pub fn calc_bonus(
         &self,
         item: &Arc<dyn ClapItem>,
         base_score: Score,
@@ -281,7 +278,22 @@ impl Matcher {
             .map(|b| b.bonus_score(item, base_score, base_indices))
             .sum()
     }
+}
 
+/// `Matcher` is composed of two components:
+///
+///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
+///   * `algo`: algorithm used for matching the text.
+///   * `bonus`: add a bonus to the result of base `algo`.
+#[derive(Debug, Clone, Default)]
+pub struct Matcher {
+    inverse_matcher: InverseMatcher,
+    exact_matcher: ExactMatcher,
+    fuzzy_matcher: FuzzyMatcher,
+    bonus_matcher: BonusMatcher,
+}
+
+impl Matcher {
     // TODO: refactor this.
     pub fn match_scope(&self) -> MatchScope {
         self.fuzzy_matcher.match_scope
@@ -308,7 +320,7 @@ impl Matcher {
 
         // Merge the results from multi matchers.
         let match_result = if fuzzy_indices.is_empty() {
-            let bonus_score = self.calc_bonus(&item, exact_score, &indices);
+            let bonus_score = self.bonus_matcher.calc_bonus(&item, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
@@ -318,7 +330,9 @@ impl Matcher {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
 
-            let bonus_score = self.calc_bonus(&item, fuzzy_score, &fuzzy_indices);
+            let bonus_score = self
+                .bonus_matcher
+                .calc_bonus(&item, fuzzy_score, &fuzzy_indices);
 
             indices.extend_from_slice(fuzzy_indices.as_slice());
             indices.sort_unstable();
@@ -403,16 +417,19 @@ mod tests {
             "autoload/clap/provider/files.vim",
             "lua/fzy_filter.lua",
         ];
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query = "fil";
+        let matcher = MatcherBuilder::default()
+            .bonuses(vec![Bonus::FileName])
+            .build(query.into());
         for line in lines {
             let item: Arc<dyn ClapItem> = Arc::new(SourceItem::from(line.to_string()));
-            let fuzzy_text = item.fuzzy_text(matcher.match_scope).unwrap();
+            let fuzzy_text = item.fuzzy_text(matcher.match_scope()).unwrap();
             let match_result_base = matcher
+                .fuzzy_matcher
                 .fuzzy_algo
-                .fuzzy_match(query, &fuzzy_text, matcher.case_matching)
+                .fuzzy_match(query, &fuzzy_text, matcher.fuzzy_matcher.case_matching)
                 .unwrap();
-            let match_result_with_bonus = matcher.match_item(item, &query.into()).unwrap();
+            let match_result_with_bonus = matcher.match_item(item).unwrap();
             assert!(match_result_base.indices == match_result_with_bonus.indices);
             assert!(match_result_with_bonus.score > match_result_base.score);
         }
@@ -421,17 +438,15 @@ mod tests {
     #[test]
     fn test_language_keyword_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
-        let matcher = Matcher::new(
-            Bonus::Language("vim".into()),
-            FuzzyAlgorithm::Fzy,
-            MatchScope::Full,
-        );
         let query: Query = "fo".into();
+        let matcher = MatcherBuilder::default()
+            .bonuses(vec![Bonus::Language("vim".into())])
+            .build(query);
         let matched_item1 = matcher
-            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>, &query)
+            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>)
             .unwrap();
         let matched_item2 = matcher
-            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>, &query)
+            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>)
             .unwrap();
         assert!(matched_item1.indices == matched_item2.indices);
         assert!(matched_item1.score < matched_item2.score);
@@ -440,13 +455,13 @@ mod tests {
     #[test]
     fn test_exact_search_term_bonus() {
         let lines = vec!["function foo qwer", "function foo"];
-        let matcher = Matcher::new(Default::default(), FuzzyAlgorithm::Fzy, MatchScope::Full);
         let query: Query = "'fo".into();
+        let matcher = MatcherBuilder::default().build(query);
         let matched_item1 = matcher
-            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>, &query)
+            .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>)
             .unwrap();
         let matched_item2 = matcher
-            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>, &query)
+            .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>)
             .unwrap();
         assert!(matched_item1.indices == matched_item2.indices);
         assert!(matched_item1.score < matched_item2.score);
@@ -461,15 +476,16 @@ mod tests {
             Arc::new("pythonx/clap/scorer.py"),
         ];
 
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
-
-        let match_with_query = |query: &Query| {
+        let match_with_query = |query: Query| {
+            let matcher = MatcherBuilder::default()
+                .bonuses(vec![Bonus::FileName])
+                .build(query);
             items
                 .clone()
                 .into_iter()
                 .map(|item| {
                     let item: Arc<dyn ClapItem> = item;
-                    matcher.match_item(item, &query)
+                    matcher.match_item(item)
                 })
                 .map(|maybe_matched_item| {
                     if let Some(matched_item) = maybe_matched_item {
@@ -482,7 +498,7 @@ mod tests {
         };
 
         let query: Query = "clap .vim$ ^auto".into();
-        let match_results: Vec<_> = match_with_query(&query);
+        let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
                 Some(MatchResult::new(
@@ -500,7 +516,7 @@ mod tests {
         );
 
         let query: Query = ".rs$".into();
-        let match_results: Vec<_> = match_with_query(&query);
+        let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
                 None,
@@ -512,7 +528,7 @@ mod tests {
         );
 
         let query: Query = "py".into();
-        let match_results: Vec<_> = match_with_query(&query);
+        let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
                 Some(MatchResult::new(138, [14, 36].to_vec())),
@@ -524,7 +540,7 @@ mod tests {
         );
 
         let query: Query = "'py".into();
-        let match_results: Vec<_> = match_with_query(&query);
+        let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
                 None,
