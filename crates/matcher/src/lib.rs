@@ -59,7 +59,9 @@ impl InverseMatcher {
         &self.inverse_terms
     }
 
-    pub fn is_match(&self, match_text: &str) -> bool {
+    /// Returns `true` if any inverse matching is satisfied, which means the item should be
+    /// ignored.
+    pub fn match_any(&self, match_text: &str) -> bool {
         self.inverse_terms
             .iter()
             .any(|inverse_term| inverse_term.match_full_line(match_text))
@@ -308,7 +310,7 @@ impl Matcher {
         }
 
         // Try the inverse terms against the full search line.
-        if self.inverse_matcher.is_match(match_text) {
+        if self.inverse_matcher.match_any(match_text) {
             return None;
         }
 
