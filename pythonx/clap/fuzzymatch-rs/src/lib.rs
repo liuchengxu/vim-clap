@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use pyo3::{prelude::*, wrap_pyfunction};
 
-use matcher::{Bonus, FuzzyAlgorithm, MatchResult, Matcher};
+use matcher::{Bonus, MatchResult, MatcherBuilder};
 use printer::truncate_long_matched_lines_v0;
-use types::{ClapItem, MatchScope, SourceItem, Query};
+use types::{ClapItem, MatchScope, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -101,9 +101,11 @@ fn fuzzy_match(
 
     bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
-    let matcher = Matcher::with_bonuses(bonuses, FuzzyAlgorithm::Fzy, match_scope);
-
     let query: Query = query.into();
+    let matcher = MatcherBuilder::default()
+        .bonuses(bonuses)
+        .match_scope(match_scope)
+        .build(query);
 
     let mut ranked = candidates
         .into_iter()
@@ -113,7 +115,7 @@ fn fuzzy_match(
             } else {
                 Arc::new(SourceItem::from(line))
             };
-            matcher.match_item(item, &query)
+            matcher.match_item(item)
         })
         .collect::<Vec<_>>();
 

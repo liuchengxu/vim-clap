@@ -223,7 +223,7 @@ pub fn print_dyn_matched_items(
 pub(crate) mod tests {
     use super::*;
     use filter::{
-        matcher::{Bonus, FuzzyAlgorithm, MatchScope, Matcher},
+        matcher::{Bonus, MatcherBuilder},
         Source, SourceItem,
     };
     use rayon::prelude::*;
@@ -271,14 +271,15 @@ pub(crate) mod tests {
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<MatchedItem> {
-        let matcher = Matcher::new(Bonus::FileName, FuzzyAlgorithm::Fzy, MatchScope::Full);
+        let matcher = MatcherBuilder::default()
+            .bonuses(vec![Bonus::FileName])
+            .build(query.into());
 
-        let mut ranked = Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
-            .run_and_collect(matcher, &query.into())
-            .unwrap();
-        ranked.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
-
-        ranked
+        Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
+            .matched_items(matcher)
+            .unwrap()
+            .par_sort()
+            .inner()
     }
 
     fn run(params: TestParams) {

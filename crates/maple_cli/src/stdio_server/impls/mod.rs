@@ -10,7 +10,7 @@ use parking_lot::Mutex;
 use serde_json::json;
 
 use filter::{FilterContext, ParSource};
-use matcher::Matcher;
+use matcher::MatcherBuilder;
 use types::{ClapItem, MatchedItem, SourceItem};
 
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
@@ -87,7 +87,7 @@ impl ClapProvider for DefaultProvider {
         match source_scale.deref() {
             SourceScale::Small { ref items, .. } => {
                 let matched_items =
-                    filter::par_filter_items(query, items, &self.context.fuzzy_matcher());
+                    filter::par_filter_items(items, &self.context.fuzzy_matcher(query));
                 let matched = matched_items.len();
                 // Take the first 200 entries and add an icon to each of them.
                 printer::decorate_lines(
@@ -106,9 +106,9 @@ impl ClapProvider for DefaultProvider {
                         self.context.icon,
                         Some(40),
                         Some(self.context.display_winwidth as usize),
-                        Matcher::default()
-                            .set_match_scope(self.context.match_scope)
-                            .set_bonuses(self.context.match_bonuses.clone()),
+                        MatcherBuilder::default()
+                            .match_scope(self.context.match_scope)
+                            .bonuses(self.context.match_bonuses.clone()),
                     ),
                     ParSource::File(path.clone()),
                 ) {

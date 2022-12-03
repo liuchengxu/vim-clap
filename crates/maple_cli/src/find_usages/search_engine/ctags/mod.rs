@@ -11,7 +11,7 @@ use subprocess::{Exec, Redirection};
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;
 use crate::tools::ctags::TagsGenerator;
-use crate::utils::ExactOrInverseTerms;
+use crate::utils::UsageMatcher;
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -42,7 +42,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     pub fn search_usages(
         &self,
         keyword: &str,
-        filtering_terms: &ExactOrInverseTerms,
+        usage_matcher: &UsageMatcher,
         query_type: QueryType,
         force_generate: bool,
     ) -> Result<Vec<AddressableUsage>> {
@@ -55,7 +55,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             .par_bridge()
             .filter_map(|symbol| {
                 let (line, indices) = symbol.grep_format_ctags(keyword, ignorecase);
-                filtering_terms
+                usage_matcher
                     .check_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
             })

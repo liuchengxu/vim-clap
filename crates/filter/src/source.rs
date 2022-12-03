@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
+use rayon::prelude::*;
 use subprocess::Exec;
 
 use matcher::Matcher;
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchedItem, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -29,11 +30,33 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> From<Exec> for Source<I> {
     }
 }
 
+#[derive(Debug)]
+pub struct MatchedItems(Vec<MatchedItem>);
+
+impl MatchedItems {
+    /// The item with highest score first, the item with lowest score last.
+    pub fn par_sort(self) -> Self {
+        let mut items = self.0;
+        items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+        Self(items)
+    }
+
+    pub fn inner(self) -> Vec<MatchedItem> {
+        self.0
+    }
+}
+
+impl From<Vec<MatchedItem>> for MatchedItems {
+    fn from(items: Vec<MatchedItem>) -> Self {
+        Self(items)
+    }
+}
+
 impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
+    pub fn matched_items(self, matcher: Matcher) -> Result<MatchedItems> {
         let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match self {
             Self::List(list) => Box::new(list),
             Self::Stdin => Box::new(
@@ -58,7 +81,8 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
         };
 
         Ok(clap_item_stream
-            .filter_map(|item| matcher.match_item(item, query))
-            .collect())
+            .filter_map(|item| matcher.match_item(item))
+            .collect::<Vec<_>>()
+            .into())
     }
 }

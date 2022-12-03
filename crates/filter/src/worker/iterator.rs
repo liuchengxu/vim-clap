@@ -11,7 +11,8 @@ use icon::{Icon, ICON_LEN};
 use types::{ClapItem, MatchedItem, Query, Score, SourceItem};
 use utility::{println_json, println_json_with_length};
 
-use crate::{sort_matched_items, FilterContext, Source};
+use crate::source::MatchedItems;
+use crate::{FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -296,10 +297,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
 
     let query: Query = query.into();
+    let matcher = matcher_builder.build(query);
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
         Source::List(list) => Box::new(list),
@@ -324,11 +326,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         ),
     };
 
-    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item, &query));
+    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item));
 
     if let Some(number) = number {
         let (total_matched, matched_items) = dyn_collect_number(matched_item_stream, number, icon);
-        let mut matched_items = sort_matched_items(matched_items);
+        let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
         printer::print_dyn_matched_items(
@@ -340,7 +342,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         );
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);
-        let matched_items = sort_matched_items(matched_items);
+        let matched_items = MatchedItems::from(matched_items).par_sort().inner();
 
         matched_items.iter().for_each(|matched_item| {
             let indices = &matched_item.indices;
