@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use anyhow::Result;
+use filter::Query;
 use parking_lot::Mutex;
 use serde::Deserialize;
 
@@ -138,12 +139,11 @@ impl SessionContext {
         )
     }
 
-    pub fn fuzzy_matcher(&self) -> matcher::Matcher {
-        matcher::Matcher::with_bonuses(
-            Vec::new(), // TODO: bonuses
-            matcher::FuzzyAlgorithm::Fzy,
-            self.match_scope,
-        )
+    pub fn fuzzy_matcher(&self, query: impl Into<Query>) -> matcher::Matcher {
+        // TODO: bonuses
+        matcher::MatcherBuilder::default()
+            .match_scope(self.match_scope)
+            .build(query.into())
     }
 
     pub fn set_source_scale(&self, new: SourceScale) {

@@ -10,6 +10,7 @@ use once_cell::sync::Lazy;
 use subprocess::Exec;
 
 use icon::Icon;
+use matcher::{ExactMatcher, InverseMatcher};
 use types::{CaseMatching, ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
 
@@ -31,22 +32,22 @@ pub static HOME_DIR: Lazy<PathBuf> = Lazy::new(|| {
 /// Yes or no terms.
 #[derive(Debug, Clone, Default)]
 pub struct ExactOrInverseTerms {
-    pub exact_terms: Vec<ExactTerm>,
-    pub inverse_terms: Vec<InverseTerm>,
+    pub exact_matcher: ExactMatcher,
+    pub inverse_matcher: InverseMatcher,
 }
 
 impl ExactOrInverseTerms {
+    pub fn new(exact_terms: Vec<ExactTerm>, inverse_terms: Vec<InverseTerm>) -> Self {
+        Self {
+            exact_matcher: ExactMatcher::new(exact_terms, CaseMatching::Smart),
+            inverse_matcher: InverseMatcher::new(inverse_terms),
+        }
+    }
+
     /// Returns the match indices of exact terms if given `line` passes all the checks.
     fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
-        if let Some((_, indices)) =
-            matcher::match_exact_terms(self.exact_terms.iter(), line, CaseMatching::Smart)
-        {
-            let should_retain = !self
-                .inverse_terms
-                .iter()
-                .any(|term| term.match_full_line(line));
-
-            if should_retain {
+        if let Some((_, indices)) = self.exact_matcher.find_matches(line) {
+            if self.inverse_matcher.is_match(line) {
                 Some(indices)
             } else {
                 None
@@ -59,14 +60,16 @@ impl ExactOrInverseTerms {
     /// Returns `true` if the result of The results of applying `self`
     /// is a superset of applying `other` on the same source.
     pub fn is_superset(&self, other: &Self) -> bool {
-        self.exact_terms
+        self.exact_matcher
+            .exact_terms()
             .iter()
-            .zip(other.exact_terms.iter())
+            .zip(other.exact_matcher.exact_terms().iter())
             .all(|(local, other)| local.is_superset(other))
             && self
-                .inverse_terms
+                .inverse_matcher
+                .inverse_terms()
                 .iter()
-                .zip(other.inverse_terms.iter())
+                .zip(other.inverse_matcher.inverse_terms().iter())
                 .all(|(local, other)| local.is_superset(other))
     }
 

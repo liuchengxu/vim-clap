@@ -33,181 +33,155 @@ mod bonus;
 
 use std::sync::Arc;
 
+// Re-export types
 pub use self::algo::{fzy, skim, substring, FuzzyAlgorithm};
 pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
+use crate::substring::substr_indices;
 use types::{CaseMatching, MatchedItem};
-// Re-export types
 pub use types::{
-    ClapItem, ExactTerm, ExactTermType, FuzzyTermType, MatchResult, MatchScope, Query, Score,
-    SearchTerm, SourceItem, TermType,
+    ClapItem, ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, FuzzyText, InverseTerm,
+    MatchResult, MatchScope, Query, Score, SearchTerm, SourceItem, TermType,
 };
 
-/// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
-pub fn match_exact_terms<'a>(
-    terms: impl Iterator<Item = &'a ExactTerm>,
-    full_search_line: &str,
-    case_matching: CaseMatching,
-) -> Option<(Score, Vec<usize>)> {
-    use ExactTermType::*;
-
-    let mut indices = Vec::<usize>::new();
-    let mut exact_score = Score::default();
-
-    for term in terms {
-        let sub_query = &term.word;
-
-        match term.ty {
-            Exact => {
-                if let Some((score, sub_indices)) =
-                    substring::substr_indices(full_search_line, sub_query, case_matching)
-                {
-                    indices.extend_from_slice(&sub_indices);
-                    exact_score += score.max(sub_query.len() as Score);
-                } else {
-                    return None;
-                }
-            }
-            PrefixExact => {
-                let trimmed = full_search_line.trim_start();
-                let white_space_len = full_search_line.len().saturating_sub(trimmed.len());
-                if trimmed.starts_with(sub_query) {
-                    let mut match_start = -1i32 + white_space_len as i32;
-                    let new_len = indices.len() + sub_query.len();
-                    indices.resize_with(new_len, || {
-                        match_start += 1;
-                        match_start as usize
-                    });
-                    exact_score += sub_query.len() as Score;
-                } else {
-                    return None;
-                }
-            }
-            SuffixExact => {
-                let total_len = full_search_line.len();
-                let trimmed = full_search_line.trim_end();
-                let white_space_len = total_len.saturating_sub(trimmed.len());
-                if trimmed.ends_with(sub_query) {
-                    // In case of underflow, we use i32 here.
-                    let mut match_start =
-                        total_len as i32 - sub_query.len() as i32 - 1i32 - white_space_len as i32;
-                    let new_len = indices.len() + sub_query.len();
-                    indices.resize_with(new_len, || {
-                        match_start += 1;
-                        match_start as usize
-                    });
-                    exact_score += sub_query.len() as Score;
-                } else {
-                    return None;
-                }
-            }
-        }
-    }
-
-    // Exact search term bonus
-    //
-    // The shorter search line has a higher score.
-    exact_score += (512 / full_search_line.len()) as Score;
-
-    Some((exact_score, indices))
-}
-
-/// `Matcher` is composed of two components:
-///
-///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
-///   * `algo`: algorithm used for matching the text.
-///   * `bonus`: add a bonus to the result of base `algo`.
 #[derive(Debug, Clone, Default)]
-pub struct Matcher {
-    bonuses: Vec<Bonus>,
-    fuzzy_algo: FuzzyAlgorithm,
-    match_scope: MatchScope,
+pub struct InverseMatcher {
+    inverse_terms: Vec<InverseTerm>,
+}
+
+impl InverseMatcher {
+    pub fn new(inverse_terms: Vec<InverseTerm>) -> Self {
+        Self { inverse_terms }
+    }
+
+    pub fn inverse_terms(&self) -> &[InverseTerm] {
+        &self.inverse_terms
+    }
+
+    pub fn is_match(&self, match_text: &str) -> bool {
+        self.inverse_terms
+            .iter()
+            .any(|inverse_term| inverse_term.match_full_line(match_text))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ExactMatcher {
+    exact_terms: Vec<ExactTerm>,
     case_matching: CaseMatching,
 }
 
-impl Matcher {
-    /// Constructs a new instance of [`Matcher`].
-    pub fn new(bonus: Bonus, fuzzy_algo: FuzzyAlgorithm, match_scope: MatchScope) -> Self {
+impl ExactMatcher {
+    pub fn new(exact_terms: Vec<ExactTerm>, case_matching: CaseMatching) -> Self {
         Self {
-            bonuses: vec![bonus],
-            fuzzy_algo,
-            match_scope,
-            case_matching: Default::default(),
+            exact_terms,
+            case_matching,
         }
     }
 
-    /// Constructs a new instance of [`Matcher`] with multiple bonuses.
-    pub fn with_bonuses(
-        bonuses: Vec<Bonus>,
+    pub fn exact_terms(&self) -> &[ExactTerm] {
+        &self.exact_terms
+    }
+
+    /// Returns an optional tuple of (score, indices) if all the exact searching terms are satisfied.
+    pub fn find_matches(&self, full_search_line: &str) -> Option<(Score, Vec<usize>)> {
+        let mut indices = Vec::<usize>::new();
+        let mut exact_score = Score::default();
+
+        for term in &self.exact_terms {
+            let sub_query = &term.word;
+
+            match term.ty {
+                ExactTermType::Exact => {
+                    if let Some((score, sub_indices)) =
+                        substr_indices(full_search_line, sub_query, self.case_matching)
+                    {
+                        indices.extend_from_slice(&sub_indices);
+                        exact_score += score.max(sub_query.len() as Score);
+                    } else {
+                        return None;
+                    }
+                }
+                ExactTermType::PrefixExact => {
+                    let trimmed = full_search_line.trim_start();
+                    let white_space_len = full_search_line.len().saturating_sub(trimmed.len());
+                    if trimmed.starts_with(sub_query) {
+                        let mut match_start = -1i32 + white_space_len as i32;
+                        let new_len = indices.len() + sub_query.len();
+                        indices.resize_with(new_len, || {
+                            match_start += 1;
+                            match_start as usize
+                        });
+                        exact_score += sub_query.len() as Score;
+                    } else {
+                        return None;
+                    }
+                }
+                ExactTermType::SuffixExact => {
+                    let total_len = full_search_line.len();
+                    let trimmed = full_search_line.trim_end();
+                    let white_space_len = total_len.saturating_sub(trimmed.len());
+                    if trimmed.ends_with(sub_query) {
+                        // In case of underflow, we use i32 here.
+                        let mut match_start = total_len as i32
+                            - sub_query.len() as i32
+                            - 1i32
+                            - white_space_len as i32;
+                        let new_len = indices.len() + sub_query.len();
+                        indices.resize_with(new_len, || {
+                            match_start += 1;
+                            match_start as usize
+                        });
+                        exact_score += sub_query.len() as Score;
+                    } else {
+                        return None;
+                    }
+                }
+            }
+        }
+
+        // Exact search term bonus
+        //
+        // The shorter search line has a higher score.
+        exact_score += (512 / full_search_line.len()) as Score;
+
+        Some((exact_score, indices))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct FuzzyMatcher {
+    match_scope: MatchScope,
+    fuzzy_algo: FuzzyAlgorithm,
+    fuzzy_terms: Vec<FuzzyTerm>,
+    case_matching: CaseMatching,
+}
+
+impl FuzzyMatcher {
+    pub fn new(
+        fuzzy_terms: Vec<FuzzyTerm>,
+        case_matching: CaseMatching,
         fuzzy_algo: FuzzyAlgorithm,
         match_scope: MatchScope,
     ) -> Self {
         Self {
-            bonuses,
+            fuzzy_terms,
+            case_matching,
             fuzzy_algo,
             match_scope,
-            case_matching: Default::default(),
         }
     }
 
-    pub fn set_bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
-        self.bonuses = bonuses;
-        self
-    }
-
-    pub fn match_scope(&self) -> MatchScope {
-        self.match_scope
-    }
-
-    pub fn set_match_scope(mut self, match_scope: MatchScope) -> Self {
-        self.match_scope = match_scope;
-        self
-    }
-
-    pub fn set_case_matching(mut self, case_matching: CaseMatching) -> Self {
-        self.case_matching = case_matching;
-        self
-    }
-
-    /// Returns the sum of bonus score.
-    fn calc_bonus(
-        &self,
-        item: &Arc<dyn ClapItem>,
-        base_score: Score,
-        base_indices: &[usize],
-    ) -> Score {
-        self.bonuses
-            .iter()
-            .map(|b| b.bonus_score(item, base_score, base_indices))
-            .sum()
-    }
-
-    /// Actually performs the matching algorithm.
-    pub fn match_item(&self, item: Arc<dyn ClapItem>, query: &Query) -> Option<MatchedItem> {
-        let match_text = item.match_text();
-
-        if match_text.is_empty() {
-            return None;
-        }
-
-        // Try the inverse terms against the full search line.
-        for inverse_term in query.inverse_terms.iter() {
-            if inverse_term.match_full_line(match_text) {
-                return None;
-            }
-        }
-
-        // Try the exact terms against the full search line.
-        let (exact_score, mut indices) =
-            match_exact_terms(query.exact_terms.iter(), match_text, self.case_matching)?;
+    pub fn find_matches(&self, item: &Arc<dyn ClapItem>) -> Option<(Score, Vec<usize>)> {
+        let fuzzy_len = self.fuzzy_terms.iter().map(|f| f.len()).sum();
 
         // Try the fuzzy terms against the matched text.
-        let mut fuzzy_indices = Vec::with_capacity(query.fuzzy_len());
+        let mut fuzzy_indices = Vec::with_capacity(fuzzy_len);
         let mut fuzzy_score = Score::default();
 
         if let Some(ref fuzzy_text) = item.fuzzy_text(self.match_scope) {
-            for term in query.fuzzy_terms.iter() {
+            for term in self.fuzzy_terms.iter() {
                 let query = &term.word;
                 if let Some(MatchResult { score, indices }) =
                     self.fuzzy_algo
@@ -221,6 +195,118 @@ impl Matcher {
             }
         }
 
+        Some((fuzzy_score, fuzzy_indices))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct MatcherBuilder {
+    bonuses: Vec<Bonus>,
+    fuzzy_algo: FuzzyAlgorithm,
+    match_scope: MatchScope,
+    case_matching: CaseMatching,
+}
+
+impl MatcherBuilder {
+    pub fn bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
+        self.bonuses = bonuses;
+        self
+    }
+
+    pub fn fuzzy_algo(mut self, algo: FuzzyAlgorithm) -> Self {
+        self.fuzzy_algo = algo;
+        self
+    }
+
+    pub fn match_scope(mut self, match_scope: MatchScope) -> Self {
+        self.match_scope = match_scope;
+        self
+    }
+
+    pub fn case_matching(mut self, case_matching: CaseMatching) -> Self {
+        self.case_matching = case_matching;
+        self
+    }
+
+    pub fn build(self, query: Query) -> Matcher {
+        let Self {
+            bonuses,
+            fuzzy_algo,
+            match_scope,
+            case_matching,
+        } = self;
+
+        let Query {
+            inverse_terms,
+            exact_terms,
+            fuzzy_terms,
+        } = query;
+
+        let inverse_matcher = InverseMatcher::new(inverse_terms);
+        let exact_matcher = ExactMatcher::new(exact_terms, case_matching);
+        let fuzzy_matcher = FuzzyMatcher::new(fuzzy_terms, case_matching, fuzzy_algo, match_scope);
+
+        Matcher {
+            bonuses,
+            inverse_matcher,
+            exact_matcher,
+            fuzzy_matcher,
+        }
+    }
+}
+
+/// `Matcher` is composed of two components:
+///
+///   * `match_scope`: represents the way of extracting the matching piece from the raw line.
+///   * `algo`: algorithm used for matching the text.
+///   * `bonus`: add a bonus to the result of base `algo`.
+#[derive(Debug, Clone, Default)]
+pub struct Matcher {
+    bonuses: Vec<Bonus>,
+    inverse_matcher: InverseMatcher,
+    exact_matcher: ExactMatcher,
+    fuzzy_matcher: FuzzyMatcher,
+}
+
+impl Matcher {
+    /// Returns the sum of bonus score.
+    fn calc_bonus(
+        &self,
+        item: &Arc<dyn ClapItem>,
+        base_score: Score,
+        base_indices: &[usize],
+    ) -> Score {
+        self.bonuses
+            .iter()
+            .map(|b| b.bonus_score(item, base_score, base_indices))
+            .sum()
+    }
+
+    // TODO: refactor this.
+    pub fn match_scope(&self) -> MatchScope {
+        self.fuzzy_matcher.match_scope
+    }
+
+    /// Actually performs the matching algorithm.
+    pub fn match_item(&self, item: Arc<dyn ClapItem>) -> Option<MatchedItem> {
+        let match_text = item.match_text();
+
+        if match_text.is_empty() {
+            return None;
+        }
+
+        // Try the inverse terms against the full search line.
+        if self.inverse_matcher.is_match(match_text) {
+            return None;
+        }
+
+        // Try the exact terms against the full search line.
+        let (exact_score, mut indices) = self.exact_matcher.find_matches(match_text)?;
+
+        // Try the fuzzy terms against the matched text.
+        let (fuzzy_score, mut fuzzy_indices) = self.fuzzy_matcher.find_matches(&item)?;
+
+        // Merge the results from multi matchers.
         let match_result = if fuzzy_indices.is_empty() {
             let bonus_score = self.calc_bonus(&item, exact_score, &indices);
 

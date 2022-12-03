@@ -39,14 +39,14 @@ pub fn par_dyn_run(
     match par_source {
         ParSource::File(file) => {
             par_dyn_run_inner::<Empty<_>, _>(
-                &query,
+                query,
                 filter_context,
                 ParSourceInner::Lines(std::fs::File::open(file)?),
             )?;
         }
         ParSource::Exec(exec) => {
             par_dyn_run_inner::<Empty<_>, _>(
-                &query,
+                query,
                 filter_context,
                 ParSourceInner::Lines(exec.stream_stdout()?),
             )?;
@@ -63,7 +63,7 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
     items: impl IntoParallelIterator<Item = Arc<dyn ClapItem>> + 'b,
 ) {
     let query: Query = query.into();
-    par_dyn_run_inner::<_, std::io::Empty>(&query, filter_context, ParSourceInner::Items(items))
+    par_dyn_run_inner::<_, std::io::Empty>(query, filter_context, ParSourceInner::Items(items))
         .expect("Matching items in parallel can not fail");
 }
 
@@ -144,7 +144,7 @@ enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read +
 
 /// Perform the matching on a stream of [`Source::File`] and `[Source::Exec]` in parallel.
 fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send>(
-    query: &Query,
+    query: Query,
     filter_context: FilterContext,
     parallel_source: ParSourceInner<I, R>,
 ) -> Result<()> {
@@ -152,8 +152,10 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
+
+    let matcher = matcher_builder.build(query);
 
     let winwidth = winwidth.unwrap_or(100);
     let number = number.unwrap_or(100);
@@ -164,7 +166,7 @@ fn par_dyn_run_inner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read 
     let best_items = Mutex::new(BestItems::new(number, icon, winwidth));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
-        if let Some(matched_item) = matcher.match_item(item, query) {
+        if let Some(matched_item) = matcher.match_item(item) {
             let matched = matched_count.fetch_add(1, Ordering::SeqCst);
 
             // TODO: not use mutex?

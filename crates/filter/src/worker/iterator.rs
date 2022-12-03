@@ -296,10 +296,11 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         icon,
         number,
         winwidth,
-        matcher,
+        matcher_builder,
     } = filter_context;
 
     let query: Query = query.into();
+    let matcher = matcher_builder.build(query);
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
         Source::List(list) => Box::new(list),
@@ -324,7 +325,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         ),
     };
 
-    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item, &query));
+    let matched_item_stream = clap_item_stream.filter_map(|item| matcher.match_item(item));
 
     if let Some(number) = number {
         let (total_matched, matched_items) = dyn_collect_number(matched_item_stream, number, icon);

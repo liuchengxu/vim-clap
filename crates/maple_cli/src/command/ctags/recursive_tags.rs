@@ -7,7 +7,7 @@ use clap::Parser;
 
 use filter::{FilterContext, Source};
 use itertools::Itertools;
-use matcher::{ClapItem, MatchScope, Matcher};
+use matcher::{ClapItem, MatchScope, MatcherBuilder};
 use rayon::prelude::*;
 
 use super::SharedParams;
@@ -109,7 +109,7 @@ impl RecursiveTags {
                 icon,
                 number,
                 None,
-                Matcher::default().set_match_scope(MatchScope::TagName),
+                MatcherBuilder::default().match_scope(MatchScope::TagName),
             );
 
             if self.par_run {

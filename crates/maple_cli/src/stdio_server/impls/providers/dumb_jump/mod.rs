@@ -82,20 +82,14 @@ fn parse_query_info(query: &str) -> QueryInfo {
             (
                 exact_terms[0].word.clone(),
                 QueryType::Exact,
-                ExactOrInverseTerms {
-                    exact_terms,
-                    inverse_terms,
-                },
+                ExactOrInverseTerms::new(exact_terms, inverse_terms),
             )
         }
     } else {
         (
             fuzzy_terms.iter().map(|term| &term.word).join(" "),
             QueryType::StartWith,
-            ExactOrInverseTerms {
-                exact_terms,
-                inverse_terms,
-            },
+            ExactOrInverseTerms::new(exact_terms, inverse_terms),
         )
     };
 

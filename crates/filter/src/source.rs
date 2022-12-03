@@ -6,7 +6,7 @@ use anyhow::Result;
 use subprocess::Exec;
 
 use matcher::Matcher;
-use types::{ClapItem, MatchedItem, Query, SourceItem};
+use types::{ClapItem, MatchedItem, SourceItem};
 
 /// Source is anything that can produce an iterator of String.
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
     /// Returns the complete filtered results given `matcher` and `query`.
     ///
     /// This is kind of synchronous filtering, can be used for multi-staged processing.
-    pub fn run_and_collect(self, matcher: Matcher, query: &Query) -> Result<Vec<MatchedItem>> {
+    pub fn run_and_collect(self, matcher: Matcher) -> Result<Vec<MatchedItem>> {
         let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match self {
             Self::List(list) => Box::new(list),
             Self::Stdin => Box::new(
@@ -58,7 +58,7 @@ impl<I: Iterator<Item = Arc<dyn ClapItem>>> Source<I> {
         };
 
         Ok(clap_item_stream
-            .filter_map(|item| matcher.match_item(item, query))
+            .filter_map(|item| matcher.match_item(item))
             .collect())
     }
 }
