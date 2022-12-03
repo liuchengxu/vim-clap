@@ -22,7 +22,7 @@ use self::definition::{definitions_and_references, DefinitionSearchResult, Match
 use self::runner::{MatchFinder, RegexRunner};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{get_language, Match, Word};
-use crate::utils::ExactOrInverseTerms;
+use crate::utils::UsageMatcher;
 
 /// [`Usage`] with some structured information.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -88,8 +88,8 @@ pub struct RegexSearcher {
 }
 
 impl RegexSearcher {
-    pub fn print_usages(&self, exact_or_inverse_terms: &ExactOrInverseTerms) -> Result<()> {
-        let usages: Usages = self.search_usages(false, exact_or_inverse_terms)?.into();
+    pub fn print_usages(&self, usage_matcher: &UsageMatcher) -> Result<()> {
+        let usages: Usages = self.search_usages(false, usage_matcher)?.into();
         let total = usages.len();
         let (lines, indices): (Vec<_>, Vec<_>) = usages
             .into_iter()
@@ -104,7 +104,7 @@ impl RegexSearcher {
     pub fn search_usages(
         &self,
         classify: bool,
-        exact_or_inverse_terms: &ExactOrInverseTerms,
+        usage_matcher: &UsageMatcher,
     ) -> Result<Vec<AddressableUsage>> {
         let Self {
             word,
@@ -128,7 +128,7 @@ impl RegexSearcher {
                 let mut usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
-                        exact_or_inverse_terms
+                        usage_matcher
                             .check_jump_line(matched.build_jump_line("refs", &word))
                             .map(|(line, indices)| {
                                 RegexUsage::from_matched(&matched, line, indices)
@@ -157,7 +157,7 @@ impl RegexSearcher {
             unimplemented!("Classify regex search")
             // Ok(usages.into())
         } else {
-            self.regex_search(regex_runner, comments, exact_or_inverse_terms)
+            self.regex_search(regex_runner, comments, usage_matcher)
         }
     }
 
@@ -168,7 +168,7 @@ impl RegexSearcher {
         &self,
         regex_runner: RegexRunner,
         comments: &[&str],
-        exact_or_inverse_terms: &ExactOrInverseTerms,
+        usage_matcher: &UsageMatcher,
     ) -> Result<Vec<AddressableUsage>> {
         let (definitions, occurrences) = regex_runner.all(comments);
 
@@ -188,7 +188,7 @@ impl RegexSearcher {
                     .into_par_iter()
                     .filter_map(|matched| {
                         if positive_defs.contains(&&matched) {
-                            exact_or_inverse_terms
+                            usage_matcher
                                 .check_jump_line(
                                     matched
                                         .build_jump_line(kind.as_ref(), regex_runner.finder.word),
@@ -207,7 +207,7 @@ impl RegexSearcher {
                 occurrences.into_par_iter().filter_map(|matched| {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
-                        exact_or_inverse_terms
+                        usage_matcher
                             .check_jump_line(
                                 matched.build_jump_line(kind, regex_runner.finder.word),
                             )
@@ -227,7 +227,7 @@ impl RegexSearcher {
             let mut grep_usages = lines
                 .into_par_iter()
                 .filter_map(|matched| {
-                    exact_or_inverse_terms
+                    usage_matcher
                         .check_jump_line(matched.build_jump_line("grep", regex_runner.finder.word))
                         .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
                 })
@@ -293,7 +293,7 @@ mod tests {
                 .map(|path| path.to_path_buf()),
         };
         // FIXME: somehow it's Err in CI https://github.com/liuchengxu/vim-clap/runs/6146828485?check_suite_focus=true
-        if let Ok(usages) = regex_searcher.search_usages(false, &ExactOrInverseTerms::default()) {
+        if let Ok(usages) = regex_searcher.search_usages(false, &UsageMatcher::default()) {
             assert!(usages[0]
                 .line
                 .contains("function! clap#filter#async#dyn#start_filter_with_cache"));

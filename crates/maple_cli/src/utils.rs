@@ -31,12 +31,12 @@ pub static HOME_DIR: Lazy<PathBuf> = Lazy::new(|| {
 
 /// Yes or no terms.
 #[derive(Debug, Clone, Default)]
-pub struct ExactOrInverseTerms {
+pub struct UsageMatcher {
     pub exact_matcher: ExactMatcher,
     pub inverse_matcher: InverseMatcher,
 }
 
-impl ExactOrInverseTerms {
+impl UsageMatcher {
     pub fn new(exact_terms: Vec<ExactTerm>, inverse_terms: Vec<InverseTerm>) -> Self {
         Self {
             exact_matcher: ExactMatcher::new(exact_terms, CaseMatching::Smart),
