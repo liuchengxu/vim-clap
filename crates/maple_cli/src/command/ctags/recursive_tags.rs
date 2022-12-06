@@ -106,7 +106,7 @@ impl RecursiveTags {
                 icon,
                 number,
                 None,
-                MatcherBuilder::default().match_scope(MatchScope::TagName),
+                MatcherBuilder::new().match_scope(MatchScope::TagName),
             );
 
             if self.par_run {

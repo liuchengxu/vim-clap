@@ -36,6 +36,7 @@
 mod algo;
 mod bonus;
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 // Re-export types
@@ -239,6 +240,11 @@ pub struct MatcherBuilder {
 }
 
 impl MatcherBuilder {
+    /// Create a new matcher builder with a default configuration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
         self.bonuses = bonuses;
         self
@@ -347,6 +353,43 @@ impl Matcher {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct SinglePathMatcher {
+    processed: AtomicU64,
+    inverse_matcher: InverseMatcher,
+}
+
+impl SinglePathMatcher {
+    pub fn processed(self) -> u64 {
+        self.processed.into_inner()
+    }
+}
+
+impl grep_matcher::Matcher for SinglePathMatcher {
+    type Captures = grep_matcher::NoCaptures;
+    type Error = String;
+
+    fn find_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<grep_matcher::Match>, Self::Error> {
+        self.processed.fetch_add(1, Ordering::SeqCst);
+
+        let line = std::str::from_utf8(haystack).map_err(|e| format!("{e}"))?;
+        if self.inverse_matcher.match_any(line) {
+            return Ok(None);
+        }
+
+        // Signal there is a match and should be processed in the sink later.
+        Ok(Some(grep_matcher::Match::zero(at)))
+    }
+
+    fn new_captures(&self) -> Result<Self::Captures, Self::Error> {
+        Ok(grep_matcher::NoCaptures::new())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -418,7 +461,7 @@ mod tests {
             "lua/fzy_filter.lua",
         ];
         let query = "fil";
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::FileName])
             .build(query.into());
         for line in lines {
@@ -439,7 +482,7 @@ mod tests {
     fn test_language_keyword_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
         let query: Query = "fo".into();
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::Language("vim".into())])
             .build(query);
         let matched_item1 = matcher
@@ -456,7 +499,7 @@ mod tests {
     fn test_exact_search_term_bonus() {
         let lines = vec!["function foo qwer", "function foo"];
         let query: Query = "'fo".into();
-        let matcher = MatcherBuilder::default().build(query);
+        let matcher = MatcherBuilder::new().build(query);
         let matched_item1 = matcher
             .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>)
             .unwrap();
@@ -477,7 +520,7 @@ mod tests {
         ];
 
         let match_with_query = |query: Query| {
-            let matcher = MatcherBuilder::default()
+            let matcher = MatcherBuilder::new()
                 .bonuses(vec![Bonus::FileName])
                 .build(query);
             items

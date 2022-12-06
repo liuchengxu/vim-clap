@@ -74,7 +74,14 @@ impl Grep {
                 Some(ref dir) => dir.clone(),
                 None => std::env::current_dir()?,
             };
-            self::ripgrep::run(&self.grep_query, dir);
+            // let matcher = grep::regex::RegexMatcherBuilder::new()
+            // .case_smart(true)
+            // .build(&self.grep_query)
+            // .expect("Failed to create RegexMatcher");
+
+            let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
+
+            self::ripgrep::run(dir, clap_matcher);
             return Ok(());
         }
 

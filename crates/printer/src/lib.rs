@@ -174,7 +174,7 @@ pub(crate) mod tests {
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<MatchedItem> {
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::FileName])
             .build(query.into());
 

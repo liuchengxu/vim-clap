@@ -516,12 +516,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "grep"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cea81f81c4c120466aef365c225a05c707b002a20f2b9fe3287124b809a8d4f"
+dependencies = [
+ "grep-cli",
+ "grep-matcher",
+ "grep-printer",
+ "grep-regex",
+ "grep-searcher",
+]
+
+[[package]]
+name = "grep-cli"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dd110c34bb4460d0de5062413b773e385cbf8a85a63fc535590110a09e79e8a"
+dependencies = [
+ "atty",
+ "bstr",
+ "globset",
+ "lazy_static",
+ "log",
+ "regex",
+ "same-file",
+ "termcolor",
+ "winapi-util",
+]
+
+[[package]]
 name = "grep-matcher"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d27563c33062cd33003b166ade2bb4fd82db1fd6a86db764dfdad132d46c1cc"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "grep-printer"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05c271a24daedf5675b61a275a1d0af06e03312ab7856d15433ae6cde044dc72"
+dependencies = [
+ "base64",
+ "bstr",
+ "grep-matcher",
+ "grep-searcher",
+ "serde",
+ "serde_json",
+ "termcolor",
 ]
 
 [[package]]
@@ -853,8 +898,7 @@ dependencies = [
  "dumb_analyzer",
  "filter",
  "futures",
- "grep-regex",
- "grep-searcher",
+ "grep",
  "icon",
  "ignore",
  "itertools",
@@ -886,6 +930,7 @@ dependencies = [
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
+ "grep-matcher",
  "pattern",
  "types",
 ]

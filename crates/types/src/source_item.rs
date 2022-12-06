@@ -75,7 +75,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// This trait represents the items used in the entire filter pipeline.
-pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
+pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync {
     /// Initial raw text.
     fn raw_text(&self) -> &str;
 

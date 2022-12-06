@@ -181,7 +181,7 @@ impl ProviderId {
             _ => vec![],
         };
 
-        MatcherBuilder::default()
+        MatcherBuilder::new()
             .bonuses(match_bonuses)
             .match_scope(match_scope)
     }

@@ -123,7 +123,7 @@ impl Filter {
             ..
         }: Params,
     ) -> Result<()> {
-        let matcher_builder = MatcherBuilder::default()
+        let matcher_builder = MatcherBuilder::new()
             .bonuses(self.get_bonuses())
             .match_scope(self.match_scope)
             .fuzzy_algo(self.algo)
