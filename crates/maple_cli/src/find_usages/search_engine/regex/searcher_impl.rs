@@ -12,17 +12,17 @@ use std::process::Command;
 
 /// Searches a directory for pattern matches using ripgrep.
 #[derive(Debug, Clone)]
-pub struct MatchFinder<'a> {
+pub struct ExecutableSearcher {
     /// Directory to perform the ripgrep search.
-    pub dir: Option<&'a PathBuf>,
+    pub dir: Option<PathBuf>,
     /// Keyword of searching.
-    pub word: &'a Word,
+    pub word: Word,
     /// Extension of the source file.
-    pub file_ext: &'a str,
+    pub file_ext: String,
 }
 
-impl<'a> MatchFinder<'a> {
-    pub(super) fn find_occurrences(&self, ignore_comment: bool) -> std::io::Result<Vec<Match>> {
+impl ExecutableSearcher {
+    pub(super) fn word_regexp_search(&self, ignore_comment: bool) -> std::io::Result<Vec<Match>> {
         let mut command = Command::new("rg");
         command
             .arg("--json")
@@ -30,10 +30,10 @@ impl<'a> MatchFinder<'a> {
             .arg(&self.word.raw)
             .arg("-g")
             .arg(format!("*.{}", self.file_ext));
-        self.find_matches(
+        self.search(
             command,
             if ignore_comment {
-                Some(get_comment_syntax(self.file_ext))
+                Some(get_comment_syntax(&self.file_ext))
             } else {
                 None
             },
@@ -43,11 +43,7 @@ impl<'a> MatchFinder<'a> {
     /// Executes `command` as a child process.
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
-    fn find_matches(
-        &self,
-        cmd: Command,
-        maybe_comments: Option<&[&str]>,
-    ) -> std::io::Result<Vec<Match>> {
+    fn search(&self, cmd: Command, maybe_comments: Option<&[&str]>) -> std::io::Result<Vec<Match>> {
         let mut cmd = cmd;
 
         if let Some(ref dir) = self.dir {
@@ -77,18 +73,18 @@ impl<'a> MatchFinder<'a> {
     }
 }
 
-/// [`MatchFinder`] with a known language type.
+/// [`ExecutableSearcher`] with a known language type.
 #[derive(Debug, Clone)]
-pub struct RegexRunner<'a> {
-    /// Match finder.
-    pub finder: MatchFinder<'a>,
+pub struct RegexSearcherImpl {
+    /// Searcher.
+    pub searcher: ExecutableSearcher,
     /// Language type defined by ripgrep.
-    pub lang: &'a str,
+    pub lang: String,
 }
 
-impl<'a> RegexRunner<'a> {
-    pub fn new(finder: MatchFinder<'a>, lang: &'a str) -> Self {
-        Self { finder, lang }
+impl RegexSearcherImpl {
+    pub fn new(searcher: ExecutableSearcher, lang: String) -> Self {
+        Self { searcher, lang }
     }
 
     /// Finds the occurrences and all definitions concurrently.
@@ -105,7 +101,7 @@ impl<'a> RegexRunner<'a> {
 
     /// Returns all kinds of definitions.
     pub fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
-        Ok(get_definition_rules(self.lang)
+        Ok(get_definition_rules(&self.lang)
             .ok_or_else(|| {
                 std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -131,10 +127,10 @@ impl<'a> RegexRunner<'a> {
         command
             .arg("--json")
             .arg("--word-regexp")
-            .arg(&self.finder.word.raw)
+            .arg(&self.searcher.word.raw)
             .arg("--type")
-            .arg(self.lang);
-        self.finder.find_matches(command, Some(comments))
+            .arg(&self.lang);
+        self.searcher.search(command, Some(comments))
     }
 
     pub(super) fn regexp_search(&self, comments: &[&str]) -> std::io::Result<Vec<Match>> {
@@ -142,10 +138,10 @@ impl<'a> RegexRunner<'a> {
         command
             .arg("--json")
             .arg("--regexp")
-            .arg(self.finder.word.raw.replace(char::is_whitespace, ".*"))
+            .arg(self.searcher.word.raw.replace(char::is_whitespace, ".*"))
             .arg("--type")
-            .arg(self.lang);
-        self.finder.find_matches(command, Some(comments))
+            .arg(&self.lang);
+        self.searcher.search(command, Some(comments))
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
@@ -153,7 +149,7 @@ impl<'a> RegexRunner<'a> {
         &self,
         kind: &DefinitionKind,
     ) -> std::io::Result<(DefinitionKind, Vec<Match>)> {
-        let regexp = build_full_regexp(self.lang, kind, self.finder.word).ok_or_else(|| {
+        let regexp = build_full_regexp(&self.lang, kind, &self.searcher.word).ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Can not find the definition rule",
@@ -167,9 +163,9 @@ impl<'a> RegexRunner<'a> {
             .arg("--regexp")
             .arg(regexp)
             .arg("--type")
-            .arg(self.lang);
-        self.finder
-            .find_matches(command, None)
+            .arg(&self.lang);
+        self.searcher
+            .search(command, None)
             .map(|defs| (kind.clone(), defs))
     }
 }

@@ -1,4 +1,4 @@
-use super::runner::RegexRunner;
+use super::searcher_impl::RegexSearcherImpl;
 use crate::tools::ripgrep::{Match, Word};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
@@ -168,10 +168,10 @@ impl Occurrences {
 }
 
 pub(super) fn definitions_and_references(
-    regex_runner: RegexRunner<'_>,
+    regex_searcher_impl: RegexSearcherImpl,
     comments: &[&str],
 ) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) = regex_runner.all(comments);
+    let (definitions, mut occurrences) = regex_searcher_impl.all(comments);
 
     let defs = definitions.flatten();
 
@@ -199,7 +199,7 @@ pub(super) fn definitions_and_references(
         .collect();
 
     if res.is_empty() {
-        regex_runner
+        regex_searcher_impl
             .regexp_search(comments)
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {

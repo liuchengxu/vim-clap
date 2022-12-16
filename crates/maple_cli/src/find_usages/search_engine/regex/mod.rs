@@ -9,10 +9,10 @@
 //! The executable rg with `--json` and `--pcre2` is required to be installed on the system.
 
 mod definition;
-mod runner;
+mod searcher_impl;
 
 use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
-use self::runner::{MatchFinder, RegexRunner};
+use self::searcher_impl::{ExecutableSearcher, RegexSearcherImpl};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{get_language, Match, Word};
 use crate::utils::UsageMatcher;
@@ -112,17 +112,17 @@ impl RegexSearcher {
 
         let word = Word::new(word.clone())?;
 
-        let match_finder = MatchFinder {
-            word: &word,
-            file_ext: extension,
-            dir: dir.as_ref(),
+        let executable_searcher = ExecutableSearcher {
+            word: word.clone(),
+            file_ext: extension.to_string(),
+            dir: dir.clone(),
         };
 
         let lang = match get_language(extension) {
             Some(lang) => lang,
             None => {
                 // Search the occurrences if no language detected.
-                let occurrences = match_finder.find_occurrences(true)?;
+                let occurrences = executable_searcher.word_regexp_search(true)?;
                 let mut usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {
@@ -138,13 +138,13 @@ impl RegexSearcher {
             }
         };
 
-        let regex_runner = RegexRunner::new(match_finder, lang);
+        let regex_searcher_impl = RegexSearcherImpl::new(executable_searcher, lang.to_string());
 
         let comments = get_comment_syntax(extension);
 
         // render the results in group.
         if classify {
-            let res = definitions_and_references(regex_runner, comments)?;
+            let res = definitions_and_references(regex_searcher_impl, comments)?;
 
             let _usages = res
                 .into_par_iter()
@@ -155,7 +155,7 @@ impl RegexSearcher {
             unimplemented!("Classify regex search")
             // Ok(usages.into())
         } else {
-            self.regex_search(regex_runner, comments, usage_matcher)
+            self.regex_search(regex_searcher_impl, comments, usage_matcher)
         }
     }
 
@@ -164,11 +164,11 @@ impl RegexSearcher {
     /// If the result from regex matching is empty, try the pure grep approach.
     fn regex_search(
         &self,
-        regex_runner: RegexRunner,
+        regex_searcher_impl: RegexSearcherImpl,
         comments: &[&str],
         usage_matcher: &UsageMatcher,
     ) -> Result<Vec<AddressableUsage>> {
-        let (definitions, occurrences) = regex_runner.all(comments);
+        let (definitions, occurrences) = regex_searcher_impl.all(comments);
 
         let defs = definitions.flatten();
 
@@ -187,10 +187,10 @@ impl RegexSearcher {
                     .filter_map(|matched| {
                         if positive_defs.contains(&&matched) {
                             usage_matcher
-                                .check_jump_line(
-                                    matched
-                                        .build_jump_line(kind.as_ref(), regex_runner.finder.word),
-                                )
+                                .check_jump_line(matched.build_jump_line(
+                                    kind.as_ref(),
+                                    &regex_searcher_impl.searcher.word,
+                                ))
                                 .map(|(line, indices)| {
                                     RegexUsage::from_matched(&matched, line, indices)
                                 })
@@ -207,7 +207,7 @@ impl RegexSearcher {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         usage_matcher
                             .check_jump_line(
-                                matched.build_jump_line(kind, regex_runner.finder.word),
+                                matched.build_jump_line(kind, &regex_searcher_impl.searcher.word),
                             )
                             .map(|(line, indices)| {
                                 RegexUsage::from_matched(&matched, line, indices)
@@ -221,12 +221,14 @@ impl RegexSearcher {
 
         // Pure results by grepping the word.
         if regex_usages.is_empty() {
-            let lines = regex_runner.regexp_search(comments)?;
+            let lines = regex_searcher_impl.regexp_search(comments)?;
             let mut grep_usages = lines
                 .into_par_iter()
                 .filter_map(|matched| {
                     usage_matcher
-                        .check_jump_line(matched.build_jump_line("grep", regex_runner.finder.word))
+                        .check_jump_line(
+                            matched.build_jump_line("grep", &regex_searcher_impl.searcher.word),
+                        )
                         .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))
                 })
                 .collect::<Vec<_>>();
