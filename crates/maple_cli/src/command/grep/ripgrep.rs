@@ -4,8 +4,9 @@ use ignore::{DirEntry, WalkBuilder, WalkState};
 use matcher::ClapItem;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilePickerConfig {
@@ -58,14 +59,17 @@ pub struct FileResult {
     pub matched_item: MatchedItem,
 }
 
-pub fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
+pub fn search_parallel(
+    search_root: PathBuf,
+    clap_matcher: matcher::Matcher,
+    total_processed: Arc<AtomicU64>,
+    item_sender: UnboundedSender<FileResult>,
+) {
     let file_picker_config = FilePickerConfig::default();
 
     let searcher = SearcherBuilder::new()
         .binary_detection(BinaryDetection::quit(b'\x00'))
         .build();
-
-    let total_processed = Arc::new(AtomicU64::new(0));
 
     WalkBuilder::new(search_root)
         .hidden(file_picker_config.hidden)
@@ -85,7 +89,7 @@ pub fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
             let mut searcher = searcher.clone();
             let clap_matcher = clap_matcher.clone();
             let total_processed = total_processed.clone();
-            // let all_matches_sx = all_matches_sx.clone();
+            let item_sender = item_sender.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                 let entry = match entry {
                     Ok(entry) => entry,
@@ -98,13 +102,12 @@ pub fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
                     _ => return WalkState::Continue,
                 };
 
-                let grep_matcher = matcher::SinglePathMatcher::default();
+                let inverse_matcher = matcher::InverseMatcherWithRecord::default();
 
                 let result = searcher.search_path(
-                    &grep_matcher,
+                    &inverse_matcher,
                     entry.path(),
                     sinks::UTF8(|line_num, line| {
-                        // TODO
                         let item = Arc::new(line.to_string()) as Arc<dyn ClapItem>;
                         if let Some(matched_item) = clap_matcher.match_item(item) {
                             let file_result = FileResult {
@@ -112,26 +115,16 @@ pub fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
                                 line_number: line_num as usize - 1,
                                 matched_item,
                             };
-                            println!("{file_result:?}");
+                            item_sender.send(file_result).unwrap();
                         }
-
-                        // TODO: record highlights.
-                        // print!(
-                        // "result: {}:{}:{line}",
-                        // entry.path().display(),
-                        // line_num as usize - 1
-                        // );
-                        // all_matches_sx
-                        // .send(FileResult::new(entry.path(), line_num as usize - 1))
-                        // .unwrap();
 
                         Ok(true)
                     }),
                 );
 
-                let processed = grep_matcher.processed();
+                let processed = inverse_matcher.processed();
 
-                total_processed.fetch_add(processed, std::sync::atomic::Ordering::SeqCst);
+                total_processed.fetch_add(processed, Ordering::SeqCst);
 
                 if let Err(err) = result {
                     tracing::error!("Global search error: {}, {}", entry.path().display(), err);
@@ -139,9 +132,28 @@ pub fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
                 WalkState::Continue
             })
         });
+}
+
+pub async fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
+    let (sender, mut receiver) = unbounded_channel();
+
+    let total_processed = Arc::new(AtomicU64::new(0));
+
+    std::thread::spawn({
+        let search_root = search_root.as_ref().to_path_buf();
+        let total_processed = total_processed.clone();
+
+        move || search_parallel(search_root, clap_matcher, total_processed, sender)
+    });
+
+    let mut total_matched = 0;
+    while let Some(file_result) = receiver.recv().await {
+        total_matched += 1;
+        println!("=============== file_result: {file_result:?}");
+    }
 
     println!(
-        "============= total_processed: {:?}",
-        total_processed.load(std::sync::atomic::Ordering::SeqCst)
+        "============= total_processed: {:?}, total_matched: {total_matched:?}",
+        total_processed.load(Ordering::SeqCst)
     );
 }

@@ -125,7 +125,7 @@ impl RunCmd {
             Self::DumbJump(dumb_jump) => dumb_jump.run(),
             Self::Exec(exec) => exec.run(params),
             Self::Filter(filter) => filter.run(params),
-            Self::Grep(grep) => grep.run(params),
+            Self::Grep(grep) => grep.run(params).await,
             Self::LiveGrep(live_grep) => live_grep.run(params),
             Self::Gtags(gtags) => gtags.run(params),
             Self::Helptags(helptags) => helptags.run(),

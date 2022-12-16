@@ -58,7 +58,7 @@ pub struct Grep {
 }
 
 impl Grep {
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub async fn run(&self, params: Params) -> Result<()> {
         if self.refresh_cache {
             let dir = match self.cmd_dir {
                 Some(ref dir) => dir.clone(),
@@ -81,7 +81,7 @@ impl Grep {
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            self::ripgrep::run(dir, clap_matcher);
+            self::ripgrep::run(dir, clap_matcher).await;
             return Ok(());
         }
 

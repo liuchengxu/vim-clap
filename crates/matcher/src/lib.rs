@@ -354,18 +354,18 @@ impl Matcher {
 }
 
 #[derive(Debug, Default)]
-pub struct SinglePathMatcher {
+pub struct InverseMatcherWithRecord {
     processed: AtomicU64,
     inverse_matcher: InverseMatcher,
 }
 
-impl SinglePathMatcher {
+impl InverseMatcherWithRecord {
     pub fn processed(self) -> u64 {
         self.processed.into_inner()
     }
 }
 
-impl grep_matcher::Matcher for SinglePathMatcher {
+impl grep_matcher::Matcher for InverseMatcherWithRecord {
     type Captures = grep_matcher::NoCaptures;
     type Error = String;
 
