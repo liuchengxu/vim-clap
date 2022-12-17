@@ -9,10 +9,10 @@
 //! The executable rg with `--json` and `--pcre2` is required to be installed on the system.
 
 mod definition;
-mod searcher_impl;
+mod executable_searcher;
 
 use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
-use self::searcher_impl::{LanguageRegexSearcher, WordRegexSearcher};
+use self::executable_searcher::{LanguageRegexSearcher, WordRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, Usages};
 use crate::tools::ripgrep::{get_language, Match, Word};
 use crate::utils::UsageMatcher;

@@ -1,4 +1,4 @@
-use super::searcher_impl::LanguageRegexSearcher;
+use super::executable_searcher::LanguageRegexSearcher;
 use crate::tools::ripgrep::{Match, Word};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
