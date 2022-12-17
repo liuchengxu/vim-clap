@@ -127,7 +127,7 @@ impl RegexSearcher {
                     .into_par_iter()
                     .filter_map(|matched| {
                         usage_matcher
-                            .check_jump_line(matched.build_jump_line("refs", &word))
+                            .match_jump_line(matched.build_jump_line("refs", &word))
                             .map(|(line, indices)| {
                                 RegexUsage::from_matched(&matched, line, indices)
                             })
@@ -187,7 +187,7 @@ impl RegexSearcher {
                     .filter_map(|matched| {
                         if positive_defs.contains(&&matched) {
                             usage_matcher
-                                .check_jump_line(matched.build_jump_line(
+                                .match_jump_line(matched.build_jump_line(
                                     kind.as_ref(),
                                     &regex_searcher_impl.searcher.word,
                                 ))
@@ -206,7 +206,7 @@ impl RegexSearcher {
                     if !defs.contains(&matched) {
                         let (kind, _) = resolve_reference_kind(matched.pattern(), &self.extension);
                         usage_matcher
-                            .check_jump_line(
+                            .match_jump_line(
                                 matched.build_jump_line(kind, &regex_searcher_impl.searcher.word),
                             )
                             .map(|(line, indices)| {
@@ -226,7 +226,7 @@ impl RegexSearcher {
                 .into_par_iter()
                 .filter_map(|matched| {
                     usage_matcher
-                        .check_jump_line(
+                        .match_jump_line(
                             matched.build_jump_line("grep", &regex_searcher_impl.searcher.word),
                         )
                         .map(|(line, indices)| RegexUsage::from_matched(&matched, line, indices))

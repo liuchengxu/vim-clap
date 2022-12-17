@@ -43,7 +43,7 @@ impl UsageMatcher {
     }
 
     /// Returns the match indices of exact terms if given `line` passes all the checks.
-    fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
+    fn match_indices(&self, line: &str) -> Option<Vec<usize>> {
         match (
             self.exact_matcher.find_matches(line),
             self.inverse_matcher.match_any(line),
@@ -69,11 +69,11 @@ impl UsageMatcher {
                 .all(|(local, other)| local.is_superset(other))
     }
 
-    pub fn check_jump_line(
+    pub fn match_jump_line(
         &self,
         (jump_line, mut indices): (String, Vec<usize>),
     ) -> Option<(String, Vec<usize>)> {
-        if let Some(exact_indices) = self.check_terms(&jump_line) {
+        if let Some(exact_indices) = self.match_indices(&jump_line) {
             indices.extend_from_slice(&exact_indices);
             indices.sort_unstable();
             indices.dedup();

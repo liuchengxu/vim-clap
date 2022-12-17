@@ -388,7 +388,7 @@ impl ClapProvider for DumbJumpProvider {
                 .filter_map(|Usage { line, indices }| {
                     query_info
                         .usage_matcher
-                        .check_jump_line((line.clone(), indices.clone()))
+                        .match_jump_line((line.clone(), indices.clone()))
                         .map(|(line, indices)| Usage::new(line, indices))
                 })
                 .collect::<Vec<_>>();

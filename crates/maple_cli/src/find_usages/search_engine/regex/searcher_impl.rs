@@ -100,7 +100,7 @@ impl RegexSearcherImpl {
     }
 
     /// Returns all kinds of definitions.
-    pub fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
+    fn definitions(&self) -> Result<Vec<DefinitionSearchResult>> {
         Ok(get_definition_rules(&self.lang)
             .ok_or_else(|| {
                 std::io::Error::new(

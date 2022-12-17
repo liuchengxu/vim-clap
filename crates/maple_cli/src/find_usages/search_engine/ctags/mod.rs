@@ -54,7 +54,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             .filter_map(|symbol| {
                 let (line, indices) = symbol.grep_format_ctags(keyword, ignorecase);
                 usage_matcher
-                    .check_jump_line((line, indices.unwrap_or_default()))
+                    .match_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
             })
             .collect::<Vec<_>>();
