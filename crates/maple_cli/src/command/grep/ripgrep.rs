@@ -4,7 +4,6 @@ use ignore::{DirEntry, WalkBuilder, WalkState};
 use matcher::ClapItem;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
@@ -51,6 +50,7 @@ impl Default for FilePickerConfig {
     }
 }
 
+/// Represents a matched item in a file.
 #[derive(Debug)]
 pub struct FileResult {
     pub path: PathBuf,
@@ -59,11 +59,16 @@ pub struct FileResult {
     pub matched_item: MatchedItem,
 }
 
-pub fn search_parallel(
+#[derive(Debug)]
+pub enum SearcherMessage {
+    Match(FileResult),
+    Finished { processed: u64 },
+}
+
+pub fn run_searcher_worker(
     search_root: PathBuf,
     clap_matcher: matcher::Matcher,
-    total_processed: Arc<AtomicU64>,
-    item_sender: UnboundedSender<FileResult>,
+    sender: UnboundedSender<SearcherMessage>,
 ) {
     let file_picker_config = FilePickerConfig::default();
 
@@ -88,8 +93,7 @@ pub fn search_parallel(
         .run(|| {
             let mut searcher = searcher.clone();
             let clap_matcher = clap_matcher.clone();
-            let total_processed = total_processed.clone();
-            let item_sender = item_sender.clone();
+            let sender = sender.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                 let entry = match entry {
                     Ok(entry) => entry,
@@ -109,13 +113,14 @@ pub fn search_parallel(
                     entry.path(),
                     sinks::UTF8(|line_num, line| {
                         let item = Arc::new(line.to_string()) as Arc<dyn ClapItem>;
+
                         if let Some(matched_item) = clap_matcher.match_item(item) {
                             let file_result = FileResult {
                                 path: entry.path().to_path_buf(),
                                 line_number: line_num as usize - 1,
                                 matched_item,
                             };
-                            item_sender.send(file_result).unwrap();
+                            sender.send(SearcherMessage::Match(file_result)).unwrap();
                         }
 
                         Ok(true)
@@ -124,36 +129,58 @@ pub fn search_parallel(
 
                 let processed = inverse_matcher.processed();
 
-                total_processed.fetch_add(processed, Ordering::SeqCst);
+                sender
+                    .send(SearcherMessage::Finished { processed })
+                    .unwrap();
 
                 if let Err(err) = result {
                     tracing::error!("Global search error: {}, {}", entry.path().display(), err);
                 }
+
                 WalkState::Continue
             })
         });
 }
 
-pub async fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) {
-    let (sender, mut receiver) = unbounded_channel();
+pub struct SearchResult {
+    // TODO: bounded matched items.
+    pub matched: Vec<FileResult>,
+    pub total_matched: u64,
+    pub total_processed: u64,
+}
 
-    let total_processed = Arc::new(AtomicU64::new(0));
+pub async fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) -> SearchResult {
+    let (sender, mut receiver) = unbounded_channel();
 
     std::thread::spawn({
         let search_root = search_root.as_ref().to_path_buf();
-        let total_processed = total_processed.clone();
 
-        move || search_parallel(search_root, clap_matcher, total_processed, sender)
+        move || run_searcher_worker(search_root, clap_matcher, sender)
     });
 
     let mut total_matched = 0;
-    while let Some(file_result) = receiver.recv().await {
-        total_matched += 1;
-        println!("=============== file_result: {file_result:?}");
+    let mut total_processed = 0;
+    let mut matched = Vec::new();
+    while let Some(searcher_message) = receiver.recv().await {
+        match searcher_message {
+            SearcherMessage::Match(file_result) => {
+                matched.push(file_result);
+                total_matched += 1;
+            }
+            SearcherMessage::Finished { processed } => {
+                total_processed += processed;
+            }
+        }
     }
 
+    let res = SearchResult {
+        matched,
+        total_matched,
+        total_processed,
+    };
     println!(
-        "============= total_processed: {:?}, total_matched: {total_matched:?}",
-        total_processed.load(Ordering::SeqCst)
+        "total_matched: {:?}, total_processed: {:?}",
+        res.total_matched, res.total_processed
     );
+    res
 }
