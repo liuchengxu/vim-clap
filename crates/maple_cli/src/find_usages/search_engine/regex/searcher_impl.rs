@@ -11,44 +11,21 @@ use std::path::PathBuf;
 use std::process::Command;
 
 /// Searches a directory for pattern matches using ripgrep.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExecutableSearcher {
-    /// Directory to perform the ripgrep search.
-    pub dir: Option<PathBuf>,
-    /// Keyword of searching.
-    pub word: Word,
-    /// Extension of the source file.
-    pub file_ext: String,
+    command: Command,
 }
 
 impl ExecutableSearcher {
-    pub(super) fn word_regexp_search(&self, ignore_comment: bool) -> std::io::Result<Vec<Match>> {
-        let mut command = Command::new("rg");
-        command
-            .arg("--json")
-            .arg("--word-regexp")
-            .arg(&self.word.raw)
-            .arg("-g")
-            .arg(format!("*.{}", self.file_ext));
-        self.search(
-            command,
-            if ignore_comment {
-                Some(get_comment_syntax(&self.file_ext))
-            } else {
-                None
-            },
-        )
+    fn new(command: Command) -> Self {
+        Self { command }
     }
 
     /// Executes `command` as a child process.
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
-    fn search(&self, cmd: Command, maybe_comments: Option<&[&str]>) -> std::io::Result<Vec<Match>> {
-        let mut cmd = cmd;
-
-        if let Some(ref dir) = self.dir {
-            cmd.current_dir(dir);
-        }
+    fn search(self, maybe_comments: Option<&[&str]>) -> std::io::Result<Vec<Match>> {
+        let mut cmd = self.command;
 
         let cmd_output = cmd.output()?;
 
@@ -73,18 +50,51 @@ impl ExecutableSearcher {
     }
 }
 
-/// [`ExecutableSearcher`] with a known language type.
+/// Searches a directory for pattern matches using ripgrep.
 #[derive(Debug, Clone)]
-pub struct RegexSearcherImpl {
-    /// Searcher.
-    pub searcher: ExecutableSearcher,
+pub struct WordRegexSearcher {
+    /// Directory to perform the ripgrep search.
+    pub dir: Option<PathBuf>,
+    /// Keyword of searching.
+    pub word: Word,
+    /// Extension of the source file.
+    pub file_ext: String,
+}
+
+impl WordRegexSearcher {
+    pub(super) fn word_regexp_search(&self, ignore_comment: bool) -> std::io::Result<Vec<Match>> {
+        let mut command = Command::new("rg");
+        command
+            .arg("--json")
+            .arg("--word-regexp")
+            .arg(&self.word.raw)
+            .arg("-g")
+            .arg(format!("*.{}", self.file_ext));
+        if let Some(ref dir) = self.dir {
+            command.current_dir(dir);
+        }
+        ExecutableSearcher::new(command).search(if ignore_comment {
+            Some(get_comment_syntax(&self.file_ext))
+        } else {
+            None
+        })
+    }
+}
+
+/// [`LanguageRegexSearcher`] with a known language type.
+#[derive(Debug, Clone)]
+pub struct LanguageRegexSearcher {
+    /// Directory to perform the ripgrep search.
+    pub dir: Option<PathBuf>,
+    /// Keyword of searching.
+    pub word: Word,
     /// Language type defined by ripgrep.
     pub lang: String,
 }
 
-impl RegexSearcherImpl {
-    pub fn new(searcher: ExecutableSearcher, lang: String) -> Self {
-        Self { searcher, lang }
+impl LanguageRegexSearcher {
+    pub fn new(dir: Option<PathBuf>, word: Word, lang: String) -> Self {
+        Self { dir, word, lang }
     }
 
     /// Finds the occurrences and all definitions concurrently.
@@ -127,10 +137,13 @@ impl RegexSearcherImpl {
         command
             .arg("--json")
             .arg("--word-regexp")
-            .arg(&self.searcher.word.raw)
+            .arg(&self.word.raw)
             .arg("--type")
             .arg(&self.lang);
-        self.searcher.search(command, Some(comments))
+        if let Some(ref dir) = self.dir {
+            command.current_dir(dir);
+        }
+        ExecutableSearcher::new(command).search(Some(comments))
     }
 
     pub(super) fn regexp_search(&self, comments: &[&str]) -> std::io::Result<Vec<Match>> {
@@ -138,10 +151,13 @@ impl RegexSearcherImpl {
         command
             .arg("--json")
             .arg("--regexp")
-            .arg(self.searcher.word.raw.replace(char::is_whitespace, ".*"))
+            .arg(self.word.raw.replace(char::is_whitespace, ".*"))
             .arg("--type")
             .arg(&self.lang);
-        self.searcher.search(command, Some(comments))
+        if let Some(ref dir) = self.dir {
+            command.current_dir(dir);
+        }
+        ExecutableSearcher::new(command).search(Some(comments))
     }
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
@@ -149,7 +165,7 @@ impl RegexSearcherImpl {
         &self,
         kind: &DefinitionKind,
     ) -> std::io::Result<(DefinitionKind, Vec<Match>)> {
-        let regexp = build_full_regexp(&self.lang, kind, &self.searcher.word).ok_or_else(|| {
+        let regexp = build_full_regexp(&self.lang, kind, &self.word).ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Can not find the definition rule",
@@ -164,8 +180,11 @@ impl RegexSearcherImpl {
             .arg(regexp)
             .arg("--type")
             .arg(&self.lang);
-        self.searcher
-            .search(command, None)
+        if let Some(ref dir) = self.dir {
+            command.current_dir(dir);
+        }
+        ExecutableSearcher::new(command)
+            .search(None)
             .map(|defs| (kind.clone(), defs))
     }
 }
