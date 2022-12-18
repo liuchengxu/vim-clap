@@ -1,7 +1,7 @@
 use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
-use matcher::ClapItem;
+use matcher::{ClapItem, Matcher};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -67,7 +67,7 @@ pub enum SearcherMessage {
 
 pub fn run_searcher_worker(
     search_root: PathBuf,
-    clap_matcher: matcher::Matcher,
+    clap_matcher: Matcher,
     sender: UnboundedSender<SearcherMessage>,
 ) {
     let file_picker_config = FilePickerConfig::default();
@@ -149,7 +149,7 @@ pub struct SearchResult {
     pub total_processed: u64,
 }
 
-pub async fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) -> SearchResult {
+pub async fn run(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
     std::thread::spawn({
@@ -178,9 +178,11 @@ pub async fn run(search_root: impl AsRef<Path>, clap_matcher: matcher::Matcher) 
         total_matched,
         total_processed,
     };
+
     println!(
         "total_matched: {:?}, total_processed: {:?}",
         res.total_matched, res.total_processed
     );
+
     res
 }

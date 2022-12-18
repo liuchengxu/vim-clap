@@ -1,6 +1,5 @@
 mod forerunner;
 mod live_grep;
-mod ripgrep;
 
 use crate::app::Params;
 use crate::cache::Digest;
@@ -81,7 +80,7 @@ impl Grep {
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            self::ripgrep::run(dir, clap_matcher).await;
+            crate::searcher::run(dir, clap_matcher).await;
             return Ok(());
         }
 
