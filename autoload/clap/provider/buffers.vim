@@ -16,19 +16,21 @@ function! s:padding(origin, target_width) abort
 endfunction
 
 function! s:format_buffer(b) abort
-  let name = bufname(a:b)
-  let name = empty(name) ? '[No Name]' : fnamemodify(name, ':p:~:.')
+  let fullpath = bufname(a:b)
+  let fullpath = empty(fullpath) ? '[No Name]' : fnamemodify(fullpath, ':p:~:.')
+  let filename = empty(fullpath) ? '[No Name]' : fnamemodify(fullpath, ':t')
   let flag = a:b == bufnr('')  ? '%' : (a:b == bufnr('#') ? '#' : ' ')
   let modified = getbufvar(a:b, '&modified') ? ' [+]' : ''
   let readonly = getbufvar(a:b, '&modifiable') ? '' : ' [RO]'
 
+  let filename = s:padding(filename, 25)
   let bp = s:padding('['.a:b.']', 5)
-  let fsize = s:padding(clap#util#getfsize(name), 6)
-  let icon = g:clap_enable_icon ? s:padding(clap#icon#for(name), 3) : ''
+  let fsize = s:padding(clap#util#getfsize(fullpath), 6)
+  let icon = g:clap_enable_icon ? s:padding(clap#icon#for(fullpath), 3) : ''
   let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
   let line = s:padding(get(s:line_info, a:b, ''), 10)
 
-  return trim(printf('%s %s %s %s %s %s %s', bp, fsize, icon, line, name, flag, extra))
+  return trim(printf('%s %s %s %s %s %s %s %s', filename, bp, fsize, icon, line, fullpath, flag, extra))
 endfunction
 
 function! s:buffers() abort
