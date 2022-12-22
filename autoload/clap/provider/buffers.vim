@@ -16,8 +16,8 @@ function! s:padding(origin, target_width) abort
 endfunction
 
 function! s:format_buffer(b) abort
-  let fullpath = bufname(a:b)
-  let fullpath = empty(fullpath) ? '[No Name]' : fnamemodify(fullpath, ':p:~:.')
+  let buffer_name = bufname(a:b)
+  let fullpath = empty(buffer_name) ? '[No Name]' : fnamemodify(buffer_name, ':p:~:.')
   let filename = empty(fullpath) ? '[No Name]' : fnamemodify(fullpath, ':t')
   let flag = a:b == bufnr('')  ? '%' : (a:b == bufnr('#') ? '#' : ' ')
   let modified = getbufvar(a:b, '&modified') ? ' [+]' : ''
