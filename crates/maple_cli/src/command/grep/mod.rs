@@ -73,14 +73,16 @@ impl Grep {
                 Some(ref dir) => dir.clone(),
                 None => std::env::current_dir()?,
             };
-            // let matcher = grep::regex::RegexMatcherBuilder::new()
-            // .case_smart(true)
-            // .build(&self.grep_query)
-            // .expect("Failed to create RegexMatcher");
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            crate::searcher::run(dir, clap_matcher).await;
+            let search_result = crate::searcher::search(dir, clap_matcher).await;
+
+            println!(
+                "total_matched: {:?}, total_processed: {:?}",
+                search_result.total_matched, search_result.total_processed
+            );
+
             return Ok(());
         }
 

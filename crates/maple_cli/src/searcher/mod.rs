@@ -5,6 +5,7 @@ use matcher::{ClapItem, Matcher};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -65,7 +66,7 @@ pub enum SearcherMessage {
     Finished { processed: u64 },
 }
 
-pub fn run_searcher_worker(
+fn run_searcher_worker(
     search_root: PathBuf,
     clap_matcher: Matcher,
     sender: UnboundedSender<SearcherMessage>,
@@ -142,6 +143,7 @@ pub fn run_searcher_worker(
         });
 }
 
+#[derive(Debug)]
 pub struct SearchResult {
     // TODO: bounded matched items.
     pub matched: Vec<FileResult>,
@@ -149,7 +151,7 @@ pub struct SearchResult {
     pub total_processed: u64,
 }
 
-pub async fn run(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> SearchResult {
+pub async fn search(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
     std::thread::spawn({
@@ -161,6 +163,11 @@ pub async fn run(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> Search
     let mut total_matched = 0;
     let mut total_processed = 0;
     let mut matched = Vec::new();
+
+    const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
+
+    let mut past = Instant::now();
+
     while let Some(searcher_message) = receiver.recv().await {
         match searcher_message {
             SearcherMessage::Match(file_result) => {
@@ -171,18 +178,19 @@ pub async fn run(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> Search
                 total_processed += processed;
             }
         }
+
+        if total_matched % 16 == 0 || total_processed % 16 == 0 {
+            let now = Instant::now();
+            if now > past + UPDATE_INTERVAL {
+                println!("total_matched: {total_matched:?}, total_processed: {total_processed:?}");
+                past = now;
+            }
+        }
     }
 
-    let res = SearchResult {
+    SearchResult {
         matched,
         total_matched,
         total_processed,
-    };
-
-    println!(
-        "total_matched: {:?}, total_processed: {:?}",
-        res.total_matched, res.total_processed
-    );
-
-    res
+    }
 }
