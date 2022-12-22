@@ -30,7 +30,7 @@ function! s:format_buffer(b) abort
   let extra = join(filter([modified, readonly], '!empty(v:val)'), '')
   let line = s:padding(get(s:line_info, a:b, ''), 10)
 
-  return trim(printf('%s %s %s %s %s %s %s %s', filename, bp, fsize, icon, line, fullpath, flag, extra))
+  return trim(printf('%s %s %s %s %s %s %s %s', bp, filename, fsize, icon, line, fullpath, flag, extra))
 endfunction
 
 function! s:buffers() abort
