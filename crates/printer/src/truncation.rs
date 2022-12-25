@@ -70,7 +70,7 @@ pub fn truncate_long_matched_lines(
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut matched_item)| {
-        let output_text = matched_item.item.output_text();
+        let output_text = matched_item.output_text().to_string();
 
         // Truncate the text simply if it's too long.
         if output_text.len() > MAX_LINE_LEN {
@@ -84,40 +84,8 @@ pub fn truncate_long_matched_lines(
 
             matched_item.display_text = Some(truncated_output_text);
             matched_item.indices = truncated_indices;
-        }
-    });
-    truncated_map
-}
-
-/// Long matched lines can cause the matched items invisible.
-///
-/// # Arguments
-///
-/// - winwidth: width of the display window.
-/// - skipped: number of skipped chars, used when need to skip the leading icons.
-pub fn truncate_long_matched_lines_grep(
-    items: IterMut<MatchedItem>,
-    winwidth: usize,
-    skipped: Option<usize>,
-) -> LinesTruncatedMap {
-    let mut truncated_map = HashMap::new();
-    let winwidth = winwidth - WINWIDTH_OFFSET;
-    items.enumerate().for_each(|(lnum, mut matched_item)| {
-        let output_text = matched_item.output_text().to_string();
-
-        // Truncate the text simply if it's too long.
-        if output_text.len() > MAX_LINE_LEN {
-            let truncated_output_text: String = output_text.chars().take(1000).collect();
-            matched_item.display_text = Some(truncated_output_text);
-            matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some((truncated_output_text, truncated_indices)) =
-            truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
-        {
-            truncated_map.insert(lnum + 1, output_text);
-
-            matched_item.display_text = Some(truncated_output_text);
-            matched_item.indices = truncated_indices;
         } else {
+            // Use the origin `output_text` as the final `display_text`.
             matched_item.display_text.replace(output_text);
         }
     });

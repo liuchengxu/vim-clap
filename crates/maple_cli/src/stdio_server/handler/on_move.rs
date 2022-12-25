@@ -378,7 +378,8 @@ impl<'a> OnMoveHandler<'a> {
 
                 // Some checks against the latest preview line.
                 if let Some(latest_line) = lines.get(highlight_lnum - 1) {
-                    self.try_refresh_cache(latest_line);
+                    // TODO: No long needed once switched to libgrep officically.
+                    // self.try_refresh_cache(latest_line);
 
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                         const BLACK_LIST: &[&str] =
@@ -470,6 +471,8 @@ impl<'a> OnMoveHandler<'a> {
         }
     }
 
+    // TODO: Only run for these provider using custom shell command.
+    #[allow(unused)]
     fn try_refresh_cache(&self, latest_line: &str) {
         if self.context.provider_id() == "grep" {
             if let Some(ref cache_line) = self.cache_line {

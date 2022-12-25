@@ -11,6 +11,8 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 
+const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
+
 #[derive(Debug, Default)]
 struct MatchEverything;
 
@@ -140,14 +142,12 @@ fn run_searcher_worker(
                 let result = searcher.search_path(
                     &MatchEverything,
                     entry.path(),
-                    sinks::UTF8(|line_num, line| {
+                    sinks::Lossy(|line_num, line| {
                         let line = line.trim().to_string();
 
                         if line.is_empty() {
                             if let Err(err) = sender.send(SearcherMessage::ProcessedOne) {
-                                tracing::error!(
-                                    "================ Failed to send searcher message: {err:?}"
-                                );
+                                tracing::debug!("SearcherMessage sender is dropped: {err:?}");
                                 return Ok(false);
                             } else {
                                 return Ok(true);
@@ -160,6 +160,8 @@ fn run_searcher_worker(
                             clap_matcher
                                 .match_item(item)
                                 .map(|matched_item| FileResult {
+                                    // TODO: May be cached somewhere so that the allcation won't be
+                                    // neccessary each time.
                                     path: entry.path().to_path_buf(),
                                     line_number: line_num as usize - 1,
                                     matched_item,
@@ -172,10 +174,8 @@ fn run_searcher_worker(
                         };
 
                         if let Err(err) = sender.send(searcher_message) {
-                            tracing::error!(
-                                "================ Failed to send searcher message: {err:?}"
-                            );
-                            return Ok(false);
+                            tracing::debug!("SearcherMessage sender is dropped: {err:?}");
+                            Ok(false)
                         } else {
                             Ok(true)
                         }
@@ -212,8 +212,6 @@ pub async fn search_with_progress(search_root: PathBuf, clap_matcher: Matcher) -
     let mut matches = Vec::new();
     let mut total_matched = 0;
     let mut total_processed = 0;
-
-    const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
     let mut past = Instant::now();
 
@@ -257,27 +255,21 @@ pub async fn search_with_progress(search_root: PathBuf, clap_matcher: Matcher) -
 use icon::Icon;
 
 #[derive(Debug)]
-pub struct BestFileResults<P: ProgressUpdate<DisplayLines>> {
+pub struct BestFileResults {
     /// Time of last notification.
     pub past: Instant,
     pub results: Vec<FileResult>,
     pub last_lines: Vec<String>,
     pub max_capacity: usize,
-    pub icon: Icon,
-    pub winwidth: usize,
-    pub progressor: P,
 }
 
-impl<P: ProgressUpdate<DisplayLines>> BestFileResults<P> {
-    pub fn new(max_capacity: usize, icon: Icon, winwidth: usize, progressor: P) -> Self {
+impl BestFileResults {
+    pub fn new(max_capacity: usize) -> Self {
         Self {
             past: Instant::now(),
             results: Vec::with_capacity(max_capacity),
             last_lines: Vec::with_capacity(max_capacity),
             max_capacity,
-            icon,
-            winwidth,
-            progressor,
         }
     }
 }
@@ -288,10 +280,10 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
     stop_signal: Arc<AtomicBool>,
     number: usize,
     icon: Icon,
-    display_winwidth: usize,
+    winwidth: usize,
     progressor: P,
 ) {
-    let mut best_results = BestFileResults::new(number, icon, display_winwidth, progressor);
+    let mut best_results = BestFileResults::new(number);
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -307,36 +299,35 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
     let mut total_matched = 0u64;
     let mut total_processed = 0u64;
 
-    const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
-
     let to_display_lines = |best_results: Vec<FileResult>, winwidth: usize, icon: Icon| {
         let items = best_results
             .into_iter()
-            .filter_map(|item| {
-                let mut item = item;
-                if let Some(mut column) = item.matched_item.indices.first().copied() {
-                    let line_number = item.line_number + 1;
+            .filter_map(|file_result| {
+                let mut file_result = file_result;
+                if let Some(mut column) = file_result.matched_item.indices.first().copied() {
+                    let line_number = file_result.line_number + 1;
                     column += 1;
                     let mut fmt_line =
-                        if let Ok(relative_path) = item.path.strip_prefix(&search_root) {
+                        if let Ok(relative_path) = file_result.path.strip_prefix(&search_root) {
                             format!("{}:{line_number}:{column}:", relative_path.display())
                         } else {
-                            format!("{}:{line_number}:{column}:", item.path.display())
+                            format!("{}:{line_number}:{column}:", file_result.path.display())
                         };
                     let offset = fmt_line.len();
-                    fmt_line.push_str(item.matched_item.display_text().as_ref());
-                    item.matched_item.output_text.replace(fmt_line);
-                    item.matched_item
+                    fmt_line.push_str(file_result.matched_item.display_text().as_ref());
+                    file_result.matched_item.output_text.replace(fmt_line);
+                    file_result
+                        .matched_item
                         .indices
                         .iter_mut()
                         .for_each(|x| *x += offset);
-                    Some(item.matched_item)
+                    Some(file_result.matched_item)
                 } else {
                     None
                 }
             })
             .collect();
-        printer::decorate_lines_grep(items, winwidth, icon)
+        printer::decorate_lines(items, winwidth, icon)
     };
 
     while let Some(searcher_message) = receiver.recv().await {
@@ -357,12 +348,9 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
 
                     let now = Instant::now();
                     if now > best_results.past + UPDATE_INTERVAL {
-                        let display_lines = to_display_lines(
-                            best_results.results.clone(),
-                            best_results.winwidth,
-                            best_results.icon,
-                        );
-                        best_results.progressor.update_progress(
+                        let display_lines =
+                            to_display_lines(best_results.results.clone(), winwidth, icon);
+                        progressor.update_progress(
                             Some(&display_lines),
                             total_matched as usize,
                             total_processed as usize,
@@ -387,22 +375,19 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                     if total_matched % 16 == 0 || total_processed % 16 == 0 {
                         let now = Instant::now();
                         if now > best_results.past + UPDATE_INTERVAL {
-                            let display_lines = to_display_lines(
-                                best_results.results.clone(),
-                                best_results.winwidth,
-                                best_results.icon,
-                            );
+                            let display_lines =
+                                to_display_lines(best_results.results.clone(), winwidth, icon);
 
                             // TODO: the lines are the same, but the highlights are not.
                             if best_results.last_lines != display_lines.lines.as_slice() {
-                                best_results.progressor.update_progress(
+                                progressor.update_progress(
                                     Some(&display_lines),
                                     total_matched as usize,
                                     total_processed as usize,
                                 );
                                 best_results.last_lines = display_lines.lines;
                             } else {
-                                best_results.progressor.update_progress(
+                                progressor.update_progress(
                                     None,
                                     total_matched as usize,
                                     total_processed as usize,
@@ -420,13 +405,7 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
         }
     }
 
-    let BestFileResults {
-        results,
-        icon,
-        winwidth,
-        progressor,
-        ..
-    } = best_results;
+    let BestFileResults { results, .. } = best_results;
 
     let display_lines = to_display_lines(results, winwidth, icon);
 

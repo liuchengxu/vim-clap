@@ -10,8 +10,8 @@ use types::MatchedItem;
 use utility::println_json;
 
 pub use self::truncation::{
-    truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_grep,
-    truncate_long_matched_lines_v0, LinesTruncatedMap,
+    truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
+    LinesTruncatedMap,
 };
 
 /// 1. Truncate the line.
@@ -65,51 +65,6 @@ pub fn decorate_lines(
 ) -> DisplayLines {
     let mut matched_items = matched_items;
     let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
-    if let Some(icon_kind) = icon.icon_kind() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
-            .into_iter()
-            .enumerate()
-            .map(|(idx, matched_item)| {
-                let display_text = matched_item.display_text();
-                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
-                    let icon = matched_item
-                        .item
-                        .icon(icon)
-                        .expect("Icon must be provided if specified");
-                    *output_text = format!("{icon} {output_text}");
-                    format!("{icon} {display_text}")
-                } else {
-                    icon_kind.add_icon_to_text(&display_text)
-                };
-                (iconized, matched_item.shifted_indices(ICON_LEN))
-            })
-            .unzip();
-
-        DisplayLines::new(lines, indices, truncated_map, true)
-    } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
-            .into_iter()
-            .map(|matched_item| {
-                (
-                    matched_item.display_text().to_string(),
-                    matched_item.indices,
-                )
-            })
-            .unzip();
-
-        DisplayLines::new(lines, indices, truncated_map, false)
-    }
-}
-
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines_grep(
-    matched_items: Vec<MatchedItem>,
-    winwidth: usize,
-    icon: Icon,
-) -> DisplayLines {
-    let mut matched_items = matched_items;
-    let mut truncated_map =
-        truncate_long_matched_lines_grep(matched_items.iter_mut(), winwidth, None);
     if let Some(icon_kind) = icon.icon_kind() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
