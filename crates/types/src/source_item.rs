@@ -311,6 +311,8 @@ pub struct MatchedItem {
     ///
     /// Usually in a truncated form for fitting into the display window.
     pub display_text: Option<String>,
+    /// Untruncated display text.
+    pub output_text: Option<String>,
 }
 
 impl MatchedItem {
@@ -320,12 +322,21 @@ impl MatchedItem {
             score,
             indices,
             display_text: None,
+            output_text: None,
         }
     }
 
     /// Maybe truncated display text.
     pub fn display_text(&self) -> Cow<str> {
         if let Some(ref text) = self.display_text {
+            text.into()
+        } else {
+            self.item.output_text()
+        }
+    }
+
+    pub fn output_text(&self) -> Cow<str> {
+        if let Some(ref text) = self.output_text {
             text.into()
         } else {
             self.item.output_text()

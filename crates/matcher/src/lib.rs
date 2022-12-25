@@ -36,7 +36,6 @@
 mod algo;
 mod bonus;
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 // Re-export types
@@ -350,43 +349,6 @@ impl Matcher {
         let MatchResult { score, indices } = item.match_result_callback(match_result);
 
         Some(MatchedItem::new(item, score, indices))
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct InverseMatcherWithRecord {
-    processed: AtomicU64,
-    inverse_matcher: InverseMatcher,
-}
-
-impl InverseMatcherWithRecord {
-    pub fn processed(self) -> u64 {
-        self.processed.into_inner()
-    }
-}
-
-impl grep_matcher::Matcher for InverseMatcherWithRecord {
-    type Captures = grep_matcher::NoCaptures;
-    type Error = String;
-
-    fn find_at(
-        &self,
-        haystack: &[u8],
-        at: usize,
-    ) -> Result<Option<grep_matcher::Match>, Self::Error> {
-        self.processed.fetch_add(1, Ordering::SeqCst);
-
-        let line = std::str::from_utf8(haystack).map_err(|e| format!("{e}"))?;
-        if self.inverse_matcher.match_any(line) {
-            return Ok(None);
-        }
-
-        // Signal there is a match and should be processed in the sink later.
-        Ok(Some(grep_matcher::Match::zero(at)))
-    }
-
-    fn new_captures(&self) -> Result<Self::Captures, Self::Error> {
-        Ok(grep_matcher::NoCaptures::new())
     }
 }
 

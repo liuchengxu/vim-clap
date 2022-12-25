@@ -899,6 +899,7 @@ dependencies = [
  "filter",
  "futures",
  "grep",
+ "grep-matcher",
  "icon",
  "ignore",
  "itertools",
@@ -930,7 +931,6 @@ dependencies = [
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
- "grep-matcher",
  "pattern",
  "types",
 ]

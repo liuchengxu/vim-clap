@@ -2,11 +2,35 @@ use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use matcher::{ClapItem, Matcher};
+use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+use types::ProgressUpdate;
+
+#[derive(Debug, Default)]
+struct MatchEverything;
+
+impl grep_matcher::Matcher for MatchEverything {
+    type Captures = grep_matcher::NoCaptures;
+    type Error = String;
+
+    fn find_at(
+        &self,
+        _haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<grep_matcher::Match>, Self::Error> {
+        // Signal there is a match and should be processed in the sink later.
+        Ok(Some(grep_matcher::Match::zero(at)))
+    }
+
+    fn new_captures(&self) -> Result<Self::Captures, Self::Error> {
+        Ok(grep_matcher::NoCaptures::new())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FilePickerConfig {
@@ -51,8 +75,14 @@ impl Default for FilePickerConfig {
     }
 }
 
-/// Represents a matched item in a file.
 #[derive(Debug)]
+enum SearcherMessage {
+    Match(FileResult),
+    ProcessedOne,
+}
+
+/// Represents a matched item in a file.
+#[derive(Debug, Clone)]
 pub struct FileResult {
     pub path: PathBuf,
     /// 0-based.
@@ -60,16 +90,11 @@ pub struct FileResult {
     pub matched_item: MatchedItem,
 }
 
-#[derive(Debug)]
-pub enum SearcherMessage {
-    Match(FileResult),
-    Finished { processed: u64 },
-}
-
 fn run_searcher_worker(
     search_root: PathBuf,
     clap_matcher: Matcher,
     sender: UnboundedSender<SearcherMessage>,
+    stop_signal: Arc<AtomicBool>,
 ) {
     let file_picker_config = FilePickerConfig::default();
 
@@ -95,7 +120,12 @@ fn run_searcher_worker(
             let mut searcher = searcher.clone();
             let clap_matcher = clap_matcher.clone();
             let sender = sender.clone();
+            let stop_signal = stop_signal.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                if stop_signal.load(Ordering::SeqCst) {
+                    return WalkState::Quit;
+                }
+
                 let entry = match entry {
                     Ok(entry) => entry,
                     Err(_) => return WalkState::Continue,
@@ -107,32 +137,50 @@ fn run_searcher_worker(
                     _ => return WalkState::Continue,
                 };
 
-                let inverse_matcher = matcher::InverseMatcherWithRecord::default();
-
                 let result = searcher.search_path(
-                    &inverse_matcher,
+                    &MatchEverything,
                     entry.path(),
                     sinks::UTF8(|line_num, line| {
-                        let item = Arc::new(line.to_string()) as Arc<dyn ClapItem>;
+                        let line = line.trim().to_string();
 
-                        if let Some(matched_item) = clap_matcher.match_item(item) {
-                            let file_result = FileResult {
-                                path: entry.path().to_path_buf(),
-                                line_number: line_num as usize - 1,
-                                matched_item,
-                            };
-                            sender.send(SearcherMessage::Match(file_result)).unwrap();
+                        if line.is_empty() {
+                            if let Err(err) = sender.send(SearcherMessage::ProcessedOne) {
+                                tracing::error!(
+                                    "================ Failed to send searcher message: {err:?}"
+                                );
+                                return Ok(false);
+                            } else {
+                                return Ok(true);
+                            }
                         }
 
-                        Ok(true)
+                        let item = Arc::new(line) as Arc<dyn ClapItem>;
+
+                        let maybe_file_result =
+                            clap_matcher
+                                .match_item(item)
+                                .map(|matched_item| FileResult {
+                                    path: entry.path().to_path_buf(),
+                                    line_number: line_num as usize - 1,
+                                    matched_item,
+                                });
+
+                        let searcher_message = if let Some(file_result) = maybe_file_result {
+                            SearcherMessage::Match(file_result)
+                        } else {
+                            SearcherMessage::ProcessedOne
+                        };
+
+                        if let Err(err) = sender.send(searcher_message) {
+                            tracing::error!(
+                                "================ Failed to send searcher message: {err:?}"
+                            );
+                            return Ok(false);
+                        } else {
+                            Ok(true)
+                        }
                     }),
                 );
-
-                let processed = inverse_matcher.processed();
-
-                sender
-                    .send(SearcherMessage::Finished { processed })
-                    .unwrap();
 
                 if let Err(err) = result {
                     tracing::error!("Global search error: {}, {}", entry.path().display(), err);
@@ -146,23 +194,24 @@ fn run_searcher_worker(
 #[derive(Debug)]
 pub struct SearchResult {
     // TODO: bounded matched items.
-    pub matched: Vec<FileResult>,
+    pub matches: Vec<FileResult>,
     pub total_matched: u64,
     pub total_processed: u64,
 }
 
-pub async fn search(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> SearchResult {
+pub async fn search_with_progress(search_root: PathBuf, clap_matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
-    std::thread::spawn({
-        let search_root = search_root.as_ref().to_path_buf();
+    let stop_signal = Arc::new(AtomicBool::new(false));
 
-        move || run_searcher_worker(search_root, clap_matcher, sender)
-    });
+    std::thread::Builder::new()
+        .name("searcher-worker".into())
+        .spawn(move || run_searcher_worker(search_root, clap_matcher, sender, stop_signal))
+        .expect("Failed to spawn searcher worker thread");
 
+    let mut matches = Vec::new();
     let mut total_matched = 0;
     let mut total_processed = 0;
-    let mut matched = Vec::new();
 
     const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -171,11 +220,21 @@ pub async fn search(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> Sea
     while let Some(searcher_message) = receiver.recv().await {
         match searcher_message {
             SearcherMessage::Match(file_result) => {
-                matched.push(file_result);
+                tracing::debug!(
+                    "{}:{}:{}:{}, {:?}, {:?}",
+                    file_result.path.display(),
+                    file_result.line_number + 1,
+                    1,
+                    file_result.matched_item.display_text(),
+                    file_result.matched_item.indices,
+                    file_result.matched_item.score,
+                );
+                matches.push(file_result);
                 total_matched += 1;
+                total_processed += 1;
             }
-            SearcherMessage::Finished { processed } => {
-                total_processed += processed;
+            SearcherMessage::ProcessedOne => {
+                total_processed += 1;
             }
         }
 
@@ -189,8 +248,195 @@ pub async fn search(search_root: impl AsRef<Path>, clap_matcher: Matcher) -> Sea
     }
 
     SearchResult {
-        matched,
+        matches,
         total_matched,
         total_processed,
     }
+}
+
+use icon::Icon;
+
+#[derive(Debug)]
+pub struct BestFileResults<P: ProgressUpdate<DisplayLines>> {
+    /// Time of last notification.
+    pub past: Instant,
+    pub results: Vec<FileResult>,
+    pub last_lines: Vec<String>,
+    pub max_capacity: usize,
+    pub icon: Icon,
+    pub winwidth: usize,
+    pub progressor: P,
+}
+
+impl<P: ProgressUpdate<DisplayLines>> BestFileResults<P> {
+    pub fn new(max_capacity: usize, icon: Icon, winwidth: usize, progressor: P) -> Self {
+        Self {
+            past: Instant::now(),
+            results: Vec::with_capacity(max_capacity),
+            last_lines: Vec::with_capacity(max_capacity),
+            max_capacity,
+            icon,
+            winwidth,
+            progressor,
+        }
+    }
+}
+
+pub async fn search<P: ProgressUpdate<DisplayLines>>(
+    search_root: PathBuf,
+    clap_matcher: Matcher,
+    stop_signal: Arc<AtomicBool>,
+    number: usize,
+    icon: Icon,
+    display_winwidth: usize,
+    progressor: P,
+) {
+    let mut best_results = BestFileResults::new(number, icon, display_winwidth, progressor);
+
+    let (sender, mut receiver) = unbounded_channel();
+
+    std::thread::Builder::new()
+        .name("searcher-worker".into())
+        .spawn({
+            let stop_signal = stop_signal.clone();
+            let search_root = search_root.clone();
+            move || run_searcher_worker(search_root, clap_matcher, sender, stop_signal)
+        })
+        .expect("Failed to spawn searcher worker thread");
+
+    let mut total_matched = 0u64;
+    let mut total_processed = 0u64;
+
+    const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
+
+    let to_display_lines = |best_results: Vec<FileResult>, winwidth: usize, icon: Icon| {
+        let items = best_results
+            .into_iter()
+            .filter_map(|item| {
+                let mut item = item;
+                if let Some(mut column) = item.matched_item.indices.first().copied() {
+                    let line_number = item.line_number + 1;
+                    column += 1;
+                    let mut fmt_line =
+                        if let Ok(relative_path) = item.path.strip_prefix(&search_root) {
+                            format!("{}:{line_number}:{column}:", relative_path.display())
+                        } else {
+                            format!("{}:{line_number}:{column}:", item.path.display())
+                        };
+                    let offset = fmt_line.len();
+                    fmt_line.push_str(item.matched_item.display_text().as_ref());
+                    item.matched_item.output_text.replace(fmt_line);
+                    item.matched_item
+                        .indices
+                        .iter_mut()
+                        .for_each(|x| *x += offset);
+                    Some(item.matched_item)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        printer::decorate_lines_grep(items, winwidth, icon)
+    };
+
+    while let Some(searcher_message) = receiver.recv().await {
+        if stop_signal.load(Ordering::SeqCst) {
+            return;
+        }
+
+        match searcher_message {
+            SearcherMessage::Match(file_result) => {
+                total_matched += 1;
+                total_processed += 1;
+
+                if best_results.results.len() <= best_results.max_capacity {
+                    best_results.results.push(file_result);
+                    best_results
+                        .results
+                        .sort_unstable_by(|a, b| b.matched_item.score.cmp(&a.matched_item.score));
+
+                    let now = Instant::now();
+                    if now > best_results.past + UPDATE_INTERVAL {
+                        let display_lines = to_display_lines(
+                            best_results.results.clone(),
+                            best_results.winwidth,
+                            best_results.icon,
+                        );
+                        best_results.progressor.update_progress(
+                            Some(&display_lines),
+                            total_matched as usize,
+                            total_processed as usize,
+                        );
+                        best_results.last_lines = display_lines.lines;
+                        best_results.past = now;
+                    }
+                } else {
+                    let last = best_results
+                        .results
+                        .last_mut()
+                        .expect("Max capacity is non-zero; qed");
+
+                    let new = file_result;
+                    if new.matched_item.score > last.matched_item.score {
+                        *last = new;
+                        best_results.results.sort_unstable_by(|a, b| {
+                            b.matched_item.score.cmp(&a.matched_item.score)
+                        });
+                    }
+
+                    if total_matched % 16 == 0 || total_processed % 16 == 0 {
+                        let now = Instant::now();
+                        if now > best_results.past + UPDATE_INTERVAL {
+                            let display_lines = to_display_lines(
+                                best_results.results.clone(),
+                                best_results.winwidth,
+                                best_results.icon,
+                            );
+
+                            // TODO: the lines are the same, but the highlights are not.
+                            if best_results.last_lines != display_lines.lines.as_slice() {
+                                best_results.progressor.update_progress(
+                                    Some(&display_lines),
+                                    total_matched as usize,
+                                    total_processed as usize,
+                                );
+                                best_results.last_lines = display_lines.lines;
+                            } else {
+                                best_results.progressor.update_progress(
+                                    None,
+                                    total_matched as usize,
+                                    total_processed as usize,
+                                )
+                            }
+
+                            best_results.past = now;
+                        }
+                    }
+                }
+            }
+            SearcherMessage::ProcessedOne => {
+                total_processed += 1;
+            }
+        }
+    }
+
+    let BestFileResults {
+        results,
+        icon,
+        winwidth,
+        progressor,
+        ..
+    } = best_results;
+
+    let display_lines = to_display_lines(results, winwidth, icon);
+
+    progressor.update_progress_on_finished(
+        display_lines,
+        total_matched as usize,
+        total_processed as usize,
+    );
+
+    tracing::debug!(
+        "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
+    );
 }
