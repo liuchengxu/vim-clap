@@ -8,8 +8,8 @@ mod types;
 mod vim;
 
 use self::provider::{
-    ClapProvider, DefaultProvider, DumbJumpProvider, Event, FilerProvider, ProviderContext,
-    ProviderEvent, RecentFilesProvider,
+    ClapProvider, DefaultProvider, DumbJumpProvider, Event, FilerProvider, GrepProvider,
+    ProviderContext, ProviderEvent, RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
@@ -105,8 +105,9 @@ impl Client {
                     let context = ProviderContext::new(notification.params, vim).await?;
                     let provider: Box<dyn ClapProvider> =
                         match self.vim.provider_id().await?.as_str() {
-                            "filer" => Box::new(FilerProvider::new(context)),
                             "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
+                            "filer" => Box::new(FilerProvider::new(context)),
+                            "grep" => Box::new(GrepProvider::new(context)),
                             "recent_files" => Box::new(RecentFilesProvider::new(context)),
                             _ => Box::new(DefaultProvider::new(context)),
                         };

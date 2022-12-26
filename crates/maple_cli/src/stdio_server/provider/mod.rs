@@ -1,6 +1,7 @@
 mod default_impl;
 mod dumb_jump;
 mod filer;
+mod grep;
 mod recent_files;
 
 use crate::paths::AbsPathBuf;
@@ -24,6 +25,7 @@ use types::{ClapItem, MatchedItem};
 pub use self::default_impl::DefaultProvider;
 pub use self::dumb_jump::DumbJumpProvider;
 pub use self::filer::{read_dir_entries, FilerProvider};
+pub use self::grep::GrepProvider;
 pub use self::recent_files::RecentFilesProvider;
 
 /// bufnr and winid.

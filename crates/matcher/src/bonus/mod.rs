@@ -49,14 +49,21 @@ impl Bonus {
     }
 
     /// Calculates the bonus score given the match result of base algorithm.
-    pub fn bonus_score(&self, item: &Arc<dyn ClapItem>, score: Score, indices: &[usize]) -> Score {
+    pub fn item_bonus_score(
+        &self,
+        item: &Arc<dyn ClapItem>,
+        score: Score,
+        indices: &[usize],
+    ) -> Score {
         // Ignore the long line.
         if item.raw_text().len() > 1024 {
             return 0;
         }
 
-        let bonus_text = item.bonus_text();
+        self.text_bonus_score(item.bonus_text(), score, indices)
+    }
 
+    pub fn text_bonus_score(&self, bonus_text: &str, score: Score, indices: &[usize]) -> Score {
         match self {
             Self::FileName => calc_bonus_file_name(bonus_text, score, indices),
             Self::RecentFiles(recent_files) => recent_files.calc_bonus(bonus_text, score),

@@ -1,7 +1,7 @@
 use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
-use matcher::{ClapItem, Matcher};
+use matcher::Matcher;
 use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -133,6 +133,8 @@ fn run_searcher_worker(
                     Err(_) => return WalkState::Continue,
                 };
 
+                // TODO: Add search syntax for filtering path
+
                 // Only search file and skip everything else.
                 match entry.file_type() {
                     Some(entry) if entry.is_file() => {}
@@ -143,8 +145,6 @@ fn run_searcher_worker(
                     &MatchEverything,
                     entry.path(),
                     sinks::Lossy(|line_num, line| {
-                        let line = line.trim().to_string();
-
                         if line.is_empty() {
                             if let Err(err) = sender.send(SearcherMessage::ProcessedOne) {
                                 tracing::debug!("SearcherMessage sender is dropped: {err:?}");
@@ -154,18 +154,15 @@ fn run_searcher_worker(
                             }
                         }
 
-                        let item = Arc::new(line) as Arc<dyn ClapItem>;
-
-                        let maybe_file_result =
-                            clap_matcher
-                                .match_item(item)
-                                .map(|matched_item| FileResult {
-                                    // TODO: May be cached somewhere so that the allcation won't be
-                                    // neccessary each time.
-                                    path: entry.path().to_path_buf(),
-                                    line_number: line_num as usize - 1,
-                                    matched_item,
-                                });
+                        let maybe_file_result = clap_matcher
+                            .match_file_result(entry.path(), line.trim())
+                            .map(|matched_item| FileResult {
+                                // TODO: May be cached somewhere so that the allcation won't be
+                                // neccessary each time.
+                                path: entry.path().to_path_buf(),
+                                line_number: line_num as usize - 1,
+                                matched_item,
+                            });
 
                         let searcher_message = if let Some(file_result) = maybe_file_result {
                             SearcherMessage::Match(file_result)
@@ -260,6 +257,7 @@ pub struct BestFileResults {
     pub past: Instant,
     pub results: Vec<FileResult>,
     pub last_lines: Vec<String>,
+    pub last_visible_highlights: Vec<Vec<usize>>,
     pub max_capacity: usize,
 }
 
@@ -269,6 +267,7 @@ impl BestFileResults {
             past: Instant::now(),
             results: Vec::with_capacity(max_capacity),
             last_lines: Vec::with_capacity(max_capacity),
+            last_visible_highlights: Vec::with_capacity(max_capacity),
             max_capacity,
         }
     }
@@ -378,14 +377,29 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                             let display_lines =
                                 to_display_lines(best_results.results.clone(), winwidth, icon);
 
+                            let visible_highlights = display_lines
+                                .indices
+                                .iter()
+                                .map(|line_highlights| {
+                                    line_highlights
+                                        .iter()
+                                        .copied()
+                                        .filter(|&x| x <= winwidth)
+                                        .collect::<Vec<_>>()
+                                })
+                                .collect::<Vec<_>>();
+
                             // TODO: the lines are the same, but the highlights are not.
-                            if best_results.last_lines != display_lines.lines.as_slice() {
+                            if best_results.last_lines != display_lines.lines.as_slice()
+                                || best_results.last_visible_highlights != visible_highlights
+                            {
                                 progressor.update_progress(
                                     Some(&display_lines),
                                     total_matched as usize,
                                     total_processed as usize,
                                 );
                                 best_results.last_lines = display_lines.lines;
+                                best_results.last_visible_highlights = visible_highlights;
                             } else {
                                 progressor.update_progress(
                                     None,
