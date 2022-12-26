@@ -3,15 +3,13 @@ mod jsont;
 pub mod stats;
 pub mod util;
 
+use crate::utils::display_width;
+use anyhow::Result;
+use once_cell::sync::Lazy;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
-
-use anyhow::Result;
-use once_cell::sync::Lazy;
-
-use crate::utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
 
@@ -51,7 +49,7 @@ pub struct Word {
 
 impl Word {
     pub fn new(word: String) -> Result<Word> {
-        let re = regex::Regex::new(&format!("\\b{}\\b", word))?;
+        let re = regex::Regex::new(&format!("\\b{word}\\b"))?;
         Ok(Self {
             len: word.len(),
             raw: word,
@@ -140,7 +138,7 @@ impl TryFrom<&[u8]> for Match {
     type Error = Cow<'static, str>;
     fn try_from(byte_line: &[u8]) -> Result<Self, Self::Error> {
         let msg = serde_json::from_slice::<Message>(byte_line)
-            .map_err(|e| format!("deserialize error: {:?}", e))?;
+            .map_err(|e| format!("deserialize error: {e:?}"))?;
         if let Message::Match(mat) = msg {
             Ok(mat)
         } else {
@@ -153,7 +151,7 @@ impl TryFrom<&str> for Match {
     type Error = Cow<'static, str>;
     fn try_from(line: &str) -> Result<Self, Self::Error> {
         let msg = serde_json::from_str::<Message>(line)
-            .map_err(|e| format!("deserialize error: {:?}", e))?;
+            .map_err(|e| format!("deserialize error: {e:?}"))?;
         if let Message::Match(mat) = msg {
             Ok(mat)
         } else {

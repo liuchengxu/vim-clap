@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-use std::fmt::Display;
-
+use super::executable_searcher::LanguageRegexSearcher;
+use crate::tools::ripgrep::{Match, Word};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use serde::Deserialize;
-
-use super::runner::RegexRunner;
-use crate::tools::ripgrep::{Match, Word};
+use std::collections::HashMap;
+use std::fmt::Display;
 
 /// A map of the ripgrep language to a set of regular expressions.
 ///
@@ -169,11 +167,11 @@ impl Occurrences {
     }
 }
 
-pub(super) fn definitions_and_references<'a>(
-    regex_runner: RegexRunner<'a>,
+pub(super) fn definitions_and_references(
+    lang_regex_searcher: LanguageRegexSearcher,
     comments: &[&str],
 ) -> std::io::Result<HashMap<MatchKind, Vec<Match>>> {
-    let (definitions, mut occurrences) = regex_runner.all(comments);
+    let (definitions, mut occurrences) = lang_regex_searcher.all(comments);
 
     let defs = definitions.flatten();
 
@@ -201,7 +199,7 @@ pub(super) fn definitions_and_references<'a>(
         .collect();
 
     if res.is_empty() {
-        regex_runner
+        lang_regex_searcher
             .regexp_search(comments)
             .map(|results| std::iter::once((MatchKind::Occurrence, results)).collect())
     } else {

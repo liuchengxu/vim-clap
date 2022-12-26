@@ -1,17 +1,15 @@
 pub mod kinds;
 
-use std::hash::Hash;
-use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use itertools::Itertools;
-use rayon::prelude::*;
-use subprocess::{Exec, Redirection};
-
 use super::{QueryType, Symbol};
 use crate::find_usages::AddressableUsage;
 use crate::tools::ctags::TagsGenerator;
 use crate::utils::UsageMatcher;
+use anyhow::Result;
+use itertools::Itertools;
+use rayon::prelude::*;
+use std::hash::Hash;
+use std::path::{Path, PathBuf};
+use subprocess::{Exec, Redirection};
 
 /// `readtags` powered searcher.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -56,7 +54,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             .filter_map(|symbol| {
                 let (line, indices) = symbol.grep_format_ctags(keyword, ignorecase);
                 usage_matcher
-                    .check_jump_line((line, indices.unwrap_or_default()))
+                    .match_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| symbol.into_addressable_usage(line, indices))
             })
             .collect::<Vec<_>>();
@@ -83,11 +81,11 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             QueryType::StartWith => cmd.arg("--prefix-match").arg("-").arg(query),
             QueryType::Exact => cmd
                 .arg("-Q")
-                .arg(format!("(eq? (downcase $name) \"{}\")", query))
+                .arg(format!("(eq? (downcase $name) \"{query}\")"))
                 .arg("-l"),
             QueryType::Contain => cmd
                 .arg("-Q")
-                .arg(format!("(substr? (downcase $name) \"{}\")", query))
+                .arg(format!("(substr? (downcase $name) \"{query}\")"))
                 .arg("-l"),
             QueryType::Inherit => {
                 todo!("Inherit")

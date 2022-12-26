@@ -1,9 +1,8 @@
 //! Regex patterns and utilities used for manipulating the line.
 
-use std::path::PathBuf;
-
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::path::PathBuf;
 
 static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):(.*)").unwrap());
 

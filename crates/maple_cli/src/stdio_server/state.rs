@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
-use serde::Serialize;
-use tokio::sync::mpsc::UnboundedSender;
-
 use crate::stdio_server::rpc::{Call, RpcClient};
 use crate::stdio_server::vim::Vim;
+use serde::Serialize;
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Current State of Vim/NeoVim client.
 #[derive(Serialize)]

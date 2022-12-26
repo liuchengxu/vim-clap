@@ -7,30 +7,25 @@ mod ctags;
 mod gtags;
 mod regex;
 
+use super::AddressableUsage;
+
 pub use self::ctags::CtagsSearcher;
 pub use self::gtags::GtagsSearcher;
 pub use self::regex::RegexSearcher;
 
-use super::AddressableUsage;
-
 /// When spawning the ctags/gtags request, we can specify the searching strategy.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 #[allow(unused)]
 pub enum QueryType {
     /// Prefix match.
     StartWith,
     /// Exact match.
+    #[default]
     Exact,
     /// Substring match.
     Contain,
     ///
     Inherit,
-}
-
-impl Default for QueryType {
-    fn default() -> Self {
-        Self::Exact
-    }
 }
 
 /// Unified tag info.

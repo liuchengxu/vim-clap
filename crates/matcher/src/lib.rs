@@ -239,6 +239,11 @@ pub struct MatcherBuilder {
 }
 
 impl MatcherBuilder {
+    /// Create a new matcher builder with a default configuration.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn bonuses(mut self, bonuses: Vec<Bonus>) -> Self {
         self.bonuses = bonuses;
         self
@@ -418,7 +423,7 @@ mod tests {
             "lua/fzy_filter.lua",
         ];
         let query = "fil";
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::FileName])
             .build(query.into());
         for line in lines {
@@ -439,7 +444,7 @@ mod tests {
     fn test_language_keyword_bonus() {
         let lines = vec!["hellorsr foo", "function foo"];
         let query: Query = "fo".into();
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::Language("vim".into())])
             .build(query);
         let matched_item1 = matcher
@@ -456,7 +461,7 @@ mod tests {
     fn test_exact_search_term_bonus() {
         let lines = vec!["function foo qwer", "function foo"];
         let query: Query = "'fo".into();
-        let matcher = MatcherBuilder::default().build(query);
+        let matcher = MatcherBuilder::new().build(query);
         let matched_item1 = matcher
             .match_item(Arc::new(lines[0]) as Arc<dyn ClapItem>)
             .unwrap();
@@ -477,7 +482,7 @@ mod tests {
         ];
 
         let match_with_query = |query: Query| {
-            let matcher = MatcherBuilder::default()
+            let matcher = MatcherBuilder::new()
                 .bonuses(vec![Bonus::FileName])
                 .build(query);
             items

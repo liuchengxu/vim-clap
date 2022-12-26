@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-
+use crate::{paths::AbsPathBuf, utils::PROJECT_DIRS};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-
-use crate::{paths::AbsPathBuf, utils::PROJECT_DIRS};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 static CONFIG_FILE: OnceCell<PathBuf> = OnceCell::new();
 

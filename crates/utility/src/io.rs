@@ -1,10 +1,8 @@
+use crate::bytelines::ByteLines;
 use std::fs::{read_dir, remove_dir_all, remove_file, File};
 use std::io::{BufRead, BufReader, Error, ErrorKind, Lines, Read, Result};
 use std::path::{Path, PathBuf};
-
 use types::PreviewInfo;
-
-use crate::bytelines::ByteLines;
 
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {

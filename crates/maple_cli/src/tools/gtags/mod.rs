@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
-use once_cell::sync::Lazy;
-
 use crate::utils::PROJECT_DIRS;
+use once_cell::sync::Lazy;
+use std::path::PathBuf;
 
 pub static GTAGS_EXISTS: Lazy<bool> = Lazy::new(|| gtags_executable_exists().unwrap_or(false));
 

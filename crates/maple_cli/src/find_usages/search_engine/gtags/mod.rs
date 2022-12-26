@@ -126,7 +126,7 @@ impl GtagsSearcher {
                 let (kind, kind_weight) = resolve_reference_kind(&symbol.pattern, file_ext);
                 let (line, indices) = symbol.grep_format_gtags(kind, keyword, false);
                 usage_matcher
-                    .check_jump_line((line, indices.unwrap_or_default()))
+                    .match_jump_line((line, indices.unwrap_or_default()))
                     .map(|(line, indices)| GtagsUsage {
                         line,
                         indices,

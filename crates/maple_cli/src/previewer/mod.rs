@@ -1,9 +1,7 @@
 pub mod vim_help;
 
-use std::path::Path;
-
 use anyhow::Result;
-
+use std::path::Path;
 use types::PreviewInfo;
 use utility::{read_first_lines, read_preview_lines};
 

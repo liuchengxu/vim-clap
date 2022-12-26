@@ -1,14 +1,12 @@
 //! This module provides the feature of persistent data store via file system.
 
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
-
 use crate::cache::{CacheInfo, MAX_DIGESTS};
 use crate::recent_files::SortedRecentFiles;
 use crate::utils::{generate_data_file_path, load_json};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Linux: ~/.local/share/vimclap/cache.json
 const CACHE_FILENAME: &str = "cache.json";
@@ -41,7 +39,7 @@ pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
 }
 
 pub fn store_recent_files(recent_files: &SortedRecentFiles) -> std::io::Result<()> {
-    crate::utils::write_json(&recent_files, RECENT_FILES_JSON_PATH.as_ref())
+    crate::utils::write_json(recent_files, RECENT_FILES_JSON_PATH.as_ref())
 }
 
 pub fn cache_metadata_path() -> Option<&'static PathBuf> {

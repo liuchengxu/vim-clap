@@ -1,18 +1,15 @@
+use super::BufferTag;
+use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
+use anyhow::Result;
+use rayon::prelude::*;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
-use anyhow::Result;
-use rayon::prelude::*;
 use subprocess::{Exec as SubprocessCommand, Redirection};
 use tokio::process::Command as TokioCommand;
-
 use types::ClapItem;
-
-use super::BufferTag;
-use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
 
 const CONTEXT_KINDS: &[&str] = &[
     "function",

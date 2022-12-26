@@ -1,10 +1,8 @@
-use std::sync::Arc;
-use std::{any::Any, borrow::Cow};
-
+use crate::{MatchResult, Score};
 use icon::Icon;
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
-
-use crate::{MatchResult, Score};
+use std::sync::Arc;
+use std::{any::Any, borrow::Cow};
 
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any;

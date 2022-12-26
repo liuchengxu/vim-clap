@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct GlobalEnv {
@@ -22,7 +21,7 @@ impl From<Value> for PreviewConfig {
     fn from(v: Value) -> Self {
         if v.is_object() {
             let m: HashMap<String, u64> = serde_json::from_value(v)
-                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {:?}", e));
+                .unwrap_or_else(|e| panic!("Failed to deserialize preview_size map: {e:?}"));
             return Self::Map(m);
         }
         match v {

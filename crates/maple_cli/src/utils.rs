@@ -1,16 +1,14 @@
-use std::borrow::Cow;
-use std::io::{BufRead, BufReader, Lines};
-use std::path::{Path, PathBuf};
-
 use anyhow::Result;
 use chrono::prelude::*;
 use directories::ProjectDirs;
-use itertools::Itertools;
-use once_cell::sync::Lazy;
-use subprocess::Exec;
-
 use icon::Icon;
+use itertools::Itertools;
 use matcher::{ExactMatcher, InverseMatcher};
+use once_cell::sync::Lazy;
+use std::borrow::Cow;
+use std::io::{BufRead, BufReader, Lines};
+use std::path::{Path, PathBuf};
+use subprocess::Exec;
 use types::{CaseMatching, ExactTerm, InverseTerm};
 use utility::{println_json, println_json_with_length, read_first_lines};
 
@@ -45,7 +43,7 @@ impl UsageMatcher {
     }
 
     /// Returns the match indices of exact terms if given `line` passes all the checks.
-    fn check_terms(&self, line: &str) -> Option<Vec<usize>> {
+    fn match_indices(&self, line: &str) -> Option<Vec<usize>> {
         match (
             self.exact_matcher.find_matches(line),
             self.inverse_matcher.match_any(line),
@@ -71,11 +69,11 @@ impl UsageMatcher {
                 .all(|(local, other)| local.is_superset(other))
     }
 
-    pub fn check_jump_line(
+    pub fn match_jump_line(
         &self,
         (jump_line, mut indices): (String, Vec<usize>),
     ) -> Option<(String, Vec<usize>)> {
-        if let Some(exact_indices) = self.check_terms(&jump_line) {
+        if let Some(exact_indices) = self.match_indices(&jump_line) {
             indices.extend_from_slice(&exact_indices);
             indices.sort_unstable();
             indices.dedup();
