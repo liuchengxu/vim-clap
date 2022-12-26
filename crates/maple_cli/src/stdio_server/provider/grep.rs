@@ -1,10 +1,9 @@
-use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
+use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use parking_lot::Mutex;
-use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use types::MatchedItem;
@@ -60,7 +59,6 @@ fn run_grep(query: String, number: usize, context: &ProviderContext, vim: Vim) -
 pub struct GrepProvider {
     context: ProviderContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
-    runtimepath: Option<String>,
     maybe_grep_control: Option<GrepControl>,
 }
 
@@ -69,7 +67,6 @@ impl GrepProvider {
         Self {
             context,
             current_results: Arc::new(Mutex::new(Vec::new())),
-            runtimepath: None,
             maybe_grep_control: None,
         }
     }
@@ -86,53 +83,6 @@ impl GrepProvider {
             .lock()
             .get(lnum - 1)
             .map(|r| r.item.output_text().to_string())
-    }
-
-    async fn nontypical_preview_target(&mut self, curline: &str) -> Result<Option<PreviewTarget>> {
-        let maybe_preview_kind = match self.context.provider_id() {
-            "help_tags" => {
-                let runtimepath = match &self.runtimepath {
-                    Some(rtp) => rtp.clone(),
-                    None => {
-                        let rtp: String = self.vim().eval("&runtimepath").await?;
-                        self.runtimepath.replace(rtp.clone());
-                        rtp
-                    }
-                };
-                let items = curline.split('\t').collect::<Vec<_>>();
-                if items.len() < 2 {
-                    return Err(anyhow::anyhow!(
-                        "Couldn't extract subject and doc_filename from the line"
-                    ));
-                }
-                Some(PreviewTarget::HelpTags {
-                    subject: items[0].trim().to_string(),
-                    doc_filename: items[1].trim().to_string(),
-                    runtimepath,
-                })
-            }
-            "buffers" => {
-                let res: Vec<String> = self
-                    .vim()
-                    .call("clap#provider#buffers#preview_target", json!([]))
-                    .await?;
-                if res.len() != 2 {
-                    return Err(anyhow::anyhow!(
-                        "Can not retrieve the buffers preview target"
-                    ));
-                }
-                let line_number = res[1].parse::<usize>()?;
-                let path = res
-                    .into_iter()
-                    .next()
-                    .expect("Not empty as just checked; qed")
-                    .into();
-                Some(PreviewTarget::LineInFile { path, line_number })
-            }
-            _ => None,
-        };
-
-        Ok(maybe_preview_kind)
     }
 }
 
@@ -153,17 +103,7 @@ impl ClapProvider for GrepProvider {
         }
 
         let preview_height = self.context.preview_height().await?;
-        let on_move_handler =
-            if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
-                OnMoveHandler {
-                    preview_height,
-                    context: &self.context,
-                    preview_target,
-                    cache_line: None,
-                }
-            } else {
-                OnMoveHandler::create(curline, preview_height, &self.context)?
-            };
+        let on_move_handler = OnMoveHandler::create(curline, preview_height, &self.context)?;
 
         let preview = on_move_handler.get_preview().await?;
 
