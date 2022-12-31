@@ -1,6 +1,6 @@
-mod default_impl;
 mod dumb_jump;
 mod filer;
+mod generic_provider;
 mod grep;
 mod recent_files;
 
@@ -22,9 +22,9 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub use self::default_impl::DefaultProvider;
 pub use self::dumb_jump::DumbJumpProvider;
 pub use self::filer::{read_dir_entries, FilerProvider};
+pub use self::generic_provider::GenericProvider;
 pub use self::grep::GrepProvider;
 pub use self::recent_files::RecentFilesProvider;
 
@@ -352,7 +352,7 @@ impl ProviderEventSender {
     }
 }
 
-/// A trait that each Clap provider should implement.
+/// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
     fn context(&self) -> &ProviderContext;

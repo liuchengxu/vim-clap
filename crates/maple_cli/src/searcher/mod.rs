@@ -1,5 +1,6 @@
 use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
+use icon::Icon;
 use ignore::{DirEntry, WalkBuilder, WalkState};
 use matcher::Matcher;
 use printer::DisplayLines;
@@ -35,7 +36,7 @@ impl grep_matcher::Matcher for MatchEverything {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FilePickerConfig {
+pub struct SearchConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
@@ -62,7 +63,7 @@ pub struct FilePickerConfig {
     pub max_depth: Option<usize>,
 }
 
-impl Default for FilePickerConfig {
+impl Default for SearchConfig {
     fn default() -> Self {
         Self {
             hidden: true,
@@ -98,21 +99,21 @@ fn run_searcher_worker(
     sender: UnboundedSender<SearcherMessage>,
     stop_signal: Arc<AtomicBool>,
 ) {
-    let file_picker_config = FilePickerConfig::default();
+    let search_config = SearchConfig::default();
 
     let searcher = SearcherBuilder::new()
         .binary_detection(BinaryDetection::quit(b'\x00'))
         .build();
 
     WalkBuilder::new(search_root)
-        .hidden(file_picker_config.hidden)
-        .parents(file_picker_config.parents)
-        .ignore(file_picker_config.ignore)
-        .follow_links(file_picker_config.follow_symlinks)
-        .git_ignore(file_picker_config.git_ignore)
-        .git_global(file_picker_config.git_global)
-        .git_exclude(file_picker_config.git_exclude)
-        .max_depth(file_picker_config.max_depth)
+        .hidden(search_config.hidden)
+        .parents(search_config.parents)
+        .ignore(search_config.ignore)
+        .follow_links(search_config.follow_symlinks)
+        .git_ignore(search_config.git_ignore)
+        .git_global(search_config.git_global)
+        .git_exclude(search_config.git_exclude)
+        .max_depth(search_config.max_depth)
         // We always want to ignore the .git directory, otherwise if
         // `ignore` is turned off above, we end up with a lot of noise
         // in our picker.
@@ -249,16 +250,14 @@ pub async fn search_with_progress(search_root: PathBuf, clap_matcher: Matcher) -
     }
 }
 
-use icon::Icon;
-
 #[derive(Debug)]
-pub struct BestFileResults {
+struct BestFileResults {
     /// Time of last notification.
-    pub past: Instant,
-    pub results: Vec<FileResult>,
-    pub last_lines: Vec<String>,
-    pub last_visible_highlights: Vec<Vec<usize>>,
-    pub max_capacity: usize,
+    past: Instant,
+    results: Vec<FileResult>,
+    last_lines: Vec<String>,
+    last_visible_highlights: Vec<Vec<usize>>,
+    max_capacity: usize,
 }
 
 impl BestFileResults {

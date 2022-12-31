@@ -32,7 +32,7 @@ fn run_grep(query: String, number: usize, context: &ProviderContext, vim: Vim) -
         let stop_signal = stop_signal.clone();
 
         tokio::spawn(async move {
-            let progressor = VimProgressor::new(&vim, stop_signal.clone());
+            let progressor = VimProgressor::new(vim, stop_signal.clone());
             crate::searcher::search(
                 cwd.into(),
                 // Process against the line directly.

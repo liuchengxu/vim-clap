@@ -8,7 +8,7 @@ mod types;
 mod vim;
 
 use self::provider::{
-    ClapProvider, DefaultProvider, DumbJumpProvider, Event, FilerProvider, GrepProvider,
+    ClapProvider, DumbJumpProvider, Event, FilerProvider, GenericProvider, GrepProvider,
     ProviderContext, ProviderEvent, RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
@@ -109,7 +109,7 @@ impl Client {
                             "filer" => Box::new(FilerProvider::new(context)),
                             "grep" => Box::new(GrepProvider::new(context)),
                             "recent_files" => Box::new(RecentFilesProvider::new(context)),
-                            _ => Box::new(DefaultProvider::new(context)),
+                            _ => Box::new(GenericProvider::new(context)),
                         };
 
                     let session_manager = self.session_manager_mutex.clone();

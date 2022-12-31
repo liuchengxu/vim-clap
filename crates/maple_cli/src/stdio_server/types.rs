@@ -41,18 +41,18 @@ impl PreviewConfig {
     }
 }
 
-pub struct VimProgressor<'a> {
-    vim: &'a Vim,
+pub struct VimProgressor {
+    vim: Vim,
     stopped: Arc<AtomicBool>,
 }
 
-impl<'a> VimProgressor<'a> {
-    pub fn new(vim: &'a Vim, stopped: Arc<AtomicBool>) -> Self {
+impl VimProgressor {
+    pub fn new(vim: Vim, stopped: Arc<AtomicBool>) -> Self {
         Self { vim, stopped }
     }
 }
 
-impl<'a> ProgressUpdate<DisplayLines> for VimProgressor<'a> {
+impl ProgressUpdate<DisplayLines> for VimProgressor {
     fn update_progress(
         &self,
         maybe_display_lines: Option<&DisplayLines>,

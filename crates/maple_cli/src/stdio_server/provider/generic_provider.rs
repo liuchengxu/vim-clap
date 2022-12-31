@@ -15,7 +15,7 @@ use subprocess::Exec;
 use types::MatchedItem;
 
 #[derive(Debug)]
-enum FilterSource {
+enum DataSource {
     File(PathBuf),
     Command(String),
 }
@@ -37,30 +37,34 @@ impl FilterControl {
 fn run(
     query: String,
     number: usize,
-    filter_source: FilterSource,
+    data_source: DataSource,
     context: &ProviderContext,
     vim: Vim,
 ) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     let join_handle = {
-        let icon = context.env.icon;
-        let display_winwidth = context.env.display_winwidth;
+        let filter_context = FilterContext::new(
+            context.env.icon,
+            Some(number),
+            Some(context.env.display_winwidth),
+            context.env.matcher_builder.clone(),
+        );
+
         let cwd = context.cwd.clone();
-        let matcher_builder = context.env.matcher_builder.clone();
         let stop_signal = stop_signal.clone();
 
         std::thread::spawn(move || {
             if let Err(e) = filter::par_dyn_run_inprocess(
                 &query,
-                FilterContext::new(icon, Some(number), Some(display_winwidth), matcher_builder),
-                match filter_source {
-                    FilterSource::File(path) => ParallelSource::File(path),
-                    FilterSource::Command(command) => {
+                filter_context,
+                match data_source {
+                    DataSource::File(path) => ParallelSource::File(path),
+                    DataSource::Command(command) => {
                         ParallelSource::Exec(Box::new(Exec::shell(command).cwd(cwd)))
                     }
                 },
-                VimProgressor::new(&vim, stop_signal.clone()),
+                VimProgressor::new(vim, stop_signal.clone()),
                 stop_signal,
             ) {
                 tracing::error!(error = ?e, "Error occured when filtering the cache source");
@@ -74,65 +78,18 @@ fn run(
     }
 }
 
+/// Generic provider impl.
 #[derive(Debug)]
-struct GrepControl {
-    stop_signal: Arc<AtomicBool>,
-    join_handle: tokio::task::JoinHandle<()>,
-}
-
-impl GrepControl {
-    fn kill(self) {
-        self.stop_signal.store(true, Ordering::SeqCst);
-        self.join_handle.abort();
-    }
-}
-
-fn run_grep(query: String, number: usize, context: &ProviderContext, vim: Vim) -> GrepControl {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-
-    let join_handle = {
-        let icon = context.env.icon;
-        let display_winwidth = context.env.display_winwidth;
-        let cwd = context.cwd.clone();
-        let matcher_builder = context.env.matcher_builder.clone();
-        let stop_signal = stop_signal.clone();
-
-        tokio::spawn(async move {
-            let progressor = VimProgressor::new(&vim, stop_signal.clone());
-            crate::searcher::search(
-                cwd.into(),
-                // Process against the line directly.
-                matcher_builder
-                    .match_scope(matcher::MatchScope::Full)
-                    .build(query.into()),
-                stop_signal,
-                number,
-                icon,
-                display_winwidth,
-                progressor,
-            )
-            .await;
-        })
-    };
-
-    GrepControl {
-        stop_signal,
-        join_handle,
-    }
-}
-
-#[derive(Debug)]
-pub struct DefaultProvider {
+pub struct GenericProvider {
     context: ProviderContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
     display_winheight: Option<usize>,
     maybe_filter_control: Option<FilterControl>,
-    maybe_grep_control: Option<GrepControl>,
     last_filter_control_killed: Arc<AtomicBool>,
 }
 
-impl DefaultProvider {
+impl GenericProvider {
     pub fn new(context: ProviderContext) -> Self {
         Self {
             context,
@@ -140,7 +97,6 @@ impl DefaultProvider {
             runtimepath: None,
             display_winheight: None,
             maybe_filter_control: None,
-            maybe_grep_control: None,
             last_filter_control_killed: Arc::new(AtomicBool::new(true)),
         }
     }
@@ -207,8 +163,47 @@ impl DefaultProvider {
     }
 }
 
-impl DefaultProvider {
-    async fn generic_on_typed(&mut self) -> Result<()> {
+#[async_trait::async_trait]
+impl ClapProvider for GenericProvider {
+    fn context(&self) -> &ProviderContext {
+        &self.context
+    }
+
+    async fn on_move(&mut self) -> Result<()> {
+        let lnum = self.vim().display_getcurlnum().await?;
+
+        let curline = self.vim().display_getcurline().await?;
+
+        if curline.is_empty() {
+            tracing::debug!("Skipping preview as curline is empty");
+            return Ok(());
+        }
+
+        let preview_height = self.context.preview_height().await?;
+        let on_move_handler =
+            if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
+                OnMoveHandler {
+                    preview_height,
+                    context: &self.context,
+                    preview_target,
+                    cache_line: None,
+                }
+            } else {
+                OnMoveHandler::create(curline, preview_height, &self.context)?
+            };
+
+        let preview = on_move_handler.get_preview().await?;
+
+        // Ensure the preview result is not out-dated.
+        let curlnum = self.vim().display_getcurlnum().await?;
+        if curlnum == lnum {
+            self.vim().render_preview(preview)?;
+        }
+
+        Ok(())
+    }
+
+    async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
 
         let quick_response =
@@ -256,14 +251,14 @@ impl DefaultProvider {
             return Ok(());
         }
 
-        let filter_source = match *self.context.provider_source.read() {
+        let data_source = match *self.context.provider_source.read() {
             ProviderSource::Small { .. } | ProviderSource::Unactionable => {
                 tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unactionable.");
                 return Ok(());
             }
             ProviderSource::CachedFile { ref path, .. }
-            | ProviderSource::PlainFile { ref path, .. } => FilterSource::File(path.clone()),
-            ProviderSource::Command(ref cmd) => FilterSource::Command(cmd.to_string()),
+            | ProviderSource::PlainFile { ref path, .. } => DataSource::File(path.clone()),
+            ProviderSource::Command(ref cmd) => DataSource::Command(cmd.to_string()),
         };
 
         let display_winheight = match self.display_winheight {
@@ -301,7 +296,7 @@ impl DefaultProvider {
         let new_control = run(
             query,
             display_winheight,
-            filter_source,
+            data_source,
             &self.context,
             self.vim().clone(),
         );
@@ -311,78 +306,9 @@ impl DefaultProvider {
         Ok(())
     }
 
-    async fn grep_on_typed(&mut self) -> Result<()> {
-        let query = self.vim().input_get().await?;
-
-        if let Some(control) = self.maybe_grep_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
-        }
-
-        let new_control = run_grep(query, 100, &self.context, self.vim().clone());
-
-        self.maybe_grep_control.replace(new_control);
-
-        Ok(())
-    }
-}
-
-#[async_trait::async_trait]
-impl ClapProvider for DefaultProvider {
-    fn context(&self) -> &ProviderContext {
-        &self.context
-    }
-
-    async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim().display_getcurlnum().await?;
-
-        let curline = self.vim().display_getcurline().await?;
-
-        if curline.is_empty() {
-            tracing::debug!("Skipping preview as curline is empty");
-            return Ok(());
-        }
-
-        let preview_height = self.context.preview_height().await?;
-        let on_move_handler =
-            if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
-                OnMoveHandler {
-                    preview_height,
-                    context: &self.context,
-                    preview_target,
-                    cache_line: None,
-                }
-            } else {
-                OnMoveHandler::create(curline, preview_height, &self.context)?
-            };
-
-        let preview = on_move_handler.get_preview().await?;
-
-        // Ensure the preview result is not out-dated.
-        let curlnum = self.vim().display_getcurlnum().await?;
-        if curlnum == lnum {
-            self.vim().render_preview(preview)?;
-        }
-
-        Ok(())
-    }
-
-    async fn on_typed(&mut self) -> Result<()> {
-        if self.vim().provider_id().await? == "grep" {
-            self.grep_on_typed().await
-        } else {
-            self.generic_on_typed().await
-        }
-    }
-
     fn handle_terminate(&mut self, session_id: u64) {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
-            // NOTE: The kill operation can not block current task.
-            tokio::task::spawn_blocking(move || control.kill());
-        }
-        if let Some(control) = self.maybe_grep_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
