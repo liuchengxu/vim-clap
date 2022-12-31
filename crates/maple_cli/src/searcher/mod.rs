@@ -1,7 +1,7 @@
 use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
-use ignore::{DirEntry, WalkBuilder, WalkState};
+use ignore::{DirEntry, WalkBuilder, WalkParallel, WalkState};
 use matcher::Matcher;
 use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
@@ -93,17 +93,8 @@ pub struct FileResult {
     pub matched_item: MatchedItem,
 }
 
-fn run_searcher_worker(
-    search_root: PathBuf,
-    clap_matcher: Matcher,
-    sender: UnboundedSender<SearcherMessage>,
-    stop_signal: Arc<AtomicBool>,
-) {
+fn walk_parallel(search_root: PathBuf) -> WalkParallel {
     let search_config = SearchConfig::default();
-
-    let searcher = SearcherBuilder::new()
-        .binary_detection(BinaryDetection::quit(b'\x00'))
-        .build();
 
     WalkBuilder::new(search_root)
         .hidden(search_config.hidden)
@@ -119,9 +110,46 @@ fn run_searcher_worker(
         // in our picker.
         .filter_entry(|entry| entry.file_name() != ".git")
         .build_parallel()
-        .run(|| {
+}
+
+#[derive(Debug)]
+struct StoppableSearcher {
+    search_root: PathBuf,
+    matcher: Matcher,
+    sender: UnboundedSender<SearcherMessage>,
+    stop_signal: Arc<AtomicBool>,
+}
+
+impl StoppableSearcher {
+    fn new(
+        search_root: PathBuf,
+        matcher: Matcher,
+        sender: UnboundedSender<SearcherMessage>,
+        stop_signal: Arc<AtomicBool>,
+    ) -> Self {
+        Self {
+            search_root,
+            matcher,
+            sender,
+            stop_signal,
+        }
+    }
+
+    fn run(self) {
+        let Self {
+            search_root,
+            matcher,
+            sender,
+            stop_signal,
+        } = self;
+
+        let searcher = SearcherBuilder::new()
+            .binary_detection(BinaryDetection::quit(b'\x00'))
+            .build();
+
+        walk_parallel(search_root).run(|| {
             let mut searcher = searcher.clone();
-            let clap_matcher = clap_matcher.clone();
+            let matcher = matcher.clone();
             let sender = sender.clone();
             let stop_signal = stop_signal.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
@@ -155,7 +183,7 @@ fn run_searcher_worker(
                             }
                         }
 
-                        let maybe_file_result = clap_matcher
+                        let maybe_file_result = matcher
                             .match_file_result(entry.path(), line.trim())
                             .map(|matched_item| FileResult {
                                 // TODO: May be cached somewhere so that the allcation won't be
@@ -187,6 +215,7 @@ fn run_searcher_worker(
                 WalkState::Continue
             })
         });
+    }
 }
 
 #[derive(Debug)]
@@ -197,14 +226,14 @@ pub struct SearchResult {
     pub total_processed: u64,
 }
 
-pub async fn search_with_progress(search_root: PathBuf, clap_matcher: Matcher) -> SearchResult {
+pub async fn search_with_progress(search_root: PathBuf, matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     std::thread::Builder::new()
         .name("searcher-worker".into())
-        .spawn(move || run_searcher_worker(search_root, clap_matcher, sender, stop_signal))
+        .spawn(move || StoppableSearcher::new(search_root, matcher, sender, stop_signal).run())
         .expect("Failed to spawn searcher worker thread");
 
     let mut matches = Vec::new();
@@ -274,7 +303,7 @@ impl BestFileResults {
 
 pub async fn search<P: ProgressUpdate<DisplayLines>>(
     search_root: PathBuf,
-    clap_matcher: Matcher,
+    matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
     number: usize,
     icon: Icon,
@@ -290,12 +319,12 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
         .spawn({
             let stop_signal = stop_signal.clone();
             let search_root = search_root.clone();
-            move || run_searcher_worker(search_root, clap_matcher, sender, stop_signal)
+            move || StoppableSearcher::new(search_root, matcher, sender, stop_signal).run()
         })
         .expect("Failed to spawn searcher worker thread");
 
-    let mut total_matched = 0u64;
-    let mut total_processed = 0u64;
+    let mut total_matched = 0usize;
+    let mut total_processed = 0usize;
 
     let to_display_lines = |best_results: Vec<FileResult>, winwidth: usize, icon: Icon| {
         let items = best_results
@@ -328,6 +357,7 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
         printer::decorate_lines(items, winwidth, icon)
     };
 
+    let now = std::time::Instant::now();
     while let Some(searcher_message) = receiver.recv().await {
         if stop_signal.load(Ordering::SeqCst) {
             return;
@@ -350,8 +380,8 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                             to_display_lines(best_results.results.clone(), winwidth, icon);
                         progressor.update_progress(
                             Some(&display_lines),
-                            total_matched as usize,
-                            total_processed as usize,
+                            total_matched,
+                            total_processed,
                         );
                         best_results.last_lines = display_lines.lines;
                         best_results.past = now;
@@ -388,23 +418,18 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                                 })
                                 .collect::<Vec<_>>();
 
-                            // TODO: the lines are the same, but the highlights are not.
                             if best_results.last_lines != display_lines.lines.as_slice()
                                 || best_results.last_visible_highlights != visible_highlights
                             {
                                 progressor.update_progress(
                                     Some(&display_lines),
-                                    total_matched as usize,
-                                    total_processed as usize,
+                                    total_matched,
+                                    total_processed,
                                 );
                                 best_results.last_lines = display_lines.lines;
                                 best_results.last_visible_highlights = visible_highlights;
                             } else {
-                                progressor.update_progress(
-                                    None,
-                                    total_matched as usize,
-                                    total_processed as usize,
-                                )
+                                progressor.update_progress(None, total_matched, total_processed)
                             }
 
                             best_results.past = now;
@@ -418,15 +443,13 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
         }
     }
 
+    tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
+
     let BestFileResults { results, .. } = best_results;
 
     let display_lines = to_display_lines(results, winwidth, icon);
 
-    progressor.update_progress_on_finished(
-        display_lines,
-        total_matched as usize,
-        total_processed as usize,
-    );
+    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
         "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
