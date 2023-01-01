@@ -137,7 +137,7 @@ impl Symbol {
         let indices = if let Some(idx) = found {
             let start = formatted.len() + idx;
             let end = start + query.len();
-            Some((start..end).into_iter().collect())
+            Some((start..end).collect())
         } else {
             None
         };

@@ -84,49 +84,47 @@ struct BestItems<P: ProgressUpdate<DisplayLines>> {
 pub struct StdioProgressor;
 
 impl ProgressUpdate<DisplayLines> for StdioProgressor {
-    fn update_progress(
-        &self,
-        maybe_display_lines: Option<&DisplayLines>,
-        matched: usize,
-        processed: usize,
-    ) {
+    fn update_brief(&self, matched: usize, processed: usize) {
         #[allow(non_upper_case_globals)]
         const deprecated_method: &str = "clap#state#process_filter_message";
 
-        if let Some(display_lines) = maybe_display_lines {
-            let DisplayLines {
+        println_json_with_length!(matched, processed, deprecated_method);
+    }
+
+    fn update_all(&self, display_lines: &DisplayLines, matched: usize, processed: usize) {
+        #[allow(non_upper_case_globals)]
+        const deprecated_method: &str = "clap#state#process_filter_message";
+
+        let DisplayLines {
+            lines,
+            indices,
+            truncated_map,
+            icon_added,
+        } = display_lines;
+
+        if truncated_map.is_empty() {
+            println_json_with_length!(
+                deprecated_method,
                 lines,
                 indices,
-                truncated_map,
                 icon_added,
-            } = display_lines;
-
-            if truncated_map.is_empty() {
-                println_json_with_length!(
-                    deprecated_method,
-                    lines,
-                    indices,
-                    icon_added,
-                    matched,
-                    processed
-                );
-            } else {
-                println_json_with_length!(
-                    deprecated_method,
-                    lines,
-                    indices,
-                    icon_added,
-                    matched,
-                    processed,
-                    truncated_map
-                );
-            }
+                matched,
+                processed
+            );
         } else {
-            println_json_with_length!(matched, processed, deprecated_method);
+            println_json_with_length!(
+                deprecated_method,
+                lines,
+                indices,
+                icon_added,
+                matched,
+                processed,
+                truncated_map
+            );
         }
     }
 
-    fn update_progress_on_finished(
+    fn on_finished(
         &self,
         display_lines: DisplayLines,
         total_matched: usize,
@@ -176,7 +174,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                 let display_lines =
                     printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
                 self.progressor
-                    .update_progress(Some(&display_lines), matched, processed);
+                    .update_all(&display_lines, matched, processed);
                 self.last_lines = display_lines.lines;
                 self.past = now;
             }
@@ -200,10 +198,10 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                     // TODO: the lines are the same, but the highlights are not.
                     if self.last_lines != display_lines.lines.as_slice() {
                         self.progressor
-                            .update_progress(Some(&display_lines), matched, processed);
+                            .update_all(&display_lines, matched, processed);
                         self.last_lines = display_lines.lines;
                     } else {
-                        self.progressor.update_progress(None, matched, processed)
+                        self.progressor.update_brief(matched, processed)
                     }
 
                     self.past = now;
@@ -287,7 +285,7 @@ where
     let matched_items = items;
 
     let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
-    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
+    progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
 }
@@ -379,7 +377,7 @@ where
     let matched_items = items;
 
     let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
-    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
+    progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
 }

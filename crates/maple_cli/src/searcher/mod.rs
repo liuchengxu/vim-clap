@@ -378,11 +378,7 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                     if now > best_results.past + UPDATE_INTERVAL {
                         let display_lines =
                             to_display_lines(best_results.results.clone(), winwidth, icon);
-                        progressor.update_progress(
-                            Some(&display_lines),
-                            total_matched,
-                            total_processed,
-                        );
+                        progressor.update_all(&display_lines, total_matched, total_processed);
                         best_results.last_lines = display_lines.lines;
                         best_results.past = now;
                     }
@@ -421,15 +417,15 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                             if best_results.last_lines != display_lines.lines.as_slice()
                                 || best_results.last_visible_highlights != visible_highlights
                             {
-                                progressor.update_progress(
-                                    Some(&display_lines),
+                                progressor.update_all(
+                                    &display_lines,
                                     total_matched,
                                     total_processed,
                                 );
                                 best_results.last_lines = display_lines.lines;
                                 best_results.last_visible_highlights = visible_highlights;
                             } else {
-                                progressor.update_progress(None, total_matched, total_processed)
+                                progressor.update_brief(total_matched, total_processed)
                             }
 
                             best_results.past = now;
@@ -449,7 +445,7 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
 
     let display_lines = to_display_lines(results, winwidth, icon);
 
-    progressor.update_progress_on_finished(display_lines, total_matched, total_processed);
+    progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
         "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",

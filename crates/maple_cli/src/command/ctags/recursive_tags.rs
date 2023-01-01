@@ -61,7 +61,7 @@ impl RecursiveTags {
         std_cmd
             .current_dir(&dir)
             .args(&TAGS_CMD[1..])
-            .args(&exclude_args);
+            .args(exclude_args);
         if let Some(ref languages) = self.shared.languages {
             std_cmd.arg(format!("--languages={languages}"));
         }

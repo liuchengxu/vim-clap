@@ -53,29 +53,28 @@ impl VimProgressor {
 }
 
 impl ProgressUpdate<DisplayLines> for VimProgressor {
-    fn update_progress(
-        &self,
-        maybe_display_lines: Option<&DisplayLines>,
-        matched: usize,
-        processed: usize,
-    ) {
+    fn update_brief(&self, matched: usize, processed: usize) {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
 
-        if let Some(display_lines) = maybe_display_lines {
-            let _ = self.vim.exec(
-                "clap#state#process_progress_with_display_lines",
-                json!([display_lines, matched, processed]),
-            );
-        } else {
-            let _ = self
-                .vim
-                .exec("clap#state#process_progress", json!([matched, processed]));
-        }
+        let _ = self
+            .vim
+            .exec("clap#state#process_progress", json!([matched, processed]));
     }
 
-    fn update_progress_on_finished(
+    fn update_all(&self, display_lines: &DisplayLines, matched: usize, processed: usize) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let _ = self.vim.exec(
+            "clap#state#process_progress_with_display_lines",
+            json!([display_lines, matched, processed]),
+        );
+    }
+
+    fn on_finished(
         &self,
         display_lines: DisplayLines,
         total_matched: usize,
