@@ -220,13 +220,12 @@ impl StoppableSearcher {
 
 #[derive(Debug)]
 pub struct SearchResult {
-    // TODO: bounded matched items.
     pub matches: Vec<FileResult>,
     pub total_matched: u64,
     pub total_processed: u64,
 }
 
-pub async fn search_with_progress(search_root: PathBuf, matcher: Matcher) -> SearchResult {
+pub async fn cli_search(search_root: PathBuf, matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
     let stop_signal = Arc::new(AtomicBool::new(false));
@@ -245,15 +244,6 @@ pub async fn search_with_progress(search_root: PathBuf, matcher: Matcher) -> Sea
     while let Some(searcher_message) = receiver.recv().await {
         match searcher_message {
             SearcherMessage::Match(file_result) => {
-                tracing::debug!(
-                    "{}:{}:{}:{}, {:?}, {:?}",
-                    file_result.path.display(),
-                    file_result.line_number + 1,
-                    1,
-                    file_result.matched_item.display_text(),
-                    file_result.matched_item.indices,
-                    file_result.matched_item.score,
-                );
                 matches.push(file_result);
                 total_matched += 1;
                 total_processed += 1;
@@ -290,7 +280,7 @@ struct BestFileResults {
 }
 
 impl BestFileResults {
-    pub fn new(max_capacity: usize) -> Self {
+    fn new(max_capacity: usize) -> Self {
         Self {
             past: Instant::now(),
             results: Vec::with_capacity(max_capacity),
@@ -298,6 +288,11 @@ impl BestFileResults {
             last_visible_highlights: Vec::with_capacity(max_capacity),
             max_capacity,
         }
+    }
+
+    fn sort(&mut self) {
+        self.results
+            .sort_unstable_by(|a, b| b.matched_item.score.cmp(&a.matched_item.score));
     }
 }
 
@@ -326,12 +321,12 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let to_display_lines = |best_results: Vec<FileResult>, winwidth: usize, icon: Icon| {
+    let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
         let items = best_results
-            .into_iter()
+            .iter()
             .filter_map(|file_result| {
-                let mut file_result = file_result;
-                if let Some(mut column) = file_result.matched_item.indices.first().copied() {
+                let mut matched_item = file_result.matched_item.clone();
+                if let Some(mut column) = matched_item.indices.first().copied() {
                     let line_number = file_result.line_number + 1;
                     column += 1;
                     let mut fmt_line =
@@ -341,14 +336,10 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                             format!("{}:{line_number}:{column}:", file_result.path.display())
                         };
                     let offset = fmt_line.len();
-                    fmt_line.push_str(file_result.matched_item.display_text().as_ref());
-                    file_result.matched_item.output_text.replace(fmt_line);
-                    file_result
-                        .matched_item
-                        .indices
-                        .iter_mut()
-                        .for_each(|x| *x += offset);
-                    Some(file_result.matched_item)
+                    fmt_line.push_str(matched_item.display_text().as_ref());
+                    matched_item.output_text.replace(fmt_line);
+                    matched_item.indices.iter_mut().for_each(|x| *x += offset);
+                    Some(matched_item)
                 } else {
                     None
                 }
@@ -370,14 +361,11 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
 
                 if best_results.results.len() <= best_results.max_capacity {
                     best_results.results.push(file_result);
-                    best_results
-                        .results
-                        .sort_unstable_by(|a, b| b.matched_item.score.cmp(&a.matched_item.score));
+                    best_results.sort();
 
                     let now = Instant::now();
                     if now > best_results.past + UPDATE_INTERVAL {
-                        let display_lines =
-                            to_display_lines(best_results.results.clone(), winwidth, icon);
+                        let display_lines = to_display_lines(&best_results.results, winwidth, icon);
                         progressor.update_all(&display_lines, total_matched, total_processed);
                         best_results.last_lines = display_lines.lines;
                         best_results.past = now;
@@ -391,16 +379,14 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
                     let new = file_result;
                     if new.matched_item.score > last.matched_item.score {
                         *last = new;
-                        best_results.results.sort_unstable_by(|a, b| {
-                            b.matched_item.score.cmp(&a.matched_item.score)
-                        });
+                        best_results.sort();
                     }
 
                     if total_matched % 16 == 0 || total_processed % 16 == 0 {
                         let now = Instant::now();
                         if now > best_results.past + UPDATE_INTERVAL {
                             let display_lines =
-                                to_display_lines(best_results.results.clone(), winwidth, icon);
+                                to_display_lines(&best_results.results, winwidth, icon);
 
                             let visible_highlights = display_lines
                                 .indices
@@ -443,7 +429,7 @@ pub async fn search<P: ProgressUpdate<DisplayLines>>(
 
     let BestFileResults { results, .. } = best_results;
 
-    let display_lines = to_display_lines(results, winwidth, icon);
+    let display_lines = to_display_lines(&results, winwidth, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

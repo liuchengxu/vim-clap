@@ -76,7 +76,7 @@ impl Grep {
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            let search_result = crate::searcher::search_with_progress(dir, clap_matcher).await;
+            let search_result = crate::searcher::cli_search(dir, clap_matcher).await;
 
             println!(
                 "total_matched: {:?}, total_processed: {:?}",
