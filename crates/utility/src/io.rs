@@ -134,7 +134,6 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
         })
         .map(|_| {
             let lines = ByteLines::new(&filebuf)
-                .into_iter()
                 .skip(start)
                 .take(end - start)
                 // trim_end() to get rid of ^M on Windows.

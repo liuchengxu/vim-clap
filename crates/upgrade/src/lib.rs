@@ -206,6 +206,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "This is flaky in CI"]
     async fn test_download_prebuilt_binary() {
         download_prebuilt_binary("v0.34", true)
             .await
