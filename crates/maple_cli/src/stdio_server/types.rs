@@ -63,14 +63,19 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
             .exec("clap#state#process_progress", json!([matched, processed]));
     }
 
-    fn update_all(&self, display_lines: &DisplayLines, matched: usize, processed: usize) {
+    fn update_all(
+        &self,
+        display_lines: &DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
         if self.stopped.load(Ordering::Relaxed) {
             return;
         }
 
         let _ = self.vim.exec(
-            "clap#state#process_progress_with_display_lines",
-            json!([display_lines, matched, processed]),
+            "clap#state#process_progress_full",
+            json!([display_lines, total_matched, total_processed]),
         );
     }
 
@@ -84,7 +89,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
             return;
         }
         let _ = self.vim.exec(
-            "clap#state#process_progress_finished",
+            "clap#state#process_progress_full",
             json!([display_lines, total_matched, total_processed]),
         );
     }

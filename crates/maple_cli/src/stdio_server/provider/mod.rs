@@ -382,9 +382,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
     fn handle_terminate(&mut self, session_id: u64) {
         self.context().terminated.store(true, Ordering::SeqCst);
         tracing::debug!(
-            session_id,
-            provider_id = %self.context().env.provider_id,
-            "Session terminated",
+            "Session {session_id:?}-{} terminated",
+            self.context().env.provider_id,
         );
     }
 }

@@ -3,10 +3,9 @@ use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
-use parking_lot::Mutex;
+use matcher::MatchScope;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use types::MatchedItem;
 
 #[derive(Debug)]
 struct GrepControl {
@@ -37,7 +36,7 @@ fn run_grep(query: String, number: usize, context: &ProviderContext, vim: Vim) -
                 cwd.into(),
                 // Process against the line directly.
                 matcher_builder
-                    .match_scope(matcher::MatchScope::Full)
+                    .match_scope(MatchScope::Full)
                     .build(query.into()),
                 stop_signal,
                 number,
@@ -58,7 +57,6 @@ fn run_grep(query: String, number: usize, context: &ProviderContext, vim: Vim) -
 #[derive(Debug)]
 pub struct GrepProvider {
     context: ProviderContext,
-    current_results: Arc<Mutex<Vec<MatchedItem>>>,
     maybe_grep_control: Option<GrepControl>,
 }
 
@@ -66,7 +64,6 @@ impl GrepProvider {
     pub fn new(context: ProviderContext) -> Self {
         Self {
             context,
-            current_results: Arc::new(Mutex::new(Vec::new())),
             maybe_grep_control: None,
         }
     }
@@ -76,13 +73,16 @@ impl GrepProvider {
         &self.context.vim
     }
 
-    /// `lnum` is 1-based.
-    #[allow(unused)]
-    fn line_at(&self, lnum: usize) -> Option<String> {
-        self.current_results
-            .lock()
-            .get(lnum - 1)
-            .map(|r| r.item.output_text().to_string())
+    fn process_query(&mut self, query: String) {
+        if let Some(control) = self.maybe_grep_control.take() {
+            tokio::task::spawn_blocking(move || {
+                control.kill();
+            });
+        }
+
+        let new_control = run_grep(query, 100, &self.context, self.vim().clone());
+
+        self.maybe_grep_control.replace(new_control);
     }
 }
 
@@ -90,6 +90,14 @@ impl GrepProvider {
 impl ClapProvider for GrepProvider {
     fn context(&self) -> &ProviderContext {
         &self.context
+    }
+
+    async fn on_create(&mut self) -> Result<()> {
+        let query = self.vim().context_query_or_input().await?;
+        if !query.is_empty() {
+            self.process_query(query);
+        }
+        Ok(())
     }
 
     async fn on_move(&mut self) -> Result<()> {
@@ -108,8 +116,8 @@ impl ClapProvider for GrepProvider {
         let preview = on_move_handler.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
-        let curlnum = self.vim().display_getcurlnum().await?;
-        if curlnum == lnum {
+        let cur_lnum = self.vim().display_getcurlnum().await?;
+        if cur_lnum == lnum {
             self.vim().render_preview(preview)?;
         }
 
@@ -118,17 +126,7 @@ impl ClapProvider for GrepProvider {
 
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
-
-        if let Some(control) = self.maybe_grep_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
-        }
-
-        let new_control = run_grep(query, 100, &self.context, self.vim().clone());
-
-        self.maybe_grep_control.replace(new_control);
-
+        self.process_query(query);
         Ok(())
     }
 
@@ -139,9 +137,8 @@ impl ClapProvider for GrepProvider {
         }
         self.context.terminated.store(true, Ordering::SeqCst);
         tracing::debug!(
-            session_id,
-            provider_id = %self.context.provider_id(),
-            "Session terminated",
+            "Session {session_id:?}-{} terminated",
+            self.context.provider_id(),
         );
     }
 }

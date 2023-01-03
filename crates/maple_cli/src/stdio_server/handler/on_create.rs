@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC_CMD};
 use crate::process::{CacheableCommand, ShellCommand};
@@ -74,40 +75,6 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
                 }
             };
             return Ok(provider_source);
-        }
-        "live_grep" => {
-            let mut std_cmd = rg_command(&context.cwd);
-            let exec_info = CacheableCommand::new(
-                &mut std_cmd,
-                rg_shell_command(&context.cwd),
-                None,
-                context.env.icon,
-                Some(100_000),
-            )
-            .execute()?;
-            context.vim.exec(
-                "clap#state#process_grep_forerunner_result",
-                json!({ "exec_info": exec_info }),
-            )?;
-        }
-        "grep" => {
-            let rg_cmd = RgTokioCommand::new(context.cwd.to_path_buf());
-            let (digest, refreshed) = if context.env.no_cache {
-                (rg_cmd.create_cache().await?, true)
-            } else {
-                // Only directly reuse the cache when it's sort of huge.
-                match rg_cmd.cache_digest() {
-                    Some(digest) if digest.total > 100_000 => (digest, false),
-                    _ => (rg_cmd.create_cache().await?, true),
-                }
-            };
-            let (total, path) = (digest.total, digest.cached_path);
-            context.vim.set_var("g:__clap_forerunner_tempfile", &path)?;
-            return Ok(ProviderSource::CachedFile {
-                total,
-                path,
-                refreshed,
-            });
         }
         "help_tags" => {
             let helplang: String = context.vim.eval("&helplang").await?;
@@ -188,6 +155,12 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
 pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
     const TIMEOUT: Duration = Duration::from_millis(300);
 
+    // Skip the initialization.
+    match context.provider_id() {
+        "grep" | "live_grep" => return Ok(()),
+        _ => {}
+    }
+
     match tokio::time::timeout(TIMEOUT, initialize_provider_source(context)).await {
         Ok(provider_source_result) => match provider_source_result {
             Ok(provider_source) => {
@@ -229,6 +202,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                 context.set_provider_source(ProviderSource::Command(source_cmd));
             }
 
+            /* no longer necessary for grep provider.
             // Try creating cache for some potential heavy providers.
             match context.provider_id() {
                 "grep" | "live_grep" => {
@@ -255,6 +229,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                 }
                 _ => {}
             }
+            */
         }
     }
 

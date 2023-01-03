@@ -14,7 +14,7 @@ pub type SessionId = u64;
 
 #[derive(Debug)]
 pub struct Session {
-    session_id: u64,
+    session_id: SessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
     event_recv: UnboundedReceiver<ProviderEvent>,
@@ -86,7 +86,7 @@ impl Session {
                 maybe_event = self.event_recv.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::debug!(?event, "[with_debounce] Received an event");
+                            tracing::debug!("[with_debounce] Received event: {event:?}");
 
                             match event {
                                 ProviderEvent::Terminate => {
@@ -163,7 +163,7 @@ impl Session {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.event_recv.recv().await {
-            tracing::debug!(?event, "[without_debounce] Received an event");
+            tracing::debug!("[without_debounce] Received event: {event:?}");
 
             match event {
                 ProviderEvent::Terminate => {
@@ -215,7 +215,7 @@ impl SessionManager {
 
             session_sender
                 .send(ProviderEvent::Create)
-                .expect("Failed to send Create Event");
+                .expect("Failed to send event ProviderEvent::Create");
 
             v.insert(ProviderEventSender::new(session_sender, session_id));
         } else {

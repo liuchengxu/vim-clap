@@ -65,7 +65,7 @@ impl Client {
                 match call {
                     Call::Notification(notification) => {
                         if let Err(e) = session_client.process_notification(notification).await {
-                            tracing::error!(error = ?e, "Error at handling a Vim Notification");
+                            tracing::error!(error = ?e, "Error at handling Vim Notification");
                         }
                     }
                     Call::MethodCall(method_call) => {
@@ -81,7 +81,7 @@ impl Client {
                             }
                             Ok(None) => {}
                             Err(e) => {
-                                tracing::error!(error = ?e, "Error at handling a Vim MethodCall");
+                                tracing::error!(error = ?e, "Error at handling Vim MethodCall");
                             }
                         }
                     }

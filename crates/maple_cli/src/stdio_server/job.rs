@@ -10,6 +10,7 @@ static JOBS: Lazy<Arc<Mutex<HashSet<u64>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashSet::default())));
 
 /// Spawn a new task to run the job if it's not reserved.
+#[allow(unused)]
 pub fn try_start(job_future: impl Future<Output = ()> + Send + Sync + 'static, job_id: u64) {
     if reserve(job_id) {
         tokio::spawn(async move {
