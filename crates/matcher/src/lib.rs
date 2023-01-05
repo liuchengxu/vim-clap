@@ -149,12 +149,10 @@ impl ExactMatcher {
             }
         }
 
-        if !indices.is_empty() {
-            // Exact search term bonus
-            //
-            // The shorter search line has a higher score.
-            exact_score += (512 / full_search_line.len()) as Score;
-        }
+        // Add an exact search term bonus whether the exact matches exist or not.
+        //
+        // The shorter search line has a higher score.
+        exact_score += (512 / full_search_line.len()) as Score;
 
         Some((exact_score, indices))
     }
@@ -635,10 +633,10 @@ mod tests {
         let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
-                Some(MatchResult::new(138, [14, 36].to_vec())),
+                Some(MatchResult::new(126, [14, 36].to_vec())),
                 None,
                 None,
-                Some(MatchResult::new(383, [0, 1].to_vec()))
+                Some(MatchResult::new(360, [0, 1].to_vec()))
             ],
             match_results
         );
