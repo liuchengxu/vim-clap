@@ -195,26 +195,28 @@ impl StoppableSearchImpl {
                             .path()
                             .strip_prefix(&search_root)
                             .unwrap_or_else(|_| entry.path());
-                        let maybe_file_result = matcher.match_file_result(path, line.trim()).map(
-                            |matched_file_result| {
-                                let matcher::MatchedFileResult {
-                                    exact_indices,
-                                    fuzzy_indices,
-                                    score,
-                                } = matched_file_result;
+                        let line = line.trim();
+                        let maybe_file_result =
+                            matcher
+                                .match_file_result(path, line)
+                                .map(|matched_file_result| {
+                                    let matcher::MatchedFileResult {
+                                        exact_indices,
+                                        fuzzy_indices,
+                                        score,
+                                    } = matched_file_result;
 
-                                FileResult {
-                                    // TODO: May be cached somewhere so that the allcation won't be
-                                    // neccessary each time.
-                                    path: entry.path().to_path_buf(),
-                                    line_number: line_num as usize - 1,
-                                    score,
-                                    line: line.to_string(),
-                                    indices_in_path: exact_indices,
-                                    indices_in_line: fuzzy_indices,
-                                }
-                            },
-                        );
+                                    FileResult {
+                                        // TODO: May be cached somewhere so that the allcation won't be
+                                        // neccessary each time.
+                                        path: entry.path().to_path_buf(),
+                                        line_number: line_num as usize - 1,
+                                        score,
+                                        line: line.to_string(),
+                                        indices_in_path: exact_indices,
+                                        indices_in_line: fuzzy_indices,
+                                    }
+                                });
 
                         let searcher_message = if let Some(file_result) = maybe_file_result {
                             SearcherMessage::Match(file_result)
