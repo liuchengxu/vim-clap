@@ -149,10 +149,12 @@ impl ExactMatcher {
             }
         }
 
-        // Exact search term bonus
-        //
-        // The shorter search line has a higher score.
-        exact_score += (512 / full_search_line.len()) as Score;
+        if !indices.is_empty() {
+            // Exact search term bonus
+            //
+            // The shorter search line has a higher score.
+            exact_score += (512 / full_search_line.len()) as Score;
+        }
 
         Some((exact_score, indices))
     }
@@ -372,7 +374,7 @@ impl Matcher {
     }
 
     /// Actually performs the matching algorithm.
-    pub fn match_file_result(&self, path: &Path, line: &str) -> Option<MatchedItem> {
+    pub fn match_file_result(&self, path: &Path, line: &str) -> Option<MatchedFileResult> {
         if line.is_empty() {
             return None;
         }
@@ -384,24 +386,30 @@ impl Matcher {
             return None;
         }
 
-        let (exact_score, mut indices) = match self.exact_matcher.find_matches(path) {
-            Some(res) => res,
-            None => self.exact_matcher.find_matches(line)?,
-        };
+        let ((exact_score, exact_indices), exact_indices_in_path) =
+            match self.exact_matcher.find_matches(path) {
+                Some((score, indices)) => ((score, indices), true),
+                None => (self.exact_matcher.find_matches(line)?, false),
+            };
 
         let fuzzy_text = FuzzyText::new(line, 0);
         let (fuzzy_score, mut fuzzy_indices) = self.fuzzy_matcher.match_fuzzy_text(&fuzzy_text)?;
 
         // Merge the results from multi matchers.
-        let match_result = if fuzzy_indices.is_empty() {
+        let matched_file_result = if fuzzy_indices.is_empty() {
             let bonus_score = self
                 .bonus_matcher
-                .calc_text_bonus(line, exact_score, &indices);
+                .calc_text_bonus(line, exact_score, &exact_indices);
 
-            indices.sort_unstable();
-            indices.dedup();
+            let mut exact_indices = exact_indices;
+            exact_indices.sort_unstable();
+            exact_indices.dedup();
 
-            MatchResult::new(exact_score + bonus_score, indices)
+            MatchedFileResult {
+                score: exact_score + bonus_score,
+                exact_indices,
+                fuzzy_indices: Vec::new(),
+            }
         } else {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
@@ -410,20 +418,37 @@ impl Matcher {
                 .bonus_matcher
                 .calc_text_bonus(line, fuzzy_score, &fuzzy_indices);
 
-            indices.extend_from_slice(fuzzy_indices.as_slice());
-            indices.sort_unstable();
-            indices.dedup();
+            let score = exact_score + bonus_score + fuzzy_score;
 
-            MatchResult::new(exact_score + bonus_score + fuzzy_score, indices)
+            if exact_indices_in_path {
+                MatchedFileResult {
+                    exact_indices,
+                    fuzzy_indices,
+                    score,
+                }
+            } else {
+                let mut indices = exact_indices;
+                indices.extend_from_slice(fuzzy_indices.as_slice());
+                indices.sort_unstable();
+                indices.dedup();
+
+                MatchedFileResult {
+                    exact_indices: Vec::new(),
+                    fuzzy_indices: indices,
+                    score,
+                }
+            }
         };
 
-        // TODO: GrepItem?
-        Some(MatchedItem::new(
-            Arc::new(line.to_string()),
-            match_result.score,
-            match_result.indices,
-        ))
+        Some(matched_file_result)
     }
+}
+
+#[derive(Debug)]
+pub struct MatchedFileResult {
+    pub exact_indices: Vec<usize>,
+    pub fuzzy_indices: Vec<usize>,
+    pub score: Score,
 }
 
 #[cfg(test)]

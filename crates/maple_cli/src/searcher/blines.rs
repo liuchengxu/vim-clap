@@ -24,7 +24,7 @@ fn search_lines(
     stop_signal: Arc<AtomicBool>,
     item_sender: UnboundedSender<SearcherMessage>,
 ) -> Result<()> {
-    let source_file = std::fs::File::open(&source_file)?;
+    let source_file = std::fs::File::open(source_file)?;
 
     let index = AtomicUsize::new(0);
     let _ = std::io::BufReader::new(source_file)

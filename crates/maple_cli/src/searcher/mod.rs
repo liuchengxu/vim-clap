@@ -5,7 +5,7 @@ use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
 use ignore::{DirEntry, WalkBuilder, WalkParallel, WalkState};
-use matcher::Matcher;
+use matcher::{Matcher, Score};
 use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -94,7 +94,10 @@ pub struct FileResult {
     pub path: PathBuf,
     /// 0-based.
     pub line_number: usize,
-    pub matched_item: MatchedItem,
+    pub score: Score,
+    pub line: String,
+    pub indices_in_path: Vec<usize>,
+    pub indices_in_line: Vec<usize>,
 }
 
 fn walk_parallel(search_root: PathBuf) -> WalkParallel {
@@ -151,11 +154,12 @@ impl StoppableSearchImpl {
             .binary_detection(BinaryDetection::quit(b'\x00'))
             .build();
 
-        walk_parallel(search_root).run(|| {
+        walk_parallel(search_root.clone()).run(|| {
             let mut searcher = searcher.clone();
             let matcher = matcher.clone();
             let sender = sender.clone();
             let stop_signal = stop_signal.clone();
+            let search_root = search_root.clone();
             Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                 if stop_signal.load(Ordering::SeqCst) {
                     return WalkState::Quit;
@@ -187,15 +191,30 @@ impl StoppableSearchImpl {
                             }
                         }
 
-                        let maybe_file_result = matcher
-                            .match_file_result(entry.path(), line.trim())
-                            .map(|matched_item| FileResult {
-                                // TODO: May be cached somewhere so that the allcation won't be
-                                // neccessary each time.
-                                path: entry.path().to_path_buf(),
-                                line_number: line_num as usize - 1,
-                                matched_item,
-                            });
+                        let path = entry
+                            .path()
+                            .strip_prefix(&search_root)
+                            .unwrap_or_else(|_| entry.path());
+                        let maybe_file_result = matcher.match_file_result(path, line.trim()).map(
+                            |matched_file_result| {
+                                let matcher::MatchedFileResult {
+                                    exact_indices,
+                                    fuzzy_indices,
+                                    score,
+                                } = matched_file_result;
+
+                                FileResult {
+                                    // TODO: May be cached somewhere so that the allcation won't be
+                                    // neccessary each time.
+                                    path: entry.path().to_path_buf(),
+                                    line_number: line_num as usize - 1,
+                                    score,
+                                    line: line.to_string(),
+                                    indices_in_path: exact_indices,
+                                    indices_in_line: fuzzy_indices,
+                                }
+                            },
+                        );
 
                         let searcher_message = if let Some(file_result) = maybe_file_result {
                             SearcherMessage::Match(file_result)
@@ -295,8 +314,7 @@ impl BestFileResults {
     }
 
     fn sort(&mut self) {
-        self.results
-            .sort_unstable_by(|a, b| b.matched_item.score.cmp(&a.matched_item.score));
+        self.results.sort_unstable_by(|a, b| b.score.cmp(&a.score));
     }
 }
 
@@ -345,8 +363,12 @@ impl Searcher {
             let items = best_results
                 .iter()
                 .filter_map(|file_result| {
-                    let mut matched_item = file_result.matched_item.clone();
-                    if let Some(mut column) = matched_item.indices.first().copied() {
+                    let maybe_column = match file_result.indices_in_path.first() {
+                        Some(first_indice) => Some(first_indice),
+                        None => file_result.indices_in_line.first(),
+                    };
+
+                    if let Some(mut column) = maybe_column.copied() {
                         let line_number = file_result.line_number + 1;
                         column += 1;
                         let mut fmt_line = if let Ok(relative_path) =
@@ -357,9 +379,25 @@ impl Searcher {
                             format!("{}:{line_number}:{column}:", file_result.path.display())
                         };
                         let offset = fmt_line.len();
-                        fmt_line.push_str(matched_item.display_text().as_ref());
-                        matched_item.output_text.replace(fmt_line);
-                        matched_item.indices.iter_mut().for_each(|x| *x += offset);
+                        fmt_line.push_str(&file_result.line);
+
+                        let fuzzy_indices = file_result
+                            .indices_in_line
+                            .iter()
+                            .copied()
+                            .map(|x| x + offset)
+                            .collect::<Vec<_>>();
+
+                        let mut indices = file_result.indices_in_path.clone();
+                        indices.extend_from_slice(&fuzzy_indices);
+
+                        let matched_item = MatchedItem {
+                            item: Arc::new(fmt_line),
+                            score: file_result.score,
+                            indices,
+                            display_text: None,
+                            output_text: None,
+                        };
                         Some(matched_item)
                     } else {
                         None
@@ -399,7 +437,7 @@ impl Searcher {
                             .expect("Max capacity is non-zero; qed");
 
                         let new = file_result;
-                        if new.matched_item.score > last.matched_item.score {
+                        if new.score > last.score {
                             *last = new;
                             best_results.sort();
                         }
