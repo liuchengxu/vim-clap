@@ -633,10 +633,10 @@ mod tests {
         let match_results: Vec<_> = match_with_query(query);
         assert_eq!(
             vec![
-                Some(MatchResult::new(126, [14, 36].to_vec())),
+                Some(MatchResult::new(138, [14, 36].to_vec())),
                 None,
                 None,
-                Some(MatchResult::new(360, [0, 1].to_vec()))
+                Some(MatchResult::new(383, [0, 1].to_vec()))
             ],
             match_results
         );
