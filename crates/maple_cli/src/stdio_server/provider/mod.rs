@@ -1,3 +1,4 @@
+mod blines;
 mod dumb_jump;
 mod filer;
 mod generic_provider;
@@ -8,10 +9,11 @@ use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
+use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use icon::{Icon, IconKind};
-use matcher::{Bonus, MatchScope, MatcherBuilder};
+use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,11 +24,61 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
+pub use self::blines::BlinesProvider;
 pub use self::dumb_jump::DumbJumpProvider;
 pub use self::filer::{read_dir_entries, FilerProvider};
 pub use self::generic_provider::GenericProvider;
 pub use self::grep::GrepProvider;
 pub use self::recent_files::RecentFilesProvider;
+
+#[derive(Debug)]
+struct SearcherControl {
+    stop_signal: Arc<AtomicBool>,
+    join_handle: tokio::task::JoinHandle<()>,
+}
+
+impl SearcherControl {
+    fn kill(self) {
+        self.stop_signal.store(true, Ordering::SeqCst);
+        self.join_handle.abort();
+    }
+}
+
+fn start_searcher(
+    number: usize,
+    context: &ProviderContext,
+    vim: Vim,
+    search_root: PathBuf,
+    matcher: Matcher,
+) -> SearcherControl {
+    let stop_signal = Arc::new(AtomicBool::new(false));
+
+    let join_handle = {
+        let icon = context.env.icon;
+        let winwidth = context.env.display_winwidth;
+        let stop_signal = stop_signal.clone();
+
+        tokio::spawn(async move {
+            let progressor = VimProgressor::new(vim.clone(), stop_signal.clone());
+            crate::searcher::Searcher {
+                search_root,
+                matcher,
+                stop_signal,
+                number,
+                icon,
+                winwidth,
+                vim,
+            }
+            .run_with_progressor(progressor)
+            .await
+        })
+    };
+
+    SearcherControl {
+        stop_signal,
+        join_handle,
+    }
+}
 
 /// bufnr and winid.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,3 +1,6 @@
+pub mod blines;
+
+use crate::stdio_server::Vim;
 use filter::MatchedItem;
 use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
@@ -5,6 +8,7 @@ use ignore::{DirEntry, WalkBuilder, WalkParallel, WalkState};
 use matcher::Matcher;
 use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -113,14 +117,14 @@ fn walk_parallel(search_root: PathBuf) -> WalkParallel {
 }
 
 #[derive(Debug)]
-struct StoppableSearcher {
+struct StoppableSearchImpl {
     search_root: PathBuf,
     matcher: Matcher,
     sender: UnboundedSender<SearcherMessage>,
     stop_signal: Arc<AtomicBool>,
 }
 
-impl StoppableSearcher {
+impl StoppableSearchImpl {
     fn new(
         search_root: PathBuf,
         matcher: Matcher,
@@ -232,7 +236,7 @@ pub async fn cli_search(search_root: PathBuf, matcher: Matcher) -> SearchResult 
 
     std::thread::Builder::new()
         .name("searcher-worker".into())
-        .spawn(move || StoppableSearcher::new(search_root, matcher, sender, stop_signal).run())
+        .spawn(move || StoppableSearchImpl::new(search_root, matcher, sender, stop_signal).run())
         .expect("Failed to spawn searcher worker thread");
 
     let mut matches = Vec::new();
@@ -296,144 +300,164 @@ impl BestFileResults {
     }
 }
 
-pub async fn search<P: ProgressUpdate<DisplayLines>>(
-    search_root: PathBuf,
-    matcher: Matcher,
-    stop_signal: Arc<AtomicBool>,
-    number: usize,
-    icon: Icon,
-    winwidth: usize,
-    progressor: P,
-) {
-    let mut best_results = BestFileResults::new(number);
+#[derive(Debug)]
+pub struct Searcher {
+    pub search_root: PathBuf,
+    pub matcher: Matcher,
+    pub stop_signal: Arc<AtomicBool>,
+    pub number: usize,
+    pub icon: Icon,
+    pub winwidth: usize,
+    pub vim: Vim,
+}
 
-    let (sender, mut receiver) = unbounded_channel();
+impl Searcher {
+    pub async fn run_with_progressor<P: ProgressUpdate<DisplayLines>>(self, progressor: P) {
+        let Self {
+            search_root,
+            matcher,
+            stop_signal,
+            number,
+            icon,
+            winwidth,
+            vim,
+        } = self;
 
-    std::thread::Builder::new()
-        .name("searcher-worker".into())
-        .spawn({
-            let stop_signal = stop_signal.clone();
-            let search_root = search_root.clone();
-            move || StoppableSearcher::new(search_root, matcher, sender, stop_signal).run()
-        })
-        .expect("Failed to spawn searcher worker thread");
+        let mut best_results = BestFileResults::new(number);
 
-    let mut total_matched = 0usize;
-    let mut total_processed = 0usize;
+        let (sender, mut receiver) = unbounded_channel();
 
-    let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
-        let items = best_results
-            .iter()
-            .filter_map(|file_result| {
-                let mut matched_item = file_result.matched_item.clone();
-                if let Some(mut column) = matched_item.indices.first().copied() {
-                    let line_number = file_result.line_number + 1;
-                    column += 1;
-                    let mut fmt_line =
-                        if let Ok(relative_path) = file_result.path.strip_prefix(&search_root) {
+        let _ = vim.exec("clap#spinner#set_busy", json!([]));
+
+        std::thread::Builder::new()
+            .name("searcher-worker".into())
+            .spawn({
+                let stop_signal = stop_signal.clone();
+                let search_root = search_root.clone();
+                move || StoppableSearchImpl::new(search_root, matcher, sender, stop_signal).run()
+            })
+            .expect("Failed to spawn searcher worker thread");
+
+        let mut total_matched = 0usize;
+        let mut total_processed = 0usize;
+
+        let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
+            let items = best_results
+                .iter()
+                .filter_map(|file_result| {
+                    let mut matched_item = file_result.matched_item.clone();
+                    if let Some(mut column) = matched_item.indices.first().copied() {
+                        let line_number = file_result.line_number + 1;
+                        column += 1;
+                        let mut fmt_line = if let Ok(relative_path) =
+                            file_result.path.strip_prefix(&search_root)
+                        {
                             format!("{}:{line_number}:{column}:", relative_path.display())
                         } else {
                             format!("{}:{line_number}:{column}:", file_result.path.display())
                         };
-                    let offset = fmt_line.len();
-                    fmt_line.push_str(matched_item.display_text().as_ref());
-                    matched_item.output_text.replace(fmt_line);
-                    matched_item.indices.iter_mut().for_each(|x| *x += offset);
-                    Some(matched_item)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        printer::decorate_lines(items, winwidth, icon)
-    };
-
-    let now = std::time::Instant::now();
-    while let Some(searcher_message) = receiver.recv().await {
-        if stop_signal.load(Ordering::SeqCst) {
-            return;
-        }
-
-        match searcher_message {
-            SearcherMessage::Match(file_result) => {
-                total_matched += 1;
-                total_processed += 1;
-
-                if best_results.results.len() <= best_results.max_capacity {
-                    best_results.results.push(file_result);
-                    best_results.sort();
-
-                    let now = Instant::now();
-                    if now > best_results.past + UPDATE_INTERVAL {
-                        let display_lines = to_display_lines(&best_results.results, winwidth, icon);
-                        progressor.update_all(&display_lines, total_matched, total_processed);
-                        best_results.last_lines = display_lines.lines;
-                        best_results.past = now;
+                        let offset = fmt_line.len();
+                        fmt_line.push_str(matched_item.display_text().as_ref());
+                        matched_item.output_text.replace(fmt_line);
+                        matched_item.indices.iter_mut().for_each(|x| *x += offset);
+                        Some(matched_item)
+                    } else {
+                        None
                     }
-                } else {
-                    let last = best_results
-                        .results
-                        .last_mut()
-                        .expect("Max capacity is non-zero; qed");
+                })
+                .collect();
+            printer::decorate_lines(items, winwidth, icon)
+        };
 
-                    let new = file_result;
-                    if new.matched_item.score > last.matched_item.score {
-                        *last = new;
+        let now = std::time::Instant::now();
+        while let Some(searcher_message) = receiver.recv().await {
+            if stop_signal.load(Ordering::SeqCst) {
+                return;
+            }
+
+            match searcher_message {
+                SearcherMessage::Match(file_result) => {
+                    total_matched += 1;
+                    total_processed += 1;
+
+                    if best_results.results.len() <= best_results.max_capacity {
+                        best_results.results.push(file_result);
                         best_results.sort();
-                    }
 
-                    if total_matched % 16 == 0 || total_processed % 16 == 0 {
                         let now = Instant::now();
                         if now > best_results.past + UPDATE_INTERVAL {
                             let display_lines =
                                 to_display_lines(&best_results.results, winwidth, icon);
-
-                            let visible_highlights = display_lines
-                                .indices
-                                .iter()
-                                .map(|line_highlights| {
-                                    line_highlights
-                                        .iter()
-                                        .copied()
-                                        .filter(|&x| x <= winwidth)
-                                        .collect::<Vec<_>>()
-                                })
-                                .collect::<Vec<_>>();
-
-                            if best_results.last_lines != display_lines.lines.as_slice()
-                                || best_results.last_visible_highlights != visible_highlights
-                            {
-                                progressor.update_all(
-                                    &display_lines,
-                                    total_matched,
-                                    total_processed,
-                                );
-                                best_results.last_lines = display_lines.lines;
-                                best_results.last_visible_highlights = visible_highlights;
-                            } else {
-                                progressor.update_brief(total_matched, total_processed)
-                            }
-
+                            progressor.update_all(&display_lines, total_matched, total_processed);
+                            best_results.last_lines = display_lines.lines;
                             best_results.past = now;
+                        }
+                    } else {
+                        let last = best_results
+                            .results
+                            .last_mut()
+                            .expect("Max capacity is non-zero; qed");
+
+                        let new = file_result;
+                        if new.matched_item.score > last.matched_item.score {
+                            *last = new;
+                            best_results.sort();
+                        }
+
+                        if total_matched % 16 == 0 || total_processed % 16 == 0 {
+                            let now = Instant::now();
+                            if now > best_results.past + UPDATE_INTERVAL {
+                                let display_lines =
+                                    to_display_lines(&best_results.results, winwidth, icon);
+
+                                let visible_highlights = display_lines
+                                    .indices
+                                    .iter()
+                                    .map(|line_highlights| {
+                                        line_highlights
+                                            .iter()
+                                            .copied()
+                                            .filter(|&x| x <= winwidth)
+                                            .collect::<Vec<_>>()
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                if best_results.last_lines != display_lines.lines.as_slice()
+                                    || best_results.last_visible_highlights != visible_highlights
+                                {
+                                    progressor.update_all(
+                                        &display_lines,
+                                        total_matched,
+                                        total_processed,
+                                    );
+                                    best_results.last_lines = display_lines.lines;
+                                    best_results.last_visible_highlights = visible_highlights;
+                                } else {
+                                    progressor.update_brief(total_matched, total_processed)
+                                }
+
+                                best_results.past = now;
+                            }
                         }
                     }
                 }
-            }
-            SearcherMessage::ProcessedOne => {
-                total_processed += 1;
+                SearcherMessage::ProcessedOne => {
+                    total_processed += 1;
+                }
             }
         }
-    }
 
-    tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
+        tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
 
-    let BestFileResults { results, .. } = best_results;
+        let BestFileResults { results, .. } = best_results;
 
-    let display_lines = to_display_lines(&results, winwidth, icon);
+        let display_lines = to_display_lines(&results, winwidth, icon);
 
-    progressor.on_finished(display_lines, total_matched, total_processed);
+        progressor.on_finished(display_lines, total_matched, total_processed);
+        let _ = vim.exec("clap#spinner#set_idle", json!([]));
 
-    tracing::debug!(
+        tracing::debug!(
         "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
+    }
 }

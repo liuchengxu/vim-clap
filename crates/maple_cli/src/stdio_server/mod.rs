@@ -8,13 +8,13 @@ mod types;
 mod vim;
 
 use self::provider::{
-    ClapProvider, DumbJumpProvider, Event, FilerProvider, GenericProvider, GrepProvider,
-    ProviderContext, ProviderEvent, RecentFilesProvider,
+    BlinesProvider, ClapProvider, DumbJumpProvider, Event, FilerProvider, GenericProvider,
+    GrepProvider, ProviderContext, ProviderEvent, RecentFilesProvider,
 };
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
-use self::vim::Vim;
+pub use self::vim::Vim;
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
@@ -105,6 +105,7 @@ impl Client {
                     let context = ProviderContext::new(notification.params, vim).await?;
                     let provider: Box<dyn ClapProvider> =
                         match self.vim.provider_id().await?.as_str() {
+                            "blines" => Box::new(BlinesProvider::new(context)),
                             "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
                             "filer" => Box::new(FilerProvider::new(context)),
                             "grep" => Box::new(GrepProvider::new(context)),
