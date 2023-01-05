@@ -213,6 +213,11 @@ impl ProviderContext {
         let mut preview_cache = self.preview_cache.write();
         preview_cache.insert(preview_target, preview);
     }
+
+    pub fn signify_terminated(&self, session_id: u64) {
+        self.terminated.store(true, Ordering::SeqCst);
+        tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id(),);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -430,12 +435,10 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         Ok(())
     }
 
+    /// On receiving the Terminate event.
+    ///
     /// Sets the running signal to false, in case of the forerunner thread is still working.
-    fn handle_terminate(&mut self, session_id: u64) {
-        self.context().terminated.store(true, Ordering::SeqCst);
-        tracing::debug!(
-            "Session {session_id:?}-{} terminated",
-            self.context().env.provider_id,
-        );
+    fn on_terminate(&mut self, session_id: u64) {
+        self.context().signify_terminated(session_id);
     }
 }

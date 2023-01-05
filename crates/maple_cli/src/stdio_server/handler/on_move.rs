@@ -2,6 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
+use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 use anyhow::{anyhow, Result};
@@ -552,5 +553,40 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
             None
         }
+    }
+}
+
+pub struct OnMoveImpl<'a> {
+    context: &'a ProviderContext,
+    vim: &'a Vim,
+}
+
+impl<'a> OnMoveImpl<'a> {
+    pub fn new(context: &'a ProviderContext, vim: &'a Vim) -> Self {
+        Self { context, vim }
+    }
+
+    pub async fn do_preview(&self) -> Result<()> {
+        let lnum = self.vim.display_getcurlnum().await?;
+
+        let curline = self.vim.display_getcurline().await?;
+
+        if curline.is_empty() {
+            tracing::debug!("Skipping preview as curline is empty");
+            return Ok(());
+        }
+
+        let preview_height = self.context.preview_height().await?;
+        let on_move_handler = OnMoveHandler::create(curline, preview_height, self.context)?;
+
+        let preview = on_move_handler.get_preview().await?;
+
+        // Ensure the preview result is not out-dated.
+        let cur_lnum = self.vim.display_getcurlnum().await?;
+        if cur_lnum == lnum {
+            self.vim.render_preview(preview)?;
+        }
+
+        Ok(())
     }
 }

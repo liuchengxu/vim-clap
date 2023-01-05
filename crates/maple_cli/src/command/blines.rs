@@ -27,9 +27,9 @@ pub struct Blines {
 }
 
 #[derive(Debug)]
-struct BlinesItem {
-    raw: String,
-    line_number: usize,
+pub struct BlinesItem {
+    pub raw: String,
+    pub line_number: usize,
 }
 
 impl ClapItem for BlinesItem {

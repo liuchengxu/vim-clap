@@ -90,7 +90,7 @@ impl Session {
 
                             match event {
                                 ProviderEvent::Terminate => {
-                                    self.provider.handle_terminate(self.session_id);
+                                    self.provider.on_terminate(self.session_id);
                                     break;
                                 }
                                 ProviderEvent::Create => {
@@ -167,7 +167,7 @@ impl Session {
 
             match event {
                 ProviderEvent::Terminate => {
-                    self.provider.handle_terminate(self.session_id);
+                    self.provider.on_terminate(self.session_id);
                     break;
                 }
                 ProviderEvent::Create => {

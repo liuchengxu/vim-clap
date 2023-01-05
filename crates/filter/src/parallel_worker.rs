@@ -69,15 +69,102 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 }
 
 #[derive(Debug)]
-struct BestItems<P: ProgressUpdate<DisplayLines>> {
+pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
+    pub icon: Icon,
     /// Time of last notification.
-    past: Instant,
-    items: Vec<MatchedItem>,
-    last_lines: Vec<String>,
-    max_capacity: usize,
-    icon: Icon,
-    winwidth: usize,
-    progressor: P,
+    pub past: Instant,
+    /// Top N items.
+    pub items: Vec<MatchedItem>,
+    pub last_lines: Vec<String>,
+    pub last_visible_highlights: Vec<Vec<usize>>,
+    pub winwidth: usize,
+    pub max_capacity: usize,
+    pub progressor: P,
+}
+
+impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
+    pub fn new(icon: Icon, winwidth: usize, max_capacity: usize, progressor: P) -> Self {
+        Self {
+            icon,
+            past: Instant::now(),
+            items: Vec::with_capacity(max_capacity),
+            last_lines: Vec::with_capacity(max_capacity),
+            last_visible_highlights: Vec::with_capacity(max_capacity),
+            winwidth,
+            max_capacity,
+            progressor,
+        }
+    }
+
+    fn sort(&mut self) {
+        self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+    }
+
+    pub fn on_new_match(
+        &mut self,
+        matched_item: MatchedItem,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        if self.items.len() < self.max_capacity {
+            self.items.push(matched_item);
+            self.sort();
+
+            let now = Instant::now();
+            if now > self.past + UPDATE_INTERVAL {
+                let display_lines =
+                    printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
+                self.progressor
+                    .update_all(&display_lines, total_matched, total_processed);
+                self.last_lines = display_lines.lines;
+                self.past = now;
+            }
+        } else {
+            let last = self
+                .items
+                .last_mut()
+                .expect("Max capacity is non-zero; qed");
+
+            let new = matched_item;
+            if new.score > last.score {
+                *last = new;
+                self.sort();
+            }
+
+            if total_matched % 16 == 0 || total_processed % 16 == 0 {
+                let now = Instant::now();
+                if now > self.past + UPDATE_INTERVAL {
+                    let display_lines =
+                        printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
+
+                    let visible_highlights = display_lines
+                        .indices
+                        .iter()
+                        .map(|line_highlights| {
+                            line_highlights
+                                .iter()
+                                .copied()
+                                .filter(|&x| x <= self.winwidth)
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>();
+
+                    if self.last_lines != display_lines.lines.as_slice()
+                        || self.last_visible_highlights != visible_highlights
+                    {
+                        self.progressor
+                            .update_all(&display_lines, total_matched, total_processed);
+                        self.last_lines = display_lines.lines;
+                        self.last_visible_highlights = visible_highlights;
+                    } else {
+                        self.progressor.update_brief(total_matched, total_processed)
+                    }
+
+                    self.past = now;
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -151,66 +238,6 @@ impl ProgressUpdate<DisplayLines> for StdioProgressor {
     }
 }
 
-impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
-    fn new(max_capacity: usize, icon: Icon, winwidth: usize, progressor: P) -> Self {
-        Self {
-            past: Instant::now(),
-            items: Vec::with_capacity(max_capacity),
-            last_lines: Vec::with_capacity(max_capacity),
-            max_capacity,
-            icon,
-            winwidth,
-            progressor,
-        }
-    }
-
-    fn try_push_and_notify(&mut self, new: MatchedItem, matched: usize, processed: usize) {
-        if self.items.len() <= self.max_capacity {
-            self.items.push(new);
-            self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
-
-            let now = Instant::now();
-            if now > self.past + UPDATE_INTERVAL {
-                let display_lines =
-                    printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
-                self.progressor
-                    .update_all(&display_lines, matched, processed);
-                self.last_lines = display_lines.lines;
-                self.past = now;
-            }
-        } else {
-            let last = self
-                .items
-                .last_mut()
-                .expect("Max capacity is non-zero; qed");
-
-            if new.score > last.score {
-                *last = new;
-                self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
-            }
-
-            if matched % 16 == 0 || processed % 16 == 0 {
-                let now = Instant::now();
-                if now > self.past + UPDATE_INTERVAL {
-                    let display_lines =
-                        printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
-
-                    // TODO: the lines are the same, but the highlights are not.
-                    if self.last_lines != display_lines.lines.as_slice() {
-                        self.progressor
-                            .update_all(&display_lines, matched, processed);
-                        self.last_lines = display_lines.lines;
-                    } else {
-                        self.progressor.update_brief(matched, processed)
-                    }
-
-                    self.past = now;
-                }
-            }
-        }
-    }
-}
-
 enum ParSourceInner<I: IntoParallelIterator<Item = Arc<dyn ClapItem>>, R: Read + Send> {
     Items(I),
     Lines(R),
@@ -241,7 +268,7 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Mutex::new(BestItems::new(number, icon, winwidth, StdioProgressor));
+    let best_items = Mutex::new(BestItems::new(icon, winwidth, number, StdioProgressor));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
         if let Some(matched_item) = matcher.match_item(item) {
@@ -249,7 +276,7 @@ where
 
             // TODO: not use mutex?
             let mut best_items = best_items.lock();
-            best_items.try_push_and_notify(matched_item, matched, processed);
+            best_items.on_new_match(matched_item, matched, processed);
             drop(best_items);
         }
     };
@@ -319,7 +346,7 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Mutex::new(BestItems::new(number, icon, winwidth, progressor));
+    let best_items = Mutex::new(BestItems::new(icon, winwidth, number, progressor));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
         if let Some(matched_item) = matcher.match_item(item) {
@@ -327,7 +354,7 @@ where
 
             // TODO: not use mutex?
             let mut best_items = best_items.lock();
-            best_items.try_push_and_notify(matched_item, matched, processed);
+            best_items.on_new_match(matched_item, matched, processed);
             drop(best_items);
         }
     };

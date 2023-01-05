@@ -17,7 +17,10 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "3.2", features = ["derive"] }
 directories = "4.0"
 futures = "0.3"
+# ripgrep for global search
+grep = "0.2.10"
 grep-matcher = "0.1"
+ignore = "0.4"
 itertools = "0.10"
 num_cpus = "1.13"
 tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }
@@ -32,10 +35,6 @@ toml = "0.5"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = "0.3"
-
-ignore = "0.4"
-# ripgrep for global search
-grep = "0.2.10"
 
 dumb_analyzer = { path = "../dumb_analyzer" }
 filter = { path = "../filter" }

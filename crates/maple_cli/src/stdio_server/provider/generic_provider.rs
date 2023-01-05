@@ -306,17 +306,12 @@ impl ClapProvider for GenericProvider {
         Ok(())
     }
 
-    fn handle_terminate(&mut self, session_id: u64) {
+    fn on_terminate(&mut self, session_id: u64) {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
-        self.context.terminated.store(true, Ordering::SeqCst);
-        tracing::debug!(
-            session_id,
-            provider_id = %self.context.provider_id(),
-            "Session terminated",
-        );
+        self.context.signify_terminated(session_id);
     }
 }

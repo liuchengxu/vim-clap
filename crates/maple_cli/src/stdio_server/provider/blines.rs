@@ -1,4 +1,3 @@
-use crate::stdio_server::handler::OnMoveHandler;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
@@ -6,7 +5,6 @@ use anyhow::Result;
 use matcher::{Bonus, MatchScope, Matcher};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 fn start_searcher(
@@ -112,27 +110,9 @@ impl ClapProvider for BlinesProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim().display_getcurlnum().await?;
-
-        let curline = self.vim().display_getcurline().await?;
-
-        if curline.is_empty() {
-            tracing::debug!("Skipping preview as curline is empty");
-            return Ok(());
-        }
-
-        let preview_height = self.context.preview_height().await?;
-        let on_move_handler = OnMoveHandler::create(curline, preview_height, &self.context)?;
-
-        let preview = on_move_handler.get_preview().await?;
-
-        // Ensure the preview result is not out-dated.
-        let cur_lnum = self.vim().display_getcurlnum().await?;
-        if cur_lnum == lnum {
-            self.vim().render_preview(preview)?;
-        }
-
-        Ok(())
+        crate::stdio_server::handler::OnMoveImpl::new(&self.context, self.vim())
+            .do_preview()
+            .await
     }
 
     async fn on_typed(&mut self) -> Result<()> {
@@ -141,15 +121,11 @@ impl ClapProvider for BlinesProvider {
         Ok(())
     }
 
-    fn handle_terminate(&mut self, session_id: u64) {
+    fn on_terminate(&mut self, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
-        self.context.terminated.store(true, Ordering::SeqCst);
-        tracing::debug!(
-            "Session {session_id:?}-{} terminated",
-            self.context.provider_id(),
-        );
+        self.context.signify_terminated(session_id);
     }
 }
