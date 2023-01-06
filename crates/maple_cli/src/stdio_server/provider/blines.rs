@@ -115,7 +115,11 @@ impl ClapProvider for BlinesProvider {
 
     async fn on_typed(&mut self) -> Result<()> {
         let query = self.vim().input_get().await?;
-        self.process_query(query);
+        if query.is_empty() {
+            self.vim().bare_exec("clap#state#clear_screen")?;
+        } else {
+            self.process_query(query);
+        }
         Ok(())
     }
 

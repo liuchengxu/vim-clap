@@ -108,11 +108,7 @@ function! clap#state#process_result_on_typed(result) abort
   call clap#indicator#set_matches_number(a:result.total)
 
   if a:result.total == 0
-    if exists('g:__clap_lines_truncated_map')
-      unlet g:__clap_lines_truncated_map
-    endif
-    call g:clap.display.clear()
-    call g:clap.preview.clear()
+    clap#state#clear_screen()
     return
   endif
 
@@ -132,6 +128,15 @@ function! clap#state#process_result_on_typed(result) abort
   if has_key(a:result, 'preview') && !empty(a:result.preview)
     call clap#state#process_preview_result(a:result.preview)
   endif
+endfunction
+
+function! clap#state#clear_screen() abort
+  if exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+  call g:clap.display.clear()
+  call g:clap.preview.clear()
+  call clap#indicator#set_none()
 endfunction
 
 function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
