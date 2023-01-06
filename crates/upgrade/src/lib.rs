@@ -1,4 +1,4 @@
-//! This crate provides the features to upgrade maple executable.
+//! This crate provides the features of upgrading the maple executable.
 
 mod github;
 
@@ -7,8 +7,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 
-/// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
-/// vim-clap/bin/maple.
+/// This command is only invoked when user uses the prebuilt binary, more specifically, the
+/// executable runs from `vim-clap/bin/maple`.
 #[derive(Debug, Clone)]
 pub struct Upgrade {
     /// Download if the local version mismatches the latest remote version.
@@ -206,9 +206,9 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "This is flaky in CI"]
     async fn test_download_prebuilt_binary() {
-        download_prebuilt_binary("v0.34", true)
+        let latest_release = retrieve_latest_release().await.unwrap().tag_name;
+        download_prebuilt_binary(&latest_release, true)
             .await
             .expect("Failed to download the prebuilt binary into a tempfile");
     }

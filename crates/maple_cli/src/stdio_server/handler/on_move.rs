@@ -2,7 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
-use crate::stdio_server::vim::Vim;
+use crate::stdio_server::vim::{syntax_for, Vim};
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 use anyhow::{anyhow, Result};
@@ -129,10 +129,9 @@ fn parse_preview_target(
                 let rev = parse_rev(&curline).ok_or_else(err)?;
                 PreviewTarget::Commit(rev.into())
             }
-            _ => {
+            unknown_provider_id => {
                 return Err(anyhow!(
-                    "Failed to parse PreviewTarget, you probably forget to add an implementation for this provider: {:?}",
-                    context.provider_id()
+                    "Failed to parse PreviewTarget, you probably forget to add an implementation for this provider: {unknown_provider_id}",
                 ))
             }
         };
@@ -167,7 +166,7 @@ pub struct PreviewImpl<'a> {
 }
 
 impl<'a> PreviewImpl<'a> {
-    pub fn create(
+    pub fn new(
         curline: String,
         preview_height: usize,
         context: &'a ProviderContext,
@@ -276,13 +275,12 @@ impl<'a> PreviewImpl<'a> {
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
-        if !path.as_ref().is_file() {
+        let path = path.as_ref();
+
+        if !path.is_file() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!(
-                    "Faile to preview as {} is not a file",
-                    path.as_ref().display()
-                ),
+                format!("Failed to preview as {} is not a file", path.display()),
             ));
         }
 
@@ -290,19 +288,20 @@ impl<'a> PreviewImpl<'a> {
             if e.kind() == std::io::ErrorKind::NotFound {
                 tracing::debug!(
                     "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
-                    path.as_ref().display()
+                    path.display()
                 );
             }
         };
 
         let (lines, fname) = if !self.context.env.is_nvim {
             let (lines, abs_path) =
-                previewer::preview_file(path.as_ref(), self.preview_height, self.max_line_width())
-                    .map_err(|e| {
+                previewer::preview_file(path, self.preview_height, self.max_line_width()).map_err(
+                    |e| {
                         handle_io_error(&e);
                         e
-                    })?;
-            let cwd = self.context.cwd.to_str().expect("Cwd is valid");
+                    },
+                )?;
+            let cwd = self.context.cwd.to_str().expect("Cwd is a valid UTF-8");
             // cwd is shown via the popup title, no need to include it again.
             let cwd_relative = abs_path.replacen(cwd, ".", 1);
             let mut lines = lines;
@@ -311,7 +310,7 @@ impl<'a> PreviewImpl<'a> {
         } else {
             let max_fname_len = self.context.env.display_winwidth - 1;
             previewer::preview_file_with_truncated_title(
-                path.as_ref(),
+                path,
                 self.preview_height,
                 self.max_line_width(),
                 max_fname_len,
@@ -322,7 +321,7 @@ impl<'a> PreviewImpl<'a> {
             })?
         };
 
-        if std::fs::metadata(path.as_ref())?.len() == 0 {
+        if std::fs::metadata(path)?.len() == 0 {
             let mut lines = lines;
             lines.push("<Empty file>".to_string());
             Ok(Preview {
@@ -330,7 +329,7 @@ impl<'a> PreviewImpl<'a> {
                 fname: Some(fname),
                 ..Default::default()
             })
-        } else if let Some(syntax) = crate::stdio_server::vim::syntax_for(path.as_ref()) {
+        } else if let Some(syntax) = syntax_for(path) {
             Ok(Preview {
                 lines,
                 syntax: Some(syntax.into()),
@@ -355,8 +354,11 @@ impl<'a> PreviewImpl<'a> {
             if !self.context.env.is_nvim && should_truncate_cwd_relative(self.context.provider_id())
             {
                 // cwd is shown via the popup title, no need to include it again.
-                let cwd_relative =
-                    fname.replacen(self.context.cwd.to_str().expect("Cwd is valid"), ".", 1);
+                let cwd_relative = fname.replacen(
+                    self.context.cwd.to_str().expect("Cwd is a valid UTF-8"),
+                    ".",
+                    1,
+                );
                 format!("{cwd_relative}:{lnum}")
             } else {
                 let max_fname_len = container_width - 1 - display_width(lnum);
@@ -432,7 +434,7 @@ impl<'a> PreviewImpl<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(syntax) = crate::stdio_server::vim::syntax_for(path) {
+                if let Some(syntax) = syntax_for(path) {
                     Preview {
                         lines,
                         syntax: Some(syntax.into()),
@@ -574,7 +576,7 @@ impl<'a> OnMoveImpl<'a> {
         }
 
         let preview_height = self.context.preview_height().await?;
-        let preview_impl = PreviewImpl::create(curline, preview_height, self.context)?;
+        let preview_impl = PreviewImpl::new(curline, preview_height, self.context)?;
 
         let preview = preview_impl.get_preview().await?;
 

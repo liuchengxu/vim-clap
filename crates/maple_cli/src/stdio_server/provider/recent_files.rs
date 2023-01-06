@@ -170,7 +170,7 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = self.context.preview_height().await?;
-            let preview_impl = PreviewImpl::create(curline, preview_height, &self.context)?;
+            let preview_impl = PreviewImpl::new(curline, preview_height, &self.context)?;
             let preview = preview_impl.get_preview().await?;
             self.vim().render_preview(preview)?;
         }

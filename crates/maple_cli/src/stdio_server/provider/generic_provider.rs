@@ -181,7 +181,7 @@ impl ClapProvider for GenericProvider {
                     cache_line: None,
                 }
             } else {
-                PreviewImpl::create(curline, preview_height, &self.context)?
+                PreviewImpl::new(curline, preview_height, &self.context)?
             };
 
         let preview = preview_impl.get_preview().await?;
