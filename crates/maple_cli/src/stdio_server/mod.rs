@@ -62,7 +62,7 @@ impl Client {
                 match call {
                     Call::Notification(notification) => {
                         if let Err(e) = session_client.process_notification(notification).await {
-                            tracing::error!(error = ?e, "Error at handling Vim Notification");
+                            tracing::error!(error = ?e, "Error at processing Vim Notification");
                         }
                     }
                     Call::MethodCall(method_call) => {
@@ -78,7 +78,7 @@ impl Client {
                             }
                             Ok(None) => {}
                             Err(e) => {
-                                tracing::error!(error = ?e, "Error at handling Vim MethodCall");
+                                tracing::error!(error = ?e, "Error at processing Vim MethodCall");
                             }
                         }
                     }
@@ -87,7 +87,7 @@ impl Client {
         }
     }
 
-    /// Process the notification message from Vim.
+    /// Process a Vim notification message.
     async fn process_notification(&self, notification: Notification) -> Result<()> {
         let session_id = || {
             notification
@@ -98,8 +98,8 @@ impl Client {
         match Event::from_method(&notification.method) {
             Event::Provider(provider_event) => match provider_event {
                 ProviderEvent::Create => {
-                    let vim = self.vim.clone();
-                    let context = ProviderContext::new(notification.params, vim).await?;
+                    let context =
+                        ProviderContext::new(notification.params, self.vim.clone()).await?;
                     let provider_id = self.vim.provider_id().await?;
                     let provider = create_provider(&provider_id, context);
                     let session_manager = self.session_manager_mutex.clone();
@@ -118,7 +118,7 @@ impl Client {
             Event::Other(other_method) => {
                 match other_method.as_str() {
                     "initialize_global_env" => {
-                        // should be called only once.
+                        // Should be called only once.
                         notification.initialize(self.vim.clone()).await?;
                     }
                     "note_recent_files" => notification.note_recent_file().await?,
@@ -130,7 +130,7 @@ impl Client {
         Ok(())
     }
 
-    /// Process the method call message from Vim.
+    /// Process a Vim method call message.
     async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
         let msg = method_call;
 

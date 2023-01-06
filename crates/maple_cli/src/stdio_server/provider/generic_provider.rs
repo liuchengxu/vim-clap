@@ -172,7 +172,7 @@ impl ClapProvider for GenericProvider {
         }
 
         let preview_height = self.context.preview_height().await?;
-        let on_move_handler =
+        let preview_impl =
             if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
                 PreviewImpl {
                     preview_height,
@@ -184,7 +184,7 @@ impl ClapProvider for GenericProvider {
                 PreviewImpl::create(curline, preview_height, &self.context)?
             };
 
-        let preview = on_move_handler.get_preview().await?;
+        let preview = preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
         let curlnum = self.vim().display_getcurlnum().await?;

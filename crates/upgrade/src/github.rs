@@ -73,7 +73,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_retrieve_asset_size() {
-        retrieve_asset_size(asset_name().unwrap(), "v0.34")
+        let latest_release = retrieve_latest_release().await.unwrap().tag_name;
+        retrieve_asset_size(asset_name().unwrap(), &latest_release)
             .await
             .expect("Failed to retrieve the asset size for release v0.34");
     }

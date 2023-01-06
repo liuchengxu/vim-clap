@@ -1,6 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::rpc::Params;
-use crate::stdio_server::vim::Vim;
+use crate::stdio_server::vim::{initialize_syntax_map, Vim};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -19,7 +19,7 @@ impl Notification {
         let output: String = vim
             .call("execute", json!(["autocmd filetypedetect"]))
             .await?;
-        let ext_map = crate::stdio_server::vim::initialize_syntax_map(&output);
+        let ext_map = initialize_syntax_map(&output);
         vim.exec("clap#ext#set", json![ext_map])?;
 
         tracing::debug!("Client initialized successfully");
