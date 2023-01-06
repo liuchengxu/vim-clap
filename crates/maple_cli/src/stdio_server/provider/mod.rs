@@ -5,6 +5,7 @@ mod generic_provider;
 mod grep;
 mod recent_files;
 
+pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
@@ -24,12 +25,16 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub use self::blines::BlinesProvider;
-pub use self::dumb_jump::DumbJumpProvider;
-pub use self::filer::{read_dir_entries, FilerProvider};
-pub use self::generic_provider::GenericProvider;
-pub use self::grep::GrepProvider;
-pub use self::recent_files::RecentFilesProvider;
+pub fn create_provider(provider_id: &str, context: ProviderContext) -> Box<dyn ClapProvider> {
+    match provider_id {
+        "blines" => Box::new(blines::BlinesProvider::new(context)),
+        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(context)),
+        "filer" => Box::new(filer::FilerProvider::new(context)),
+        "grep" => Box::new(grep::GrepProvider::new(context)),
+        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(context)),
+        _ => Box::new(generic_provider::GenericProvider::new(context)),
+    }
+}
 
 #[derive(Debug)]
 struct SearcherControl {

@@ -91,7 +91,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         _ => {}
     }
 
-    let source_cmd: Vec<Value> = context.vim.call("provider_source", json!([])).await?;
+    let source_cmd: Vec<Value> = context.vim.bare_call("provider_source").await?;
     if let Some(value) = source_cmd.into_iter().next() {
         match value {
             // Source is a String: g:__t_string, g:__t_func_string
@@ -195,8 +195,7 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
             // The initialization was not super fast.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
-            let source_cmd: Vec<String> =
-                context.vim.call("provider_source_cmd", json!([])).await?;
+            let source_cmd: Vec<String> = context.vim.bare_call("provider_source_cmd").await?;
             let maybe_source_cmd = source_cmd.into_iter().next();
             if let Some(source_cmd) = maybe_source_cmd {
                 context.set_provider_source(ProviderSource::Command(source_cmd));

@@ -1,3 +1,4 @@
+use crate::stdio_server::handler::OnMoveImpl;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
@@ -77,10 +78,7 @@ impl BlinesProvider {
             .clone()
             .match_scope(MatchScope::Full);
 
-        let matcher = if let Some(extension) = source_file
-            .extension()
-            .and_then(|s| s.to_str().map(|s| s.to_string()))
-        {
+        let matcher = if let Some(extension) = source_file.extension().and_then(|s| s.to_str()) {
             matcher_builder
                 .bonuses(vec![Bonus::Language(extension.into())])
                 .build(query.into())
@@ -110,7 +108,7 @@ impl ClapProvider for BlinesProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
-        crate::stdio_server::handler::OnMoveImpl::new(&self.context, self.vim())
+        OnMoveImpl::new(&self.context, self.vim())
             .do_preview()
             .await
     }

@@ -7,10 +7,7 @@ mod state;
 mod types;
 mod vim;
 
-use self::provider::{
-    BlinesProvider, ClapProvider, DumbJumpProvider, Event, FilerProvider, GenericProvider,
-    GrepProvider, ProviderContext, ProviderEvent, RecentFilesProvider,
-};
+use self::provider::{create_provider, Event, ProviderContext, ProviderEvent};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
@@ -95,7 +92,7 @@ impl Client {
         let session_id = || {
             notification
                 .session_id
-                .ok_or_else(|| anyhow!("Notification must contain `session_id`"))
+                .ok_or_else(|| anyhow!("Notification must contain `session_id` field"))
         };
 
         match Event::from_method(&notification.method) {
@@ -103,16 +100,8 @@ impl Client {
                 ProviderEvent::Create => {
                     let vim = self.vim.clone();
                     let context = ProviderContext::new(notification.params, vim).await?;
-                    let provider: Box<dyn ClapProvider> =
-                        match self.vim.provider_id().await?.as_str() {
-                            "blines" => Box::new(BlinesProvider::new(context)),
-                            "dumb_jump" => Box::new(DumbJumpProvider::new(context)),
-                            "filer" => Box::new(FilerProvider::new(context)),
-                            "grep" => Box::new(GrepProvider::new(context)),
-                            "recent_files" => Box::new(RecentFilesProvider::new(context)),
-                            _ => Box::new(GenericProvider::new(context)),
-                        };
-
+                    let provider_id = self.vim.provider_id().await?;
+                    let provider = create_provider(&provider_id, context);
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
                     session_manager.new_session(session_id()?, provider);

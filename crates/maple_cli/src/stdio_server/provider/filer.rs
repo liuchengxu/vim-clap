@@ -386,7 +386,7 @@ impl ClapProvider for FilerProvider {
     async fn on_typed(&mut self) -> Result<()> {
         if self.current_lines.is_empty() {
             self.vim()
-                .exec("clap#provider#filer#set_create_file_entry", json!([]))?;
+                .bare_exec("clap#provider#filer#set_create_file_entry")?;
             return Ok(());
         }
 
@@ -396,7 +396,7 @@ impl ClapProvider for FilerProvider {
 
         if self.current_lines.is_empty() {
             self.vim()
-                .exec("clap#provider#filer#set_create_file_entry", json!([]))?;
+                .bare_exec("clap#provider#filer#set_create_file_entry")?;
         }
 
         Ok(())

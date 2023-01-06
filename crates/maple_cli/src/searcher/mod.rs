@@ -8,7 +8,6 @@ use ignore::{DirEntry, WalkBuilder, WalkParallel, WalkState};
 use matcher::{Matcher, Score};
 use printer::DisplayLines;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -347,7 +346,7 @@ impl Searcher {
 
         let (sender, mut receiver) = unbounded_channel();
 
-        let _ = vim.exec("clap#spinner#set_busy", json!([]));
+        let _ = vim.bare_exec("clap#spinner#set_busy");
 
         std::thread::Builder::new()
             .name("searcher-worker".into())
@@ -494,7 +493,7 @@ impl Searcher {
         let display_lines = to_display_lines(&results, winwidth, icon);
 
         progressor.on_finished(display_lines, total_matched, total_processed);
-        let _ = vim.exec("clap#spinner#set_idle", json!([]));
+        let _ = vim.bare_exec("clap#spinner#set_idle");
 
         tracing::debug!(
         "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",

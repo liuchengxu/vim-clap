@@ -138,16 +138,12 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
 #[derive(Debug, Clone)]
 pub struct Vim {
     rpc_client: Arc<RpcClient>,
-    // Initialized only once.
-    icon_enabled: Option<bool>,
 }
 
 impl Vim {
+    /// Constructs a [`Vim`].
     pub fn new(rpc_client: Arc<RpcClient>) -> Self {
-        Self {
-            rpc_client,
-            icon_enabled: None,
-        }
+        Self { rpc_client }
     }
 
     /// Calls the method with given params in Vim and return the call result.
@@ -161,6 +157,11 @@ impl Vim {
         self.rpc_client.request(method, params).await
     }
 
+    /// Calls the method with no arguments.
+    pub async fn bare_call<R: DeserializeOwned>(&self, method: impl AsRef<str>) -> Result<R> {
+        self.rpc_client.request(method, json!([])).await
+    }
+
     /// Executes the method with given params in Vim, ignoring the call result.
     ///
     /// `method`: Same with `{func}` in `:h call()`.
@@ -168,28 +169,19 @@ impl Vim {
         self.rpc_client.notify(method, params)
     }
 
+    /// Executes the method with no arguments.
+    pub fn bare_exec(&self, method: impl AsRef<str>) -> Result<()> {
+        self.rpc_client.notify(method, json!([]))
+    }
+
     /// Send back the result with specified id.
     pub fn send(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
         self.rpc_client.output(id, output_result)
     }
 
-    /// Size for fulfilling the preview window.
-    pub async fn preview_size(
-        &self,
-        provider_id: &ProviderId,
-        preview_winid: usize,
-    ) -> Result<usize> {
-        let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
-        let preview_size: Value = self.call("get_var", json!(["clap_preview_size"])).await?;
-        let preview_config: PreviewConfig = preview_size.into();
-        Ok(preview_config
-            .preview_size(provider_id.as_str())
-            .max(preview_winheight / 2))
-    }
-
-    ///////////////////////////////////////////
-    //  builtin-function-list
-    ///////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
+    //    builtin-function-list
+    /////////////////////////////////////////////////////////////////
     pub async fn bufname(&self, bufnr: usize) -> Result<String> {
         self.call("bufname", json!([bufnr])).await
     }
@@ -202,12 +194,12 @@ impl Vim {
         self.call("eval", json!([s])).await
     }
 
-    ///////////////////////////////////////////
-    //  Clap related APIs
-    ///////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
+    //    Clap related APIs
+    /////////////////////////////////////////////////////////////////
     /// Returns the cursor line in display window, with icon stripped.
     pub async fn display_getcurline(&self) -> Result<String> {
-        let value: Value = self.call("display_getcurline", json!([])).await?;
+        let value: Value = self.bare_call("display_getcurline").await?;
         match value {
             Value::Array(arr) => {
                 let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
@@ -240,20 +232,20 @@ impl Vim {
     }
 
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
-        self.call("clap#rooter#working_dir", json!([])).await
+        self.bare_call("clap#rooter#working_dir").await
     }
 
     pub async fn context_query_or_input(&self) -> Result<String> {
-        self.call("context_query_or_input", json!([])).await
+        self.bare_call("context_query_or_input").await
     }
 
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
 
-    ///////////////////////////////////////////
-    //  General helpers
-    ///////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////
+    //    General helpers
+    /////////////////////////////////////////////////////////////////
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
         let value = match value {
@@ -270,6 +262,20 @@ impl Vim {
 
     pub fn echo_info(&self, msg: &str) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    /// Size for fulfilling the preview window.
+    pub async fn preview_size(
+        &self,
+        provider_id: &ProviderId,
+        preview_winid: usize,
+    ) -> Result<usize> {
+        let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
+        let preview_size: Value = self.call("get_var", json!(["clap_preview_size"])).await?;
+        let preview_config: PreviewConfig = preview_size.into();
+        Ok(preview_config
+            .preview_size(provider_id.as_str())
+            .max(preview_winheight / 2))
     }
 
     pub fn render_preview(&self, preview: Preview) -> Result<()> {

@@ -139,21 +139,13 @@ impl GenericProvider {
                 })
             }
             "buffers" => {
-                let res: Vec<String> = self
+                let res: [String; 2] = self
                     .vim()
-                    .call("clap#provider#buffers#preview_target", json!([]))
+                    .bare_call("clap#provider#buffers#preview_target")
                     .await?;
-                if res.len() != 2 {
-                    return Err(anyhow::anyhow!(
-                        "Can not retrieve the buffers preview target"
-                    ));
-                }
-                let line_number = res[1].parse::<usize>()?;
-                let path = res
-                    .into_iter()
-                    .next()
-                    .expect("Not empty as just checked; qed")
-                    .into();
+                let mut iter = res.into_iter();
+                let path = iter.next().expect("Element must exist").into();
+                let line_number = iter.next().expect("Element must exist").parse::<usize>()?;
                 Some(PreviewTarget::LineInFile { path, line_number })
             }
             _ => None,
