@@ -108,7 +108,7 @@ function! clap#state#process_result_on_typed(result) abort
   call clap#indicator#set_matches_number(a:result.total)
 
   if a:result.total == 0
-    clap#state#clear_screen()
+    call clap#state#clear_screen()
     return
   endif
 
