@@ -403,10 +403,18 @@ impl Matcher {
             exact_indices.sort_unstable();
             exact_indices.dedup();
 
-            MatchedFileResult {
-                score: exact_score + bonus_score,
-                exact_indices,
-                fuzzy_indices: Vec::new(),
+            if exact_indices_in_path {
+                MatchedFileResult {
+                    score: exact_score + bonus_score,
+                    exact_indices,
+                    fuzzy_indices: Vec::new(),
+                }
+            } else {
+                MatchedFileResult {
+                    score: exact_score + bonus_score,
+                    exact_indices: Vec::new(),
+                    fuzzy_indices: exact_indices,
+                }
             }
         } else {
             fuzzy_indices.sort_unstable();
