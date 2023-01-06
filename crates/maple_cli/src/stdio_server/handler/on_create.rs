@@ -47,8 +47,8 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         "blines" => {
             let total =
                 crate::utils::count_lines(std::fs::File::open(&context.env.start_buffer_path)?)?;
-            let path = context.env.start_buffer_path.to_path_buf();
-            return Ok(ProviderSource::PlainFile { total, path });
+            let path = context.env.start_buffer_path.clone();
+            return Ok(ProviderSource::File { total, path });
         }
         "tags" => {
             let items =
@@ -96,7 +96,7 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
         match value {
             // Source is a String: g:__t_string, g:__t_func_string
             Value::String(command) => {
-                // Try always recreating the source.
+                // Always try recreating the source.
                 if context.provider_id() == "files" {
                     let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
                     tokio_cmd.current_dir(&context.cwd);

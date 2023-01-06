@@ -96,10 +96,9 @@ fn parse_preview_target(
 
                     line_content.replace(cache_line.into());
 
-                    let mut path: PathBuf = context.cwd.to_path_buf();
-                    path.push(fpath);
+                    let path = context.cwd.to_path_buf().join(fpath);
 
-                    Ok::<(PathBuf, usize), anyhow::Error>((path, lnum))
+                    Ok::<_, anyhow::Error>((path, lnum))
                 };
 
                 let (path, line_number) = try_extract_file_path(&curline)?;
@@ -108,8 +107,7 @@ fn parse_preview_target(
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
-                let mut path: PathBuf = context.cwd.to_path_buf();
-                path.push(fpath);
+                let path = context.cwd.to_path_buf().join(fpath);
                 PreviewTarget::LineInFile { path, line_number }
             }
             "blines" => {
@@ -124,8 +122,7 @@ fn parse_preview_target(
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-                let mut path: PathBuf = context.cwd.to_path_buf();
-                path.push(p);
+                let path = context.cwd.to_path_buf().join(p);
                 PreviewTarget::LineInFile { path, line_number }
             }
             "commits" | "bcommits" => {
@@ -157,7 +154,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 }
 
 #[derive(Debug)]
-pub struct OnMoveHandler<'a> {
+pub struct PreviewImpl<'a> {
     pub preview_height: usize,
     pub context: &'a ProviderContext,
     pub preview_target: PreviewTarget,
@@ -169,7 +166,7 @@ pub struct OnMoveHandler<'a> {
     pub cache_line: Option<String>,
 }
 
-impl<'a> OnMoveHandler<'a> {
+impl<'a> PreviewImpl<'a> {
     pub fn create(
         curline: String,
         preview_height: usize,
@@ -577,9 +574,9 @@ impl<'a> OnMoveImpl<'a> {
         }
 
         let preview_height = self.context.preview_height().await?;
-        let on_move_handler = OnMoveHandler::create(curline, preview_height, self.context)?;
+        let preview_impl = PreviewImpl::create(curline, preview_height, self.context)?;
 
-        let preview = on_move_handler.get_preview().await?;
+        let preview = preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
         let cur_lnum = self.vim.display_getcurlnum().await?;

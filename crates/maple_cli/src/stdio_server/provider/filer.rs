@@ -1,4 +1,4 @@
-use crate::stdio_server::handler::{OnMoveHandler, Preview, PreviewTarget};
+use crate::stdio_server::handler::{Preview, PreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Key, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use crate::utils::build_abs_path;
@@ -265,14 +265,14 @@ impl FilerProvider {
     }
 
     async fn do_preview(&self, preview_target: PreviewTarget) -> Result<()> {
-        let on_move_handler = OnMoveHandler {
+        let preview_impl = PreviewImpl {
             preview_height: self.context.preview_height().await?,
             context: &self.context,
             preview_target,
             cache_line: None,
         };
 
-        let maybe_syntax = on_move_handler.preview_target.path().and_then(|path| {
+        let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
             if path.is_dir() {
                 Some("clap_filer")
             } else if path.is_file() {
@@ -282,7 +282,7 @@ impl FilerProvider {
             }
         });
 
-        match on_move_handler.get_preview().await {
+        match preview_impl.get_preview().await {
             Ok(preview) => {
                 self.vim().render_preview(preview)?;
 

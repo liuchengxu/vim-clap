@@ -1,6 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::OnMoveHandler;
+use crate::stdio_server::handler::PreviewImpl;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -170,8 +170,8 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = self.context.preview_height().await?;
-            let on_move_handler = OnMoveHandler::create(curline, preview_height, &self.context)?;
-            let preview = on_move_handler.get_preview().await?;
+            let preview_impl = PreviewImpl::create(curline, preview_height, &self.context)?;
+            let preview = preview_impl.get_preview().await?;
             self.vim().render_preview(preview)?;
         }
 

@@ -273,8 +273,8 @@ pub enum ProviderSource {
         items: Vec<Arc<dyn ClapItem>>,
     },
 
-    /// The items are from a plain file.
-    PlainFile { total: usize, path: PathBuf },
+    /// The items originate from a normal file.
+    File { total: usize, path: PathBuf },
 
     /// Read the items from a cache file created by vim-clap.
     ///
@@ -302,7 +302,7 @@ impl ProviderSource {
     pub fn total(&self) -> Option<usize> {
         match self {
             Self::Small { total, .. }
-            | Self::PlainFile { total, .. }
+            | Self::File { total, .. }
             | Self::CachedFile { total, .. } => Some(*total),
             _ => None,
         }
@@ -323,7 +323,7 @@ impl ProviderSource {
                     })
                     .collect(),
             ),
-            Self::PlainFile { ref path, .. } | Self::CachedFile { ref path, .. } => {
+            Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
                 utility::read_first_lines(path, n)
                     .map(|iter| {
                         iter.map(|line| {

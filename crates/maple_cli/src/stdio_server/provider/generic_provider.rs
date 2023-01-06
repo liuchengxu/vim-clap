@@ -1,4 +1,4 @@
-use crate::stdio_server::handler::{OnMoveHandler, PreviewTarget};
+use crate::stdio_server::handler::{PreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
@@ -182,14 +182,14 @@ impl ClapProvider for GenericProvider {
         let preview_height = self.context.preview_height().await?;
         let on_move_handler =
             if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
-                OnMoveHandler {
+                PreviewImpl {
                     preview_height,
                     context: &self.context,
                     preview_target,
                     cache_line: None,
                 }
             } else {
-                OnMoveHandler::create(curline, preview_height, &self.context)?
+                PreviewImpl::create(curline, preview_height, &self.context)?
             };
 
         let preview = on_move_handler.get_preview().await?;
@@ -256,8 +256,9 @@ impl ClapProvider for GenericProvider {
                 tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unactionable.");
                 return Ok(());
             }
-            ProviderSource::CachedFile { ref path, .. }
-            | ProviderSource::PlainFile { ref path, .. } => DataSource::File(path.clone()),
+            ProviderSource::CachedFile { ref path, .. } | ProviderSource::File { ref path, .. } => {
+                DataSource::File(path.clone())
+            }
             ProviderSource::Command(ref cmd) => DataSource::Command(cmd.to_string()),
         };
 
@@ -276,7 +277,7 @@ impl ClapProvider for GenericProvider {
         if !self.last_filter_control_killed.load(Ordering::SeqCst) {
             tracing::debug!(
                 ?query,
-                "============================== Still busy with killing the last filter control, return..."
+                "Still busy with killing the last filter control, return..."
             );
             return Ok(());
         }
