@@ -1,4 +1,5 @@
 pub mod blines;
+pub mod files;
 
 use crate::stdio_server::Vim;
 use filter::MatchedItem;
@@ -39,7 +40,7 @@ impl grep_matcher::Matcher for MatchEverything {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SearchConfig {
+pub struct WalkConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
@@ -66,7 +67,7 @@ pub struct SearchConfig {
     pub max_depth: Option<usize>,
 }
 
-impl Default for SearchConfig {
+impl Default for WalkConfig {
     fn default() -> Self {
         Self {
             hidden: true,
@@ -99,18 +100,16 @@ pub struct FileResult {
     pub indices_in_line: Vec<usize>,
 }
 
-fn walk_parallel(search_root: PathBuf) -> WalkParallel {
-    let search_config = SearchConfig::default();
-
+fn walk_parallel(search_root: PathBuf, walk_config: WalkConfig) -> WalkParallel {
     WalkBuilder::new(search_root)
-        .hidden(search_config.hidden)
-        .parents(search_config.parents)
-        .ignore(search_config.ignore)
-        .follow_links(search_config.follow_symlinks)
-        .git_ignore(search_config.git_ignore)
-        .git_global(search_config.git_global)
-        .git_exclude(search_config.git_exclude)
-        .max_depth(search_config.max_depth)
+        .hidden(walk_config.hidden)
+        .parents(walk_config.parents)
+        .ignore(walk_config.ignore)
+        .follow_links(walk_config.follow_symlinks)
+        .git_ignore(walk_config.git_ignore)
+        .git_global(walk_config.git_global)
+        .git_exclude(walk_config.git_exclude)
+        .max_depth(walk_config.max_depth)
         // We always want to ignore the .git directory, otherwise if
         // `ignore` is turned off above, we end up with a lot of noise
         // in our picker.
@@ -153,7 +152,7 @@ impl StoppableSearchImpl {
             .binary_detection(BinaryDetection::quit(b'\x00'))
             .build();
 
-        walk_parallel(search_root.clone()).run(|| {
+        walk_parallel(search_root.clone(), WalkConfig::default()).run(|| {
             let mut searcher = searcher.clone();
             let matcher = matcher.clone();
             let sender = sender.clone();

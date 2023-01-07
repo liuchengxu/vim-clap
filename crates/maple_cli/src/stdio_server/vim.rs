@@ -231,6 +231,10 @@ impl Vim {
         self.eval("g:clap.provider.id").await
     }
 
+    pub async fn provider_args(&self) -> Result<Vec<String>> {
+        self.eval("g:clap.provider.args").await
+    }
+
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
         self.bare_call("clap#rooter#working_dir").await
     }

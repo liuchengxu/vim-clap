@@ -1,6 +1,6 @@
 use crate::stdio_server::handler::{Preview, PreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Key, ProviderContext};
-use crate::stdio_server::vim::Vim;
+use crate::stdio_server::vim::{syntax_for, Vim};
 use crate::utils::build_abs_path;
 use anyhow::Result;
 use icon::prepend_filer_icon;
@@ -67,11 +67,11 @@ fn goto_parent(cur_dir: String) {
     let _new_cur_dir = if parent_dir.parent().is_none() {
         parent_dir.to_string_lossy().to_string()
     } else {
-        format!("{}{}", parent_dir.display(), std::path::MAIN_SEPARATOR)
+        format!("{}{MAIN_SEPARATOR}", parent_dir.display())
     };
 
     if let Some(last_char) = cur_dir.chars().last() {
-        if last_char == std::path::MAIN_SEPARATOR {}
+        if last_char == MAIN_SEPARATOR {}
     }
 }
 
@@ -276,7 +276,7 @@ impl FilerProvider {
             if path.is_dir() {
                 Some("clap_filer")
             } else if path.is_file() {
-                crate::stdio_server::vim::syntax_for(path)
+                syntax_for(path)
             } else {
                 None
             }
@@ -378,7 +378,7 @@ impl ClapProvider for FilerProvider {
     async fn on_move(&mut self) -> Result<()> {
         let curline = self.current_line().await?;
         let path = build_abs_path(&self.current_dir, curline);
-        self.do_preview(PreviewTarget::FileOrDirectory(path.clone()))
+        self.do_preview(PreviewTarget::FileOrDirectory(path))
             .await?;
         Ok(())
     }

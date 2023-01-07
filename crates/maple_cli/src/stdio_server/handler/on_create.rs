@@ -168,14 +168,14 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                     context.vim.set_var("g:clap.display.initial_size", total)?;
                 }
 
-                if let Some(lines) = provider_source.initial_lines(100) {
+                if let Some(items) = provider_source.initial_items(100) {
                     let DisplayLines {
                         lines,
                         icon_added,
                         truncated_map,
                         ..
                     } = printer::decorate_lines(
-                        lines,
+                        items,
                         context.env.display_winwidth,
                         context.env.icon,
                     );

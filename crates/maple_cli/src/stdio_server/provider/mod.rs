@@ -1,6 +1,7 @@
 mod blines;
 mod dumb_jump;
 mod filer;
+mod files;
 mod generic_provider;
 mod grep;
 mod recent_files;
@@ -25,15 +26,20 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub fn create_provider(provider_id: &str, context: ProviderContext) -> Box<dyn ClapProvider> {
-    match provider_id {
+pub async fn create_provider(
+    provider_id: &str,
+    context: ProviderContext,
+) -> Result<Box<dyn ClapProvider>> {
+    let provider: Box<dyn ClapProvider> = match provider_id {
         "blines" => Box::new(blines::BlinesProvider::new(context)),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(context)),
         "filer" => Box::new(filer::FilerProvider::new(context)),
+        "files" => Box::new(files::FilesProvider::new(context).await?),
         "grep" => Box::new(grep::GrepProvider::new(context)),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new(context)),
         _ => Box::new(generic_provider::GenericProvider::new(context)),
-    }
+    };
+    Ok(provider)
 }
 
 #[derive(Debug)]
@@ -264,9 +270,10 @@ impl std::fmt::Display for ProviderId {
 }
 
 /// This type represents the way to get the source items of a provider.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum ProviderSource {
     /// The provider source is not actionable on the Rust backend.
+    #[default]
     Unactionable,
 
     /// Small scale, in which case we do not have to use the dynamic filtering.
@@ -297,12 +304,6 @@ pub enum ProviderSource {
     Command(String),
 }
 
-impl Default for ProviderSource {
-    fn default() -> Self {
-        Self::Unactionable
-    }
-}
-
 impl ProviderSource {
     pub fn total(&self) -> Option<usize> {
         match self {
@@ -317,7 +318,7 @@ impl ProviderSource {
         matches!(self, Self::CachedFile { refreshed, .. } if !refreshed)
     }
 
-    pub fn initial_lines(&self, n: usize) -> Option<Vec<MatchedItem>> {
+    pub fn initial_items(&self, n: usize) -> Option<Vec<MatchedItem>> {
         match self {
             Self::Small { ref items, .. } => Some(
                 items
