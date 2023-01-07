@@ -49,6 +49,7 @@ fn start_searcher(
 pub struct FilesProvider {
     context: ProviderContext,
     hidden: bool,
+    name_only: bool,
     searcher_control: Option<SearcherControl>,
 }
 
@@ -56,9 +57,11 @@ impl FilesProvider {
     pub async fn new(context: ProviderContext) -> Result<Self> {
         let provider_args = context.vim.provider_args().await?;
         let hidden = provider_args.iter().any(|s| s == "--hidden");
+        let name_only = context.vim.files_name_only().await?;
         Ok(Self {
             context,
             hidden,
+            name_only,
             searcher_control: None,
         })
     }
@@ -77,12 +80,13 @@ impl FilesProvider {
 
         let search_root = self.context.cwd.clone().into();
 
-        let matcher_builder = self
-            .context
-            .env
-            .matcher_builder
-            .clone()
-            .match_scope(MatchScope::Full);
+        let matcher_builder = self.context.env.matcher_builder.clone();
+
+        let matcher_builder = if self.name_only {
+            matcher_builder.match_scope(MatchScope::FileName)
+        } else {
+            matcher_builder.match_scope(MatchScope::Full)
+        };
 
         let matcher = matcher_builder.build(query.into());
 

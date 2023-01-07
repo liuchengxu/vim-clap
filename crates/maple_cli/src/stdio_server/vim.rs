@@ -243,6 +243,11 @@ impl Vim {
         self.bare_call("context_query_or_input").await
     }
 
+    pub async fn files_name_only(&self) -> Result<bool> {
+        let context: HashMap<String, Value> = self.eval("g:clap.context").await?;
+        Ok(context.contains_key("name-only"))
+    }
+
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
