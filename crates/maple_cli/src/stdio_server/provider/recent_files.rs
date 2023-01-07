@@ -153,7 +153,7 @@ impl ClapProvider for RecentFilesProvider {
         let response = self.clone().process_query(cwd, query, preview_size, 1)?;
 
         self.vim()
-            .call("clap#state#process_result_on_typed", response)
+            .call("clap#state#process_response_on_typed", response)
             .await?;
 
         Ok(())
@@ -202,7 +202,7 @@ impl ClapProvider for RecentFilesProvider {
         let current_query = self.vim().input_get().await?;
         if current_query == query {
             self.vim()
-                .call("clap#state#process_result_on_typed", response)
+                .call("clap#state#process_response_on_typed", response)
                 .await?;
         }
 

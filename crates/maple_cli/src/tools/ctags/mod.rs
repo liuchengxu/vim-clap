@@ -337,22 +337,13 @@ impl ProjectCtagsCommand {
     }
 }
 
-// /description/
-// /^description$/
+// /pattern/, /^pattern$/
 pub fn trim_pattern(pattern: &str) -> &str {
-    let description = &pattern[1..pattern.len() - 1];
+    let pattern = pattern.strip_prefix('/').unwrap_or(pattern);
+    let pattern = pattern.strip_suffix('/').unwrap_or(pattern);
 
-    let description = if let Some(stripped) = description.strip_prefix('^') {
-        stripped
-    } else {
-        description
-    };
+    let pattern = pattern.strip_prefix('^').unwrap_or(pattern);
+    let pattern = pattern.strip_suffix('$').unwrap_or(pattern);
 
-    let description = if let Some(stripped) = description.strip_suffix('$') {
-        stripped
-    } else {
-        description
-    };
-
-    description.trim()
+    pattern.trim()
 }

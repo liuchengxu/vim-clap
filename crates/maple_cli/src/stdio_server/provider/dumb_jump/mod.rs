@@ -291,7 +291,7 @@ impl DumbJumpProvider {
         };
 
         self.vim()
-            .exec("clap#state#process_result_on_typed", response)?;
+            .exec("clap#state#process_response_on_typed", response)?;
 
         Ok(SearchResults { usages, query_info })
     }
@@ -399,7 +399,7 @@ impl ClapProvider for DumbJumpProvider {
                 .unzip();
             let response = json!({ "lines": lines, "indices": indices, "total": total });
             self.vim()
-                .exec("clap#state#process_result_on_typed", response)?;
+                .exec("clap#state#process_response_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }

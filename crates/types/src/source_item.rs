@@ -315,6 +315,18 @@ pub struct MatchedItem {
     pub output_text: Option<String>,
 }
 
+impl From<Arc<dyn ClapItem>> for MatchedItem {
+    fn from(item: Arc<dyn ClapItem>) -> Self {
+        Self {
+            item,
+            score: Score::default(),
+            indices: Vec::new(),
+            display_text: None,
+            output_text: None,
+        }
+    }
+}
+
 impl MatchedItem {
     pub fn new(item: Arc<dyn ClapItem>, score: Score, indices: Vec<usize>) -> Self {
         Self {

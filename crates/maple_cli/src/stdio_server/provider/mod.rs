@@ -11,11 +11,10 @@ use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
-use crate::stdio_server::types::VimProgressor;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use icon::{Icon, IconKind};
-use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
+use matcher::{Bonus, MatchScope, MatcherBuilder};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -52,42 +51,6 @@ impl SearcherControl {
     fn kill(self) {
         self.stop_signal.store(true, Ordering::SeqCst);
         self.join_handle.abort();
-    }
-}
-
-fn start_searcher(
-    number: usize,
-    context: &ProviderContext,
-    vim: Vim,
-    search_root: PathBuf,
-    matcher: Matcher,
-) -> SearcherControl {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-
-    let join_handle = {
-        let icon = context.env.icon;
-        let winwidth = context.env.display_winwidth;
-        let stop_signal = stop_signal.clone();
-
-        tokio::spawn(async move {
-            let progressor = VimProgressor::new(vim.clone(), stop_signal.clone());
-            crate::searcher::Searcher {
-                search_root,
-                matcher,
-                stop_signal,
-                number,
-                icon,
-                winwidth,
-                vim,
-            }
-            .run_with_progressor(progressor)
-            .await
-        })
-    };
-
-    SearcherControl {
-        stop_signal,
-        join_handle,
     }
 }
 
@@ -324,21 +287,15 @@ impl ProviderSource {
                 items
                     .iter()
                     .take(n)
-                    .map(|item| {
-                        MatchedItem::new(item.clone(), Default::default(), Default::default())
-                    })
+                    .map(|item| MatchedItem::from(item.clone()))
                     .collect(),
             ),
-            Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
+            Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => Some(
                 utility::read_first_lines(path, n)
-                    .map(|iter| {
-                        iter.map(|line| {
-                            MatchedItem::new(Arc::new(line), Default::default(), Default::default())
-                        })
-                        .collect()
-                    })
-                    .ok()
-            }
+                    .ok()?
+                    .map(|line| MatchedItem::from(Arc::new(line) as Arc<dyn ClapItem>))
+                    .collect(),
+            ),
             _ => None,
         }
     }

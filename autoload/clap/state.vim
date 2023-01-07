@@ -100,7 +100,7 @@ function! clap#state#process_preview_result(result) abort
   endif
 endfunction
 
-function! clap#state#process_result_on_typed(result) abort
+function! clap#state#process_response_on_typed(result) abort
   if has_key(a:result, 'initial_size')
     let g:clap.display.initial_size = a:result.initial_size
   endif

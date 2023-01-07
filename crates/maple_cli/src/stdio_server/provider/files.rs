@@ -11,7 +11,6 @@ use std::sync::Arc;
 fn start_searcher(
     number: usize,
     context: &ProviderContext,
-    vim: Vim,
     search_root: PathBuf,
     hidden: bool,
     matcher: Matcher,
@@ -21,6 +20,7 @@ fn start_searcher(
     let join_handle = {
         let icon = context.env.icon;
         let winwidth = context.env.display_winwidth;
+        let vim = context.vim.clone();
         let stop_signal = stop_signal.clone();
 
         tokio::spawn(async move {
@@ -90,14 +90,7 @@ impl FilesProvider {
 
         let matcher = matcher_builder.build(query.into());
 
-        let new_control = start_searcher(
-            100,
-            &self.context,
-            self.vim().clone(),
-            search_root,
-            self.hidden,
-            matcher,
-        );
+        let new_control = start_searcher(100, &self.context, search_root, self.hidden, matcher);
 
         self.searcher_control.replace(new_control);
     }
