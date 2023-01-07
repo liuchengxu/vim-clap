@@ -6,17 +6,17 @@ use types::PreviewInfo;
 use utility::{read_first_lines, read_preview_lines};
 
 #[inline]
-pub fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
+fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
     if path.as_ref().is_absolute() {
         Ok(path.as_ref().to_string_lossy().into())
     } else {
         // Somehow the absolute path on Windows is problematic using `canonicalize`:
         // C:\Users\liuchengxu\AppData\Local\nvim\init.vim
         // \\?\C:\Users\liuchengxu\AppData\Local\nvim\init.vim
-        std::fs::canonicalize(path.as_ref())?
+        Ok(std::fs::canonicalize(path.as_ref())?
             .into_os_string()
-            .into_string()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string_lossy()))
+            .to_string_lossy()
+            .into())
     }
 }
 
@@ -31,13 +31,11 @@ pub fn truncate_preview_lines(
         if line.len() > max_width {
             let mut line = line;
             // https://github.com/liuchengxu/vim-clap/pull/544#discussion_r506281014
-            line.truncate(
-                (0..max_width + 1)
-                    .rev()
-                    .find(|idx| line.is_char_boundary(*idx))
-                    .unwrap_or_default(), // truncate to 0
-            );
-            line.push_str("……");
+            let replace_start = (0..max_width + 1)
+                .rev()
+                .find(|idx| line.is_char_boundary(*idx))
+                .unwrap_or_default(); // truncate to 0
+            line.replace_range(replace_start.., "……");
             line
         } else {
             line
