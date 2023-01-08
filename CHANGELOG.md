@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+### Added
+
+- Build executables for more platforms. #901
+
 ## [0.37] 2022-10-16
 
 ### Changed
