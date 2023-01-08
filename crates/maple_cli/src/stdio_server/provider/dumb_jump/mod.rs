@@ -5,7 +5,7 @@ use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages}
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::PreviewImpl;
 use crate::stdio_server::job;
-use crate::stdio_server::provider::{ClapProvider, ProviderContext};
+use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::UsageMatcher;
@@ -232,7 +232,7 @@ impl DumbJumpProvider {
         query: String,
         extension: String,
         query_info: QueryInfo,
-        ctx: &ProviderContext,
+        ctx: &Context,
     ) -> Result<SearchResults> {
         let search_engine = match (
             self.ctags_regenerated.load(Ordering::Relaxed),
@@ -283,7 +283,7 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
         let bufname = ctx.vim.bufname(ctx.env.start.bufnr).await?;
         let extension = std::path::Path::new(&bufname)
             .extension()
@@ -318,7 +318,7 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         let input = ctx.vim.input_get().await?;
         let lnum = ctx.vim.display_getcurlnum().await?;
 
@@ -350,7 +350,7 @@ impl ClapProvider for DumbJumpProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
 

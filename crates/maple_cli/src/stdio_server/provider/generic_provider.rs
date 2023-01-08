@@ -1,5 +1,5 @@
 use crate::stdio_server::handler::{PreviewImpl, PreviewTarget};
-use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
+use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
@@ -33,12 +33,7 @@ impl FilterControl {
 }
 
 /// Start the parallel filter in a new thread.
-fn run(
-    query: String,
-    number: usize,
-    data_source: DataSource,
-    context: &ProviderContext,
-) -> FilterControl {
+fn run(query: String, number: usize, data_source: DataSource, context: &Context) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     let join_handle = {
@@ -110,7 +105,7 @@ impl GenericProvider {
     async fn nontypical_preview_target(
         &mut self,
         curline: &str,
-        ctx: &ProviderContext,
+        ctx: &Context,
     ) -> Result<Option<PreviewTarget>> {
         let maybe_preview_kind = match ctx.provider_id() {
             "help_tags" => {
@@ -153,7 +148,7 @@ impl GenericProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for GenericProvider {
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         let lnum = ctx.vim.display_getcurlnum().await?;
 
         let curline = ctx.vim.display_getcurline().await?;
@@ -167,8 +162,8 @@ impl ClapProvider for GenericProvider {
         let preview_impl =
             if let Some(preview_target) = self.nontypical_preview_target(&curline, ctx).await? {
                 PreviewImpl {
+                    ctx,
                     preview_height,
-                    context: ctx,
                     preview_target,
                     cache_line: None,
                 }
@@ -187,7 +182,7 @@ impl ClapProvider for GenericProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
         let quick_response =
@@ -280,7 +275,7 @@ impl ClapProvider for GenericProvider {
         Ok(())
     }
 
-    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
+    fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.

@@ -26,10 +26,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
-pub async fn create_provider(
-    provider_id: &str,
-    ctx: &ProviderContext,
-) -> Result<Box<dyn ClapProvider>> {
+pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn ClapProvider>> {
     let provider: Box<dyn ClapProvider> = match provider_id {
         "blines" => Box::new(blines::BlinesProvider::new()),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
@@ -82,7 +79,7 @@ pub struct ProviderEnvironment {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProviderContext {
+pub struct Context {
     pub cwd: AbsPathBuf,
     pub env: Arc<ProviderEnvironment>,
     pub vim: Vim,
@@ -91,7 +88,7 @@ pub struct ProviderContext {
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
-impl ProviderContext {
+impl Context {
     pub async fn new(params: Params, vim: Vim) -> Result<Self> {
         #[derive(Deserialize)]
         struct InnerParams {
@@ -332,26 +329,22 @@ impl ProviderEventSender {
 /// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
         initialize_provider(ctx).await
     }
 
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()>;
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()>;
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()>;
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()>;
 
     /// On receiving the Terminate event.
     ///
     /// Sets the running signal to false, in case of the forerunner thread is still working.
-    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
+    fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         ctx.signify_terminated(session_id);
     }
 
-    async fn on_key_event(
-        &mut self,
-        _ctx: &mut ProviderContext,
-        key_event: KeyEvent,
-    ) -> Result<()> {
+    async fn on_key_event(&mut self, _ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
         match key_event {
             KeyEvent::ShiftUp => {
                 // Preview scroll up

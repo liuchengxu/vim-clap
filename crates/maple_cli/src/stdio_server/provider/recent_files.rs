@@ -1,7 +1,7 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::PreviewImpl;
-use crate::stdio_server::provider::{ClapProvider, ProviderContext};
+use crate::stdio_server::provider::{ClapProvider, Context};
 use anyhow::Result;
 use matcher::ClapItem;
 use parking_lot::Mutex;
@@ -118,7 +118,7 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         let cwd = ctx.vim.working_dir().await?;
 
@@ -145,7 +145,7 @@ impl ClapProvider for RecentFilesProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         let lnum = ctx.vim.display_getcurlnum().await?;
 
         let maybe_curline = self
@@ -164,7 +164,7 @@ impl ClapProvider for RecentFilesProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
 
         let response = tokio::task::spawn_blocking({

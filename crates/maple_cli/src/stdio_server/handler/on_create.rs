@@ -3,7 +3,7 @@ use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC_CMD};
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::job;
-use crate::stdio_server::provider::{ProviderContext, ProviderSource};
+use crate::stdio_server::provider::{Context, ProviderSource};
 use anyhow::Result;
 use filter::SourceItem;
 use matcher::ClapItem;
@@ -32,7 +32,7 @@ async fn execute_and_write_cache(
 }
 
 /// Performs the initialization like collecting the source and total number of source items.
-async fn initialize_provider_source(context: &ProviderContext) -> Result<ProviderSource> {
+async fn initialize_provider_source(context: &Context) -> Result<ProviderSource> {
     let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
         let items = lines
@@ -152,20 +152,20 @@ async fn initialize_provider_source(context: &ProviderContext) -> Result<Provide
     Ok(ProviderSource::Unactionable)
 }
 
-pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
+pub async fn initialize_provider(ctx: &Context) -> Result<()> {
     const TIMEOUT: Duration = Duration::from_millis(300);
 
     // Skip the initialization.
-    match context.provider_id() {
+    match ctx.provider_id() {
         "grep" | "live_grep" => return Ok(()),
         _ => {}
     }
 
-    match tokio::time::timeout(TIMEOUT, initialize_provider_source(context)).await {
+    match tokio::time::timeout(TIMEOUT, initialize_provider_source(ctx)).await {
         Ok(provider_source_result) => match provider_source_result {
             Ok(provider_source) => {
                 if let Some(total) = provider_source.total() {
-                    context.vim.set_var("g:clap.display.initial_size", total)?;
+                    ctx.vim.set_var("g:clap.display.initial_size", total)?;
                 }
 
                 if let Some(items) = provider_source.initial_items(100) {
@@ -174,20 +174,16 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
                         icon_added,
                         truncated_map,
                         ..
-                    } = printer::decorate_lines(
-                        items,
-                        context.env.display_winwidth,
-                        context.env.icon,
-                    );
+                    } = printer::decorate_lines(items, ctx.env.display_winwidth, ctx.env.icon);
 
                     let using_cache = provider_source.using_cache();
-                    context.vim.exec(
+                    ctx.vim.exec(
                         "clap#state#init_display",
                         json!([lines, truncated_map, icon_added, using_cache]),
                     )?;
                 }
 
-                context.set_provider_source(provider_source);
+                ctx.set_provider_source(provider_source);
             }
             Err(e) => tracing::error!(?e, "Error occurred on creating session"),
         },
@@ -195,10 +191,10 @@ pub async fn initialize_provider(context: &ProviderContext) -> Result<()> {
             // The initialization was not super fast.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
 
-            let source_cmd: Vec<String> = context.vim.bare_call("provider_source_cmd").await?;
+            let source_cmd: Vec<String> = ctx.vim.bare_call("provider_source_cmd").await?;
             let maybe_source_cmd = source_cmd.into_iter().next();
             if let Some(source_cmd) = maybe_source_cmd {
-                context.set_provider_source(ProviderSource::Command(source_cmd));
+                ctx.set_provider_source(ProviderSource::Command(source_cmd));
             }
 
             /* no longer necessary for grep provider.

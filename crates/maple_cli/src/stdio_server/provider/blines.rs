@@ -1,5 +1,5 @@
 use crate::stdio_server::handler::OnMoveImpl;
-use crate::stdio_server::provider::{ClapProvider, ProviderContext, SearcherControl};
+use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
 use matcher::{Bonus, MatchScope, Matcher};
@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 fn start_searcher(
     number: usize,
-    context: &ProviderContext,
+    context: &Context,
     search_root: PathBuf,
     matcher: Matcher,
 ) -> SearcherControl {
@@ -54,7 +54,7 @@ impl BlinesProvider {
         }
     }
 
-    fn process_query(&mut self, query: String, ctx: &ProviderContext) {
+    fn process_query(&mut self, query: String, ctx: &Context) {
         if let Some(control) = self.searcher_control.take() {
             tokio::task::spawn_blocking(move || {
                 control.kill();
@@ -85,7 +85,7 @@ impl BlinesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for BlinesProvider {
-    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             self.process_query(query, ctx);
@@ -93,11 +93,11 @@ impl ClapProvider for BlinesProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         OnMoveImpl::new(ctx).do_preview().await
     }
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         if query.is_empty() {
             ctx.vim.bare_exec("clap#state#clear_screen")?;
@@ -107,7 +107,7 @@ impl ClapProvider for BlinesProvider {
         Ok(())
     }
 
-    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
+    fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());

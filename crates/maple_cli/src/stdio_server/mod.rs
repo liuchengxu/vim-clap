@@ -9,7 +9,7 @@ mod types;
 mod vim;
 
 use self::input::{Event, ProviderEvent};
-use self::provider::{create_provider, ProviderContext};
+use self::provider::{create_provider, Context};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
@@ -100,8 +100,7 @@ impl Client {
         match Event::from_method(&notification.method) {
             Event::Provider(provider_event) => match provider_event {
                 ProviderEvent::Create => {
-                    let context =
-                        ProviderContext::new(notification.params, self.vim.clone()).await?;
+                    let context = Context::new(notification.params, self.vim.clone()).await?;
                     let provider_id = self.vim.provider_id().await?;
                     let provider = create_provider(&provider_id, &context).await?;
                     let session_manager = self.session_manager_mutex.clone();

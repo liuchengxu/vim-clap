@@ -1,7 +1,7 @@
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
-use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
+use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::syntax_for;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
@@ -54,14 +54,11 @@ impl PreviewTarget {
     }
 }
 
-fn parse_preview_target(
-    curline: String,
-    context: &ProviderContext,
-) -> Result<(PreviewTarget, Option<String>)> {
+fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget, Option<String>)> {
     let err = || {
         anyhow!(
             "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
-            context.provider_id()
+            ctx.provider_id()
         )
     };
 
@@ -73,14 +70,14 @@ fn parse_preview_target(
     // is always accurate, try to refresh the cache and reload.
     let mut line_content = None;
 
-    let preview_target = match context.provider_id() {
-            "files" | "git_files" => PreviewTarget::File(build_abs_path(&context.cwd, &curline)),
+    let preview_target = match ctx.provider_id() {
+            "files" | "git_files" => PreviewTarget::File(build_abs_path(&ctx.cwd, &curline)),
             "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
             "history" => {
                 let path = if curline.starts_with('~') {
                     crate::utils::expand_tilde(curline)
                 } else {
-                    build_abs_path(&context.cwd, &curline)
+                    build_abs_path(&ctx.cwd, &curline)
                 };
                 PreviewTarget::File(path)
             }
@@ -96,7 +93,7 @@ fn parse_preview_target(
 
                     line_content.replace(cache_line.into());
 
-                    let path = context.cwd.to_path_buf().join(fpath);
+                    let path = ctx.cwd.to_path_buf().join(fpath);
 
                     Ok::<_, anyhow::Error>((path, lnum))
                 };
@@ -107,22 +104,22 @@ fn parse_preview_target(
             }
             "dumb_jump" => {
                 let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
-                let path = context.cwd.to_path_buf().join(fpath);
+                let path = ctx.cwd.to_path_buf().join(fpath);
                 PreviewTarget::LineInFile { path, line_number }
             }
             "blines" => {
                 let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
-                let path = context.env.start_buffer_path.clone();
+                let path = ctx.env.start_buffer_path.clone();
                 PreviewTarget::LineInFile { path, line_number }
             }
             "tags" => {
                 let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
-                let path = context.env.start_buffer_path.clone();
+                let path = ctx.env.start_buffer_path.clone();
                 PreviewTarget::LineInFile { path, line_number }
             }
             "proj_tags" => {
                 let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-                let path = context.cwd.to_path_buf().join(p);
+                let path = ctx.cwd.to_path_buf().join(p);
                 PreviewTarget::LineInFile { path, line_number }
             }
             "commits" | "bcommits" => {
@@ -154,8 +151,8 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 
 #[derive(Debug)]
 pub struct PreviewImpl<'a> {
+    pub ctx: &'a Context,
     pub preview_height: usize,
-    pub context: &'a ProviderContext,
     pub preview_target: PreviewTarget,
     /// When the line extracted from the cache mismatches the latest
     /// preview line content, which means the cache is outdated, we
@@ -166,23 +163,19 @@ pub struct PreviewImpl<'a> {
 }
 
 impl<'a> PreviewImpl<'a> {
-    pub fn new(
-        curline: String,
-        preview_height: usize,
-        context: &'a ProviderContext,
-    ) -> Result<Self> {
-        let (preview_target, cache_line) = parse_preview_target(curline, context)?;
+    pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> Result<Self> {
+        let (preview_target, cache_line) = parse_preview_target(curline, ctx)?;
 
         Ok(Self {
+            ctx,
             preview_height,
-            context,
             preview_target,
             cache_line,
         })
     }
 
     pub async fn get_preview(&self) -> Result<Preview> {
-        if let Some(preview) = self.context.cached_preview(&self.preview_target) {
+        if let Some(preview) = self.ctx.cached_preview(&self.preview_target) {
             return Ok(preview);
         }
 
@@ -206,14 +199,14 @@ impl<'a> PreviewImpl<'a> {
             } => self.preview_help_subject(subject, doc_filename, runtimepath),
         };
 
-        self.context
+        self.ctx
             .insert_preview(self.preview_target.clone(), preview.clone());
 
         Ok(preview)
     }
 
     fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {
-        let stdout = self.context.execute(&format!("git show {rev}"))?;
+        let stdout = self.ctx.execute(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
@@ -253,7 +246,7 @@ impl<'a> PreviewImpl<'a> {
     }
 
     fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
-        let enable_icon = self.context.env.icon.enabled();
+        let enable_icon = self.ctx.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
             vec!["Directory is empty".to_string()]
@@ -293,7 +286,7 @@ impl<'a> PreviewImpl<'a> {
             }
         };
 
-        let (lines, fname) = if !self.context.env.is_nvim {
+        let (lines, fname) = if !self.ctx.env.is_nvim {
             let (lines, abs_path) =
                 previewer::preview_file(path, self.preview_height, self.max_line_width()).map_err(
                     |e| {
@@ -301,14 +294,14 @@ impl<'a> PreviewImpl<'a> {
                         e
                     },
                 )?;
-            let cwd = self.context.cwd.to_str().expect("Cwd is a valid UTF-8");
+            let cwd = self.ctx.cwd.to_str().expect("Cwd is a valid UTF-8");
             // cwd is shown via the popup title, no need to include it again.
             let cwd_relative = abs_path.replacen(cwd, ".", 1);
             let mut lines = lines;
             lines[0] = cwd_relative;
             (lines, abs_path)
         } else {
-            let max_fname_len = self.context.env.display_winwidth - 1;
+            let max_fname_len = self.ctx.env.display_winwidth - 1;
             previewer::preview_file_with_truncated_title(
                 path,
                 self.preview_height,
@@ -347,18 +340,14 @@ impl<'a> PreviewImpl<'a> {
     async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
         tracing::debug!(path=?path.display(), lnum, "Previewing file");
 
-        let container_width = self.context.env.display_winwidth;
+        let container_width = self.ctx.env.display_winwidth;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !self.context.env.is_nvim && should_truncate_cwd_relative(self.context.provider_id())
-            {
+            if !self.ctx.env.is_nvim && should_truncate_cwd_relative(self.ctx.provider_id()) {
                 // cwd is shown via the popup title, no need to include it again.
-                let cwd_relative = fname.replacen(
-                    self.context.cwd.to_str().expect("Cwd is a valid UTF-8"),
-                    ".",
-                    1,
-                );
+                let cwd_relative =
+                    fname.replacen(self.ctx.cwd.to_str().expect("Cwd is a valid UTF-8"), ".", 1);
                 format!("{cwd_relative}:{lnum}")
             } else {
                 let max_fname_len = container_width - 1 - display_width(lnum);
@@ -392,7 +381,7 @@ impl<'a> PreviewImpl<'a> {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
-                                    let border_line = "─".repeat(if self.context.env.is_nvim {
+                                    let border_line = "─".repeat(if self.ctx.env.is_nvim {
                                         container_width
                                     } else {
                                         // Vim has a different border width.
@@ -453,7 +442,7 @@ impl<'a> PreviewImpl<'a> {
             Err(err) => {
                 tracing::error!(
                     ?path,
-                    provider_id = %self.context.provider_id(),
+                    provider_id = %self.ctx.provider_id(),
                     ?err,
                     "Couldn't read first lines",
                 );
@@ -474,22 +463,21 @@ impl<'a> PreviewImpl<'a> {
     // TODO: Only run for these provider using custom shell command.
     #[allow(unused)]
     fn try_refresh_cache(&self, latest_line: &str) {
-        if self.context.provider_id() == "grep" {
+        if self.ctx.provider_id() == "grep" {
             if let Some(ref cache_line) = self.cache_line {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
 
-                    let shell_cmd = crate::command::grep::rg_shell_command(&self.context.cwd);
+                    let shell_cmd = crate::command::grep::rg_shell_command(&self.ctx.cwd);
                     let job_id = utility::calculate_hash(&shell_cmd);
 
                     if job::reserve(job_id) {
-                        let context = self.context.clone();
+                        let ctx = self.ctx.clone();
 
                         // TODO: Refresh with a timeout.
                         tokio::task::spawn_blocking(move || {
-                            tracing::debug!(cwd = ?context.cwd, "Refreshing grep cache");
-                            let new_digest = match crate::command::grep::refresh_cache(&context.cwd)
-                            {
+                            tracing::debug!(cwd = ?ctx.cwd, "Refreshing grep cache");
+                            let new_digest = match crate::command::grep::refresh_cache(&ctx.cwd) {
                                 Ok(digest) => {
                                     tracing::debug!(
                                         total = digest.total,
@@ -507,16 +495,16 @@ impl<'a> PreviewImpl<'a> {
                                 path: new_digest.cached_path,
                                 refreshed: true,
                             };
-                            context.set_provider_source(new);
+                            ctx.set_provider_source(new);
                             job::unreserve(job_id);
 
-                            if !context.terminated.load(Ordering::SeqCst) {
-                                let _ = context.vim.echo_info("Out-dated cache refreshed");
+                            if !ctx.terminated.load(Ordering::SeqCst) {
+                                let _ = ctx.vim.echo_info("Out-dated cache refreshed");
                             }
                         });
                     } else {
                         tracing::debug!(
-                            cwd = ?self.context.cwd,
+                            cwd = ?self.ctx.cwd,
                             "There is already a grep job running, skip freshing the cache"
                         );
                     }
@@ -539,7 +527,7 @@ impl<'a> PreviewImpl<'a> {
     /// Returns the maximum line width.
     #[inline]
     fn max_line_width(&self) -> usize {
-        2 * self.context.env.display_winwidth
+        2 * self.ctx.env.display_winwidth
     }
 }
 
@@ -556,11 +544,11 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
 }
 
 pub struct OnMoveImpl<'a> {
-    ctx: &'a ProviderContext,
+    ctx: &'a Context,
 }
 
 impl<'a> OnMoveImpl<'a> {
-    pub fn new(ctx: &'a ProviderContext) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         Self { ctx }
     }
 

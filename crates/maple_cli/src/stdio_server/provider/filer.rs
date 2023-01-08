@@ -1,6 +1,6 @@
 use crate::stdio_server::handler::{Preview, PreviewImpl, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
-use crate::stdio_server::provider::{ClapProvider, ProviderContext};
+use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::stdio_server::vim::syntax_for;
 use crate::utils::build_abs_path;
 use anyhow::Result;
@@ -124,16 +124,16 @@ pub struct FilerProvider {
 }
 
 impl FilerProvider {
-    pub fn new(cwd: PathBuf) -> Self {
+    pub fn new(current_dir: PathBuf) -> Self {
         Self {
-            current_dir: cwd,
+            current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
         }
     }
 
     // Without the icon.
-    async fn current_line(&self, ctx: &ProviderContext) -> Result<String> {
+    async fn current_line(&self, ctx: &Context) -> Result<String> {
         let curline = ctx.vim.display_getcurline().await?;
         let curline = if ctx.vim.get_var_bool("clap_enable_icon").await? {
             curline.chars().skip(2).collect()
@@ -143,27 +143,26 @@ impl FilerProvider {
         Ok(curline)
     }
 
-    async fn on_tab(&mut self, ctx: &ProviderContext) -> Result<()> {
-        // Most providers don't need this, hence a default impl is provided.
-        let mut target_dir = self.current_dir.clone();
+    async fn on_tab(&mut self, ctx: &Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        target_dir.push(curline);
+        let target_dir = self.current_dir.clone().join(curline);
 
-        if target_dir.is_dir() {
+        let preview_target = if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
-
             let curline = self.current_line(ctx).await?;
-            self.do_preview(PreviewTarget::FileOrDirectory(curline.into()), ctx)
-                .await?;
+            PreviewTarget::FileOrDirectory(curline.into())
         } else if target_dir.is_file() {
-            self.do_preview(PreviewTarget::File(target_dir.clone()), ctx)
-                .await?;
-        }
+            PreviewTarget::File(target_dir.clone())
+        } else {
+            return Ok(());
+        };
+
+        self.do_preview(preview_target, ctx).await?;
 
         Ok(())
     }
 
-    async fn on_backspace(&mut self, ctx: &ProviderContext) -> Result<()> {
+    async fn on_backspace(&mut self, ctx: &Context) -> Result<()> {
         let mut input = ctx.vim.input_get().await?;
 
         if input.is_empty() {
@@ -178,19 +177,17 @@ impl FilerProvider {
         let lines = self.on_query_change(&input, ctx)?;
         self.current_lines = lines;
 
-        let mut target_dir = self.current_dir.clone();
         let curline = self.current_line(ctx).await?;
-        target_dir.push(curline);
+        let target_dir = self.current_dir.clone().join(curline);
         self.do_preview(PreviewTarget::FileOrDirectory(target_dir), ctx)
             .await?;
 
         Ok(())
     }
 
-    async fn on_carriage_return(&mut self, ctx: &ProviderContext) -> Result<()> {
-        let mut target_dir = self.current_dir.clone();
+    async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        target_dir.push(curline);
+        let target_dir = self.current_dir.clone().join(curline);
 
         if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
@@ -201,9 +198,8 @@ impl FilerProvider {
             return Ok(());
         }
 
-        let mut target_file = self.current_dir.clone();
         let input = ctx.vim.input_get().await?;
-        target_file.push(input);
+        let target_file = self.current_dir.clone().join(input);
 
         ctx.vim
             .call("clap#provider#filer#handle_special_entries", [target_file])
@@ -212,7 +208,7 @@ impl FilerProvider {
         Ok(())
     }
 
-    fn on_query_change(&self, query: &str, ctx: &ProviderContext) -> Result<Vec<String>> {
+    fn on_query_change(&self, query: &str, ctx: &Context) -> Result<Vec<String>> {
         let current_items = self
             .dir_entries
             .get(&self.current_dir)
@@ -247,7 +243,7 @@ impl FilerProvider {
         Ok(lines)
     }
 
-    fn reset_to(&mut self, dir: PathBuf, ctx: &ProviderContext) -> Result<()> {
+    fn reset_to(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
         self.current_dir = dir.clone();
         self.load_dir(dir, ctx)?;
         ctx.vim.exec("input_set", [""])?;
@@ -258,10 +254,10 @@ impl FilerProvider {
         Ok(())
     }
 
-    async fn do_preview(&self, preview_target: PreviewTarget, ctx: &ProviderContext) -> Result<()> {
+    async fn do_preview(&self, preview_target: PreviewTarget, ctx: &Context) -> Result<()> {
         let preview_impl = PreviewImpl {
+            ctx,
             preview_height: ctx.preview_height().await?,
-            context: ctx,
             preview_target,
             cache_line: None,
         };
@@ -294,7 +290,7 @@ impl FilerProvider {
         Ok(())
     }
 
-    fn load_parent(&mut self, ctx: &ProviderContext) -> Result<()> {
+    fn load_parent(&mut self, ctx: &Context) -> Result<()> {
         let parent_dir = match self.current_dir.parent() {
             Some(parent) => parent,
             None => return Ok(()),
@@ -303,7 +299,7 @@ impl FilerProvider {
         self.load_dir(self.current_dir.clone(), ctx)
     }
 
-    fn load_dir(&mut self, target_dir: PathBuf, ctx: &ProviderContext) -> Result<()> {
+    fn load_dir(&mut self, target_dir: PathBuf, ctx: &Context) -> Result<()> {
         if let Entry::Vacant(v) = self.dir_entries.entry(target_dir) {
             let entries = match read_dir_entries(&self.current_dir, ctx.env.icon.enabled(), None) {
                 Ok(entries) => entries,
@@ -331,7 +327,7 @@ impl FilerProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
-    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = &ctx.cwd;
 
         let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {
@@ -364,7 +360,7 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
         let path = build_abs_path(&self.current_dir, curline);
         self.do_preview(PreviewTarget::FileOrDirectory(path), ctx)
@@ -372,7 +368,7 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+    async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         if self.current_lines.is_empty() {
             ctx.vim
                 .bare_exec("clap#provider#filer#set_create_file_entry")?;
@@ -391,7 +387,7 @@ impl ClapProvider for FilerProvider {
         Ok(())
     }
 
-    async fn on_key_event(&mut self, ctx: &mut ProviderContext, key_event: KeyEvent) -> Result<()> {
+    async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
         match key_event {
             KeyEvent::Tab => self.on_tab(ctx).await,
             KeyEvent::Backspace => self.on_backspace(ctx).await,
