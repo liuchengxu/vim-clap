@@ -5,9 +5,23 @@ const REPO: &str = "vim-clap";
 
 pub(super) fn asset_name() -> Option<&'static str> {
     if cfg!(target_os = "macos") {
-        Some("maple-x86_64-apple-darwin")
+        if cfg!(target_arch = "x86_64-apple-darwin") {
+            Some("maple-x86_64-apple-darwin")
+        } else if cfg!(target_arch = "aarch64-apple-darwin") {
+            Some("maple-aarch64-apple-darwin")
+        } else {
+            None
+        }
     } else if cfg!(target_os = "linux") {
-        Some("maple-x86_64-unknown-linux-musl")
+        if cfg!(target_arch = "x86_64-unknown-linux-musl") {
+            Some("maple-x86_64-unknown-linux-musl")
+        } else if cfg!(target_arch = "x86_64-unknown-linux-gnu") {
+            Some("maple-x86_64-unknown-linux-gnu")
+        } else if cfg!(target_arch = "aarch64-unknown-linux-gnu") {
+            Some("maple-aarch64-unknown-linux-gnu")
+        } else {
+            None
+        }
     } else if cfg!(target_os = "windows") {
         Some("maple-x86_64-pc-windows-msvc")
     } else {
@@ -73,7 +87,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_retrieve_asset_size() {
-        retrieve_asset_size(asset_name().unwrap(), "v0.34")
+        let latest_tag = retrieve_latest_release().await.unwrap().tag_name;
+        retrieve_asset_size(asset_name().unwrap(), &latest_tag)
             .await
             .expect("Failed to retrieve the asset size for release v0.34");
     }
