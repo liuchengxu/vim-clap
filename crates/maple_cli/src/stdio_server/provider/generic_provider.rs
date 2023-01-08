@@ -33,20 +33,25 @@ impl FilterControl {
 }
 
 /// Start the parallel filter in a new thread.
-fn run(query: String, number: usize, data_source: DataSource, context: &Context) -> FilterControl {
+fn start_filter_parallel(
+    query: String,
+    number: usize,
+    data_source: DataSource,
+    ctx: &Context,
+) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     let join_handle = {
         let filter_context = FilterContext::new(
-            context.env.icon,
+            ctx.env.icon,
             Some(number),
-            Some(context.env.display_winwidth),
-            context.env.matcher_builder.clone(),
+            Some(ctx.env.display_winwidth),
+            ctx.env.matcher_builder.clone(),
         );
 
-        let cwd = context.cwd.clone();
+        let cwd = ctx.cwd.clone();
+        let vim = ctx.vim.clone();
         let stop_signal = stop_signal.clone();
-        let vim = context.vim.clone();
 
         std::thread::spawn(move || {
             if let Err(e) = filter::par_dyn_run_inprocess(
@@ -75,20 +80,20 @@ fn run(query: String, number: usize, data_source: DataSource, context: &Context)
 /// Generic provider impl.
 #[derive(Debug)]
 pub struct GenericProvider {
-    current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
     display_winheight: Option<usize>,
     maybe_filter_control: Option<FilterControl>,
+    current_results: Arc<Mutex<Vec<MatchedItem>>>,
     last_filter_control_killed: Arc<AtomicBool>,
 }
 
 impl GenericProvider {
     pub fn new() -> Self {
         Self {
-            current_results: Arc::new(Mutex::new(Vec::new())),
             runtimepath: None,
             display_winheight: None,
             maybe_filter_control: None,
+            current_results: Arc::new(Mutex::new(Vec::new())),
             last_filter_control_killed: Arc::new(AtomicBool::new(true)),
         }
     }
@@ -268,7 +273,7 @@ impl ClapProvider for GenericProvider {
             });
         }
 
-        let new_control = run(query, display_winheight, data_source, ctx);
+        let new_control = start_filter_parallel(query, display_winheight, data_source, ctx);
 
         self.maybe_filter_control.replace(new_control);
 
@@ -276,7 +281,6 @@ impl ClapProvider for GenericProvider {
     }
 
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
-        // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());

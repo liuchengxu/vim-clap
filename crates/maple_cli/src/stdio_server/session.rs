@@ -1,7 +1,7 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
-use crate::stdio_server::input::ProviderEvent;
-use crate::stdio_server::provider::{ClapProvider, Context, ProviderEventSender, ProviderSource};
+use crate::stdio_server::input::{ProviderEvent, ProviderEventSender};
+use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -13,8 +13,8 @@ pub type SessionId = u64;
 
 #[derive(Debug)]
 pub struct Session {
-    session_id: SessionId,
     ctx: Context,
+    session_id: SessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
     event_recv: UnboundedReceiver<ProviderEvent>,
@@ -29,8 +29,8 @@ impl Session {
         let (session_sender, session_receiver) = unbounded_channel();
 
         let session = Session {
-            session_id,
             ctx,
+            session_id,
             provider,
             event_recv: session_receiver,
         };
@@ -213,10 +213,10 @@ impl SessionManager {
         &mut self,
         session_id: SessionId,
         provider: Box<dyn ClapProvider>,
-        context: Context,
+        ctx: Context,
     ) {
         if let Entry::Vacant(v) = self.sessions.entry(session_id) {
-            let (session, session_sender) = Session::new(session_id, context, provider);
+            let (session, session_sender) = Session::new(session_id, ctx, provider);
             session.start_event_loop();
 
             session_sender

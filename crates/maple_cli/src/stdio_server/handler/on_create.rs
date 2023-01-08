@@ -4,6 +4,7 @@ use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC
 use crate::process::{CacheableCommand, ShellCommand};
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{Context, ProviderSource};
+use crate::utils::count_lines;
 use anyhow::Result;
 use filter::SourceItem;
 use matcher::ClapItem;
@@ -23,7 +24,7 @@ async fn execute_and_write_cache(
 
     let mut tokio_cmd = crate::process::tokio::shell_command(cmd);
     crate::process::tokio::write_stdout_to_file(&mut tokio_cmd, &cache_file).await?;
-    let total = crate::utils::count_lines(std::fs::File::open(&cache_file)?)?;
+    let total = count_lines(std::fs::File::open(&cache_file)?)?;
     Ok(ProviderSource::CachedFile {
         total,
         path: cache_file,
@@ -32,7 +33,7 @@ async fn execute_and_write_cache(
 }
 
 /// Performs the initialization like collecting the source and total number of source items.
-async fn initialize_provider_source(context: &Context) -> Result<ProviderSource> {
+async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
     let to_small_provider_source = |lines: Vec<String>| {
         let total = lines.len();
         let items = lines
@@ -43,22 +44,20 @@ async fn initialize_provider_source(context: &Context) -> Result<ProviderSource>
     };
 
     // Known providers.
-    match context.provider_id() {
+    match ctx.provider_id() {
         "blines" => {
-            let total =
-                crate::utils::count_lines(std::fs::File::open(&context.env.start_buffer_path)?)?;
-            let path = context.env.start_buffer_path.clone();
+            let total = count_lines(std::fs::File::open(&ctx.env.start_buffer_path)?)?;
+            let path = ctx.env.start_buffer_path.clone();
             return Ok(ProviderSource::File { total, path });
         }
         "tags" => {
-            let items =
-                crate::tools::ctags::buffer_tag_items(&context.env.start_buffer_path, false)?;
+            let items = crate::tools::ctags::buffer_tag_items(&ctx.env.start_buffer_path, false)?;
             let total = items.len();
             return Ok(ProviderSource::Small { total, items });
         }
         "proj_tags" => {
-            let ctags_cmd = build_recursive_ctags_cmd(context.cwd.to_path_buf());
-            let provider_source = if context.env.no_cache {
+            let ctags_cmd = build_recursive_ctags_cmd(ctx.cwd.to_path_buf());
+            let provider_source = if ctx.env.no_cache {
                 let lines = ctags_cmd.execute_and_write_cache().await?;
                 to_small_provider_source(lines)
             } else {
@@ -77,8 +76,8 @@ async fn initialize_provider_source(context: &Context) -> Result<ProviderSource>
             return Ok(provider_source);
         }
         "help_tags" => {
-            let helplang: String = context.vim.eval("&helplang").await?;
-            let runtimepath: String = context.vim.eval("&runtimepath").await?;
+            let helplang: String = ctx.vim.eval("&helplang").await?;
+            let runtimepath: String = ctx.vim.eval("&runtimepath").await?;
             let doc_tags = std::iter::once("/doc/tags".to_string()).chain(
                 helplang
                     .split(',')
@@ -91,28 +90,28 @@ async fn initialize_provider_source(context: &Context) -> Result<ProviderSource>
         _ => {}
     }
 
-    let source_cmd: Vec<Value> = context.vim.bare_call("provider_source").await?;
+    let source_cmd: Vec<Value> = ctx.vim.bare_call("provider_source").await?;
     if let Some(value) = source_cmd.into_iter().next() {
         match value {
             // Source is a String: g:__t_string, g:__t_func_string
             Value::String(command) => {
                 // Always try recreating the source.
-                if context.provider_id() == "files" {
+                if ctx.provider_id() == "files" {
                     let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
-                    tokio_cmd.current_dir(&context.cwd);
+                    tokio_cmd.current_dir(&ctx.cwd);
                     let lines = tokio_cmd.lines().await?;
                     return Ok(to_small_provider_source(lines));
                 }
 
-                let shell_cmd = ShellCommand::new(command, context.cwd.to_path_buf());
+                let shell_cmd = ShellCommand::new(command, ctx.cwd.to_path_buf());
                 let cache_file = shell_cmd.cache_file_path()?;
 
                 const DIRECT_CREATE_NEW_SOURCE: &[&str] = &["files"];
 
                 let direct_create_new_source =
-                    DIRECT_CREATE_NEW_SOURCE.contains(&context.provider_id());
+                    DIRECT_CREATE_NEW_SOURCE.contains(&ctx.provider_id());
 
-                let provider_source = if direct_create_new_source || context.env.no_cache {
+                let provider_source = if direct_create_new_source || ctx.env.no_cache {
                     execute_and_write_cache(&shell_cmd.command, cache_file).await?
                 } else {
                     match shell_cmd.cache_digest() {
@@ -126,7 +125,7 @@ async fn initialize_provider_source(context: &Context) -> Result<ProviderSource>
                 };
 
                 if let ProviderSource::CachedFile { path, .. } = &provider_source {
-                    context.vim.set_var("g:__clap_forerunner_tempfile", path)?;
+                    ctx.vim.set_var("g:__clap_forerunner_tempfile", path)?;
                 }
 
                 return Ok(provider_source);

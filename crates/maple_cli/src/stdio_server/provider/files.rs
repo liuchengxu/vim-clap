@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 fn start_searcher(
     number: usize,
-    context: &Context,
+    ctx: &Context,
     search_root: PathBuf,
     hidden: bool,
     matcher: Matcher,
@@ -17,9 +17,9 @@ fn start_searcher(
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     let join_handle = {
-        let icon = context.env.icon;
-        let winwidth = context.env.display_winwidth;
-        let vim = context.vim.clone();
+        let icon = ctx.env.icon;
+        let winwidth = ctx.env.display_winwidth;
+        let vim = ctx.vim.clone();
         let stop_signal = stop_signal.clone();
 
         tokio::spawn(async move {

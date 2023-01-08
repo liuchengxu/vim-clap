@@ -100,12 +100,12 @@ impl Client {
         match Event::from_method(&notification.method) {
             Event::Provider(provider_event) => match provider_event {
                 ProviderEvent::Create => {
-                    let context = Context::new(notification.params, self.vim.clone()).await?;
                     let provider_id = self.vim.provider_id().await?;
-                    let provider = create_provider(&provider_id, &context).await?;
+                    let ctx = Context::new(notification.params, self.vim.clone()).await?;
+                    let provider = create_provider(&provider_id, &ctx).await?;
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
-                    session_manager.new_session(session_id()?, provider, context);
+                    session_manager.new_session(session_id()?, provider, ctx);
                 }
                 ProviderEvent::Terminate => {
                     let mut session_manager = self.session_manager_mutex.lock();

@@ -136,7 +136,7 @@ impl DumbJumpProvider {
         }
     }
 
-    async fn initialize(&self, extension: String, cwd: AbsPathBuf) -> Result<()> {
+    async fn initialize_tags(&self, extension: String, cwd: AbsPathBuf) -> Result<()> {
         let job_id = utility::calculate_hash(&(&cwd, "dumb_jump"));
 
         if job::reserve(job_id) {
@@ -228,12 +228,15 @@ impl DumbJumpProvider {
     /// Starts a new searching task.
     async fn start_search(
         &self,
-        cwd: AbsPathBuf,
+        searching_worker: SearchingWorker,
         query: String,
-        extension: String,
         query_info: QueryInfo,
         ctx: &Context,
     ) -> Result<SearchResults> {
+        if query.is_empty() {
+            return Ok(Default::default());
+        }
+
         let search_engine = match (
             self.ctags_regenerated.load(Ordering::Relaxed),
             self.gtags_regenerated.load(Ordering::Relaxed),
@@ -243,15 +246,6 @@ impl DumbJumpProvider {
             _ => SearchEngine::Regex,
         };
 
-        if query.is_empty() {
-            return Ok(Default::default());
-        }
-
-        let searching_worker = SearchingWorker {
-            cwd,
-            query_info: query_info.clone(),
-            source_file_extension: extension,
-        };
         let (response, usages) = match search_engine.run(searching_worker).await {
             Ok(usages) => {
                 let response = {
@@ -284,22 +278,16 @@ impl DumbJumpProvider {
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
     async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
-        let bufname = ctx.vim.bufname(ctx.env.start.bufnr).await?;
-        let extension = std::path::Path::new(&bufname)
-            .extension()
-            .and_then(|s| s.to_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
-
         let cwd = ctx.vim.working_dir().await?;
+        let extension = ctx.start_buffer_extension()?;
 
-        let dumb_jump = self.clone();
         tokio::task::spawn({
-            let extension = extension.clone();
             let cwd = cwd.clone();
+            let extension = extension.clone();
+            let dumb_jump = self.clone();
 
             async move {
-                if let Err(err) = dumb_jump.initialize(extension, cwd).await {
+                if let Err(err) = dumb_jump.initialize_tags(extension, cwd).await {
                     tracing::error!(error = ?err, "Failed to initialize dumb_jump provider");
                 }
             }
@@ -308,9 +296,13 @@ impl ClapProvider for DumbJumpProvider {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             let query_info = parse_query_info(&query);
-
+            let searching_worker = SearchingWorker {
+                cwd,
+                query_info: query_info.clone(),
+                source_file_extension: extension,
+            };
             self.cached_results = self
-                .start_search(cwd, query, extension, query_info, ctx)
+                .start_search(searching_worker, query, query_info, ctx)
                 .await?;
             self.current_usages.take();
         }
@@ -352,16 +344,6 @@ impl ClapProvider for DumbJumpProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
-        let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
-
-        let extension = ctx
-            .env
-            .start_buffer_path
-            .extension()
-            .and_then(|s| s.to_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| anyhow::anyhow!("No extension found for start_buffer_path"))?;
-
         let query_info = parse_query_info(&query);
 
         // Try to refilter the cached results.
@@ -390,8 +372,15 @@ impl ClapProvider for DumbJumpProvider {
             return Ok(());
         }
 
+        let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
+        let extension = ctx.start_buffer_extension()?;
+        let searching_worker = SearchingWorker {
+            cwd,
+            query_info: query_info.clone(),
+            source_file_extension: extension,
+        };
         self.cached_results = self
-            .start_search(cwd, query, extension, query_info, ctx)
+            .start_search(searching_worker, query, query_info, ctx)
             .await?;
         self.current_usages.take();
 

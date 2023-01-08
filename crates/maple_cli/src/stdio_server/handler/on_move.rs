@@ -63,7 +63,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
     };
 
     // Store the line context we see in the search result, but it may be out-dated due to the
-    // cacheh is being used, especially for the providers like grep which potentially have tons of
+    // cache is being used, especially for the providers like grep which potentially have tons of
     // items.
     //
     // If the line we see mismatches the actual line content in the preview, the content in which
@@ -71,67 +71,70 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
     let mut line_content = None;
 
     let preview_target = match ctx.provider_id() {
-            "files" | "git_files" => PreviewTarget::File(build_abs_path(&ctx.cwd, &curline)),
-            "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
-            "history" => {
-                let path = if curline.starts_with('~') {
-                    crate::utils::expand_tilde(curline)
+        "files" | "git_files" => PreviewTarget::File(build_abs_path(&ctx.cwd, &curline)),
+        "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
+        "history" => {
+            let path = if curline.starts_with('~') {
+                crate::utils::expand_tilde(curline)
+            } else {
+                build_abs_path(&ctx.cwd, &curline)
+            };
+            PreviewTarget::File(path)
+        }
+        "coc_location" | "grep" | "live_grep" => {
+            let mut try_extract_file_path = |line: &str| {
+                let (fpath, lnum, _col, cache_line) =
+                    extract_grep_position(line).ok_or_else(err)?;
+
+                let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
+                    stripped.to_path_buf()
                 } else {
-                    build_abs_path(&ctx.cwd, &curline)
-                };
-                PreviewTarget::File(path)
-            }
-            "coc_location" | "grep" | "live_grep" => {
-                let mut try_extract_file_path = |line: &str| {
-                    let (fpath, lnum, _col, cache_line) = extract_grep_position(line).ok_or_else(err)?;
-
-                    let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
-                        stripped.to_path_buf()
-                    } else {
-                        fpath
-                    };
-
-                    line_content.replace(cache_line.into());
-
-                    let path = ctx.cwd.to_path_buf().join(fpath);
-
-                    Ok::<_, anyhow::Error>((path, lnum))
+                    fpath
                 };
 
-                let (path, line_number) = try_extract_file_path(&curline)?;
+                line_content.replace(cache_line.into());
 
-                PreviewTarget::LineInFile { path, line_number }
-            }
-            "dumb_jump" => {
-                let (_def_kind, fpath, line_number, _col) = extract_jump_line_info(&curline).ok_or_else(err)?;
                 let path = ctx.cwd.to_path_buf().join(fpath);
-                PreviewTarget::LineInFile { path, line_number }
-            }
-            "blines" => {
-                let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
-                let path = ctx.env.start_buffer_path.clone();
-                PreviewTarget::LineInFile { path, line_number }
-            }
-            "tags" => {
-                let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
-                let path = ctx.env.start_buffer_path.clone();
-                PreviewTarget::LineInFile { path, line_number }
-            }
-            "proj_tags" => {
-                let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-                let path = ctx.cwd.to_path_buf().join(p);
-                PreviewTarget::LineInFile { path, line_number }
-            }
-            "commits" | "bcommits" => {
-                let rev = parse_rev(&curline).ok_or_else(err)?;
-                PreviewTarget::Commit(rev.into())
-            }
-            unknown_provider_id => {
-                return Err(anyhow!(
-                    "Failed to parse PreviewTarget, you probably forget to add an implementation for this provider: {unknown_provider_id}",
-                ))
-            }
-        };
+
+                Ok::<_, anyhow::Error>((path, lnum))
+            };
+
+            let (path, line_number) = try_extract_file_path(&curline)?;
+
+            PreviewTarget::LineInFile { path, line_number }
+        }
+        "dumb_jump" => {
+            let (_def_kind, fpath, line_number, _col) =
+                extract_jump_line_info(&curline).ok_or_else(err)?;
+            let path = ctx.cwd.to_path_buf().join(fpath);
+            PreviewTarget::LineInFile { path, line_number }
+        }
+        "blines" => {
+            let line_number = extract_blines_lnum(&curline).ok_or_else(err)?;
+            let path = ctx.env.start_buffer_path.clone();
+            PreviewTarget::LineInFile { path, line_number }
+        }
+        "tags" => {
+            let line_number = extract_buf_tags_lnum(&curline).ok_or_else(err)?;
+            let path = ctx.env.start_buffer_path.clone();
+            PreviewTarget::LineInFile { path, line_number }
+        }
+        "proj_tags" => {
+            let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
+            let path = ctx.cwd.to_path_buf().join(p);
+            PreviewTarget::LineInFile { path, line_number }
+        }
+        "commits" | "bcommits" => {
+            let rev = parse_rev(&curline).ok_or_else(err)?;
+            PreviewTarget::Commit(rev.into())
+        }
+        unknown_provider_id => {
+            return Err(anyhow!(
+                "Failed to parse PreviewTarget, you probably forget to \
+                    add an implementation for this provider: {unknown_provider_id}",
+            ))
+        }
+    };
 
     Ok((preview_target, line_content))
 }
@@ -294,9 +297,8 @@ impl<'a> PreviewImpl<'a> {
                         e
                     },
                 )?;
-            let cwd = self.ctx.cwd.to_str().expect("Cwd is a valid UTF-8");
             // cwd is shown via the popup title, no need to include it again.
-            let cwd_relative = abs_path.replacen(cwd, ".", 1);
+            let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
             let mut lines = lines;
             lines[0] = cwd_relative;
             (lines, abs_path)
@@ -338,7 +340,7 @@ impl<'a> PreviewImpl<'a> {
     }
 
     async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
-        tracing::debug!(path=?path.display(), lnum, "Previewing file");
+        tracing::debug!(path = ?path.display(), lnum, "Previewing file");
 
         let container_width = self.ctx.env.display_winwidth;
         let fname = path.display().to_string();
@@ -346,8 +348,7 @@ impl<'a> PreviewImpl<'a> {
         let truncated_preview_header = || {
             if !self.ctx.env.is_nvim && should_truncate_cwd_relative(self.ctx.provider_id()) {
                 // cwd is shown via the popup title, no need to include it again.
-                let cwd_relative =
-                    fname.replacen(self.ctx.cwd.to_str().expect("Cwd is a valid UTF-8"), ".", 1);
+                let cwd_relative = fname.replacen(self.ctx.cwd.as_str(), ".", 1);
                 format!("{cwd_relative}:{lnum}")
             } else {
                 let max_fname_len = container_width - 1 - display_width(lnum);

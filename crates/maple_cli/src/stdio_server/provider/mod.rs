@@ -9,9 +9,8 @@ mod recent_files;
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
-use crate::stdio_server::input::{KeyEvent, ProviderEvent};
+use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::rpc::Params;
-use crate::stdio_server::session::SessionId;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use icon::{Icon, IconKind};
@@ -23,7 +22,6 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 use types::{ClapItem, MatchedItem};
 
 pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn ClapProvider>> {
@@ -81,8 +79,8 @@ pub struct ProviderEnvironment {
 #[derive(Debug, Clone)]
 pub struct Context {
     pub cwd: AbsPathBuf,
-    pub env: Arc<ProviderEnvironment>,
     pub vim: Vim,
+    pub env: Arc<ProviderEnvironment>,
     pub terminated: Arc<AtomicBool>,
     pub preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
     pub provider_source: Arc<RwLock<ProviderSource>>,
@@ -145,8 +143,8 @@ impl Context {
 
         Ok(Self {
             cwd,
-            env: Arc::new(env),
             vim,
+            env: Arc::new(env),
             terminated: Arc::new(AtomicBool::new(false)),
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
             provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
@@ -173,6 +171,20 @@ impl Context {
             .preview_size(&self.env.provider_id, self.env.preview.winid)
             .await
             .map(|x| 2 * x)
+    }
+
+    pub fn start_buffer_extension(&self) -> Result<String> {
+        self.env
+            .start_buffer_path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Extension not found for start_buffer_path: {}",
+                    self.env.start_buffer_path.display()
+                )
+            })
     }
 
     pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
@@ -295,33 +307,6 @@ impl ProviderSource {
                     .collect(),
             ),
             _ => None,
-        }
-    }
-}
-
-/// A small wrapper of Sender<ProviderEvent> for logging on sending error.
-#[derive(Debug)]
-pub struct ProviderEventSender {
-    pub sender: UnboundedSender<ProviderEvent>,
-    pub id: SessionId,
-}
-
-impl ProviderEventSender {
-    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
-        Self { sender, id }
-    }
-}
-
-impl std::fmt::Display for ProviderEventSender {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ProviderEventSender for session {}", self.id)
-    }
-}
-
-impl ProviderEventSender {
-    pub fn send(&self, event: ProviderEvent) {
-        if let Err(error) = self.sender.send(event) {
-            tracing::error!(?error, "Failed to send session event");
         }
     }
 }
