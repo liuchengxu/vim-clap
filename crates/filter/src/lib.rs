@@ -6,22 +6,59 @@
 //! 2. sort the all lines with a match result.
 //! 3. print the top rated filtered lines to stdout.
 
-mod source;
-mod worker;
-
-use std::sync::Arc;
-
-use rayon::prelude::*;
+mod parallel_worker;
+mod sequential_source;
+mod sequential_worker;
 
 use icon::Icon;
 use matcher::{Bonus, ClapItem, MatchScope, Matcher, MatcherBuilder};
-use source::MatchedItems;
+use rayon::prelude::*;
+use std::sync::Arc;
+use types::{FileNameItem, GrepItem};
 
-pub use self::source::Source;
-pub use self::worker::iterator::dyn_run;
-pub use self::worker::par_iterator::{par_dyn_run, par_dyn_run_list, ParSource};
+pub use self::parallel_worker::{
+    par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, BestItems, ParallelSource,
+    StdioProgressor,
+};
+pub use self::sequential_source::{filter_sequential, SequentialSource};
+pub use self::sequential_worker::dyn_run;
 pub use matcher;
 pub use types::{CaseMatching, MatchedItem, Query, SourceItem};
+
+#[derive(Debug)]
+pub struct MatchedItems(Vec<MatchedItem>);
+
+impl MatchedItems {
+    /// The item with highest score first, the item with lowest score last.
+    pub fn par_sort(self) -> Self {
+        let mut items = self.0;
+        items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+        Self(items)
+    }
+
+    pub fn inner(self) -> Vec<MatchedItem> {
+        self.0
+    }
+}
+
+impl From<Vec<MatchedItem>> for MatchedItems {
+    fn from(items: Vec<MatchedItem>) -> Self {
+        Self(items)
+    }
+}
+
+/// Converts the raw line into a clap item.
+pub(crate) fn to_clap_item(match_scope: MatchScope, line: String) -> Option<Arc<dyn ClapItem>> {
+    match match_scope {
+        MatchScope::GrepLine => {
+            GrepItem::try_new(line).map(|item| Arc::new(item) as Arc<dyn ClapItem>)
+        }
+        MatchScope::FileName => {
+            FileNameItem::try_new(line).map(|item| Arc::new(item) as Arc<dyn ClapItem>)
+        }
+        _ => Some(Arc::new(SourceItem::from(line))),
+    }
+}
 
 /// Context for running the filter.
 #[derive(Debug, Clone, Default)]

@@ -1,17 +1,14 @@
-use std::io::BufRead;
-use std::sync::Arc;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rayon::prelude::*;
-
 use filter::{MatchedItem, Query, SourceItem};
-use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
-use types::ClapItem;
-
 use maple_cli::command::ctags::recursive_tags::build_recursive_ctags_cmd;
 use maple_cli::command::dumb_jump::DumbJump;
 use maple_cli::find_largest_cache_digest;
 use maple_cli::tools::ctags::{ProjectCtagsCommand, ProjectTag};
+use matcher::{FuzzyAlgorithm, MatchScope, Matcher};
+use rayon::prelude::*;
+use std::io::BufRead;
+use std::sync::Arc;
+use types::ClapItem;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");
@@ -23,7 +20,7 @@ fn prepare_source_items() -> Vec<SourceItem> {
         .collect()
 }
 
-fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn filter_sequential(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
@@ -33,7 +30,7 @@ fn filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<Matche
 }
 
 // 3 times faster than filter
-fn par_filter(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
+fn filter_parallel(list: Vec<SourceItem>, matcher: &Matcher, query: &Query) -> Vec<MatchedItem> {
     list.into_par_iter()
         .filter_map(|item| {
             let item: Arc<dyn ClapItem> = Arc::new(item);
@@ -53,45 +50,45 @@ fn bench_filter(c: &mut Criterion) {
 
     if total_items > 1_000 {
         let source_items_1k = take_items(1_000);
-        c.bench_function("filter 1k", |b| {
-            b.iter(|| filter(black_box(source_items_1k.clone()), &matcher, &query))
+        c.bench_function("filter_sequential 1k", |b| {
+            b.iter(|| filter_sequential(black_box(source_items_1k.clone()), &matcher, &query))
         });
 
-        c.bench_function("par filter 1k", |b| {
-            b.iter(|| par_filter(black_box(source_items_1k.clone()), &matcher, &query))
+        c.bench_function("filter_parallel 1k", |b| {
+            b.iter(|| filter_parallel(black_box(source_items_1k.clone()), &matcher, &query))
         });
     }
 
     if total_items > 10_000 {
         let source_items_10k = take_items(10_000);
-        c.bench_function("filter 10k", |b| {
-            b.iter(|| filter(black_box(source_items_10k.clone()), &matcher, &query))
+        c.bench_function("filter_sequential 10k", |b| {
+            b.iter(|| filter_sequential(black_box(source_items_10k.clone()), &matcher, &query))
         });
 
-        c.bench_function("par filter 10k", |b| {
-            b.iter(|| par_filter(black_box(source_items_10k.clone()), &matcher, &query))
+        c.bench_function("filter_parallel 10k", |b| {
+            b.iter(|| filter_parallel(black_box(source_items_10k.clone()), &matcher, &query))
         });
     }
 
     if total_items > 100_000 {
         let source_items_100k = take_items(100_000);
-        c.bench_function("filter 100k", |b| {
-            b.iter(|| filter(black_box(source_items_100k.clone()), &matcher, &query))
+        c.bench_function("filter_sequential 100k", |b| {
+            b.iter(|| filter_sequential(black_box(source_items_100k.clone()), &matcher, &query))
         });
 
-        c.bench_function("par filter 100k", |b| {
-            b.iter(|| par_filter(black_box(source_items_100k.clone()), &matcher, &query))
+        c.bench_function("filter_parallel 100k", |b| {
+            b.iter(|| filter_parallel(black_box(source_items_100k.clone()), &matcher, &query))
         });
     }
 
     if total_items > 1_000_000 {
         let source_items_1m = take_items(1_000_000);
-        c.bench_function("filter 1m", |b| {
-            b.iter(|| filter(black_box(source_items_1m.clone()), &matcher, &query))
+        c.bench_function("filter_sequential 1m", |b| {
+            b.iter(|| filter_sequential(black_box(source_items_1m.clone()), &matcher, &query))
         });
 
-        c.bench_function("par filter 1m", |b| {
-            b.iter(|| par_filter(black_box(source_items_1m.clone()), &matcher, &query))
+        c.bench_function("filter_parallel 1m", |b| {
+            b.iter(|| filter_parallel(black_box(source_items_1m.clone()), &matcher, &query))
         });
     }
 }

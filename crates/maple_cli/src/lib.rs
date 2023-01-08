@@ -7,6 +7,7 @@ mod paths;
 mod previewer;
 mod process;
 mod recent_files;
+mod searcher;
 mod stdio_server;
 mod utils;
 

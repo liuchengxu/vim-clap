@@ -9,7 +9,7 @@
 [g1]: https://badges.gitter.im/liuchengxu/vim-clap.svg
 [g2]: https://gitter.im/liuchengxu/vim-clap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
 
-Vim-clap is a modern generic interactive finder and dispatcher, based on the newly feature: `floating_win` of neovim or `popup` of vim. The goal of vim-clap is to work everywhere out of the box, with fast response.
+Vim-clap is a modern generic performant finder using the `floating_win` of neovim or `popup` of vim, powered by an external backend written in Rust.
 
 <p align="center">
   <img width="600px" src="https://user-images.githubusercontent.com/8850248/73323347-24467380-4282-11ea-8dac-5ef5a1ee63bb.gif">
@@ -51,13 +51,9 @@ Vim-clap is a modern generic interactive finder and dispatcher, based on the new
 - [x] ~~Pure vimscript~~.
   - Pin to some early version of vim-clap if you prefer the pure vimscript plugin.
 - [x] ~~Work out of the box, without any extra dependency~~.
-  - Most providers work great out of the box.
-  - A few providers are unable to work or work badly without the Rust binary.
-- [x] Extensible, easy to add new source providers.
-- [x] Find or dispatch anything on the fly, with smart cache strategy.
-- [x] Avoid touching the current window layout, less eye movement.
-- [x] Support the preview functionality when navigating the result list.
-- [x] Support built-in fuzzy match and external fuzzy filter tools.
+  - The Rust binary is required to have a decent user experience.
+- [x] Blazingly fast thanks to the powerful Rust backend.
+- [x] Extensible, easy to add new providers.
 - [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax).
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
@@ -115,7 +111,7 @@ You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files 
 
 Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
 
-<img width="561" alt="截屏2020-04-08 下午5 11 50" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
+<img width="561" alt="cache spinner" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
 
 #### Providers
 

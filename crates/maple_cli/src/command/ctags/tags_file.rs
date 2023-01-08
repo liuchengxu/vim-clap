@@ -1,10 +1,9 @@
-use anyhow::Result;
-use clap::Parser;
-
 use super::SharedParams;
 use crate::app::Params;
 use crate::find_usages::{CtagsSearcher, QueryType};
 use crate::tools::ctags::TagsGenerator;
+use anyhow::Result;
+use clap::Parser;
 
 #[derive(Parser, Debug, Clone)]
 struct TagsFileParams {
@@ -62,7 +61,7 @@ impl TagsFile {
             let symbols =
                 tags_searcher.search_symbols(query, QueryType::StartWith, self.force_generate)?;
             for symbol in symbols {
-                println!("{:?}", symbol);
+                println!("{symbol:?}");
             }
         }
 

@@ -101,11 +101,10 @@ fn fuzzy_match(
 
     bonuses.push(Bonus::RecentFiles(recent_files.into()));
 
-    let query: Query = query.into();
-    let matcher = MatcherBuilder::default()
+    let matcher = MatcherBuilder::new()
         .bonuses(bonuses)
         .match_scope(match_scope)
-        .build(query);
+        .build(query.into());
 
     let mut ranked = candidates
         .into_iter()

@@ -1,7 +1,6 @@
 mod default_types;
 mod jsont;
-pub mod stats;
-pub mod util;
+mod stats;
 
 use crate::utils::display_width;
 use anyhow::Result;

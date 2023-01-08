@@ -502,77 +502,12 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  function! provider.init_default_impl() abort
-    " TODO: remove the forerunner job
-    if g:__clap_development
-      let return_directly = self.is_pure_async()
-            \ || self.source_type == g:__t_string
-            \ || self.source_type == g:__t_func_string
-      if return_directly
-        return
-      endif
-    endif
-
-    if self.is_pure_async()
-      return
-    elseif self.source_type == g:__t_string
-      call clap#job#regular#forerunner#start(self._().source)
-      return
-    elseif self.source_type == g:__t_func_string
-      call clap#job#regular#forerunner#start(self._().source())
-      return
-    endif
-
-    " Even for the syn providers that could have 10,000+ lines, it's ok to show it now.
-    if self.source_type == g:__t_list
-      let lines = self._().source
-    elseif self.source_type == g:__t_func_list
-      let lines = self._().source()
-    endif
-
-    let initial_size = len(lines)
-    let g:clap.display.initial_size = initial_size
-    if initial_size > 0
-      call g:clap.display.set_lines_lazy(lines)
-      call g:clap#display_win.shrink_if_undersize()
-      call clap#indicator#set_matches_number(initial_size)
-      call clap#sign#toggle_cursorline()
-
-      " For the providers that return a relatively huge List
-      if self.can_async() && clap#filter#beyond_capacity(initial_size)
-        let g:__clap_forerunner_tempfile = tempname()
-        call writefile(lines, g:__clap_forerunner_tempfile)
-      endif
-    endif
-  endfunction
-
   function! provider.init_display_win() abort
     if has_key(self._(), 'init')
       call self._().init()
     else
-      call self.init_default_impl()
-    endif
-    let s:pure_rust_backed = ['filer', 'dumb_jump', 'recent_files']
-    " FIXME: remove the vim forerunner job once on_init is supported on the Rust side.
-    if clap#maple#is_available() && index(s:pure_rust_backed, self.id) == -1
-      let extra = {}
-      if g:__clap_development
-        if has_key(self, 'source_type') && has_key(self._(), 'source')
-          if self.source_type == g:__t_string
-            let extra = { 'source_cmd': self._().source }
-          elseif self.source_type == g:__t_func_string
-            let extra = { 'source_cmd': self._().source() }
-          endif
-        endif
-      endif
-      if self.id ==# 'tags'
-        let extra['debounce'] = v:false
-      endif
-      call clap#client#notify_on_init('on_init', extra)
-    endif
-    " Try to fill the preview window.
-    if clap#preview#is_enabled()
-      call timer_start(30, { -> clap#impl#on_move#invoke() })
+      " Still create a new session on the Rust side for the general on_move impl.
+      call clap#client#notify_on_init()
     endif
   endfunction
 

@@ -11,11 +11,11 @@ function! clap#state#refresh_matches_count(cnt) abort
   call clap#sign#reset_to_first_line()
 endfunction
 
-function! clap#state#set_variable_string(res) abort
-  execute printf("let %s = '%s'", a:res['name'], a:res['value'])
-endfunction
-
 function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
+
   let decoded = a:decoded_msg
 
   if has_key(decoded, 'total')
@@ -64,11 +64,27 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
+function! clap#state#process_progress(matched, processed) abort
+  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
+endfunction
+
+function! clap#state#process_progress_full(display_lines, matched, processed) abort
+  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
+  call g:clap.display.set_lines(a:display_lines.lines)
+  call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  let g:__clap_icon_added_by_maple = a:display_lines.icon_added
+  if !empty(a:display_lines.truncated_map)
+    let g:__clap_lines_truncated_map = a:display_lines.truncated_map
+  endif
+endfunction
+
 function! clap#state#process_preview_result(result) abort
   if has_key(a:result, 'lines')
     try
       call g:clap.preview.show(a:result.lines)
     catch
+      " Neovim somehow has a bug decoding the lines
+      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:result.lines)])
       return
     endtry
     if has_key(a:result, 'syntax')
@@ -84,20 +100,7 @@ function! clap#state#process_preview_result(result) abort
   endif
 endfunction
 
-" Handle the response of OnTyped event
-function! clap#state#handle_response_on_typed(result, error) abort
-  if !g:clap.display.win_is_valid()
-    return
-  endif
-
-  if a:error isnot v:null
-    call clap#indicator#set_matches_number(0)
-    if has_key(a:error, 'message')
-      call g:clap.display.set_lines([a:error.message])
-    endif
-    return
-  endif
-
+function! clap#state#process_response_on_typed(result) abort
   if has_key(a:result, 'initial_size')
     let g:clap.display.initial_size = a:result.initial_size
   endif
@@ -105,11 +108,7 @@ function! clap#state#handle_response_on_typed(result, error) abort
   call clap#indicator#set_matches_number(a:result.total)
 
   if a:result.total == 0
-    if exists('g:__clap_lines_truncated_map')
-      unlet g:__clap_lines_truncated_map
-    endif
-    call g:clap.display.clear()
-    call g:clap.preview.clear()
+    call clap#state#clear_screen()
     return
   endif
 
@@ -129,6 +128,42 @@ function! clap#state#handle_response_on_typed(result, error) abort
   if has_key(a:result, 'preview') && !empty(a:result.preview)
     call clap#state#process_preview_result(a:result.preview)
   endif
+endfunction
+
+function! clap#state#clear_screen() abort
+  if exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+  call g:clap.display.clear()
+  call g:clap.preview.clear()
+  call clap#indicator#set_none()
+endfunction
+
+function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
+  if empty(g:clap.input.get())
+    if g:clap.provider.id ==# 'blines'
+      call clap#provider#blines#initialize(a:lines)
+    else
+      call g:clap.display.set_lines_lazy(a:lines)
+    endif
+    call g:clap#display_win.shrink_if_undersize()
+  endif
+
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  endif
+  let g:__clap_icon_added_by_maple = a:icon_added
+
+  call clap#indicator#update_matches_on_forerunner_done()
+  call clap#sign#ensure_exists()
+
+  if a:using_cache
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
+  else
+    let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  endif
+  call clap#spinner#refresh()
+  call clap#preview#async_open_with_delay()
 endfunction
 
 " Returns the cached source tmp file.
@@ -181,6 +216,7 @@ function! clap#state#clear_pre() abort
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
+  call clap#indicator#set_none()
   call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile

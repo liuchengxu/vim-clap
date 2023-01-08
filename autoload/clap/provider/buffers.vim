@@ -79,6 +79,19 @@ function! s:buffers_on_move() abort
   call clap#preview#highlight_header()
 endfunction
 
+function! clap#provider#buffers#preview_target() abort
+  let curline = g:clap.display.getcurline()
+  if empty(curline)
+    return []
+  endif
+  let bufnr = str2nr(s:extract_bufnr(curline))
+  if !has_key(s:line_info, bufnr)
+    return []
+  endif
+  let lnum = matchstr(s:line_info[bufnr], '\d\+')
+  return [expand('#'.bufnr.':p'), lnum]
+endfunction
+
 function! s:action_delete() abort
   let current_matches = g:clap.display.line_count()
   execute 'bdelete' s:current_bufnr
@@ -97,6 +110,7 @@ let s:buffers = {}
 let s:buffers.sink = function('s:buffers_sink')
 let s:buffers.source = function('s:buffers')
 let s:buffers.on_move = function('s:buffers_on_move')
+let s:buffers.on_move_async = { -> clap#client#notify('on_move') }
 let s:buffers.syntax = 'clap_buffers'
 let s:buffers.support_open_action = v:true
 let s:buffers.action = {

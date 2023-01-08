@@ -1,15 +1,20 @@
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::path::Path;
-use std::sync::Arc;
+#![allow(unused)]
 
+use super::handler::Preview;
+use crate::paths::AbsPathBuf;
+use crate::stdio_server::provider::ProviderId;
+use crate::stdio_server::rpc::RpcClient;
+use crate::stdio_server::types::PreviewConfig;
 use anyhow::Result;
 use once_cell::sync::{Lazy, OnceCell};
 use rayon::prelude::*;
 use serde::de::DeserializeOwned;
-use serde_json::json;
-
-use crate::stdio_server::rpc::RpcClient;
+use serde::Serialize;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::path::Path;
+use std::sync::Arc;
 
 /// Map of file extension to vim syntax mapping.
 static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
@@ -129,13 +134,160 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
     ext_map
 }
 
-#[derive(Clone)]
+/// Shareable Vim instance.
+#[derive(Debug, Clone)]
 pub struct Vim {
-    pub rpc_client: Arc<RpcClient>,
+    rpc_client: Arc<RpcClient>,
 }
 
 impl Vim {
+    /// Constructs a [`Vim`].
     pub fn new(rpc_client: Arc<RpcClient>) -> Self {
         Self { rpc_client }
+    }
+
+    /// Calls the method with given params in Vim and return the call result.
+    ///
+    /// `method`: Must be a valid argument for `clap#api#call(method, args)`.
+    pub async fn call<R: DeserializeOwned>(
+        &self,
+        method: impl AsRef<str>,
+        params: impl Serialize,
+    ) -> Result<R> {
+        self.rpc_client.request(method, params).await
+    }
+
+    /// Calls the method with no arguments.
+    pub async fn bare_call<R: DeserializeOwned>(&self, method: impl AsRef<str>) -> Result<R> {
+        self.rpc_client.request(method, json!([])).await
+    }
+
+    /// Executes the method with given params in Vim, ignoring the call result.
+    ///
+    /// `method`: Same with `{func}` in `:h call()`.
+    pub fn exec(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
+        self.rpc_client.notify(method, params)
+    }
+
+    /// Executes the method with no arguments.
+    pub fn bare_exec(&self, method: impl AsRef<str>) -> Result<()> {
+        self.rpc_client.notify(method, json!([]))
+    }
+
+    /// Send back the result with specified id.
+    pub fn send(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
+        self.rpc_client.output(id, output_result)
+    }
+
+    /////////////////////////////////////////////////////////////////
+    //    builtin-function-list
+    /////////////////////////////////////////////////////////////////
+    pub async fn bufname(&self, bufnr: usize) -> Result<String> {
+        self.call("bufname", json!([bufnr])).await
+    }
+
+    pub async fn winwidth(&self, winid: usize) -> Result<usize> {
+        self.call("winwidth", json![winid]).await
+    }
+
+    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
+        self.call("eval", json!([s])).await
+    }
+
+    /////////////////////////////////////////////////////////////////
+    //    Clap related APIs
+    /////////////////////////////////////////////////////////////////
+    /// Returns the cursor line in display window, with icon stripped.
+    pub async fn display_getcurline(&self) -> Result<String> {
+        let value: Value = self.bare_call("display_getcurline").await?;
+        match value {
+            Value::Array(arr) => {
+                let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
+                let curline = match arr.into_iter().next() {
+                    Some(Value::String(s)) => s,
+                    e => return Err(anyhow::anyhow!("curline expects a String, but got {e:?}")),
+                };
+                if icon_added_by_maple {
+                    Ok(curline.chars().skip(2).collect())
+                } else {
+                    Ok(curline)
+                }
+            }
+            _ => Err(anyhow::anyhow!(
+                "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
+            )),
+        }
+    }
+
+    pub async fn display_getcurlnum(&self) -> Result<usize> {
+        self.eval("g:clap.display.getcurlnum()").await
+    }
+
+    pub async fn input_get(&self) -> Result<String> {
+        self.eval("g:clap.input.get()").await
+    }
+
+    pub async fn provider_id(&self) -> Result<String> {
+        self.eval("g:clap.provider.id").await
+    }
+
+    pub async fn provider_args(&self) -> Result<Vec<String>> {
+        self.eval("g:clap.provider.args").await
+    }
+
+    pub async fn working_dir(&self) -> Result<AbsPathBuf> {
+        self.bare_call("clap#rooter#working_dir").await
+    }
+
+    pub async fn context_query_or_input(&self) -> Result<String> {
+        self.bare_call("context_query_or_input").await
+    }
+
+    pub async fn files_name_only(&self) -> Result<bool> {
+        let context: HashMap<String, Value> = self.eval("g:clap.context").await?;
+        Ok(context.contains_key("name-only"))
+    }
+
+    pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
+        self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
+    }
+
+    /////////////////////////////////////////////////////////////////
+    //    General helpers
+    /////////////////////////////////////////////////////////////////
+    pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
+        let value: Value = self.call("get_var", json!([var])).await?;
+        let value = match value {
+            Value::Bool(b) => b,
+            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
+            _ => false,
+        };
+        Ok(value)
+    }
+
+    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
+        self.exec("set_var", json!([var_name, value]))
+    }
+
+    pub fn echo_info(&self, msg: &str) -> Result<()> {
+        self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    /// Size for fulfilling the preview window.
+    pub async fn preview_size(
+        &self,
+        provider_id: &ProviderId,
+        preview_winid: usize,
+    ) -> Result<usize> {
+        let preview_winheight: usize = self.call("winheight", json![preview_winid]).await?;
+        let preview_size: Value = self.call("get_var", json!(["clap_preview_size"])).await?;
+        let preview_config: PreviewConfig = preview_size.into();
+        Ok(preview_config
+            .preview_size(provider_id.as_str())
+            .max(preview_winheight / 2))
+    }
+
+    pub fn render_preview(&self, preview: Preview) -> Result<()> {
+        self.exec("clap#state#process_preview_result", preview)
     }
 }

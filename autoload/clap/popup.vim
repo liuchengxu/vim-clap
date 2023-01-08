@@ -117,7 +117,18 @@ function! s:create_preview() abort
           \ }
     let should_enable_title = ['grep', 'live_grep', 'dumb_jump', 'files', 'git_files', 'proj_tags']
     if index(should_enable_title, g:clap.provider.id) > -1
-      let preview_opts.title = ' '.clap#rooter#working_dir().' '
+      let working_dir = clap#rooter#working_dir()
+      let working_dir_len = strwidth(working_dir)
+      if pos.width > working_dir_len
+        let spaces_len = (pos.width - working_dir_len) / 2
+      else
+        let spaces_len = 0
+      endif
+      if g:clap_popup_border !=? 'nil'
+        let preview_opts.title = repeat('─', spaces_len).' '.working_dir.' '
+      else
+        let preview_opts.title = repeat(' ', spaces_len).' '.working_dir.' '
+      endif
     endif
     if clap#preview#direction() ==# 'LR'
       let preview_opts['line'] = pos.line - 1
@@ -150,6 +161,8 @@ function! s:create_preview() abort
     call win_execute(s:preview_winid, 'setlocal nonumber')
     let g:clap#popup#preview.winid = s:preview_winid
     let g:clap#popup#preview.bufnr = winbufnr(s:preview_winid)
+    let g:clap.preview.winid = s:preview_winid
+    let g:clap.preview.bufnr = winbufnr(s:preview_winid)
   endif
 endfunction
 
@@ -270,6 +283,7 @@ function! s:create_input() abort
       call deoplete#custom#buffer_option('auto_complete', v:false)
     endif
     let g:clap.input.winid = s:input_winid
+    let g:clap.input.bufnr = winbufnr(s:input_winid)
   endif
 endfunction
 

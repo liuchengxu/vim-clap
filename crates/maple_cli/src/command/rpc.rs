@@ -1,7 +1,6 @@
+use crate::app::Params;
 use anyhow::Result;
 use clap::Parser;
-
-use crate::app::Params;
 
 /// Starts a RPC service using stdio.
 #[derive(Parser, Debug, Clone)]
@@ -42,9 +41,9 @@ impl Rpc {
 
             tracing::subscriber::set_global_default(subscriber)?;
 
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
+            crate::stdio_server::start().await;
         } else {
-            crate::stdio_server::run_forever(std::io::BufReader::new(std::io::stdin())).await;
+            crate::stdio_server::start().await;
         }
 
         Ok(())

@@ -17,6 +17,10 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "3.2", features = ["derive"] }
 directories = "4.0"
 futures = "0.3"
+# ripgrep for global search
+grep = "0.2.10"
+grep-matcher = "0.1"
+ignore = "0.4"
 itertools = "0.10"
 num_cpus = "1.13"
 tokio = { version = "1.19", features = ["fs", "rt", "process", "macros", "rt-multi-thread", "sync", "time"] }

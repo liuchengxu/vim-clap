@@ -1,17 +1,14 @@
 pub mod tokio;
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use anyhow::Result;
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-
-use icon::Icon;
-use utility::{println_json, read_first_lines};
-
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::CACHE_INFO_IN_MEMORY;
+use anyhow::Result;
+use icon::Icon;
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use utility::{println_json, read_first_lines};
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640
@@ -21,7 +18,7 @@ use crate::datastore::CACHE_INFO_IN_MEMORY;
 pub fn shell_command(shell_cmd: &str) -> Command {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
-        cmd.args(&["/C", shell_cmd]);
+        cmd.args(["/C", shell_cmd]);
         cmd
     } else {
         let mut cmd = Command::new("bash");
@@ -140,7 +137,7 @@ impl ShellCommand {
 const OUTPUT_THRESHOLD: usize = 200_000;
 
 /// This struct represents all the info about the processed result of executed command.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecInfo {
     /// The number of total output lines.
     pub total: usize,
@@ -236,14 +233,14 @@ impl<'a> CacheableCommand<'a> {
 
         let lines_iter = read_first_lines(&cached_path, self.number)?;
         let lines = if let Some(icon_kind) = self.icon.icon_kind() {
-            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
+            lines_iter.map(|x| icon_kind.add_icon_to_text(x)).collect()
         } else {
             lines_iter.collect()
         };
 
         Ok(ExecInfo {
             using_cache: true,
-            total: *total as usize,
+            total: *total,
             tempfile: Some(cached_path.clone()),
             lines,
             icon_added: self.icon.enabled(),
@@ -258,7 +255,7 @@ impl<'a> CacheableCommand<'a> {
 
         let lines_iter = read_first_lines(&cache_file_path, 100)?;
         let lines = if let Some(icon_kind) = self.icon.icon_kind() {
-            lines_iter.map(|x| icon_kind.add_icon_to_text(&x)).collect()
+            lines_iter.map(|x| icon_kind.add_icon_to_text(x)).collect()
         } else {
             lines_iter.collect()
         };

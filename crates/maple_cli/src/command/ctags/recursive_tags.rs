@@ -1,15 +1,3 @@
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use anyhow::Result;
-use clap::Parser;
-
-use filter::{FilterContext, Source};
-use itertools::Itertools;
-use matcher::{ClapItem, MatchScope, MatcherBuilder};
-use rayon::prelude::*;
-
 use super::SharedParams;
 use crate::app::Params;
 use crate::process::ShellCommand;
@@ -17,6 +5,15 @@ use crate::tools::ctags::{
     ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT, EXCLUDE,
 };
 use crate::utils::{send_response_from_cache, SendResponse};
+use anyhow::Result;
+use clap::Parser;
+use filter::{FilterContext, SequentialSource};
+use itertools::Itertools;
+use matcher::{ClapItem, MatchScope, MatcherBuilder};
+use rayon::prelude::*;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
@@ -64,7 +61,7 @@ impl RecursiveTags {
         std_cmd
             .current_dir(&dir)
             .args(&TAGS_CMD[1..])
-            .args(&exclude_args);
+            .args(exclude_args);
         if let Some(ref languages) = self.shared.languages {
             std_cmd.arg(format!("--languages={languages}"));
         }
@@ -109,7 +106,7 @@ impl RecursiveTags {
                 icon,
                 number,
                 None,
-                MatcherBuilder::default().match_scope(MatchScope::TagName),
+                MatcherBuilder::new().match_scope(MatchScope::TagName),
             );
 
             if self.par_run {
@@ -125,7 +122,7 @@ impl RecursiveTags {
                 filter::dyn_run(
                     self.query.as_deref().unwrap_or_default(),
                     filter_context,
-                    Source::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
+                    SequentialSource::List(ctags_cmd.tag_item_iter()?.map(|tag_item| {
                         let item: Arc<dyn ClapItem> = Arc::new(tag_item);
                         item
                     })),

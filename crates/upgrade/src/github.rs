@@ -47,7 +47,7 @@ pub struct Release {
 }
 
 async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
-    let to_io_error =
+    let io_error =
         |e| std::io::Error::new(std::io::ErrorKind::Other, format!("Reqwest error: {e}"));
 
     reqwest::Client::new()
@@ -56,14 +56,14 @@ async fn request<T: DeserializeOwned>(url: &str) -> std::io::Result<T> {
         .header("User-Agent", USER)
         .send()
         .await
-        .map_err(to_io_error)?
+        .map_err(io_error)?
         .json::<T>()
         .await
-        .map_err(to_io_error)
+        .map_err(io_error)
 }
 
 pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io::Result<u64> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}",);
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/tags/{tag}");
     let release: Release = request(&url).await?;
 
     release
@@ -75,7 +75,7 @@ pub(super) async fn retrieve_asset_size(asset_name: &str, tag: &str) -> std::io:
 }
 
 pub(super) async fn retrieve_latest_release() -> std::io::Result<Release> {
-    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest",);
+    let url = format!("https://api.github.com/repos/{USER}/{REPO}/releases/latest");
     request::<Release>(&url).await
 }
 
@@ -88,6 +88,6 @@ mod tests {
         let latest_tag = retrieve_latest_release().await.unwrap().tag_name;
         retrieve_asset_size(asset_name().unwrap(), &latest_tag)
             .await
-            .expect("Failed to retrieve the asset size for release v0.34");
+            .expect("Failed to retrieve the asset size for latest release");
     }
 }

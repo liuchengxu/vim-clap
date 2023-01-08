@@ -19,16 +19,11 @@ pub const DEFAULT_FILER_ICON: IconType = '';
 // Each added icon length is 4 bytes.
 pub const ICON_LEN: usize = 4;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Icon {
+    #[default]
     Null,
     Enabled(IconKind),
-}
-
-impl Default for Icon {
-    fn default() -> Self {
-        Self::Null
-    }
 }
 
 impl Icon {
@@ -136,8 +131,7 @@ pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
 }
 
 pub fn file_icon(line: &str) -> IconType {
-    let path = Path::new(line);
-    get_icon_or(&path, DEFAULT_ICON)
+    get_icon_or(Path::new(line), DEFAULT_ICON)
 }
 
 pub fn tags_kind_icon(kind: &str) -> IconType {
@@ -200,7 +194,7 @@ mod tests {
     fn test_icon_length() {
         for table in [EXTENSION_ICON_TABLE, EXACTMATCH_ICON_TABLE].iter() {
             for (_, i) in table.iter() {
-                let icon = format!("{} ", i);
+                let icon = format!("{i} ");
                 assert_eq!(icon.len(), 4);
             }
         }

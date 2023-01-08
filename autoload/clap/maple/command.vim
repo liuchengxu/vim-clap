@@ -31,14 +31,13 @@ function! s:prepare_global_opts(number) abort
   return global_opts
 endfunction
 
-function! clap#maple#command#start_grep_sync(cmd, query, enable_icon, glob) abort
+function! clap#maple#command#start_live_grep(cmd, query, enable_icon, glob) abort
   let global_opts = s:prepare_global_opts(g:clap.display.preload_capacity)
 
   let subcommand = [
-        \ 'grep', a:query,
+        \ 'live-grep', a:query,
         \ '--grep-cmd', a:cmd,
         \ '--cmd-dir', clap#rooter#working_dir(),
-        \ '--sync',
         \ ]
 
   if a:glob isnot v:null

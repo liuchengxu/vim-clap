@@ -71,11 +71,9 @@ function! s:files.on_exit() abort
   endif
 endfunction
 
-if g:__clap_development
-  function! s:files.on_typed() abort
-    call clap#client#call('on_typed', v:null, {'query': g:clap.input.get()})
-  endfunction
-endif
+function! s:files.on_typed() abort
+  call clap#client#notify('on_typed')
+endfunction
 
 let s:files.sink = function('clap#provider#files#sink_impl')
 let s:files['sink*'] = function('clap#provider#files#sink_star_impl')
@@ -83,6 +81,7 @@ let s:files.on_move = function('clap#provider#files#on_move_impl')
 let s:files.on_move_async = function('clap#impl#on_move#async')
 let s:files.enable_rooter = v:true
 let s:files.support_open_action = v:true
+let s:files.icon = 'File'
 let s:files.syntax = 'clap_files'
 
 let g:clap#provider#files# = s:files

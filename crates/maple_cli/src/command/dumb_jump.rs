@@ -2,14 +2,12 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use std::path::PathBuf;
-
-use anyhow::Result;
-use clap::Parser;
-
 use crate::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
 use crate::tools::ctags::{get_language, TagsGenerator};
 use crate::utils::UsageMatcher;
+use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
 
 /// Search-based jump.
 #[derive(Parser, Debug, Clone)]
@@ -68,7 +66,7 @@ impl DumbJump {
                 QueryType::Exact,
                 false,
             )?;
-            println!("usages: {:#?}", usages);
+            println!("usages: {usages:#?}");
         }
 
         Ok(())

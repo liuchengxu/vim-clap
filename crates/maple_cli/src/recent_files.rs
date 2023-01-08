@@ -1,12 +1,10 @@
-use std::cmp::Ordering;
-use std::path::Path;
-
+use crate::utils::UtcTime;
 use chrono::prelude::*;
 use filter::SourceItem;
 use matcher::{Bonus, MatcherBuilder};
 use serde::{Deserialize, Serialize};
-
-use crate::utils::UtcTime;
+use std::cmp::Ordering;
+use std::path::Path;
 
 // 3600 seconds
 const HOUR: i64 = 3600;
@@ -18,20 +16,15 @@ const MONTH: i64 = DAY * 30;
 const MAX_ENTRIES: u64 = 10_000;
 
 /// Preference for sorting the recent files.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub enum SortPreference {
     /// Sort by the visit time.
+    #[default]
     Frequency,
     /// Sort by the number of visits.
     Recency,
     /// Sort by both `Frecency` and `Recency`.
     Frecency,
-}
-
-impl Default for SortPreference {
-    fn default() -> Self {
-        Self::Frecency
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -183,7 +176,7 @@ impl SortedRecentFiles {
 
         cwd.pop();
 
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::cwd(cwd), Bonus::FileName])
             .build(query.into());
 

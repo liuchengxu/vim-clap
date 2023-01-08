@@ -1,18 +1,15 @@
 //! Convert the source item stream to an iterator and run the filtering sequentially.
 
+use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
+use anyhow::Result;
+use icon::{Icon, ICON_LEN};
+use printer::DisplayLines;
+use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use anyhow::Result;
-use rayon::slice::ParallelSliceMut;
-
-use icon::{Icon, ICON_LEN};
-use types::{ClapItem, MatchedItem, Query, Score, SourceItem};
+use types::{ClapItem, MatchedItem, Query, Score};
 use utility::{println_json, println_json_with_length};
-
-use crate::source::MatchedItems;
-use crate::{FilterContext, Source};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -66,15 +63,19 @@ macro_rules! insert_both {
     }};
 }
 
-type SelectedTopItemsInfo = (usize, [Score; ITEMS_TO_SHOW], [usize; ITEMS_TO_SHOW]);
+struct BufferInitializationResult {
+    // If all items have been processed.
+    finished: bool,
+    total: usize,
+    top_scores: [Score; ITEMS_TO_SHOW],
+    top_results: [usize; ITEMS_TO_SHOW],
+}
 
-/// Returns Ok if all items in the iterator has been processed.
-///
 /// First, let's try to produce `ITEMS_TO_SHOW` items to fill the topscores.
-fn select_top_items_to_show(
+fn initialize_buffer(
     buffer: &mut Vec<MatchedItem>,
     iter: &mut impl Iterator<Item = MatchedItem>,
-) -> std::result::Result<usize, SelectedTopItemsInfo> {
+) -> BufferInitializationResult {
     let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
@@ -97,10 +98,11 @@ fn select_top_items_to_show(
         }
     });
 
-    if res.is_ok() {
-        Ok(total)
-    } else {
-        Err((total, top_scores, top_results))
+    BufferInitializationResult {
+        finished: res.is_ok(),
+        total,
+        top_scores,
+        top_results,
     }
 }
 
@@ -166,15 +168,15 @@ impl Watcher {
                 let total = self.total;
 
                 #[allow(non_upper_case_globals)]
-                const method: &str = "s:process_filter_message";
+                const deprecated_method: &str = "clap#state#process_filter_message";
                 if self.last_lines != lines.as_slice() {
                     let icon_added = self.icon.enabled();
-                    println_json_with_length!(total, lines, indices, method, icon_added);
+                    println_json_with_length!(total, lines, indices, deprecated_method, icon_added);
                     self.past = now;
                     self.last_lines = lines;
                 } else {
                     self.past = now;
-                    println_json_with_length!(total, method);
+                    println_json_with_length!(total, deprecated_method);
                 }
             }
         }
@@ -204,12 +206,16 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = MatchedItem>, icon: Icon) -> V
         high.unwrap_or(low)
     });
 
-    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
+    let BufferInitializationResult {
+        finished,
+        total,
+        mut top_scores,
+        mut top_results,
+    } = initialize_buffer(&mut buffer, &mut iter);
 
-    let (total, mut top_scores, mut top_results) = match top_selected_result {
-        Ok(_) => return buffer,
-        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
-    };
+    if finished {
+        return buffer;
+    }
 
     let mut watcher = Watcher::new(total, icon);
 
@@ -250,12 +256,16 @@ fn dyn_collect_number(
     // buffer has the lowest bound of `ITEMS_TO_SHOW * 2`, not `number * 2`.
     let mut buffer = Vec::with_capacity(2 * ITEMS_TO_SHOW.max(number));
 
-    let top_selected_result = select_top_items_to_show(&mut buffer, &mut iter);
+    let BufferInitializationResult {
+        finished,
+        total,
+        mut top_scores,
+        mut top_results,
+    } = initialize_buffer(&mut buffer, &mut iter);
 
-    let (total, mut top_scores, mut top_results) = match top_selected_result {
-        Ok(t) => return (t, buffer),
-        Err((t, top_scores, top_results)) => (t, top_scores, top_results),
-    };
+    if finished {
+        return (total, buffer);
+    }
 
     let mut watcher = Watcher::new(total, icon);
 
@@ -287,11 +297,31 @@ fn dyn_collect_number(
     (watcher.total, buffer)
 }
 
+fn print_on_dyn_run_finished(display_lines: DisplayLines, total_matched: usize) {
+    let DisplayLines {
+        lines,
+        indices,
+        truncated_map,
+        icon_added,
+    } = display_lines;
+
+    #[allow(non_upper_case_globals)]
+    const deprecated_method: &str = "clap#state#process_filter_message";
+    println_json_with_length!(
+        deprecated_method,
+        lines,
+        indices,
+        icon_added,
+        truncated_map,
+        total_matched
+    );
+}
+
 /// Returns the ranked results after applying fuzzy filter given the query string and a list of candidates.
 pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     query: &str,
     filter_context: FilterContext,
-    source: Source<I>,
+    source: SequentialSource<I>,
 ) -> Result<()> {
     let FilterContext {
         icon,
@@ -304,25 +334,25 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
     let matcher = matcher_builder.build(query);
 
     let clap_item_stream: Box<dyn Iterator<Item = Arc<dyn ClapItem>>> = match source {
-        Source::List(list) => Box::new(list),
-        Source::Stdin => Box::new(
+        SequentialSource::List(list) => Box::new(list),
+        SequentialSource::Stdin => Box::new(
             std::io::stdin()
                 .lock()
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
-        Source::File(path) => Box::new(
+        SequentialSource::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
-        Source::Exec(exec) => Box::new(
+        SequentialSource::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
                 .filter_map(Result::ok)
-                .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
+                .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
     };
 
@@ -333,13 +363,8 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
-        printer::print_dyn_matched_items(
-            matched_items,
-            total_matched,
-            None,
-            winwidth.unwrap_or(100),
-            icon,
-        );
+        let display_lines = printer::decorate_lines(matched_items, winwidth.unwrap_or(100), icon);
+        print_on_dyn_run_finished(display_lines, total_matched);
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);
         let matched_items = MatchedItems::from(matched_items).par_sort().inner();
@@ -388,7 +413,7 @@ mod tests {
         dyn_run(
             "abc",
             FilterContext::default().number(Some(100)),
-            Source::List(
+            SequentialSource::List(
                 std::iter::repeat_with(|| {
                     bytes = bytes.reverse_bits().rotate_right(3).wrapping_add(1);
 

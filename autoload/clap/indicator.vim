@@ -6,7 +6,7 @@ set cpoptions&vim
 
 function! s:padding(indicator) abort
   let indicator_len = strlen(a:indicator)
-  if indicator_len < g:__clap_indicator_winwidth
+  if indicator_len < get(g:, '__clap_indicator_winwidth', 0)
     return repeat(' ', g:__clap_indicator_winwidth - indicator_len).a:indicator
   else
     return a:indicator

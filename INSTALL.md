@@ -4,10 +4,10 @@
 
 * [Introduction](#introduction)
 * [Build the dependency locally](#build-the-dependency-locally)
-  * [`python`](#python)
+  * [`python`(deprecated)](#pythondeprecated)
   * [`Rust`](#rust)
     * [`maple` binary](#maple-binary)
-    * [Python dynamic module](#python-dynamic-module)
+    * [Python dynamic module(deprecated)](#python-dynamic-moduledeprecated)
 * [Download the prebuilt binary from GitHub release](#download-the-prebuilt-binary-from-github-release)
   * [Quick installer](#quick-installer)
     * [Unix](#unix)
@@ -20,18 +20,16 @@
 
 ## Introduction
 
-vim-clap can work without any other extra dependencies. However, there are some unavoidable performance issues for some providers, see the details at [#140](https://github.com/liuchengxu/vim-clap/issues/140), for you can never expect a Vim plugin written in pure VimL to be fast everywhere even vim9 can make the VimL faster significantly.
+vim-clap can work without any other extra dependencies in theory. However, there are some unavoidable performance issues for some providers, see the details at [#140](https://github.com/liuchengxu/vim-clap/issues/140), for you can never expect a Vim plugin written in pure VimL to be fast everywhere even vim9 can make the VimL faster significantly. Pin to some ancient version of vim-clap if you do want one implemented in pure VimL.
 
-There are two optional dependencies for boosting the performance of vim-clap:
-
-1. `maple` binary.
-2. Python dynamic module.
-
-Now, only `maple` binary is mandatory for getting a fast and quite responsive vim-clap. If you do not have the `+python` support, that's no problem.
+Now, only `maple` binary is mandatory for getting a fast and quite responsive vim-clap. The `+python` feature and Python dynamic module have been totally retired.
 
 ## Build the dependency locally
 
-### `python`
+### `python`(deprecated)
+
+<details>
+  <summary>`python` dependency is totally unneeded since v0.37</summary>
 
 If you want to use the advanced built-in fuzzy match filter which uses the [fzy algorithm](https://github.com/jhawthorn/fzy/blob/master/ALGORITHM.md) implemented in python, then the `python` support is required:
 
@@ -42,6 +40,8 @@ If you want to use the advanced built-in fuzzy match filter which uses the [fzy 
   # ensure you have installed pynvim
   $ python3 -m pip install pynvim
   ```
+
+</details>
 
 ### `Rust`
 
@@ -63,10 +63,15 @@ To install `maple` you can use the installer function and run `:call clap#instal
 cd path/to/vim-clap
 
 # Compile the release build
+#
+# Try running `rustup update` if the follow command runs into an error.
 cargo build --release
 ```
 
-#### Python dynamic module
+#### Python dynamic module(deprecated)
+
+<details>
+  <summary>Python dynamic module has been retired since v0.37, please update the `maple` binary to the latest version</summary>
 
 If you don't have `+python`, you can safely skip this section, it's totally fine, vim-clap can still work very well with only `maple` binary installed. This Python dynamic module is mainly for saving the async job when the data set is small.
 
@@ -78,6 +83,8 @@ Now PyO3(v0.11+) supports stable Rust, therefore the nightly Rust is no longer r
 # You do not have to install Rust nightly since #471
 $ rustup toolchain install nightly
 ```
+
+</details>
 
 ## Download the prebuilt binary from GitHub release
 

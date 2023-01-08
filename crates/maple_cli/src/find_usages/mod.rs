@@ -1,8 +1,7 @@
 mod search_engine;
 
-use std::ops::{Index, IndexMut};
-
 use rayon::prelude::*;
+use std::ops::{Index, IndexMut};
 
 pub use self::search_engine::{CtagsSearcher, GtagsSearcher, QueryType, RegexSearcher};
 

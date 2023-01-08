@@ -1,20 +1,20 @@
+use crate::command;
 use anyhow::Result;
 use clap::Parser;
-
 use filter::FilterContext;
 use icon::Icon;
 use types::CaseMatching;
-
-use crate::command;
 
 #[derive(Parser, Debug)]
 pub enum RunCmd {
     /// Start the stdio-based service, currently there is only filer support.
     #[clap(name = "rpc")]
     Rpc(command::rpc::Rpc),
-    /// Execute the grep command to avoid the escape issue
     #[clap(name = "grep")]
     Grep(command::grep::Grep),
+    /// Execute the ripgrep command to avoid the escape issue
+    #[clap(name = "live-grep")]
+    LiveGrep(command::grep::LiveGrep),
     #[clap(name = "gtags")]
     Gtags(command::gtags::Gtags),
     /// Execute the shell command.
@@ -125,7 +125,8 @@ impl RunCmd {
             Self::DumbJump(dumb_jump) => dumb_jump.run(),
             Self::Exec(exec) => exec.run(params),
             Self::Filter(filter) => filter.run(params),
-            Self::Grep(grep) => grep.run(params),
+            Self::Grep(grep) => grep.run(params).await,
+            Self::LiveGrep(live_grep) => live_grep.run(params),
             Self::Gtags(gtags) => gtags.run(params),
             Self::Helptags(helptags) => helptags.run(),
             Self::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(params),

@@ -1,74 +1,41 @@
-use anyhow::{anyhow, Result};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::stdio_server::rpc::Params;
-use crate::stdio_server::types::GlobalEnv;
-use crate::stdio_server::GLOBAL_ENV;
+use crate::stdio_server::vim::{initialize_syntax_map, Vim};
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Notification {
     pub method: String,
     pub params: Params,
-    pub session_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<u64>,
 }
 
 impl Notification {
-    /// Process the notification message from Vim.
-    pub async fn process(self) -> Result<()> {
-        match self.method.as_str() {
-            "initialize_global_env" => self.initialize_global_env(), // should be called only once.
-            "note_recent_files" => self.note_recent_file().await,
-            _ => Err(anyhow!("Unknown notification: {:?}", self)),
-        }
-    }
+    pub async fn initialize(self, vim: Vim) -> Result<()> {
+        let output: String = vim
+            .call("execute", json!(["autocmd filetypedetect"]))
+            .await?;
+        let ext_map = initialize_syntax_map(&output);
+        vim.exec("clap#ext#set", json![ext_map])?;
 
-    pub fn parse<T: DeserializeOwned>(self) -> Result<T> {
-        self.params.parse().map_err(Into::into)
-    }
-
-    pub fn parse_unsafe<T: DeserializeOwned>(self) -> T {
-        self.parse()
-            .unwrap_or_else(|e| panic!("Couldn't deserialize params: {:?}", e))
-    }
-
-    pub fn initialize_global_env(self) -> Result<()> {
-        #[derive(Deserialize)]
-        struct InnerParams {
-            is_nvim: Option<bool>,
-            enable_icon: Option<bool>,
-            clap_preview_size: serde_json::Value,
-        }
-        let InnerParams {
-            is_nvim,
-            enable_icon,
-            clap_preview_size,
-        } = self.params.parse()?;
-
-        let is_nvim = is_nvim.unwrap_or(false);
-        let enable_icon = enable_icon.unwrap_or(false);
-
-        let global_env = GlobalEnv::new(is_nvim, enable_icon, clap_preview_size.into());
-
-        if let Err(e) = GLOBAL_ENV.set(global_env) {
-            tracing::debug!(error = ?e, "Failed to initialized GLOBAL_ENV");
-        } else {
-            tracing::debug!("GLOBAL_ENV initialized successfully");
-        }
+        tracing::debug!("Client initialized successfully");
 
         Ok(())
     }
 
     pub async fn note_recent_file(self) -> Result<()> {
-        #[derive(Deserialize)]
-        struct InnerParams {
-            file: String,
-        }
+        let file: Vec<String> = self.params.parse()?;
+        let file = file
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("file is empty"))?;
 
-        let InnerParams { file } = self.params.parse()?;
+        tracing::debug!(?file, "Received a recent file notification");
 
-        tracing::debug!(?file, "Receive a recent file");
         let path = std::path::Path::new(&file);
         if !path.exists() || !path.is_file() {
             return Ok(());

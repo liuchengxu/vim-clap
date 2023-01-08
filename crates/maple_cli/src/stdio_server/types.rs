@@ -1,13 +1,10 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use crate::stdio_server::vim::Vim;
+use printer::DisplayLines;
+use serde_json::{json, Value};
 use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-pub struct GlobalEnv {
-    pub is_nvim: bool,
-    pub enable_icon: bool,
-    pub preview_config: PreviewConfig,
-}
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use types::ProgressUpdate;
 
 #[derive(Debug, Clone)]
 pub enum PreviewConfig {
@@ -44,61 +41,57 @@ impl PreviewConfig {
     }
 }
 
-impl GlobalEnv {
-    pub fn new(is_nvim: bool, enable_icon: bool, preview_config: PreviewConfig) -> Self {
-        Self {
-            is_nvim,
-            enable_icon,
-            preview_config,
+pub struct VimProgressor {
+    vim: Vim,
+    stopped: Arc<AtomicBool>,
+}
+
+impl VimProgressor {
+    pub fn new(vim: Vim, stopped: Arc<AtomicBool>) -> Self {
+        Self { vim, stopped }
+    }
+}
+
+impl ProgressUpdate<DisplayLines> for VimProgressor {
+    fn update_brief(&self, total_matched: usize, total_processed: usize) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
         }
+
+        let _ = self.vim.exec(
+            "clap#state#process_progress",
+            json!([total_matched, total_processed]),
+        );
     }
 
-    /// Each provider can have its preferred preview size.
-    pub fn preview_size_of(&self, provider_id: &str) -> usize {
-        self.preview_config.preview_size(provider_id)
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ProviderId(String);
-
-const NO_ICON_PROVIDERS: [&str; 5] = ["blines", "commits", "bcommits", "help_tags", "dumb_jump"];
-
-impl ProviderId {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-
-    /// Returns true if the raw line has been decorated with an icon.
-    ///
-    /// We should skip that icon when hoping to get the origin cursorline content.
-    #[inline]
-    pub fn should_skip_leading_icon(&self) -> bool {
-        super::global().enable_icon && self.has_icon_support()
+    fn update_all(
+        &self,
+        display_lines: &DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+        let _ = self.vim.exec(
+            "clap#state#process_progress_full",
+            json!([display_lines, total_matched, total_processed]),
+        );
     }
 
-    /// Returns the preview size of current provider.
-    #[inline]
-    pub fn get_preview_size(&self) -> usize {
-        super::global().preview_size_of(&self.0)
-    }
-
-    /// Returns true if the provider can have icon.
-    #[inline]
-    pub fn has_icon_support(&self) -> bool {
-        !NO_ICON_PROVIDERS.contains(&self.as_str())
-    }
-}
-
-impl<T: AsRef<str>> From<T> for ProviderId {
-    fn from(s: T) -> Self {
-        Self(s.as_ref().to_owned())
-    }
-}
-
-impl std::fmt::Display for ProviderId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+    fn on_finished(
+        &self,
+        display_lines: DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        if self.stopped.load(Ordering::Relaxed) {
+            return;
+        }
+        let _ = self.vim.exec(
+            "clap#state#process_progress_full",
+            json!([display_lines, total_matched, total_processed]),
+        );
     }
 }
 

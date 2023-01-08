@@ -1,32 +1,24 @@
 mod searcher;
 
-use std::ops::Deref;
-use std::process::Output;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
-use anyhow::{anyhow, Result};
-use futures::Future;
-use itertools::Itertools;
-use rayon::prelude::*;
-use serde::Deserialize;
-use serde_json::json;
-
-use filter::Query;
-use tracing::Instrument;
-
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::impls::OnMoveHandler;
-use crate::stdio_server::rpc::Call;
-use crate::stdio_server::session::{
-    note_job_is_finished, register_job_successfully, ClapProvider, SessionContext,
-};
-use crate::stdio_server::{write_response, MethodCall};
+use crate::stdio_server::handler::PreviewImpl;
+use crate::stdio_server::job;
+use crate::stdio_server::provider::{ClapProvider, ProviderContext};
+use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::UsageMatcher;
+use anyhow::Result;
+use filter::Query;
+use futures::Future;
+use itertools::Itertools;
+use rayon::prelude::*;
+use serde_json::json;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tracing::Instrument;
 
 /// Internal reprentation of user input.
 #[derive(Debug, Clone, Default)]
@@ -118,91 +110,13 @@ struct SearchResults {
     /// we cache the last results on Rust to allow passing the line number
     /// from Vim later instead.
     usages: Usages,
-    /// Last raw query.
-    raw_query: String,
     /// Last parsed query info.
     query_info: QueryInfo,
 }
 
-#[derive(Deserialize)]
-struct Params {
-    cwd: AbsPathBuf,
-    query: String,
-    extension: String,
-}
-
-#[inline]
-fn parse_msg(msg: MethodCall) -> (u64, Params) {
-    (msg.id, msg.parse_unsafe())
-}
-
-async fn search_for_usages(
-    msg_id: u64,
-    params: Params,
-    maybe_search_info: Option<QueryInfo>,
-    search_engine: SearchEngine,
-    force_execute: bool,
-) -> SearchResults {
-    let Params {
-        cwd,
-        query,
-        extension,
-    } = params;
-
-    if query.is_empty() {
-        return Default::default();
-    }
-
-    let query_info = maybe_search_info.unwrap_or_else(|| parse_query_info(query.as_ref()));
-
-    let searching_worker = SearchingWorker {
-        cwd,
-        query_info: query_info.clone(),
-        source_file_extension: extension,
-    };
-    let (response, usages) = match search_engine.run(searching_worker).await {
-        Ok(usages) => {
-            let response = {
-                let total = usages.len();
-                // Only show the top 200 items.
-                let (lines, indices): (Vec<_>, Vec<_>) = usages
-                    .iter()
-                    .take(200)
-                    .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
-                    .unzip();
-                json!({
-                  "id": msg_id,
-                  "provider_id": "dumb_jump",
-                  "force_execute": force_execute,
-                  "result": { "lines": lines, "indices": indices, "total": total },
-                })
-            };
-
-            (response, usages)
-        }
-        Err(e) => {
-            tracing::error!(error = ?e, "Error at running dumb_jump");
-            let response = json!({
-                "id": msg_id,
-                "provider_id": "dumb_jump",
-                "error": { "message": e.to_string() }
-            });
-            (response, Default::default())
-        }
-    };
-
-    write_response(response);
-
-    SearchResults {
-        usages,
-        raw_query: query,
-        query_info,
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
-    context: SessionContext,
+    context: Arc<ProviderContext>,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -212,58 +126,41 @@ pub struct DumbJumpProvider {
     ctags_regenerated: Arc<AtomicBool>,
     /// Whether the GTAGS file has been (re)-created.
     gtags_regenerated: Arc<AtomicBool>,
-    /// First on_typed event received.
-    first_on_typed_event_received: Arc<AtomicBool>,
 }
 
 impl DumbJumpProvider {
-    pub fn new(context: SessionContext) -> Self {
+    pub fn new(context: ProviderContext) -> Self {
         Self {
-            context,
+            context: Arc::new(context),
             cached_results: Default::default(),
             current_usages: None,
             ctags_regenerated: Arc::new(false.into()),
             gtags_regenerated: Arc::new(false.into()),
-            first_on_typed_event_received: Arc::new(false.into()),
         }
     }
 
-    /// Starts a new searching task.
-    async fn start_search(
-        &self,
-        msg_id: u64,
-        params: Params,
-        query_info: QueryInfo,
-    ) -> SearchResults {
-        let search_engine = match (
-            self.ctags_regenerated.load(Ordering::Relaxed),
-            self.gtags_regenerated.load(Ordering::Relaxed),
-        ) {
-            (true, true) => SearchEngine::All,
-            (true, false) => SearchEngine::CtagsAndRegex,
-            _ => SearchEngine::Regex,
-        };
-
-        search_for_usages(msg_id, params, Some(query_info), search_engine, false).await
-    }
-}
-
-#[async_trait::async_trait]
-impl ClapProvider for DumbJumpProvider {
-    fn session_context(&self) -> &SessionContext {
-        &self.context
+    #[inline]
+    fn vim(&self) -> &Vim {
+        &self.context.vim
     }
 
-    async fn on_create(&mut self, call: Call) {
-        let (msg_id, params) = parse_msg(call.unwrap_method_call());
+    async fn initialize(&self) -> Result<()> {
+        let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
 
-        let job_id = utility::calculate_hash(&(&params.cwd, "dumb_jump"));
+        let cwd = self.vim().working_dir().await?;
+        let extension = std::path::Path::new(&bufname)
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
 
-        if register_job_successfully(job_id) {
+        let job_id = utility::calculate_hash(&(&cwd, "dumb_jump"));
+
+        if job::reserve(job_id) {
             let ctags_future = {
-                let cwd = params.cwd.clone();
+                let cwd = cwd.clone();
                 let mut tags_generator = TagsGenerator::with_dir(cwd.clone());
-                if let Some(language) = get_language(&params.extension) {
+                if let Some(language) = get_language(&extension) {
                     tags_generator.set_languages(language.into());
                 }
                 let ctags_regenerated = self.ctags_regenerated.clone();
@@ -286,7 +183,6 @@ impl ClapProvider for DumbJumpProvider {
 
             let gtags_future = {
                 let gtags_regenerated = self.gtags_regenerated.clone();
-                let cwd = params.cwd;
                 let span = tracing::span!(tracing::Level::INFO, "gtags");
                 async move {
                     let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
@@ -296,7 +192,7 @@ impl ClapProvider for DumbJumpProvider {
                     })
                     .await
                     {
-                        Ok(_) => gtags_regenerated.store(true, Ordering::Relaxed),
+                        Ok(_) => gtags_regenerated.store(true, Ordering::SeqCst),
                         Err(e) => {
                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");
                             // TODO: creating gtags may take 20s+ for large project
@@ -307,7 +203,7 @@ impl ClapProvider for DumbJumpProvider {
                             .await
                             {
                                 Ok(_) => {
-                                    gtags_regenerated.store(true, Ordering::Relaxed);
+                                    gtags_regenerated.store(true, Ordering::SeqCst);
                                     tracing::debug!("Recreating gtags db successfully");
                                 }
                                 Err(e) => {
@@ -325,7 +221,7 @@ impl ClapProvider for DumbJumpProvider {
                         let now = std::time::Instant::now();
                         job_future.await;
                         tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
-                        note_job_is_finished(job_id);
+                        job::unreserve(job_id);
                     }
                 });
             }
@@ -342,47 +238,145 @@ impl ClapProvider for DumbJumpProvider {
                 (false, true) => run(gtags_future, job_id),
             }
         }
+
+        Ok(())
     }
 
-    async fn on_move(&mut self, msg: MethodCall) -> Result<()> {
-        let msg_id = msg.id;
+    /// Starts a new searching task.
+    async fn start_search(
+        &self,
+        cwd: AbsPathBuf,
+        query: String,
+        extension: String,
+        query_info: QueryInfo,
+    ) -> Result<SearchResults> {
+        let search_engine = match (
+            self.ctags_regenerated.load(Ordering::Relaxed),
+            self.gtags_regenerated.load(Ordering::Relaxed),
+        ) {
+            (true, true) => SearchEngine::All,
+            (true, false) => SearchEngine::CtagsAndRegex,
+            _ => SearchEngine::Regex,
+        };
 
-        let lnum = msg
-            .get_u64("lnum")
-            .map_err(|_| anyhow!("Missing `lnum` in {:?}", msg))?;
+        if query.is_empty() {
+            return Ok(Default::default());
+        }
 
-        // lnum is 1-indexed
-        if let Some(curline) = self
-            .current_usages
-            .as_ref()
-            .unwrap_or(&self.cached_results.usages)
-            .get_line((lnum - 1) as usize)
-        {
-            let on_move_handler = OnMoveHandler::create(&msg, &self.context, Some(curline.into()))?;
-            if let Err(error) = on_move_handler.handle().await {
-                tracing::error!(?error, "Failed to handle OnMove event");
-                write_response(json!({"error": error.to_string(), "id": msg_id }));
+        let searching_worker = SearchingWorker {
+            cwd,
+            query_info: query_info.clone(),
+            source_file_extension: extension,
+        };
+        let (response, usages) = match search_engine.run(searching_worker).await {
+            Ok(usages) => {
+                let response = {
+                    let total = usages.len();
+                    // Only show the top 200 items.
+                    let (lines, indices): (Vec<_>, Vec<_>) = usages
+                        .iter()
+                        .take(200)
+                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+                        .unzip();
+                    json!({ "lines": lines, "indices": indices, "total": total })
+                };
+
+                (response, usages)
             }
+            Err(e) => {
+                tracing::error!(error = ?e, "Error at running dumb_jump");
+                let response = json!({ "error": { "message": e.to_string() } });
+                (response, Default::default())
+            }
+        };
+
+        self.vim()
+            .exec("clap#state#process_response_on_typed", response)?;
+
+        Ok(SearchResults { usages, query_info })
+    }
+}
+
+#[async_trait::async_trait]
+impl ClapProvider for DumbJumpProvider {
+    fn context(&self) -> &ProviderContext {
+        &self.context
+    }
+
+    async fn on_create(&mut self) -> Result<()> {
+        let dumb_jump = self.clone();
+        tokio::task::spawn(async move {
+            if let Err(err) = dumb_jump.initialize().await {
+                tracing::error!(error = ?err, "Failed to initialize dumb_jump provider");
+            }
+        });
+
+        let query = self.vim().context_query_or_input().await?;
+        if !query.is_empty() {
+            let cwd: AbsPathBuf = self.vim().working_dir().await?;
+
+            let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
+            let extension = std::path::Path::new(&bufname)
+                .extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
+
+            let query_info = parse_query_info(&query);
+
+            self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
+            self.current_usages.take();
         }
 
         Ok(())
     }
 
-    async fn on_typed(&mut self, msg: MethodCall) -> Result<()> {
-        /*
-        // TODO: early initialization
-        if !self.first_on_typed_event_received.load(Ordering::Relaxed) {
-            self.first_on_typed_event_received
-                .store(true, Ordering::Relaxed);
-            // Earn some time for the initialization that can be done instantly so that we can have
-            // the results of high quality.
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    async fn on_move(&mut self) -> Result<()> {
+        let input = self.vim().input_get().await?;
+        let lnum = self.vim().display_getcurlnum().await?;
+
+        let current_lines = self
+            .current_usages
+            .as_ref()
+            .unwrap_or(&self.cached_results.usages);
+
+        if current_lines.is_empty() {
+            return Ok(());
         }
-        */
 
-        let (msg_id, params) = parse_msg(msg);
+        // lnum is 1-indexed
+        let curline = current_lines
+            .get_line(lnum - 1)
+            .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
-        let query_info = parse_query_info(&params.query);
+        let preview_height = self.context.preview_height().await?;
+        let preview_impl = PreviewImpl::new(curline.to_string(), preview_height, &self.context)?;
+        let preview = preview_impl.get_preview().await?;
+
+        let current_input = self.vim().input_get().await?;
+        let current_lnum = self.vim().display_getcurlnum().await?;
+        // Only send back the result if the request is not out-dated.
+        if input == current_input && lnum == current_lnum {
+            self.vim().render_preview(preview)?;
+        }
+
+        Ok(())
+    }
+
+    async fn on_typed(&mut self) -> Result<()> {
+        let query = self.vim().input_get().await?;
+        let cwd: AbsPathBuf = self.vim().working_dir().await?;
+
+        let extension = self
+            .context
+            .env
+            .start_buffer_path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No extension found for start_buffer_path"))?;
+
+        let query_info = parse_query_info(&query);
 
         // Try to refilter the cached results.
         if self.cached_results.query_info.is_superset(&query_info) {
@@ -403,18 +397,14 @@ impl ClapProvider for DumbJumpProvider {
                 .take(200)
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
-            let response = json!({
-                "id": msg_id,
-                "provider_id": "dumb_jump",
-                "force_execute": true,
-                "result": { "lines": lines, "indices": indices, "total": total },
-            });
-            write_response(response);
+            let response = json!({ "lines": lines, "indices": indices, "total": total });
+            self.vim()
+                .exec("clap#state#process_response_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }
 
-        self.cached_results = self.start_search(msg_id, params, query_info).await;
+        self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
         self.current_usages.take();
 
         Ok(())

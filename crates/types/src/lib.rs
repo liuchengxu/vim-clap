@@ -59,3 +59,22 @@ impl CaseMatching {
         }
     }
 }
+
+/// Show the filtering progress.
+pub trait ProgressUpdate<DisplayLines> {
+    fn update_brief(&self, total_matched: usize, total_processed: usize);
+
+    fn update_all(
+        &self,
+        display_lines: &DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    );
+
+    fn on_finished(
+        &self,
+        display_lines: DisplayLines,
+        total_matched: usize,
+        total_processed: usize,
+    );
+}

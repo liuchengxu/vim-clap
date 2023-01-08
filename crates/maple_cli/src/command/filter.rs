@@ -1,16 +1,13 @@
+use crate::app::Params;
+use crate::paths::AbsPathBuf;
+use anyhow::Result;
+use clap::Parser;
+use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
+use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use anyhow::Result;
-use clap::Parser;
 use subprocess::Exec;
-
-use filter::{FilterContext, ParSource, Source};
-use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
-
-use crate::app::Params;
-use crate::paths::AbsPathBuf;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {
@@ -65,7 +62,7 @@ pub struct Filter {
 
 impl Filter {
     /// Firstly try building the Source from shell command, then the input file, finally reading the source from stdin.
-    fn generate_source<I: Iterator<Item = Arc<dyn ClapItem>>>(&self) -> Source<I> {
+    fn generate_source<I: Iterator<Item = Arc<dyn ClapItem>>>(&self) -> SequentialSource<I> {
         if let Some(ref cmd_str) = self.cmd {
             if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir).into()
@@ -76,25 +73,25 @@ impl Filter {
             self.input
                 .as_ref()
                 .map(|i| i.deref().clone().into())
-                .unwrap_or(Source::<I>::Stdin)
+                .unwrap_or(SequentialSource::<I>::Stdin)
         }
     }
 
-    fn generate_par_source(&self) -> ParSource {
+    fn generate_par_source(&self) -> ParallelSource {
         if let Some(ref cmd_str) = self.cmd {
             let exec = if let Some(ref dir) = self.cmd_dir {
                 Exec::shell(cmd_str).cwd(dir)
             } else {
                 Exec::shell(cmd_str)
             };
-            ParSource::Exec(Box::new(exec))
+            ParallelSource::Exec(Box::new(exec))
         } else {
             let file = self
                 .input
                 .as_ref()
                 .map(|i| i.deref().clone())
                 .expect("Only File and Exec source can be parallel");
-            ParSource::File(file)
+            ParallelSource::File(file)
         }
     }
 
@@ -126,18 +123,17 @@ impl Filter {
             ..
         }: Params,
     ) -> Result<()> {
-        let matcher_builder = MatcherBuilder::default()
+        let matcher_builder = MatcherBuilder::new()
             .bonuses(self.get_bonuses())
             .match_scope(self.match_scope)
             .fuzzy_algo(self.algo)
             .case_matching(case_matching);
 
         if self.sync {
-            let ranked = self
-                .generate_source::<std::iter::Empty<_>>()
-                .matched_items(matcher_builder.build(self.query.as_str().into()))?
-                .par_sort()
-                .inner();
+            let ranked = filter_sequential(
+                self.generate_source::<std::iter::Empty<_>>(),
+                matcher_builder.build(self.query.as_str().into()),
+            )?;
 
             printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else if self.par_run {

@@ -75,7 +75,7 @@ impl<T: AsRef<str>> From<T> for MatchScope {
 }
 
 /// This trait represents the items used in the entire filter pipeline.
-pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync + 'static {
+pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync {
     /// Initial raw text.
     fn raw_text(&self) -> &str;
 
@@ -311,6 +311,20 @@ pub struct MatchedItem {
     ///
     /// Usually in a truncated form for fitting into the display window.
     pub display_text: Option<String>,
+    /// Untruncated display text.
+    pub output_text: Option<String>,
+}
+
+impl From<Arc<dyn ClapItem>> for MatchedItem {
+    fn from(item: Arc<dyn ClapItem>) -> Self {
+        Self {
+            item,
+            score: Score::default(),
+            indices: Vec::new(),
+            display_text: None,
+            output_text: None,
+        }
+    }
 }
 
 impl MatchedItem {
@@ -320,12 +334,21 @@ impl MatchedItem {
             score,
             indices,
             display_text: None,
+            output_text: None,
         }
     }
 
     /// Maybe truncated display text.
     pub fn display_text(&self) -> Cow<str> {
         if let Some(ref text) = self.display_text {
+            text.into()
+        } else {
+            self.item.output_text()
+        }
+    }
+
+    pub fn output_text(&self) -> Cow<str> {
+        if let Some(ref text) = self.output_text {
             text.into()
         } else {
             self.item.output_text()

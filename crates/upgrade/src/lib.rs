@@ -1,4 +1,4 @@
-//! This crate provides the features to upgrade maple executable.
+//! This crate provides the features of upgrading the maple executable.
 
 mod github;
 
@@ -7,8 +7,8 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 
-/// This command is only invoked when user uses the prebuilt binary, more specifically, exe in
-/// vim-clap/bin/maple.
+/// This command is only invoked when user uses the prebuilt binary, more specifically, the
+/// executable runs from `vim-clap/bin/maple`.
 #[derive(Debug, Clone)]
 pub struct Upgrade {
     /// Download if the local version mismatches the latest remote version.

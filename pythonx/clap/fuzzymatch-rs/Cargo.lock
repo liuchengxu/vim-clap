@@ -98,6 +98,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "grep-matcher"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d27563c33062cd33003b166ade2bb4fd82db1fd6a86db764dfdad132d46c1cc"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "icon"
 version = "0.1.0"
 dependencies = [
@@ -176,6 +185,7 @@ dependencies = [
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
+ "grep-matcher",
  "pattern",
  "types",
 ]

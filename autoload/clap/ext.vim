@@ -26,8 +26,8 @@ function! s:init_ext2ft() abort
   endfor
 endfunction
 
-function! clap#ext#set(decoded) abort
-  let s:ext2ft = a:decoded['ext_map']
+function! clap#ext#set(ext_map) abort
+  let s:ext2ft = a:ext_map
 endfunction
 
 function! clap#ext#into_filetype(fname) abort

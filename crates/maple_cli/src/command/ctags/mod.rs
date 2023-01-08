@@ -2,15 +2,13 @@ pub mod buffer_tags;
 pub mod recursive_tags;
 pub mod tags_file;
 
-use std::path::PathBuf;
-
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-use itertools::Itertools;
-
 use crate::app::Params;
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::EXCLUDE;
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+use itertools::Itertools;
+use std::path::PathBuf;
 
 /// Generate ctags recursively given the directory.
 #[derive(Parser, Debug, Clone)]
@@ -43,14 +41,14 @@ impl SharedParams {
     pub fn exclude_opt(&self) -> String {
         self.exclude
             .split(',')
-            .map(|x| format!("--exclude={}", x))
+            .map(|x| format!("--exclude={x}"))
             .join(" ")
     }
 
     pub fn exclude_args(&self) -> Vec<String> {
         self.exclude
             .split(',')
-            .map(|x| format!("--exclude={}", x))
+            .map(|x| format!("--exclude={x}"))
             .collect()
     }
 

@@ -104,7 +104,7 @@ function! s:inject_default_impl_is_ok(provider_info) abort
   " If sync provider
   if has_key(provider_info, 'source')
     if !has_key(provider_info, 'on_typed')
-      let provider_info.on_typed = function('clap#impl#on_typed#')
+      let provider_info.on_typed = { -> clap#client#notify('on_typed') }
     endif
     if !has_key(provider_info, 'filter')
       let provider_info.filter = function('clap#filter#sync')
@@ -155,7 +155,6 @@ endfunction
 
 function! clap#_exit() abort
   call g:clap.provider.jobstop()
-  call clap#job#regular#forerunner#stop()
   call clap#maple#clean_up()
 
   noautocmd call g:clap.close_win()

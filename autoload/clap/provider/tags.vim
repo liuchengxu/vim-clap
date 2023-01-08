@@ -71,11 +71,11 @@ if get(g:, 'clap_provider_tags_force_vista', v:false)
   let s:tags.on_move_async = function('clap#impl#on_move#async')
 else
   function! s:tags.on_typed() abort
-    call clap#client#call('on_typed', v:null, {'query': g:clap.input.get()})
+    call clap#client#notify('on_typed')
   endfunction
 
   function! s:tags.on_move_async() abort
-    call clap#client#call_with_lnum('on_move', function('clap#impl#on_move#handler'))
+    call clap#client#notify('on_move')
   endfunction
 
   function! s:tags.sink(selected) abort
@@ -99,7 +99,9 @@ else
   endfunction
 endif
 
+let s:tags.icon = 'BufferTags'
 let s:tags.syntax = 'clap_tags'
+let s:tags.debounce = v:false
 let g:clap#provider#tags# = s:tags
 
 let &cpoptions = s:save_cpo

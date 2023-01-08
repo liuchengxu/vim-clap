@@ -36,6 +36,7 @@
 mod algo;
 mod bonus;
 
+use std::path::Path;
 use std::sync::Arc;
 
 // Re-export types
@@ -148,7 +149,7 @@ impl ExactMatcher {
             }
         }
 
-        // Exact search term bonus
+        // Add an exact search term bonus whether the exact matches exist or not.
         //
         // The shorter search line has a higher score.
         exact_score += (512 / full_search_line.len()) as Score;
@@ -181,24 +182,28 @@ impl FuzzyMatcher {
     }
 
     pub fn find_matches(&self, item: &Arc<dyn ClapItem>) -> Option<(Score, Vec<usize>)> {
+        item.fuzzy_text(self.match_scope)
+            .as_ref()
+            .and_then(|fuzzy_text| self.match_fuzzy_text(fuzzy_text))
+    }
+
+    pub fn match_fuzzy_text(&self, fuzzy_text: &FuzzyText) -> Option<(Score, Vec<usize>)> {
         let fuzzy_len = self.fuzzy_terms.iter().map(|f| f.len()).sum();
 
         // Try the fuzzy terms against the matched text.
         let mut fuzzy_indices = Vec::with_capacity(fuzzy_len);
         let mut fuzzy_score = Score::default();
 
-        if let Some(ref fuzzy_text) = item.fuzzy_text(self.match_scope) {
-            for term in self.fuzzy_terms.iter() {
-                let query = &term.word;
-                if let Some(MatchResult { score, indices }) =
-                    self.fuzzy_algo
-                        .fuzzy_match(query, fuzzy_text, self.case_matching)
-                {
-                    fuzzy_indices.extend_from_slice(&indices);
-                    fuzzy_score += score;
-                } else {
-                    return None;
-                }
+        for term in self.fuzzy_terms.iter() {
+            let query = &term.word;
+            if let Some(MatchResult { score, indices }) =
+                self.fuzzy_algo
+                    .fuzzy_match(query, fuzzy_text, self.case_matching)
+            {
+                fuzzy_indices.extend_from_slice(&indices);
+                fuzzy_score += score;
+            } else {
+                return None;
             }
         }
 
@@ -217,7 +222,7 @@ impl BonusMatcher {
     }
 
     /// Returns the sum of bonus score.
-    pub fn calc_bonus(
+    pub fn calc_item_bonus(
         &self,
         item: &Arc<dyn ClapItem>,
         base_score: Score,
@@ -225,7 +230,20 @@ impl BonusMatcher {
     ) -> Score {
         self.bonuses
             .iter()
-            .map(|b| b.bonus_score(item, base_score, base_indices))
+            .map(|b| b.item_bonus_score(item, base_score, base_indices))
+            .sum()
+    }
+
+    /// Returns the sum of bonus score.
+    pub fn calc_text_bonus(
+        &self,
+        bonus_text: &str,
+        base_score: Score,
+        base_indices: &[usize],
+    ) -> Score {
+        self.bonuses
+            .iter()
+            .map(|b| b.text_bonus_score(bonus_text, base_score, base_indices))
             .sum()
     }
 }
@@ -325,7 +343,9 @@ impl Matcher {
 
         // Merge the results from multi matchers.
         let match_result = if fuzzy_indices.is_empty() {
-            let bonus_score = self.bonus_matcher.calc_bonus(&item, exact_score, &indices);
+            let bonus_score = self
+                .bonus_matcher
+                .calc_item_bonus(&item, exact_score, &indices);
 
             indices.sort_unstable();
             indices.dedup();
@@ -335,9 +355,9 @@ impl Matcher {
             fuzzy_indices.sort_unstable();
             fuzzy_indices.dedup();
 
-            let bonus_score = self
-                .bonus_matcher
-                .calc_bonus(&item, fuzzy_score, &fuzzy_indices);
+            let bonus_score =
+                self.bonus_matcher
+                    .calc_item_bonus(&item, fuzzy_score, &fuzzy_indices);
 
             indices.extend_from_slice(fuzzy_indices.as_slice());
             indices.sort_unstable();
@@ -350,6 +370,91 @@ impl Matcher {
 
         Some(MatchedItem::new(item, score, indices))
     }
+
+    /// Actually performs the matching algorithm.
+    pub fn match_file_result(&self, path: &Path, line: &str) -> Option<MatchedFileResult> {
+        if line.is_empty() {
+            return None;
+        }
+
+        let path = path.to_str()?;
+
+        // Try the inverse terms against the full search line.
+        if self.inverse_matcher.match_any(line) || self.inverse_matcher.match_any(path) {
+            return None;
+        }
+
+        let ((exact_score, exact_indices), exact_indices_in_path) =
+            match self.exact_matcher.find_matches(path) {
+                Some((score, indices)) => ((score, indices), true),
+                None => (self.exact_matcher.find_matches(line)?, false),
+            };
+
+        let fuzzy_text = FuzzyText::new(line, 0);
+        let (fuzzy_score, mut fuzzy_indices) = self.fuzzy_matcher.match_fuzzy_text(&fuzzy_text)?;
+
+        // Merge the results from multi matchers.
+        let matched_file_result = if fuzzy_indices.is_empty() {
+            let bonus_score = self
+                .bonus_matcher
+                .calc_text_bonus(line, exact_score, &exact_indices);
+
+            let mut exact_indices = exact_indices;
+            exact_indices.sort_unstable();
+            exact_indices.dedup();
+
+            if exact_indices_in_path {
+                MatchedFileResult {
+                    score: exact_score + bonus_score,
+                    exact_indices,
+                    fuzzy_indices: Vec::new(),
+                }
+            } else {
+                MatchedFileResult {
+                    score: exact_score + bonus_score,
+                    exact_indices: Vec::new(),
+                    fuzzy_indices: exact_indices,
+                }
+            }
+        } else {
+            fuzzy_indices.sort_unstable();
+            fuzzy_indices.dedup();
+
+            let bonus_score = self
+                .bonus_matcher
+                .calc_text_bonus(line, fuzzy_score, &fuzzy_indices);
+
+            let score = exact_score + bonus_score + fuzzy_score;
+
+            if exact_indices_in_path {
+                MatchedFileResult {
+                    exact_indices,
+                    fuzzy_indices,
+                    score,
+                }
+            } else {
+                let mut indices = exact_indices;
+                indices.extend_from_slice(fuzzy_indices.as_slice());
+                indices.sort_unstable();
+                indices.dedup();
+
+                MatchedFileResult {
+                    exact_indices: Vec::new(),
+                    fuzzy_indices: indices,
+                    score,
+                }
+            }
+        };
+
+        Some(matched_file_result)
+    }
+}
+
+#[derive(Debug)]
+pub struct MatchedFileResult {
+    pub exact_indices: Vec<usize>,
+    pub fuzzy_indices: Vec<usize>,
+    pub score: Score,
 }
 
 #[cfg(test)]

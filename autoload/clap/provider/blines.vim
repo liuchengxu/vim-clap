@@ -50,7 +50,7 @@ if clap#maple#is_available()
     call g:clap.display.set_lines_lazy(s:format(a:lines))
   endfunction
   function! s:blines.init() abort
-    call clap#client#notify_on_init('on_init', {})
+    call clap#client#notify_on_init()
   endfunction
 else
   function! s:blines.init() abort
@@ -93,13 +93,11 @@ function! s:blines.on_typed() abort
     call g:clap.preview.hide()
   else
     if clap#maple#is_available() && filereadable(expand('#'.g:clap.start.bufnr.':p'))
-      call clap#filter#async#dyn#start_blines()
+      call clap#client#notify('on_typed')
     else
       let l:raw_lines = s:format(g:clap.start.get_lines())
       call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
     endif
-
-    call clap#spinner#set_busy()
   endif
 endfunction
 
@@ -107,6 +105,7 @@ endfunction
 " `blines` provider, so we did a hard code for blines provider here.
 let s:blines.source_type = g:__t_func_list
 let s:blines.syntax = 'clap_blines'
+let s:blines.icon = 'Null'
 let s:blines['sink*'] = function('s:blines_sink_star')
 let s:blines.on_move_async = function('clap#impl#on_move#async')
 let g:clap#provider#blines# = s:blines

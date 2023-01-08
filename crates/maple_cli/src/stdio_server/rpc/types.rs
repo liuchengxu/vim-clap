@@ -1,40 +1,23 @@
+use super::{MethodCall, Notification};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
-use super::{MethodCall, Notification};
-
 /// Request message actively sent from the Vim side.
 ///
 /// Message sent via `clap#client#notify` or `clap#client#call`.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Call {
     MethodCall(MethodCall),
     Notification(Notification),
 }
 
-impl Call {
-    pub fn session_id(&self) -> u64 {
-        match self {
-            Self::MethodCall(method_call) => method_call.session_id,
-            Self::Notification(notification) => notification.session_id,
-        }
-    }
-
-    pub fn unwrap_method_call(self) -> MethodCall {
-        match self {
-            Self::MethodCall(method_call) => method_call,
-            _ => unreachable!("Unwrapping MethodCall but met Notification"),
-        }
-    }
-}
-
 /// Message pass through the stdio channel.
 ///
 /// RawMessage are composed of [`Call`] and the response message
 /// to a call initiated on Rust side.
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum RawMessage {
     MethodCall(MethodCall),
@@ -43,10 +26,28 @@ pub enum RawMessage {
     Output(Output),
 }
 
+impl RawMessage {
+    pub fn kind(&self) -> &str {
+        match self {
+            Self::MethodCall(_) => "MethodCall",
+            Self::Notification(_) => "Notification",
+            Self::Output(_) => "Output",
+        }
+    }
+
+    pub fn method(&self) -> Option<&str> {
+        match self {
+            Self::MethodCall(method_call) => Some(&method_call.method),
+            Self::Notification(notification) => Some(&notification.method),
+            Self::Output(_) => None,
+        }
+    }
+}
+
 type Id = u64;
 
 /// Successful response
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Success {
     /// Result
@@ -56,7 +57,7 @@ pub struct Success {
 }
 
 /// Unsuccessful response
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Failure {
     /// Error
@@ -66,7 +67,7 @@ pub struct Failure {
 }
 
 /// JSONRPC error code
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ErrorCode {
     /// Invalid JSON was received by the server.
     /// An error occurred on the server while parsing the JSON text.
@@ -143,7 +144,7 @@ impl Serialize for ErrorCode {
 }
 
 /// Error object as defined in Spec
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Error {
     /// Code
@@ -201,7 +202,7 @@ impl Error {
         Error {
             code: ErrorCode::InvalidParams,
             message: format!("Invalid parameters: {}", message.into()),
-            data: Some(Value::String(format!("{:?}", details))),
+            data: Some(Value::String(format!("{details:?}"))),
         }
     }
 
@@ -228,7 +229,7 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 /// Represents output - failure or success
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Output {
@@ -249,7 +250,7 @@ impl Output {
 }
 
 /// Request parameters
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Params {
@@ -269,7 +270,7 @@ impl Params {
     {
         let value: Value = self.into();
         serde_json::value::from_value(value)
-            .map_err(|e| Error::invalid_params(format!("Invalid params: {}.", e)))
+            .map_err(|e| Error::invalid_params(format!("Invalid params: {e}.")))
     }
 
     /// Check for no params, returns Err if any params

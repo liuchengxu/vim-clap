@@ -101,3 +101,15 @@ nnoremap <silent> <buffer> j :<c-u>call clap#navigation#linewise('down')<CR>
 nnoremap <silent> <buffer> k :<c-u>call clap#navigation#linewise('up')<CR>
 
 nnoremap <silent> <buffer> <S-Tab> :<c-u>call clap#action#invoke()<CR>
+
+function! s:Notify(key) abort
+  call clap#client#notify(a:key)
+  return ''
+endfunction
+
+" TODO: preview scroll
+" nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify('shift-up')<CR>
+" nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify('shift-down')<CR>
+
+" inoremap <silent> <buffer> <S-Up>   <C-R>=<SID>Notify('shift-up')<CR>
+" inoremap <silent> <buffer> <S-Down> <C-R>=<SID>Notify('shift-down')<CR>

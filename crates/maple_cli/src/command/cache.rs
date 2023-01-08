@@ -1,13 +1,10 @@
+use crate::datastore::CACHE_INFO_IN_MEMORY;
+use anyhow::Result;
+use clap::{Parser, Subcommand};
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
-
-use anyhow::Result;
-use clap::{Parser, Subcommand};
-
 use utility::{clap_cache_dir, remove_dir_contents};
-
-use crate::datastore::CACHE_INFO_IN_MEMORY;
 
 /// List and remove all the cached contents.
 #[derive(Subcommand, Debug, Clone)]
@@ -45,7 +42,7 @@ impl List {
         let cache_info = CACHE_INFO_IN_MEMORY.lock();
         let mut digests = cache_info.to_digests();
         digests.sort_unstable_by_key(|digest| digest.total);
-        writeln!(lock, "{:#?}\n", digests)?;
+        writeln!(lock, "{digests:#?}\n")?;
 
         if self.all {
             writeln!(lock, "Cached entries:")?;
@@ -89,9 +86,9 @@ impl Purge {
             } else if cache_size > 1024 {
                 format!("{}KB", cache_size / 1024)
             } else {
-                format!("{}B", cache_size)
+                format!("{cache_size}B")
             };
-            println!("Cache size: {:?}", readable_size);
+            println!("Cache size: {readable_size:?}");
         }
 
         if let Some(f) = crate::datastore::cache_metadata_path() {

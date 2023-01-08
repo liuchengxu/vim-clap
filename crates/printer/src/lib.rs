@@ -5,8 +5,9 @@ mod trimmer;
 mod truncation;
 
 use icon::{Icon, ICON_LEN};
+use serde::Serialize;
 use types::MatchedItem;
-use utility::{println_json, println_json_with_length};
+use utility::println_json;
 
 pub use self::truncation::{
     truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
@@ -15,7 +16,7 @@ pub use self::truncation::{
 
 /// 1. Truncate the line.
 /// 2. Add an icon.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct DisplayLines {
     /// Lines to display, maybe truncated.
     pub lines: Vec<String>,
@@ -41,92 +42,6 @@ impl DisplayLines {
             indices,
             truncated_map,
             icon_added,
-        }
-    }
-
-    pub fn print_on_session_create(&self) {
-        let Self {
-            lines,
-            truncated_map,
-            icon_added,
-            ..
-        } = self;
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:init_display";
-        println_json_with_length!(method, lines, icon_added, truncated_map);
-    }
-
-    pub fn print_on_typed(&self, total: usize) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
-        println_json_with_length!(total, lines, indices, truncated_map, icon_added, method);
-    }
-
-    pub fn print_on_dyn_run(&self, matched: usize, processed: usize) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
-        if truncated_map.is_empty() {
-            println_json_with_length!(method, lines, indices, icon_added, matched, processed);
-        } else {
-            println_json_with_length!(
-                method,
-                lines,
-                indices,
-                icon_added,
-                matched,
-                processed,
-                truncated_map
-            );
-        }
-    }
-
-    fn print_on_dyn_run_finished(
-        &self,
-        total_matched: usize,
-        maybe_total_processed: Option<usize>,
-    ) {
-        let Self {
-            lines,
-            indices,
-            truncated_map,
-            icon_added,
-        } = self;
-
-        #[allow(non_upper_case_globals)]
-        const method: &str = "s:process_filter_message";
-        if let Some(total_processed) = maybe_total_processed {
-            println_json_with_length!(
-                method,
-                lines,
-                indices,
-                icon_added,
-                truncated_map,
-                total_matched,
-                total_processed
-            );
-        } else {
-            println_json_with_length!(
-                method,
-                lines,
-                indices,
-                icon_added,
-                truncated_map,
-                total_matched
-            );
         }
     }
 
@@ -207,26 +122,14 @@ pub fn print_sync_filter_results(
     }
 }
 
-/// Prints the results of filter::dyn_run() to stdout.
-pub fn print_dyn_matched_items(
-    matched_items: Vec<MatchedItem>,
-    total_matched: usize,
-    total_processed: Option<usize>,
-    winwidth: usize,
-    icon: Icon,
-) {
-    decorate_lines(matched_items, winwidth, icon)
-        .print_on_dyn_run_finished(total_matched, total_processed);
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
     use filter::{
+        filter_sequential,
         matcher::{Bonus, MatcherBuilder},
-        Source, SourceItem,
+        SequentialSource, SourceItem,
     };
-    use rayon::prelude::*;
     use std::sync::Arc;
     use types::{ClapItem, Query};
 
@@ -271,15 +174,15 @@ pub(crate) mod tests {
         line: impl Into<SourceItem>,
         query: impl Into<Query>,
     ) -> Vec<MatchedItem> {
-        let matcher = MatcherBuilder::default()
+        let matcher = MatcherBuilder::new()
             .bonuses(vec![Bonus::FileName])
             .build(query.into());
 
-        Source::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>))
-            .matched_items(matcher)
-            .unwrap()
-            .par_sort()
-            .inner()
+        filter_sequential(
+            SequentialSource::List(std::iter::once(Arc::new(line.into()) as Arc<dyn ClapItem>)),
+            matcher,
+        )
+        .unwrap()
     }
 
     fn run(params: TestParams) {
