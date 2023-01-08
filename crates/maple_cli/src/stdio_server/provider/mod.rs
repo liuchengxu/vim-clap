@@ -9,6 +9,7 @@ mod recent_files;
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
+use crate::stdio_server::input::{KeyEvent, ProviderEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::session::SessionId;
 use crate::stdio_server::vim::Vim;
@@ -27,16 +28,16 @@ use types::{ClapItem, MatchedItem};
 
 pub async fn create_provider(
     provider_id: &str,
-    context: ProviderContext,
+    ctx: &ProviderContext,
 ) -> Result<Box<dyn ClapProvider>> {
     let provider: Box<dyn ClapProvider> = match provider_id {
-        "blines" => Box::new(blines::BlinesProvider::new(context)),
-        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new(context)),
-        "filer" => Box::new(filer::FilerProvider::new(context)),
-        "files" => Box::new(files::FilesProvider::new(context).await?),
-        "grep" => Box::new(grep::GrepProvider::new(context)),
-        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(context)),
-        _ => Box::new(generic_provider::GenericProvider::new(context)),
+        "blines" => Box::new(blines::BlinesProvider::new()),
+        "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
+        "filer" => Box::new(filer::FilerProvider::new(ctx.cwd.to_path_buf())),
+        "files" => Box::new(files::FilesProvider::new(ctx).await?),
+        "grep" => Box::new(grep::GrepProvider::new()),
+        "recent_files" => Box::new(recent_files::RecentFilesProvider::new()),
+        _ => Box::new(generic_provider::GenericProvider::new()),
     };
     Ok(provider)
 }
@@ -301,50 +302,6 @@ impl ProviderSource {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Key {
-    Tab,
-    Backspace,
-    // <CR>/<Enter>/<Return> was typed.
-    CarriageReturn,
-    // <S-Up>
-    ShiftUp,
-    // <S-Down>
-    ShiftDown,
-}
-
-#[derive(Debug, Clone)]
-pub enum ProviderEvent {
-    Create,
-    OnMove,
-    OnTyped,
-    Terminate,
-    KeyTyped(Key),
-}
-
-#[derive(Debug, Clone)]
-pub enum Event {
-    Provider(ProviderEvent),
-    Other(String),
-}
-
-impl Event {
-    pub fn from_method(method: &str) -> Self {
-        match method {
-            "new_session" => Self::Provider(ProviderEvent::Create),
-            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
-            "on_move" => Self::Provider(ProviderEvent::OnMove),
-            "exit" => Self::Provider(ProviderEvent::Terminate),
-            "cr" => Self::Provider(ProviderEvent::KeyTyped(Key::CarriageReturn)),
-            "tab" => Self::Provider(ProviderEvent::KeyTyped(Key::Tab)),
-            "backspace" => Self::Provider(ProviderEvent::KeyTyped(Key::Backspace)),
-            "shift-up" => Self::Provider(ProviderEvent::KeyTyped(Key::ShiftUp)),
-            "shift-down" => Self::Provider(ProviderEvent::KeyTyped(Key::ShiftDown)),
-            other => Self::Other(other.to_string()),
-        }
-    }
-}
-
 /// A small wrapper of Sender<ProviderEvent> for logging on sending error.
 #[derive(Debug)]
 pub struct ProviderEventSender {
@@ -375,33 +332,35 @@ impl ProviderEventSender {
 /// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    fn context(&self) -> &ProviderContext;
-
-    async fn on_create(&mut self) -> Result<()> {
-        initialize_provider(self.context()).await
+    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        initialize_provider(ctx).await
     }
 
-    async fn on_move(&mut self) -> Result<()>;
+    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()>;
 
-    async fn on_typed(&mut self) -> Result<()>;
+    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()>;
 
-    async fn on_key_typed(&mut self, key: Key) -> Result<()> {
-        match key {
-            Key::ShiftUp => {
+    /// On receiving the Terminate event.
+    ///
+    /// Sets the running signal to false, in case of the forerunner thread is still working.
+    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
+        ctx.signify_terminated(session_id);
+    }
+
+    async fn on_key_event(
+        &mut self,
+        _ctx: &mut ProviderContext,
+        key_event: KeyEvent,
+    ) -> Result<()> {
+        match key_event {
+            KeyEvent::ShiftUp => {
                 // Preview scroll up
             }
-            Key::ShiftDown => {
+            KeyEvent::ShiftDown => {
                 // Preview scroll down
             }
             _ => {}
         }
         Ok(())
-    }
-
-    /// On receiving the Terminate event.
-    ///
-    /// Sets the running signal to false, in case of the forerunner thread is still working.
-    fn on_terminate(&mut self, session_id: u64) {
-        self.context().signify_terminated(session_id);
     }
 }

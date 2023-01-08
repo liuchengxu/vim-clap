@@ -6,7 +6,6 @@ use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::PreviewImpl;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
-use crate::stdio_server::vim::Vim;
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
 use crate::utils::UsageMatcher;
@@ -116,7 +115,6 @@ struct SearchResults {
 
 #[derive(Debug, Clone)]
 pub struct DumbJumpProvider {
-    context: Arc<ProviderContext>,
     /// Results from last searching.
     /// This might be a superset of searching results for the last query.
     cached_results: SearchResults,
@@ -129,9 +127,8 @@ pub struct DumbJumpProvider {
 }
 
 impl DumbJumpProvider {
-    pub fn new(context: ProviderContext) -> Self {
+    pub fn new() -> Self {
         Self {
-            context: Arc::new(context),
             cached_results: Default::default(),
             current_usages: None,
             ctags_regenerated: Arc::new(false.into()),
@@ -139,21 +136,7 @@ impl DumbJumpProvider {
         }
     }
 
-    #[inline]
-    fn vim(&self) -> &Vim {
-        &self.context.vim
-    }
-
-    async fn initialize(&self) -> Result<()> {
-        let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
-
-        let cwd = self.vim().working_dir().await?;
-        let extension = std::path::Path::new(&bufname)
-            .extension()
-            .and_then(|s| s.to_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
-
+    async fn initialize(&self, extension: String, cwd: AbsPathBuf) -> Result<()> {
         let job_id = utility::calculate_hash(&(&cwd, "dumb_jump"));
 
         if job::reserve(job_id) {
@@ -249,6 +232,7 @@ impl DumbJumpProvider {
         query: String,
         extension: String,
         query_info: QueryInfo,
+        ctx: &ProviderContext,
     ) -> Result<SearchResults> {
         let search_engine = match (
             self.ctags_regenerated.load(Ordering::Relaxed),
@@ -290,7 +274,7 @@ impl DumbJumpProvider {
             }
         };
 
-        self.vim()
+        ctx.vim
             .exec("clap#state#process_response_on_typed", response)?;
 
         Ok(SearchResults { usages, query_info })
@@ -299,41 +283,44 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    fn context(&self) -> &ProviderContext {
-        &self.context
-    }
+    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let bufname = ctx.vim.bufname(ctx.env.start.bufnr).await?;
+        let extension = std::path::Path::new(&bufname)
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
 
-    async fn on_create(&mut self) -> Result<()> {
+        let cwd = ctx.vim.working_dir().await?;
+
         let dumb_jump = self.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = dumb_jump.initialize().await {
-                tracing::error!(error = ?err, "Failed to initialize dumb_jump provider");
+        tokio::task::spawn({
+            let extension = extension.clone();
+            let cwd = cwd.clone();
+
+            async move {
+                if let Err(err) = dumb_jump.initialize(extension, cwd).await {
+                    tracing::error!(error = ?err, "Failed to initialize dumb_jump provider");
+                }
             }
         });
 
-        let query = self.vim().context_query_or_input().await?;
+        let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
-            let cwd: AbsPathBuf = self.vim().working_dir().await?;
-
-            let bufname = self.vim().bufname(self.context.env.start.bufnr).await?;
-            let extension = std::path::Path::new(&bufname)
-                .extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s.to_string())
-                .ok_or_else(|| anyhow::anyhow!("No extension found"))?;
-
             let query_info = parse_query_info(&query);
 
-            self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
+            self.cached_results = self
+                .start_search(cwd, query, extension, query_info, ctx)
+                .await?;
             self.current_usages.take();
         }
 
         Ok(())
     }
 
-    async fn on_move(&mut self) -> Result<()> {
-        let input = self.vim().input_get().await?;
-        let lnum = self.vim().display_getcurlnum().await?;
+    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let input = ctx.vim.input_get().await?;
+        let lnum = ctx.vim.display_getcurlnum().await?;
 
         let current_lines = self
             .current_usages
@@ -349,26 +336,25 @@ impl ClapProvider for DumbJumpProvider {
             .get_line(lnum - 1)
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
-        let preview_height = self.context.preview_height().await?;
-        let preview_impl = PreviewImpl::new(curline.to_string(), preview_height, &self.context)?;
+        let preview_height = ctx.preview_height().await?;
+        let preview_impl = PreviewImpl::new(curline.to_string(), preview_height, ctx)?;
         let preview = preview_impl.get_preview().await?;
 
-        let current_input = self.vim().input_get().await?;
-        let current_lnum = self.vim().display_getcurlnum().await?;
+        let current_input = ctx.vim.input_get().await?;
+        let current_lnum = ctx.vim.display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
-            self.vim().render_preview(preview)?;
+            ctx.vim.render_preview(preview)?;
         }
 
         Ok(())
     }
 
-    async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim().input_get().await?;
-        let cwd: AbsPathBuf = self.vim().working_dir().await?;
+    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.input_get().await?;
+        let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
 
-        let extension = self
-            .context
+        let extension = ctx
             .env
             .start_buffer_path
             .extension()
@@ -398,13 +384,15 @@ impl ClapProvider for DumbJumpProvider {
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
             let response = json!({ "lines": lines, "indices": indices, "total": total });
-            self.vim()
+            ctx.vim
                 .exec("clap#state#process_response_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
             return Ok(());
         }
 
-        self.cached_results = self.start_search(cwd, query, extension, query_info).await?;
+        self.cached_results = self
+            .start_search(cwd, query, extension, query_info, ctx)
+            .await?;
         self.current_usages.take();
 
         Ok(())

@@ -2,7 +2,6 @@ use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::PreviewImpl;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext};
-use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::ClapItem;
 use parking_lot::Mutex;
@@ -12,21 +11,14 @@ use types::{MatchedItem, Score};
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
-    context: Arc<ProviderContext>,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new(context: ProviderContext) -> Self {
+    pub fn new() -> Self {
         Self {
-            context: Arc::new(context),
             lines: Default::default(),
         }
-    }
-
-    #[inline]
-    fn vim(&self) -> &Vim {
-        &self.context.vim
     }
 
     fn process_query(
@@ -35,6 +27,8 @@ impl RecentFilesProvider {
         query: String,
         preview_size: usize,
         lnum: usize,
+        winwidth: usize,
+        icon: icon::Icon,
     ) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         let cwd = cwd.to_string();
@@ -64,8 +58,6 @@ impl RecentFilesProvider {
 
         let total = ranked.len();
 
-        let winwidth = self.context.env.display_winwidth;
-
         // process the new preview
         let preview = if let Some(new_entry) = ranked.get(lnum - 1) {
             let new_curline = new_entry.display_text().to_string();
@@ -86,15 +78,7 @@ impl RecentFilesProvider {
             indices,
             truncated_map,
             icon_added,
-        } = printer::decorate_lines(
-            ranked.iter().take(200).cloned().collect(),
-            winwidth,
-            if self.context.env.icon.enabled() {
-                icon::Icon::Enabled(icon::IconKind::File)
-            } else {
-                icon::Icon::Null
-            },
-        );
+        } = printer::decorate_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
 
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);
@@ -134,33 +118,35 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    fn context(&self) -> &ProviderContext {
-        &self.context
-    }
+    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.context_query_or_input().await?;
+        let cwd = ctx.vim.working_dir().await?;
 
-    async fn on_create(&mut self) -> Result<()> {
-        let query = self.vim().context_query_or_input().await?;
-        let cwd = self.vim().working_dir().await?;
-
-        let preview_size = self
-            .vim()
-            .preview_size(
-                &self.context.env.provider_id,
-                self.context.env.preview.winid,
-            )
+        let preview_size = ctx
+            .vim
+            .preview_size(&ctx.env.provider_id, ctx.env.preview.winid)
             .await?;
 
-        let response = self.clone().process_query(cwd, query, preview_size, 1)?;
+        let winwidth = ctx.env.display_winwidth;
+        let icon = if ctx.env.icon.enabled() {
+            icon::Icon::Enabled(icon::IconKind::File)
+        } else {
+            icon::Icon::Null
+        };
 
-        self.vim()
+        let response = self
+            .clone()
+            .process_query(cwd, query, preview_size, 1, winwidth, icon)?;
+
+        ctx.vim
             .call("clap#state#process_response_on_typed", response)
             .await?;
 
         Ok(())
     }
 
-    async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim().display_getcurlnum().await?;
+    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let lnum = ctx.vim.display_getcurlnum().await?;
 
         let maybe_curline = self
             .lines
@@ -169,39 +155,41 @@ impl ClapProvider for RecentFilesProvider {
             .map(|r| r.item.raw_text().to_string());
 
         if let Some(curline) = maybe_curline {
-            let preview_height = self.context.preview_height().await?;
-            let preview_impl = PreviewImpl::new(curline, preview_height, &self.context)?;
+            let preview_height = ctx.preview_height().await?;
+            let preview_impl = PreviewImpl::new(curline, preview_height, ctx)?;
             let preview = preview_impl.get_preview().await?;
-            self.vim().render_preview(preview)?;
+            ctx.vim.render_preview(preview)?;
         }
 
         Ok(())
     }
 
-    async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim().input_get().await?;
+    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.input_get().await?;
 
         let response = tokio::task::spawn_blocking({
             let query = query.clone();
             let recent_files = self.clone();
-            let cwd = self.context.cwd.clone();
-
-            let lnum = self.vim().display_getcurlnum().await?;
-            let preview_size = self
-                .vim()
-                .preview_size(
-                    &self.context.env.provider_id,
-                    self.context.env.preview.winid,
-                )
+            let cwd = ctx.cwd.clone();
+            let preview_size = ctx
+                .vim
+                .preview_size(&ctx.env.provider_id, ctx.env.preview.winid)
                 .await?;
+            let lnum = ctx.vim.display_getcurlnum().await?;
+            let winwidth = ctx.env.display_winwidth;
+            let icon = if ctx.env.icon.enabled() {
+                icon::Icon::Enabled(icon::IconKind::File)
+            } else {
+                icon::Icon::Null
+            };
 
-            move || recent_files.process_query(cwd, query, preview_size, lnum)
+            move || recent_files.process_query(cwd, query, preview_size, lnum, winwidth, icon)
         })
         .await??;
 
-        let current_query = self.vim().input_get().await?;
+        let current_query = ctx.vim.input_get().await?;
         if current_query == query {
-            self.vim()
+            ctx.vim
                 .call("clap#state#process_response_on_typed", response)
                 .await?;
         }

@@ -107,6 +107,12 @@ function! s:Notify(key) abort
   return ''
 endfunction
 
+nnoremap <silent> <buffer> <C-n> :<c-u>call clap#client#notify('ctrl-n')<CR>
+nnoremap <silent> <buffer> <C-p> :<c-u>call clap#client#notify('ctrl-p')<CR>
+
+inoremap <silent> <buffer> <C-n> <C-R>=<SID>Notify('ctrl-n')<CR>
+inoremap <silent> <buffer> <C-p> <C-R>=<SID>Notify('ctrl-p')<CR>
+
 " TODO: preview scroll
 " nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify('shift-up')<CR>
 " nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify('shift-down')<CR>

@@ -2,7 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, ProviderContext, ProviderSource};
-use crate::stdio_server::vim::{syntax_for, Vim};
+use crate::stdio_server::vim::syntax_for;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 use anyhow::{anyhow, Result};
@@ -556,34 +556,33 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
 }
 
 pub struct OnMoveImpl<'a> {
-    context: &'a ProviderContext,
-    vim: &'a Vim,
+    ctx: &'a ProviderContext,
 }
 
 impl<'a> OnMoveImpl<'a> {
-    pub fn new(context: &'a ProviderContext, vim: &'a Vim) -> Self {
-        Self { context, vim }
+    pub fn new(ctx: &'a ProviderContext) -> Self {
+        Self { ctx }
     }
 
     pub async fn do_preview(&self) -> Result<()> {
-        let lnum = self.vim.display_getcurlnum().await?;
+        let lnum = self.ctx.vim.display_getcurlnum().await?;
 
-        let curline = self.vim.display_getcurline().await?;
+        let curline = self.ctx.vim.display_getcurline().await?;
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
             return Ok(());
         }
 
-        let preview_height = self.context.preview_height().await?;
-        let preview_impl = PreviewImpl::new(curline, preview_height, self.context)?;
+        let preview_height = self.ctx.preview_height().await?;
+        let preview_impl = PreviewImpl::new(curline, preview_height, self.ctx)?;
 
         let preview = preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
-        let cur_lnum = self.vim.display_getcurlnum().await?;
+        let cur_lnum = self.ctx.vim.display_getcurlnum().await?;
         if cur_lnum == lnum {
-            self.vim.render_preview(preview)?;
+            self.ctx.vim.render_preview(preview)?;
         }
 
         Ok(())

@@ -1,4 +1,5 @@
 mod handler;
+mod input;
 mod job;
 mod provider;
 mod rpc;
@@ -7,7 +8,8 @@ mod state;
 mod types;
 mod vim;
 
-use self::provider::{create_provider, Event, ProviderContext, ProviderEvent};
+use self::input::{Event, ProviderEvent};
+use self::provider::{create_provider, ProviderContext};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
@@ -101,10 +103,10 @@ impl Client {
                     let context =
                         ProviderContext::new(notification.params, self.vim.clone()).await?;
                     let provider_id = self.vim.provider_id().await?;
-                    let provider = create_provider(&provider_id, context).await?;
+                    let provider = create_provider(&provider_id, &context).await?;
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
-                    session_manager.new_session(session_id()?, provider);
+                    session_manager.new_session(session_id()?, provider, context);
                 }
                 ProviderEvent::Terminate => {
                     let mut session_manager = self.session_manager_mutex.lock();
@@ -115,6 +117,10 @@ impl Client {
                     session_manager.send(session_id()?, to_send);
                 }
             },
+            Event::Key(key_event) => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.send(session_id()?, ProviderEvent::Key(key_event));
+            }
             Event::Other(other_method) => {
                 match other_method.as_str() {
                     "initialize_global_env" => {

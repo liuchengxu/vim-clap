@@ -1,7 +1,6 @@
 use crate::stdio_server::handler::{PreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, ProviderSource};
 use crate::stdio_server::types::VimProgressor;
-use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
@@ -39,7 +38,6 @@ fn run(
     number: usize,
     data_source: DataSource,
     context: &ProviderContext,
-    vim: Vim,
 ) -> FilterControl {
     let stop_signal = Arc::new(AtomicBool::new(false));
 
@@ -53,6 +51,7 @@ fn run(
 
         let cwd = context.cwd.clone();
         let stop_signal = stop_signal.clone();
+        let vim = context.vim.clone();
 
         std::thread::spawn(move || {
             if let Err(e) = filter::par_dyn_run_inprocess(
@@ -81,7 +80,6 @@ fn run(
 /// Generic provider impl.
 #[derive(Debug)]
 pub struct GenericProvider {
-    context: ProviderContext,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     runtimepath: Option<String>,
     display_winheight: Option<usize>,
@@ -90,20 +88,14 @@ pub struct GenericProvider {
 }
 
 impl GenericProvider {
-    pub fn new(context: ProviderContext) -> Self {
+    pub fn new() -> Self {
         Self {
-            context,
             current_results: Arc::new(Mutex::new(Vec::new())),
             runtimepath: None,
             display_winheight: None,
             maybe_filter_control: None,
             last_filter_control_killed: Arc::new(AtomicBool::new(true)),
         }
-    }
-
-    #[inline]
-    fn vim(&self) -> &Vim {
-        &self.context.vim
     }
 
     /// `lnum` is 1-based.
@@ -115,13 +107,17 @@ impl GenericProvider {
             .map(|r| r.item.output_text().to_string())
     }
 
-    async fn nontypical_preview_target(&mut self, curline: &str) -> Result<Option<PreviewTarget>> {
-        let maybe_preview_kind = match self.context.provider_id() {
+    async fn nontypical_preview_target(
+        &mut self,
+        curline: &str,
+        ctx: &ProviderContext,
+    ) -> Result<Option<PreviewTarget>> {
+        let maybe_preview_kind = match ctx.provider_id() {
             "help_tags" => {
                 let runtimepath = match &self.runtimepath {
                     Some(rtp) => rtp.clone(),
                     None => {
-                        let rtp: String = self.vim().eval("&runtimepath").await?;
+                        let rtp: String = ctx.vim.eval("&runtimepath").await?;
                         self.runtimepath.replace(rtp.clone());
                         rtp
                     }
@@ -139,8 +135,8 @@ impl GenericProvider {
                 })
             }
             "buffers" => {
-                let res: [String; 2] = self
-                    .vim()
+                let res: [String; 2] = ctx
+                    .vim
                     .bare_call("clap#provider#buffers#preview_target")
                     .await?;
                 let mut iter = res.into_iter();
@@ -157,57 +153,48 @@ impl GenericProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for GenericProvider {
-    fn context(&self) -> &ProviderContext {
-        &self.context
-    }
+    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let lnum = ctx.vim.display_getcurlnum().await?;
 
-    async fn on_move(&mut self) -> Result<()> {
-        let lnum = self.vim().display_getcurlnum().await?;
-
-        let curline = self.vim().display_getcurline().await?;
+        let curline = ctx.vim.display_getcurline().await?;
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
             return Ok(());
         }
 
-        let preview_height = self.context.preview_height().await?;
+        let preview_height = ctx.preview_height().await?;
         let preview_impl =
-            if let Some(preview_target) = self.nontypical_preview_target(&curline).await? {
+            if let Some(preview_target) = self.nontypical_preview_target(&curline, ctx).await? {
                 PreviewImpl {
                     preview_height,
-                    context: &self.context,
+                    context: ctx,
                     preview_target,
                     cache_line: None,
                 }
             } else {
-                PreviewImpl::new(curline, preview_height, &self.context)?
+                PreviewImpl::new(curline, preview_height, ctx)?
             };
 
         let preview = preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
-        let curlnum = self.vim().display_getcurlnum().await?;
+        let curlnum = ctx.vim.display_getcurlnum().await?;
         if curlnum == lnum {
-            self.vim().render_preview(preview)?;
+            ctx.vim.render_preview(preview)?;
         }
 
         Ok(())
     }
 
-    async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim().input_get().await?;
+    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.input_get().await?;
 
         let quick_response =
-            if let ProviderSource::Small { ref items, .. } = *self.context.provider_source.read() {
+            if let ProviderSource::Small { ref items, .. } = *ctx.provider_source.read() {
                 let matched_items = filter::par_filter_items(
                     items,
-                    &self
-                        .context
-                        .env
-                        .matcher_builder
-                        .clone()
-                        .build(query.clone().into()),
+                    &ctx.env.matcher_builder.clone().build(query.clone().into()),
                 );
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
@@ -217,8 +204,8 @@ impl ClapProvider for GenericProvider {
                     icon_added,
                 } = printer::decorate_lines(
                     matched_items.iter().take(200).cloned().collect(),
-                    self.context.env.display_winwidth,
-                    self.context.env.icon,
+                    ctx.env.display_winwidth,
+                    ctx.env.icon,
                 );
                 let msg = json!({
                     "total": matched_items.len(),
@@ -233,9 +220,9 @@ impl ClapProvider for GenericProvider {
             };
 
         if let Some((msg, matched_items)) = quick_response {
-            let new_query = self.vim().input_get().await?;
+            let new_query = ctx.vim.input_get().await?;
             if new_query == query {
-                self.vim()
+                ctx.vim
                     .exec("clap#state#process_filter_message", json!([msg, true]))?;
                 let mut current_results = self.current_results.lock();
                 *current_results = matched_items;
@@ -243,7 +230,7 @@ impl ClapProvider for GenericProvider {
             return Ok(());
         }
 
-        let data_source = match *self.context.provider_source.read() {
+        let data_source = match *ctx.provider_source.read() {
             ProviderSource::Small { .. } | ProviderSource::Unactionable => {
                 tracing::debug!("par_dyn_run can not be used for ProviderSource::Small and ProviderSource::Unactionable.");
                 return Ok(());
@@ -257,9 +244,9 @@ impl ClapProvider for GenericProvider {
         let display_winheight = match self.display_winheight {
             Some(winheight) => winheight,
             None => {
-                let display_winheight = self
-                    .vim()
-                    .call("winheight", json!([self.context.env.display.winid]))
+                let display_winheight = ctx
+                    .vim
+                    .call("winheight", json!([ctx.env.display.winid]))
                     .await?;
                 self.display_winheight.replace(display_winheight);
                 display_winheight
@@ -286,25 +273,19 @@ impl ClapProvider for GenericProvider {
             });
         }
 
-        let new_control = run(
-            query,
-            display_winheight,
-            data_source,
-            &self.context,
-            self.vim().clone(),
-        );
+        let new_control = run(query, display_winheight, data_source, ctx);
 
         self.maybe_filter_control.replace(new_control);
 
         Ok(())
     }
 
-    fn on_terminate(&mut self, session_id: u64) {
+    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
         // Kill the last par_dyn_run job if exists.
         if let Some(control) = self.maybe_filter_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
-        self.context.signify_terminated(session_id);
+        ctx.signify_terminated(session_id);
     }
 }

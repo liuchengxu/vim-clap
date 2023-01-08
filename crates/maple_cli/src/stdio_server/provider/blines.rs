@@ -1,7 +1,6 @@
 use crate::stdio_server::handler::OnMoveImpl;
 use crate::stdio_server::provider::{ClapProvider, ProviderContext, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
-use crate::stdio_server::vim::Vim;
 use anyhow::Result;
 use matcher::{Bonus, MatchScope, Matcher};
 use std::path::PathBuf;
@@ -45,34 +44,26 @@ fn start_searcher(
 
 #[derive(Debug)]
 pub struct BlinesProvider {
-    context: ProviderContext,
     searcher_control: Option<SearcherControl>,
 }
 
 impl BlinesProvider {
-    pub fn new(context: ProviderContext) -> Self {
+    pub fn new() -> Self {
         Self {
-            context,
             searcher_control: None,
         }
     }
 
-    #[inline]
-    fn vim(&self) -> &Vim {
-        &self.context.vim
-    }
-
-    fn process_query(&mut self, query: String) {
+    fn process_query(&mut self, query: String, ctx: &ProviderContext) {
         if let Some(control) = self.searcher_control.take() {
             tokio::task::spawn_blocking(move || {
                 control.kill();
             });
         }
 
-        let source_file = self.context.env.start_buffer_path.clone();
+        let source_file = ctx.env.start_buffer_path.clone();
 
-        let matcher_builder = self
-            .context
+        let matcher_builder = ctx
             .env
             .matcher_builder
             .clone()
@@ -86,7 +77,7 @@ impl BlinesProvider {
             matcher_builder.build(query.into())
         };
 
-        let new_control = start_searcher(100, &self.context, source_file, matcher);
+        let new_control = start_searcher(100, ctx, source_file, matcher);
 
         self.searcher_control.replace(new_control);
     }
@@ -94,39 +85,33 @@ impl BlinesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for BlinesProvider {
-    fn context(&self) -> &ProviderContext {
-        &self.context
-    }
-
-    async fn on_create(&mut self) -> Result<()> {
-        let query = self.vim().context_query_or_input().await?;
+    async fn on_create(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
-            self.process_query(query);
+            self.process_query(query, ctx);
         }
         Ok(())
     }
 
-    async fn on_move(&mut self) -> Result<()> {
-        OnMoveImpl::new(&self.context, self.vim())
-            .do_preview()
-            .await
+    async fn on_move(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        OnMoveImpl::new(ctx).do_preview().await
     }
 
-    async fn on_typed(&mut self) -> Result<()> {
-        let query = self.vim().input_get().await?;
+    async fn on_typed(&mut self, ctx: &mut ProviderContext) -> Result<()> {
+        let query = ctx.vim.input_get().await?;
         if query.is_empty() {
-            self.vim().bare_exec("clap#state#clear_screen")?;
+            ctx.vim.bare_exec("clap#state#clear_screen")?;
         } else {
-            self.process_query(query);
+            self.process_query(query, ctx);
         }
         Ok(())
     }
 
-    fn on_terminate(&mut self, session_id: u64) {
+    fn on_terminate(&mut self, ctx: &mut ProviderContext, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
             // NOTE: The kill operation can not block current task.
             tokio::task::spawn_blocking(move || control.kill());
         }
-        self.context.signify_terminated(session_id);
+        ctx.signify_terminated(session_id);
     }
 }

@@ -1,7 +1,8 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
+use crate::stdio_server::input::ProviderEvent;
 use crate::stdio_server::provider::{
-    ClapProvider, ProviderEvent, ProviderEventSender, ProviderSource,
+    ClapProvider, ProviderContext, ProviderEventSender, ProviderSource,
 };
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -15,6 +16,7 @@ pub type SessionId = u64;
 #[derive(Debug)]
 pub struct Session {
     session_id: SessionId,
+    ctx: ProviderContext,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
     event_recv: UnboundedReceiver<ProviderEvent>,
@@ -23,12 +25,14 @@ pub struct Session {
 impl Session {
     pub fn new(
         session_id: u64,
+        ctx: ProviderContext,
         provider: Box<dyn ClapProvider>,
     ) -> (Self, UnboundedSender<ProviderEvent>) {
         let (session_sender, session_receiver) = unbounded_channel();
 
         let session = Session {
             session_id,
+            ctx,
             provider,
             event_recv: session_receiver,
         };
@@ -39,12 +43,12 @@ impl Session {
     pub fn start_event_loop(self) {
         tracing::debug!(
             session_id = self.session_id,
-            provider_id = %self.provider.context().provider_id(),
+            provider_id = %self.ctx.provider_id(),
             "Spawning a new session event loop task",
         );
 
         tokio::spawn(async move {
-            if self.provider.context().env.debounce {
+            if self.ctx.env.debounce {
                 self.run_event_loop_with_debounce().await;
             } else {
                 self.run_event_loop_without_debounce().await;
@@ -90,16 +94,15 @@ impl Session {
 
                             match event {
                                 ProviderEvent::Terminate => {
-                                    self.provider.on_terminate(self.session_id);
+                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
                                     break;
                                 }
                                 ProviderEvent::Create => {
-                                    match self.provider.on_create().await {
+                                    match self.provider.on_create(&mut self.ctx).await {
                                         Ok(()) => {
                                             // Set a smaller debounce if the source scale is small.
                                             if let ProviderSource::Small { total, .. } = *self
-                                                .provider
-                                                .context()
+                                                .ctx
                                                 .provider_source
                                                 .read()
                                             {
@@ -112,7 +115,7 @@ impl Session {
                                                 }
                                             }
                                             // Try to fulfill the preview window
-                                            if let Err(err) = self.provider.on_move().await {
+                                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                                                 tracing::debug!(?err, "Failed to preview after on_create completed");
                                             }
                                         }
@@ -121,8 +124,8 @@ impl Session {
                                         }
                                     }
                                 }
-                                ProviderEvent::KeyTyped(key) => {
-                                        if let Err(err) = self.provider.on_key_typed(key).await {
+                                ProviderEvent::Key(key_event) => {
+                                        if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
                                             tracing::error!(?err, "Failed to process {event:?}");
                                         }
                                 }
@@ -143,7 +146,7 @@ impl Session {
                     on_move_dirty = false;
                     on_move_timer.as_mut().reset(Instant::now() + NEVER);
 
-                    if let Err(err) = self.provider.on_move().await {
+                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::error!(?err, "Failed to process ProviderEvent::OnMove");
                     }
                 }
@@ -151,11 +154,11 @@ impl Session {
                     on_typed_dirty = false;
                     on_typed_timer.as_mut().reset(Instant::now() + NEVER);
 
-                    if let Err(err) = self.provider.on_typed().await {
+                    if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
                     }
 
-                    let _ = self.provider.on_move().await;
+                    let _ = self.provider.on_move(&mut self.ctx).await;
                 }
             }
         }
@@ -167,31 +170,31 @@ impl Session {
 
             match event {
                 ProviderEvent::Terminate => {
-                    self.provider.on_terminate(self.session_id);
+                    self.provider.on_terminate(&mut self.ctx, self.session_id);
                     break;
                 }
                 ProviderEvent::Create => {
-                    if let Err(err) = self.provider.on_create().await {
+                    if let Err(err) = self.provider.on_create(&mut self.ctx).await {
                         tracing::error!(?err, "Failed at process {event:?}");
                         continue;
                     }
                     // Try to fulfill the preview window
-                    if let Err(err) = self.provider.on_move().await {
+                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to preview after on_create completed");
                     }
                 }
-                ProviderEvent::KeyTyped(key) => {
-                    if let Err(err) = self.provider.on_key_typed(key).await {
-                        tracing::error!(?err, "Failed to process {key:?}");
+                ProviderEvent::Key(key_event) => {
+                    if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
+                        tracing::error!(?err, "Failed to process {key_event:?}");
                     }
                 }
                 ProviderEvent::OnMove => {
-                    if let Err(err) = self.provider.on_move().await {
+                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process {event:?}");
                     }
                 }
                 ProviderEvent::OnTyped => {
-                    if let Err(err) = self.provider.on_typed().await {
+                    if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process {event:?}");
                     }
                 }
@@ -208,9 +211,14 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Creates a new session if session_id does not exist.
-    pub fn new_session(&mut self, session_id: SessionId, provider: Box<dyn ClapProvider>) {
+    pub fn new_session(
+        &mut self,
+        session_id: SessionId,
+        provider: Box<dyn ClapProvider>,
+        context: ProviderContext,
+    ) {
         if let Entry::Vacant(v) = self.sessions.entry(session_id) {
-            let (session, session_sender) = Session::new(session_id, provider);
+            let (session, session_sender) = Session::new(session_id, context, provider);
             session.start_event_loop();
 
             session_sender
