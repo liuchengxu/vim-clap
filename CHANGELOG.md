@@ -5,6 +5,7 @@
 ### Added
 
 - Build executables for more platforms. #901
+- Rework the bridge between the Rust backend and Vim, some commonly used providers such as `grep`, `files`, `blines` are reimplemented to be significantly faster and reponsive without using any caching tricks. #872
 
 ## [0.37] 2022-10-16
 
