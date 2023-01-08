@@ -15,69 +15,75 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@master
 
-      - name: Get the version
+      - name: Get version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
-
-      - name: Get changelog
-        id: changelog
-        shell: bash
-        run: |
-          bash ci/get_changelog.sh ${{ steps.get_version.outputs.VERSION }}
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref }}
-          body: |
-            ${{ steps.changelog.outputs.log }}
+          body: Release ${{ steps.get_version.outputs.VERSION }}
           draft: false
           prerelease: false
 
   publish:
-    name: Publish for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.build.target }} on ${{ matrix.build.os }}
+    runs-on: ${{ matrix.build.os }}
     strategy:
       matrix:
-        # This should work with only the `include`s but it currently doesn't because of this bug:
-        # https://github.community/t5/How-to-use-Git-and-GitHub/GitHub-Actions-Matrix-options-dont-work-as-documented/td-p/29558
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
+        build:
           - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
             artifact_name: maple
-            asset_name: maple-x86_64-unknown-linux-musl
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: maple
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: maple
 
           - os: windows-latest
+            target: x86_64-pc-windows-msvc
             artifact_name: maple.exe
-            asset_name: maple-x86_64-pc-windows-msvc
 
           - os: macos-latest
+            target: x86_64-apple-darwin
             artifact_name: maple
-            asset_name: maple-x86_64-apple-darwin
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: maple
 
     steps:
-    - uses: hecrj/setup-rust-action@master
+    - name: Checkout
+      uses: actions/checkout@v1
+
+    - name: Install rust
+      uses: actions-rs/toolchain@v1
       with:
-        rust-version: stable
+        toolchain: stable
+        profile: minimal
+        override: true
+        target: ${{ matrix.build.target }}
 
-    - uses: actions/checkout@v1
-
-    - name: Build
-      if: matrix.os == 'windows-latest' || matrix.os == 'macos-latest'
-      run: cargo build --profile production --locked
-
-    - name: Build static binary
-      if: matrix.os == 'ubuntu-latest'
-      run: bash ci/build_static_binary.sh
+    - name: Build binary
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --profile production --locked --target ${{ matrix.build.target }}
 
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v1-release
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/production/${{ matrix.artifact_name }}
-        asset_name: ${{ matrix.asset_name }}
+        file: target/${{ matrix.build.target }}/production/${{ matrix.build.artifact_name }}
+        asset_name: maple-${{ matrix.build.target }}
         tag: ${{ github.ref }}

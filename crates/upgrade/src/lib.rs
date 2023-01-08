@@ -207,7 +207,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_prebuilt_binary() {
-        download_prebuilt_binary("v0.34", true)
+        let latest_tag = retrieve_latest_release().await.unwrap().tag_name;
+        download_prebuilt_binary(&latest_tag, true)
             .await
             .expect("Failed to download the prebuilt binary into a tempfile");
     }
