@@ -219,6 +219,8 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-d</kbd> to delete next character.
 - [x] Use <kbd>Ctrl-b</kbd> to move cursor left one character.
 - [x] Use <kbd>Ctrl-f</kbd> to move cursor right one character.
+- [x] Use <kbd>Ctrl-n</kbd> for next input in the history.
+- [x] Use <kbd>Ctrl-p</kbd> for previous input in the history.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
   - Use <kbd>Enter</kbd> to expand the directory or edit the file for `:Clap filer`.
 - [x] By default <kbd>Alt-u</kbd> does nothing.
@@ -240,6 +242,8 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-c</kbd>, <kbd>Ctrl-g</kbd> or <kbd>Esc</kbd> to exit.
 - [x] Use <kbd>Ctrl-d</kbd>/<kbd>Ctrl-u</kbd>/<kbd>PageDown</kbd>/<kbd>PageUp</kbd> to scroll the result list down and up.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
+- [x] Use <kbd>Ctrl-n</kbd> for next input in the history.
+- [x] Use <kbd>Ctrl-p</kbd> for previous input in the history.
 - [x] Use <kbd>gg</kbd> and <kbd>G</kbd> to scroll to the first and last item.
 - [x] Use <kbd>Enter</kbd> to select the entry and exit.
 - [x] Use <kbd>Shift-Tab</kbd> to invoke the action dialog.
