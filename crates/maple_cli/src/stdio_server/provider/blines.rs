@@ -62,11 +62,7 @@ impl BlinesProvider {
 
         let source_file = ctx.env.start_buffer_path.clone();
 
-        let matcher_builder = ctx
-            .env
-            .matcher_builder
-            .clone()
-            .match_scope(MatchScope::Full);
+        let matcher_builder = ctx.matcher_builder().match_scope(MatchScope::Full);
 
         let matcher = if let Some(extension) = source_file.extension().and_then(|s| s.to_str()) {
             matcher_builder

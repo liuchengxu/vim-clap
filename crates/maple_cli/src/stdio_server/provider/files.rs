@@ -71,15 +71,14 @@ impl FilesProvider {
 
         let search_root = ctx.cwd.clone().into();
 
-        let matcher_builder = ctx.env.matcher_builder.clone();
-
-        let matcher_builder = if self.name_only {
-            matcher_builder.match_scope(MatchScope::FileName)
-        } else {
-            matcher_builder.match_scope(MatchScope::Full)
-        };
-
-        let matcher = matcher_builder.build(query.into());
+        let matcher = ctx
+            .matcher_builder()
+            .match_scope(if self.name_only {
+                MatchScope::FileName
+            } else {
+                MatchScope::Full
+            })
+            .build(query.into());
 
         let new_control = start_searcher(100, ctx, search_root, self.hidden, matcher);
 

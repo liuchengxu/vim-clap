@@ -161,6 +161,10 @@ impl Context {
         self.env.provider_id.as_str()
     }
 
+    pub fn matcher_builder(&self) -> MatcherBuilder {
+        self.env.matcher_builder.clone()
+    }
+
     /// Executes the command `cmd` and returns the raw bytes of stdout.
     pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
         let out = utility::execute_at(cmd, Some(&self.cwd))?;
@@ -170,13 +174,6 @@ impl Context {
     pub fn set_provider_source(&self, new: ProviderSource) {
         let mut provider_source = self.provider_source.write();
         *provider_source = new;
-    }
-
-    pub async fn preview_height(&self) -> Result<usize> {
-        self.vim
-            .preview_size(&self.env.provider_id, self.env.preview.winid)
-            .await
-            .map(|x| 2 * x)
     }
 
     pub fn start_buffer_extension(&self) -> Result<String> {
@@ -212,6 +209,13 @@ impl Context {
             self.input_recorder.clone().into_inputs(),
         );
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
+    }
+
+    pub async fn preview_height(&self) -> Result<usize> {
+        self.vim
+            .preview_size(&self.env.provider_id, self.env.preview.winid)
+            .await
+            .map(|x| 2 * x)
     }
 
     pub async fn record_input(&mut self) -> Result<()> {

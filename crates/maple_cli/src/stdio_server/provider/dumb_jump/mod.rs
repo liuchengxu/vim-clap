@@ -311,9 +311,6 @@ impl ClapProvider for DumbJumpProvider {
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
-        let input = ctx.vim.input_get().await?;
-        let lnum = ctx.vim.display_getcurlnum().await?;
-
         let current_lines = self
             .current_usages
             .as_ref()
@@ -322,6 +319,9 @@ impl ClapProvider for DumbJumpProvider {
         if current_lines.is_empty() {
             return Ok(());
         }
+
+        let input = ctx.vim.input_get().await?;
+        let lnum = ctx.vim.display_getcurlnum().await?;
 
         // lnum is 1-indexed
         let curline = current_lines

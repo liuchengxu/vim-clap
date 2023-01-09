@@ -57,9 +57,7 @@ impl GrepProvider {
         }
 
         let matcher = ctx
-            .env
-            .matcher_builder
-            .clone()
+            .matcher_builder()
             .match_scope(MatchScope::Full)
             .build(query.into());
 

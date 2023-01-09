@@ -46,7 +46,7 @@ fn start_filter_parallel(
             ctx.env.icon,
             Some(number),
             Some(ctx.env.display_winwidth),
-            ctx.env.matcher_builder.clone(),
+            ctx.matcher_builder(),
         );
 
         let cwd = ctx.cwd.clone();
