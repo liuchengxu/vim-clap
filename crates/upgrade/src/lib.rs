@@ -214,6 +214,7 @@ mod tests {
                     .expect("Failed to download the prebuilt binary into a tempfile");
                 return;
             }
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
         panic!("Failed to download the prebuilt binary of latest release");
     }

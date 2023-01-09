@@ -92,6 +92,7 @@ mod tests {
                     .expect("Failed to retrieve the asset size for latest release");
                 return;
             }
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
         panic!("Failed to retrieve the asset size for latest release");
     }
