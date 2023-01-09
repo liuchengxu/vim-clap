@@ -1,4 +1,3 @@
-use crate::stdio_server::handler::OnMoveImpl;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
@@ -96,10 +95,6 @@ impl ClapProvider for FilesProvider {
             self.process_query(query, ctx);
         }
         Ok(())
-    }
-
-    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
-        OnMoveImpl::new(ctx).do_preview().await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

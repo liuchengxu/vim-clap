@@ -8,7 +8,7 @@ mod recent_files;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
+use crate::stdio_server::handler::{initialize_provider, OnMoveImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
@@ -361,7 +361,9 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         initialize_provider(ctx).await
     }
 
-    async fn on_move(&mut self, ctx: &mut Context) -> Result<()>;
+    async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+        OnMoveImpl::new(ctx).do_preview().await
+    }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()>;
 
