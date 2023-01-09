@@ -21,7 +21,9 @@ if has('nvim')
   endfunction
 else
   function! s:set_indicator(indicator) abort
-    call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
+    if exists('g:clap_indicator_winid')
+      call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
+    endif
   endfunction
 endif
 

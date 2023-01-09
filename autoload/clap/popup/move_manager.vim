@@ -50,6 +50,21 @@ function! s:move_manager.ctrl_b(_winid) abort
   call s:mock_input()
 endfunction
 
+function! s:move_manager.ctrl_d(_winid) abort
+  if s:cursor_idx >= strchars(s:input, 1)
+    return
+  endif
+  let remained = s:strpart_input(0, s:cursor_idx)
+  let truncated = s:strpart_input(s:cursor_idx+1)
+  let s:input = remained.truncated
+  call s:trigger_on_typed()
+endfunction
+
+function! s:move_manager.ctrl_e(_winid) abort
+  let s:cursor_idx = strchars(s:input, 1)
+  call s:mock_input()
+endfunction
+
 function! s:move_manager.ctrl_f(_winid) abort
   let s:cursor_idx += 1
   let input_len = strchars(s:input, 1)
@@ -59,16 +74,31 @@ function! s:move_manager.ctrl_f(_winid) abort
   call s:mock_input()
 endfunction
 
-function! s:move_manager.ctrl_e(_winid) abort
-  let s:cursor_idx = strchars(s:input, 1)
-  call s:mock_input()
-endfunction
-
 function! s:move_manager.ctrl_l(_winid) abort
   call clap#handler#relaunch_providers()
 endfunction
 
-function! s:apply_on_typed() abort
+function! s:move_manager.ctrl_u(_winid) abort
+  if empty(s:input)
+    return 1
+  endif
+  let s:input = ''
+  let s:cursor_idx = 0
+  call s:trigger_on_typed()
+endfunction
+
+function! s:move_manager.bs(_winid) abort
+  let before_bs = s:strpart_input(0, s:cursor_idx).s:strpart_input(s:cursor_idx)
+  call s:backspace()
+  if has_key(g:clap.provider._(), 'bs_action')
+    call s:mock_input()
+    call g:clap.provider._().bs_action(before_bs)
+  else
+    call s:trigger_on_typed()
+  endif
+endfunction
+
+function! s:trigger_on_typed() abort
   if g:clap.provider.is_sync()
     let g:__clap_should_refilter = v:true
   endif
@@ -89,64 +119,34 @@ function! s:backspace() abort
   endif
 endfunction
 
-function! s:move_manager.bs(_winid) abort
-  let before_bs = s:strpart_input(0, s:cursor_idx).s:strpart_input(s:cursor_idx)
-  call s:backspace()
-  if has_key(g:clap.provider._(), 'bs_action')
-    call s:mock_input()
-    call g:clap.provider._().bs_action(before_bs)
-  else
-    call s:apply_on_typed()
-  endif
-endfunction
-
-function! s:move_manager.ctrl_d(_winid) abort
-  if s:cursor_idx >= strchars(s:input, 1)
-    return
-  endif
-  let remained = s:strpart_input(0, s:cursor_idx)
-  let truncated = s:strpart_input(s:cursor_idx+1)
-  let s:input = remained.truncated
-  call s:apply_on_typed()
-endfunction
-
-function! s:move_manager.ctrl_u(_winid) abort
-  if empty(s:input)
-    return 1
-  endif
-  let s:input = ''
-  let s:cursor_idx = 0
-  call s:apply_on_typed()
-endfunction
-
 " noautocmd is neccessary in that too many plugins use redir, otherwise we'll
 " see E930: Cannot use :redir inside execute().
-let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("down")') }
-let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
-let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("up")') }
-let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
-let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
-let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#tab_action()') }
-let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
-let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
-let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
-let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<C-B>"] = s:move_manager.ctrl_b
-let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
-let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
-let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
-let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
-let s:move_manager["\<End>"] = s:move_manager.ctrl_e
-let s:move_manager["\<BS>"] = s:move_manager.bs
-let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<Del>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
-let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
-let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
+let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
+let s:move_manager["\<End>"] = s:move_manager.ctrl_e
+let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
+let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("down")') }
+let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("up")') }
 let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
+let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
+let s:move_manager["\<BS>"] = s:move_manager.bs
+let s:move_manager["\<C-H>"] = s:move_manager.bs
+let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
+let s:move_manager["\<C-G>"] = s:move_manager["\<Esc>"]
+let s:move_manager["\<Up>"] = s:move_manager["\<C-K>"]
+let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
+let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
+let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
+let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#tab_action()') }
+let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
+let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
 let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
+let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
+let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)
