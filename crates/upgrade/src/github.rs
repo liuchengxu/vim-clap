@@ -85,9 +85,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_retrieve_asset_size() {
-        let latest_tag = retrieve_latest_release().await.unwrap().tag_name;
-        retrieve_asset_size(asset_name().unwrap(), &latest_tag)
-            .await
-            .expect("Failed to retrieve the asset size for latest release");
+        for _i in 0..10 {
+            if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
+                retrieve_asset_size(asset_name().unwrap(), &latest_tag)
+                    .await
+                    .expect("Failed to retrieve the asset size for latest release");
+                return;
+            }
+        }
+        panic!("Failed to retrieve the asset size for latest release");
     }
 }

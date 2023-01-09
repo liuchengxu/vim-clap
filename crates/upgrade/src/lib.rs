@@ -207,9 +207,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_prebuilt_binary() {
-        let latest_tag = retrieve_latest_release().await.unwrap().tag_name;
-        download_prebuilt_binary(&latest_tag, true)
-            .await
-            .expect("Failed to download the prebuilt binary into a tempfile");
+        for _i in 0..10 {
+            if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
+                download_prebuilt_binary(&latest_tag, true)
+                    .await
+                    .expect("Failed to download the prebuilt binary into a tempfile");
+                return;
+            }
+        }
+        panic!("Failed to download the prebuilt binary of latest release");
     }
 }
