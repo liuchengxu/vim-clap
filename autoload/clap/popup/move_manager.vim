@@ -163,6 +163,10 @@ if exists('g:clap_popup_move_manager')
   endfor
 endif
 
+function! clap#popup#move_manager#register(key, value) abort
+  execute printf('let s:move_manager["%s"] = %s', a:key, a:value)
+endfunction
+
 function! s:move_manager.printable(key) abort
   let s:input = s:strpart_input(0, s:cursor_idx).a:key.s:strpart_input(s:cursor_idx)
   let s:cursor_idx = strchars(s:strpart_input(0, s:cursor_idx) . a:key, 1)
@@ -256,6 +260,9 @@ endfunction
 
 function! clap#popup#move_manager#set_input(input) abort
   let s:input = a:input
+  call s:mock_input()
+  " Move cursor to the end of line.
+  let s:cursor_idx = strchars(s:input, 1)
   call s:mock_input()
 endfunction
 
