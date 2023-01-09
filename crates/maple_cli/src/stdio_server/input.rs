@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::session::SessionId;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -21,14 +24,20 @@ pub enum ProviderEvent {
 /// Represents a key event.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub enum KeyEvent {
+    // Ctrl-I/<Tab>
     Tab,
+    // Ctrl-H/<BS>
     Backspace,
-    // <CR>/<Enter>/<Return> was typed.
+    // <CR>/<Enter>/<Return>
     CarriageReturn,
     // <S-Up>
     ShiftUp,
     // <S-Down>
     ShiftDown,
+    // <C-N>
+    CtrlN,
+    // <C-P>
+    CtrlP,
 }
 
 impl Event {
@@ -43,12 +52,14 @@ impl Event {
             "backspace" => Self::Key(KeyEvent::Backspace),
             "shift-up" => Self::Key(KeyEvent::ShiftUp),
             "shift-down" => Self::Key(KeyEvent::ShiftDown),
+            "ctrl-n" => Self::Key(KeyEvent::CtrlN),
+            "ctrl-p" => Self::Key(KeyEvent::CtrlP),
             other => Self::Other(other.to_string()),
         }
     }
 }
 
-/// A small wrapper of Sender<ProviderEvent> for logging on sending error.
+/// A small wrapper of `UnboundedSender<ProviderEvent>` for logging on sending error.
 #[derive(Debug)]
 pub struct ProviderEventSender {
     pub sender: UnboundedSender<ProviderEvent>,
@@ -72,5 +83,77 @@ impl ProviderEventSender {
         if let Err(error) = self.sender.send(event) {
             tracing::error!(?error, "Failed to send session event");
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct InputHistory(HashMap<ProviderId, Vec<String>>);
+
+impl InputHistory {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn inputs(&self, provider_id: &ProviderId) -> Vec<String> {
+        self.0.get(provider_id).cloned().unwrap_or_default()
+    }
+
+    pub fn append(&mut self, provider_id: ProviderId, mut new_inputs: Vec<String>) {
+        self.0
+            .entry(provider_id)
+            .and_modify(|v| v.append(&mut new_inputs));
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct InputRecorder {
+    pub inputs: Vec<String>,
+    pub current_index: usize,
+}
+
+impl InputRecorder {
+    pub fn new(inputs: Vec<String>) -> Self {
+        Self {
+            inputs,
+            current_index: 0usize,
+        }
+    }
+
+    pub fn into_inputs(self) -> Vec<String> {
+        self.inputs
+    }
+
+    pub fn record_input(&mut self, input: String) {
+        if input.is_empty() || self.inputs.contains(&input) {
+            return;
+        }
+
+        if self.inputs.iter().any(|old| old.starts_with(&input)) {
+            return;
+        }
+
+        if !self.inputs.is_empty() {
+            self.current_index += 1;
+        }
+        self.inputs.push(input);
+    }
+
+    pub fn move_to_next(&mut self) -> Option<&str> {
+        if self.inputs.is_empty() {
+            return None;
+        }
+        self.current_index = (self.current_index + 1) % self.inputs.len();
+        self.inputs.get(self.current_index).map(AsRef::as_ref)
+    }
+
+    pub fn move_to_previous(&mut self) -> Option<&str> {
+        if self.inputs.is_empty() {
+            return None;
+        }
+        self.current_index = self
+            .current_index
+            .checked_sub(1)
+            .unwrap_or(self.inputs.len() - 1);
+        self.inputs.get(self.current_index).map(AsRef::as_ref)
     }
 }

@@ -9,7 +9,7 @@ mod recent_files;
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::{initialize_provider, Preview, PreviewTarget};
-use crate::stdio_server::input::KeyEvent;
+use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -17,6 +17,7 @@ use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, MatcherBuilder};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -83,6 +84,7 @@ pub struct Context {
     pub env: Arc<ProviderEnvironment>,
     pub terminated: Arc<AtomicBool>,
     pub preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
+    pub input_recorder: InputRecorder,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
@@ -126,6 +128,9 @@ impl Context {
         let display_winwidth = vim.winwidth(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
 
+        let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
+        let input_recorder = InputRecorder::new(input_history.inputs(&provider_id));
+
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
             provider_id,
@@ -147,6 +152,7 @@ impl Context {
             env: Arc::new(env),
             terminated: Arc::new(AtomicBool::new(false)),
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
+            input_recorder,
             provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
         })
     }
@@ -200,11 +206,48 @@ impl Context {
 
     pub fn signify_terminated(&self, session_id: u64) {
         self.terminated.store(true, Ordering::SeqCst);
-        tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id(),);
+        let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
+        input_history.append(
+            self.env.provider_id.clone(),
+            self.input_recorder.clone().into_inputs(),
+        );
+        tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
+    }
+
+    pub async fn record_input(&mut self) -> Result<()> {
+        let input = self.vim.input_get().await?;
+        self.input_recorder.record_input(input);
+        Ok(())
+    }
+
+    pub async fn next_input(&mut self) -> Result<()> {
+        if let Some(next) = self.input_recorder.move_to_next() {
+            if self.env.is_nvim {
+                self.vim.exec("clap#state#set_input", json!([next]))?;
+            } else {
+                self.vim
+                    .exec("clap#popup#move_manager#set_input_and_react", json!([next]))?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn previous_input(&mut self) -> Result<()> {
+        if let Some(previous) = self.input_recorder.move_to_previous() {
+            if self.env.is_nvim {
+                self.vim.exec("clap#state#set_input", json!([previous]))?;
+            } else {
+                self.vim.exec(
+                    "clap#popup#move_manager#set_input_and_react",
+                    json!([previous]),
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct ProviderId(String);
 
 impl ProviderId {
@@ -329,7 +372,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         ctx.signify_terminated(session_id);
     }
 
-    async fn on_key_event(&mut self, _ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
+    async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
         match key_event {
             KeyEvent::ShiftUp => {
                 // Preview scroll up
@@ -337,6 +380,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
             KeyEvent::ShiftDown => {
                 // Preview scroll down
             }
+            KeyEvent::CtrlN => ctx.next_input().await?,
+            KeyEvent::CtrlP => ctx.previous_input().await?,
             _ => {}
         }
         Ok(())

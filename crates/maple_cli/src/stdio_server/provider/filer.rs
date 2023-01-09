@@ -400,6 +400,8 @@ impl ClapProvider for FilerProvider {
                 tracing::debug!("TODO: ShiftDown, Preview scroll down");
                 Ok(())
             }
+            KeyEvent::CtrlN => ctx.next_input().await,
+            KeyEvent::CtrlP => ctx.previous_input().await,
         }
     }
 }

@@ -8,6 +8,7 @@ mod state;
 mod types;
 mod vim;
 
+pub use self::input::InputHistory;
 use self::input::{Event, ProviderEvent};
 use self::provider::{create_provider, Context};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};

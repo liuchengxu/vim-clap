@@ -122,11 +122,6 @@ impl Session {
                                         }
                                     }
                                 }
-                                ProviderEvent::Key(key_event) => {
-                                        if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
-                                            tracing::error!(?err, "Failed to process {event:?}");
-                                        }
-                                }
                                 ProviderEvent::OnMove => {
                                     on_move_dirty = true;
                                     on_move_timer.as_mut().reset(Instant::now() + on_move_delay);
@@ -134,6 +129,11 @@ impl Session {
                                 ProviderEvent::OnTyped => {
                                     on_typed_dirty = true;
                                     on_typed_timer.as_mut().reset(Instant::now() + on_typed_delay);
+                                }
+                                ProviderEvent::Key(key_event) => {
+                                    if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
+                                        tracing::error!(?err, "Failed to process {event:?}");
+                                    }
                                 }
                             }
                           }
@@ -151,6 +151,8 @@ impl Session {
                 _ = on_typed_timer.as_mut(), if on_typed_dirty => {
                     on_typed_dirty = false;
                     on_typed_timer.as_mut().reset(Instant::now() + NEVER);
+
+                    let _ = self.ctx.record_input().await;
 
                     if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::error!(?err, "Failed to process ProviderEvent::OnTyped");
@@ -181,19 +183,20 @@ impl Session {
                         tracing::debug!(?err, "Failed to preview after on_create completed");
                     }
                 }
-                ProviderEvent::Key(key_event) => {
-                    if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
-                        tracing::error!(?err, "Failed to process {key_event:?}");
-                    }
-                }
                 ProviderEvent::OnMove => {
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process {event:?}");
                     }
                 }
                 ProviderEvent::OnTyped => {
+                    let _ = self.ctx.record_input().await;
                     if let Err(err) = self.provider.on_typed(&mut self.ctx).await {
                         tracing::debug!(?err, "Failed to process {event:?}");
+                    }
+                }
+                ProviderEvent::Key(key_event) => {
+                    if let Err(err) = self.provider.on_key_event(&mut self.ctx, key_event).await {
+                        tracing::error!(?err, "Failed to process {key_event:?}");
                     }
                 }
             }

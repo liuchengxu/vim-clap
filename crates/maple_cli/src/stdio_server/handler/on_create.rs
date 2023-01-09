@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::{rg_command, rg_shell_command, RgTokioCommand, RG_EXEC_CMD};
-use crate::process::{CacheableCommand, ShellCommand};
+use crate::command::grep::{RgTokioCommand, RG_EXEC_CMD};
+use crate::process::ShellCommand;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{Context, ProviderSource};
 use crate::utils::count_lines;

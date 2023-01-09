@@ -166,6 +166,12 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
   call clap#preview#async_open_with_delay()
 endfunction
 
+function! clap#state#set_input(new) abort
+  call g:clap.input.set(a:new)
+  " Move cursor to the end of line.
+  call clap#api#win_execute(g:clap.input.winid, 'call cursor(1, 1000)')
+endfunction
+
 " Returns the cached source tmp file.
 "
 " Write the providers whose `source` is list-style into a tempfile.
@@ -216,7 +222,6 @@ function! clap#state#clear_pre() abort
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
-  call clap#indicator#set_none()
   call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile
