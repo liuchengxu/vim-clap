@@ -27,8 +27,8 @@ pub struct Preview {
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum PreviewTarget {
-    /// Maybe a file or a directory.
-    FileOrDirectory(PathBuf),
+    /// List the entries under a directory.
+    Directory(PathBuf),
     /// Start from the beginning of a file.
     File(PathBuf),
     /// A specific location in a file.
@@ -46,9 +46,7 @@ pub enum PreviewTarget {
 impl PreviewTarget {
     pub fn path(&self) -> Option<&Path> {
         match self {
-            Self::File(path) | Self::FileOrDirectory(path) | Self::LineInFile { path, .. } => {
-                Some(path)
-            }
+            Self::File(path) | Self::Directory(path) | Self::LineInFile { path, .. } => Some(path),
             _ => None,
         }
     }
@@ -183,13 +181,7 @@ impl<'a> PreviewImpl<'a> {
         }
 
         let preview = match &self.preview_target {
-            PreviewTarget::FileOrDirectory(path) => {
-                if path.is_dir() {
-                    self.preview_directory(path)?
-                } else {
-                    self.preview_file(path)?
-                }
-            }
+            PreviewTarget::Directory(path) => self.preview_directory(path)?,
             PreviewTarget::File(path) => self.preview_file(path)?,
             PreviewTarget::LineInFile { path, line_number } => {
                 self.preview_file_at(path, *line_number).await

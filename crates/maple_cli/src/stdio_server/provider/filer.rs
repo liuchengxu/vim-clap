@@ -150,7 +150,12 @@ impl FilerProvider {
         let preview_target = if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
             let curline = self.current_line(ctx).await?;
-            PreviewTarget::FileOrDirectory(curline.into())
+            let path: PathBuf = curline.into();
+            if path.is_dir() {
+                PreviewTarget::Directory(path)
+            } else {
+                PreviewTarget::File(path)
+            }
         } else if target_dir.is_file() {
             PreviewTarget::File(target_dir.clone())
         } else {
@@ -179,8 +184,12 @@ impl FilerProvider {
 
         let curline = self.current_line(ctx).await?;
         let target_dir = self.current_dir.clone().join(curline);
-        self.do_preview(PreviewTarget::FileOrDirectory(target_dir), ctx)
-            .await?;
+        let preview_target = if target_dir.is_dir() {
+            PreviewTarget::Directory(target_dir)
+        } else {
+            PreviewTarget::File(target_dir)
+        };
+        self.do_preview(preview_target, ctx).await?;
 
         Ok(())
     }
@@ -364,8 +373,12 @@ impl ClapProvider for FilerProvider {
         }
         let curline = self.current_line(ctx).await?;
         let path = build_abs_path(&self.current_dir, curline);
-        self.do_preview(PreviewTarget::FileOrDirectory(path), ctx)
-            .await
+        let preview_target = if path.is_dir() {
+            PreviewTarget::Directory(path)
+        } else {
+            PreviewTarget::File(path)
+        };
+        self.do_preview(preview_target, ctx).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
