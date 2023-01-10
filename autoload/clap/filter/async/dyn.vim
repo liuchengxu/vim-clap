@@ -22,7 +22,7 @@ function! s:handle_stdio_message(msg) abort
   endif
 
   call clap#state#process_filter_message(decoded, v:false)
-  call clap#preview#async_open_with_delay()
+  call clap#preview#update_with_delay()
 endfunction
 
 function! clap#filter#async#dyn#start_directly(maple_cmd) abort

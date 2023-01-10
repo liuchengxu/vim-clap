@@ -319,7 +319,7 @@ function! s:init_provider() abort
     try
       call clap#sign#reset_selected()
       call self._().on_typed()
-      call clap#preview#async_open_with_delay()
+      call clap#preview#update_with_delay()
     catch
       let l:error_info = ['provider.on_typed:'] + split(v:throwpoint, '\[\d\+\]\zs') + split(v:exception, "\n")
       call g:clap.display.set_lines(l:error_info)

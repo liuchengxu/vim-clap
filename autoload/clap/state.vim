@@ -122,7 +122,7 @@ function! clap#state#process_response_on_typed(result) abort
 
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
-  call clap#preview#async_open_with_delay()
+  call clap#preview#update_with_delay()
   call clap#sign#ensure_exists()
 
   if has_key(a:result, 'preview') && !empty(a:result.preview)
@@ -163,7 +163,7 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   endif
   call clap#spinner#refresh()
-  call clap#preview#async_open_with_delay()
+  call clap#preview#update_with_delay()
 endfunction
 
 function! clap#state#set_input(new) abort
