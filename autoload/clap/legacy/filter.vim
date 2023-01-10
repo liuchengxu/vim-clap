@@ -1,5 +1,8 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Filter out the candidate lines synchorously given the input.
+"
+" NOTE: Deprecated as now the filtering is entiredly asynchrously done on the
+" Rust end.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -27,7 +30,7 @@ function! s:enable_icon() abort
   endif
 endfunction
 
-function! clap#filter#get_bonus_type() abort
+function! clap#legacy#filter#get_bonus_type() abort
   if index(['files', 'git_files', 'filer'], g:clap.provider.id) > -1
     return 'FileName'
   else
@@ -35,7 +38,7 @@ function! clap#filter#get_bonus_type() abort
   endif
 endfunction
 
-function! clap#filter#matchfuzzy(query, candidates) abort
+function! clap#legacy#filter#matchfuzzy(query, candidates) abort
   " `result` could be a list of two lists, or a list of three
   " lists(newer vim).
   let result = matchfuzzypos(a:candidates, a:query)
@@ -63,13 +66,13 @@ if get(g:, 'clap_force_matchfuzzy', v:false)
     finish
   endif
   let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
-  function! clap#filter#sync(query, candidates) abort
-    return clap#filter#matchfuzzy(a:query, a:candidates)
+  function! clap#legacy#filter#sync(query, candidates) abort
+    return clap#legacy#filter#matchfuzzy(a:query, a:candidates)
   endfunction
 elseif s:can_use_lua && !get(g:, 'clap_force_python', v:false)
   let s:current_filter_impl = 'Lua'
-  function! clap#filter#sync(query, candidates) abort
-    return clap#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_scope())
+  function! clap#legacy#filter#sync(query, candidates) abort
+    return clap#legacy#filter#sync#lua#(a:query, a:candidates, -1, s:enable_icon(), s:match_scope())
   endfunction
 else
   let s:can_use_python = v:false
@@ -77,7 +80,7 @@ else
 
   if has('python3') || has('python')
     try
-      let s:has_py_dynamic_module = clap#filter#sync#python#has_dynamic_module()
+      let s:has_py_dynamic_module = clap#legacy#filter#sync#python#has_dynamic_module()
       let s:can_use_python = v:true
     catch
       call clap#helper#echo_error(v:exception)
@@ -91,13 +94,13 @@ else
   if s:can_use_python
     let s:current_filter_impl = 'Python'
 
-    function! clap#filter#sync(query, candidates) abort
+    function! clap#legacy#filter#sync(query, candidates) abort
       " All the values of context will be treated as PyString in PyO3.
       let context = {
             \ 'winwidth': winwidth(g:clap.display.winid),
             \ 'enable_icon': s:enable_icon() == v:true ? 'True' : 'False',
             \ 'match_scope': s:match_scope(),
-            \ 'bonus_type': clap#filter#get_bonus_type(),
+            \ 'bonus_type': clap#legacy#filter#get_bonus_type(),
             \ }
       " TODO: support more providers by detecting if the specific
       " file exists in the project root? Cargo.toml(rs), go.mod(go), ...
@@ -105,29 +108,29 @@ else
         let context['language'] = expand('#'.g:clap.start.bufnr.':e')
       endif
       try
-        return clap#filter#sync#python#(a:query, a:candidates, clap#util#recent_files(), context)
+        return clap#legacy#filter#sync#python#(a:query, a:candidates, clap#util#recent_files(), context)
       catch
         call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
-        return clap#filter#sync#viml#(a:query, a:candidates)
+        return clap#legacy#filter#sync#viml#(a:query, a:candidates)
       endtry
     endfunction
   else
     let s:current_filter_impl = 'VimL'
     if exists('*matchfuzzypos')
       let s:builtin_filter_capacity = s:MIDIUM_CAPACITY
-      function! clap#filter#sync(query, candidates) abort
-        return clap#filter#matchfuzzy(a:query, a:candidates)
+      function! clap#legacy#filter#sync(query, candidates) abort
+        return clap#legacy#filter#matchfuzzy(a:query, a:candidates)
       endfunction
     else
-      function! clap#filter#sync(query, candidates) abort
-        return clap#filter#sync#viml#(a:query, a:candidates)
+      function! clap#legacy#filter#sync(query, candidates) abort
+        return clap#legacy#filter#sync#viml#(a:query, a:candidates)
       endfunction
     endif
   endif
 
 endif
 
-function! clap#filter#on_typed(FilterFn, query, candidates) abort
+function! clap#legacy#filter#on_typed(FilterFn, query, candidates) abort
   let l:lines = a:FilterFn(a:query, a:candidates)
 
   if empty(l:lines)
@@ -163,15 +166,15 @@ function! clap#filter#on_typed(FilterFn, query, candidates) abort
   endif
 endfunction
 
-function! clap#filter#beyond_capacity(size) abort
+function! clap#legacy#filter#beyond_capacity(size) abort
   return a:size > s:builtin_filter_capacity
 endfunction
 
-function! clap#filter#capacity() abort
+function! clap#legacy#filter#capacity() abort
   return s:builtin_filter_capacity
 endfunction
 
-function! clap#filter#current_impl() abort
+function! clap#legacy#filter#current_impl() abort
   return s:current_filter_impl
 endfunction
 

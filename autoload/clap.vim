@@ -107,7 +107,7 @@ function! s:inject_default_impl_is_ok(provider_info) abort
       let provider_info.on_typed = { -> clap#client#notify('on_typed') }
     endif
     if !has_key(provider_info, 'filter')
-      let provider_info.filter = function('clap#filter#sync')
+      let provider_info.filter = function('clap#legacy#filter#sync')
     endif
   else
     if !has_key(provider_info, 'on_typed')

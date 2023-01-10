@@ -82,7 +82,7 @@ function! clap#maple#command#filter_sync(query) abort
     call writefile(clap#util#recent_files(), tmp)
     call add(global_opts, printf('--recent-files=%s', tmp))
 
-    call add(global_opts, printf('--bonus=%s', clap#filter#get_bonus_type()))
+    call add(global_opts, printf('--bonus=%s', clap#legacy#filter#get_bonus_type()))
     if g:clap_enable_icon
       call add(global_opts, '--icon=File')
     endif

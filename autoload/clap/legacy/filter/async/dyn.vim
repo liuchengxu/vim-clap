@@ -25,12 +25,12 @@ function! s:handle_stdio_message(msg) abort
   call clap#preview#update_with_delay()
 endfunction
 
-function! clap#filter#async#dyn#start_directly(maple_cmd) abort
+function! clap#legacy#filter#async#dyn#start_directly(maple_cmd) abort
   let s:last_query = g:clap.input.get()
   call clap#job#stdio#start_service_with_delay(function('s:handle_stdio_message'), a:maple_cmd)
 endfunction
 
-function! clap#filter#async#dyn#start_blines() abort
+function! clap#legacy#filter#async#dyn#start_blines() abort
   let s:last_query = g:clap.input.get()
   let blines_cmd = clap#maple#command#blines()
   if s:PAR_RUN
@@ -39,13 +39,13 @@ function! clap#filter#async#dyn#start_blines() abort
   call clap#job#stdio#start_service_with_delay(function('s:handle_stdio_message'), blines_cmd)
 endfunction
 
-function! clap#filter#async#dyn#start_ctags_recursive() abort
+function! clap#legacy#filter#async#dyn#start_ctags_recursive() abort
   let s:last_query = g:clap.input.get()
 
   let no_cache = has_key(g:clap.context, 'no-cache')
 
   if !no_cache && exists('g:__clap_forerunner_tempfile')
-    call clap#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
+    call clap#legacy#filter#async#dyn#start_filter_with_cache(g:__clap_forerunner_tempfile)
   else
     let ctags_cmd = g:clap_enable_icon ? ['--icon=ProjTags'] : []
     if no_cache
@@ -67,7 +67,7 @@ function! clap#filter#async#dyn#start_ctags_recursive() abort
   endif
 endfunction
 
-function! clap#filter#async#dyn#start_filter(cmd) abort
+function! clap#legacy#filter#async#dyn#start_filter(cmd) abort
   let s:last_query = g:clap.input.get()
 
   let filter_cmd = g:clap_enable_icon && g:clap.provider.id ==# 'files' ? ['--icon=File'] : []
@@ -88,7 +88,7 @@ function! clap#filter#async#dyn#start_filter(cmd) abort
   call clap#job#stdio#start_service_with_delay(function('s:handle_stdio_message'), filter_cmd)
 endfunction
 
-function! clap#filter#async#dyn#start_filter_with_cache(tempfile) abort
+function! clap#legacy#filter#async#dyn#start_filter_with_cache(tempfile) abort
   let s:last_query = g:clap.input.get()
 
   call clap#job#stdio#start_service_with_delay(
@@ -97,7 +97,7 @@ function! clap#filter#async#dyn#start_filter_with_cache(tempfile) abort
         \ )
 endfunction
 
-function! clap#filter#async#dyn#start_grep() abort
+function! clap#legacy#filter#async#dyn#start_grep() abort
   let s:last_query = g:clap.input.get()
 
   let grep_cmd = g:clap_enable_icon ? ['--icon=Grep'] : []

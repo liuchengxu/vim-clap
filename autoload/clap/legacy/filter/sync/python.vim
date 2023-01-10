@@ -42,13 +42,13 @@ catch
   let s:using_dynamic_module = v:false
 endtry
 
-function! clap#filter#sync#python#has_dynamic_module() abort
+function! clap#legacy#filter#sync#python#has_dynamic_module() abort
   return s:has_py_dynamic_module
 endfunction
 
 if s:using_dynamic_module
   " Rust dynamic module has the feature of truncating the long lines to make fuzzy matched items visible.
-  function! clap#filter#sync#python#(query, candidates, recent_files, context) abort
+  function! clap#legacy#filter#sync#python#(query, candidates, recent_files, context) abort
     " If the query is empty, neovim and vim's python client might crash.
     if a:query ==# ''
       return a:candidates
@@ -58,7 +58,7 @@ if s:using_dynamic_module
     return filtered
   endfunction
 else
-  function! clap#filter#sync#python#(query, candidates, _recent_files, context) abort
+  function! clap#legacy#filter#sync#python#(query, candidates, _recent_files, context) abort
     let [g:__clap_fuzzy_matched_indices, filtered] = pyxeval(s:py_fn.'()')
     return filtered
   endfunction

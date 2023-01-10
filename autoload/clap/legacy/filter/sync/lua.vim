@@ -6,7 +6,7 @@ set cpoptions&vim
 
 if has('nvim-0.5')
 
-  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_scope) abort
+  function! clap#legacy#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_scope) abort
     let g:_clap_lua_query = a:query
     let g:_clap_lua_candidates = a:candidates
     let g:_clap_lua_enable_icon = a:enable_icon
@@ -27,7 +27,7 @@ else
     return map(split(a:joint_indices, ','), 'str2nr(v:val)')
   endfunction
 
-  function! clap#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_scope) abort
+  function! clap#legacy#filter#sync#lua#(query, candidates, _winwidth, enable_icon, match_scope) abort
 lua << EOF
 local fzy_filter = require('fzy_filter')
 

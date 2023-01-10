@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn test_regex_runner_language_keyword_ordering() {
         let regex_searcher = RegexSearcher {
-            word: "clap#filter#async#dyn#start_filter_with_cache".into(),
+            word: "clap#legacy#filter#async#dyn#start_filter_with_cache".into(),
             extension: "vim".into(),
             dir: std::env::current_dir()
                 .unwrap()
@@ -294,10 +294,10 @@ mod tests {
         if let Ok(usages) = regex_searcher.search_usages(false, &UsageMatcher::default()) {
             assert!(usages[0]
                 .line
-                .contains("function! clap#filter#async#dyn#start_filter_with_cache"));
+                .contains("function! clap#legacy#filter#async#dyn#start_filter_with_cache"));
             assert!(usages[1]
                 .line
-                .contains("call clap#filter#async#dyn#start_filter_with_cache"));
+                .contains("call clap#legacy#filter#async#dyn#start_filter_with_cache"));
         }
     }
 }

@@ -96,7 +96,7 @@ function! s:blines.on_typed() abort
       call clap#client#notify('on_typed')
     else
       let l:raw_lines = s:format(g:clap.start.get_lines())
-      call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+      call clap#legacy#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
     endif
   endif
 endfunction
