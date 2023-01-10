@@ -1,48 +1,9 @@
 use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
-use matcher::{MatchScope, Matcher};
-use std::path::PathBuf;
+use matcher::MatchScope;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-
-fn start_searcher(
-    number: usize,
-    ctx: &Context,
-    search_root: PathBuf,
-    hidden: bool,
-    matcher: Matcher,
-) -> SearcherControl {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-
-    let join_handle = {
-        let icon = ctx.env.icon;
-        let winwidth = ctx.env.display_winwidth;
-        let vim = ctx.vim.clone();
-        let stop_signal = stop_signal.clone();
-
-        tokio::spawn(async move {
-            let progressor = VimProgressor::new(vim, stop_signal.clone());
-            crate::searcher::files::FilesSearcher {
-                search_root,
-                hidden,
-                matcher,
-                stop_signal,
-                number,
-                icon,
-                winwidth,
-            }
-            .run_with_progressor(progressor)
-            .await;
-        })
-    };
-
-    SearcherControl {
-        stop_signal,
-        join_handle,
-    }
-}
 
 #[derive(Debug)]
 pub struct FilesProvider {
@@ -70,8 +31,6 @@ impl FilesProvider {
             });
         }
 
-        let search_root = ctx.cwd.clone().into();
-
         let matcher = ctx
             .matcher_builder()
             .match_scope(if self.name_only {
@@ -81,7 +40,22 @@ impl FilesProvider {
             })
             .build(query.into());
 
-        let new_control = start_searcher(100, ctx, search_root, self.hidden, matcher);
+        let new_control = {
+            let stop_signal = Arc::new(AtomicBool::new(false));
+
+            let join_handle = {
+                let search_context = ctx.search_context(stop_signal.clone());
+                let hidden = self.hidden;
+                tokio::spawn(async move {
+                    crate::searcher::files::search(hidden, matcher, search_context).await;
+                })
+            };
+
+            SearcherControl {
+                stop_signal,
+                join_handle,
+            }
+        };
 
         self.searcher_control.replace(new_control);
     }

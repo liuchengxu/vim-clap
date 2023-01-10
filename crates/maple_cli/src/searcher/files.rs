@@ -1,9 +1,8 @@
 use super::{walk_parallel, WalkConfig};
+use crate::stdio_server::{SearchContext, VimProgressor};
 use filter::{BestItems, MatchedItem};
-use icon::Icon;
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;
-use printer::DisplayLines;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -62,78 +61,69 @@ fn search_files(
     });
 }
 
-pub struct FilesSearcher {
-    pub search_root: PathBuf,
-    pub hidden: bool,
-    pub matcher: Matcher,
-    pub stop_signal: Arc<AtomicBool>,
-    pub number: usize,
-    pub icon: Icon,
-    pub winwidth: usize,
-}
+pub async fn search(hidden: bool, matcher: Matcher, search_context: SearchContext) {
+    let SearchContext {
+        cwd,
+        vim,
+        icon,
+        winwidth,
+        stop_signal,
+        item_pool_size,
+    } = search_context;
 
-impl FilesSearcher {
-    pub async fn run_with_progressor<P: ProgressUpdate<DisplayLines>>(self, progressor: P) {
-        let Self {
-            search_root,
-            hidden,
-            matcher,
-            stop_signal,
-            number,
-            icon,
-            winwidth,
-        } = self;
+    let number = item_pool_size;
+    let progressor = VimProgressor::new(vim, stop_signal.clone());
+    let search_root = cwd;
 
-        let (sender, mut receiver) = unbounded_channel();
+    let (sender, mut receiver) = unbounded_channel();
 
-        std::thread::Builder::new()
-            .name("files-worker".into())
-            .spawn({
-                let stop_signal = stop_signal.clone();
-                move || search_files(search_root, hidden, matcher, stop_signal, sender)
-            })
-            .expect("Failed to spawn blines worker thread");
+    std::thread::Builder::new()
+        .name("files-worker".into())
+        .spawn({
+            let stop_signal = stop_signal.clone();
+            move || search_files(search_root, hidden, matcher, stop_signal, sender)
+        })
+        .expect("Failed to spawn blines worker thread");
 
-        let mut total_matched = 0usize;
-        let mut total_processed = 0usize;
+    let mut total_matched = 0usize;
+    let mut total_processed = 0usize;
 
-        let mut best_items = BestItems::new(icon, winwidth, number, progressor);
+    let mut best_items = BestItems::new(icon, winwidth, number, progressor);
 
-        let now = std::time::Instant::now();
+    let now = std::time::Instant::now();
 
-        while let Some(maybe_matched_item) = receiver.recv().await {
-            if stop_signal.load(Ordering::SeqCst) {
-                return;
-            }
-
-            match maybe_matched_item {
-                Some(matched_item) => {
-                    total_matched += 1;
-                    total_processed += 1;
-
-                    best_items.on_new_match(matched_item, total_matched, total_processed);
-                }
-                None => {
-                    total_processed += 1;
-                }
-            }
+    while let Some(maybe_matched_item) = receiver.recv().await {
+        if stop_signal.load(Ordering::SeqCst) {
+            return;
         }
 
-        tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
+        match maybe_matched_item {
+            Some(matched_item) => {
+                total_matched += 1;
+                total_processed += 1;
 
-        let BestItems {
-            items,
-            progressor,
-            winwidth,
-            ..
-        } = best_items;
+                best_items.on_new_match(matched_item, total_matched, total_processed);
+            }
+            None => {
+                total_processed += 1;
+            }
+        }
+    }
 
-        let display_lines = printer::decorate_lines(items, winwidth, icon);
+    tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
 
-        progressor.on_finished(display_lines, total_matched, total_processed);
+    let BestItems {
+        items,
+        progressor,
+        winwidth,
+        ..
+    } = best_items;
 
-        tracing::debug!(
+    let display_lines = printer::decorate_lines(items, winwidth, icon);
+
+    progressor.on_finished(display_lines, total_matched, total_processed);
+
+    tracing::debug!(
         "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
-    }
 }

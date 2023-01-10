@@ -1,9 +1,8 @@
 use crate::command::blines::BlinesItem;
+use crate::stdio_server::{SearchContext, VimProgressor};
 use anyhow::Result;
 use filter::BestItems;
-use icon::Icon;
 use matcher::Matcher;
-use printer::DisplayLines;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -64,15 +63,19 @@ fn search_lines(
     Ok(())
 }
 
-pub async fn search<P: ProgressUpdate<DisplayLines>>(
-    source_file: PathBuf,
-    matcher: Matcher,
-    stop_signal: Arc<AtomicBool>,
-    number: usize,
-    icon: Icon,
-    winwidth: usize,
-    progressor: P,
-) {
+pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: SearchContext) {
+    let SearchContext {
+        icon,
+        winwidth,
+        cwd: _,
+        vim,
+        stop_signal,
+        item_pool_size,
+    } = search_context;
+
+    let number = item_pool_size;
+    let progressor = VimProgressor::new(vim, stop_signal.clone());
+
     let mut best_items = BestItems::new(icon, winwidth, number, progressor);
 
     let (sender, mut receiver) = unbounded_channel();
