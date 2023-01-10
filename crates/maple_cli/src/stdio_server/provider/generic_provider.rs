@@ -154,6 +154,10 @@ impl GenericProvider {
 #[async_trait::async_trait]
 impl ClapProvider for GenericProvider {
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
+        if !ctx.env.preview_enabled {
+            return Ok(());
+        }
+
         let lnum = ctx.vim.display_getcurlnum().await?;
 
         let curline = ctx.vim.display_getcurline().await?;

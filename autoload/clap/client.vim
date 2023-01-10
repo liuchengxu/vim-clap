@@ -82,7 +82,6 @@ function! clap#client#notify_on_init(...) abort
         \   'input': { 'bufnr': g:clap.input.bufnr, 'winid': g:clap.input.winid },
         \   'start': { 'bufnr': g:clap.start.bufnr, 'winid': g:clap.start.winid },
         \   'display': { 'bufnr': g:clap.display.bufnr, 'winid': g:clap.display.winid },
-        \   'preview': { 'bufnr': g:clap.preview.bufnr, 'winid': g:clap.preview.winid },
         \   'cwd': clap#rooter#working_dir(),
         \   'icon': g:clap_enable_icon ? get(g:clap.provider._(), 'icon', 'Null') : 'Null',
         \   'debounce': get(g:clap.provider._(), 'debounce', v:true),

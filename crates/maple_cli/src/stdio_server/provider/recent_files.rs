@@ -25,7 +25,7 @@ impl RecentFilesProvider {
         self,
         cwd: AbsPathBuf,
         query: String,
-        preview_size: usize,
+        preview_size: Option<usize>,
         lnum: usize,
         winwidth: usize,
         icon: icon::Icon,
@@ -59,20 +59,20 @@ impl RecentFilesProvider {
         let total = ranked.len();
 
         // process the new preview
-        let preview = if let Some(new_entry) = ranked.get(lnum - 1) {
-            let new_curline = new_entry.display_text().to_string();
-            if let Ok((lines, fname)) =
-                crate::previewer::preview_file(new_curline, preview_size, winwidth)
-            {
-                Some(json!({ "lines": lines, "fname": fname }))
-            } else {
-                None
+        let preview = match (preview_size, ranked.get(lnum - 1)) {
+            (Some(size), Some(new_entry)) => {
+                let new_curline = new_entry.display_text().to_string();
+                if let Ok((lines, fname)) =
+                    crate::previewer::preview_file(new_curline, size, winwidth)
+                {
+                    Some(json!({ "lines": lines, "fname": fname }))
+                } else {
+                    None
+                }
             }
-        } else {
-            None
+            _ => None,
         };
 
-        // Take the first 200 entries and add an icon to each of them.
         let printer::DisplayLines {
             lines,
             indices,
@@ -122,10 +122,11 @@ impl ClapProvider for RecentFilesProvider {
         let query = ctx.vim.context_query_or_input().await?;
         let cwd = ctx.vim.working_dir().await?;
 
-        let preview_size = ctx
-            .vim
-            .preview_size(&ctx.env.provider_id, ctx.env.preview.winid)
-            .await?;
+        let preview_size = if ctx.env.preview_enabled {
+            Some(ctx.preview_size().await?)
+        } else {
+            None
+        };
 
         let winwidth = ctx.env.display_winwidth;
         let icon = if ctx.env.icon.enabled() {
@@ -170,11 +171,13 @@ impl ClapProvider for RecentFilesProvider {
         let response = tokio::task::spawn_blocking({
             let query = query.clone();
             let recent_files = self.clone();
+
             let cwd = ctx.cwd.clone();
-            let preview_size = ctx
-                .vim
-                .preview_size(&ctx.env.provider_id, ctx.env.preview.winid)
-                .await?;
+            let preview_size = if ctx.env.preview_enabled {
+                Some(ctx.preview_size().await?)
+            } else {
+                None
+            };
             let lnum = ctx.vim.display_getcurlnum().await?;
             let winwidth = ctx.env.display_winwidth;
             let icon = if ctx.env.icon.enabled() {
