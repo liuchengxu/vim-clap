@@ -10,10 +10,12 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{Event, ProviderEvent};
+pub use self::provider::SearchContext;
 use self::provider::{create_provider, Context};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
+pub use self::types::VimProgressor;
 pub use self::vim::Vim;
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;

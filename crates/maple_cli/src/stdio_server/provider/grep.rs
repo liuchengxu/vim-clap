@@ -1,41 +1,8 @@
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
-use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
-use matcher::{MatchScope, Matcher};
+use matcher::MatchScope;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-
-fn start_searcher(number: usize, context: &Context, matcher: Matcher) -> SearcherControl {
-    let stop_signal = Arc::new(AtomicBool::new(false));
-
-    let join_handle = {
-        let icon = context.env.icon;
-        let winwidth = context.env.display_winwidth;
-        let vim = context.vim.clone();
-        let search_root = context.cwd.clone().into();
-        let stop_signal = stop_signal.clone();
-
-        tokio::spawn(async move {
-            let progressor = VimProgressor::new(vim.clone(), stop_signal.clone());
-            crate::searcher::Searcher {
-                search_root,
-                matcher,
-                stop_signal,
-                number,
-                icon,
-                winwidth,
-                vim,
-            }
-            .run_with_progressor(progressor)
-            .await
-        })
-    };
-
-    SearcherControl {
-        stop_signal,
-        join_handle,
-    }
-}
 
 #[derive(Debug)]
 pub struct GrepProvider {
@@ -61,7 +28,19 @@ impl GrepProvider {
             .match_scope(MatchScope::Full)
             .build(query.into());
 
-        let new_control = start_searcher(100, ctx, matcher);
+        let new_control = {
+            let stop_signal = Arc::new(AtomicBool::new(false));
+
+            let search_context = ctx.search_context(stop_signal.clone());
+            let join_handle = tokio::spawn(async move {
+                crate::searcher::grep::search(matcher, search_context).await
+            });
+
+            SearcherControl {
+                stop_signal,
+                join_handle,
+            }
+        };
 
         self.searcher_control.replace(new_control);
     }

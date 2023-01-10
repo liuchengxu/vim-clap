@@ -51,6 +51,16 @@ impl SearcherControl {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SearchContext {
+    pub icon: Icon,
+    pub winwidth: usize,
+    pub cwd: PathBuf,
+    pub vim: Vim,
+    pub stop_signal: Arc<AtomicBool>,
+    pub item_pool_size: usize,
+}
+
 /// bufnr and winid.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BufnrWinid {
@@ -162,6 +172,17 @@ impl Context {
 
     pub fn matcher_builder(&self) -> MatcherBuilder {
         self.env.matcher_builder.clone()
+    }
+
+    pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
+        SearchContext {
+            icon: self.env.icon,
+            winwidth: self.env.display_winwidth,
+            cwd: self.cwd.clone().into(),
+            vim: self.vim.clone(),
+            stop_signal,
+            item_pool_size: 100,
+        }
     }
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
