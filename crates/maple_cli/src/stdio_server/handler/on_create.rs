@@ -161,31 +161,30 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
     }
 
     match tokio::time::timeout(TIMEOUT, initialize_provider_source(ctx)).await {
-        Ok(provider_source_result) => match provider_source_result {
-            Ok(provider_source) => {
-                if let Some(total) = provider_source.total() {
-                    ctx.vim.set_var("g:clap.display.initial_size", total)?;
-                }
-
-                if let Some(items) = provider_source.initial_items(100) {
-                    let DisplayLines {
-                        lines,
-                        icon_added,
-                        truncated_map,
-                        ..
-                    } = printer::decorate_lines(items, ctx.env.display_winwidth, ctx.env.icon);
-
-                    let using_cache = provider_source.using_cache();
-                    ctx.vim.exec(
-                        "clap#state#init_display",
-                        json!([lines, truncated_map, icon_added, using_cache]),
-                    )?;
-                }
-
-                ctx.set_provider_source(provider_source);
+        Ok(Ok(provider_source)) => {
+            if let Some(total) = provider_source.total() {
+                ctx.vim.set_var("g:clap.display.initial_size", total)?;
             }
-            Err(e) => tracing::error!(?e, "Error occurred on creating session"),
-        },
+
+            if let Some(items) = provider_source.initial_items(100) {
+                let DisplayLines {
+                    lines,
+                    icon_added,
+                    truncated_map,
+                    ..
+                } = printer::decorate_lines(items, ctx.env.display_winwidth, ctx.env.icon);
+
+                let using_cache = provider_source.using_cache();
+
+                ctx.vim.exec(
+                    "clap#state#init_display",
+                    json!([lines, truncated_map, icon_added, using_cache]),
+                )?;
+            }
+
+            ctx.set_provider_source(provider_source);
+        }
+        Ok(Err(e)) => tracing::error!(?e, "Error occurred on creating session"),
         Err(_) => {
             // The initialization was not super fast.
             tracing::debug!(timeout = ?TIMEOUT, "Did not receive value in time");
