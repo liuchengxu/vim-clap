@@ -1,3 +1,4 @@
+use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use crate::stdio_server::types::VimProgressor;
 use anyhow::Result;
@@ -92,6 +93,8 @@ impl ClapProvider for FilesProvider {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             self.process_query(query, ctx);
+        } else {
+            initialize_provider(ctx).await?;
         }
         Ok(())
     }
