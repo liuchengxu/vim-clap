@@ -217,7 +217,6 @@ function! clap#state#clear_pre() abort
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
   call clap#indicator#set_none()
-  call clap#preview#clear()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile
   endif

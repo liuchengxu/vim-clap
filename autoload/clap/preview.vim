@@ -130,7 +130,6 @@ function! clap#preview#show_lines(lines, syntax, hi_lnum) abort
 endfunction
 
 let s:preview_timer = -1
-let s:last_preview_line = ''
 let s:preview_delay = get(g:, 'clap_preview_delay', 100)
 
 let s:PREVIEW_DISABLED = tolower(g:clap_open_preview) ==# 'never'
@@ -152,16 +151,7 @@ function! clap#preview#async_open_with_delay() abort
   if s:preview_timer != -1
     call timer_stop(s:preview_timer)
   endif
-  let curline = g:clap.display.getcurline()
-  if s:last_preview_line ==# curline
-    return
-  endif
-  let s:last_preview_line = curline
   let s:preview_timer = timer_start(s:preview_delay, { -> clap#impl#on_move#invoke_async()})
-endfunction
-
-function! clap#preview#clear() abort
-  let s:last_preview_line = ''
 endfunction
 
 function! clap#preview#maple_opts(extra) abort
