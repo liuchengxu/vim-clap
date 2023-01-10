@@ -381,71 +381,6 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  " Reading from a cached file should be faster than running the command again.
-  " Currently only maple extension supports --input option, for the other
-  " external filter, use cat instead.
-  function! s:read_from_file_or_pipe(ext_filter_cmd, input_file) abort
-    if clap#legacy#filter#async#external#using_maple()
-      let cmd = printf('%s --input %s', a:ext_filter_cmd, a:input_file)
-    else
-      let cmd = printf('%s %s | %s', s:cat_or_type, a:input_file, a:ext_filter_cmd)
-    endif
-    return cmd
-  endfunction
-
-  " Pipe the source into the external filter
-  function! s:wrap_async_cmd(source_cmd) abort
-    let ext_filter_cmd = clap#legacy#filter#async#external#get_cmd_or_default()
-    if exists('g:__clap_forerunner_tempfile')
-      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, g:__clap_forerunner_tempfile)
-    else
-      " FIXME Does it work well in Windows?
-      " Run the source command and pipe into the external filter.
-      let cmd = a:source_cmd.' | '.ext_filter_cmd
-    endif
-    return cmd
-  endfunction
-
-  function! provider.source_async_or_default() abort
-    if has_key(self._(), 'source_async')
-      return self._().source_async()
-    else
-
-      let Source = self._().source
-
-      if self.source_type == g:__t_string
-        return s:wrap_async_cmd(Source)
-      elseif self.source_type == g:__t_func_string
-        return s:wrap_async_cmd(Source())
-      endif
-
-      if self.source_type == g:__t_list
-        let lines = copy(Source)
-      " This optimization has been moved to on_typed_async_impl()
-      " elseif self.id ==# 'blines'
-        " Do not call Source() but use the raw content for blines when it's huge.
-        " let lines = []
-      elseif self.source_type == g:__t_func_list
-        let lines = copy(Source())
-      endif
-
-      let ext_filter_cmd = clap#legacy#filter#async#external#get_cmd_or_default()
-
-      let tmp = clap#state#into_tempfile(lines)
-      let cmd = s:read_from_file_or_pipe(ext_filter_cmd, tmp)
-
-      return cmd
-    endif
-  endfunction
-
-  function! provider.source_async() abort
-    if has_key(self._(), 'source_async')
-      return self._().source_async()
-    else
-      call g:clap.abort('source_async is unavailable')
-    endif
-  endfunction
-
   function! provider._apply_source() abort
     let Source = self._().source
 
@@ -481,25 +416,6 @@ function! s:init_provider() abort
 
   function! provider.is_pure_async() abort
     return !has_key(self._(), 'source')
-  endfunction
-
-  " A provider can be async if it's pure async or sync provider with `source_async`
-  " Since now we have the default source_async implementation, everything
-  " could be async theoretically.
-  "
-  " But the default async impl may not work in Windows at the moment, and
-  " peple may not have installed the required external filter(fzy, fzf,
-  " etc.),
-  " So we should detect if the default async is doable or otherwise better
-  " have a flag to disable it.
-  function! provider.can_async() abort
-    " The default async implementation is not doable and the provider does not
-    " provide a source_async implementation explicitly.
-    if !clap#legacy#filter#async#external#has_default() && !has_key(self._(), 'source_async')
-      return v:false
-    else
-      return !g:clap_disable_optional_async
-    endif
   endfunction
 
   function! provider.init_display_win() abort
