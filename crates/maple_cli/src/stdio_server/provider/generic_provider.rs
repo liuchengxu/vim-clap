@@ -162,6 +162,10 @@ impl ClapProvider for GenericProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
+        if !self.context.env.preview_enabled {
+            return Ok(());
+        }
+
         let lnum = self.vim().display_getcurlnum().await?;
 
         let curline = self.vim().display_getcurline().await?;

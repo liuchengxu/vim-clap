@@ -33,7 +33,7 @@ impl RecentFilesProvider {
         self,
         cwd: AbsPathBuf,
         query: String,
-        preview_size: usize,
+        preview_size: Option<usize>,
         lnum: usize,
     ) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
@@ -67,20 +67,20 @@ impl RecentFilesProvider {
         let winwidth = self.context.env.display_winwidth;
 
         // process the new preview
-        let preview = if let Some(new_entry) = ranked.get(lnum - 1) {
-            let new_curline = new_entry.display_text().to_string();
-            if let Ok((lines, fname)) =
-                crate::previewer::preview_file(new_curline, preview_size, winwidth)
-            {
-                Some(json!({ "lines": lines, "fname": fname }))
-            } else {
-                None
+        let preview = match (preview_size, ranked.get(lnum - 1)) {
+            (Some(size), Some(new_entry)) => {
+                let new_curline = new_entry.display_text().to_string();
+                if let Ok((lines, fname)) =
+                    crate::previewer::preview_file(new_curline, size, winwidth)
+                {
+                    Some(json!({ "lines": lines, "fname": fname }))
+                } else {
+                    None
+                }
             }
-        } else {
-            None
+            _ => None,
         };
 
-        // Take the first 200 entries and add an icon to each of them.
         let printer::DisplayLines {
             lines,
             indices,
@@ -142,13 +142,11 @@ impl ClapProvider for RecentFilesProvider {
         let query = self.vim().context_query_or_input().await?;
         let cwd = self.vim().working_dir().await?;
 
-        let preview_size = self
-            .vim()
-            .preview_size(
-                &self.context.env.provider_id,
-                self.context.env.preview.winid,
-            )
-            .await?;
+        let preview_size = if self.context.env.preview_enabled {
+            Some(self.context.preview_size().await?)
+        } else {
+            None
+        };
 
         let response = self.clone().process_query(cwd, query, preview_size, 1)?;
 
@@ -187,13 +185,11 @@ impl ClapProvider for RecentFilesProvider {
             let cwd = self.context.cwd.clone();
 
             let lnum = self.vim().display_getcurlnum().await?;
-            let preview_size = self
-                .vim()
-                .preview_size(
-                    &self.context.env.provider_id,
-                    self.context.env.preview.winid,
-                )
-                .await?;
+            let preview_size = if self.context.env.preview_enabled {
+                Some(self.context.preview_size().await?)
+            } else {
+                None
+            };
 
             move || recent_files.process_query(cwd, query, preview_size, lnum)
         })

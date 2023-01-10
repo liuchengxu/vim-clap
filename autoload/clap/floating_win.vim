@@ -462,7 +462,7 @@ function! clap#floating_win#open() abort
   call s:open_win_border_left()
   call g:clap#floating_win#spinner.open()
   call g:clap#floating_win#input.open()
-  if clap#preview#is_enabled() && clap#preview#direction() ==# 'LR'
+  if clap#preview#is_enabled()
     call s:create_preview_win(s:display_opts.height)
   endif
 

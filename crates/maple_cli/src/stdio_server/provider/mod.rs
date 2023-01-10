@@ -71,11 +71,11 @@ pub struct ProviderEnvironment {
     pub start: BufnrWinid,
     pub input: BufnrWinid,
     pub display: BufnrWinid,
-    pub preview: BufnrWinid,
     pub icon: Icon,
     pub matcher_builder: MatcherBuilder,
     pub debounce: bool,
     pub no_cache: bool,
+    pub preview_enabled: bool,
     pub display_winwidth: usize,
     pub start_buffer_path: PathBuf,
 }
@@ -98,7 +98,6 @@ impl ProviderContext {
             start: BufnrWinid,
             input: BufnrWinid,
             display: BufnrWinid,
-            preview: BufnrWinid,
             cwd: AbsPathBuf,
             icon: String,
             debounce: bool,
@@ -111,7 +110,6 @@ impl ProviderContext {
             start,
             input,
             display,
-            preview,
             cwd,
             debounce,
             no_cache,
@@ -129,6 +127,7 @@ impl ProviderContext {
         let matcher_builder = provider_id.matcher_builder();
         let display_winwidth = vim.winwidth(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
+        let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
@@ -136,9 +135,9 @@ impl ProviderContext {
             start,
             input,
             display,
-            preview,
             no_cache,
             debounce,
+            preview_enabled: preview_enabled == 1,
             start_buffer_path,
             display_winwidth,
             matcher_builder,
@@ -171,10 +170,14 @@ impl ProviderContext {
     }
 
     pub async fn preview_height(&self) -> Result<usize> {
+        self.preview_size().await.map(|x| 2 * x)
+    }
+
+    pub async fn preview_size(&self) -> Result<usize> {
+        let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
         self.vim
-            .preview_size(&self.env.provider_id, self.env.preview.winid)
+            .preview_size(&self.env.provider_id, preview_winid)
             .await
-            .map(|x| 2 * x)
     }
 
     pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {

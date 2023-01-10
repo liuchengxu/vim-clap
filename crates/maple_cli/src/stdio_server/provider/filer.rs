@@ -376,11 +376,12 @@ impl ClapProvider for FilerProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
+        if !self.context.env.preview_enabled {
+            return Ok(());
+        }
         let curline = self.current_line().await?;
         let path = build_abs_path(&self.current_dir, curline);
-        self.do_preview(PreviewTarget::FileOrDirectory(path))
-            .await?;
-        Ok(())
+        self.do_preview(PreviewTarget::FileOrDirectory(path)).await
     }
 
     async fn on_typed(&mut self) -> Result<()> {

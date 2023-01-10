@@ -107,6 +107,9 @@ impl ClapProvider for BlinesProvider {
     }
 
     async fn on_move(&mut self) -> Result<()> {
+        if !self.context.env.preview_enabled {
+            return Ok(());
+        }
         OnMoveImpl::new(&self.context, self.vim())
             .do_preview()
             .await
