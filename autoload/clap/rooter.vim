@@ -21,7 +21,7 @@ endfunction
 " each provider context.
 function! clap#rooter#try_set_cwd() abort
   if !exists('g:__clap_provider_cwd')
-    if !empty(g:clap.provider.args)
+    if !empty(get(g:clap.provider, 'args', []))
       let dir = g:clap.provider.args[-1]
 
       " %:p:h, % is actually g:clap.start.bufnr
