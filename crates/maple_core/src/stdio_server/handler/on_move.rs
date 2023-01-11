@@ -84,14 +84,9 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
                 let (fpath, lnum, _col, cache_line) =
                     extract_grep_position(line).ok_or_else(err)?;
 
-                let fpath = if let Ok(stripped) = fpath.strip_prefix("./") {
-                    stripped.to_path_buf()
-                } else {
-                    fpath
-                };
-
                 line_content.replace(cache_line.into());
 
+                let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
                 let path = ctx.cwd.to_path_buf().join(fpath);
 
                 Ok::<_, anyhow::Error>((path, lnum))

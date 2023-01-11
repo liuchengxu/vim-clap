@@ -57,9 +57,9 @@ pub fn extract_grep_pattern(line: &str) -> Option<(&str, usize)> {
 }
 
 /// Returns a tuple of (fpath, lnum, col).
-pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize, &str)> {
+pub fn extract_grep_position(line: &str) -> Option<(&str, usize, usize, &str)> {
     let cap = GREP_POS.captures(line)?;
-    let fpath = cap.get(1).map(|x| x.as_str().into())?;
+    let fpath = cap.get(1).map(|x| x.as_str())?;
     let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
     let lnum = str2nr(2)?;
     let col = str2nr(3)?;
@@ -111,10 +111,8 @@ pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
 /// Returns the file name as well as its offset from the complete file path.
 pub fn extract_file_name(file_path: &str) -> Option<(&str, usize)> {
     std::path::Path::new(file_path).file_name().map(|fname| {
-        (
-            &file_path[file_path.len() - fname.len()..],
-            file_path.len() - fname.len(),
-        )
+        let file_name_start = file_path.len() - fname.len();
+        (&file_path[file_name_start..], file_name_start)
     })
 }
 

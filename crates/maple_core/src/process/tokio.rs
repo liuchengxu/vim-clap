@@ -96,7 +96,7 @@ mod tests {
         );
         let mut tokio_cmd = TokioCommand::new(shell_cmd);
         assert_eq!(
-            vec!["Cargo.toml", "benches", "src"]
+            vec!["Cargo.toml", "src"]
                 .into_iter()
                 .map(Into::into)
                 .collect::<HashSet<String>>(),
