@@ -1,10 +1,10 @@
 use crate::app::Params;
-use crate::process::shell_command;
-use crate::process::{CacheableCommand, ShellCommand};
-use crate::tools::ripgrep::Match;
 use anyhow::{Context, Result};
 use clap::Parser;
 use icon::Icon;
+use maple_core::process::shell_command;
+use maple_core::process::{CacheableCommand, ShellCommand};
+use maple_core::tools::ripgrep::Match;
 use rayon::prelude::*;
 use std::convert::TryFrom;
 use std::path::PathBuf;

@@ -18,7 +18,7 @@ impl Rpc {
             None
         };
 
-        crate::config::initialize_config_file(params.config_file.clone());
+        maple_core::config::initialize_config_file(params.config_file.clone());
 
         if let Some(log_path) = maybe_log {
             if let Ok(metadata) = std::fs::metadata(&log_path) {
@@ -41,9 +41,9 @@ impl Rpc {
 
             tracing::subscriber::set_global_default(subscriber)?;
 
-            crate::stdio_server::start().await;
+            maple_core::stdio_server::start().await;
         } else {
-            crate::stdio_server::start().await;
+            maple_core::stdio_server::start().await;
         }
 
         Ok(())

@@ -3,11 +3,11 @@ pub mod recursive_tags;
 pub mod tags_file;
 
 use crate::app::Params;
-use crate::paths::AbsPathBuf;
-use crate::tools::ctags::EXCLUDE;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use itertools::Itertools;
+use maple_core::paths::AbsPathBuf;
+use maple_core::tools::ctags::EXCLUDE;
 use std::path::PathBuf;
 
 /// Generate ctags recursively given the directory.

@@ -1,8 +1,8 @@
 use crate::app::Params;
-use crate::find_usages::GtagsSearcher;
-use crate::paths::AbsPathBuf;
 use anyhow::Result;
 use clap::Parser;
+use maple_core::find_usages::GtagsSearcher;
+use maple_core::paths::AbsPathBuf;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(Parser, Debug, Clone)]

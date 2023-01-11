@@ -1,8 +1,8 @@
 use crate::app::Params;
-use crate::paths::AbsPathBuf;
-use crate::tools::ctags::{buffer_tags_lines, current_context_tag};
 use anyhow::{Context, Result};
 use clap::Parser;
+use maple_core::paths::AbsPathBuf;
+use maple_core::tools::ctags::{buffer_tags_lines, current_context_tag};
 
 /// Prints the tags for a specific file.
 #[derive(Parser, Debug, Clone)]

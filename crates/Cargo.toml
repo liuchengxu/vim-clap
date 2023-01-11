@@ -5,6 +5,7 @@ members = [
     "filter",
     "icon",
     "maple_cli",
+    "maple_core",
     "matcher",
     "matcher/extracted_fzy",
     "pattern",

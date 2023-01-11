@@ -1,8 +1,8 @@
 use crate::app::Params;
-use crate::paths::AbsPathBuf;
 use anyhow::Result;
 use clap::Parser;
 use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
+use maple_core::paths::AbsPathBuf;
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use std::ops::Deref;
 use std::path::PathBuf;

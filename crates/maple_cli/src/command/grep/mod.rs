@@ -2,10 +2,10 @@ mod forerunner;
 mod live_grep;
 
 use crate::app::Params;
-use crate::tools::ripgrep::{refresh_cache, rg_shell_command};
 use anyhow::Result;
 use clap::Parser;
 use filter::{ParallelSource, SequentialSource};
+use maple_core::tools::ripgrep::{refresh_cache, rg_shell_command};
 use matcher::MatchScope;
 use std::path::PathBuf;
 use subprocess::Exec;
@@ -63,7 +63,7 @@ impl Grep {
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            let search_result = crate::searcher::grep::cli_search(dir, clap_matcher).await;
+            let search_result = maple_core::searcher::grep::cli_search(dir, clap_matcher).await;
 
             println!(
                 "total_matched: {:?}, total_processed: {:?}",
@@ -131,9 +131,9 @@ impl Grep {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::tokio::TokioCommand;
-    use crate::tools::ripgrep::RgTokioCommand;
     use itertools::Itertools;
+    use maple_core::process::tokio::TokioCommand;
+    use maple_core::tools::ripgrep::RgTokioCommand;
     use std::time::Instant;
 
     // 3X faster than the deprecated version.

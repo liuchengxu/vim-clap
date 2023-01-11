@@ -2,11 +2,11 @@
 //!
 //! This module requires the executable rg with `--json` and `--pcre2` is installed in the system.
 
-use crate::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
-use crate::tools::ctags::{get_language, TagsGenerator};
-use crate::utils::UsageMatcher;
 use anyhow::Result;
 use clap::Parser;
+use maple_core::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
+use maple_core::tools::ctags::{get_language, TagsGenerator};
+use maple_core::utils::UsageMatcher;
 use std::path::PathBuf;
 
 /// Search-based jump.

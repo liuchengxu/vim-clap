@@ -945,11 +945,37 @@ name = "maple_cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
+ "filter",
+ "futures",
+ "icon",
+ "itertools",
+ "maple_core",
+ "matcher",
+ "num_cpus",
+ "pattern",
+ "printer",
+ "rayon",
+ "regex",
+ "serde_json",
+ "subprocess",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "types",
+ "utility",
+]
+
+[[package]]
+name = "maple_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "async-trait",
  "base64 0.13.1",
  "bytecount",
  "chrono",
- "clap",
  "directories",
  "dumb_analyzer",
  "filter",
@@ -973,10 +999,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
- "tracing-appender",
- "tracing-subscriber",
  "types",
- "upgrade",
  "utility",
 ]
 

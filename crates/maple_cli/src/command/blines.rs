@@ -1,8 +1,9 @@
 use crate::app::Params;
-use crate::paths::AbsPathBuf;
 use anyhow::Result;
 use clap::Parser;
 use filter::SequentialSource;
+use maple_core::paths::AbsPathBuf;
+use maple_core::utils::display_width;
 use matcher::{Bonus, MatchResult};
 use rayon::iter::ParallelBridge;
 use std::borrow::Cow;
@@ -44,7 +45,7 @@ impl ClapItem for BlinesItem {
     fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
         let mut match_result = match_result;
         match_result.indices.iter_mut().for_each(|x| {
-            *x += crate::utils::display_width(self.line_number) + 1;
+            *x += display_width(self.line_number) + 1;
         });
         match_result
     }

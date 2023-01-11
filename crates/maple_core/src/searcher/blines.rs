@@ -1,8 +1,8 @@
-use crate::command::blines::BlinesItem;
 use crate::stdio_server::{SearchContext, VimProgressor};
 use anyhow::Result;
 use filter::BestItems;
-use matcher::Matcher;
+use matcher::{MatchResult, Matcher};
+use std::borrow::Cow;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -10,6 +10,30 @@ use std::sync::Arc;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem};
+
+#[derive(Debug)]
+pub struct BlinesItem {
+    pub raw: String,
+    pub line_number: usize,
+}
+
+impl ClapItem for BlinesItem {
+    fn raw_text(&self) -> &str {
+        self.raw.as_str()
+    }
+
+    fn output_text(&self) -> Cow<'_, str> {
+        format!("{} {}", self.line_number, self.raw).into()
+    }
+
+    fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
+        let mut match_result = match_result;
+        match_result.indices.iter_mut().for_each(|x| {
+            *x += crate::utils::display_width(self.line_number) + 1;
+        });
+        match_result
+    }
+}
 
 #[derive(Debug)]
 enum SearcherMessage {

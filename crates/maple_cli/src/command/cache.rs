@@ -1,6 +1,6 @@
-use crate::datastore::CACHE_INFO_IN_MEMORY;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use maple_core::datastore::CACHE_INFO_IN_MEMORY;
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
@@ -91,7 +91,7 @@ impl Purge {
             println!("Cache size: {readable_size:?}");
         }
 
-        if let Some(f) = crate::datastore::cache_metadata_path() {
+        if let Some(f) = maple_core::datastore::cache_metadata_path() {
             match std::fs::remove_file(f) {
                 Ok(()) => println!("Cache metadata {} has been deleted", f.display()),
                 Err(e) => println!("Faild to delete {}: {e}", f.display()),

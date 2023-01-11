@@ -1,7 +1,7 @@
-use crate::helptags::generate_tag_lines;
-use crate::paths::AbsPathBuf;
 use anyhow::Result;
 use clap::Parser;
+use maple_core::helptags::generate_tag_lines;
+use maple_core::paths::AbsPathBuf;
 use std::io::Write;
 use utility::read_lines;
 
