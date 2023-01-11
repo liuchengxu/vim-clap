@@ -1,4 +1,4 @@
-use crate::stdio_server::handler::{CachedCachedPreviewImpl, PreviewTarget};
+use crate::stdio_server::handler::{CachedPreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use crate::stdio_server::vim::VimProgressor;
 use anyhow::Result;
@@ -168,14 +168,14 @@ impl ClapProvider for GenericProvider {
         let preview_height = ctx.preview_height().await?;
         let preview_impl =
             if let Some(preview_target) = self.nontypical_preview_target(&curline, ctx).await? {
-                CachedCachedPreviewImpl {
+                CachedPreviewImpl {
                     ctx,
                     preview_height,
                     preview_target,
                     cache_line: None,
                 }
             } else {
-                CachedCachedPreviewImpl::new(curline, preview_height, ctx)?
+                CachedPreviewImpl::new(curline, preview_height, ctx)?
             };
 
         let preview = preview_impl.get_preview().await?;
