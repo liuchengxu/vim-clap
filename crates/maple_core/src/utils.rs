@@ -20,12 +20,8 @@ pub static PROJECT_DIRS: Lazy<ProjectDirs> = Lazy::new(|| {
         .expect("Couldn't create project directory for vim-clap")
 });
 
-pub static HOME_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    directories::BaseDirs::new()
-        .expect("Failed to construct BaseDirs")
-        .home_dir()
-        .to_path_buf()
-});
+pub static BASE_DIRS: Lazy<directories::BaseDirs> =
+    Lazy::new(|| directories::BaseDirs::new().expect("Failed to construct BaseDirs"));
 
 /// Yes or no terms.
 #[derive(Debug, Clone, Default)]
@@ -178,7 +174,7 @@ pub(crate) fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
     static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
 
     if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
-        HOME_DIR.clone().join(stripped)
+        BASE_DIRS.home_dir().join(stripped)
     } else {
         path.as_ref().into()
     }
@@ -248,7 +244,7 @@ pub(crate) fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, 
 
         const SEP: char = std::path::MAIN_SEPARATOR;
 
-        if let Some(home_dir) = crate::utils::HOME_DIR.as_path().to_str() {
+        if let Some(home_dir) = BASE_DIRS.home_dir().to_str() {
             if abs_path.starts_with(home_dir) {
                 // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
                 if home_dir.len() > gap {
@@ -319,7 +315,7 @@ mod tests {
         let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
         let abs_path = format!(
             "{}{}{}",
-            crate::utils::HOME_DIR.as_path().to_str().unwrap(),
+            BASE_DIRS.home_dir().to_str().unwrap(),
             std::path::MAIN_SEPARATOR,
             p
         );

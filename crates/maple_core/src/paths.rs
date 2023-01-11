@@ -17,7 +17,7 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         if path.is_absolute() {
             Ok(Self(path))
         } else if let Ok(stripped) = path.strip_prefix("~") {
-            let path = crate::utils::HOME_DIR.clone().join(stripped);
+            let path = crate::utils::BASE_DIRS.home_dir().join(stripped);
             // Resolve the symlink.
             let path =
                 canonicalize(path).map_err(|err| DeserializeError::custom(err.to_string()))?;
