@@ -12,6 +12,10 @@ pub struct BufferTag {
 }
 
 impl BufferTag {
+    pub fn trimmed_pattern(&self) -> &str {
+        super::trim_pattern(&self.pattern)
+    }
+
     /// Returns the display line for BuiltinHandle, no icon attached.
     pub fn format_buffer_tag(&self, max_name_len: usize) -> String {
         let name_line = format!("{}:{}", self.name, self.line);

@@ -1,7 +1,7 @@
 use crate::stdio_server::handler::{Preview, PreviewImpl, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::provider::{ClapProvider, Context};
-use crate::stdio_server::vim::syntax_for;
+use crate::stdio_server::vim::preview_syntax;
 use crate::utils::build_abs_path;
 use anyhow::Result;
 use icon::prepend_filer_icon;
@@ -273,7 +273,7 @@ impl FilerProvider {
             if path.is_dir() {
                 Some("clap_filer")
             } else if path.is_file() {
-                syntax_for(path)
+                preview_syntax(path)
             } else {
                 None
             }

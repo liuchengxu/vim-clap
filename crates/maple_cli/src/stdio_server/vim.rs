@@ -18,9 +18,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use types::ProgressUpdate;
 
-/// Map of file extension to vim syntax mapping.
-static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
-
 static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     vec![
         ("bashrc", "bash"),
@@ -53,23 +50,8 @@ static FILENAME_SYNTAX_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     .collect()
 });
 
-/// Returns the value of `&syntax` for a specific file path.
-///
-/// Used to highlight the preview buffer.
-pub fn syntax_for(path: &Path) -> Option<&str> {
-    match path
-        .file_name()
-        .and_then(|x| x.to_str())
-        .and_then(|filename| FILENAME_SYNTAX_MAP.deref().get(filename).copied())
-    {
-        None => path.extension().and_then(|x| x.to_str()).and_then(|ext| {
-            SYNTAX_MAP
-                .get()
-                .and_then(|m| m.get(ext).map(|s| s.as_ref()))
-        }),
-        Some(s) => Some(s),
-    }
-}
+/// Map of file extension to vim syntax mapping.
+static SYNTAX_MAP: OnceCell<HashMap<String, String>> = OnceCell::new();
 
 pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
     let ext_map: HashMap<&str, &str> = output
@@ -134,6 +116,23 @@ pub fn initialize_syntax_map(output: &str) -> HashMap<&str, &str> {
     }
 
     ext_map
+}
+
+/// Returns the value of `&syntax` for given path for the preview buffer highlight.
+///
+/// Try the file name first and then the file extension.
+pub fn preview_syntax(path: &Path) -> Option<&str> {
+    match path
+        .file_name()
+        .and_then(|x| x.to_str())
+        .and_then(|filename| FILENAME_SYNTAX_MAP.deref().get(filename))
+    {
+        None => path
+            .extension()
+            .and_then(|x| x.to_str())
+            .and_then(|ext| SYNTAX_MAP.get().and_then(|m| m.get(ext).map(AsRef::as_ref))),
+        Some(s) => Some(s),
+    }
 }
 
 #[derive(Debug, Clone)]

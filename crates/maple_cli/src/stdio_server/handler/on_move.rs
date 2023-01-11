@@ -2,7 +2,7 @@ use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
-use crate::stdio_server::vim::syntax_for;
+use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
 use anyhow::{anyhow, Result};
@@ -316,7 +316,7 @@ impl<'a> PreviewImpl<'a> {
                 fname: Some(fname),
                 ..Default::default()
             })
-        } else if let Some(syntax) = syntax_for(path) {
+        } else if let Some(syntax) = preview_syntax(path) {
             Ok(Preview {
                 lines,
                 syntax: Some(syntax.into()),
@@ -385,7 +385,7 @@ impl<'a> PreviewImpl<'a> {
 
                                     // Truncate the right of pattern, 2 whitespaces + 💡
                                     let max_pattern_len = container_width - 4;
-                                    let pattern = crate::tools::ctags::trim_pattern(&tag.pattern);
+                                    let pattern = tag.trimmed_pattern();
                                     let (mut context_line, to_push) = if pattern.len()
                                         > max_pattern_len
                                     {
@@ -416,7 +416,7 @@ impl<'a> PreviewImpl<'a> {
                     .chain(self.truncate_preview_lines(lines.into_iter()))
                     .collect::<Vec<_>>();
 
-                if let Some(syntax) = syntax_for(path) {
+                if let Some(syntax) = preview_syntax(path) {
                     Preview {
                         lines,
                         syntax: Some(syntax.into()),
