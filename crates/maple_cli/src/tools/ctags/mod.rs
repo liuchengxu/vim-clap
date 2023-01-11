@@ -225,9 +225,28 @@ pub struct ProjectCtagsCommand {
 }
 
 impl ProjectCtagsCommand {
+    const TAGS_CMD: &'static [&'static str] =
+        &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
+
+    const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
+
     /// Creates an instance of [`ProjectCtagsCommand`].
     pub fn new(std_cmd: std::process::Command, shell_cmd: ShellCommand) -> Self {
         Self { std_cmd, shell_cmd }
+    }
+
+    pub fn with_cwd(cwd: PathBuf) -> Self {
+        let mut std_cmd = std::process::Command::new(Self::TAGS_CMD[0]);
+        std_cmd.current_dir(&cwd).args(&Self::TAGS_CMD[1..]).args(
+            EXCLUDE
+                .split(',')
+                .map(|exclude| format!("--exclude={exclude}")),
+        );
+        let shell_cmd = ShellCommand::new(
+            format!("{} {}", Self::BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref()),
+            cwd,
+        );
+        Self::new(std_cmd, shell_cmd)
     }
 
     /// Parallel version of [`formatted_lines`].

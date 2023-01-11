@@ -3,6 +3,7 @@ mod cache;
 mod config;
 mod datastore;
 mod find_usages;
+pub mod helptags;
 mod paths;
 mod previewer;
 mod process;

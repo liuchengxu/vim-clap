@@ -1,6 +1,6 @@
-use super::{rg_command, rg_shell_command};
 use crate::app::Params;
 use crate::process::CacheableCommand;
+use crate::tools::ripgrep::{rg_command, rg_shell_command};
 use crate::utils::{send_response_from_cache, SendResponse};
 use anyhow::Result;
 use clap::Parser;

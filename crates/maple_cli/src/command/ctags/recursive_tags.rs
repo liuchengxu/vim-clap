@@ -1,9 +1,7 @@
 use super::SharedParams;
 use crate::app::Params;
 use crate::process::ShellCommand;
-use crate::tools::ctags::{
-    ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE, DEFAULT_EXCLUDE_OPT, EXCLUDE,
-};
+use crate::tools::ctags::{ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE};
 use crate::utils::{send_response_from_cache, SendResponse};
 use anyhow::Result;
 use clap::Parser;
@@ -12,11 +10,9 @@ use itertools::Itertools;
 use matcher::{ClapItem, MatchScope, MatcherBuilder};
 use rayon::prelude::*;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
-const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";
 
 /// Generate ctags recursively given the directory.
 #[derive(Parser, Debug, Clone)]
@@ -36,20 +32,6 @@ pub struct RecursiveTags {
     /// Shared parameters arouns ctags.
     #[clap(flatten)]
     pub(super) shared: SharedParams,
-}
-
-pub fn build_recursive_ctags_cmd(cwd: PathBuf) -> ProjectCtagsCommand {
-    let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
-    std_cmd.current_dir(&cwd).args(&TAGS_CMD[1..]).args(
-        EXCLUDE
-            .split(',')
-            .map(|exclude| format!("--exclude={exclude}")),
-    );
-    let shell_cmd = ShellCommand::new(
-        format!("{} {}", BASE_TAGS_CMD, DEFAULT_EXCLUDE_OPT.deref()),
-        cwd,
-    );
-    ProjectCtagsCommand::new(std_cmd, shell_cmd)
 }
 
 impl RecursiveTags {

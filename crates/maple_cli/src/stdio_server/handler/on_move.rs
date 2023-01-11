@@ -461,7 +461,7 @@ impl<'a> CachedPreviewImpl<'a> {
                 if cache_line != latest_line {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
 
-                    let shell_cmd = crate::command::grep::rg_shell_command(&self.ctx.cwd);
+                    let shell_cmd = crate::tools::ripgrep::rg_shell_command(&self.ctx.cwd);
                     let job_id = utility::calculate_hash(&shell_cmd);
 
                     if job::reserve(job_id) {
@@ -470,7 +470,7 @@ impl<'a> CachedPreviewImpl<'a> {
                         // TODO: Refresh with a timeout.
                         tokio::task::spawn_blocking(move || {
                             tracing::debug!(cwd = ?ctx.cwd, "Refreshing grep cache");
-                            let new_digest = match crate::command::grep::refresh_cache(&ctx.cwd) {
+                            let new_digest = match crate::tools::ripgrep::refresh_cache(&ctx.cwd) {
                                 Ok(digest) => {
                                     tracing::debug!(
                                         total = digest.total,

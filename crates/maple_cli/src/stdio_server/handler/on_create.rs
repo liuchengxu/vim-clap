@@ -1,9 +1,9 @@
 #![allow(unused)]
-use crate::command::ctags::recursive_tags::build_recursive_ctags_cmd;
-use crate::command::grep::{RgTokioCommand, RG_EXEC_CMD};
 use crate::process::ShellCommand;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{Context, ProviderSource};
+use crate::tools::ctags::ProjectCtagsCommand;
+use crate::tools::ripgrep::{RgTokioCommand, RG_EXEC_CMD};
 use crate::utils::count_lines;
 use anyhow::Result;
 use filter::SourceItem;
@@ -56,7 +56,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
             return Ok(ProviderSource::Small { total, items });
         }
         "proj_tags" => {
-            let ctags_cmd = build_recursive_ctags_cmd(ctx.cwd.to_path_buf());
+            let ctags_cmd = ProjectCtagsCommand::with_cwd(ctx.cwd.to_path_buf());
             let provider_source = if ctx.env.no_cache {
                 let lines = ctags_cmd.execute_and_write_cache().await?;
                 to_small_provider_source(lines)
@@ -84,7 +84,7 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
                     .filter(|&lang| lang != "en")
                     .map(|lang| format!("/doc/tags-{lang}")),
             );
-            let lines = crate::command::helptags::generate_tag_lines(doc_tags, &runtimepath);
+            let lines = crate::helptags::generate_tag_lines(doc_tags, &runtimepath);
             return Ok(to_small_provider_source(lines));
         }
         _ => {}
