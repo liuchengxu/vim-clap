@@ -14,4 +14,3 @@ pub mod utils;
 
 /// For benchmarks.
 pub use self::cache::find_largest_cache_digest;
-pub use self::utils::count_lines;
