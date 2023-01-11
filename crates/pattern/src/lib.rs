@@ -110,18 +110,12 @@ pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
 
 /// Returns the file name as well as its offset from the complete file path.
 pub fn extract_file_name(file_path: &str) -> Option<(&str, usize)> {
-    // TODO: extract the file name efficiently
-    let fpath: std::path::PathBuf = file_path.into();
-
-    fpath
-        .file_name()
-        .map(|x| x.to_string_lossy().into_owned())
-        .map(|fname| {
-            (
-                &file_path[file_path.len() - fname.len()..],
-                file_path.len() - fname.len(),
-            )
-        })
+    std::path::Path::new(file_path).file_name().map(|fname| {
+        (
+            &file_path[file_path.len() - fname.len()..],
+            file_path.len() - fname.len(),
+        )
+    })
 }
 
 #[inline]
