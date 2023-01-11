@@ -275,7 +275,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     let _ = vim.bare_exec("clap#spinner#set_busy");
 
     std::thread::Builder::new()
-        .name("searcher-worker".into())
+        .name("grep-worker".into())
         .spawn({
             let stop_signal = stop_signal.clone();
             let search_root = search_root.clone();
@@ -410,7 +410,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
         }
     }
 
-    tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
+    let elapsed = now.elapsed().as_millis();
 
     let BestFileResults { results, .. } = best_results;
 
@@ -420,6 +420,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     let _ = vim.bare_exec("clap#spinner#set_idle");
 
     tracing::debug!(
-        "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
+        "Searching is done, elapsed: {elapsed:?}, \
+        total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
 }

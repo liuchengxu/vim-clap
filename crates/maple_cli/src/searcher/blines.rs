@@ -111,7 +111,7 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
         }
     }
 
-    tracing::debug!("Elapsed: {:?}ms", now.elapsed().as_millis());
+    let elapsed = now.elapsed().as_millis();
 
     let BestItems {
         items,
@@ -125,6 +125,7 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        "Searching is done, total_matched: {total_matched:?}, total_processed: {total_processed}",
+        "Searching is done, elapsed: {elapsed:?}, \
+        total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
 }
