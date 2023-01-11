@@ -84,6 +84,7 @@ pub struct ProviderEnvironment {
     pub no_cache: bool,
     pub preview_enabled: bool,
     pub display_winwidth: usize,
+    pub display_winheight: usize,
     pub start_buffer_path: PathBuf,
 }
 
@@ -135,6 +136,7 @@ impl Context {
         };
         let matcher_builder = provider_id.matcher_builder();
         let display_winwidth = vim.winwidth(display.winid).await?;
+        let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
@@ -152,6 +154,7 @@ impl Context {
             preview_enabled: preview_enabled == 1,
             start_buffer_path,
             display_winwidth,
+            display_winheight,
             matcher_builder,
             icon,
         };
@@ -183,7 +186,7 @@ impl Context {
             cwd: self.cwd.clone().into(),
             vim: self.vim.clone(),
             stop_signal,
-            item_pool_size: 100,
+            item_pool_size: self.env.display_winheight,
         }
     }
 

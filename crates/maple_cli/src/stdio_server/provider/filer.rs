@@ -228,9 +228,11 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let matched_items =
+        let mut matched_items =
             filter::par_filter_items(current_items, &ctx.matcher_builder().build(query.into()));
         let total = matched_items.len();
+
+        matched_items.truncate(200);
 
         let printer::DisplayLines {
             lines,
@@ -238,7 +240,7 @@ impl FilerProvider {
             truncated_map,
             icon_added,
         } = printer::decorate_lines(
-            matched_items.iter().take(200).cloned().collect(),
+            matched_items,
             ctx.env.display_winwidth,
             icon::Icon::Null, // icon is handled inside the provider impl.
         );

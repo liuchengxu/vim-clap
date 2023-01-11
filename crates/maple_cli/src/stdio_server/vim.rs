@@ -282,6 +282,10 @@ impl Vim {
         self.call("winwidth", json![winid]).await
     }
 
+    pub async fn winheight(&self, winid: usize) -> Result<usize> {
+        self.call("winheight", json![winid]).await
+    }
+
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
         self.call("eval", json!([s])).await
     }

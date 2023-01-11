@@ -81,7 +81,6 @@ fn start_filter_parallel(
 #[derive(Debug)]
 pub struct GenericProvider {
     runtimepath: Option<String>,
-    display_winheight: Option<usize>,
     maybe_filter_control: Option<FilterControl>,
     current_results: Arc<Mutex<Vec<MatchedItem>>>,
     last_filter_control_killed: Arc<AtomicBool>,
@@ -91,7 +90,6 @@ impl GenericProvider {
     pub fn new() -> Self {
         Self {
             runtimepath: None,
-            display_winheight: None,
             maybe_filter_control: None,
             current_results: Arc::new(Mutex::new(Vec::new())),
             last_filter_control_killed: Arc::new(AtomicBool::new(true)),
@@ -245,18 +243,6 @@ impl ClapProvider for GenericProvider {
             ProviderSource::Command(ref cmd) => DataSource::Command(cmd.to_string()),
         };
 
-        let display_winheight = match self.display_winheight {
-            Some(winheight) => winheight,
-            None => {
-                let display_winheight = ctx
-                    .vim
-                    .call("winheight", json!([ctx.env.display.winid]))
-                    .await?;
-                self.display_winheight.replace(display_winheight);
-                display_winheight
-            }
-        };
-
         if !self.last_filter_control_killed.load(Ordering::SeqCst) {
             tracing::debug!(
                 ?query,
@@ -277,6 +263,7 @@ impl ClapProvider for GenericProvider {
             });
         }
 
+        let display_winheight = ctx.env.display_winheight;
         let new_control = start_filter_parallel(query, display_winheight, data_source, ctx);
 
         self.maybe_filter_control.replace(new_control);
