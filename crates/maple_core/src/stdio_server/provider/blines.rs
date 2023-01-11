@@ -1,3 +1,4 @@
+use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use matcher::{Bonus, MatchScope};
@@ -62,6 +63,8 @@ impl ClapProvider for BlinesProvider {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             self.process_query(query, ctx);
+        } else {
+            initialize_provider(ctx).await?;
         }
         Ok(())
     }
@@ -69,7 +72,7 @@ impl ClapProvider for BlinesProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         if query.is_empty() {
-            ctx.vim.bare_exec("clap#state#clear_screen")?;
+            ctx.update_on_empty_query().await?;
         } else {
             self.process_query(query, ctx);
         }

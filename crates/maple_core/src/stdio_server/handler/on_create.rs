@@ -166,7 +166,7 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
                 ctx.vim.set_var("g:clap.display.initial_size", total)?;
             }
 
-            if let Some(items) = provider_source.initial_items(100) {
+            if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
                 let DisplayLines {
                     lines,
                     icon_added,

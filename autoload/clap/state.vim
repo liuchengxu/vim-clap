@@ -166,6 +166,20 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
   call clap#preview#update_with_delay()
 endfunction
 
+function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abort
+  call g:clap.display.set_lines_lazy(a:lines)
+  call g:clap#display_win.shrink_if_undersize()
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  endif
+  let g:__clap_icon_added_by_maple = a:icon_added
+
+  call clap#sign#ensure_exists()
+
+  call clap#indicator#set_matches_number(0)
+  call clap#preview#update_with_delay()
+endfunction
+
 function! clap#state#set_input(new) abort
   call g:clap.input.set(a:new)
   " Move cursor to the end of line.

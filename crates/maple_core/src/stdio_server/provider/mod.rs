@@ -8,6 +8,7 @@ mod recent_files;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
+use crate::searcher::blines::BlinesItem;
 use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
@@ -229,6 +230,28 @@ impl Context {
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
     }
 
+    pub async fn update_on_empty_query(&self) -> Result<()> {
+        if let Some(items) = self
+            .provider_source
+            .read()
+            .try_skim(self.provider_id(), 100)
+        {
+            let printer::DisplayLines {
+                lines,
+                icon_added,
+                truncated_map,
+                ..
+            } = printer::decorate_lines(items, self.env.display_winwidth, self.env.icon);
+
+            self.vim.exec(
+                "clap#state#update_on_empty_query",
+                json!([lines, truncated_map, icon_added]),
+            )
+        } else {
+            self.vim.bare_exec("clap#state#clear_screen")
+        }
+    }
+
     pub async fn preview_height(&mut self) -> Result<usize> {
         self.preview_size().await.map(|x| 2 * x)
     }
@@ -396,7 +419,7 @@ impl ProviderSource {
         matches!(self, Self::CachedFile { refreshed, .. } if !refreshed)
     }
 
-    pub fn initial_items(&self, n: usize) -> Option<Vec<MatchedItem>> {
+    pub fn try_skim(&self, provider_id: &str, n: usize) -> Option<Vec<MatchedItem>> {
         match self {
             Self::Small { ref items, .. } => Some(
                 items
@@ -405,12 +428,26 @@ impl ProviderSource {
                     .map(|item| MatchedItem::from(item.clone()))
                     .collect(),
             ),
-            Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => Some(
-                utility::read_first_lines(path, n)
-                    .ok()?
-                    .map(|line| MatchedItem::from(Arc::new(line) as Arc<dyn ClapItem>))
-                    .collect(),
-            ),
+            Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
+                let lines_iter = utility::read_first_lines(path, n).ok()?;
+                Some(if provider_id == "blines" {
+                    let mut index = 0;
+                    lines_iter
+                        .map(|line| {
+                            let item: Arc<dyn ClapItem> = Arc::new(BlinesItem {
+                                raw: line,
+                                line_number: index + 1,
+                            });
+                            index += 1;
+                            MatchedItem::from(item)
+                        })
+                        .collect()
+                } else {
+                    lines_iter
+                        .map(|line| MatchedItem::from(Arc::new(line) as Arc<dyn ClapItem>))
+                        .collect()
+                })
+            }
             _ => None,
         }
     }
