@@ -126,13 +126,18 @@ impl InputRecorder {
         self.inputs
     }
 
-    pub fn record_input(&mut self, new: String) {
+    pub fn try_record(&mut self, new: String) {
         if new.is_empty() || self.inputs.contains(&new) {
             return;
         }
 
+        // New input is part of some old input.
+        if self.inputs.iter().any(|old| old.starts_with(&new)) {
+            return;
+        }
+
         // Prune the last input if the consecutive input is extending it.
-        // Avoid recording the list of `i, in, inp, inpu, input`.
+        // Avoid recording the partial incomplete list, e.g., `i, in, inp, inpu, input`.
         if new.starts_with(&self.last_input) {
             if let Some(pos) = self
                 .inputs
@@ -146,11 +151,6 @@ impl InputRecorder {
             }
         }
 
-        // New input is part of some old input.
-        if self.inputs.iter().any(|old| old.starts_with(&new)) {
-            return;
-        }
-
         if !self.inputs.is_empty() {
             self.current_index += 1;
         }
@@ -158,6 +158,9 @@ impl InputRecorder {
         self.last_input = new;
     }
 
+    /// Returns the next input if inputs are not empty.
+    ///
+    /// Returns the first input if current input is the last.
     pub fn move_to_next(&mut self) -> Option<&str> {
         if self.inputs.is_empty() {
             return None;
@@ -166,6 +169,9 @@ impl InputRecorder {
         self.inputs.get(self.current_index).map(AsRef::as_ref)
     }
 
+    /// Returns the previous input if inputs are not empty.
+    ///
+    /// Returns the last input if current input is the first.
     pub fn move_to_previous(&mut self) -> Option<&str> {
         if self.inputs.is_empty() {
             return None;
