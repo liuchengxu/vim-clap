@@ -2,7 +2,7 @@ use super::{walk_parallel, WalkConfig};
 use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
 use filter::MatchedItem;
-use grep::searcher::{sinks, BinaryDetection, SearcherBuilder};
+use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
 use ignore::{DirEntry, WalkState};
 use matcher::{Matcher, Score};

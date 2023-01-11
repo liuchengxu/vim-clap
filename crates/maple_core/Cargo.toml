@@ -17,7 +17,7 @@ chrono = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 futures = "0.3"
 # ripgrep for global search
-grep = "0.2.10"
+grep-searcher = "0.1"
 grep-matcher = "0.1"
 ignore = "0.4"
 itertools = "0.10"
