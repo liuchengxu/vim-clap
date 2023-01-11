@@ -1,5 +1,6 @@
 use super::{walk_parallel, WalkConfig};
-use crate::stdio_server::{SearchContext, VimProgressor};
+use crate::searcher::SearchContext;
+use crate::stdio_server::VimProgressor;
 use filter::{BestItems, MatchedItem};
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;

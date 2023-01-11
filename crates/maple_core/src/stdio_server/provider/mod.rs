@@ -8,6 +8,7 @@ mod recent_files;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
+use crate::searcher::SearchContext;
 use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
@@ -51,16 +52,6 @@ impl SearcherControl {
         self.stop_signal.store(true, Ordering::SeqCst);
         self.join_handle.abort();
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct SearchContext {
-    pub icon: Icon,
-    pub winwidth: usize,
-    pub cwd: PathBuf,
-    pub vim: Vim,
-    pub stop_signal: Arc<AtomicBool>,
-    pub item_pool_size: usize,
 }
 
 /// bufnr and winid.

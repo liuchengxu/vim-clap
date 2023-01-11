@@ -101,7 +101,8 @@ impl InputHistory {
     pub fn append(&mut self, provider_id: ProviderId, mut new_inputs: Vec<String>) {
         self.0
             .entry(provider_id)
-            .and_modify(|v| v.append(&mut new_inputs));
+            .and_modify(|v| v.append(&mut new_inputs))
+            .or_insert(new_inputs);
     }
 }
 

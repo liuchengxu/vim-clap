@@ -1,4 +1,5 @@
-use crate::stdio_server::{SearchContext, VimProgressor};
+use crate::searcher::SearchContext;
+use crate::stdio_server::VimProgressor;
 use anyhow::Result;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};

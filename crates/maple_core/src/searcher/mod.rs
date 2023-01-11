@@ -2,9 +2,23 @@ pub mod blines;
 pub mod files;
 pub mod grep;
 
+use crate::stdio_server::Vim;
+use icon::Icon;
 use ignore::{WalkBuilder, WalkParallel};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+pub struct SearchContext {
+    pub icon: Icon,
+    pub winwidth: usize,
+    pub cwd: PathBuf,
+    pub vim: Vim,
+    pub stop_signal: Arc<AtomicBool>,
+    pub item_pool_size: usize,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WalkConfig {
