@@ -281,7 +281,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
             let search_root = search_root.clone();
             move || StoppableSearchImpl::new(search_root, matcher, sender, stop_signal).run()
         })
-        .expect("Failed to spawn searcher worker thread");
+        .expect("Failed to spawn grep-worker thread");
 
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;

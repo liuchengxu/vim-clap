@@ -563,7 +563,7 @@ impl<'a> OnMoveImpl<'a> {
         // Ensure the preview result is not out-dated.
         let cur_lnum = self.ctx.vim.display_getcurlnum().await?;
         if cur_lnum == lnum {
-            self.ctx.vim.render_preview(preview)?;
+            self.ctx.render_preview(preview)?;
         }
 
         Ok(())

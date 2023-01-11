@@ -273,6 +273,10 @@ impl Context {
         }
         Ok(())
     }
+
+    pub fn render_preview(&self, preview: Preview) -> Result<()> {
+        self.vim.exec("clap#state#process_preview_result", preview)
+    }
 }
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]

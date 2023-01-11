@@ -5,7 +5,6 @@ mod provider;
 mod rpc;
 mod session;
 mod state;
-mod types;
 mod vim;
 
 pub use self::input::InputHistory;
@@ -15,8 +14,7 @@ use self::provider::{create_provider, Context};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
-pub use self::types::VimProgressor;
-pub use self::vim::Vim;
+pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
 use serde_json::{json, Value};

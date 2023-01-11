@@ -1,6 +1,6 @@
 use crate::stdio_server::handler::{PreviewImpl, PreviewTarget};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
-use crate::stdio_server::types::VimProgressor;
+use crate::stdio_server::vim::VimProgressor;
 use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
@@ -185,7 +185,7 @@ impl ClapProvider for GenericProvider {
         // Ensure the preview result is not out-dated.
         let curlnum = ctx.vim.display_getcurlnum().await?;
         if curlnum == lnum {
-            ctx.vim.render_preview(preview)?;
+            ctx.render_preview(preview)?;
         }
 
         Ok(())

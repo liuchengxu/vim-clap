@@ -159,7 +159,7 @@ impl ClapProvider for RecentFilesProvider {
             let preview_height = ctx.preview_height().await?;
             let preview_impl = PreviewImpl::new(curline, preview_height, ctx)?;
             let preview = preview_impl.get_preview().await?;
-            ctx.vim.render_preview(preview)?;
+            ctx.render_preview(preview)?;
         }
 
         Ok(())

@@ -281,14 +281,14 @@ impl FilerProvider {
 
         match preview_impl.get_preview().await {
             Ok(preview) => {
-                ctx.vim.render_preview(preview)?;
+                ctx.render_preview(preview)?;
 
                 if let Some(syntax) = maybe_syntax {
                     ctx.vim.set_preview_syntax(syntax)?;
                 }
             }
             Err(err) => {
-                ctx.vim.render_preview(Preview {
+                ctx.render_preview(Preview {
                     lines: vec![err.to_string()],
                     ..Default::default()
                 })?;
