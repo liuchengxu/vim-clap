@@ -109,6 +109,7 @@ impl InputHistory {
 #[derive(Debug, Clone)]
 pub struct InputRecorder {
     pub inputs: Vec<String>,
+    pub last_input: String,
     pub current_index: usize,
 }
 
@@ -116,6 +117,7 @@ impl InputRecorder {
     pub fn new(inputs: Vec<String>) -> Self {
         Self {
             inputs,
+            last_input: Default::default(),
             current_index: 0usize,
         }
     }
@@ -124,19 +126,36 @@ impl InputRecorder {
         self.inputs
     }
 
-    pub fn record_input(&mut self, input: String) {
-        if input.is_empty() || self.inputs.contains(&input) {
+    pub fn record_input(&mut self, new: String) {
+        if new.is_empty() || self.inputs.contains(&new) {
             return;
         }
 
-        if self.inputs.iter().any(|old| old.starts_with(&input)) {
+        // Prune the last input if the consecutive input is extending it.
+        // Avoid recording the list of `i, in, inp, inpu, input`.
+        if new.starts_with(&self.last_input) {
+            if let Some(pos) = self
+                .inputs
+                .iter()
+                .position(|i| i.as_str() == self.last_input.as_str())
+            {
+                if self.current_index >= pos {
+                    self.current_index = self.current_index.saturating_sub(1);
+                }
+                self.inputs.remove(pos);
+            }
+        }
+
+        // New input is part of some old input.
+        if self.inputs.iter().any(|old| old.starts_with(&new)) {
             return;
         }
 
         if !self.inputs.is_empty() {
             self.current_index += 1;
         }
-        self.inputs.push(input);
+        self.inputs.push(new.clone());
+        self.last_input = new;
     }
 
     pub fn move_to_next(&mut self) -> Option<&str> {
