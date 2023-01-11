@@ -87,7 +87,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
                 line_content.replace(cache_line.into());
 
                 let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
-                let path = ctx.cwd.to_path_buf().join(fpath);
+                let path = ctx.cwd.join(fpath);
 
                 Ok::<_, anyhow::Error>((path, lnum))
             };
@@ -99,7 +99,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
         "dumb_jump" => {
             let (_def_kind, fpath, line_number, _col) =
                 extract_jump_line_info(&curline).ok_or_else(err)?;
-            let path = ctx.cwd.to_path_buf().join(fpath);
+            let path = ctx.cwd.join(fpath);
             PreviewTarget::LineInFile { path, line_number }
         }
         "blines" => {
@@ -114,7 +114,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
         }
         "proj_tags" => {
             let (line_number, p) = extract_proj_tags(&curline).ok_or_else(err)?;
-            let path = ctx.cwd.to_path_buf().join(p);
+            let path = ctx.cwd.join(p);
             PreviewTarget::LineInFile { path, line_number }
         }
         "commits" | "bcommits" => {
