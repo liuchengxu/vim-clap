@@ -143,7 +143,7 @@ impl FilerProvider {
         Ok(curline)
     }
 
-    async fn on_tab(&mut self, ctx: &Context) -> Result<()> {
+    async fn on_tab(&mut self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
         let target_dir = self.current_dir.clone().join(curline);
 
@@ -161,13 +161,15 @@ impl FilerProvider {
         } else {
             return Ok(());
         };
+        let preview_height = ctx.preview_height().await?;
 
-        self.do_preview(preview_target, ctx).await?;
+        self.update_preview(preview_target, preview_height, ctx)
+            .await?;
 
         Ok(())
     }
 
-    async fn on_backspace(&mut self, ctx: &Context) -> Result<()> {
+    async fn on_backspace(&mut self, ctx: &mut Context) -> Result<()> {
         let mut input = ctx.vim.input_get().await?;
 
         if input.is_empty() {
@@ -189,7 +191,10 @@ impl FilerProvider {
         } else {
             PreviewTarget::File(target_dir)
         };
-        self.do_preview(preview_target, ctx).await?;
+        let preview_height = ctx.preview_height().await?;
+
+        self.update_preview(preview_target, preview_height, ctx)
+            .await?;
 
         Ok(())
     }
@@ -261,10 +266,15 @@ impl FilerProvider {
         Ok(())
     }
 
-    async fn do_preview(&self, preview_target: PreviewTarget, ctx: &Context) -> Result<()> {
+    async fn update_preview(
+        &self,
+        preview_target: PreviewTarget,
+        preview_height: usize,
+        ctx: &Context,
+    ) -> Result<()> {
         let preview_impl = PreviewImpl {
             ctx,
-            preview_height: ctx.preview_height().await?,
+            preview_height,
             preview_target,
             cache_line: None,
         };
@@ -378,7 +388,9 @@ impl ClapProvider for FilerProvider {
         } else {
             PreviewTarget::File(path)
         };
-        self.do_preview(preview_target, ctx).await
+        let preview_height = ctx.preview_height().await?;
+        self.update_preview(preview_target, preview_height, ctx)
+            .await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

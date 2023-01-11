@@ -420,7 +420,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     let _ = vim.bare_exec("clap#spinner#set_idle");
 
     tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}, \
+        "Searching is done, elapsed: {elapsed:?}ms, \
         total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
 }

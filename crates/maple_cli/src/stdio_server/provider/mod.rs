@@ -8,7 +8,7 @@ mod recent_files;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::{initialize_provider, OnMoveImpl, Preview, PreviewTarget};
+use crate::stdio_server::handler::{initialize_provider, Preview, PreviewImpl, PreviewTarget};
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
@@ -92,6 +92,7 @@ pub struct Context {
     pub cwd: AbsPathBuf,
     pub vim: Vim,
     pub env: Arc<ProviderEnvironment>,
+    pub maybe_preview_size: Option<usize>,
     pub terminated: Arc<AtomicBool>,
     pub preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
     pub input_recorder: InputRecorder,
@@ -160,6 +161,7 @@ impl Context {
             vim,
             env: Arc::new(env),
             terminated: Arc::new(AtomicBool::new(false)),
+            maybe_preview_size: None,
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
             input_recorder,
             provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
@@ -231,15 +233,23 @@ impl Context {
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
     }
 
-    pub async fn preview_height(&self) -> Result<usize> {
+    pub async fn preview_height(&mut self) -> Result<usize> {
         self.preview_size().await.map(|x| 2 * x)
     }
 
-    pub async fn preview_size(&self) -> Result<usize> {
-        let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
-        self.vim
-            .preview_size(&self.env.provider_id, preview_winid)
-            .await
+    pub async fn preview_size(&mut self) -> Result<usize> {
+        match self.maybe_preview_size {
+            Some(size) => Ok(size),
+            None => {
+                let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
+                let size = self
+                    .vim
+                    .preview_size(&self.env.provider_id, preview_winid)
+                    .await?;
+                self.maybe_preview_size.replace(size);
+                Ok(size)
+            }
+        }
     }
 
     pub async fn record_input(&mut self) -> Result<()> {
@@ -276,6 +286,30 @@ impl Context {
 
     pub fn render_preview(&self, preview: Preview) -> Result<()> {
         self.vim.exec("clap#state#process_preview_result", preview)
+    }
+
+    pub async fn update_preview(&mut self) -> Result<()> {
+        let lnum = self.vim.display_getcurlnum().await?;
+
+        let curline = self.vim.display_getcurline().await?;
+
+        if curline.is_empty() {
+            tracing::debug!("Skipping preview as curline is empty");
+            return Ok(());
+        }
+
+        let preview_height = self.preview_height().await?;
+        let preview_impl = PreviewImpl::new(curline, preview_height, self)?;
+
+        let preview = preview_impl.get_preview().await?;
+
+        // Ensure the preview result is not out-dated.
+        let cur_lnum = self.vim.display_getcurlnum().await?;
+        if cur_lnum == lnum {
+            self.render_preview(preview)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -397,7 +431,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
-        OnMoveImpl::new(ctx).do_preview().await
+        ctx.update_preview().await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()>;

@@ -124,7 +124,7 @@ pub async fn search(hidden: bool, matcher: Matcher, search_context: SearchContex
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}, \
+        "Searching is done, elapsed: {elapsed:?}ms, \
         total_matched: {total_matched:?}, total_processed: {total_processed}",
     );
 }

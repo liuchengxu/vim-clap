@@ -535,37 +535,3 @@ async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTa
         }
     }
 }
-
-pub struct OnMoveImpl<'a> {
-    ctx: &'a Context,
-}
-
-impl<'a> OnMoveImpl<'a> {
-    pub fn new(ctx: &'a Context) -> Self {
-        Self { ctx }
-    }
-
-    pub async fn do_preview(&self) -> Result<()> {
-        let lnum = self.ctx.vim.display_getcurlnum().await?;
-
-        let curline = self.ctx.vim.display_getcurline().await?;
-
-        if curline.is_empty() {
-            tracing::debug!("Skipping preview as curline is empty");
-            return Ok(());
-        }
-
-        let preview_height = self.ctx.preview_height().await?;
-        let preview_impl = PreviewImpl::new(curline, preview_height, self.ctx)?;
-
-        let preview = preview_impl.get_preview().await?;
-
-        // Ensure the preview result is not out-dated.
-        let cur_lnum = self.ctx.vim.display_getcurlnum().await?;
-        if cur_lnum == lnum {
-            self.ctx.render_preview(preview)?;
-        }
-
-        Ok(())
-    }
-}
