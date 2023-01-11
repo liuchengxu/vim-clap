@@ -1,4 +1,4 @@
-use crate::stdio_server::handler::{Preview, PreviewImpl, PreviewTarget};
+use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::stdio_server::vim::preview_syntax;
@@ -274,7 +274,7 @@ impl FilerProvider {
         preview_height: usize,
         ctx: &Context,
     ) -> Result<()> {
-        let preview_impl = PreviewImpl {
+        let preview_impl = CachedPreviewImpl {
             ctx,
             preview_height,
             preview_target,

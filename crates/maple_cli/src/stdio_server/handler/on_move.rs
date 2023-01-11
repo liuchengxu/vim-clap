@@ -151,7 +151,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
 }
 
 #[derive(Debug)]
-pub struct PreviewImpl<'a> {
+pub struct CachedPreviewImpl<'a> {
     pub ctx: &'a Context,
     pub preview_height: usize,
     pub preview_target: PreviewTarget,
@@ -163,7 +163,7 @@ pub struct PreviewImpl<'a> {
     pub cache_line: Option<String>,
 }
 
-impl<'a> PreviewImpl<'a> {
+impl<'a> CachedPreviewImpl<'a> {
     pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> Result<Self> {
         let (preview_target, cache_line) = parse_preview_target(curline, ctx)?;
 

@@ -8,7 +8,9 @@ mod recent_files;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::{initialize_provider, Preview, PreviewImpl, PreviewTarget};
+use crate::stdio_server::handler::{
+    initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
+};
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
@@ -302,7 +304,7 @@ impl Context {
         }
 
         let preview_height = self.preview_height().await?;
-        let preview_impl = PreviewImpl::new(curline, preview_height, self)?;
+        let preview_impl = CachedPreviewImpl::new(curline, preview_height, self)?;
 
         let preview = preview_impl.get_preview().await?;
 

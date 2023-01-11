@@ -3,7 +3,7 @@ mod searcher;
 use self::searcher::{SearchEngine, SearchingWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::PreviewImpl;
+use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
@@ -329,7 +329,7 @@ impl ClapProvider for DumbJumpProvider {
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_height = ctx.preview_height().await?;
-        let preview_impl = PreviewImpl::new(curline.to_string(), preview_height, ctx)?;
+        let preview_impl = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?;
         let preview = preview_impl.get_preview().await?;
 
         let current_input = ctx.vim.input_get().await?;

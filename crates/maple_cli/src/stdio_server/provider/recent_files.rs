@@ -1,6 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use crate::paths::AbsPathBuf;
-use crate::stdio_server::handler::PreviewImpl;
+use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use anyhow::Result;
 use matcher::ClapItem;
@@ -157,7 +157,7 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let preview_impl = PreviewImpl::new(curline, preview_height, ctx)?;
+            let preview_impl = CachedPreviewImpl::new(curline, preview_height, ctx)?;
             let preview = preview_impl.get_preview().await?;
             ctx.render_preview(preview)?;
         }
