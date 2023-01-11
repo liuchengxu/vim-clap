@@ -121,7 +121,7 @@ fn parse_lnum(lnum: &str) -> Option<usize> {
     lnum.parse::<usize>().ok()
 }
 
-pub fn parse_rev(line: &str) -> Option<&str> {
+pub fn extract_commit_rev(line: &str) -> Option<&str> {
     let cap = COMMIT_RE.captures(line)?;
     cap.get(1).map(|x| x.as_str())
 }
@@ -247,11 +247,11 @@ mod tests {
     fn test_parse_rev() {
         let line =
             "* 2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("8ed4391"));
+        assert_eq!(extract_commit_rev(line), Some("8ed4391"));
         let line = "2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("8ed4391"));
+        assert_eq!(extract_commit_rev(line), Some("8ed4391"));
         let line = "2019-12-29 3f0d00c Add forerunner job status sign and a delay timer for running maple (#184) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("3f0d00c"));
+        assert_eq!(extract_commit_rev(line), Some("3f0d00c"));
     }
 
     #[test]

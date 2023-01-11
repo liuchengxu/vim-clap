@@ -118,7 +118,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             PreviewTarget::LineInFile { path, line_number }
         }
         "commits" | "bcommits" => {
-            let rev = parse_rev(&curline).ok_or_else(err)?;
+            let rev = extract_commit_rev(&curline).ok_or_else(err)?;
             PreviewTarget::Commit(rev.into())
         }
         unknown_provider_id => {
