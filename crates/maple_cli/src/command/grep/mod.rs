@@ -133,7 +133,9 @@ mod tests {
     use super::*;
     use itertools::Itertools;
     use maple_core::process::tokio::TokioCommand;
+    use maple_core::process::ShellCommand;
     use maple_core::tools::ripgrep::RgTokioCommand;
+    use std::path::Path;
     use std::time::Instant;
 
     // 3X faster than the deprecated version.

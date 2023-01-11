@@ -73,6 +73,15 @@ impl IndexMut<usize> for Usages {
     }
 }
 
+impl IntoIterator for Usages {
+    type Item = Usage;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl Usages {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -84,10 +93,6 @@ impl Usages {
 
     pub fn iter(&self) -> impl Iterator<Item = &Usage> {
         self.0.iter()
-    }
-
-    pub fn into_iter(self) -> std::vec::IntoIter<Usage> {
-        self.0.into_iter()
     }
 
     pub fn par_iter(&self) -> rayon::slice::Iter<'_, Usage> {

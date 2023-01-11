@@ -86,7 +86,7 @@ impl ProviderEventSender {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct InputHistory(HashMap<ProviderId, Vec<String>>);
 
 impl InputHistory {
