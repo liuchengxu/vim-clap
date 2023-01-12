@@ -1,7 +1,7 @@
 pub mod tokio;
 
 use crate::cache::{push_cache_digest, Digest};
-use crate::datastore::CACHE_INFO_IN_MEMORY;
+use crate::datastore::{generate_cache_file_path, CACHE_INFO_IN_MEMORY};
 use anyhow::Result;
 use icon::Icon;
 use rayon::prelude::*;
@@ -112,7 +112,7 @@ impl ShellCommand {
 
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
         let cached_filename = utility::calculate_hash(self);
-        crate::utils::generate_cache_file_path(cached_filename.to_string())
+        generate_cache_file_path(cached_filename.to_string())
     }
 
     // TODO: remove this.
@@ -121,7 +121,7 @@ impl ShellCommand {
         use std::io::Write;
 
         let cache_filename = utility::calculate_hash(&self);
-        let cache_file = crate::utils::generate_cache_file_path(cache_filename.to_string())?;
+        let cache_file = generate_cache_file_path(cache_filename.to_string())?;
 
         std::fs::File::create(&cache_file)?.write_all(cmd_stdout)?;
 
