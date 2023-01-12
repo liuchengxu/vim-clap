@@ -1,6 +1,5 @@
 use clap::{AppSettings, Parser};
-
-use maple_cli::{Params, RunCmd};
+use cli::{Args, RunCmd};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -32,7 +31,7 @@ pub enum Cmd {
 #[clap(name = "maple", global_setting(AppSettings::NoAutoVersion))]
 pub struct Maple {
     #[clap(flatten)]
-    pub params: Params,
+    pub args: Args,
 
     #[clap(subcommand)]
     pub cmd: Cmd,
@@ -66,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Cmd::Run(run_cmd) => {
-            if let Err(e) = run_cmd.run(maple.params).await {
+            if let Err(e) = run_cmd.run(maple.args).await {
                 eprintln!("error: {:?}", e);
                 std::process::exit(1);
             }

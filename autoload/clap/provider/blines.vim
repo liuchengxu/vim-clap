@@ -85,18 +85,29 @@ function! s:blines.on_typed() abort
   call g:clap.display.clear_highlight()
   let l:cur_input = g:clap.input.get()
 
-  if empty(l:cur_input)
-    call g:clap.display.set_lines_lazy(s:lines_on_empty())
-    call clap#indicator#set_matches_number(g:clap.display.initial_size)
-    call clap#sign#toggle_cursorline()
-    call g:clap#display_win.shrink_if_undersize()
-    call g:clap.preview.hide()
-  else
-    if clap#maple#is_available() && filereadable(expand('#'.g:clap.start.bufnr.':p'))
+  if clap#maple#is_available()
+    if filereadable(expand('#'.g:clap.start.bufnr.':p'))
       call clap#client#notify('on_typed')
+    elseif empty(l:cur_input)
+      call g:clap.display.set_lines_lazy(s:lines_on_empty())
+      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#sign#toggle_cursorline()
+      call g:clap#display_win.shrink_if_undersize()
+      call g:clap.preview.hide()
     else
       let l:raw_lines = s:format(g:clap.start.get_lines())
-      call clap#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+      call clap#legacy#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
+    endif
+  else
+    if empty(l:cur_input)
+      call g:clap.display.set_lines_lazy(s:lines_on_empty())
+      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#sign#toggle_cursorline()
+      call g:clap#display_win.shrink_if_undersize()
+      call g:clap.preview.hide()
+    else
+      let l:raw_lines = s:format(g:clap.start.get_lines())
+      call clap#legacy#filter#on_typed(g:clap.provider.filter(), l:cur_input, l:raw_lines)
     endif
   endif
 endfunction

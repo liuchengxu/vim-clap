@@ -16,7 +16,7 @@ run_exe() {
 }
 
 STATS_LOG=stats.log
-FILTER_FUNCTION='clap#filter#python#()'
+FILTER_FUNCTION='clap#legacy#filter#python#()'
 
 append_log() {
   echo "$1" >> $STATS_LOG

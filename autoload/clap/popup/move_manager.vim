@@ -78,6 +78,14 @@ function! s:move_manager.ctrl_l(_winid) abort
   call clap#handler#relaunch_providers()
 endfunction
 
+function! s:move_manager.ctrl_n(_winwid) abort
+  call clap#client#notify('ctrl-n')
+endfunction
+
+function! s:move_manager.ctrl_p(_winwid) abort
+  call clap#client#notify('ctrl-p')
+endfunction
+
 function! s:move_manager.ctrl_u(_winid) abort
   if empty(s:input)
     return 1
@@ -131,6 +139,8 @@ let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
 let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("down")') }
 let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("up")') }
 let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
+let s:move_manager["\<C-N>"] = s:move_manager.ctrl_n
+let s:move_manager["\<C-P>"] = s:move_manager.ctrl_p
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
@@ -260,10 +270,14 @@ endfunction
 
 function! clap#popup#move_manager#set_input(input) abort
   let s:input = a:input
-  call s:mock_input()
   " Move cursor to the end of line.
   let s:cursor_idx = strchars(s:input, 1)
   call s:mock_input()
+endfunction
+
+function! clap#popup#move_manager#set_input_and_react(new) abort
+  call clap#popup#move_manager#set_input(a:new)
+  call g:clap.provider.on_typed()
 endfunction
 
 let &cpoptions = s:save_cpo

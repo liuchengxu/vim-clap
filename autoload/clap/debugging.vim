@@ -60,7 +60,7 @@ function! clap#debugging#info() abort
 
   echohl Type   | echo 'has py dynamic module: '                | echohl NONE
   try
-    echohl Normal | echon clap#filter#sync#python#has_dynamic_module() | echohl NONE
+    echohl Normal | echon clap#legacy#filter#sync#python#has_dynamic_module() | echohl NONE
   catch
     echohl Normal | echon 'ERROR: '.v:exception | echohl NONE
   endtry
@@ -83,7 +83,7 @@ function! clap#debugging#info() abort
   endif
 
   echohl Type   | echo '    Current sync impl: '   | echohl NONE
-  echohl Normal | echon clap#filter#current_impl() | echohl NONE
+  echohl Normal | echon clap#legacy#filter#current_impl() | echohl NONE
 
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE

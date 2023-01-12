@@ -6,17 +6,6 @@ set cpoptions&vim
 
 let s:is_nvim = has('nvim')
 
-function! clap#api#setbufvar_batch(bufnr, dict) abort
-  call map(a:dict, 'setbufvar(a:bufnr, v:key, v:val)')
-endfunction
-
-" If the user has specified the externalfilter option in the context.
-" If so, we should not use the built-in fuzzy filter then.
-function! clap#api#has_externalfilter() abort
-  return has_key(g:clap.context, 'ef')
-        \ || has_key(g:clap.context, 'externalfilter')
-endfunction
-
 " Returns the original full line with icon if it was added by maple given
 " the lnum of display buffer.
 function! clap#api#get_origin_line_at(lnum) abort

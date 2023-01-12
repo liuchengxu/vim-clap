@@ -122,7 +122,7 @@ function! clap#state#process_response_on_typed(result) abort
 
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
-  call clap#preview#async_open_with_delay()
+  call clap#preview#update_with_delay()
   call clap#sign#ensure_exists()
 
   if has_key(a:result, 'preview') && !empty(a:result.preview)
@@ -163,7 +163,27 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   endif
   call clap#spinner#refresh()
-  call clap#preview#async_open_with_delay()
+  call clap#preview#update_with_delay()
+endfunction
+
+function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abort
+  call g:clap.display.set_lines_lazy(a:lines)
+  call g:clap#display_win.shrink_if_undersize()
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  endif
+  let g:__clap_icon_added_by_maple = a:icon_added
+
+  call clap#sign#ensure_exists()
+
+  call clap#indicator#set_matches_number(0)
+  call clap#preview#update_with_delay()
+endfunction
+
+function! clap#state#set_input(new) abort
+  call g:clap.input.set(a:new)
+  " Move cursor to the end of line.
+  call clap#api#win_execute(g:clap.input.winid, 'call cursor(1, 1000)')
 endfunction
 
 " Returns the cached source tmp file.
@@ -216,7 +236,6 @@ function! clap#state#clear_pre() abort
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
-  call clap#indicator#set_none()
   if exists('g:__clap_forerunner_tempfile')
     unlet g:__clap_forerunner_tempfile
   endif

@@ -57,9 +57,9 @@ pub fn extract_grep_pattern(line: &str) -> Option<(&str, usize)> {
 }
 
 /// Returns a tuple of (fpath, lnum, col).
-pub fn extract_grep_position(line: &str) -> Option<(PathBuf, usize, usize, &str)> {
+pub fn extract_grep_position(line: &str) -> Option<(&str, usize, usize, &str)> {
     let cap = GREP_POS.captures(line)?;
-    let fpath = cap.get(1).map(|x| x.as_str().into())?;
+    let fpath = cap.get(1).map(|x| x.as_str())?;
     let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
     let lnum = str2nr(2)?;
     let col = str2nr(3)?;
@@ -110,18 +110,10 @@ pub fn extract_fpath_from_grep_line(line: &str) -> Option<&str> {
 
 /// Returns the file name as well as its offset from the complete file path.
 pub fn extract_file_name(file_path: &str) -> Option<(&str, usize)> {
-    // TODO: extract the file name efficiently
-    let fpath: std::path::PathBuf = file_path.into();
-
-    fpath
-        .file_name()
-        .map(|x| x.to_string_lossy().into_owned())
-        .map(|fname| {
-            (
-                &file_path[file_path.len() - fname.len()..],
-                file_path.len() - fname.len(),
-            )
-        })
+    std::path::Path::new(file_path).file_name().map(|fname| {
+        let file_name_start = file_path.len() - fname.len();
+        (&file_path[file_name_start..], file_name_start)
+    })
 }
 
 #[inline]
@@ -129,7 +121,7 @@ fn parse_lnum(lnum: &str) -> Option<usize> {
     lnum.parse::<usize>().ok()
 }
 
-pub fn parse_rev(line: &str) -> Option<&str> {
+pub fn extract_commit_rev(line: &str) -> Option<&str> {
     let cap = COMMIT_RE.captures(line)?;
     cap.get(1).map(|x| x.as_str())
 }
@@ -255,11 +247,11 @@ mod tests {
     fn test_parse_rev() {
         let line =
             "* 2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("8ed4391"));
+        assert_eq!(extract_commit_rev(line), Some("8ed4391"));
         let line = "2019-10-18 8ed4391 Rename sign and rooter related options (#65) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("8ed4391"));
+        assert_eq!(extract_commit_rev(line), Some("8ed4391"));
         let line = "2019-12-29 3f0d00c Add forerunner job status sign and a delay timer for running maple (#184) (Liu-Cheng Xu)";
-        assert_eq!(parse_rev(line), Some("3f0d00c"));
+        assert_eq!(extract_commit_rev(line), Some("3f0d00c"));
     }
 
     #[test]

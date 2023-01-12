@@ -143,7 +143,7 @@ function! clap#preview#is_always_open() abort
   return s:ALWAYS_OPEN_PREVIEW
 endfunction
 
-function! clap#preview#async_open_with_delay() abort
+function! clap#preview#update_with_delay() abort
   if s:PREVIEW_DISABLED
     return
   endif
