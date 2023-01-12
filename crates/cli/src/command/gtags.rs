@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use maple_core::find_usages::GtagsSearcher;
@@ -21,7 +21,7 @@ pub struct Gtags {
 }
 
 impl Gtags {
-    pub fn run(&self, _params: Params) -> Result<()> {
+    pub fn run(&self, _args: Args) -> Result<()> {
         let gtags_searcher = GtagsSearcher::new(self.cwd.as_ref().to_path_buf());
 
         gtags_searcher.create_or_update_tags()?;

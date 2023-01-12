@@ -2,7 +2,7 @@ pub mod buffer_tags;
 pub mod recursive_tags;
 pub mod tags_file;
 
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use itertools::Itertools;
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 /// Generate ctags recursively given the directory.
 #[derive(Parser, Debug, Clone)]
-pub struct SharedParams {
+pub struct CtagsCommonArgs {
     /// The directory for executing the ctags command.
     #[clap(long, parse(from_os_str))]
     dir: Option<PathBuf>,
@@ -36,7 +36,7 @@ pub struct SharedParams {
     files: Vec<AbsPathBuf>,
 }
 
-impl SharedParams {
+impl CtagsCommonArgs {
     // TODO: remove this.
     pub fn exclude_opt(&self) -> String {
         self.exclude
@@ -71,11 +71,11 @@ pub enum Ctags {
 }
 
 impl Ctags {
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub fn run(&self, args: Args) -> Result<()> {
         match self {
-            Self::BufferTags(buffer_tags) => buffer_tags.run(params),
-            Self::RecursiveTags(recursive_tags) => recursive_tags.run(params),
-            Self::TagsFile(tags_file) => tags_file.run(params),
+            Self::BufferTags(buffer_tags) => buffer_tags.run(args),
+            Self::RecursiveTags(recursive_tags) => recursive_tags.run(args),
+            Self::TagsFile(tags_file) => tags_file.run(args),
         }
     }
 }

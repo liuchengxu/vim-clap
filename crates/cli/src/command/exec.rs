@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use maple_core::process::shell_command;
@@ -36,12 +36,12 @@ impl Exec {
 
     pub fn run(
         &self,
-        Params {
+        Args {
             number,
             icon,
             no_cache,
             ..
-        }: Params,
+        }: Args,
     ) -> Result<()> {
         let mut exec_cmd = self.prepare_exec_cmd();
 

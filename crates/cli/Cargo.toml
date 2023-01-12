@@ -1,5 +1,5 @@
 [package]
-name = "maple_cli"
+name = "cli"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"

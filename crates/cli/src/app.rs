@@ -43,8 +43,9 @@ pub enum RunCmd {
     RipGrepForerunner(command::grep::RipGrepForerunner),
 }
 
+/// Maple core CLI arguments.
 #[derive(Parser, Debug)]
-pub struct Params {
+pub struct Args {
     /// Print the top NUM of filtered items.
     ///
     /// The returned JSON has three fields:
@@ -86,7 +87,7 @@ pub struct Params {
     pub config_file: Option<std::path::PathBuf>,
 }
 
-impl Params {
+impl Args {
     pub fn into_filter_context(self) -> FilterContext {
         FilterContext::default()
             .icon(self.icon)
@@ -96,7 +97,7 @@ impl Params {
 }
 
 impl RunCmd {
-    pub async fn run(self, params: Params) -> Result<()> {
+    pub async fn run(self, args: Args) -> Result<()> {
         // Set the global thread pool to use the number of physical cores if `RAYON_NUM_THREADS`
         // does not exist.
         //
@@ -107,7 +108,7 @@ impl RunCmd {
         // It's preferred to just use the physical cores instead of the logical cores based on
         // the personal experience, observed by the performance regression (up to 20%) after enabling
         // the virtualization on my AMD 5900x which uses the logical cores instead of the physical ones.
-        let num_threads = params.rayon_num_threads.unwrap_or_else(|| {
+        let num_threads = args.rayon_num_threads.unwrap_or_else(|| {
             std::env::var("RAYON_NUM_THREADS")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -119,18 +120,18 @@ impl RunCmd {
             .expect("Failed to configure the rayon global thread pool");
 
         match self {
-            Self::Blines(blines) => blines.run(params),
+            Self::Blines(blines) => blines.run(args),
             Self::Cache(cache) => cache.run(),
-            Self::Ctags(ctags) => ctags.run(params),
+            Self::Ctags(ctags) => ctags.run(args),
             Self::DumbJump(dumb_jump) => dumb_jump.run(),
-            Self::Exec(exec) => exec.run(params),
-            Self::Filter(filter) => filter.run(params),
-            Self::Grep(grep) => grep.run(params).await,
-            Self::LiveGrep(live_grep) => live_grep.run(params),
-            Self::Gtags(gtags) => gtags.run(params),
+            Self::Exec(exec) => exec.run(args),
+            Self::Filter(filter) => filter.run(args),
+            Self::Grep(grep) => grep.run(args).await,
+            Self::LiveGrep(live_grep) => live_grep.run(args),
+            Self::Gtags(gtags) => gtags.run(args),
             Self::Helptags(helptags) => helptags.run(),
-            Self::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(params),
-            Self::Rpc(rpc) => rpc.run(params).await,
+            Self::RipGrepForerunner(rip_grep_forerunner) => rip_grep_forerunner.run(args),
+            Self::Rpc(rpc) => rpc.run(args).await,
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::{Context, Result};
 use clap::Parser;
 use maple_core::paths::AbsPathBuf;
@@ -20,7 +20,7 @@ pub struct BufferTags {
 }
 
 impl BufferTags {
-    pub fn run(&self, _params: Params) -> Result<()> {
+    pub fn run(&self, _args: Args) -> Result<()> {
         if let Some(at) = self.current_context {
             let context_tag = current_context_tag(self.file.as_path(), at)
                 .context("Error at finding the context tag info")?;

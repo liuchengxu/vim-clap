@@ -1,5 +1,5 @@
-use super::SharedParams;
-use crate::app::Params;
+use super::CtagsCommonArgs;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{FilterContext, SequentialSource};
@@ -12,9 +12,7 @@ use rayon::prelude::*;
 use std::ops::Deref;
 use std::sync::Arc;
 
-const TAGS_CMD: &[&str] = &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
-
-/// Generate ctags recursively given the directory.
+/// Generate ctags recursively under the given directory.
 #[derive(Parser, Debug, Clone)]
 pub struct RecursiveTags {
     /// Query content.
@@ -29,22 +27,22 @@ pub struct RecursiveTags {
     #[clap(long)]
     par_run: bool,
 
-    /// Shared parameters arouns ctags.
+    /// Ctags common arguments.
     #[clap(flatten)]
-    pub(super) shared: SharedParams,
+    pub(super) c_args: CtagsCommonArgs,
 }
 
 impl RecursiveTags {
     fn project_ctags_cmd(&self) -> Result<ProjectCtagsCommand> {
-        let dir = self.shared.dir()?;
-        let exclude_args = self.shared.exclude_args();
+        let dir = self.c_args.dir()?;
+        let exclude_args = self.c_args.exclude_args();
 
-        let mut std_cmd = std::process::Command::new(TAGS_CMD[0]);
+        let mut std_cmd = std::process::Command::new(ProjectCtagsCommand::TAGS_CMD[0]);
         std_cmd
             .current_dir(&dir)
-            .args(&TAGS_CMD[1..])
+            .args(&ProjectCtagsCommand::TAGS_CMD[1..])
             .args(exclude_args);
-        if let Some(ref languages) = self.shared.languages {
+        if let Some(ref languages) = self.c_args.languages {
             std_cmd.arg(format!("--languages={languages}"));
         }
 
@@ -59,12 +57,12 @@ impl RecursiveTags {
 
     pub fn run(
         &self,
-        Params {
+        Args {
             no_cache,
             icon,
             number,
             ..
-        }: Params,
+        }: Args,
     ) -> Result<()> {
         if !CTAGS_HAS_JSON_FEATURE.deref() {
             return Err(anyhow::anyhow!(

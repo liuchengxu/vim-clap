@@ -1,12 +1,12 @@
-use super::SharedParams;
-use crate::app::Params;
+use super::CtagsCommonArgs;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use maple_core::find_usages::{CtagsSearcher, QueryType};
 use maple_core::tools::ctags::TagsGenerator;
 
 #[derive(Parser, Debug, Clone)]
-struct TagsFileParams {
+struct TagsFileArgs {
     /// Same with the `--kinds-all` option of ctags.
     #[clap(long, default_value = "*")]
     kinds_all: String,
@@ -23,13 +23,13 @@ struct TagsFileParams {
 /// Manipulate the tags file.
 #[derive(Parser, Debug, Clone)]
 pub struct TagsFile {
-    /// Params for creating tags file.
+    /// Arguments for creating tags file.
     #[clap(flatten)]
-    inner: TagsFileParams,
+    t_args: TagsFileArgs,
 
-    /// Shared parameters arouns ctags.
+    /// Ctags common arguments.
     #[clap(flatten)]
-    shared: SharedParams,
+    c_args: CtagsCommonArgs,
 
     /// Search the tag matching the given query.
     #[clap(long)]
@@ -41,16 +41,16 @@ pub struct TagsFile {
 }
 
 impl TagsFile {
-    pub fn run(&self, _params: Params) -> Result<()> {
-        let dir = self.shared.dir()?;
+    pub fn run(&self, _args: Args) -> Result<()> {
+        let dir = self.c_args.dir()?;
 
-        let exclude_opt = self.shared.exclude_opt();
+        let exclude_opt = self.c_args.exclude_opt();
         let tags_generator = TagsGenerator::new(
-            self.shared.languages.clone(),
-            &self.inner.kinds_all,
-            &self.inner.fields,
-            &self.inner.extras,
-            &self.shared.files,
+            self.c_args.languages.clone(),
+            &self.t_args.kinds_all,
+            &self.t_args.fields,
+            &self.t_args.extras,
+            &self.c_args.files,
             &dir,
             &exclude_opt,
         );

@@ -225,7 +225,7 @@ pub struct ProjectCtagsCommand {
 }
 
 impl ProjectCtagsCommand {
-    const TAGS_CMD: &'static [&'static str] =
+    pub const TAGS_CMD: &'static [&'static str] =
         &["ctags", "-R", "-x", "--output-format=json", "--fields=+n"];
 
     const BASE_TAGS_CMD: &str = "ctags -R -x --output-format=json --fields=+n";

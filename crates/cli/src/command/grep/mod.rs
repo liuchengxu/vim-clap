@@ -1,7 +1,7 @@
 mod forerunner;
 mod live_grep;
 
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{ParallelSource, SequentialSource};
@@ -44,7 +44,7 @@ pub struct Grep {
 }
 
 impl Grep {
-    pub async fn run(&self, params: Params) -> Result<()> {
+    pub async fn run(&self, args: Args) -> Result<()> {
         if self.refresh_cache {
             let dir = match self.cmd_dir {
                 Some(ref dir) => dir.clone(),
@@ -73,11 +73,9 @@ impl Grep {
             return Ok(());
         }
 
-        let maybe_usable_cache = self.usable_cache(&params);
+        let maybe_usable_cache = self.usable_cache(&args);
 
-        let filter_context = params
-            .into_filter_context()
-            .match_scope(MatchScope::GrepLine);
+        let filter_context = args.into_filter_context().match_scope(MatchScope::GrepLine);
 
         if self.par_run {
             let par_source = if let Some(cache) = maybe_usable_cache {
@@ -113,8 +111,8 @@ impl Grep {
         Ok(())
     }
 
-    fn usable_cache(&self, params: &Params) -> Option<PathBuf> {
-        if !params.no_cache {
+    fn usable_cache(&self, args: &Args) -> Option<PathBuf> {
+        if !args.no_cache {
             if let Some(digest) = self
                 .cmd_dir
                 .as_ref()

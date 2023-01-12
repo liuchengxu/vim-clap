@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
@@ -115,13 +115,13 @@ impl Filter {
 
     pub fn run(
         &self,
-        Params {
+        Args {
             number,
             winwidth,
             icon,
             case_matching,
             ..
-        }: Params,
+        }: Args,
     ) -> Result<()> {
         let matcher_builder = MatcherBuilder::new()
             .bonuses(self.get_bonuses())

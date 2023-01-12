@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use maple_core::process::CacheableCommand;
@@ -43,12 +43,12 @@ impl RipGrepForerunner {
 
     pub fn run(
         self,
-        Params {
+        Args {
             number,
             icon,
             no_cache,
             ..
-        }: Params,
+        }: Args,
     ) -> Result<()> {
         if !no_cache {
             if let Some(ref dir) = self.cmd_dir {
@@ -94,13 +94,13 @@ impl RipGrepForerunner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::Params;
+    use crate::app::Args;
 
     // TODO: fix and enable the test in CI
     #[test]
     #[ignore]
     fn ripgrep_forerunner_command_works() {
-        let params = Params::parse_from(&["--no-cache", "--icon=Grep"]);
+        let params = Args::parse_from(&["--no-cache", "--icon=Grep"]);
 
         let ripgrep_forerunner = RipGrepForerunner::parse_from(&[
             "",

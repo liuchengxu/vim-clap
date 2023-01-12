@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 
@@ -7,8 +7,8 @@ use clap::Parser;
 pub struct Rpc;
 
 impl Rpc {
-    pub async fn run(&self, params: Params) -> Result<()> {
-        let maybe_log = if let Some(log_path) = params.log {
+    pub async fn run(&self, args: Args) -> Result<()> {
+        let maybe_log = if let Some(log_path) = args.log {
             Some(log_path)
         } else if let Ok(log_path) =
             std::env::var("VIM_CLAP_LOG_PATH").map(std::path::PathBuf::from)
@@ -18,7 +18,7 @@ impl Rpc {
             None
         };
 
-        maple_core::config::initialize_config_file(params.config_file.clone());
+        maple_core::config::initialize_config_file(args.config_file.clone());
 
         if let Some(log_path) = maybe_log {
             if let Ok(metadata) = std::fs::metadata(&log_path) {

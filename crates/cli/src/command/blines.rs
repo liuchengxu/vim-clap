@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::SequentialSource;
@@ -53,7 +53,7 @@ impl ClapItem for BlinesItem {
 
 impl Blines {
     /// Looks for matches of `query` in lines of the current vim buffer.
-    pub fn run(&self, params: Params) -> Result<()> {
+    pub fn run(&self, args: Args) -> Result<()> {
         let source_file = std::fs::File::open(&self.input)?;
 
         let index = AtomicUsize::new(0);
@@ -82,11 +82,10 @@ impl Blines {
             .extension()
             .and_then(|s| s.to_str().map(|s| s.to_string()))
         {
-            params
-                .into_filter_context()
+            args.into_filter_context()
                 .bonuses(vec![Bonus::Language(extension.into())])
         } else {
-            params.into_filter_context()
+            args.into_filter_context()
         };
 
         if self.par_run {

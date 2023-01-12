@@ -187,6 +187,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "filter",
+ "futures",
+ "icon",
+ "itertools",
+ "maple_core",
+ "matcher",
+ "num_cpus",
+ "pattern",
+ "printer",
+ "rayon",
+ "regex",
+ "serde_json",
+ "subprocess",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "types",
+ "utility",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -867,36 +894,9 @@ version = "0.1.37"
 dependencies = [
  "built",
  "clap",
- "maple_cli",
+ "cli",
  "tokio",
  "upgrade",
-]
-
-[[package]]
-name = "maple_cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "filter",
- "futures",
- "icon",
- "itertools",
- "maple_core",
- "matcher",
- "num_cpus",
- "pattern",
- "printer",
- "rayon",
- "regex",
- "serde_json",
- "subprocess",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "types",
- "utility",
 ]
 
 [[package]]
@@ -918,7 +918,6 @@ dependencies = [
  "ignore",
  "itertools",
  "matcher",
- "num_cpus",
  "once_cell",
  "parking_lot",
  "pattern",

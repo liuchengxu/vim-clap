@@ -1,4 +1,4 @@
-use crate::app::Params;
+use crate::app::Args;
 use anyhow::{Context, Result};
 use clap::Parser;
 use icon::Icon;
@@ -45,12 +45,12 @@ impl LiveGrep {
     /// Write the output to the cache file if neccessary.
     pub fn run(
         &self,
-        Params {
+        Args {
             number,
             winwidth,
             icon,
             ..
-        }: Params,
+        }: Args,
     ) -> Result<()> {
         let mut grep_cmd = self
             .grep_cmd
