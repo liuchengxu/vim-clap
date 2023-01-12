@@ -4,7 +4,7 @@ use clap::Parser;
 use icon::Icon;
 use maple_core::process::shell_command;
 use maple_core::process::{CacheableCommand, ShellCommand};
-use maple_core::tools::ripgrep::Match;
+use maple_core::tools::rg::Match;
 use rayon::prelude::*;
 use std::convert::TryFrom;
 use std::path::PathBuf;

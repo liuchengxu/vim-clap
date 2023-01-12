@@ -1,5 +1,5 @@
 use super::executable_searcher::LanguageRegexSearcher;
-use crate::tools::ripgrep::{Match, Word};
+use crate::tools::rg::{Match, Word};
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;

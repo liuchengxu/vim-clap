@@ -2,7 +2,7 @@ use super::definition::{
     build_full_regexp, get_definition_rules, is_comment, DefinitionKind, DefinitionSearchResult,
     Definitions, Occurrences,
 };
-use crate::tools::ripgrep::{Match, Word};
+use crate::tools::rg::{Match, Word};
 use anyhow::Result;
 use dumb_analyzer::get_comment_syntax;
 use rayon::prelude::*;

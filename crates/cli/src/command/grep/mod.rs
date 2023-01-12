@@ -5,7 +5,7 @@ use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{ParallelSource, SequentialSource};
-use maple_core::tools::ripgrep::{refresh_cache, rg_shell_command};
+use maple_core::tools::rg::{refresh_cache, rg_shell_command};
 use matcher::MatchScope;
 use std::path::PathBuf;
 use subprocess::Exec;

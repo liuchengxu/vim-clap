@@ -3,7 +3,7 @@ use crate::process::ShellCommand;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{Context, ProviderSource};
 use crate::tools::ctags::ProjectCtagsCommand;
-use crate::tools::ripgrep::{RgTokioCommand, RG_EXEC_CMD};
+use crate::tools::rg::{RgTokioCommand, RG_EXEC_CMD};
 use crate::utils::count_lines;
 use anyhow::Result;
 use filter::SourceItem;
