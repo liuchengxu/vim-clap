@@ -1,5 +1,6 @@
 pub mod vim_help;
 
+use crate::paths::truncate_absolute_path;
 use anyhow::Result;
 use std::path::Path;
 use types::PreviewInfo;
@@ -70,8 +71,7 @@ pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
     max_title_width: usize,
 ) -> std::io::Result<(Vec<String>, String)> {
     let abs_path = as_absolute_path(path.as_ref())?;
-    let truncated_abs_path =
-        crate::utils::truncate_absolute_path(&abs_path, max_title_width).into_owned();
+    let truncated_abs_path = truncate_absolute_path(&abs_path, max_title_width).into_owned();
     let lines_iter = read_first_lines(path.as_ref(), size)?;
     let lines = std::iter::once(truncated_abs_path.clone())
         .chain(truncate_preview_lines(max_line_width, lines_iter))

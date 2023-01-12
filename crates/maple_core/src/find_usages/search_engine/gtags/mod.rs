@@ -1,6 +1,7 @@
 use super::Symbol;
-use crate::utils::UsageMatcher;
-use crate::{find_usages::AddressableUsage, tools::gtags::GTAGS_DIR};
+use crate::find_usages::{AddressableUsage, UsageMatcher};
+use crate::tools::gtags::GTAGS_DIR;
+use crate::utils::lines;
 use anyhow::{anyhow, Result};
 use dumb_analyzer::resolve_reference_kind;
 use rayon::prelude::*;
@@ -163,9 +164,7 @@ impl GtagsSearcher {
 
 // Returns a stream of tag parsed from the gtags output.
 fn execute(cmd: Exec) -> Result<impl Iterator<Item = Symbol>> {
-    Ok(crate::utils::lines(cmd)?
-        .flatten()
-        .filter_map(|s| Symbol::from_gtags(&s)))
+    Ok(lines(cmd)?.flatten().filter_map(|s| Symbol::from_gtags(&s)))
 }
 
 /// Used for sorting the usages from gtags properly.

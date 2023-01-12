@@ -1,4 +1,5 @@
-use crate::{paths::AbsPathBuf, utils::PROJECT_DIRS};
+use crate::dirs::PROJECT_DIRS;
+use crate::paths::AbsPathBuf;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

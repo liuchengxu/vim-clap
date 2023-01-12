@@ -1,5 +1,8 @@
+use crate::dirs::BASE_DIRS;
+use itertools::Itertools;
 use serde::de::Error as DeserializeError;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::canonicalize;
 use std::path::{Display, Path, PathBuf};
@@ -17,7 +20,7 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
         if path.is_absolute() {
             Ok(Self(path))
         } else if let Ok(stripped) = path.strip_prefix("~") {
-            let path = crate::utils::BASE_DIRS.home_dir().join(stripped);
+            let path = BASE_DIRS.home_dir().join(stripped);
             // Resolve the symlink.
             let path =
                 canonicalize(path).map_err(|err| DeserializeError::custom(err.to_string()))?;
@@ -97,5 +100,94 @@ impl std::str::FromStr for AbsPathBuf {
 impl std::fmt::Display for AbsPathBuf {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.display())
+    }
+}
+
+// /home/xlc/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
+    if abs_path.len() > max_len {
+        let gap = abs_path.len() - max_len;
+
+        const SEP: char = std::path::MAIN_SEPARATOR;
+
+        if let Some(home_dir) = BASE_DIRS.home_dir().to_str() {
+            if abs_path.starts_with(home_dir) {
+                // ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+                if home_dir.len() > gap {
+                    return abs_path.replacen(home_dir, "~", 1).into();
+                }
+
+                // ~/.rustup/.../github.com/paritytech/substrate/frame/system/src/lib.rs
+                let home_stripped = &abs_path.trim_start_matches(home_dir)[1..];
+                if let Some((first, target)) = home_stripped.split_once(SEP) {
+                    let mut hidden = 0usize;
+                    for component in target.split(SEP) {
+                        if hidden > gap + 2 {
+                            let mut target = target.to_string();
+                            target.replace_range(..hidden - 1, "...");
+                            return format!("~{SEP}{first}{SEP}{target}").into();
+                        } else {
+                            hidden += component.len() + 1;
+                        }
+                    }
+                }
+            } else {
+                let top = abs_path.splitn(4, SEP).collect::<Vec<_>>();
+                if let Some(last) = top.last() {
+                    if let Some((_first, target)) = last.split_once(SEP) {
+                        let mut hidden = 0usize;
+                        for component in target.split(SEP) {
+                            if hidden > gap + 2 {
+                                let mut target = target.to_string();
+                                target.replace_range(..hidden - 1, "...");
+                                let head = top.iter().take(top.len() - 1).join(&SEP.to_string());
+                                return format!("{head}{SEP}{target}").into();
+                            } else {
+                                hidden += component.len() + 1;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Truncate the left of absolute path string.
+            // ../stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs
+            if let Some((offset, _)) = abs_path.char_indices().nth(abs_path.len() - max_len + 2) {
+                let mut abs_path = abs_path.to_string();
+                abs_path.replace_range(..offset, "..");
+                return abs_path.into();
+            }
+        }
+    }
+
+    abs_path.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_absolute_path() {
+        #[cfg(not(target_os = "windows"))]
+        let p = ".rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let p = r#".rustup\toolchains\stable-x86_64-unknown-linux-gnu\lib\rustlib\src\rust\library\alloc\src\string.rs"#;
+        let abs_path = format!(
+            "{}{}{}",
+            BASE_DIRS.home_dir().to_str().unwrap(),
+            std::path::MAIN_SEPARATOR,
+            p
+        );
+        let max_len = 60;
+        #[cfg(not(target_os = "windows"))]
+        let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
+        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected);
+
+        let abs_path = "/media/xlc/Data/src/github.com/paritytech/substrate/bin/node/cli/src/command_helper.rs";
+        let expected = "/media/xlc/.../bin/node/cli/src/command_helper.rs";
+        assert_eq!(truncate_absolute_path(abs_path, max_len), expected);
     }
 }

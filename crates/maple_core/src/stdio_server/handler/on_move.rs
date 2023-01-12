@@ -1,10 +1,11 @@
+use crate::paths::truncate_absolute_path;
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
-use crate::utils::{build_abs_path, display_width, truncate_absolute_path};
+use crate::utils::display_width;
 use anyhow::{anyhow, Result};
 use pattern::*;
 use serde::{Deserialize, Serialize};
@@ -69,13 +70,13 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
     let mut line_content = None;
 
     let preview_target = match ctx.provider_id() {
-        "files" | "git_files" => PreviewTarget::File(build_abs_path(&ctx.cwd, &curline)),
+        "files" | "git_files" => PreviewTarget::File(ctx.cwd.join(&curline)),
         "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
         "history" => {
             let path = if curline.starts_with('~') {
                 crate::utils::expand_tilde(curline)
             } else {
-                build_abs_path(&ctx.cwd, &curline)
+                ctx.cwd.join(&curline)
             };
             PreviewTarget::File(path)
         }

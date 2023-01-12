@@ -4,9 +4,8 @@
 
 use anyhow::Result;
 use clap::Parser;
-use maple_core::find_usages::{CtagsSearcher, QueryType, RegexSearcher, Usages};
+use maple_core::find_usages::{CtagsSearcher, QueryType, RegexSearcher, UsageMatcher, Usages};
 use maple_core::tools::ctags::{get_language, TagsGenerator};
-use maple_core::utils::UsageMatcher;
 use std::path::PathBuf;
 
 /// Search-based jump.

@@ -4,7 +4,7 @@ mod project_tag;
 
 use crate::paths::AbsPathBuf;
 use crate::process::ShellCommand;
-use crate::utils::PROJECT_DIRS;
+use crate::dirs::PROJECT_DIRS;
 use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;

@@ -1,9 +1,9 @@
 pub mod kinds;
 
 use super::{QueryType, Symbol};
-use crate::find_usages::AddressableUsage;
+use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::tools::ctags::TagsGenerator;
-use crate::utils::UsageMatcher;
+use crate::utils::lines;
 use anyhow::Result;
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -105,7 +105,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
 
         let cmd = self.build_exec(query, query_type);
 
-        Ok(crate::utils::lines(cmd)?
+        Ok(lines(cmd)?
             .flatten()
             .filter_map(|s| Symbol::from_readtags(&s)))
     }

@@ -2,7 +2,6 @@ use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::stdio_server::vim::preview_syntax;
-use crate::utils::build_abs_path;
 use anyhow::Result;
 use icon::prepend_filer_icon;
 use serde_json::json;
@@ -384,7 +383,7 @@ impl ClapProvider for FilerProvider {
             return Ok(());
         }
         let curline = self.current_line(ctx).await?;
-        let path = build_abs_path(&self.current_dir, curline);
+        let path = self.current_dir.join(curline);
         let preview_target = if path.is_dir() {
             PreviewTarget::Directory(path)
         } else {

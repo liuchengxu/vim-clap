@@ -1,4 +1,4 @@
-use crate::utils::PROJECT_DIRS;
+use crate::dirs::PROJECT_DIRS;
 use once_cell::sync::Lazy;
 use std::path::PathBuf;
 

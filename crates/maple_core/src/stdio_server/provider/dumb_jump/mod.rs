@@ -1,14 +1,13 @@
 mod searcher;
 
 use self::searcher::{SearchEngine, SearchingWorker};
-use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, Usages};
+use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMatcher, Usages};
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::tools::ctags::{get_language, TagsGenerator, CTAGS_EXISTS};
 use crate::tools::gtags::GTAGS_EXISTS;
-use crate::utils::UsageMatcher;
 use anyhow::Result;
 use filter::Query;
 use futures::Future;

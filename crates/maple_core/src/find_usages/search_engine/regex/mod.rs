@@ -13,9 +13,8 @@ mod executable_searcher;
 
 use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
 use self::executable_searcher::{LanguageRegexSearcher, WordRegexSearcher};
-use crate::find_usages::{AddressableUsage, Usage, Usages};
+use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::ripgrep::{get_language, Match, Word};
-use crate::utils::UsageMatcher;
 use anyhow::Result;
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
