@@ -99,7 +99,7 @@ mod tests {
         match run_cmd {
             RunCmd::Ctags(Ctags::RecursiveTags(rtags)) => {
                 assert_eq!(
-                    rtags.shared.exclude_opt(),
+                    rtags.c_args.exclude_opt(),
                     "--exclude=.git --exclude=target".to_string(),
                 )
             }
