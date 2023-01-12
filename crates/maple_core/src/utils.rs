@@ -1,8 +1,7 @@
-use crate::dirs::{BASE_DIRS, PROJECT_DIRS};
+use crate::dirs::PROJECT_DIRS;
 use anyhow::Result;
 use chrono::prelude::*;
 use icon::Icon;
-use once_cell::sync::Lazy;
 use std::io::{BufRead, BufReader, Lines};
 use std::path::{Path, PathBuf};
 use subprocess::Exec;
@@ -95,16 +94,6 @@ pub fn send_response_from_cache(
                 println_json_with_length!(total, tempfile, using_cache)
             }
         }
-    }
-}
-
-pub(crate) fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
-    static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
-
-    if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
-        BASE_DIRS.home_dir().join(stripped)
-    } else {
-        path.as_ref().into()
     }
 }
 

@@ -74,7 +74,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
         "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
         "history" => {
             let path = if curline.starts_with('~') {
-                crate::utils::expand_tilde(curline)
+                crate::paths::expand_tilde(curline)
             } else {
                 ctx.cwd.join(&curline)
             };

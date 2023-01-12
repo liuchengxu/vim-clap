@@ -2,9 +2,9 @@ mod buffer_tag;
 mod context_tag;
 mod project_tag;
 
+use crate::dirs::PROJECT_DIRS;
 use crate::paths::AbsPathBuf;
 use crate::process::ShellCommand;
-use crate::dirs::PROJECT_DIRS;
 use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;

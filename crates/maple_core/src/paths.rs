@@ -1,5 +1,6 @@
 use crate::dirs::BASE_DIRS;
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use serde::de::Error as DeserializeError;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
@@ -100,6 +101,16 @@ impl std::str::FromStr for AbsPathBuf {
 impl std::fmt::Display for AbsPathBuf {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.display())
+    }
+}
+
+pub fn expand_tilde(path: impl AsRef<str>) -> PathBuf {
+    static HOME_PREFIX: Lazy<String> = Lazy::new(|| format!("~{}", std::path::MAIN_SEPARATOR));
+
+    if let Some(stripped) = path.as_ref().strip_prefix(HOME_PREFIX.as_str()) {
+        BASE_DIRS.home_dir().join(stripped)
+    } else {
+        path.as_ref().into()
     }
 }
 

@@ -35,7 +35,7 @@ impl MethodCall {
             preview_direction,
         } = self.params.parse()?;
 
-        let fpath = crate::utils::expand_tilde(fpath);
+        let fpath = crate::paths::expand_tilde(fpath);
 
         let (preview_height, preview_width) = if preview_direction.to_uppercase().as_str() == "UD" {
             (preview_height.unwrap_or(display_height), display_width)
