@@ -47,7 +47,6 @@ if exists('g:clap_forerunner_status_sign_running')
   let g:clap_forerunner_status_sign.running = g:clap_forerunner_status_sign_running
 endif
 
-let g:clap_disable_optional_async = get(g:, 'clap_disable_optional_async', v:false)
 let g:clap_no_matches_msg = get(g:, 'clap_no_matches_msg', 'NO MATCHES FOUND')
 let g:__clap_no_matches_pattern = '^'.g:clap_no_matches_msg.'$'
 

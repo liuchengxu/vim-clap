@@ -127,12 +127,14 @@ impl InputRecorder {
     }
 
     pub fn try_record(&mut self, new: String) {
-        if new.is_empty() || self.inputs.contains(&new) {
+        let new = new.trim();
+
+        if new.is_empty() || self.inputs.iter().any(|s| s == new) {
             return;
         }
 
         // New input is part of some old input.
-        if self.inputs.iter().any(|old| old.starts_with(&new)) {
+        if self.inputs.iter().any(|old| old.starts_with(new)) {
             return;
         }
 
@@ -154,8 +156,8 @@ impl InputRecorder {
         if !self.inputs.is_empty() {
             self.current_index += 1;
         }
-        self.inputs.push(new.clone());
-        self.last_input = new;
+        self.inputs.push(new.to_string());
+        self.last_input = new.to_string();
     }
 
     /// Returns the next input if inputs are not empty.

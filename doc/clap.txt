@@ -228,28 +228,6 @@ g:clap_disable_bottom_top                            *g:clap_disable_bottom_top*
   at the bottom/top of the results.
 
 
-g:clap_disable_optional_async                    *g:clap_disable_optional_async*
-
-  Type: |Bool|
-  Default: `v:false`
-
-  For the non-pure-async providers, vim-clap provides an optional async way to
-  filter/find the candidates and will enable it automatically in these cases:
-
-  - the default `source_async` implementation is doable
-  - `g:clap.context.async` is v:true
-  - the `source` of provider is |String|
-  - the `source` of provider is |List| and the size of source exceeds the
-    threshold
-  - the `source` of provider is a |Funcref| that returns a |String| or
-    returns a |List| that exceeds the threshold.
-
-  If the provider does not provide the `source_async` implementation explictily
-  and vim-clap fails to inject the default async external filter implementation,
-  this variable has no effect, the sync filter implementation will always be
-  used.
-
-
 g:clap_no_matches_msg                                    *g:clap_no_matches_msg*
 
   Type: |String|

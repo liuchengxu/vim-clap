@@ -2,6 +2,10 @@
 
 ## [unreleased]
 
+
+## [0.39] 2023-01-13
+## [0.38] 2023-01-08
+
 ### Added
 
 - Build executables for more platforms. #901
