@@ -24,13 +24,6 @@ def read_file(fname):
     f = open(fname)
     return f.readlines()
 
-
-#  install.sh
-fname = '../install.sh'
-lines = read_file(fname)
-lines[4] = "version=v{version}\n".format(version=next_tag)
-write_back(lines, fname)
-
 #  install.ps1
 fname = '../install.ps1'
 lines = read_file(fname)

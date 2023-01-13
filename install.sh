@@ -2,7 +2,7 @@
 
 set -u
 
-version=v0.39
+REPO=https://github.com/liuchengxu/vim-clap
 APP=maple
 
 remote_latest_tag() {
