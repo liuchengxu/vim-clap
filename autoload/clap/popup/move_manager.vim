@@ -127,6 +127,22 @@ function! s:backspace() abort
   endif
 endfunction
 
+function! s:move_manager.linewise_scroll_down(winid) abort
+  call win_execute(a:winid, 'noautocmd call clap#navigation#linewise_scroll("down")')
+endfunction
+
+function! s:move_manager.linewise_scroll_up(winid) abort
+  call win_execute(a:winid, 'noautocmd call clap#navigation#linewise_scroll("up")')
+endfunction
+
+function! s:move_manager.scroll_down(winid) abort
+  call win_execute(a:winid, 'noautocmd call clap#navigation#scroll("down")')
+endfunction
+
+function! s:move_manager.scroll_up(winid) abort
+  call win_execute(a:winid, 'noautocmd call clap#navigation#scroll("up")')
+endfunction
+
 " noautocmd is neccessary in that too many plugins use redir, otherwise we'll
 " see E930: Cannot use :redir inside execute().
 let s:move_manager["\<C-A>"] = s:move_manager.ctrl_a
@@ -136,8 +152,8 @@ let s:move_manager["\<C-D>"] = s:move_manager.ctrl_d
 let s:move_manager["\<C-E>"] = s:move_manager.ctrl_e
 let s:move_manager["\<End>"] = s:move_manager.ctrl_e
 let s:move_manager["\<C-F>"] = s:move_manager.ctrl_f
-let s:move_manager["\<C-J>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("down")') }
-let s:move_manager["\<C-K>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#linewise("up")') }
+let s:move_manager["\<C-J>"] = s:move_manager.linewise_scroll_down
+let s:move_manager["\<C-K>"] = s:move_manager.linewise_scroll_up
 let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
 let s:move_manager["\<C-N>"] = s:move_manager.ctrl_n
 let s:move_manager["\<C-P>"] = s:move_manager.ctrl_p
@@ -155,8 +171,12 @@ let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call cla
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
 let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
 let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
-let s:move_manager["\<PageUp>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("up")') }
-let s:move_manager["\<PageDown>"] = { winid -> win_execute(winid, 'noautocmd call clap#navigation#scroll("down")') }
+let s:move_manager["\<PageUp>"] = s:move_manager.scroll_up
+let s:move_manager["\<PageDown>"] = s:move_manager.scroll_down
+let s:move_manager["\<LeftMouse>"] = s:move_manager["\<Tab>"]
+let s:move_manager["\<RightMouse>"] = s:move_manager["\<Tab>"]
+let s:move_manager["\<ScrollWheelUp>"] = s:move_manager.linewise_scroll_up
+let s:move_manager["\<ScrollWheelDown>"] = s:move_manager.linewise_scroll_down
 
 function! s:define_open_action_filter() abort
   for k in keys(g:clap_open_action)

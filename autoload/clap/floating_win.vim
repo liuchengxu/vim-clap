@@ -76,12 +76,7 @@ function! g:clap#floating_win#display.open() abort
   " Is there a better solution?
 
   call g:clap.display.setbufvar_batch({
-        \ '&wrap': 0,
-        \ '&number': 0,
-        \ '&relativenumber': 0,
-        \ '&cursorline': 0,
-        \ '&signcolumn': 'yes',
-        \ '&foldcolumn': 0,
+        \ '&filetype': 'clap_display',
         \ 'autopairs_enabled': 0,
         \ 'ale_enabled': 0,
         \ })
