@@ -3,12 +3,12 @@ use filter::{MatchedItem, Query, SourceItem};
 use maple_cli::command::dumb_jump::DumbJump;
 use maple_core::find_largest_cache_digest;
 use maple_core::tools::ctags::{ProjectCtagsCommand, ProjectTag};
-use maple_core::utils::count_lines;
 use matcher::{Matcher, MatcherBuilder};
 use rayon::prelude::*;
 use std::io::BufRead;
 use std::sync::Arc;
 use types::ClapItem;
+use utils::count_lines;
 
 fn prepare_source_items() -> Vec<SourceItem> {
     let largest_cache = find_largest_cache_digest().expect("Cache is empty");

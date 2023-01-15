@@ -18,4 +18,4 @@ matcher = { path = "../matcher" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 types = { path = "../types" }
-utility = { path = "../utility" }
+utils = { path = "../utils" }

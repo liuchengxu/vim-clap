@@ -1,4 +1,4 @@
-use crate::utils::UtcTime;
+use crate::UtcTime;
 use chrono::prelude::*;
 use filter::SourceItem;
 use matcher::{Bonus, MatcherBuilder};

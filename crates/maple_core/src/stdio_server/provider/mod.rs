@@ -186,7 +186,7 @@ impl Context {
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
     pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
-        let out = utility::execute_at(cmd, Some(&self.cwd))?;
+        let out = utils::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
     }
 
@@ -429,7 +429,7 @@ impl ProviderSource {
                     .collect(),
             ),
             Self::File { ref path, .. } | Self::CachedFile { ref path, .. } => {
-                let lines_iter = utility::read_first_lines(path, n).ok()?;
+                let lines_iter = utils::read_first_lines(path, n).ok()?;
                 Some(if provider_id == "blines" {
                     let mut index = 0;
                     lines_iter

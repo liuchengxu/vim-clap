@@ -85,14 +85,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_retrieve_asset_size() {
-        for _i in 0..10 {
+        for _i in 0..20 {
             if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
                 retrieve_asset_size(asset_name().unwrap(), &latest_tag)
                     .await
                     .expect("Failed to retrieve the asset size for latest release");
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
         panic!("Failed to retrieve the asset size for latest release");
     }

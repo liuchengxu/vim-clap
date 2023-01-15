@@ -1,11 +1,11 @@
 [package]
-name = "utility"
+name = "utils"
 version = "0.1.0"
 authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-directories = "4.0"
+bytecount = { version = "0.6", features = ["runtime-dispatch-simd"] }
 memchr = "2.5"
 simdutf8 = "0.1"
 

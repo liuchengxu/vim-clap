@@ -1,4 +1,5 @@
 use std::path::Path;
+use utils::{read_lines, read_lines_from};
 
 #[derive(Debug, Clone)]
 pub struct HelpTagPreview<'a> {
@@ -11,7 +12,7 @@ pub struct HelpTagPreview<'a> {
 }
 
 fn find_tag_line(p: &Path, subject: &str) -> Option<usize> {
-    if let Ok(doc_lines) = utility::read_lines(p) {
+    if let Ok(doc_lines) = read_lines(p) {
         for (idx, doc_line) in doc_lines.enumerate() {
             if let Ok(d_line) = doc_line {
                 if d_line.trim().contains(subject) {
@@ -38,7 +39,7 @@ impl<'a> HelpTagPreview<'a> {
             let p = Path::new(r).join("doc").join(self.doc_filename);
             if p.exists() {
                 if let Some(line_number) = find_tag_line(&p, &target_tag) {
-                    if let Ok(lines_iter) = utility::read_lines_from(&p, line_number, size) {
+                    if let Ok(lines_iter) = read_lines_from(&p, line_number, size) {
                         return Some((format!("{}", p.display()), lines_iter.collect()));
                     }
                 }

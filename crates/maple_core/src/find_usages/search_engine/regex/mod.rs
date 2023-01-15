@@ -85,15 +85,9 @@ pub struct RegexSearcher {
 }
 
 impl RegexSearcher {
-    pub fn print_usages(&self, usage_matcher: &UsageMatcher) -> Result<()> {
+    pub fn cli_usages(&self, usage_matcher: &UsageMatcher) -> Result<Usages> {
         let usages: Usages = self.search_usages(false, usage_matcher)?.into();
-        let total = usages.len();
-        let (lines, indices): (Vec<_>, Vec<_>) = usages
-            .into_iter()
-            .map(|usage| (usage.line, usage.indices))
-            .unzip();
-        utility::println_json_with_length!(total, lines, indices);
-        Ok(())
+        Ok(usages)
     }
 
     /// Search the definitions and references if language type is detected, otherwise

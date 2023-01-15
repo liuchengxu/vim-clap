@@ -14,7 +14,7 @@ unicode-width = "0.1.4"
 
 icon = { path = "../icon" }
 types = { path = "../types" }
-utility = { path = "../utility" }
+utils = { path = "../utils" }
 
 [target.'cfg(not(windows))'.dev-dependencies]
 rayon = "1.5"
