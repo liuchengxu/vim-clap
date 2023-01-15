@@ -166,6 +166,9 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
 endfunction
 
 function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   call g:clap.display.set_lines_lazy(a:lines)
   call g:clap#display_win.shrink_if_undersize()
   if !empty(a:truncated_map)

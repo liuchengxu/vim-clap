@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
-let s:old_input = ''
 
 function! clap#handler#relaunch_providers() abort
   call clap#handler#exit()
@@ -32,19 +31,6 @@ function! clap#handler#on_typed() abort
     return
   endif
 
-  if g:clap.provider.is_rpc_type()
-    call g:clap.provider.on_typed()
-    return
-  endif
-
-  let l:cur_input = g:clap.input.get()
-  if s:old_input == l:cur_input
-    return
-  elseif strlen(s:old_input) > strlen(l:cur_input)
-    " If we should refilter?
-    let g:__clap_should_refilter = v:true
-  endif
-  let s:old_input = l:cur_input
   call g:clap.provider.on_typed()
 endfunction
 
@@ -100,7 +86,6 @@ endfunction
 function! clap#handler#exit() abort
   call clap#handler#internal_exit()
   call g:clap.provider.on_exit()
-  let s:old_input = ''
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 

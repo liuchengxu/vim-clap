@@ -69,15 +69,12 @@ fn search_lines(
                         line_number: index + 1,
                     });
 
-                    if let Some(matched_item) = matcher.match_item(item) {
-                        item_sender
-                            .send(SearcherMessage::Match(matched_item))
-                            .map_err(|_| ())?;
+                    let msg = if let Some(matched_item) = matcher.match_item(item) {
+                        SearcherMessage::Match(matched_item)
                     } else {
-                        item_sender
-                            .send(SearcherMessage::ProcessedOne)
-                            .map_err(|_| ())?;
-                    }
+                        SearcherMessage::ProcessedOne
+                    };
+                    item_sender.send(msg).map_err(|_| ())?;
                 }
             }
 
