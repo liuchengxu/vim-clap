@@ -290,7 +290,7 @@ impl Context {
     }
 
     pub fn render_preview(&self, preview: Preview) -> Result<()> {
-        self.vim.exec("clap#state#process_preview_result", preview)
+        self.vim.exec("clap#state#render_preview", preview)
     }
 
     pub async fn update_preview(&mut self) -> Result<()> {

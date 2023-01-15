@@ -78,24 +78,24 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   endif
 endfunction
 
-function! clap#state#process_preview_result(result) abort
-  if has_key(a:result, 'lines')
+function! clap#state#render_preview(preview) abort
+  if has_key(a:preview, 'lines')
     try
-      call g:clap.preview.show(a:result.lines)
+      call g:clap.preview.show(a:preview.lines)
     catch
       " Neovim somehow has a bug decoding the lines
-      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:result.lines)])
+      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:preview.lines)])
       return
     endtry
-    if has_key(a:result, 'syntax')
-      call g:clap.preview.set_syntax(a:result.syntax)
-    elseif has_key(a:result, 'fname')
-      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+    if has_key(a:preview, 'syntax')
+      call g:clap.preview.set_syntax(a:preview.syntax)
+    elseif has_key(a:preview, 'fname')
+      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:preview.fname))
     endif
     call clap#preview#highlight_header()
 
-    if has_key(a:result, 'hi_lnum')
-      call g:clap.preview.add_highlight(a:result.hi_lnum+1)
+    if has_key(a:preview, 'hi_lnum')
+      call g:clap.preview.add_highlight(a:preview.hi_lnum+1)
     endif
   endif
 endfunction
@@ -126,7 +126,7 @@ function! clap#state#process_response_on_typed(result) abort
   call clap#sign#ensure_exists()
 
   if has_key(a:result, 'preview') && !empty(a:result.preview)
-    call clap#state#process_preview_result(a:result.preview)
+    call clap#state#render_preview(a:result.preview)
   endif
 endfunction
 
