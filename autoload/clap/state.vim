@@ -122,8 +122,8 @@ function! clap#state#process_response_on_typed(result) abort
 
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_highlights_with_delay(a:result.indices)
-  call clap#preview#update_with_delay()
   call clap#sign#ensure_exists()
+  call clap#preview#update_with_delay()
 
   if has_key(a:result, 'preview') && !empty(a:result.preview)
     call clap#state#render_preview(a:result.preview)
@@ -149,19 +149,18 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     call g:clap#display_win.shrink_if_undersize()
   endif
 
+  let g:__clap_icon_added_by_maple = a:icon_added
   if !empty(a:truncated_map)
     let g:__clap_lines_truncated_map = a:truncated_map
   endif
-  let g:__clap_icon_added_by_maple = a:icon_added
-
-  call clap#indicator#update_matches_on_forerunner_done()
-  call clap#sign#ensure_exists()
-
   if a:using_cache
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
   else
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   endif
+
+  call clap#indicator#update_matches_on_forerunner_done()
+  call clap#sign#ensure_exists()
   call clap#spinner#refresh()
   call clap#preview#update_with_delay()
 endfunction
@@ -225,11 +224,8 @@ endfunction
 " Clear the previous temp state when invoking a new provider.
 function! clap#state#clear_pre() abort
   call s:unlet_vars([
-        \ 's:current_matches',
-        \ 'g:__clap_raw_source',
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
-        \ 'g:__clap_initial_source_size',
         \ 'g:__clap_match_scope_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
         \ ])
