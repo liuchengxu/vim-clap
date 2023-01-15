@@ -88,31 +88,32 @@ impl RecentFilesProvider {
             .map(|abs_path| abs_path.replacen(&cwd, "", 1))
             .collect::<Vec<_>>();
 
-        let response = if truncated_map.is_empty() {
-            json!({
-                "lines": lines,
-                "indices": indices,
-                "total": total,
-                "icon_added": icon_added,
-                "initial_size": initial_size,
-                "preview": preview,
-            })
-        } else {
-            json!({
-                "lines": lines,
-                "indices": indices,
-                "truncated_map": truncated_map,
-                "total": total,
-                "icon_added": icon_added,
-                "initial_size": initial_size,
-                "preview": preview,
-            })
-        };
+        // The indices are empty on the empty query.
+        let indices = indices
+            .into_iter()
+            .filter(|i| !i.is_empty())
+            .collect::<Vec<_>>();
+
+        let mut value = json!({
+            "lines": lines,
+            "indices": indices,
+            "total": total,
+            "icon_added": icon_added,
+            "initial_size": initial_size,
+            "preview": preview,
+        });
+
+        if !truncated_map.is_empty() {
+            value
+                .as_object_mut()
+                .expect("Value is constructed as an Object")
+                .insert("truncated_map".into(), json!(truncated_map));
+        }
 
         let mut lines = self.lines.lock();
         *lines = ranked;
 
-        Ok(response)
+        Ok(value)
     }
 }
 
@@ -140,8 +141,7 @@ impl ClapProvider for RecentFilesProvider {
             .process_query(cwd, query, preview_size, 1, winwidth, icon)?;
 
         ctx.vim
-            .call("clap#state#process_response_on_typed", response)
-            .await?;
+            .exec("clap#state#process_response_on_typed", response)?;
 
         Ok(())
     }
@@ -194,8 +194,7 @@ impl ClapProvider for RecentFilesProvider {
         let current_query = ctx.vim.input_get().await?;
         if current_query == query {
             ctx.vim
-                .call("clap#state#process_response_on_typed", response)
-                .await?;
+                .exec("clap#state#process_response_on_typed", response)?;
         }
 
         Ok(())

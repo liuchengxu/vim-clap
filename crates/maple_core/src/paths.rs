@@ -35,7 +35,7 @@ impl<'de> Deserialize<'de> for AbsPathBuf {
             } else {
                 Err(DeserializeError::custom(
                     "Can not convert {path} to absolute form, \
-                        please specify it as absolute path directly",
+                    please specify it as absolute path directly",
                 ))
             }
         }
@@ -47,6 +47,9 @@ impl AbsPathBuf {
         self.0.display()
     }
 
+    /// # Panics
+    ///
+    /// Panics if path contains invalid unicode.
     pub fn as_str(&self) -> &str {
         self.0
             .to_str()
