@@ -3,14 +3,13 @@ pub mod tokio;
 
 use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::{generate_cache_file_path, CACHE_INFO_IN_MEMORY};
-use anyhow::Result;
 use icon::Icon;
 use printer::println_json;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use utils::read_first_lines;
+use utils::{count_lines, read_first_lines};
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640
@@ -119,7 +118,7 @@ impl ShellCommand {
 
     // TODO: remove this.
     /// Caches the output into a tempfile and also writes the cache digest to the disk.
-    pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
+    pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> std::io::Result<PathBuf> {
         use std::io::Write;
 
         let cache_filename = utils::calculate_hash(&self);
@@ -217,7 +216,7 @@ impl<'a> CacheableCommand<'a> {
     /// Checks if the cache exists given `shell_cmd` and `no_cache` flag.
     /// If the cache exists, return the cached info, otherwise execute
     /// the command.
-    pub fn try_cache_or_execute(&mut self, no_cache: bool) -> Result<ExecInfo> {
+    pub fn try_cache_or_execute(&mut self, no_cache: bool) -> std::io::Result<ExecInfo> {
         if no_cache {
             self.execute()
         } else {
@@ -228,7 +227,7 @@ impl<'a> CacheableCommand<'a> {
         }
     }
 
-    fn exec_info_from_cache_digest(&self, digest: &Digest) -> Result<ExecInfo> {
+    fn exec_info_from_cache_digest(&self, digest: &Digest) -> std::io::Result<ExecInfo> {
         let Digest {
             total, cached_path, ..
         } = digest;
@@ -250,7 +249,7 @@ impl<'a> CacheableCommand<'a> {
     }
 
     /// Execute the command and redirect the stdout to a file.
-    pub fn execute(&mut self) -> Result<ExecInfo> {
+    pub fn execute(&mut self) -> std::io::Result<ExecInfo> {
         let cache_file_path = self.shell_cmd.cache_file_path()?;
 
         write_stdout_to_file(self.std_cmd, &cache_file_path)?;
@@ -262,7 +261,7 @@ impl<'a> CacheableCommand<'a> {
             lines_iter.collect()
         };
 
-        let total = utils::count_lines(std::fs::File::open(&cache_file_path)?)?;
+        let total = count_lines(std::fs::File::open(&cache_file_path)?)?;
 
         // Store the cache file if the total number of items exceeds the threshold, so that the
         // cache can be reused if the identical command is executed again.
