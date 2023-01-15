@@ -4,7 +4,6 @@ use crate::stdio_server::job;
 use crate::stdio_server::provider::{Context, ProviderSource};
 use crate::tools::ctags::ProjectCtagsCommand;
 use crate::tools::rg::{RgTokioCommand, RG_EXEC_CMD};
-use crate::utils::count_lines;
 use anyhow::Result;
 use filter::SourceItem;
 use matcher::ClapItem;
@@ -13,6 +12,7 @@ use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+use utils::count_lines;
 
 async fn execute_and_write_cache(
     cmd: &str,

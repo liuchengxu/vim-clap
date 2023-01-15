@@ -11,7 +11,7 @@ mod io;
 mod macros;
 
 pub use self::io::{
-    clap_cache_dir, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
+    count_lines, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
     read_preview_lines, remove_dir_contents,
 };
 

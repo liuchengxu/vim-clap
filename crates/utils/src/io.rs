@@ -1,8 +1,34 @@
 use crate::bytelines::ByteLines;
 use std::fs::{read_dir, remove_dir_all, remove_file, File};
 use std::io::{BufRead, BufReader, Error, ErrorKind, Lines, Read, Result};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use types::PreviewInfo;
+
+/// Counts lines in the source `handle`.
+///
+/// # Examples
+/// ```ignore
+/// let lines: usize = count_lines(std::fs::File::open("Cargo.toml").unwrap()).unwrap();
+/// ```
+///
+/// Credit: https://github.com/eclarke/linecount/blob/master/src/lib.rs
+pub fn count_lines<R: std::io::Read>(handle: R) -> std::io::Result<usize> {
+    let mut reader = std::io::BufReader::with_capacity(1024 * 32, handle);
+    let mut count = 0;
+    loop {
+        let len = {
+            let buf = reader.fill_buf()?;
+            if buf.is_empty() {
+                break;
+            }
+            count += bytecount::count(buf, b'\n');
+            buf.len()
+        };
+        reader.consume(len);
+    }
+
+    Ok(count)
+}
 
 /// Removes all the file and directories under `target_dir`.
 pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
@@ -40,21 +66,6 @@ pub fn read_first_lines<P: AsRef<Path>>(
         .lines()
         .filter_map(|i| i.ok())
         .take(number))
-}
-
-#[inline]
-pub fn clap_cache_dir() -> Result<PathBuf> {
-    if let Some(proj_dirs) = directories::ProjectDirs::from("org", "vim", "Vim Clap") {
-        let cache_dir = proj_dirs.cache_dir();
-        std::fs::create_dir_all(cache_dir)?;
-
-        Ok(cache_dir.to_path_buf())
-    } else {
-        Err(Error::new(
-            ErrorKind::Other,
-            "Couldn't create Vim Clap project directory",
-        ))
-    }
 }
 
 /// Works for utf-8 lines only.
@@ -201,5 +212,11 @@ mod tests {
                 "test_ddd    //hello"
             ]
         );
+    }
+
+    #[test]
+    fn test_count_lines() {
+        let f: &[u8] = b"some text\nwith\nfour\nlines\n";
+        assert_eq!(count_lines(f).unwrap(), 4);
     }
 }

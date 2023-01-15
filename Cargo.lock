@@ -1772,7 +1772,7 @@ dependencies = [
 name = "utils"
 version = "0.1.0"
 dependencies = [
- "directories",
+ "bytecount",
  "memchr",
  "simdutf8",
  "types",

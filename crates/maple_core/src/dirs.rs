@@ -1,5 +1,6 @@
 use directories::{BaseDirs, ProjectDirs};
 use once_cell::sync::Lazy;
+use std::path::PathBuf;
 
 /// Project directory for Vim Clap.
 ///
@@ -11,3 +12,9 @@ pub static PROJECT_DIRS: Lazy<ProjectDirs> = Lazy::new(|| {
 
 pub static BASE_DIRS: Lazy<BaseDirs> =
     Lazy::new(|| BaseDirs::new().expect("Failed to construct BaseDirs"));
+
+pub fn clap_cache_dir() -> std::io::Result<PathBuf> {
+    let cache_dir = PROJECT_DIRS.cache_dir();
+    std::fs::create_dir_all(cache_dir)?;
+    Ok(cache_dir.to_path_buf())
+}

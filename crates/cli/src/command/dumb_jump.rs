@@ -47,7 +47,13 @@ impl DumbJump {
                 extension,
                 dir: cmd_dir,
             };
-            regex_searcher.print_usages(&Default::default())?;
+            let usages = regex_searcher.cli_usages(&Default::default())?;
+            let total = usages.len();
+            let (lines, indices): (Vec<_>, Vec<_>) = usages
+                .into_iter()
+                .map(|usage| (usage.line, usage.indices))
+                .unzip();
+            utils::println_json_with_length!(total, lines, indices);
         } else {
             let cwd = match cmd_dir {
                 Some(cwd) => cwd,

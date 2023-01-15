@@ -260,7 +260,7 @@ impl<'a> CacheableCommand<'a> {
             lines_iter.collect()
         };
 
-        let total = crate::utils::count_lines(std::fs::File::open(&cache_file_path)?)?;
+        let total = utils::count_lines(std::fs::File::open(&cache_file_path)?)?;
 
         // Store the cache file if the total number of items exceeds the threshold, so that the
         // cache can be reused if the identical command is executed again.
