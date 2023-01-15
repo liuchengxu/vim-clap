@@ -7,7 +7,7 @@ mod truncation;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
 use types::MatchedItem;
-use utility::println_json;
+use utils::println_json;
 
 pub use self::truncation::{
     truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,

@@ -4,7 +4,7 @@ use crate::paths::truncate_absolute_path;
 use anyhow::Result;
 use std::path::Path;
 use types::PreviewInfo;
-use utility::{read_first_lines, read_preview_lines};
+use utils::{read_first_lines, read_preview_lines};
 
 #[inline]
 fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {

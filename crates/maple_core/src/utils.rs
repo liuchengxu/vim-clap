@@ -4,7 +4,7 @@ use icon::Icon;
 use std::io::{BufRead, Lines};
 use std::path::Path;
 use subprocess::Exec;
-use utility::{println_json, println_json_with_length, read_first_lines};
+use utils::{println_json, println_json_with_length, read_first_lines};
 
 pub type UtcTime = DateTime<Utc>;
 
@@ -75,24 +75,6 @@ pub fn count_lines<R: std::io::Read>(handle: R) -> std::io::Result<usize> {
 pub fn lines(cmd: Exec) -> Result<Lines<impl BufRead>> {
     // We usually have a decent amount of RAM nowdays.
     Ok(std::io::BufReader::with_capacity(8 * 1024 * 1024, cmd.stream_stdout()?).lines())
-}
-
-/// Returns the width of displaying `n` on the screen.
-///
-/// Same with `n.to_string().len()` but without allocation.
-pub fn display_width(n: usize) -> usize {
-    if n == 0 {
-        return 1;
-    }
-
-    let mut n = n;
-    let mut len = 0;
-    while n > 0 {
-        len += 1;
-        n /= 10;
-    }
-
-    len
 }
 
 #[cfg(test)]

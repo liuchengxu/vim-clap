@@ -39,7 +39,7 @@ matcher = { path = "../matcher" }
 pattern = { path = "../pattern" }
 printer = { path = "../printer" }
 types = { path = "../types" }
-utility = { path = "../utility" }
+utils = { path = "../utils" }
 
 [dev-dependencies]
 git = { package = "git2", version = "0.15" }

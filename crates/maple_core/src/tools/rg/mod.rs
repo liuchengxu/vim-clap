@@ -4,7 +4,6 @@ mod stats;
 
 use crate::cache::Digest;
 use crate::process::ShellCommand;
-use crate::utils::display_width;
 use anyhow::Result;
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
@@ -13,6 +12,7 @@ use std::convert::TryFrom;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
 

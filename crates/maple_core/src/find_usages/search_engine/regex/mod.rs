@@ -92,7 +92,7 @@ impl RegexSearcher {
             .into_iter()
             .map(|usage| (usage.line, usage.indices))
             .unzip();
-        utility::println_json_with_length!(total, lines, indices);
+        utils::println_json_with_length!(total, lines, indices);
         Ok(())
     }
 

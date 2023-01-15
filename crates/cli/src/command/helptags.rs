@@ -3,7 +3,7 @@ use clap::Parser;
 use maple_core::helptags::generate_tag_lines;
 use maple_core::paths::AbsPathBuf;
 use std::io::Write;
-use utility::read_lines;
+use utils::read_lines;
 
 /// Parse and display Vim helptags.
 #[derive(Parser, Debug, Clone)]

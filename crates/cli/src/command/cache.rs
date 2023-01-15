@@ -4,7 +4,7 @@ use maple_core::datastore::CACHE_INFO_IN_MEMORY;
 use std::fs::read_dir;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
-use utility::{clap_cache_dir, remove_dir_contents};
+use utils::{clap_cache_dir, remove_dir_contents};
 
 /// List and remove all the cached contents.
 #[derive(Subcommand, Debug, Clone)]

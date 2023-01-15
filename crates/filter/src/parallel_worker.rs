@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use subprocess::Exec;
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem, Query};
-use utility::println_json_with_length;
+use utils::println_json_with_length;
 
 /// Refresh the top filtered results per 200 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);

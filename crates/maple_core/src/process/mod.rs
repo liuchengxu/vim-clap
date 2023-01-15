@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use utility::{println_json, read_first_lines};
+use utils::{println_json, read_first_lines};
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640
@@ -111,7 +111,7 @@ impl ShellCommand {
     }
 
     pub fn cache_file_path(&self) -> std::io::Result<PathBuf> {
-        let cached_filename = utility::calculate_hash(self);
+        let cached_filename = utils::calculate_hash(self);
         generate_cache_file_path(cached_filename.to_string())
     }
 
@@ -120,7 +120,7 @@ impl ShellCommand {
     pub fn write_cache(self, total: usize, cmd_stdout: &[u8]) -> Result<PathBuf> {
         use std::io::Write;
 
-        let cache_filename = utility::calculate_hash(&self);
+        let cache_filename = utils::calculate_hash(&self);
         let cache_file = generate_cache_file_path(cache_filename.to_string())?;
 
         std::fs::File::create(&cache_file)?.write_all(cmd_stdout)?;

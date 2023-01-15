@@ -9,7 +9,7 @@ use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use types::{ClapItem, MatchedItem, Query, Score};
-use utility::{println_json, println_json_with_length};
+use utils::{println_json, println_json_with_length};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;

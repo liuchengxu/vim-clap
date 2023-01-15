@@ -30,7 +30,7 @@ impl ClapItem for BlinesItem {
     fn match_result_callback(&self, match_result: MatchResult) -> MatchResult {
         let mut match_result = match_result;
         match_result.indices.iter_mut().for_each(|x| {
-            *x += crate::utils::display_width(self.line_number) + 1;
+            *x += utils::display_width(self.line_number) + 1;
         });
         match_result
     }

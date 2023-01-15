@@ -184,7 +184,7 @@ fn filter_usages(
 
     let mut addressable_usages = addressable_usages;
 
-    if *git_tracked_only && utility::is_git_repo(cwd) {
+    if *git_tracked_only && utils::is_git_repo(cwd) {
         let files = addressable_usages
             .iter()
             .map(|x| x.path.as_str())

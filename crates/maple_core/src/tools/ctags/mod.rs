@@ -172,7 +172,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     /// The file path of generated tags is determined by the hash of command itself.
     pub fn tags_path(&self) -> PathBuf {
         let mut tags_path = CTAGS_TAGS_DIR.deref().clone();
-        tags_path.push(utility::calculate_hash(self).to_string());
+        tags_path.push(utils::calculate_hash(self).to_string());
         tags_path
     }
 

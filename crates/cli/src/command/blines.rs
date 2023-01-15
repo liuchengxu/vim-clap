@@ -3,7 +3,6 @@ use anyhow::Result;
 use clap::Parser;
 use filter::SequentialSource;
 use maple_core::paths::AbsPathBuf;
-use maple_core::utils::display_width;
 use matcher::{Bonus, MatchResult};
 use rayon::iter::ParallelBridge;
 use std::borrow::Cow;
@@ -11,6 +10,7 @@ use std::io::BufRead;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use types::ClapItem;
+use utils::display_width;
 
 /// Fuzzy filter the current vim buffer given the query.
 #[derive(Parser, Debug, Clone)]
