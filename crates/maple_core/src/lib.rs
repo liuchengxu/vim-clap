@@ -15,3 +15,7 @@ pub mod utils;
 
 /// For benchmarks.
 pub use self::cache::find_largest_cache_digest;
+
+use chrono::{DateTime, Utc};
+
+pub type UtcTime = DateTime<Utc>;

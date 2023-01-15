@@ -207,14 +207,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_prebuilt_binary() {
-        for _i in 0..10 {
+        for _i in 0..20 {
             if let Ok(latest_tag) = retrieve_latest_release().await.map(|r| r.tag_name) {
                 download_prebuilt_binary(&latest_tag, true)
                     .await
                     .expect("Failed to download the prebuilt binary into a tempfile");
                 return;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         }
         panic!("Failed to download the prebuilt binary of latest release");
     }

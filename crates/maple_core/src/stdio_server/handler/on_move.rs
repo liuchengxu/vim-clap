@@ -1,18 +1,18 @@
 use crate::paths::truncate_absolute_path;
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
+use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
-use crate::utils::display_width;
 use anyhow::{anyhow, Result};
 use pattern::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
-use types::PreviewInfo;
+use utils::display_width;
 
 /// Preview content.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -345,8 +345,8 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        match utility::read_preview_lines(path, lnum, self.preview_height) {
-            Ok(PreviewInfo {
+        match get_file_preview(path, lnum, self.preview_height) {
+            Ok(FilePreview {
                 lines,
                 highlight_lnum,
                 start,
@@ -458,7 +458,7 @@ impl<'a> CachedPreviewImpl<'a> {
                     tracing::debug!(?latest_line, ?cache_line, "The cache is probably outdated");
 
                     let shell_cmd = crate::tools::rg::rg_shell_command(&self.ctx.cwd);
-                    let job_id = utility::calculate_hash(&shell_cmd);
+                    let job_id = utils::calculate_hash(&shell_cmd);
 
                     if job::reserve(job_id) {
                         let ctx = self.ctx.clone();

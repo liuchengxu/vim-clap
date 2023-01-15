@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use utility::read_lines;
+use utils::read_lines;
 
 #[inline]
 fn strip_trailing_slash(x: &str) -> Cow<str> {

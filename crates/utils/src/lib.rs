@@ -1,4 +1,4 @@
-//! Various utility functions for caching and file management.
+//! Various utils functions for caching and file management.
 
 use std::collections::hash_map::DefaultHasher;
 use std::ffi::OsStr;
@@ -11,9 +11,27 @@ mod io;
 mod macros;
 
 pub use self::io::{
-    clap_cache_dir, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
-    read_preview_lines, remove_dir_contents,
+    count_lines, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
+    remove_dir_contents,
 };
+
+/// Returns the width of displaying `n` on the screen.
+///
+/// Same with `n.to_string().len()` but without allocation.
+pub fn display_width(n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+
+    let mut n = n;
+    let mut len = 0;
+    while n > 0 {
+        len += 1;
+        n /= 10;
+    }
+
+    len
+}
 
 /// Returns true if the `dir` is a git repo, including git submodule.
 pub fn is_git_repo(dir: &Path) -> bool {

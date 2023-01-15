@@ -210,7 +210,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "types",
- "utility",
+ "utils",
 ]
 
 [[package]]
@@ -406,7 +406,7 @@ dependencies = [
  "subprocess",
  "tracing",
  "types",
- "utility",
+ "utils",
 ]
 
 [[package]]
@@ -931,7 +931,7 @@ dependencies = [
  "toml",
  "tracing",
  "types",
- "utility",
+ "utils",
 ]
 
 [[package]]
@@ -1114,7 +1114,7 @@ dependencies = [
  "serde_json",
  "types",
  "unicode-width",
- "utility",
+ "utils",
 ]
 
 [[package]]
@@ -1769,10 +1769,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "utility"
+name = "utils"
 version = "0.1.0"
 dependencies = [
- "directories",
+ "bytecount",
  "memchr",
  "simdutf8",
  "types",

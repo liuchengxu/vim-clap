@@ -11,6 +11,6 @@ members = [
     "pattern",
     "printer",
     "types",
-    "utility",
+    "utils",
     "upgrade",
 ]

@@ -1,11 +1,11 @@
 use crate::app::Args;
+use crate::{send_response_from_cache, SendResponse};
 use anyhow::Result;
 use clap::Parser;
 use maple_core::process::CacheableCommand;
 use maple_core::tools::rg::{rg_command, rg_shell_command};
-use maple_core::utils::{send_response_from_cache, SendResponse};
 use std::path::PathBuf;
-use utility::is_git_repo;
+use utils::is_git_repo;
 
 #[derive(Parser, Debug, Clone)]
 pub struct RipGrepForerunner {

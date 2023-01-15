@@ -96,7 +96,7 @@ fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) ->
 
 fn write_json<T: serde::Serialize, P: AsRef<Path>>(obj: T, path: Option<P>) -> std::io::Result<()> {
     if let Some(json_path) = path.as_ref() {
-        utility::create_or_overwrite(json_path, serde_json::to_string(&obj)?.as_bytes())?;
+        utils::create_or_overwrite(json_path, serde_json::to_string(&obj)?.as_bytes())?;
     }
 
     Ok(())

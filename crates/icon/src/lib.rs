@@ -16,8 +16,14 @@ pub const DEFAULT_ICON: IconType = '';
 pub const FOLDER_ICON: IconType = '';
 pub const DEFAULT_FILER_ICON: IconType = '';
 
-// Each added icon length is 4 bytes.
-pub const ICON_LEN: usize = 4;
+/// Patched icon length in chars.
+///
+/// One char icon plus one space.
+///
+/// Matcher returns the indices in chars, but both Vim and Neovim add highlights
+/// using the byte index, hence printer converts the char indices to the byte indices
+/// before sending the final result to Vim/Neovim.
+pub const ICON_CHAR_LEN: usize = 2;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Icon {
@@ -108,7 +114,8 @@ impl IconKind {
 
 /// Return appropriate icon for the path. If no icon matched, return the specified default one.
 ///
-/// Try matching the exactmatch map against the file name, and then the extension map.
+/// First try matching the [`EXACTMATCH_ICON_TABLE`] using the file name, and then finding the
+/// [`EXTENSION_ICON_TABLE`] using the file extension.
 #[inline]
 pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
     path.as_ref()
@@ -130,6 +137,20 @@ pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
         })
 }
 
+fn buffer_tags_icon(line: &str) -> IconType {
+    pattern::extract_buffer_tags_kind(line)
+        .map(tags_kind_icon)
+        .unwrap_or(DEFAULT_ICON)
+}
+
+fn proj_tags_icon(line: &str) -> IconType {
+    pattern::extract_proj_tags_kind(line)
+        .and_then(|kind| {
+            bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
+        })
+        .unwrap_or(DEFAULT_ICON)
+}
+
 pub fn file_icon(line: &str) -> IconType {
     get_icon_or(Path::new(line), DEFAULT_ICON)
 }
@@ -137,12 +158,6 @@ pub fn file_icon(line: &str) -> IconType {
 pub fn tags_kind_icon(kind: &str) -> IconType {
     bsearch_icon_table(kind, TAGKIND_ICON_TABLE)
         .map(|idx| TAGKIND_ICON_TABLE[idx].1)
-        .unwrap_or(DEFAULT_ICON)
-}
-
-fn buffer_tags_icon(line: &str) -> IconType {
-    pattern::extract_buffer_tags_kind(line)
-        .map(tags_kind_icon)
         .unwrap_or(DEFAULT_ICON)
 }
 
@@ -157,14 +172,6 @@ pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
 
 pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: impl Display) -> String {
     format!("{} {}", filer_icon(path), line)
-}
-
-fn proj_tags_icon(line: &str) -> IconType {
-    pattern::extract_proj_tags_kind(line)
-        .and_then(|kind| {
-            bsearch_icon_table(kind, TAGKIND_ICON_TABLE).map(|idx| TAGKIND_ICON_TABLE[idx].1)
-        })
-        .unwrap_or(DEFAULT_ICON)
 }
 
 #[inline]
@@ -195,7 +202,9 @@ mod tests {
         for table in [EXTENSION_ICON_TABLE, EXACTMATCH_ICON_TABLE].iter() {
             for (_, i) in table.iter() {
                 let icon = format!("{i} ");
+                // 4 bytes, 2 chars.
                 assert_eq!(icon.len(), 4);
+                assert_eq!(icon.chars().count(), 2);
             }
         }
     }

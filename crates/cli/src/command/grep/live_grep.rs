@@ -104,10 +104,10 @@ impl LiveGrep {
         );
 
         if truncated_map.is_empty() {
-            utility::println_json!(total, lines, indices);
+            utils::println_json!(total, lines, indices);
         } else {
             let icon_added = enable_icon;
-            utility::println_json!(total, lines, indices, truncated_map, icon_added);
+            utils::println_json!(total, lines, indices, truncated_map, icon_added);
         }
 
         Ok(())
