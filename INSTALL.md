@@ -45,19 +45,11 @@ If you want to use the advanced built-in fuzzy match filter which uses the [fzy 
 
 ### `Rust`
 
-If you have installed Rust on your system, specifically, `cargo` executable exists, you can build the extra tools for a performant and nicer vim-clap using this single command `:call clap#installer#build_all()`.
-
-If you are using macOS or Linux, building the Rust deps is very convenient, just go to the clap plugin directory and run `make`.
-
 #### `maple` binary
 
-`maple` mainly serves two functions:
+If you have installed Rust on your system, specifically, `cargo` executable exists, use this single command `:call clap#installer#build_maple()` from Vim.
 
-1. Expose the fuzzy matched indices so that the matched elements can be highlighted in vim-clap, being a tiny wrapper of external fuzzy filter [fzf](https://github.com/junegunn/fzf) and [fzy](https://github.com/jhawthorn/fzy). Once you installed `maple`, fzy/skim binary are unneeded as `maple` does not rely the binary directly but reuses their filter algorithm internally.
-
-2. Reduce the overhead of async job of Vim/NeoVim dramastically.
-
-To install `maple` you can use the installer function and run `:call clap#installer#build_maple()`, or install it manually:
+If you are using macOS or Linux, building the Rust binary is very convenient, just go to the clap plugin directory and run `make`. Or you can run the `cargo` command on your own:
 
 ```bash
 cd path/to/vim-clap

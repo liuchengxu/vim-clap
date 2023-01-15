@@ -37,14 +37,27 @@ endfunction
 function! clap#debugging#info() abort
   let third_party_providers = string(s:get_third_party_providers())
   let global_variables = s:get_global_variables()
+
+  echohl Type   | echo '            has ctags: '                | echohl NONE
+  if executable('ctags')
+    let ctags_version = split(split(system('ctags --version'), '\n')[0], ',')[0]
+    let support_json_format = !empty(filter(systemlist('ctags --list-features'), 'v:val =~# ''^json'''))
+    let json_support = support_json_format ? ' (+json)' : ' (-json)'
+    echohl Normal | echon ctags_version.json_support    | echohl NONE
+  else
+    echohl Normal | echon 'ctags not found'    | echohl NONE
+  endif
+
   echohl Type   | echo '            has cargo: ' | echohl NONE
   echohl Normal | echon executable('cargo')      | echohl NONE
 
   let maple_binary = clap#maple#binary()
-  echohl Type   | echo '            has maple: ' | echohl NONE
-  echohl Normal | echon maple_binary             | echohl NONE
+  if maple_binary is v:null
+    echohl Type   | echo '            has maple: 0' | echohl NONE
+  else
+    echohl Type   | echo '            has maple: ' | echohl NONE
+    echohl Normal | echon maple_binary             | echohl NONE
 
-  if maple_binary isnot v:null
     echohl Type | echo '           maple info: ' | echohl NONE
     " Note: maple_binary has to be quoted, otherwise error happens when the path contains spaces.
     let maple_version = system(printf('"%s" version', maple_binary))
@@ -55,35 +68,10 @@ function! clap#debugging#info() abort
     endif
   endif
 
-  echohl Type   | echo '         has +python3: ' | echohl NONE
-  echohl Normal | echon has('python3')           | echohl NONE
-
-  echohl Type   | echo 'has py dynamic module: '                | echohl NONE
-  try
-    echohl Normal | echon clap#legacy#filter#sync#python#has_dynamic_module() | echohl NONE
-  catch
-    echohl Normal | echon 'ERROR: '.v:exception | echohl NONE
-  endtry
-
-  echohl Type   | echo '            has ctags: '                | echohl NONE
-  if executable('ctags')
-    if clap#provider#proj_tags#support_json_format()
-      echohl Normal | echon 'ctags with JSON output support'    | echohl NONE
-    else
-      echohl Normal | echon 'ctags without JSON output support' | echohl NONE
-    endif
-  else
-    echohl Normal | echon 'ctags not found'    | echohl NONE
-  endif
-
   if executable('rustc')
-    echohl Type   | echo '        rustc version: ' | echohl NONE
-    let rustc_version = system('rustc --version')
-    echohl Normal | echon rustc_version            | echohl NONE
+    echohl Type   | echo '        rustc version: '  | echohl NONE
+    echohl Normal | echon system('rustc --version') | echohl NONE
   endif
-
-  echohl Type   | echo '    Current sync impl: '   | echohl NONE
-  echohl Normal | echon clap#legacy#filter#current_impl() | echohl NONE
 
   echohl Type   | echo '     Current FileType: ' | echohl NONE
   echohl Normal | echon &filetype                | echohl NONE

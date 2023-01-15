@@ -1,6 +1,8 @@
 use clap::{AppSettings, Parser};
 use cli::{Args, RunCmd};
 
+const BUILD_TIME: &str = include!(concat!(env!("OUT_DIR"), "/compiled_at.txt"));
+
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
@@ -44,9 +46,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match maple.cmd {
         Cmd::Version => {
             println!(
-                "version {}{}, built for {} by {}.",
+                "version {}{}, compiled at: {}, built for {} by {}.",
                 built_info::PKG_VERSION,
                 built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+                BUILD_TIME,
                 built_info::TARGET,
                 built_info::RUSTC_VERSION
             );

@@ -62,6 +62,7 @@ else
   let s:maple_cargo_toml = s:plugin_root_dir.'/Cargo.toml'
 endif
 
+" Deprecated since v0.38, the maple binary is sufficient for everything.
 function! clap#installer#build_python_dynamic_module() abort
   if !has('python3')
     call clap#helper#echo_info('+python3 is required, skip building the Python dynamic module.')
@@ -78,15 +79,7 @@ function! clap#installer#build_python_dynamic_module() abort
   endif
 endfunction
 
-function! clap#installer#build_maple() abort
-  if executable('cargo')
-    let cmd = 'cargo build --release'
-    call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully', {-> clap#helper#echo_warn('build maple failed')})
-  else
-    call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
-  endif
-endfunction
-
+" Deprecated since v0.38, `clap#installer#build_maple` is enough.
 function! clap#installer#build_all(...) abort
   if executable('cargo')
     " If Rust nightly and +python3 is unavailable, build the maple only.
@@ -105,6 +98,15 @@ function! clap#installer#build_all(...) abort
     endif
   else
     call clap#helper#echo_warn('cargo not found, skip building maple binary and Python dynamic module.')
+  endif
+endfunction
+
+function! clap#installer#build_maple() abort
+  if executable('cargo')
+    let cmd = 'cargo build --release'
+    call s:run_term(cmd, s:plugin_root_dir, 'built maple binary successfully', {-> clap#helper#echo_warn('build maple failed')})
+  else
+    call clap#helper#echo_error('Can not build maple binary in that cargo is not found.')
   endif
 endfunction
 
@@ -150,7 +152,7 @@ function! clap#installer#install(try_download) abort
 
   " Always prefer to compile it locally.
   if executable('cargo')
-    call clap#installer#build_all()
+    call clap#installer#build_maple()
   " People are willing to use the prebuilt binary
   elseif a:try_download
     call s:do_download()

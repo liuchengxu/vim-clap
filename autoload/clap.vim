@@ -82,9 +82,6 @@ let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
 
-" Do not use this unless you know what you are doing!!!
-let g:__clap_development = get(g:, '__clap_development', v:false)
-
 let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 
 function! clap#builtin_providers() abort
@@ -158,6 +155,7 @@ function! clap#_exit() abort
 
   noautocmd call g:clap.close_win()
   call g:clap.preview.clear()
+  call g:clap.display.matchdelete()
 
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1

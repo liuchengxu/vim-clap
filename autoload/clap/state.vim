@@ -57,7 +57,7 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 
   if has_key(decoded, 'indices')
     try
-      call clap#highlight#add_fuzzy_async_with_delay(decoded.indices)
+      call clap#highlight#add_highlights_with_delay(decoded.indices)
     catch
       return
     endtry
@@ -71,7 +71,7 @@ endfunction
 function! clap#state#process_progress_full(display_lines, matched, processed) abort
   call clap#indicator#set('['.a:matched.'/'.a:processed.']')
   call g:clap.display.set_lines(a:display_lines.lines)
-  call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  call clap#highlight#add_highlights_with_delay(a:display_lines.indices)
   let g:__clap_icon_added_by_maple = a:display_lines.icon_added
   if !empty(a:display_lines.truncated_map)
     let g:__clap_lines_truncated_map = a:display_lines.truncated_map
@@ -121,7 +121,7 @@ function! clap#state#process_response_on_typed(result) abort
   endif
 
   call g:clap.display.set_lines(a:result.lines)
-  call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
+  call clap#highlight#add_highlights_with_delay(a:result.indices)
   call clap#preview#update_with_delay()
   call clap#sign#ensure_exists()
 
