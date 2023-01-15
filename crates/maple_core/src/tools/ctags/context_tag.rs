@@ -1,7 +1,7 @@
 use super::BufferTag;
 use crate::tools::ctags::CTAGS_HAS_JSON_FEATURE;
-use anyhow::Result;
 use rayon::prelude::*;
+use std::io::Result;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::Stdio;

@@ -15,10 +15,10 @@ use self::definition::{definitions_and_references, DefinitionSearchResult, Match
 use self::executable_searcher::{LanguageRegexSearcher, WordRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::rg::{get_language, Match, Word};
-use anyhow::Result;
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::io::Result;
 use std::path::PathBuf;
 
 /// [`Usage`] with some structured information.
@@ -96,14 +96,21 @@ impl RegexSearcher {
         &self,
         classify: bool,
         usage_matcher: &UsageMatcher,
-    ) -> Result<Vec<AddressableUsage>> {
+    ) -> std::io::Result<Vec<AddressableUsage>> {
         let Self {
             word,
             extension,
             dir,
         } = self;
 
-        let word = Word::new(word.clone())?;
+        let re = regex::Regex::new(&format!("\\b{word}\\b")).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("{word} is an invalid regex expression: {e}"),
+            )
+        })?;
+
+        let word = Word::new(word.clone(), re);
 
         let lang = match get_language(extension) {
             Some(lang) => lang,

@@ -6,7 +6,6 @@ use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
-use anyhow::{anyhow, Result};
 use pattern::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -53,11 +52,17 @@ impl PreviewTarget {
     }
 }
 
-fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget, Option<String>)> {
+fn parse_preview_target(
+    curline: String,
+    ctx: &Context,
+) -> std::io::Result<(PreviewTarget, Option<String>)> {
     let err = || {
-        anyhow!(
-            "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
-            ctx.provider_id()
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
+                ctx.provider_id()
+            ),
         )
     };
 
@@ -90,7 +95,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
                 let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
                 let path = ctx.cwd.join(fpath);
 
-                Ok::<_, anyhow::Error>((path, lnum))
+                Ok::<_, std::io::Error>((path, lnum))
             };
 
             let (path, line_number) = try_extract_file_path(&curline)?;
@@ -123,9 +128,12 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             PreviewTarget::Commit(rev.into())
         }
         unknown_provider_id => {
-            return Err(anyhow!(
-                "Failed to parse PreviewTarget, you probably forget to \
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Failed to parse PreviewTarget, you probably forget to \
                     add an implementation for this provider: {unknown_provider_id}",
+                ),
             ))
         }
     };
@@ -160,7 +168,7 @@ pub struct CachedPreviewImpl<'a> {
 }
 
 impl<'a> CachedPreviewImpl<'a> {
-    pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> Result<Self> {
+    pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> std::io::Result<Self> {
         let (preview_target, cache_line) = parse_preview_target(curline, ctx)?;
 
         Ok(Self {
@@ -171,7 +179,7 @@ impl<'a> CachedPreviewImpl<'a> {
         })
     }
 
-    pub async fn get_preview(&self) -> Result<Preview> {
+    pub async fn get_preview(&self) -> std::io::Result<Preview> {
         if let Some(preview) = self.ctx.cached_preview(&self.preview_target) {
             return Ok(preview);
         }

@@ -4,7 +4,6 @@ use super::{QueryType, Symbol};
 use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::process::subprocess::exec;
 use crate::tools::ctags::TagsGenerator;
-use anyhow::Result;
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::hash::Hash;
@@ -43,7 +42,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         usage_matcher: &UsageMatcher,
         query_type: QueryType,
         force_generate: bool,
-    ) -> Result<Vec<AddressableUsage>> {
+    ) -> std::io::Result<Vec<AddressableUsage>> {
         let ignorecase = keyword.chars().all(char::is_lowercase);
 
         // TODO: reorder the ctags results similar to gtags.
@@ -98,7 +97,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         query: &str,
         query_type: QueryType,
         force_generate: bool,
-    ) -> Result<impl Iterator<Item = Symbol>> {
+    ) -> std::io::Result<impl Iterator<Item = Symbol>> {
         if force_generate || !self.tags_exists() {
             self.generate_tags()?;
         }

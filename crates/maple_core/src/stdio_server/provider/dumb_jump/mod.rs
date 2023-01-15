@@ -328,8 +328,9 @@ impl ClapProvider for DumbJumpProvider {
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_height = ctx.preview_height().await?;
-        let preview_impl = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?;
-        let preview = preview_impl.get_preview().await?;
+        let preview = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?
+            .get_preview()
+            .await?;
 
         let current_input = ctx.vim.input_get().await?;
         let current_lnum = ctx.vim.display_getcurlnum().await?;
@@ -372,11 +373,10 @@ impl ClapProvider for DumbJumpProvider {
         }
 
         let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
-        let extension = ctx.start_buffer_extension()?;
         let searching_worker = SearchingWorker {
             cwd,
             query_info: query_info.clone(),
-            source_file_extension: extension,
+            source_file_extension: ctx.start_buffer_extension()?,
         };
         self.cached_results = self
             .start_search(searching_worker, query, query_info, ctx)

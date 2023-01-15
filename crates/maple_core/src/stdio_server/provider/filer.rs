@@ -227,8 +227,7 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let mut matched_items =
-            filter::par_filter_items(current_items, &ctx.matcher_builder().build(query.into()));
+        let mut matched_items = filter::par_filter_items(current_items, &ctx.matcher(query));
         let total = matched_items.len();
 
         matched_items.truncate(200);

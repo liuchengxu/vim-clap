@@ -51,13 +51,12 @@ pub struct Word {
 }
 
 impl Word {
-    pub fn new(word: String) -> Result<Word> {
-        let re = regex::Regex::new(&format!("\\b{word}\\b"))?;
-        Ok(Self {
-            len: word.len(),
-            raw: word,
+    pub fn new(re_word: String, re: regex::Regex) -> Word {
+        Self {
+            len: re_word.len(),
+            raw: re_word,
             re,
-        })
+        }
     }
 
     pub fn find(&self, line: &str) -> Option<usize> {

@@ -5,7 +5,6 @@ mod project_tag;
 use crate::dirs::PROJECT_DIRS;
 use crate::paths::AbsPathBuf;
 use crate::process::ShellCommand;
-use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -266,20 +265,26 @@ impl ProjectCtagsCommand {
         })
     }
 
-    pub fn stdout(&mut self) -> Result<Vec<u8>> {
+    pub fn stdout(&mut self) -> std::io::Result<Vec<u8>> {
         let stdout = self.std_cmd.output()?.stdout;
         Ok(stdout)
     }
 
     /// Returns an iterator of raw line of ctags output.
-    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
+    fn lines(&self) -> std::io::Result<impl Iterator<Item = String>> {
         let exec_cmd = Exec::cmd(self.std_cmd.get_program())
             .args(self.std_cmd.get_args().collect::<Vec<_>>().as_slice());
-        Ok(BufReader::new(exec_cmd.stream_stdout()?).lines().flatten())
+        Ok(BufReader::new(
+            exec_cmd
+                .stream_stdout()
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?,
+        )
+        .lines()
+        .flatten())
     }
 
     /// Returns an iterator of tag line in a formatted form.
-    fn formatted_tags_iter(&self) -> Result<impl Iterator<Item = String>> {
+    fn formatted_tags_iter(&self) -> std::io::Result<impl Iterator<Item = String>> {
         Ok(self.lines()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
                 Some(tag.format_proj_tag())
@@ -289,7 +294,7 @@ impl ProjectCtagsCommand {
         }))
     }
 
-    pub fn tag_item_iter(&self) -> Result<impl Iterator<Item = ProjectTagItem>> {
+    pub fn tag_item_iter(&self) -> std::io::Result<impl Iterator<Item = ProjectTagItem>> {
         Ok(self.lines()?.filter_map(|tag| {
             if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
                 Some(tag.into_project_tag_item())
@@ -308,7 +313,7 @@ impl ProjectCtagsCommand {
 
     /// Runs the command and writes the cache to the disk.
     #[allow(unused)]
-    fn create_cache(&self) -> Result<(usize, PathBuf)> {
+    fn create_cache(&self) -> std::io::Result<(usize, PathBuf)> {
         let mut total = 0usize;
         let mut formatted_tags_iter = self.formatted_tags_iter()?.map(|x| {
             total += 1;
@@ -325,7 +330,7 @@ impl ProjectCtagsCommand {
     }
 
     /// Parallel version of [`create_cache`].
-    pub fn par_create_cache(&mut self) -> Result<(usize, PathBuf)> {
+    pub fn par_create_cache(&mut self) -> std::io::Result<(usize, PathBuf)> {
         // TODO: do not store all the output in memory and redirect them to a file directly.
         let lines = self.par_formatted_lines()?;
         let total = lines.len();
@@ -339,7 +344,7 @@ impl ProjectCtagsCommand {
         Ok((total, cache_path))
     }
 
-    pub async fn execute_and_write_cache(mut self) -> Result<Vec<String>> {
+    pub async fn execute_and_write_cache(mut self) -> std::io::Result<Vec<String>> {
         let lines = self.par_formatted_lines()?;
 
         {

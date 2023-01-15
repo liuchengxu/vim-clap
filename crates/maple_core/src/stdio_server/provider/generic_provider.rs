@@ -194,10 +194,7 @@ impl ClapProvider for GenericProvider {
 
         let quick_response =
             if let ProviderSource::Small { ref items, .. } = *ctx.provider_source.read() {
-                let matched_items = filter::par_filter_items(
-                    items,
-                    &ctx.env.matcher_builder.clone().build(query.clone().into()),
-                );
+                let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
                     lines,

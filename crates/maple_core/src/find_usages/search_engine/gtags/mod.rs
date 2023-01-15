@@ -2,9 +2,9 @@ use super::Symbol;
 use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::process::subprocess::exec;
 use crate::tools::gtags::GTAGS_DIR;
-use anyhow::{anyhow, Result};
 use dumb_analyzer::resolve_reference_kind;
 use rayon::prelude::*;
+use std::io::{Error, ErrorKind, Result};
 use std::path::{PathBuf, MAIN_SEPARATOR};
 use subprocess::Exec;
 
@@ -69,12 +69,14 @@ impl GtagsSearcher {
             .env("GTAGSLABEL", "native-pygments")
             .cwd(&self.project_root)
             .arg(&self.db_path)
-            .join()?;
+            .join()
+            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to run gtags: {e:?}")))?;
         if exit_status.success() {
             Ok(())
         } else {
-            Err(anyhow!(
-                "Creating gtags failed, exit_status: {exit_status:?}"
+            Err(Error::new(
+                ErrorKind::Other,
+                format!("Creating gtags failed, exit_status: {exit_status:?}"),
             ))
         }
     }
@@ -87,13 +89,15 @@ impl GtagsSearcher {
             .env("GTAGSLABEL", "native-pygments")
             .cwd(&self.project_root)
             .arg("--update")
-            .join()?;
+            .join()
+            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to update gtags: {e:?}")))?;
 
         if exit_status.success() {
             Ok(())
         } else {
-            Err(anyhow!(
-                "Updating gtags failed, exit_status: {exit_status:?}"
+            Err(Error::new(
+                ErrorKind::Other,
+                format!("Updating gtags failed, exit_status: {exit_status:?}"),
             ))
         }
     }

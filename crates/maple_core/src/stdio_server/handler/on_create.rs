@@ -17,7 +17,7 @@ use utils::count_lines;
 async fn execute_and_write_cache(
     cmd: &str,
     cache_file: std::path::PathBuf,
-) -> Result<ProviderSource> {
+) -> std::io::Result<ProviderSource> {
     // Can not use subprocess::Exec::shell here.
     //
     // Must use TokioCommand otherwise the timeout may not work.

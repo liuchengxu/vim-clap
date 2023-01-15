@@ -1,6 +1,5 @@
 use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
-use anyhow::Result;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
 use std::borrow::Cow;
@@ -47,7 +46,7 @@ fn search_lines(
     matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
     item_sender: UnboundedSender<SearcherMessage>,
-) -> Result<()> {
+) -> std::io::Result<()> {
     let source_file = std::fs::File::open(source_file)?;
 
     let index = AtomicUsize::new(0);
