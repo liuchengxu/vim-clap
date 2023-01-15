@@ -183,3 +183,32 @@ pub fn preview_file_at<P: AsRef<Path>>(
 
     Ok((lines, highlight_lnum))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_preview_contains_multi_byte() {
+        let test_txt = std::env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("test")
+            .join("testdata")
+            .join("test_673.txt");
+        let FilePreview { lines, .. } = get_file_preview(test_txt, 2, 10).unwrap();
+        assert_eq!(
+            lines,
+            [
+                "test_ddd",
+                "test_ddd    //1����ˤ��ϡ�����1",
+                "test_ddd    //2����ˤ��ϡ�����2",
+                "test_ddd    //3����ˤ��ϡ�����3",
+                "test_ddd    //hello"
+            ]
+        );
+    }
+}

@@ -127,23 +127,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_multi_byte_reading() {
-        let mut current_dir = std::env::current_dir().unwrap();
-        current_dir.push("test_673.txt");
-        let FilePreview { lines, .. } = get_file_preview(current_dir, 2, 10).unwrap();
-        assert_eq!(
-            lines,
-            [
-                "test_ddd",
-                "test_ddd    //1����ˤ��ϡ�����1",
-                "test_ddd    //2����ˤ��ϡ�����2",
-                "test_ddd    //3����ˤ��ϡ�����3",
-                "test_ddd    //hello"
-            ]
-        );
-    }
-
-    #[test]
     fn test_count_lines() {
         let f: &[u8] = b"some text\nwith\nfour\nlines\n";
         assert_eq!(count_lines(f).unwrap(), 4);
