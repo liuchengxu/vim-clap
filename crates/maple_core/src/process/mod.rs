@@ -1,3 +1,4 @@
+pub mod subprocess;
 pub mod tokio;
 
 use crate::cache::{push_cache_digest, Digest};

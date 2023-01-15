@@ -165,7 +165,7 @@ fn collect_buffer_tags(
 ) -> Result<(Vec<BufferTag>, usize)> {
     let max_name_len = AtomicUsize::new(0);
 
-    let tags = crate::utils::lines(cmd)?
+    let tags = crate::process::subprocess::exec(cmd)?
         .flatten()
         .par_bridge()
         .filter_map(|s| {
@@ -185,7 +185,7 @@ fn collect_superset_context_tags(
     parse_tag: impl Fn(&str) -> Option<BufferTag> + Send + Sync,
     target_lnum: usize,
 ) -> Result<Vec<BufferTag>> {
-    let mut tags = crate::utils::lines(cmd)?
+    let mut tags = crate::process::subprocess::exec(cmd)?
         .flatten()
         .par_bridge()
         .filter_map(|s| parse_tag(&s))
