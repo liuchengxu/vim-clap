@@ -2,7 +2,7 @@
 
 use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
 use anyhow::Result;
-use icon::{Icon, ICON_LEN};
+use icon::Icon;
 use printer::DisplayLines;
 use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
@@ -155,14 +155,9 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let matched_item = std::ops::Index::index(buffer, idx);
-                    let text = if let Some(icon_kind) = self.icon.icon_kind() {
-                        indices.push(matched_item.shifted_indices(ICON_LEN));
-                        icon_kind.add_icon_to_text(matched_item.display_text())
-                    } else {
-                        indices.push(matched_item.indices.clone());
-                        matched_item.display_text().into()
-                    };
-                    lines.push(text);
+                    let (line, line_indices) = printer::decorate_line(matched_item, self.icon);
+                    indices.push(line_indices);
+                    lines.push(line);
                 }
 
                 let total = self.total;
