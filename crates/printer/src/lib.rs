@@ -4,7 +4,7 @@
 mod trimmer;
 mod truncation;
 
-use icon::{Icon, ICON_LEN};
+use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
 use types::MatchedItem;
 use utility::println_json;
@@ -75,7 +75,7 @@ pub fn decorate_line(matched_item: &MatchedItem, icon: Icon) -> (String, Vec<usi
     if let Some(icon_kind) = icon.icon_kind() {
         (
             icon_kind.add_icon_to_text(matched_item.display_text()),
-            matched_item.shifted_indices(ICON_LEN),
+            matched_item.shifted_indices(ICON_CHAR_LEN),
         )
     } else {
         (
@@ -109,7 +109,7 @@ pub fn decorate_lines(
                 } else {
                     icon_kind.add_icon_to_text(&display_text)
                 };
-                let (line, indices) = (iconized, matched_item.shifted_indices(ICON_LEN));
+                let (line, indices) = (iconized, matched_item.shifted_indices(ICON_CHAR_LEN));
                 let indices = char_indices_to_byte_indices(&line, &indices);
                 (line, indices)
             })
@@ -314,6 +314,15 @@ pub(crate) mod tests {
         let line = "1 # 存储项目";
         let char_pos = vec![4, 5];
         let expected_byte_pos = vec![4, 7];
+
+        assert_eq!(
+            expected_byte_pos,
+            char_indices_to_byte_indices(line, &char_pos)
+        );
+
+        let line = "abcdefg";
+        let char_pos = vec![4, 5];
+        let expected_byte_pos = vec![4, 5];
 
         assert_eq!(
             expected_byte_pos,
