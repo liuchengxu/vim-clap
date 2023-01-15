@@ -5,11 +5,12 @@ use crate::cache::{push_cache_digest, Digest};
 use crate::datastore::{generate_cache_file_path, CACHE_INFO_IN_MEMORY};
 use anyhow::Result;
 use icon::Icon;
+use printer::println_json;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use utils::{println_json, read_first_lines};
+use utils::read_first_lines;
 
 // TODO: make it configurable so that it can support powershell easier?
 // https://github.com/liuchengxu/vim-clap/issues/640

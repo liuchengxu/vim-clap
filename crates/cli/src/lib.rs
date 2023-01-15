@@ -5,8 +5,9 @@ pub mod command;
 pub use app::{Args, RunCmd};
 
 use icon::Icon;
+use printer::{println_json, println_json_with_length};
 use std::path::Path;
-use utils::{println_json, println_json_with_length, read_first_lines};
+use utils::read_first_lines;
 
 #[derive(Debug, Clone)]
 #[allow(unused)]
@@ -37,7 +38,7 @@ pub fn send_response_from_cache(
         }
     } else {
         match response_ty {
-            SendResponse::Json => utils::println_json!(total, tempfile, using_cache),
+            SendResponse::Json => println_json!(total, tempfile, using_cache),
             SendResponse::JsonWithContentLength => {
                 println_json_with_length!(total, tempfile, using_cache)
             }

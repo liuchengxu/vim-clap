@@ -3,13 +3,12 @@
 use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
 use anyhow::Result;
 use icon::Icon;
-use printer::DisplayLines;
+use printer::{println_json, println_json_with_length, DisplayLines};
 use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use types::{ClapItem, MatchedItem, Query, Score};
-use utils::{println_json, println_json_with_length};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;

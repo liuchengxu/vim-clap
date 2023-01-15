@@ -4,7 +4,7 @@ use crate::{to_clap_item, FilterContext};
 use anyhow::Result;
 use icon::Icon;
 use parking_lot::Mutex;
-use printer::DisplayLines;
+use printer::{println_json_with_length, DisplayLines};
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
@@ -14,7 +14,6 @@ use std::time::{Duration, Instant};
 use subprocess::Exec;
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem, Query};
-use utils::println_json_with_length;
 
 /// Refresh the top filtered results per 200 ms.
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
