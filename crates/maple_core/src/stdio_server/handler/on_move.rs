@@ -1,6 +1,7 @@
 use crate::paths::truncate_absolute_path;
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
+use crate::previewer::{get_file_preview, FilePreview};
 use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
@@ -11,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
-use types::PreviewInfo;
 use utils::display_width;
 
 /// Preview content.
@@ -345,8 +345,8 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        match utils::read_preview_lines(path, lnum, self.preview_height) {
-            Ok(PreviewInfo {
+        match get_file_preview(path, lnum, self.preview_height) {
+            Ok(FilePreview {
                 lines,
                 highlight_lnum,
                 start,

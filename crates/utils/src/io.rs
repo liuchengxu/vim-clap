@@ -1,8 +1,6 @@
-use crate::bytelines::ByteLines;
 use std::fs::{read_dir, remove_dir_all, remove_file, File};
-use std::io::{BufRead, BufReader, Error, ErrorKind, Lines, Read, Result};
+use std::io::{BufRead, BufReader, Lines, Result};
 use std::path::Path;
-use types::PreviewInfo;
 
 /// Counts lines in the source `handle`.
 ///
@@ -45,6 +43,25 @@ pub fn remove_dir_contents<P: AsRef<Path>>(target_dir: P) -> Result<()> {
     Ok(())
 }
 
+/// Attempts to write an entire buffer into the file.
+///
+/// Creates one if the file does not exist.
+pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
+    use std::io::Write;
+
+    // Overwrite it.
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
+
+    f.write_all(buf)?;
+    f.flush()?;
+
+    Ok(())
+}
+
 /// Returns an Iterator to the Reader of the lines of the file.
 ///
 /// The output is wrapped in a Result to allow matching on errors.
@@ -64,6 +81,20 @@ pub fn read_first_lines<P: AsRef<Path>>(
     let file = File::open(path)?;
     Ok(BufReader::new(file)
         .lines()
+        .filter_map(|i| i.ok())
+        .take(number))
+}
+
+/// Returns a `number` of lines starting from the line number `from`.
+pub fn read_lines_from<P: AsRef<Path>>(
+    path: P,
+    from: usize,
+    number: usize,
+) -> Result<impl Iterator<Item = String>> {
+    let file = File::open(path)?;
+    Ok(BufReader::new(file)
+        .lines()
+        .skip(from)
         .filter_map(|i| i.ok())
         .take(number))
 }
@@ -91,108 +122,6 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
     ))
 }
 
-/// Returns the lines that can fit into the preview window given its window height.
-///
-/// Center the line at `target_line_number` in the preview window if possible.
-/// (`target_line` - `size`, `target_line` - `size`).
-pub fn read_preview_lines<P: AsRef<Path>>(
-    path: P,
-    target_line_number: usize,
-    winheight: usize,
-) -> Result<PreviewInfo> {
-    let mid = winheight / 2;
-    let (start, end, highlight_lnum) = if target_line_number > mid {
-        (target_line_number - mid, target_line_number + mid, mid)
-    } else {
-        (0, winheight, target_line_number)
-    };
-
-    read_preview_lines_impl(path, start, end, highlight_lnum)
-}
-
-// Copypasted from stdlib.
-/// Indicates how large a buffer to pre-allocate before reading the entire file.
-fn initial_buffer_size(file: &File) -> usize {
-    // Allocate one extra byte so the buffer doesn't need to grow before the
-    // final `read` call at the end of the file.  Don't worry about `usize`
-    // overflow because reading will fail regardless in that case.
-    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
-}
-
-fn read_preview_lines_impl<P: AsRef<Path>>(
-    path: P,
-    start: usize,
-    end: usize,
-    highlight_lnum: usize,
-) -> Result<PreviewInfo> {
-    let mut filebuf: Vec<u8> = Vec::new();
-
-    File::open(path)
-        .and_then(|mut file| {
-            //x XXX: is megabyte enough for any text file?
-            const MEGABYTE: usize = 32 * 1_048_576;
-
-            let filesize = initial_buffer_size(&file);
-            if filesize > MEGABYTE {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    "maximum preview file buffer size reached",
-                ));
-            }
-
-            filebuf.reserve_exact(filesize);
-            file.read_to_end(&mut filebuf)
-        })
-        .map(|_| {
-            let lines = ByteLines::new(&filebuf)
-                .skip(start)
-                .take(end - start)
-                // trim_end() to get rid of ^M on Windows.
-                .map(|l| l.trim_end().to_string())
-                .collect::<Vec<_>>();
-
-            PreviewInfo {
-                start,
-                end,
-                highlight_lnum,
-                lines,
-            }
-        })
-}
-
-/// Returns an iterator of `n` lines of `filename` from the line number `from`.
-pub fn read_lines_from<P: AsRef<Path>>(
-    path: P,
-    from: usize,
-    size: usize,
-) -> Result<impl Iterator<Item = String>> {
-    let file = File::open(path)?;
-    Ok(BufReader::new(file)
-        .lines()
-        .skip(from)
-        .filter_map(|i| i.ok())
-        .take(size))
-}
-
-/// Attempts to write an entire buffer into the file.
-///
-/// Creates one if the file does not exist.
-pub fn create_or_overwrite<P: AsRef<Path>>(path: P, buf: &[u8]) -> Result<()> {
-    use std::io::Write;
-
-    // Overwrite it.
-    let mut f = std::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)?;
-
-    f.write_all(buf)?;
-    f.flush()?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,7 +130,7 @@ mod tests {
     fn test_multi_byte_reading() {
         let mut current_dir = std::env::current_dir().unwrap();
         current_dir.push("test_673.txt");
-        let PreviewInfo { lines, .. } = read_preview_lines(current_dir, 2, 10).unwrap();
+        let FilePreview { lines, .. } = get_file_preview(current_dir, 2, 10).unwrap();
         assert_eq!(
             lines,
             [

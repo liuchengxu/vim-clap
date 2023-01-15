@@ -1,10 +1,93 @@
 pub mod vim_help;
 
 use crate::paths::truncate_absolute_path;
-use anyhow::Result;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
-use types::PreviewInfo;
-use utils::{read_first_lines, read_preview_lines};
+use utils::bytelines::ByteLines;
+use utils::read_first_lines;
+
+/// Preview of a file.
+#[derive(Clone, Debug)]
+pub struct FilePreview {
+    /// Line number at which the preview starts.
+    pub start: usize,
+    /// Line number at which the preview ends.
+    pub end: usize,
+    /// Line number of the line that should be highlighed in the preview window.
+    pub highlight_lnum: usize,
+    /// [start, end] of the source file.
+    pub lines: Vec<String>,
+}
+
+/// Returns the lines that can fit into the preview window given its window height.
+///
+/// Center the line at `target_line_number` in the preview window if possible.
+/// (`target_line` - `size`, `target_line` - `size`).
+pub fn get_file_preview<P: AsRef<Path>>(
+    path: P,
+    target_line_number: usize,
+    winheight: usize,
+) -> std::io::Result<FilePreview> {
+    let mid = winheight / 2;
+    let (start, end, highlight_lnum) = if target_line_number > mid {
+        (target_line_number - mid, target_line_number + mid, mid)
+    } else {
+        (0, winheight, target_line_number)
+    };
+
+    read_preview_lines_impl(path, start, end, highlight_lnum)
+}
+
+// Copypasted from stdlib.
+/// Indicates how large a buffer to pre-allocate before reading the entire file.
+fn initial_buffer_size(file: &File) -> usize {
+    // Allocate one extra byte so the buffer doesn't need to grow before the
+    // final `read` call at the end of the file.  Don't worry about `usize`
+    // overflow because reading will fail regardless in that case.
+    file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
+}
+
+fn read_preview_lines_impl<P: AsRef<Path>>(
+    path: P,
+    start: usize,
+    end: usize,
+    highlight_lnum: usize,
+) -> std::io::Result<FilePreview> {
+    let mut filebuf: Vec<u8> = Vec::new();
+
+    File::open(path)
+        .and_then(|mut file| {
+            //x XXX: is megabyte enough for any text file?
+            const MEGABYTE: usize = 32 * 1_048_576;
+
+            let filesize = initial_buffer_size(&file);
+            if filesize > MEGABYTE {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "maximum preview file buffer size reached",
+                ));
+            }
+
+            filebuf.reserve_exact(filesize);
+            file.read_to_end(&mut filebuf)
+        })
+        .map(|_| {
+            let lines = ByteLines::new(&filebuf)
+                .skip(start)
+                .take(end - start)
+                // trim_end() to get rid of ^M on Windows.
+                .map(|l| l.trim_end().to_string())
+                .collect::<Vec<_>>();
+
+            FilePreview {
+                start,
+                end,
+                highlight_lnum,
+                lines,
+            }
+        })
+}
 
 #[inline]
 fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
@@ -85,14 +168,14 @@ pub fn preview_file_at<P: AsRef<Path>>(
     winheight: usize,
     max_width: usize,
     lnum: usize,
-) -> Result<(Vec<String>, usize)> {
+) -> std::io::Result<(Vec<String>, usize)> {
     tracing::debug!(path = %path.as_ref().display(), lnum, "Previewing file");
 
-    let PreviewInfo {
+    let FilePreview {
         lines,
         highlight_lnum,
         ..
-    } = read_preview_lines(path.as_ref(), lnum, winheight)?;
+    } = get_file_preview(path.as_ref(), lnum, winheight)?;
 
     let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))
         .chain(truncate_preview_lines(max_width, lines.into_iter()))

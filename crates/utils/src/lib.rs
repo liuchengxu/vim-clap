@@ -12,7 +12,7 @@ mod macros;
 
 pub use self::io::{
     count_lines, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
-    read_preview_lines, remove_dir_contents,
+    remove_dir_contents,
 };
 
 /// Returns the width of displaying `n` on the screen.
