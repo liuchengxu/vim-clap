@@ -5,6 +5,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:is_nvim = has('nvim')
+let s:old_input = ''
 
 function! clap#handler#relaunch_providers() abort
   call clap#handler#exit()
@@ -30,6 +31,14 @@ function! clap#handler#on_typed() abort
   if clap#handler#relaunch_is_ok()
     return
   endif
+
+  " This check is necessary for now, but it might be removed if the underlying
+  " logic can be revisited why removing it breaks the sink behavior.
+  let l:cur_input = g:clap.input.get()
+  if s:old_input == l:cur_input
+    return
+  endif
+  let s:old_input = l:cur_input
 
   call g:clap.provider.on_typed()
 endfunction
@@ -86,6 +95,7 @@ endfunction
 function! clap#handler#exit() abort
   call clap#handler#internal_exit()
   call g:clap.provider.on_exit()
+  let s:old_input = ''
   silent doautocmd <nomodeline> User ClapOnExit
 endfunction
 
