@@ -280,18 +280,18 @@ function! s:job_strart_with_delay() abort
 endfunction
 
 " Start a job immediately given the command.
-function! clap#dispatcher#job_start(cmd) abort
+function! clap#legacy#dispatcher#job_start(cmd) abort
   call s:prepare_job_start(a:cmd)
   call s:apply_job_start('')
 endfunction
 
 " Start a job with a delay given the command.
-function! clap#dispatcher#job_start_with_delay(cmd) abort
+function! clap#legacy#dispatcher#job_start_with_delay(cmd) abort
   call s:prepare_job_start(a:cmd)
   call s:job_strart_with_delay()
 endfunction
 
-function! clap#dispatcher#jobstop() abort
+function! clap#legacy#dispatcher#jobstop() abort
   call s:jobstop()
 endfunction
 

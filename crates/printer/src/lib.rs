@@ -7,12 +7,36 @@ mod truncation;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
 use types::MatchedItem;
-use utils::println_json;
 
 pub use self::truncation::{
     truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
     LinesTruncatedMap,
 };
+
+/// Combine json and println macro.
+#[macro_export]
+macro_rules! println_json {
+  ( $( $field:expr ),+ ) => {
+    {
+      println!("{}", serde_json::json!({ $(stringify!($field): $field,)* }))
+    }
+  }
+}
+
+/// Combine json and println macro.
+///
+/// Neovim needs Content-length info when using stdio-based communication.
+#[macro_export]
+macro_rules! println_json_with_length {
+  ( $( $field:expr ),+ ) => {
+    {
+      let msg = serde_json::json!({ $(stringify!($field): $field,)* });
+      if let Ok(s) = serde_json::to_string(&msg) {
+          println!("Content-length: {}\n\n{}", s.len(), s);
+      }
+    }
+  }
+}
 
 /// 1. Truncate the line.
 /// 2. Add an icon.

@@ -114,7 +114,7 @@ function! s:inject_default_impl_is_ok(provider_info) abort
       return v:false
     endif
     if !has_key(provider_info, 'jobstop')
-      let provider_info.jobstop = function('clap#dispatcher#jobstop')
+      let provider_info.jobstop = function('clap#legacy#dispatcher#jobstop')
     endif
   endif
 

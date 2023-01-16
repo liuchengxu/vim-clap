@@ -8,7 +8,6 @@ use std::process::{Command, Output};
 
 pub mod bytelines;
 mod io;
-mod macros;
 
 pub use self::io::{
     count_lines, create_or_overwrite, read_first_lines, read_lines, read_lines_from,
@@ -33,11 +32,9 @@ pub fn display_width(n: usize) -> usize {
     len
 }
 
-/// Returns true if the `dir` is a git repo, including git submodule.
+/// Returns true if `dir` is a git repo, including git submodule.
 pub fn is_git_repo(dir: &Path) -> bool {
-    let mut gitdir = dir.to_owned();
-    gitdir.push(".git");
-    gitdir.exists()
+    dir.join(".git").exists()
 }
 
 pub fn calculate_hash<T: Hash>(t: &T) -> u64 {

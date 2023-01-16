@@ -53,7 +53,7 @@ impl DumbJump {
                 .into_iter()
                 .map(|usage| (usage.line, usage.indices))
                 .unzip();
-            utils::println_json_with_length!(total, lines, indices);
+            printer::println_json_with_length!(total, lines, indices);
         } else {
             let cwd = match cmd_dir {
                 Some(cwd) => cwd,

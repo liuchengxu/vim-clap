@@ -99,7 +99,7 @@ function! s:spawn(query) abort
 endfunction
 
 function! s:grep_exit() abort
-  call clap#dispatcher#jobstop()
+  call clap#legacy#dispatcher#jobstop()
   let s:old_query = ''
   if exists('s:parent_dir')
     unlet s:parent_dir
@@ -270,7 +270,7 @@ else
   endfunction
 
   function! s:clear_job_and_matches() abort
-    call clap#dispatcher#jobstop()
+    call clap#legacy#dispatcher#jobstop()
 
     call g:clap.display.clear_highlight()
   endfunction
@@ -286,7 +286,7 @@ else
     let cmd = printf(s:grep_cmd_format, s:grep_executable, grep_opts, query)
     let g:clap.provider.cmd = cmd
 
-    call clap#rooter#run(function('clap#dispatcher#job_start'), cmd)
+    call clap#rooter#run(function('clap#legacy#dispatcher#job_start'), cmd)
 
     call g:clap.display.add_highlight(s:hl_pattern)
   endfunction
