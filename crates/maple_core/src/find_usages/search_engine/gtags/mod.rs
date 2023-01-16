@@ -6,7 +6,7 @@ use dumb_analyzer::resolve_reference_kind;
 use rayon::prelude::*;
 use std::io::{Error, ErrorKind, Result};
 use std::path::{PathBuf, MAIN_SEPARATOR};
-use subprocess::Exec;
+use subprocess::{Exec, Redirection};
 
 #[derive(Clone, Debug)]
 pub struct GtagsSearcher {
@@ -51,6 +51,7 @@ impl GtagsSearcher {
     /// Constructs a `gtags` command with proper env variables.
     fn gtags(&self) -> Exec {
         Exec::cmd("gtags")
+            .stderr(Redirection::None)
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
     }
@@ -58,6 +59,8 @@ impl GtagsSearcher {
     /// Constructs a `global` command with proper env variables.
     fn global(&self) -> Exec {
         Exec::cmd("global")
+            .stderr(Redirection::None) // Ignore the error message, the exit status will tell us
+            // whether it's executed sucessfully.
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
     }

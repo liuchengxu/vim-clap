@@ -14,6 +14,7 @@ use futures::Future;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde_json::json;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::Instrument;
@@ -125,6 +126,31 @@ pub struct DumbJumpProvider {
     gtags_regenerated: Arc<AtomicBool>,
 }
 
+async fn init_gtags(cwd: PathBuf, gtags_regenerated: Arc<AtomicBool>) {
+    let gtags_searcher = GtagsSearcher::new(cwd);
+    match gtags_searcher.create_or_update_tags() {
+        Ok(()) => gtags_regenerated.store(true, Ordering::SeqCst),
+        Err(e) => {
+            tracing::error!(error = ?e, "[dumb_jump] 💔 Error at initializing GTAGS, attempting to recreate...");
+            // TODO: creating gtags may take 20s+ for large project
+            match tokio::task::spawn_blocking({
+                let gtags_searcher = gtags_searcher.clone();
+                move || gtags_searcher.force_recreate()
+            })
+            .await
+            {
+                Ok(_) => {
+                    gtags_regenerated.store(true, Ordering::SeqCst);
+                    tracing::debug!("[dumb_jump] Recreating gtags db successfully");
+                }
+                Err(e) => {
+                    tracing::error!(error = ?e, "[dumb_jump] 💔 Failed to recreate gtags db");
+                }
+            }
+        }
+    }
+}
+
 impl DumbJumpProvider {
     pub fn new() -> Self {
         Self {
@@ -147,54 +173,28 @@ impl DumbJumpProvider {
                 }
                 let ctags_regenerated = self.ctags_regenerated.clone();
 
-                // TODO: smarter strategy to regenerate the tags?
+                // Ctags initialization is usually pretty fast.
                 async move {
                     let now = std::time::Instant::now();
                     let ctags_searcher = CtagsSearcher::new(tags_generator);
                     match ctags_searcher.generate_tags() {
-                        Ok(()) => {
-                            ctags_regenerated.store(true, Ordering::SeqCst);
-                        }
+                        Ok(()) => ctags_regenerated.store(true, Ordering::SeqCst),
                         Err(e) => {
-                            tracing::error!(error = ?e, "💔 Error at generating the tags file for dumb_jump");
+                            tracing::error!(error = ?e, "[dumb_jump] 💔 Error at initializing ctags")
                         }
                     }
-                    tracing::debug!(?cwd, "⏱️  Ctags elapsed: {:?}", now.elapsed());
+                    tracing::debug!(?cwd, "[dumb_jump] ⏱️  Ctags elapsed: {:?}", now.elapsed());
                 }
             };
 
             let gtags_future = {
+                let cwd: PathBuf = cwd.into();
                 let gtags_regenerated = self.gtags_regenerated.clone();
                 let span = tracing::span!(tracing::Level::INFO, "gtags");
                 async move {
-                    let gtags_searcher = GtagsSearcher::new(cwd.clone().into());
-                    match tokio::task::spawn_blocking({
-                        let gtags_searcher = gtags_searcher.clone();
-                        move || gtags_searcher.create_or_update_tags()
-                    })
-                    .await
-                    {
-                        Ok(_) => gtags_regenerated.store(true, Ordering::SeqCst),
-                        Err(e) => {
-                            tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");
-                            // TODO: creating gtags may take 20s+ for large project
-                            match tokio::task::spawn_blocking({
-                                let gtags_searcher = gtags_searcher.clone();
-                                move || gtags_searcher.force_recreate()
-                            })
-                            .await
-                            {
-                                Ok(_) => {
-                                    gtags_regenerated.store(true, Ordering::SeqCst);
-                                    tracing::debug!("Recreating gtags db successfully");
-                                }
-                                Err(e) => {
-                                    tracing::error!(error = ?e, "💔 Failed to recreate gtags db");
-                                }
-                            }
-                        }
-                    }
-                }.instrument(span)
+                    let _ = tokio::task::spawn(init_gtags(cwd, gtags_regenerated)).await;
+                }
+                .instrument(span)
             };
 
             fn run(job_future: impl Send + Sync + 'static + Future<Output = ()>, job_id: u64) {
@@ -202,7 +202,7 @@ impl DumbJumpProvider {
                     async move {
                         let now = std::time::Instant::now();
                         job_future.await;
-                        tracing::debug!("⏱️  Total elapsed: {:?}", now.elapsed());
+                        tracing::debug!("[dumb_jump] ⏱️  Total elapsed: {:?}", now.elapsed());
                         job::unreserve(job_id);
                     }
                 });
