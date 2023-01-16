@@ -34,7 +34,7 @@ impl Rpc {
             let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
             let subscriber = tracing_subscriber::FmtSubscriber::builder()
-                .with_max_level(tracing::Level::TRACE)
+                .with_max_level(tracing::Level::DEBUG)
                 .with_line_number(true)
                 .with_writer(non_blocking)
                 .finish();
