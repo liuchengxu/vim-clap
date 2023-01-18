@@ -120,7 +120,7 @@ mod tests {
         let line = "test/bench/python/test_fuzzy_filter.vim|0 col 0| Modified 2月,13 2021 10:58:27 rw-rw-r--";
         assert_eq!(
             parse_quickfix_entry(line).unwrap(),
-            ("test/bench/python/test_fuzzy_filter.vim".into(), 0usize)
+            ("test/bench/python/test_fuzzy_filter.vim", 0usize)
         );
     }
 }

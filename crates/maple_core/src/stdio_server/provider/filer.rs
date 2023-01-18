@@ -439,7 +439,7 @@ mod tests {
     fn test_dir() {
         // /home/xlc/.vim/plugged/vim-clap/crates/stdio_server
         let entries = read_dir_entries(
-            &std::env::current_dir()
+            std::env::current_dir()
                 .unwrap()
                 .into_os_string()
                 .into_string()
