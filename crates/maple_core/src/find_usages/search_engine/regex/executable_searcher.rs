@@ -50,35 +50,27 @@ impl ExecutableSearcher {
     }
 }
 
-/// Searches a directory for pattern matches using ripgrep.
-#[derive(Debug, Clone)]
-pub struct WordRegexSearcher {
-    /// Directory to perform the ripgrep search.
-    pub dir: Option<PathBuf>,
-    /// Keyword of searching.
-    pub word: Word,
-    /// Extension of the source file.
-    pub file_ext: String,
-}
-
-impl WordRegexSearcher {
-    pub(super) fn word_regexp_search(&self, ignore_comment: bool) -> Result<Vec<Match>> {
-        let mut command = Command::new("rg");
-        command
-            .arg("--json")
-            .arg("--word-regexp")
-            .arg(&self.word.raw)
-            .arg("-g")
-            .arg(format!("*.{}", self.file_ext));
-        if let Some(ref dir) = self.dir {
-            command.current_dir(dir);
-        }
-        ExecutableSearcher::new(command).search(if ignore_comment {
-            Some(get_comment_syntax(&self.file_ext))
-        } else {
-            None
-        })
+pub(super) fn word_regex_search_with_extension(
+    search_pattern: &str,
+    ignore_comment: bool,
+    file_extension: &str,
+    maybe_dir: Option<&PathBuf>,
+) -> Result<Vec<Match>> {
+    let mut command = Command::new("rg");
+    command
+        .arg("--json")
+        .arg("--word-regexp")
+        .arg(search_pattern)
+        .arg("-g")
+        .arg(format!("*.{}", file_extension));
+    if let Some(ref dir) = maybe_dir {
+        command.current_dir(dir);
     }
+    ExecutableSearcher::new(command).search(if ignore_comment {
+        Some(get_comment_syntax(file_extension))
+    } else {
+        None
+    })
 }
 
 /// [`LanguageRegexSearcher`] with a known language type.
@@ -157,12 +149,8 @@ impl LanguageRegexSearcher {
 
     /// Returns a tuple of (definition_kind, ripgrep_matches) by searching given language `lang`.
     fn find_definitions(&self, kind: &DefinitionKind) -> Result<(DefinitionKind, Vec<Match>)> {
-        let regexp = build_full_regexp(&self.lang, kind, &self.word).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Can not find the definition rule",
-            )
-        })?;
+        let regexp = build_full_regexp(&self.lang, kind, &self.word)
+            .ok_or_else(|| Error::new(ErrorKind::Other, "Can not find the definition rule"))?;
         let mut command = Command::new("rg");
         command
             .arg("--trim")
