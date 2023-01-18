@@ -7,6 +7,7 @@ use crate::tools::ctags::TagsGenerator;
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::hash::Hash;
+use std::io::Result;
 use std::path::{Path, PathBuf};
 use subprocess::{Exec, Redirection};
 
@@ -32,7 +33,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     }
 
     /// Generate the `tags` file.
-    pub fn generate_tags(&self) -> std::io::Result<()> {
+    pub fn generate_tags(&self) -> Result<()> {
         self.tags_generator.generate_tags()
     }
 
@@ -42,7 +43,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         usage_matcher: &UsageMatcher,
         query_type: QueryType,
         force_generate: bool,
-    ) -> std::io::Result<Vec<AddressableUsage>> {
+    ) -> Result<Vec<AddressableUsage>> {
         let ignorecase = keyword.chars().all(char::is_lowercase);
 
         // TODO: reorder the ctags results similar to gtags.
@@ -97,7 +98,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
         query: &str,
         query_type: QueryType,
         force_generate: bool,
-    ) -> std::io::Result<impl Iterator<Item = Symbol>> {
+    ) -> Result<impl Iterator<Item = Symbol>> {
         if force_generate || !self.tags_exists() {
             self.generate_tags()?;
         }

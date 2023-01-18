@@ -18,7 +18,7 @@ use crate::tools::rg::{get_language, Match, Word};
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::io::Result;
+use std::io::{Error, ErrorKind, Result};
 use std::path::PathBuf;
 
 /// [`Usage`] with some structured information.
@@ -96,7 +96,7 @@ impl RegexSearcher {
         &self,
         classify: bool,
         usage_matcher: &UsageMatcher,
-    ) -> std::io::Result<Vec<AddressableUsage>> {
+    ) -> Result<Vec<AddressableUsage>> {
         let Self {
             word,
             extension,
@@ -104,8 +104,8 @@ impl RegexSearcher {
         } = self;
 
         let re = regex::Regex::new(&format!("\\b{word}\\b")).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
+            Error::new(
+                ErrorKind::Other,
                 format!("{word} is an invalid regex expression: {e}"),
             )
         })?;

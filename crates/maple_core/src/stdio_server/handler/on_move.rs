@@ -1,4 +1,4 @@
-use crate::paths::truncate_absolute_path;
+use crate::paths::{expand_tilde, truncate_absolute_path};
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
@@ -8,6 +8,7 @@ use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
 use pattern::*;
 use serde::{Deserialize, Serialize};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -52,13 +53,10 @@ impl PreviewTarget {
     }
 }
 
-fn parse_preview_target(
-    curline: String,
-    ctx: &Context,
-) -> std::io::Result<(PreviewTarget, Option<String>)> {
+fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget, Option<String>)> {
     let err = || {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Error::new(
+            ErrorKind::Other,
             format!(
                 "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
                 ctx.provider_id()
@@ -79,7 +77,7 @@ fn parse_preview_target(
         "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
         "history" => {
             let path = if curline.starts_with('~') {
-                crate::paths::expand_tilde(curline)
+                expand_tilde(curline)
             } else {
                 ctx.cwd.join(&curline)
             };
@@ -95,7 +93,7 @@ fn parse_preview_target(
                 let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
                 let path = ctx.cwd.join(fpath);
 
-                Ok::<_, std::io::Error>((path, lnum))
+                Ok::<_, Error>((path, lnum))
             };
 
             let (path, line_number) = try_extract_file_path(&curline)?;
@@ -168,7 +166,7 @@ pub struct CachedPreviewImpl<'a> {
 }
 
 impl<'a> CachedPreviewImpl<'a> {
-    pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> std::io::Result<Self> {
+    pub fn new(curline: String, preview_height: usize, ctx: &'a Context) -> Result<Self> {
         let (preview_target, cache_line) = parse_preview_target(curline, ctx)?;
 
         Ok(Self {
@@ -179,7 +177,7 @@ impl<'a> CachedPreviewImpl<'a> {
         })
     }
 
-    pub async fn get_preview(&self) -> std::io::Result<Preview> {
+    pub async fn get_preview(&self) -> Result<Preview> {
         if let Some(preview) = self.ctx.cached_preview(&self.preview_target) {
             return Ok(preview);
         }
@@ -204,7 +202,7 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok(preview)
     }
 
-    fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {
+    fn preview_commits(&self, rev: &str) -> Result<Preview> {
         let stdout = self.ctx.execute(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
@@ -244,7 +242,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
+    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let enable_icon = self.ctx.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
@@ -266,18 +264,18 @@ impl<'a> CachedPreviewImpl<'a> {
         })
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let path = path.as_ref();
 
         if !path.is_file() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(Error::new(
+                ErrorKind::Other,
                 format!("Failed to preview as {} is not a file", path.display()),
             ));
         }
 
-        let handle_io_error = |e: &std::io::Error| {
-            if e.kind() == std::io::ErrorKind::NotFound {
+        let handle_io_error = |e: &Error| {
+            if e.kind() == ErrorKind::NotFound {
                 tracing::debug!(
                     "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
                     path.display()

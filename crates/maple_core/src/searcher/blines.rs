@@ -3,7 +3,7 @@ use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
 use std::borrow::Cow;
-use std::io::BufRead;
+use std::io::{BufRead, Result};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -46,7 +46,7 @@ fn search_lines(
     matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
     item_sender: UnboundedSender<SearcherMessage>,
-) -> std::io::Result<()> {
+) -> Result<()> {
     let source_file = std::fs::File::open(source_file)?;
 
     let index = AtomicUsize::new(0);
