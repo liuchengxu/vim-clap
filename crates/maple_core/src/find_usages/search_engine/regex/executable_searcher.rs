@@ -62,7 +62,7 @@ pub(super) fn word_regex_search_with_extension(
         .arg("--word-regexp")
         .arg(search_pattern)
         .arg("-g")
-        .arg(format!("*.{}", file_extension));
+        .arg(format!("*.{file_extension}"));
     if let Some(ref dir) = maybe_dir {
         command.current_dir(dir);
     }
