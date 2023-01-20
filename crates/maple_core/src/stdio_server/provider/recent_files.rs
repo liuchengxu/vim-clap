@@ -78,7 +78,7 @@ impl RecentFilesProvider {
             indices,
             truncated_map,
             icon_added,
-        } = printer::decorate_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
+        } = printer::to_display_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
 
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);

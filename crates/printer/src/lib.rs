@@ -4,14 +4,12 @@
 mod trimmer;
 mod truncation;
 
+use self::truncation::{truncate_item_output_text, LinesTruncatedMap};
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
 use types::MatchedItem;
 
-pub use self::truncation::{
-    truncate_grep_lines, truncate_long_matched_lines, truncate_long_matched_lines_v0,
-    LinesTruncatedMap,
-};
+pub use self::truncation::{truncate_grep_lines, truncate_item_output_text_v0};
 
 /// Combine json and println macro.
 #[macro_export]
@@ -38,19 +36,23 @@ macro_rules! println_json_with_length {
   }
 }
 
-/// 1. Truncate the line.
-/// 2. Add an icon.
+/// This structure holds the data that can be easily used to update the UI on the Vim side.
+///
+/// Potential processing to the display text:
+///
+/// 1. Truncate the line if the window can't fit it.
+/// 2. Add an icon to the beginning.
 #[derive(Debug, Clone, Serialize)]
 pub struct DisplayLines {
     /// Lines to display, maybe truncated.
     pub lines: Vec<String>,
-    /// Position of highlights in the lines above.
+    /// Byte position of highlights in the lines above.
     pub indices: Vec<Vec<usize>>,
     /// A map of the line number to the original untruncated line.
     pub truncated_map: LinesTruncatedMap,
-    /// An icon is added to the head of line.
+    /// Whether an icon is added to the head of line.
     ///
-    /// The icon is added after the truncating processing.
+    /// The icon is added after the truncation.
     pub icon_added: bool,
 }
 
@@ -69,7 +71,7 @@ impl DisplayLines {
         }
     }
 
-    fn print_json(&self, total: usize) {
+    pub fn print_json(&self, total: usize) {
         let Self {
             lines,
             indices,
@@ -95,28 +97,14 @@ fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usize> {
         .collect::<Vec<_>>()
 }
 
-pub fn decorate_line(matched_item: &MatchedItem, icon: Icon) -> (String, Vec<usize>) {
-    if let Some(icon_kind) = icon.icon_kind() {
-        (
-            icon_kind.add_icon_to_text(matched_item.display_text()),
-            matched_item.shifted_indices(ICON_CHAR_LEN),
-        )
-    } else {
-        (
-            matched_item.display_text().into(),
-            matched_item.indices.clone(),
-        )
-    }
-}
-
 /// Returns the info of the truncated top items ranked by the filtering score.
-pub fn decorate_lines(
+pub fn to_display_lines(
     matched_items: Vec<MatchedItem>,
     winwidth: usize,
     icon: Icon,
 ) -> DisplayLines {
     let mut matched_items = matched_items;
-    let mut truncated_map = truncate_long_matched_lines(matched_items.iter_mut(), winwidth, None);
+    let mut truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
     if let Some(icon_kind) = icon.icon_kind() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
@@ -154,27 +142,6 @@ pub fn decorate_lines(
             .unzip();
 
         DisplayLines::new(lines, indices, truncated_map, false)
-    }
-}
-
-/// Prints the results of filter::sync_run() to stdout.
-pub fn print_sync_filter_results(
-    matched_items: Vec<MatchedItem>,
-    number: Option<usize>,
-    winwidth: usize,
-    icon: Icon,
-) {
-    if let Some(number) = number {
-        let total_matched = matched_items.len();
-        let mut matched_items = matched_items;
-        matched_items.truncate(number);
-        decorate_lines(matched_items, winwidth, icon).print_json(total_matched);
-    } else {
-        matched_items.iter().for_each(|matched_item| {
-            let indices = &matched_item.indices;
-            let text = matched_item.display_text();
-            println_json!(text, indices);
-        });
     }
 }
 
@@ -252,7 +219,7 @@ pub(crate) mod tests {
         } = params;
 
         let mut ranked = filter_single_line(text, &query);
-        let _truncated_map = truncate_long_matched_lines(ranked.iter_mut(), winwidth, skipped);
+        let _truncated_map = truncate_item_output_text(ranked.iter_mut(), winwidth, skipped);
 
         let MatchedItem { indices, .. } = ranked[0].clone();
         let truncated_indices = indices;
