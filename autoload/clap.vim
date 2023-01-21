@@ -158,6 +158,7 @@ function! clap#_exit() abort
 
   noautocmd call g:clap.close_win()
   call g:clap.preview.clear()
+  call g:clap.display.matchdelete()
 
   let g:clap.display.cache = []
   let g:clap.display.initial_size = -1

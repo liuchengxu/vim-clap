@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 
 let s:input_default_hi_group = 'Visual'
-let s:display_default_hi_group = 'Pmenu'
+let s:display_default_hi_group = 'ClapDefaultPreview'
 let s:preview_default_hi_group = 'PmenuSel'
 
 function! s:extract(group, what, gui_or_cterm) abort
