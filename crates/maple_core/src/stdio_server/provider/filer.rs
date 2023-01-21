@@ -238,7 +238,7 @@ impl FilerProvider {
             indices,
             truncated_map,
             icon_added,
-        } = printer::decorate_lines(
+        } = printer::to_display_lines(
             matched_items,
             ctx.env.display_winwidth,
             icon::Icon::Null, // icon is handled inside the provider impl.

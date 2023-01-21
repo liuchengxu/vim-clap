@@ -241,7 +241,7 @@ impl Context {
                 icon_added,
                 truncated_map,
                 ..
-            } = printer::decorate_lines(items, self.env.display_winwidth, self.env.icon);
+            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
 
             self.vim.exec(
                 "clap#state#update_on_empty_query",

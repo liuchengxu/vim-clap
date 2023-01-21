@@ -1,3 +1,4 @@
+use crate::trimmer::v1::trim_text as trim_text_v1;
 use std::collections::HashMap;
 use std::slice::IterMut;
 use types::MatchedItem;
@@ -29,8 +30,6 @@ fn truncate_line_v1(
     winwidth: usize,
     skipped: Option<usize>,
 ) -> Option<(String, Vec<usize>)> {
-    use crate::trimmer::v1::trim_text;
-
     if line.is_empty() || indices.is_empty() {
         return None;
     }
@@ -40,7 +39,7 @@ fn truncate_line_v1(
         let text = line.chars().skip(skipped).collect::<String>();
         indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
-        trim_text(&text, indices, container_width, 4).map(|(text, mut indices)| {
+        trim_text_v1(&text, indices, container_width, 4).map(|(text, mut indices)| {
             (
                 format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
                 {
@@ -50,19 +49,19 @@ fn truncate_line_v1(
             )
         })
     } else {
-        trim_text(line, indices, winwidth, 4)
+        trim_text_v1(line, indices, winwidth, 4)
     }
 }
 
 const MAX_LINE_LEN: usize = 500;
 
-/// Long matched lines can cause the matched items invisible.
+/// Truncate the output text of item if it's too long.
 ///
 /// # Arguments
 ///
-/// - winwidth: width of the display window.
-/// - skipped: number of skipped chars, used when need to skip the leading icons.
-pub fn truncate_long_matched_lines(
+/// - `winwidth`: width of the display window.
+/// - `skipped`: number of skipped chars, used when need to skip the leading icons.
+pub(super) fn truncate_item_output_text(
     items: IterMut<MatchedItem>,
     winwidth: usize,
     skipped: Option<usize>,
@@ -80,7 +79,7 @@ pub fn truncate_long_matched_lines(
         } else if let Some((truncated_output_text, truncated_indices)) =
             truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
         {
-            truncated_map.insert(lnum + 1, output_text.to_string());
+            truncated_map.insert(lnum + 1, output_text);
 
             matched_item.display_text = Some(truncated_output_text);
             matched_item.indices = truncated_indices;
@@ -92,7 +91,7 @@ pub fn truncate_long_matched_lines(
     truncated_map
 }
 
-pub fn truncate_long_matched_lines_v0(
+pub fn truncate_item_output_text_v0(
     items: IterMut<MatchedItem>,
     winwidth: usize,
     skipped: Option<usize>,

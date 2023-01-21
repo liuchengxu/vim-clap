@@ -112,7 +112,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
             let now = Instant::now();
             if now > self.past + UPDATE_INTERVAL {
                 let display_lines =
-                    printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
+                    printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
                 self.progressor
                     .update_all(&display_lines, total_matched, total_processed);
                 self.last_lines = display_lines.lines;
@@ -134,7 +134,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                 let now = Instant::now();
                 if now > self.past + UPDATE_INTERVAL {
                     let display_lines =
-                        printer::decorate_lines(self.items.clone(), self.winwidth, self.icon);
+                        printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
 
                     let visible_highlights = display_lines
                         .indices
@@ -310,7 +310,7 @@ where
 
     let matched_items = items;
 
-    let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
+    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
@@ -402,7 +402,7 @@ where
 
     let matched_items = items;
 
-    let display_lines = printer::decorate_lines(matched_items, winwidth, icon);
+    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())

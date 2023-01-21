@@ -145,7 +145,7 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
         ..
     } = best_items;
 
-    let display_lines = printer::decorate_lines(items, winwidth, icon);
+    let display_lines = printer::to_display_lines(items, winwidth, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

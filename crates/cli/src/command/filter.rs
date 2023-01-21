@@ -2,12 +2,14 @@ use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
+use icon::Icon;
 use maple_core::paths::AbsPathBuf;
 use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use subprocess::Exec;
+use types::MatchedItem;
 
 fn parse_bonus(s: &str) -> Bonus {
     if s.to_lowercase().as_str() == "filename" {
@@ -58,6 +60,27 @@ pub struct Filter {
 
     #[clap(long)]
     par_run: bool,
+}
+
+/// Prints the results of filter::sync_run() to stdout.
+fn print_sync_filter_results(
+    matched_items: Vec<MatchedItem>,
+    number: Option<usize>,
+    winwidth: usize,
+    icon: Icon,
+) {
+    if let Some(number) = number {
+        let total_matched = matched_items.len();
+        let mut matched_items = matched_items;
+        matched_items.truncate(number);
+        printer::to_display_lines(matched_items, winwidth, icon).print_json(total_matched);
+    } else {
+        matched_items.iter().for_each(|matched_item| {
+            let indices = &matched_item.indices;
+            let text = matched_item.display_text();
+            printer::println_json!(text, indices);
+        });
+    }
 }
 
 impl Filter {
@@ -135,7 +158,7 @@ impl Filter {
                 matcher_builder.build(self.query.as_str().into()),
             )?;
 
-            printer::print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
+            print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
         } else if self.par_run {
             filter::par_dyn_run(
                 &self.query,

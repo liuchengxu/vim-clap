@@ -331,7 +331,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
                 }
             })
             .collect();
-        printer::decorate_lines(items, winwidth, icon)
+        printer::to_display_lines(items, winwidth, icon)
     };
 
     let now = std::time::Instant::now();
