@@ -169,7 +169,7 @@ function! clap#_exit() abort
   call g:clap.input.clear()
   call g:clap.display.clear()
 
-  call clap#sign#reset()
+  call clap#sign#reset_all()
 
   call clap#state#clear_post()
 
