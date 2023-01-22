@@ -297,11 +297,11 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.sink(selected) abort
-    call clap#rooter#run_heuristic(self._apply_sink, a:selected)
+    call clap#rooter#run_sink_or_sink_star(self._apply_sink, a:selected)
   endfunction
 
   function! provider.sink_star(lines) abort
-    call clap#rooter#run_heuristic(self._()['sink*'], a:lines)
+    call clap#rooter#run_sink_or_sink_star(self._()['sink*'], a:lines)
   endfunction
 
   function! provider.on_enter() abort
@@ -396,18 +396,6 @@ function! s:init_provider() abort
     else
       return ['source() must return a List or a String if it is a Funcref']
     endif
-  endfunction
-
-  function! provider.get_source() abort
-    let provider_info = self._()
-    " Catch any exceptions and show them in the display window.
-    try
-      return has_key(provider_info, 'source') ? clap#rooter#run(self._apply_source) : []
-    catch
-      call clap#spinner#set_idle()
-      let tps = split(v:throwpoint, '\[\d\+\]\zs')
-      return ['provider.get_source:'] + tps + [v:exception]
-    endtry
   endfunction
 
   function! provider.is_sync() abort
