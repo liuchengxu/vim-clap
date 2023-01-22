@@ -12,12 +12,10 @@ function! clap#selection#get_sink_or_sink_star_params() abort
   let selected = clap#sign#get()
   if s:multi_select_enabled && !empty(selected)
     let Sink = g:clap.provider.sink_star
-    let current_selections = map(selected, 'clap#api#get_origin_line_at(v:val)')
-    let sink_args = extend(clap#sign#preserved_selections(), current_selections)
+    let sink_args = map(selected, 'clap#api#get_origin_line_at(v:val)')
   else
     let Sink = g:clap.provider.sink
-    let current_selection = g:clap.display.getcurline()
-    let sink_args = add(clap#sign#preserved_selections(), current_selection)
+    let sink_args = g:clap.display.getcurline()
   endif
   return [Sink, sink_args]
 endfunction

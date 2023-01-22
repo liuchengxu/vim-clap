@@ -159,18 +159,6 @@ function! clap#util#getfsize(fname) abort
   return size
 endfunction
 
-function! clap#util#open_quickfix(qf_entries) abort
-  let entries_len = len(a:qf_entries)
-  call setqflist(a:qf_entries)
-  " If there are only a few items, open the qf window at exact size.
-  if entries_len < 15
-    execute 'copen' entries_len
-  else
-    copen
-  endif
-  cc
-endfunction
-
 function! clap#util#get_visual_selection() abort
   try
     let a_save = @a

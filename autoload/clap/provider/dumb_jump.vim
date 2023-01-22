@@ -23,7 +23,7 @@ function! s:into_qf_item(line) abort
 endfunction
 
 function! s:dumb_jump_sink_star(lines) abort
-  call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val)'))
+  call clap#sink#open_quickfix(map(a:lines, 's:into_qf_item(v:val)'))
 endfunction
 
 function! s:dumb_jump.on_typed() abort
