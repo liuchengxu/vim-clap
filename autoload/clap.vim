@@ -73,19 +73,15 @@ let s:default_action = {
 let g:clap_open_preview = get(g:, 'clap_open_preview', 'always')
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
+let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 let g:clap_preview_size = get(g:, 'clap_preview_size', 5)
 let g:clap_preview_direction = get(g:, 'clap_preview_direction', 'AUTO')
-let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v:false)
-let g:clap_background_shadow_blend = get(g:, 'clap_background_shadow_blend', 50)
 let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
+let g:clap_background_shadow_blend = get(g:, 'clap_background_shadow_blend', 50)
 let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@')
+let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v:false)
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
-
-" Do not use this unless you know what you are doing!!!
-let g:__clap_development = get(g:, '__clap_development', v:false)
-
-let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 
 function! clap#builtin_providers() abort
   if !exists('s:builtin_providers')
