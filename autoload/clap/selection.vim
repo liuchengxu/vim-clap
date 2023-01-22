@@ -65,8 +65,8 @@ function! s:get_opaque_lines() abort
     let lines = map(copy(selected), 'clap#api#get_origin_line_at(v:val)')
   else
     let lines = [g:clap.display.getcurline()]
-    return extend(clap#sign#preserved_selections(), lines)
   endif
+  return extend(clap#sign#preserved_selections(), lines)
 endfunction
 
 " Apply the open action specified by `g:clap_open_action` given the (selected) lines.
