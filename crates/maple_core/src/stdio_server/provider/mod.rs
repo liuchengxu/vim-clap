@@ -459,7 +459,7 @@ impl ProviderSource {
 /// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         initialize_provider(ctx).await
     }
 

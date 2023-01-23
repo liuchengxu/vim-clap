@@ -345,7 +345,7 @@ impl FilerProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = &ctx.cwd;
 
         let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {

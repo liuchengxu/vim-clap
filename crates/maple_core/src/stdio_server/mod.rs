@@ -99,7 +99,7 @@ impl Client {
 
         match Event::from_method(&notification.method) {
             Event::Provider(provider_event) => match provider_event {
-                ProviderEvent::Create => {
+                ProviderEvent::NewSession => {
                     let provider_id = self.vim.provider_id().await?;
                     let ctx = Context::new(notification.params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;

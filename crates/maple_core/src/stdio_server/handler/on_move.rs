@@ -26,6 +26,15 @@ pub struct Preview {
     pub hi_lnum: Option<usize>,
 }
 
+impl Preview {
+    fn new(lines: Vec<String>) -> Self {
+        Self {
+            lines,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum PreviewTarget {
     /// List the entries under a directory.
@@ -204,10 +213,7 @@ impl<'a> CachedPreviewImpl<'a> {
             .take(self.preview_height)
             .map(Into::into)
             .collect::<Vec<_>>();
-        Ok(Preview {
-            lines,
-            ..Default::default()
-        })
+        Ok(Preview::new(lines))
     }
 
     fn preview_help_subject(
@@ -229,10 +235,7 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         } else {
             tracing::debug!(?preview_tag, "Can not find the preview help lines");
-            Preview {
-                lines: vec!["Can not find the preview help lines".into()],
-                ..Default::default()
-            }
+            Preview::new(vec!["Can not find the preview help lines".into()])
         }
     }
 
@@ -252,10 +255,7 @@ impl<'a> CachedPreviewImpl<'a> {
         title.push(':');
         lines.insert(0, title);
 
-        Ok(Preview {
-            lines,
-            ..Default::default()
-        })
+        Ok(Preview::new(lines))
     }
 
     fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {

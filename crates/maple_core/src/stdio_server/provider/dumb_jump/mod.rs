@@ -276,7 +276,7 @@ impl DumbJumpProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = ctx.vim.working_dir().await?;
         let extension = ctx.start_buffer_extension()?;
 

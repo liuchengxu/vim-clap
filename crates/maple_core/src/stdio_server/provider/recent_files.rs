@@ -118,7 +118,7 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         let cwd = ctx.vim.working_dir().await?;
 
