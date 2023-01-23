@@ -157,8 +157,9 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let preview_impl = CachedPreviewImpl::new(curline, preview_height, ctx)?;
-            let preview = preview_impl.get_preview().await?;
+            let preview = CachedPreviewImpl::new(curline, preview_height, ctx)?
+                .get_preview()
+                .await?;
             ctx.render_preview(preview)?;
         }
 

@@ -78,7 +78,7 @@ function! s:into_qf_entry(line) abort
 endfunction
 
 function! s:blines_sink_star(lines) abort
-  call clap#util#open_quickfix(map(a:lines, 's:into_qf_entry(v:val)'))
+  call clap#sink#open_quickfix(map(a:lines, 's:into_qf_entry(v:val)'))
 endfunction
 
 function! s:blines.on_typed() abort

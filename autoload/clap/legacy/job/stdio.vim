@@ -75,7 +75,7 @@ if has('nvim')
   endfunction
 
   function! s:start_service_job(cmd) abort
-    call clap#job#stdio#stop_service()
+    call clap#legacy#job#stdio#stop_service()
     let g:clap.display.cache = []
     let s:job_id = jobstart(a:cmd, {
           \ 'on_exit': function('s:on_event'),
@@ -85,7 +85,7 @@ if has('nvim')
     call clap#spinner#set_busy()
   endfunction
 
-  function! clap#job#stdio#send_message(msg) abort
+  function! clap#legacy#job#stdio#send_message(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
 else
@@ -120,7 +120,7 @@ else
   endfunction
 
   function! s:start_service_job(cmd_list) abort
-    call clap#job#stdio#stop_service()
+    call clap#legacy#job#stdio#stop_service()
     call clap#spinner#set_busy()
     let g:clap.display.cache = []
     let s:job = job_start(a:cmd_list, {
@@ -136,30 +136,30 @@ else
     call clap#job#track(s:job_id, s:job)
   endfunction
 
-  function! clap#job#stdio#send_message(msg) abort
+  function! clap#legacy#job#stdio#send_message(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
   endfunction
 endif
 
-function! clap#job#stdio#stop_service() abort
+function! clap#legacy#job#stdio#stop_service() abort
   if clap#job#exists(s:job_id)
     call clap#job#stop(s:job_id)
     let s:job_id = -1
   endif
 endfunction
 
-function! clap#job#stdio#start_service(MessageHandler, maple_cmd) abort
+function! clap#legacy#job#stdio#start_service(MessageHandler, maple_cmd) abort
   let s:MessageHandler = a:MessageHandler
   let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
   call s:start_service_job(a:maple_cmd)
 endfunction
 
-function! clap#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abort
+function! clap#legacy#job#stdio#start_service_with_delay(MessageHandler, maple_cmd) abort
   if s:stdio_job_timer != -1
     call timer_stop(s:stdio_job_timer)
   endif
   let g:__clap_stdio_debug_maple_cmd = join(a:maple_cmd, ' ')
-  let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
+  let s:stdio_job_timer = timer_start(s:stdio_job_delay, { -> clap#legacy#job#stdio#start_service(a:MessageHandler, a:maple_cmd) })
 endfunction
 
 let &cpoptions = s:save_cpo

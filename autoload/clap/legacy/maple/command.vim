@@ -1,5 +1,7 @@
 " Author: liuchengxu <xuliuchengxlc@gmail.com>
 " Description: Utils for building the maple command in CLI.
+"
+" Used to call maple from CLI, deprecated now.
 
 let s:save_cpo = &cpoptions
 set cpoptions&vim
@@ -31,7 +33,7 @@ function! s:prepare_global_opts(number) abort
   return global_opts
 endfunction
 
-function! clap#maple#command#start_live_grep(cmd, query, enable_icon, glob) abort
+function! clap#legacy#maple#command#start_live_grep(cmd, query, enable_icon, glob) abort
   let global_opts = s:prepare_global_opts(g:clap.display.preload_capacity)
 
   let subcommand = [
@@ -44,10 +46,10 @@ function! clap#maple#command#start_live_grep(cmd, query, enable_icon, glob) abor
     let subcommand += ['--glob', a:glob]
   endif
 
-  call clap#job#regular#maple#start([s:maple_bin] + global_opts + subcommand)
+  call clap#legacy#job#regular#maple#start([s:maple_bin] + global_opts + subcommand)
 endfunction
 
-function! clap#maple#command#ripgrep_forerunner() abort
+function! s:ripgrep_forerunner() abort
   " TODO: add max_output
   let global_opts = s:prepare_global_opts(v:null)
 
@@ -60,7 +62,7 @@ function! clap#maple#command#ripgrep_forerunner() abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! clap#maple#command#exec_forerunner(shell_cmd) abort
+function! s:exec_forerunner(shell_cmd) abort
   " No global --number option.
   let global_opts = s:prepare_global_opts(v:null)
 
@@ -74,7 +76,7 @@ function! clap#maple#command#exec_forerunner(shell_cmd) abort
 endfunction
 
 " Returns the filtered results after the input stream is complete.
-function! clap#maple#command#filter_sync(query) abort
+function! clap#legacy#maple#command#filter_sync(query) abort
   let global_opts = s:prepare_global_opts(g:clap.display.preload_capacity)
 
   if g:clap.provider.id ==# 'files'
@@ -91,7 +93,7 @@ function! clap#maple#command#filter_sync(query) abort
   return [s:maple_bin] + global_opts + ['filter', a:query, '--sync']
 endfunction
 
-function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
+function! clap#legacy#maple#command#filter_dyn(dyn_size, tempfile) abort
   let global_opts = s:prepare_global_opts(a:dyn_size)
 
   let subcommand = [
@@ -117,7 +119,7 @@ function! clap#maple#command#filter_dyn(dyn_size, tempfile) abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! clap#maple#command#tags(is_forerunner) abort
+function! s:tags(is_forerunner) abort
   let global_opts = s:prepare_global_opts(v:null)
 
   let subcommand = ['ctags', 'recursive-tags']
@@ -131,7 +133,7 @@ function! clap#maple#command#tags(is_forerunner) abort
   return [s:maple_bin] + global_opts + subcommand
 endfunction
 
-function! clap#maple#command#blines() abort
+function! clap#legacy#maple#command#blines() abort
   let full_command = [
         \ '--number', g:clap.display.preload_capacity,
         \ '--winwidth', winwidth(g:clap.display.winid),

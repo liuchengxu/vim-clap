@@ -229,20 +229,15 @@ endfunction
 " Clear the previous temp state when invoking a new provider.
 function! clap#state#clear_pre() abort
   call s:unlet_vars([
-        \ 's:current_matches',
-        \ 'g:__clap_raw_source',
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
-        \ 'g:__clap_initial_source_size',
         \ 'g:__clap_match_scope_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
+        \ 'g:__clap_forerunner_tempfile',
         \ ])
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
-  if exists('g:__clap_forerunner_tempfile')
-    unlet g:__clap_forerunner_tempfile
-  endif
 endfunction
 
 " Clear temp state on clap#_exit()
@@ -250,7 +245,6 @@ function! clap#state#clear_post() abort
   call s:remove_provider_tmp_vars([
         \ 'args',
         \ 'source_tempfile',
-        \ 'should_switch_to_async',
         \ ])
 
   call s:unlet_vars([

@@ -159,6 +159,11 @@ function! clap#util#getfsize(fname) abort
   return size
 endfunction
 
+" For backward-compatibility
+function! clap#util#open_quickfix(qf_entries) abort
+  return clap#sink#open_quickfix(a:qf_entries)
+endfunction
+
 function! clap#util#get_visual_selection() abort
   try
     let a_save = @a

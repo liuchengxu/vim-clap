@@ -190,23 +190,26 @@ impl Context {
         Ok(out.stdout)
     }
 
-    pub fn set_provider_source(&self, new: ProviderSource) {
-        let mut provider_source = self.provider_source.write();
-        *provider_source = new;
-    }
-
-    pub fn start_buffer_extension(&self) -> Result<String> {
+    pub fn start_buffer_extension(&self) -> std::io::Result<String> {
         self.env
             .start_buffer_path
             .extension()
             .and_then(|s| s.to_str())
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Extension not found for start_buffer_path: {}",
-                    self.env.start_buffer_path.display()
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!(
+                        "Extension not found for start_buffer_path: {}",
+                        self.env.start_buffer_path.display()
+                    ),
                 )
             })
+    }
+
+    pub fn set_provider_source(&self, new: ProviderSource) {
+        let mut provider_source = self.provider_source.write();
+        *provider_source = new;
     }
 
     pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
@@ -252,25 +255,6 @@ impl Context {
         }
     }
 
-    pub async fn preview_height(&mut self) -> Result<usize> {
-        self.preview_size().await.map(|x| 2 * x)
-    }
-
-    pub async fn preview_size(&mut self) -> Result<usize> {
-        match self.maybe_preview_size {
-            Some(size) => Ok(size),
-            None => {
-                let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
-                let size = self
-                    .vim
-                    .preview_size(&self.env.provider_id, preview_winid)
-                    .await?;
-                self.maybe_preview_size.replace(size);
-                Ok(size)
-            }
-        }
-    }
-
     pub async fn record_input(&mut self) -> Result<()> {
         let input = self.vim.input_get().await?;
         self.input_recorder.try_record(input);
@@ -303,6 +287,25 @@ impl Context {
         Ok(())
     }
 
+    pub async fn preview_size(&mut self) -> Result<usize> {
+        match self.maybe_preview_size {
+            Some(size) => Ok(size),
+            None => {
+                let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
+                let size = self
+                    .vim
+                    .preview_size(&self.env.provider_id, preview_winid)
+                    .await?;
+                self.maybe_preview_size.replace(size);
+                Ok(size)
+            }
+        }
+    }
+
+    pub async fn preview_height(&mut self) -> Result<usize> {
+        self.preview_size().await.map(|x| 2 * x)
+    }
+
     pub fn render_preview(&self, preview: Preview) -> Result<()> {
         self.vim.exec("clap#state#process_preview_result", preview)
     }
@@ -318,9 +321,9 @@ impl Context {
         }
 
         let preview_height = self.preview_height().await?;
-        let preview_impl = CachedPreviewImpl::new(curline, preview_height, self)?;
-
-        let preview = preview_impl.get_preview().await?;
+        let preview = CachedPreviewImpl::new(curline, preview_height, self)?
+            .get_preview()
+            .await?;
 
         // Ensure the preview result is not out-dated.
         let cur_lnum = self.vim.display_getcurlnum().await?;
