@@ -144,7 +144,7 @@ impl FilerProvider {
 
     async fn on_tab(&mut self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
 
         let preview_target = if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
@@ -184,7 +184,7 @@ impl FilerProvider {
         self.current_lines = lines;
 
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
         let preview_target = if target_dir.is_dir() {
             PreviewTarget::Directory(target_dir)
         } else {
@@ -200,7 +200,7 @@ impl FilerProvider {
 
     async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
 
         if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
@@ -212,7 +212,7 @@ impl FilerProvider {
         }
 
         let input = ctx.vim.input_get().await?;
-        let target_file = self.current_dir.clone().join(input);
+        let target_file = self.current_dir.join(input);
 
         ctx.vim
             .call("clap#provider#filer#handle_special_entries", [target_file])
@@ -227,8 +227,8 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let mut matched_items =
-            filter::par_filter_items(current_items, &ctx.matcher_builder().build(query.into()));
+        let matcher = ctx.matcher_builder().build(query.into());
+        let mut matched_items = filter::par_filter_items(current_items, &matcher);
         let total = matched_items.len();
 
         matched_items.truncate(200);
@@ -299,10 +299,7 @@ impl FilerProvider {
                 }
             }
             Err(err) => {
-                ctx.render_preview(Preview {
-                    lines: vec![err.to_string()],
-                    ..Default::default()
-                })?;
+                ctx.render_preview(Preview::new(vec![err.to_string()]))?;
             }
         }
         Ok(())
@@ -331,10 +328,7 @@ impl FilerProvider {
             v.insert(
                 entries
                     .into_iter()
-                    .map(|line| {
-                        let item: Arc<dyn ClapItem> = Arc::new(FilerItem(line));
-                        item
-                    })
+                    .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
                     .collect(),
             );
         }
@@ -360,17 +354,14 @@ impl ClapProvider for FilerProvider {
 
         let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
         ctx.vim
-            .exec("clap#provider#filer#handle_on_create", response)?;
+            .exec("clap#provider#filer#handle_on_initialize", response)?;
 
         self.dir_entries.insert(
             cwd.to_path_buf(),
             entries
                 .clone()
                 .into_iter()
-                .map(|line| {
-                    let item: Arc<dyn ClapItem> = Arc::new(FilerItem(line));
-                    item
-                })
+                .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
                 .collect(),
         );
         self.current_lines = entries;

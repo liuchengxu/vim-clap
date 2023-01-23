@@ -27,7 +27,7 @@ pub struct Preview {
 }
 
 impl Preview {
-    fn new(lines: Vec<String>) -> Self {
+    pub fn new(lines: Vec<String>) -> Self {
         Self {
             lines,
             ..Default::default()
