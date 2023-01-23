@@ -72,6 +72,10 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   call clap#indicator#set('['.a:matched.'/'.a:processed.']')
   call g:clap.display.set_lines(a:display_lines.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  call clap#preview#update_with_delay()
+  if a:matched > 0
+    call clap#sign#ensure_exists()
+  endif
   let g:__clap_icon_added_by_maple = a:display_lines.icon_added
   if !empty(a:display_lines.truncated_map)
     let g:__clap_lines_truncated_map = a:display_lines.truncated_map
