@@ -213,6 +213,7 @@ impl FuzzyMatcher {
     }
 }
 
+/// [`BonusMatcher`] only tweaks the match score.
 #[derive(Debug, Clone, Default)]
 pub struct BonusMatcher {
     bonuses: Vec<Bonus>,
