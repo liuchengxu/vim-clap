@@ -185,7 +185,7 @@ impl Context {
     }
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
-    pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
+    pub fn exec_cmd(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
         let out = utils::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
     }

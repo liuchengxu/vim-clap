@@ -197,7 +197,7 @@ impl<'a> CachedPreviewImpl<'a> {
     }
 
     fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {
-        let stdout = self.ctx.execute(&format!("git show {rev}"))?;
+        let stdout = self.ctx.exec_cmd(&format!("git show {rev}"))?;
         let stdout_str = String::from_utf8_lossy(&stdout);
         let lines = stdout_str
             .split('\n')
@@ -366,7 +366,7 @@ impl<'a> CachedPreviewImpl<'a> {
                         if !BLACK_LIST.contains(&ext)
                             && !dumb_analyzer::is_comment(latest_line, ext)
                         {
-                            match context_tag_with_timeout(path.to_path_buf(), lnum).await {
+                            match context_tag_with_timeout(path, lnum).await {
                                 Some(tag) if tag.line < start => {
                                     context_lines.reserve_exact(3);
 
@@ -520,10 +520,10 @@ impl<'a> CachedPreviewImpl<'a> {
     }
 }
 
-async fn context_tag_with_timeout(path: PathBuf, lnum: usize) -> Option<BufferTag> {
+async fn context_tag_with_timeout(path: &Path, lnum: usize) -> Option<BufferTag> {
     const TIMEOUT: Duration = Duration::from_millis(300);
 
-    match tokio::time::timeout(TIMEOUT, current_context_tag_async(path.as_path(), lnum)).await {
+    match tokio::time::timeout(TIMEOUT, current_context_tag_async(path, lnum)).await {
         Ok(res) => res,
         Err(_) => {
             tracing::debug!(timeout = ?TIMEOUT, "⏳ Did not get the context tag in time");
