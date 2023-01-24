@@ -7,7 +7,7 @@ set cpoptions&vim
 " NOTE: some local variable without explicit l:, e.g., count,
 " may run into some erratic read-only error.
 function! clap#state#refresh_matches_count(cnt) abort
-  call clap#indicator#set_matches_number(a:cnt)
+  call clap#indicator#update_matched(a:cnt)
   call clap#sign#reset_to_first_line()
 endfunction
 
@@ -22,16 +22,16 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     if decoded.total == 0 && exists('g:__clap_lines_truncated_map')
       unlet g:__clap_lines_truncated_map
     endif
-    call clap#indicator#set_matches_number(decoded.total)
+    call clap#indicator#update_matched(decoded.total)
   endif
 
   if has_key(decoded, 'matched')
-    call clap#indicator#set('['.decoded.matched.'/'.decoded.processed.']')
+    call clap#indicator#update(decoded.matched, decoded.processed)
   elseif has_key(decoded, 'total_matched')
     if has_key(decoded, 'total_processed')
-      call clap#indicator#set('['.decoded.total_matched.'/'.decoded.total_processed.']')
+      call clap#indicator#update(decoded.total_matched, decoded.total_processed)
     else
-      call clap#indicator#set_matches_number(decoded.total_matched)
+      call clap#indicator#update_matched(decoded.total_matched)
     endif
   endif
 
@@ -65,11 +65,11 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 endfunction
 
 function! clap#state#process_progress(matched, processed) abort
-  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
+  call clap#indicator#update(a:matched, a:processed)
 endfunction
 
 function! clap#state#process_progress_full(display_lines, matched, processed) abort
-  call clap#indicator#set('['.a:matched.'/'.a:processed.']')
+  call clap#indicator#update(a:matched, a:processed)
   call g:clap.display.set_lines(a:display_lines.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
   call clap#preview#update_with_delay()
@@ -109,7 +109,7 @@ function! clap#state#process_response_on_typed(result) abort
     let g:clap.display.initial_size = a:result.initial_size
   endif
 
-  call clap#indicator#set_matches_number(a:result.total)
+  call clap#indicator#update_matched(a:result.total)
 
   if a:result.total == 0
     call clap#state#clear_screen()
@@ -158,7 +158,7 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
   endif
   let g:__clap_icon_added_by_maple = a:icon_added
 
-  call clap#indicator#update_matches_on_forerunner_done()
+  call clap#indicator#update_processed(g:clap.display.initial_size)
   call clap#sign#ensure_exists()
 
   if a:using_cache
@@ -180,7 +180,7 @@ function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abo
 
   call clap#sign#ensure_exists()
 
-  call clap#indicator#set_matches_number(0)
+  call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
 endfunction
 
@@ -237,7 +237,7 @@ function! clap#state#clear_pre() abort
         \ ])
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
-  call clap#indicator#clear()
+  call clap#indicator#reset()
 endfunction
 
 " Clear temp state on clap#_exit()

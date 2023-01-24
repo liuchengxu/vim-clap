@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:PATH_SEPARATOR = has('win32') ? '\' : '/'
-let s:DEFAULT_PROMPT = has('nvim') ? 'Type anything you want to find' : 'Search ??'
 
 let s:grep_delay = get(g:, 'clap_provider_live_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_live_grep_blink', [2, 100])
@@ -177,13 +176,11 @@ function! s:grep_on_typed() abort
 
   if empty(g:clap.input.get())
     if exists('s:initial_size')
-      call clap#indicator#set_matches_number(s:initial_size)
+      call clap#indicator#update_matched(s:initial_size)
     elseif has_key(g:clap.display, 'initial_size')
       let s:initial_size = g:clap.display.initial_size
       unlet g:clap.display.initial_size
-      call clap#indicator#set_matches_number(s:initial_size)
-    else
-      call clap#indicator#set(s:DEFAULT_PROMPT)
+      call clap#indicator#update_matched(s:initial_size)
     endif
     call g:clap.display.clear_highlight()
     if exists('g:__clap_forerunner_result')

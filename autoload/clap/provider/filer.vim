@@ -21,7 +21,8 @@ function! clap#provider#filer#handle_on_initialize(result) abort
   let result = a:result
   call g:clap.display.set_lines(result.entries)
   call clap#sign#reset_to_first_line()
-  call clap#state#refresh_matches_count(string(result.total))
+  call clap#state#update_processed(result.total)
+  call clap#sign#reset_to_first_line()
   call g:clap#display_win.shrink_if_undersize()
 endfunction
 

@@ -62,7 +62,7 @@ else
       let s:lines_on_empty_query = lines
       call g:clap.display.set_lines_lazy(s:format(lines))
       call g:clap#display_win.shrink_if_undersize()
-      call clap#indicator#set_matches_number(line_count)
+      call clap#indicator#update_matched(line_count)
       call clap#sign#toggle_cursorline()
     endif
   endfunction
@@ -90,7 +90,7 @@ function! s:blines.on_typed() abort
       call clap#client#notify('on_typed')
     elseif empty(l:cur_input)
       call g:clap.display.set_lines_lazy(s:lines_on_empty())
-      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#indicator#update_matched(g:clap.display.initial_size)
       call clap#sign#toggle_cursorline()
       call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()
@@ -101,7 +101,7 @@ function! s:blines.on_typed() abort
   else
     if empty(l:cur_input)
       call g:clap.display.set_lines_lazy(s:lines_on_empty())
-      call clap#indicator#set_matches_number(g:clap.display.initial_size)
+      call clap#indicator#update_matched(g:clap.display.initial_size)
       call clap#sign#toggle_cursorline()
       call g:clap#display_win.shrink_if_undersize()
       call g:clap.preview.hide()
