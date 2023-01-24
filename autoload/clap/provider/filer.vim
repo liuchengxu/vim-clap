@@ -17,7 +17,7 @@ function! clap#provider#filer#hi_empty_dir() abort
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-function! clap#provider#filer#handle_on_create(result) abort
+function! clap#provider#filer#handle_on_initialize(result) abort
   let result = a:result
   call g:clap.display.set_lines(result.entries)
   call clap#sign#reset_to_first_line()

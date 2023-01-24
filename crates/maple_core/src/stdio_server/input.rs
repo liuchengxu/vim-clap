@@ -14,7 +14,9 @@ pub enum Event {
 /// Provider specific events.
 #[derive(Debug, Clone)]
 pub enum ProviderEvent {
-    Create,
+    NewSession,
+    /// Internal signal.
+    OnInitialize,
     OnMove,
     OnTyped,
     Terminate,
@@ -43,7 +45,7 @@ pub enum KeyEvent {
 impl Event {
     pub fn from_method(method: &str) -> Self {
         match method {
-            "new_session" => Self::Provider(ProviderEvent::Create),
+            "new_session" => Self::Provider(ProviderEvent::NewSession),
             "on_typed" => Self::Provider(ProviderEvent::OnTyped),
             "on_move" => Self::Provider(ProviderEvent::OnMove),
             "exit" => Self::Provider(ProviderEvent::Terminate),

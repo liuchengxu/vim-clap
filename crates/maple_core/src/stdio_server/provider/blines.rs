@@ -59,7 +59,7 @@ impl BlinesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for BlinesProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             self.process_query(query, ctx);

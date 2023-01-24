@@ -118,7 +118,7 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         let cwd = ctx.vim.working_dir().await?;
 
@@ -157,8 +157,9 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let preview_impl = CachedPreviewImpl::new(curline, preview_height, ctx)?;
-            let preview = preview_impl.get_preview().await?;
+            let preview = CachedPreviewImpl::new(curline, preview_height, ctx)?
+                .get_preview()
+                .await?;
             ctx.render_preview(preview)?;
         }
 

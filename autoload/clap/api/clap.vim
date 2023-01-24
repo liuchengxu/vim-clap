@@ -297,11 +297,11 @@ function! s:init_provider() abort
   endfunction
 
   function! provider.sink(selected) abort
-    call clap#rooter#run_heuristic(self._apply_sink, a:selected)
+    call clap#rooter#run_sink_or_sink_star(self._apply_sink, a:selected)
   endfunction
 
   function! provider.sink_star(lines) abort
-    call clap#rooter#run_heuristic(self._()['sink*'], a:lines)
+    call clap#rooter#run_sink_or_sink_star(self._()['sink*'], a:lines)
   endfunction
 
   function! provider.on_enter() abort
@@ -317,7 +317,7 @@ function! s:init_provider() abort
       return
     endif
     try
-      call clap#sign#reset_selected()
+      call clap#sign#reset_on_query_change()
       call self._().on_typed()
       call clap#preview#update_with_delay()
     catch
@@ -398,18 +398,6 @@ function! s:init_provider() abort
     endif
   endfunction
 
-  function! provider.get_source() abort
-    let provider_info = self._()
-    " Catch any exceptions and show them in the display window.
-    try
-      return has_key(provider_info, 'source') ? clap#rooter#run(self._apply_source) : []
-    catch
-      call clap#spinner#set_idle()
-      let tps = split(v:throwpoint, '\[\d\+\]\zs')
-      return ['provider.get_source:'] + tps + [v:exception]
-    endtry
-  endfunction
-
   function! provider.is_sync() abort
     return has_key(self._(), 'source')
   endfunction
@@ -465,23 +453,11 @@ function! clap#api#clap#init() abort
 
   if s:is_nvim
     let g:clap.preview = g:clap#floating_win#preview
-
-    function! g:clap.preview.add_highlight(lnum) abort
-      noautocmd call win_gotoid(g:clap.preview.winid)
-      call s:matchaddpos(a:lnum)
-      noautocmd call win_gotoid(g:clap.input.winid)
-    endfunction
-
     let g:clap#display_win = g:clap#floating_win#display
     let g:clap.open_win = function('clap#floating_win#open')
     let g:clap.close_win = function('clap#floating_win#close')
   else
     let g:clap.preview = g:clap#popup#preview
-
-    function! g:clap.preview.add_highlight(lnum) abort
-      call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
-    endfunction
-
     let g:clap#display_win = g:clap#popup#display
     let g:clap.open_win = function('clap#popup#open')
     let g:clap.close_win = function('clap#popup#close')
@@ -490,6 +466,18 @@ function! clap#api#clap#init() abort
   function! g:clap.preview.set_syntax(syntax) abort
     call g:clap.preview.setbufvar('&syntax', a:syntax)
   endfunction
+
+  if exists('*win_execute')
+    function! g:clap.preview.add_highlight(lnum) abort
+      call win_execute(g:clap.preview.winid, 'noautocmd call s:matchaddpos(a:lnum)')
+    endfunction
+  else
+    function! g:clap.preview.add_highlight(lnum) abort
+      noautocmd call win_gotoid(g:clap.preview.winid)
+      call s:matchaddpos(a:lnum)
+      noautocmd call win_gotoid(g:clap.input.winid)
+    endfunction
+  endif
 
   call s:inject_base_api(g:clap.preview)
 endfunction

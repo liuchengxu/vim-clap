@@ -148,7 +148,7 @@ endfunction
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
   let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):\(.*\)'
-  call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
+  call clap#sink#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 
 function! s:apply_grep(_timer) abort
@@ -254,7 +254,7 @@ if clap#maple#is_available()
   function! s:start_job(query) abort
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#command#start_live_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
+    call clap#legacy#maple#command#start_live_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
   endfunction
 
   function! s:strip_icon_and_match(line, pattern) abort

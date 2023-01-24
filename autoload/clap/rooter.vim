@@ -59,7 +59,7 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
   let save_cwd = getcwd()
   try
     execute 'lcd' a:target_dir
-    let l:result = call(a:Run, a:run_args)
+    let l:result = call(a:Run, [a:run_args])
   catch
     call clap#helper#echo_error(
           \ printf('target_dir:%s, Run:%s, run_args:%s, exception:%s',
@@ -78,6 +78,7 @@ function! s:run_from_target_dir(target_dir, Run, run_args) abort
   return exists('l:result') ? l:result : []
 endfunction
 
+" Deprecated
 " Argument: Funcref to run as well as its args
 function! clap#rooter#run(Run, ...) abort
   if exists('g:__clap_provider_cwd')
@@ -98,23 +99,25 @@ function! clap#rooter#run(Run, ...) abort
   return result
 endfunction
 
-" This is used for the sink function.
-function! clap#rooter#run_heuristic(Run, ...) abort
+" This is used for the sink/sink* function, with the proper cwd considered.
+"
+" Argument: `sink_args`/`sink_args`
+function! clap#rooter#run_sink_or_sink_star(Run, ...) abort
   if exists('g:__clap_provider_cwd')
-    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:000)
+    return s:run_from_target_dir(g:__clap_provider_cwd, a:Run, a:1)
   elseif clap#should_use_raw_cwd()
-    return call(a:Run, a:000)
+    return call(a:Run, a:1)
   endif
 
   let project_root = clap#path#find_project_root(g:clap.start.bufnr)
 
   if empty(project_root)
-    let result = call(a:Run, a:000)
+    let result = call(a:Run, a:1)
   else
     let save_cwd = getcwd()
     try
       execute 'lcd' project_root
-      let l:result = call(a:Run, a:000)
+      let l:result = call(a:Run, a:1)
     finally
       " Here we could use a naive heuristic approach to
       " not restore the old cwd when the current working

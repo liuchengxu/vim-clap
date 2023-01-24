@@ -72,6 +72,10 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   call clap#indicator#set('['.a:matched.'/'.a:processed.']')
   call g:clap.display.set_lines(a:display_lines.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  call clap#preview#update_with_delay()
+  if a:matched > 0
+    call clap#sign#ensure_exists()
+  endif
   let g:__clap_icon_added_by_maple = a:display_lines.icon_added
   if !empty(a:display_lines.truncated_map)
     let g:__clap_lines_truncated_map = a:display_lines.truncated_map
@@ -225,20 +229,15 @@ endfunction
 " Clear the previous temp state when invoking a new provider.
 function! clap#state#clear_pre() abort
   call s:unlet_vars([
-        \ 's:current_matches',
-        \ 'g:__clap_raw_source',
         \ 'g:__clap_provider_cwd',
         \ 'g:__clap_forerunner_result',
-        \ 'g:__clap_initial_source_size',
         \ 'g:__clap_match_scope_enum',
         \ 'g:__clap_recent_files_dyn_tmp',
+        \ 'g:__clap_forerunner_tempfile',
         \ ])
   let g:clap.display.initial_size = -1
   let g:__clap_icon_added_by_maple = v:false
   call clap#indicator#clear()
-  if exists('g:__clap_forerunner_tempfile')
-    unlet g:__clap_forerunner_tempfile
-  endif
 endfunction
 
 " Clear temp state on clap#_exit()
@@ -246,7 +245,6 @@ function! clap#state#clear_post() abort
   call s:remove_provider_tmp_vars([
         \ 'args',
         \ 'source_tempfile',
-        \ 'should_switch_to_async',
         \ ])
 
   call s:unlet_vars([

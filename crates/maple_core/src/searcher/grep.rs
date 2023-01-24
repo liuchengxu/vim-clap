@@ -42,14 +42,13 @@ enum SearcherMessage {
     ProcessedOne,
 }
 
-/// Represents a matched item in a file.
+/// Represents an matched item by searching a file.
 #[derive(Debug, Clone)]
 pub struct FileResult {
     pub path: PathBuf,
-    /// 0-based.
-    pub line_number: usize,
-    pub score: Score,
+    pub line_number: u64,
     pub line: String,
+    pub score: Score,
     pub indices_in_path: Vec<usize>,
     pub indices_in_line: Vec<usize>,
 }
@@ -116,7 +115,7 @@ impl StoppableSearchImpl {
                 let result = searcher.search_path(
                     &MatchEverything,
                     entry.path(),
-                    sinks::Lossy(|line_num, line| {
+                    sinks::Lossy(|line_number, line| {
                         if line.is_empty() {
                             if let Err(err) = sender.send(SearcherMessage::ProcessedOne) {
                                 tracing::debug!("SearcherMessage sender is dropped: {err:?}");
@@ -134,23 +133,13 @@ impl StoppableSearchImpl {
                         let maybe_file_result =
                             matcher
                                 .match_file_result(path, line)
-                                .map(|matched_file_result| {
-                                    let matcher::MatchedFileResult {
-                                        exact_indices,
-                                        fuzzy_indices,
-                                        score,
-                                    } = matched_file_result;
-
-                                    FileResult {
-                                        // TODO: May be cached somewhere so that the allcation won't be
-                                        // neccessary each time.
-                                        path: entry.path().to_path_buf(),
-                                        line_number: line_num as usize - 1,
-                                        score,
-                                        line: line.to_string(),
-                                        indices_in_path: exact_indices,
-                                        indices_in_line: fuzzy_indices,
-                                    }
+                                .map(|matched| FileResult {
+                                    path: entry.path().to_path_buf(),
+                                    line_number,
+                                    line: line.to_string(),
+                                    score: matched.score,
+                                    indices_in_path: matched.exact_indices,
+                                    indices_in_line: matched.fuzzy_indices,
                                 });
 
                         let searcher_message = if let Some(file_result) = maybe_file_result {
@@ -297,7 +286,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
                 };
 
                 if let Some(mut column) = maybe_column.copied() {
-                    let line_number = file_result.line_number + 1;
+                    let line_number = file_result.line_number;
                     column += 1;
                     let mut fmt_line =
                         if let Ok(relative_path) = file_result.path.strip_prefix(&search_root) {
@@ -308,15 +297,8 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
                     let offset = fmt_line.len();
                     fmt_line.push_str(&file_result.line);
 
-                    let fuzzy_indices = file_result
-                        .indices_in_line
-                        .iter()
-                        .copied()
-                        .map(|x| x + offset)
-                        .collect::<Vec<_>>();
-
                     let mut indices = file_result.indices_in_path.clone();
-                    indices.extend_from_slice(&fuzzy_indices);
+                    indices.extend(file_result.indices_in_line.iter().map(|x| *x + offset));
 
                     let matched_item = MatchedItem {
                         item: Arc::new(fmt_line),
@@ -325,6 +307,7 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
                         display_text: None,
                         output_text: None,
                     };
+
                     Some(matched_item)
                 } else {
                     None
