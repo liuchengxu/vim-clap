@@ -105,13 +105,9 @@ function! clap#state#process_preview_result(result) abort
 endfunction
 
 function! clap#state#process_response_on_typed(result) abort
-  if has_key(a:result, 'initial_size')
-    let g:clap.display.initial_size = a:result.initial_size
-  endif
+  call clap#indicator#update(a:result.matched, a:result.processed)
 
-  call clap#indicator#update_matched(a:result.total)
-
-  if a:result.total == 0
+  if a:result.processed == 0
     call clap#state#clear_screen()
     return
   endif

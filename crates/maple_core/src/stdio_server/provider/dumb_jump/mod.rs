@@ -230,7 +230,6 @@ impl DumbJumpProvider {
         searching_worker: SearchingWorker,
         query: String,
         query_info: QueryInfo,
-        ctx: &Context,
     ) -> Result<SearchResults> {
         if query.is_empty() {
             return Ok(Default::default());
@@ -245,30 +244,7 @@ impl DumbJumpProvider {
             _ => SearchEngine::Regex,
         };
 
-        let (response, usages) = match search_engine.run(searching_worker).await {
-            Ok(usages) => {
-                let response = {
-                    let total = usages.len();
-                    // Only show the top 200 items.
-                    let (lines, indices): (Vec<_>, Vec<_>) = usages
-                        .iter()
-                        .take(200)
-                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
-                        .unzip();
-                    json!({ "lines": lines, "indices": indices, "total": total })
-                };
-
-                (response, usages)
-            }
-            Err(e) => {
-                tracing::error!(error = ?e, "Error at running dumb_jump");
-                let response = json!({ "error": { "message": e.to_string() } });
-                (response, Default::default())
-            }
-        };
-
-        ctx.vim
-            .exec("clap#state#process_response_on_typed", response)?;
+        let usages = search_engine.run(searching_worker).await?;
 
         Ok(SearchResults { usages, query_info })
     }
@@ -300,9 +276,28 @@ impl ClapProvider for DumbJumpProvider {
                 query_info: query_info.clone(),
                 source_file_extension: extension,
             };
-            self.cached_results = self
-                .start_search(searching_worker, query, query_info, ctx)
+
+            let search_results = self
+                .start_search(searching_worker, query, query_info)
                 .await?;
+
+            let processed = search_results.usages.len();
+            // Only show the top 200 items.
+            let (lines, indices): (Vec<_>, Vec<_>) = search_results
+                .usages
+                .iter()
+                .take(200)
+                .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+                .unzip();
+
+            let response = json!({
+                "lines": lines, "indices": indices, "matched": processed, "processed": processed,
+            });
+
+            ctx.vim
+                .exec("clap#state#process_response_on_typed", response)?;
+
+            self.cached_results = search_results;
             self.current_usages.take();
         }
 
@@ -358,13 +353,16 @@ impl ClapProvider for DumbJumpProvider {
                         .map(|(line, indices)| Usage::new(line, indices))
                 })
                 .collect::<Vec<_>>();
-            let total = refiltered.len();
+            let matched = refiltered.len();
             let (lines, indices): (Vec<&str>, Vec<&[usize]>) = refiltered
                 .iter()
                 .take(200)
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
-            let response = json!({ "lines": lines, "indices": indices, "total": total });
+            let processed = self.cached_results.usages.len();
+            let response = json!({
+                "lines": lines, "indices": indices, "matched": matched, "processed": processed,
+            });
             ctx.vim
                 .exec("clap#state#process_response_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
@@ -378,9 +376,27 @@ impl ClapProvider for DumbJumpProvider {
             query_info: query_info.clone(),
             source_file_extension: extension,
         };
-        self.cached_results = self
-            .start_search(searching_worker, query, query_info, ctx)
+        let search_results = self
+            .start_search(searching_worker, query, query_info)
             .await?;
+
+        let processed = search_results.usages.len();
+        // Only show the top 200 items.
+        let (lines, indices): (Vec<_>, Vec<_>) = search_results
+            .usages
+            .iter()
+            .take(200)
+            .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+            .unzip();
+
+        let response = json!({
+            "lines": lines, "indices": indices, "matched": processed, "processed": processed,
+        });
+
+        ctx.vim
+            .exec("clap#state#process_response_on_typed", response)?;
+
+        self.cached_results = search_results;
         self.current_usages.take();
 
         Ok(())

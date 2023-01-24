@@ -35,7 +35,8 @@ function! s:indicator.reset() abort
 endfunction
 
 function! s:indicator.format() abort
-  return printf("%d/%d [%d]", self.matched, self.processed, len(clap#sign#get()))
+  let selected = clap#sign#current_selections_count()
+  return printf("%d/%d [%d]", self.matched, self.processed, selected)
 endfunction
 
 " Caveat: This function can have a peformance bottle neck if update frequently.
