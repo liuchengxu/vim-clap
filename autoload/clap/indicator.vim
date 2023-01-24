@@ -36,7 +36,11 @@ endfunction
 
 function! s:indicator.format() abort
   let selected = clap#sign#current_selections_count()
-  return printf("%d/%d [%d]", self.matched, self.processed, selected)
+  if self.processed == -1
+    return printf("%d [%d]", self.matched, selected)
+  else
+    return printf("%d/%d [%d]", self.matched, self.processed, selected)
+  endif
 endfunction
 
 " Caveat: This function can have a peformance bottle neck if update frequently.
@@ -46,42 +50,50 @@ endfunction
 "
 " If the initial_size is possible, use clap#state#refresh_matches_count()
 " instead in that it will combine the initial_size info.
-function! s:indicator.render() abort
+function! s:indicator.render(formatted) abort
   if g:clap_disable_matches_indicator
     return
   endif
-  call s:update_indicator(s:padding(self.format()))
+  call s:update_indicator(s:padding(a:formatted))
 endfunction
 
 function! clap#indicator#update_on_deletecurline() abort
   let s:indicator.matched -= 1
   let s:indicator.processed -= 1
-  let s:indicator.render()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#update_matched(matched) abort
   let s:indicator.matched = a:matched
-  call s:indicator.render()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#update_processed(processed) abort
   let s:indicator.processed = a:processed
-  call s:indicator.render()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#update(matched, processed) abort
   let s:indicator.matched = a:matched
   let s:indicator.processed = a:processed
-  call s:indicator.render()
+  call s:indicator.render(s:indicator.format())
+endfunction
+
+" API for specific provider like dumb_jump.
+function! clap#indicator#update_matched_only(matched) abort
+  let s:indicator.matched = a:matched
+  let s:indicator.processed = -1
+  let selected = clap#sign#current_selections_count()
+  call s:indicator.render(printf('%d [%d]', a:matched, selected))
 endfunction
 
 function! clap#indicator#render() abort
-  call s:indicator.render()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#reset() abort
   call s:indicator.reset()
-  call s:indicator.render()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#set_none() abort

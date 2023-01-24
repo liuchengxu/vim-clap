@@ -105,10 +105,18 @@ function! clap#state#process_preview_result(result) abort
 endfunction
 
 function! clap#state#process_response_on_typed(result) abort
-  call clap#indicator#update(a:result.matched, a:result.processed)
-
-  if a:result.processed == 0
-    call clap#state#clear_screen()
+  if has_key(a:result, 'matched')
+    if has_key(a:result, 'processed')
+      call clap#indicator#update(a:result.matched, a:result.processed)
+      if a:result.processed == 0
+        call clap#state#clear_screen()
+        return
+      endif
+    else
+      call clap#indicator#update_matched_only(a:result.matched)
+    endif
+  else
+    " Should be unreachable.
     return
   endif
 
@@ -122,11 +130,14 @@ function! clap#state#process_response_on_typed(result) abort
 
   call g:clap.display.set_lines(a:result.lines)
   call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
-  call clap#preview#update_with_delay()
   call clap#sign#ensure_exists()
 
-  if has_key(a:result, 'preview') && !empty(a:result.preview)
-    call clap#state#process_preview_result(a:result.preview)
+  if has_key(a:result, 'preview')
+    if !empty(a:result.preview)
+      call clap#state#process_preview_result(a:result.preview)
+    endif
+  else
+    call clap#preview#update_with_delay()
   endif
 endfunction
 

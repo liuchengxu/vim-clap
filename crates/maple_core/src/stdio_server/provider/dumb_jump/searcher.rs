@@ -11,13 +11,13 @@ use std::process::{Command, Stdio};
 
 /// Context for performing a search.
 #[derive(Debug, Clone)]
-pub(super) struct SearchingWorker {
+pub(super) struct SearchWorker {
     pub cwd: AbsPathBuf,
     pub query_info: QueryInfo,
     pub source_file_extension: String,
 }
 
-impl SearchingWorker {
+impl SearchWorker {
     fn ctags_search(self) -> Result<Vec<AddressableUsage>> {
         let mut tags_generator = TagsGenerator::with_dir(self.cwd);
         if let Some(language) = get_language(&self.source_file_extension) {
@@ -113,22 +113,22 @@ pub(super) enum SearchEngine {
 }
 
 impl SearchEngine {
-    pub async fn run(&self, searching_worker: SearchingWorker) -> Result<Usages> {
-        let cwd = searching_worker.cwd.clone();
+    pub async fn run(&self, search_worker: SearchWorker) -> Result<Usages> {
+        let cwd = search_worker.cwd.clone();
 
         let ctags_future = {
-            let searching_worker = searching_worker.clone();
-            async move { searching_worker.ctags_search() }
+            let search_worker = search_worker.clone();
+            async move { search_worker.ctags_search() }
         };
 
         let regex_future = {
-            let searching_worker = searching_worker.clone();
-            async move { searching_worker.regex_search() }
+            let search_worker = search_worker.clone();
+            async move { search_worker.regex_search() }
         };
 
         let addressable_usages = match self {
-            SearchEngine::Ctags => searching_worker.ctags_search()?,
-            SearchEngine::Regex => searching_worker.regex_search()?,
+            SearchEngine::Ctags => search_worker.ctags_search()?,
+            SearchEngine::Regex => search_worker.regex_search()?,
             SearchEngine::CtagsAndRegex => {
                 let (ctags_results, regex_results) = futures::join!(ctags_future, regex_future);
 
@@ -139,20 +139,20 @@ impl SearchEngine {
                 )
             }
             SearchEngine::CtagsElseRegex => {
-                let results = searching_worker.clone().ctags_search();
+                let results = search_worker.clone().ctags_search();
                 // tags might be incomplete, try the regex way if no results from the tags file.
                 let try_regex =
                     results.is_err() || results.as_ref().map(|r| r.is_empty()).unwrap_or(false);
                 if try_regex {
-                    searching_worker.regex_search()?
+                    search_worker.regex_search()?
                 } else {
                     results?
                 }
             }
             SearchEngine::All => {
                 let gtags_future = {
-                    let searching_worker = searching_worker.clone();
-                    async move { searching_worker.gtags_search() }
+                    let search_worker = search_worker.clone();
+                    async move { search_worker.gtags_search() }
                 };
 
                 let (ctags_results, gtags_results, regex_results) =
