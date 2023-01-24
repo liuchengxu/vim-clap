@@ -156,7 +156,7 @@ impl FilerProvider {
                 PreviewTarget::File(path)
             }
         } else if target_dir.is_file() {
-            PreviewTarget::File(target_dir.clone())
+            PreviewTarget::File(target_dir)
         } else {
             return Ok(());
         };
@@ -227,15 +227,47 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
+        let processed = current_items.len();
+
+        if query.is_empty() {
+            let printer::DisplayLines {
+                lines,
+                mut indices,
+                truncated_map: _,
+                icon_added,
+            } = printer::to_display_lines(
+                current_items.iter().cloned().map(Into::into).collect(),
+                ctx.env.display_winwidth,
+                icon::Icon::Null, // icon is handled inside the provider impl.
+            );
+
+            if ctx.env.icon.enabled() {
+                indices.iter_mut().for_each(|v| {
+                    v.iter_mut().for_each(|x| {
+                        *x -= 2;
+                    })
+                });
+            }
+
+            let result = json!({
+              "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
+            });
+
+            ctx.vim
+                .exec("clap#state#process_filter_message", json!([result, true]))?;
+
+            return Ok(lines);
+        }
+
         let matcher = ctx.matcher_builder().build(query.into());
         let mut matched_items = filter::par_filter_items(current_items, &matcher);
-        let total = matched_items.len();
+        let matched = matched_items.len();
 
         matched_items.truncate(200);
 
         let printer::DisplayLines {
             lines,
-            indices,
+            mut indices,
             truncated_map,
             icon_added,
         } = printer::to_display_lines(
@@ -244,10 +276,18 @@ impl FilerProvider {
             icon::Icon::Null, // icon is handled inside the provider impl.
         );
 
+        if ctx.env.icon.enabled() {
+            indices.iter_mut().for_each(|v| {
+                v.iter_mut().for_each(|x| {
+                    *x -= 2;
+                })
+            });
+        }
+
         let result = if truncated_map.is_empty() {
-            json!({ "lines": &lines, "indices": indices, "total": total, "icon_added": icon_added })
+            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added })
         } else {
-            json!({ "lines": &lines, "indices": indices, "total": total, "icon_added": icon_added, "truncated_map": truncated_map })
+            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added, "truncated_map": truncated_map })
         };
 
         ctx.vim
