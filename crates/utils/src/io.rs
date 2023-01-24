@@ -78,11 +78,7 @@ pub fn read_first_lines<P: AsRef<Path>>(
     path: P,
     number: usize,
 ) -> Result<impl Iterator<Item = String>> {
-    let file = File::open(path)?;
-    Ok(BufReader::new(file)
-        .lines()
-        .filter_map(|i| i.ok())
-        .take(number))
+    read_lines_from(path, 0usize, number)
 }
 
 /// Returns a `number` of lines starting from the line number `from`.
@@ -95,7 +91,7 @@ pub fn read_lines_from<P: AsRef<Path>>(
     Ok(BufReader::new(file)
         .lines()
         .skip(from)
-        .filter_map(|i| i.ok())
+        .filter_map(Result::ok)
         .take(number))
 }
 
@@ -106,20 +102,12 @@ fn read_preview_lines_utf8<P: AsRef<Path>>(
     target_line: usize,
     size: usize,
 ) -> Result<(impl Iterator<Item = String>, usize)> {
-    let file = File::open(path)?;
     let (start, end, highlight_lnum) = if target_line > size {
         (target_line - size, target_line + size, size)
     } else {
         (0, 2 * size, target_line)
     };
-    Ok((
-        BufReader::new(file)
-            .lines()
-            .skip(start)
-            .filter_map(|l| l.ok())
-            .take(end - start),
-        highlight_lnum,
-    ))
+    Ok((read_lines_from(path, start, end - start)?, highlight_lnum))
 }
 
 #[cfg(test)]

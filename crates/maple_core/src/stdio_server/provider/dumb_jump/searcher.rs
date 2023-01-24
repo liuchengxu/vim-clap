@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-/// Context for performing a search.
+/// `dumb_jump` search worker.
 #[derive(Debug, Clone)]
 pub(super) struct SearchWorker {
     pub cwd: AbsPathBuf,
@@ -52,12 +52,12 @@ impl SearchWorker {
             usage_matcher,
             ..
         } = self.query_info;
-        let searcher = RegexSearcher {
+        let regex_searcher = RegexSearcher {
             word: keyword,
             extension: self.source_file_extension,
             dir: Some(self.cwd.into()),
         };
-        searcher.search_usages(false, &usage_matcher)
+        regex_searcher.search_usages(false, &usage_matcher)
     }
 }
 
