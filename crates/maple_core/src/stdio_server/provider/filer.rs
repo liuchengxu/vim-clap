@@ -160,10 +160,8 @@ impl FilerProvider {
         } else {
             return Ok(());
         };
-        let preview_height = ctx.preview_height().await?;
 
-        self.update_preview(preview_target, preview_height, ctx)
-            .await?;
+        self.update_preview(preview_target, ctx).await?;
 
         Ok(())
     }
@@ -190,10 +188,8 @@ impl FilerProvider {
         } else {
             PreviewTarget::File(target_dir)
         };
-        let preview_height = ctx.preview_height().await?;
 
-        self.update_preview(preview_target, preview_height, ctx)
-            .await?;
+        self.update_preview(preview_target, ctx).await?;
 
         Ok(())
     }
@@ -236,7 +232,12 @@ impl FilerProvider {
                 truncated_map: _,
                 icon_added,
             } = printer::to_display_lines(
-                current_items.iter().cloned().map(Into::into).collect(),
+                current_items
+                    .iter()
+                    .take(200)
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
                 ctx.env.display_winwidth,
                 icon::Icon::Null, // icon is handled inside the provider impl.
             );
@@ -307,12 +308,9 @@ impl FilerProvider {
         Ok(())
     }
 
-    async fn update_preview(
-        &self,
-        preview_target: PreviewTarget,
-        preview_height: usize,
-        ctx: &Context,
-    ) -> Result<()> {
+    async fn update_preview(&self, preview_target: PreviewTarget, ctx: &mut Context) -> Result<()> {
+        let preview_height = ctx.preview_height().await?;
+
         let preview_impl = CachedPreviewImpl {
             ctx,
             preview_height,
@@ -320,19 +318,19 @@ impl FilerProvider {
             cache_line: None,
         };
 
-        let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
-            if path.is_dir() {
-                Some("clap_filer")
-            } else if path.is_file() {
-                preview_syntax(path)
-            } else {
-                None
-            }
-        });
-
         match preview_impl.get_preview().await {
             Ok(preview) => {
                 ctx.render_preview(preview)?;
+
+                let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
+                    if path.is_dir() {
+                        Some("clap_filer")
+                    } else if path.is_file() {
+                        preview_syntax(path)
+                    } else {
+                        None
+                    }
+                });
 
                 if let Some(syntax) = maybe_syntax {
                     ctx.vim.set_preview_syntax(syntax)?;
@@ -420,9 +418,7 @@ impl ClapProvider for FilerProvider {
         } else {
             PreviewTarget::File(path)
         };
-        let preview_height = ctx.preview_height().await?;
-        self.update_preview(preview_target, preview_height, ctx)
-            .await
+        self.update_preview(preview_target, ctx).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
