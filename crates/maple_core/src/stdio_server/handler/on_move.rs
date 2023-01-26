@@ -213,7 +213,9 @@ impl<'a> CachedPreviewImpl<'a> {
             .take(self.preview_height)
             .map(Into::into)
             .collect::<Vec<_>>();
-        Ok(Preview::new(lines))
+        let mut preview = Preview::new(lines);
+        preview.syntax.replace("diff".into());
+        Ok(preview)
     }
 
     fn preview_help_subject(
