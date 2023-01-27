@@ -1,6 +1,6 @@
+use cli::command::dumb_jump::DumbJump;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use filter::{MatchedItem, Query, SourceItem};
-use maple_cli::command::dumb_jump::DumbJump;
 use maple_core::find_largest_cache_digest;
 use maple_core::tools::ctags::{ProjectCtagsCommand, ProjectTag};
 use matcher::{Matcher, MatcherBuilder};
@@ -110,8 +110,8 @@ fn bench_ctags(c: &mut Criterion) {
         ctags_cmd
             .lines()
             .unwrap()
-            .filter_map(|tag| {
-                if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
+            .filter_map(|&tag| {
+                if let Ok(tag) = serde_json::from_str::<ProjectTag>(tag) {
                     Some(tag.format_proj_tag())
                 } else {
                     None

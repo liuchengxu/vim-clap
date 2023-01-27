@@ -265,7 +265,7 @@ impl ProjectCtagsCommand {
     }
 
     /// Returns an iterator of raw line of ctags output.
-    fn lines(&self) -> Result<impl Iterator<Item = String>> {
+    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
         let exec_cmd = Exec::cmd(self.std_cmd.get_program())
             .args(self.std_cmd.get_args().collect::<Vec<_>>().as_slice());
         Ok(BufReader::new(

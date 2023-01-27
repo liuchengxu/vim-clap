@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_ctags_command() {
-        let run_cmd = RunCmd::parse_from(&[
+        let run_cmd = RunCmd::parse_from([
             "",
             "ctags",
             "recursive-tags",
