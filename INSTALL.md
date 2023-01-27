@@ -47,18 +47,24 @@ If you want to use the advanced built-in fuzzy match filter which uses the [fzy 
 
 #### `maple` binary
 
-If you have installed Rust on your system, specifically, `cargo` executable exists, use this single command `:call clap#installer#build_maple()` from Vim.
+Refer to https://www.rust-lang.org/tools/install if you haven't installed Rust on your system.
 
-If you are using macOS or Linux, building the Rust binary is very convenient, just go to the clap plugin directory and run `make`. Or you can run the `cargo` command on your own:
+Assuming Rust installed on your system, specifically, `cargo` executable exists, you can have several ways to build it:
 
-```bash
-cd path/to/vim-clap
+- Use this helper function `:call clap#installer#build_maple()` within Vim/NeoVim.
 
-# Compile the release build
-#
-# Try running `rustup update` if the follow command runs into an error.
-cargo build --release
-```
+- If you are using macOS or Linux, building the Rust binary is very convenient, just go to the clap plugin directory and run `make`.
+
+- Run the `cargo` command on your own:
+
+  ```bash
+  cd path/to/vim-clap
+
+  # Compile the release build
+  #
+  # Try running `rustup update` if the follow command runs into an error.
+  cargo build --release
+  ```
 
 #### Python dynamic module(deprecated)
 

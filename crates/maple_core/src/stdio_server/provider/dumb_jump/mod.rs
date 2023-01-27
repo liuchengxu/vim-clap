@@ -395,6 +395,6 @@ mod tests {
     #[test]
     fn test_parse_search_info() {
         let query_info = parse_query_info("'foo");
-        println!("{:?}", query_info);
+        println!("{query_info:?}");
     }
 }

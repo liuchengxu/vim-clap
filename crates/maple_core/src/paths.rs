@@ -193,15 +193,15 @@ mod tests {
             BASE_DIRS.home_dir().to_str().unwrap(),
         );
         let max_len = 60;
-        // #[cfg(not(target_os = "windows"))]
-        // let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
-        // #[cfg(target_os = "windows")]
-        // let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
-        // assert_eq!(truncate_absolute_path(&abs_path, max_len), expected);
+        #[cfg(not(target_os = "windows"))]
+        let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";
+        #[cfg(target_os = "windows")]
+        let expected = r#"~\.rustup\...\src\rust\library\alloc\src\string.rs"#;
+        assert_eq!(truncate_absolute_path(&abs_path, max_len), expected);
 
-        // let abs_path = "/media/xlc/Data/src/github.com/paritytech/substrate/bin/node/cli/src/command_helper.rs";
-        // let expected = "/media/xlc/.../bin/node/cli/src/command_helper.rs";
-        // assert_eq!(truncate_absolute_path(abs_path, max_len), expected);
+        let abs_path = "/media/xlc/Data/src/github.com/paritytech/substrate/bin/node/cli/src/command_helper.rs";
+        let expected = "/media/xlc/.../bin/node/cli/src/command_helper.rs";
+        assert_eq!(truncate_absolute_path(abs_path, max_len), expected);
 
         let abs_path =
             "/Users/xuliucheng/src/github.com/subspace/subspace/crates/pallet-domains/src/lib.rs";
