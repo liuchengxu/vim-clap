@@ -92,12 +92,13 @@ impl Session {
                             tracing::trace!("[with_debounce] Received event: {event:?}");
 
                             match event {
+                                ProviderEvent::NewSession => unreachable!(),
                                 ProviderEvent::Terminate => {
                                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                                     break;
                                 }
-                                ProviderEvent::Create => {
-                                    match self.provider.on_create(&mut self.ctx).await {
+                                ProviderEvent::OnInitialize => {
+                                    match self.provider.on_initialize(&mut self.ctx).await {
                                         Ok(()) => {
                                             // Set a smaller debounce if the source scale is small.
                                             if let ProviderSource::Small { total, .. } = *self
@@ -115,7 +116,7 @@ impl Session {
                                             }
                                             // Try to fulfill the preview window
                                             if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                                                tracing::debug!(?err, "Failed to preview after on_create completed");
+                                                tracing::debug!(?err, "Failed to preview after on_initialize completed");
                                             }
                                         }
                                         Err(err) => {
@@ -170,18 +171,19 @@ impl Session {
             tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
+                ProviderEvent::NewSession => unreachable!(),
                 ProviderEvent::Terminate => {
                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                     break;
                 }
-                ProviderEvent::Create => {
-                    if let Err(err) = self.provider.on_create(&mut self.ctx).await {
+                ProviderEvent::OnInitialize => {
+                    if let Err(err) = self.provider.on_initialize(&mut self.ctx).await {
                         tracing::error!(?err, "Failed at process {event:?}");
                         continue;
                     }
                     // Try to fulfill the preview window
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                        tracing::debug!(?err, "Failed to preview after on_create completed");
+                        tracing::debug!(?err, "Failed to preview after on_initialize completed");
                     }
                 }
                 ProviderEvent::OnMove => {
@@ -224,8 +226,8 @@ impl SessionManager {
             session.start_event_loop();
 
             session_sender
-                .send(ProviderEvent::Create)
-                .expect("Failed to send event ProviderEvent::Create");
+                .send(ProviderEvent::OnInitialize)
+                .expect("Failed to send ProviderEvent::OnInitialize");
 
             v.insert(ProviderEventSender::new(session_sender, session_id));
         } else {

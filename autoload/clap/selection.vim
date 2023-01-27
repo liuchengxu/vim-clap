@@ -50,7 +50,7 @@ function! clap#selection#toggle() abort
 
   noautocmd call clap#sign#toggle_cursorline_multi()
   call clap#navigation#linewise_scroll_down()
-  redraw
+  call clap#indicator#render()
 
   let s:multi_select_enabled = v:true
 
@@ -62,10 +62,11 @@ function! s:get_opaque_lines() abort
   let selected = clap#sign#get()
   " User can already press the Tab or not.
   if s:multi_select_enabled && !empty(selected)
-    return map(copy(selected), 'clap#api#get_origin_line_at(v:val)')
+    let lines = map(copy(selected), 'clap#api#get_origin_line_at(v:val)')
   else
-    return [g:clap.display.getcurline()]
+    let lines = [g:clap.display.getcurline()]
   endif
+  return extend(clap#sign#preserved_selections(), lines)
 endfunction
 
 " Apply the open action specified by `g:clap_open_action` given the (selected) lines.

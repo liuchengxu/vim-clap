@@ -5,7 +5,6 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:PATH_SEPARATOR = has('win32') ? '\' : '/'
-let s:DEFAULT_PROMPT = has('nvim') ? 'Type anything you want to find' : 'Search ??'
 
 let s:grep_delay = get(g:, 'clap_provider_live_grep_delay', 300)
 let s:grep_blink = get(g:, 'clap_provider_live_grep_blink', [2, 100])
@@ -148,7 +147,7 @@ endfunction
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
   let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):\(.*\)'
-  call clap#util#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
+  call clap#sink#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
 endfunction
 
 function! s:apply_grep(_timer) abort
@@ -177,13 +176,11 @@ function! s:grep_on_typed() abort
 
   if empty(g:clap.input.get())
     if exists('s:initial_size')
-      call clap#indicator#set_matches_number(s:initial_size)
+      call clap#indicator#update_matched(s:initial_size)
     elseif has_key(g:clap.display, 'initial_size')
       let s:initial_size = g:clap.display.initial_size
       unlet g:clap.display.initial_size
-      call clap#indicator#set_matches_number(s:initial_size)
-    else
-      call clap#indicator#set(s:DEFAULT_PROMPT)
+      call clap#indicator#update_matched(s:initial_size)
     endif
     call g:clap.display.clear_highlight()
     if exists('g:__clap_forerunner_result')
@@ -254,7 +251,7 @@ if clap#maple#is_available()
   function! s:start_job(query) abort
     let [grep_opts, query] = s:translate_query_and_opts(a:query)
     " Add ' .' for windows in maple
-    call clap#maple#command#start_live_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
+    call clap#legacy#maple#command#start_live_grep(s:grep_executable.' '.grep_opts, query, s:grep_enable_icon, s:ripgrep_glob)
   endfunction
 
   function! s:strip_icon_and_match(line, pattern) abort

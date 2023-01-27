@@ -111,10 +111,10 @@ impl Symbol {
     }
 
     pub fn from_gtags(s: &str) -> Option<Self> {
-        pattern::parse_gtags(s).map(|(line, path, pattern)| Self {
+        pattern::parse_gtags(s).map(|(line_number, path, pattern)| Self {
             path: path.into(),
             pattern: pattern.into(),
-            line_number: line,
+            line_number,
             ..Default::default()
         })
     }

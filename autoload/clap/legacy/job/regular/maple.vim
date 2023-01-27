@@ -46,14 +46,14 @@ function! s:on_complete() abort
           \ 'args: '.join(s:cmd[1:], ' '),
           \ 'error:',
           \ ] + split(decoded.error, "\n"))
-    call clap#indicator#set_matches_number(0)
+    call clap#indicator#update_matched(0)
     call clap#sign#disable_cursorline()
     return
   endif
 
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
-    call clap#indicator#set_matches_number(0)
+    call clap#indicator#update_matched(0)
     call clap#sign#disable_cursorline()
     call clap#spinner#set_idle()
     call g:clap#display_win.shrink_if_undersize()
@@ -126,7 +126,7 @@ else
   endfunction
 endif
 
-function! clap#job#regular#maple#stop() abort
+function! clap#legacy#job#regular#maple#stop() abort
   if s:job_id > 0
     call clap#job#stop(s:job_id)
     let s:job_id = -1
@@ -141,12 +141,12 @@ function! s:apply_start(_timer) abort
   call s:start_maple()
 endfunction
 
-function! clap#job#regular#maple#start(cmd) abort
+function! clap#legacy#job#regular#maple#start(cmd) abort
   if s:job_timer != -1
     call timer_stop(s:job_timer)
   endif
 
-  call clap#job#regular#maple#stop()
+  call clap#legacy#job#regular#maple#stop()
 
   let s:cmd = a:cmd
   let s:job_timer = timer_start(s:maple_delay, function('s:apply_start'))

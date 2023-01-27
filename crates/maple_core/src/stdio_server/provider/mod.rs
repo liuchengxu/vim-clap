@@ -190,7 +190,7 @@ impl Context {
     }
 
     /// Executes the command `cmd` and returns the raw bytes of stdout.
-    pub fn execute(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
+    pub fn exec_cmd(&self, cmd: &str) -> std::io::Result<Vec<u8>> {
         let out = utils::execute_at(cmd, Some(&self.cwd))?;
         Ok(out.stdout)
     }
@@ -238,25 +238,6 @@ impl Context {
         preview_cache.insert(preview_target, preview);
     }
 
-    pub async fn preview_height(&mut self) -> Result<usize> {
-        self.preview_size().await.map(|x| 2 * x)
-    }
-
-    pub async fn preview_size(&mut self) -> Result<usize> {
-        match self.maybe_preview_size {
-            Some(size) => Ok(size),
-            None => {
-                let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
-                let size = self
-                    .vim
-                    .preview_size(&self.env.provider_id, preview_winid)
-                    .await?;
-                self.maybe_preview_size.replace(size);
-                Ok(size)
-            }
-        }
-    }
-
     pub async fn record_input(&mut self) -> Result<()> {
         let input = self.vim.input_get().await?;
         self.input_recorder.try_record(input);
@@ -287,6 +268,25 @@ impl Context {
             }
         }
         Ok(())
+    }
+
+    pub async fn preview_size(&mut self) -> Result<usize> {
+        match self.maybe_preview_size {
+            Some(size) => Ok(size),
+            None => {
+                let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
+                let size = self
+                    .vim
+                    .preview_size(&self.env.provider_id, preview_winid)
+                    .await?;
+                self.maybe_preview_size.replace(size);
+                Ok(size)
+            }
+        }
+    }
+
+    pub async fn preview_height(&mut self) -> Result<usize> {
+        self.preview_size().await.map(|x| 2 * x)
     }
 
     pub fn render_preview(&self, preview: Preview) -> Result<()> {
@@ -329,7 +329,7 @@ impl Context {
                 icon_added,
                 truncated_map,
                 ..
-            } = printer::decorate_lines(items, self.env.display_winwidth, self.env.icon);
+            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
 
             self.vim.exec(
                 "clap#state#update_on_empty_query",
@@ -465,7 +465,7 @@ impl ProviderSource {
 /// A trait each Clap provider must implement.
 #[async_trait::async_trait]
 pub trait ClapProvider: Debug + Send + Sync + 'static {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         initialize_provider(ctx).await
     }
 

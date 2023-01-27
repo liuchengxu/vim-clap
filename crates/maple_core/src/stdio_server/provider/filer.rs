@@ -144,7 +144,7 @@ impl FilerProvider {
 
     async fn on_tab(&mut self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
 
         let preview_target = if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
@@ -156,14 +156,12 @@ impl FilerProvider {
                 PreviewTarget::File(path)
             }
         } else if target_dir.is_file() {
-            PreviewTarget::File(target_dir.clone())
+            PreviewTarget::File(target_dir)
         } else {
             return Ok(());
         };
-        let preview_height = ctx.preview_height().await?;
 
-        self.update_preview(preview_target, preview_height, ctx)
-            .await?;
+        self.update_preview(preview_target, ctx).await?;
 
         Ok(())
     }
@@ -184,23 +182,21 @@ impl FilerProvider {
         self.current_lines = lines;
 
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
         let preview_target = if target_dir.is_dir() {
             PreviewTarget::Directory(target_dir)
         } else {
             PreviewTarget::File(target_dir)
         };
-        let preview_height = ctx.preview_height().await?;
 
-        self.update_preview(preview_target, preview_height, ctx)
-            .await?;
+        self.update_preview(preview_target, ctx).await?;
 
         Ok(())
     }
 
     async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.clone().join(curline);
+        let target_dir = self.current_dir.join(curline);
 
         if target_dir.is_dir() {
             self.reset_to(target_dir, ctx)?;
@@ -212,7 +208,7 @@ impl FilerProvider {
         }
 
         let input = ctx.vim.input_get().await?;
-        let target_file = self.current_dir.clone().join(input);
+        let target_file = self.current_dir.join(input);
 
         ctx.vim
             .call("clap#provider#filer#handle_special_entries", [target_file])
@@ -227,26 +223,72 @@ impl FilerProvider {
             .get(&self.current_dir)
             .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
 
-        let mut matched_items = filter::par_filter_items(current_items, &ctx.matcher(query));
-        let total = matched_items.len();
+        let processed = current_items.len();
+
+        if query.is_empty() {
+            let printer::DisplayLines {
+                lines,
+                mut indices,
+                truncated_map: _,
+                icon_added,
+            } = printer::to_display_lines(
+                current_items
+                    .iter()
+                    .take(200)
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                ctx.env.display_winwidth,
+                icon::Icon::Null, // icon is handled inside the provider impl.
+            );
+
+            if ctx.env.icon.enabled() {
+                indices.iter_mut().for_each(|v| {
+                    v.iter_mut().for_each(|x| {
+                        *x -= 2;
+                    })
+                });
+            }
+
+            let result = json!({
+              "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
+            });
+
+            ctx.vim
+                .exec("clap#state#process_filter_message", json!([result, true]))?;
+
+            return Ok(lines);
+        }
+
+        let matcher = ctx.matcher_builder().build(query.into());
+        let mut matched_items = filter::par_filter_items(current_items, &matcher);
+        let matched = matched_items.len();
 
         matched_items.truncate(200);
 
         let printer::DisplayLines {
             lines,
-            indices,
+            mut indices,
             truncated_map,
             icon_added,
-        } = printer::decorate_lines(
+        } = printer::to_display_lines(
             matched_items,
             ctx.env.display_winwidth,
             icon::Icon::Null, // icon is handled inside the provider impl.
         );
 
+        if ctx.env.icon.enabled() {
+            indices.iter_mut().for_each(|v| {
+                v.iter_mut().for_each(|x| {
+                    *x -= 2;
+                })
+            });
+        }
+
         let result = if truncated_map.is_empty() {
-            json!({ "lines": &lines, "indices": indices, "total": total, "icon_added": icon_added })
+            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added })
         } else {
-            json!({ "lines": &lines, "indices": indices, "total": total, "icon_added": icon_added, "truncated_map": truncated_map })
+            json!({ "lines": &lines, "indices": indices, "matched": matched, "processed": processed, "icon_added": icon_added, "truncated_map": truncated_map })
         };
 
         ctx.vim
@@ -266,12 +308,9 @@ impl FilerProvider {
         Ok(())
     }
 
-    async fn update_preview(
-        &self,
-        preview_target: PreviewTarget,
-        preview_height: usize,
-        ctx: &Context,
-    ) -> Result<()> {
+    async fn update_preview(&self, preview_target: PreviewTarget, ctx: &mut Context) -> Result<()> {
+        let preview_height = ctx.preview_height().await?;
+
         let preview_impl = CachedPreviewImpl {
             ctx,
             preview_height,
@@ -279,29 +318,26 @@ impl FilerProvider {
             cache_line: None,
         };
 
-        let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
-            if path.is_dir() {
-                Some("clap_filer")
-            } else if path.is_file() {
-                preview_syntax(path)
-            } else {
-                None
-            }
-        });
-
         match preview_impl.get_preview().await {
             Ok(preview) => {
                 ctx.render_preview(preview)?;
+
+                let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
+                    if path.is_dir() {
+                        Some("clap_filer")
+                    } else if path.is_file() {
+                        preview_syntax(path)
+                    } else {
+                        None
+                    }
+                });
 
                 if let Some(syntax) = maybe_syntax {
                     ctx.vim.set_preview_syntax(syntax)?;
                 }
             }
             Err(err) => {
-                ctx.render_preview(Preview {
-                    lines: vec![err.to_string()],
-                    ..Default::default()
-                })?;
+                ctx.render_preview(Preview::new(vec![err.to_string()]))?;
             }
         }
         Ok(())
@@ -330,10 +366,7 @@ impl FilerProvider {
             v.insert(
                 entries
                     .into_iter()
-                    .map(|line| {
-                        let item: Arc<dyn ClapItem> = Arc::new(FilerItem(line));
-                        item
-                    })
+                    .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
                     .collect(),
             );
         }
@@ -344,7 +377,7 @@ impl FilerProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for FilerProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = &ctx.cwd;
 
         let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {
@@ -359,17 +392,14 @@ impl ClapProvider for FilerProvider {
 
         let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
         ctx.vim
-            .exec("clap#provider#filer#handle_on_create", response)?;
+            .exec("clap#provider#filer#handle_on_initialize", response)?;
 
         self.dir_entries.insert(
             cwd.to_path_buf(),
             entries
                 .clone()
                 .into_iter()
-                .map(|line| {
-                    let item: Arc<dyn ClapItem> = Arc::new(FilerItem(line));
-                    item
-                })
+                .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
                 .collect(),
         );
         self.current_lines = entries;
@@ -388,9 +418,7 @@ impl ClapProvider for FilerProvider {
         } else {
             PreviewTarget::File(path)
         };
-        let preview_height = ctx.preview_height().await?;
-        self.update_preview(preview_target, preview_height, ctx)
-            .await
+        self.update_preview(preview_target, ctx).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

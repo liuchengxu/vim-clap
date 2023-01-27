@@ -2,22 +2,21 @@
 
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::path::PathBuf;
 
 static GREP_POS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*?):(\d+):(\d+):(.*)").unwrap());
 
 static DUMB_JUMP_LINE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\[(.*)\](.*?):(\d+):(\d+):").unwrap());
 
-// match the file path and line number of grep line.
+// Match the file path and line number of grep line.
 static GREP_STRIP_FPATH: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*?:\d+:\d+:").unwrap());
 
-// match the tag_name:lnum of tag line.
+// Match the tag_name:lnum of tag line.
 static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*:\d+)").unwrap());
 
-static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+).*\[(.*)\]").unwrap());
-
 static PROJ_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.*):(\d+).*\[(.*)@(.*?)\]").unwrap());
+
+static BUFFER_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.*:(\d+).*\[(.*)\]").unwrap());
 
 static COMMIT_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^.*\d{4}-\d{2}-\d{2}\s+([0-9a-z]+)\s+").unwrap());
@@ -86,19 +85,18 @@ pub fn parse_grep_item(line: &str) -> Option<(usize, usize)> {
 }
 
 /// Returns a tuple of (fpath, lnum, col).
-pub fn extract_jump_line_info(line: &str) -> Option<(&str, PathBuf, usize, usize)> {
+pub fn extract_jump_line_info(line: &str) -> Option<(&str, &str, usize, usize)> {
     let cap = DUMB_JUMP_LINE.captures(line)?;
     let def_kind = cap.get(1).map(|x| x.as_str())?;
-    let fpath = cap.get(2).map(|x| x.as_str().into())?;
+    let fpath = cap.get(2).map(|x| x.as_str())?;
     let str2nr = |idx: usize| cap.get(idx).map(|x| x.as_str()).and_then(parse_lnum);
     let lnum = str2nr(3)?;
     let col = str2nr(4)?;
     Some((def_kind, fpath, lnum, col))
 }
 
-pub fn extract_grep_file_path(line: &str) -> Option<String> {
-    let cap = GREP_POS.captures(line)?;
-    cap.get(1).map(|x| x.as_str().into())
+pub fn extract_grep_file_path(line: &str) -> Option<&str> {
+    GREP_POS.captures(line)?.get(1).map(|x| x.as_str())
 }
 
 /// Returns fpath part in grep line.
@@ -162,7 +160,7 @@ mod tests {
     fn test_grep_regex() {
         let line = "install.sh:1:5:#!/usr/bin/env bash";
         let e = extract_grep_position(line).unwrap();
-        assert_eq!(("install.sh".into(), 1, 5, "#!/usr/bin/env bash"), e);
+        assert_eq!(("install.sh", 1, 5, "#!/usr/bin/env bash"), e);
 
         let path = extract_grep_file_path(line).unwrap();
         assert_eq!(path, "install.sh");
@@ -192,7 +190,7 @@ mod tests {
             info,
             (
                 "variable",
-                "crates/maple_cli/src/stdio_server/session/context.rs".into(),
+                "crates/maple_cli/src/stdio_server/session/context.rs",
                 36,
                 8
             )
@@ -202,7 +200,7 @@ mod tests {
             extract_jump_line_info(line).unwrap(),
             (
                 "variable",
-                "crates/maple_cli/src/stdio_server/session/providers/dumb_jump.rs".into(),
+                "crates/maple_cli/src/stdio_server/session/providers/dumb_jump.rs",
                 9,
                 8
             )

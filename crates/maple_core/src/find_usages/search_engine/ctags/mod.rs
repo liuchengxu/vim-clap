@@ -71,10 +71,10 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
             .arg("-E")
             .arg("-ne");
 
-        let cmd = if query.chars().all(char::is_lowercase) {
-            cmd.arg("--icase-match")
-        } else {
+        let cmd = if query.chars().any(char::is_uppercase) {
             cmd
+        } else {
+            cmd.arg("--icase-match")
         };
 
         match query_type {

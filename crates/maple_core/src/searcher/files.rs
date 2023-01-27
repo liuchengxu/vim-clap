@@ -120,7 +120,7 @@ pub async fn search(hidden: bool, matcher: Matcher, search_context: SearchContex
         ..
     } = best_items;
 
-    let display_lines = printer::decorate_lines(items, winwidth, icon);
+    let display_lines = printer::to_display_lines(items, winwidth, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

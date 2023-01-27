@@ -65,9 +65,22 @@ function! clap#handler#sink() abort
 
   let [Sink, sink_args] = clap#selection#get_sink_or_sink_star_params()
 
+  let preserved_selections = clap#sign#preserved_selections()
+
   call clap#handler#internal_exit()
 
   try
+    " Handle the preserved selections specially.
+    "
+    " Typically, if `Sink` is sink_star, `sink_args` is a List of String,
+    " if `Sink` is sink, `sink_args` is a String. Due to the support requested
+    " in https://github.com/liuchengxu/vim-clap/issues/737, `sink_args` can be
+    " multiple items for sink with the preserved selections considered.
+    if !empty(preserved_selections) && g:clap.provider.id ==# 'files'
+      let Sink = g:clap.provider.sink_star
+      let sink_args = type(sink_args) == v:t_list ? extend(preserved_selections, sink_args) : add(preserved_selections, sink_args)
+    endif
+
     call Sink(sink_args)
   catch
     call clap#helper#echo_error('clap#handler#sink: '.v:exception.', throwpoint:'.v:throwpoint)

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, MatchResult, MatcherBuilder};
-use printer::truncate_long_matched_lines_v0;
+use printer::truncate_item_output_text_v0;
 use types::{ClapItem, MatchScope, Query, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
@@ -123,7 +123,7 @@ fn fuzzy_match(
     // " " is 4 bytes, but the offset of highlight is 2.
     // 2 = chars(icon)
     let skipped = if enable_icon { Some(2) } else { None };
-    let truncated_map = truncate_long_matched_lines_v0(ranked.iter_mut(), winwidth, skipped);
+    let truncated_map = truncate_item_output_text_v0(ranked.iter_mut(), winwidth, skipped);
 
     let (lines, indices): (Vec<_>, Vec<_>) = ranked
         .into_iter()

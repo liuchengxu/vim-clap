@@ -96,7 +96,7 @@ function! s:action_delete() abort
   let current_matches = g:clap.display.line_count()
   execute 'bdelete' s:current_bufnr
   call g:clap.display.deletecurline()
-  call clap#indicator#update_matches_on_deletecurline()
+  call clap#indicator#update_on_deletecurline()
   call g:clap.preview.hide()
   call g:clap#display_win.shrink_if_undersize()
 endfunction

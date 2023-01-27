@@ -131,6 +131,20 @@ pub struct Watcher {
     last_lines: Vec<String>,
 }
 
+fn decorate_line(matched_item: &MatchedItem, icon: Icon) -> (String, Vec<usize>) {
+    if let Some(icon_kind) = icon.icon_kind() {
+        (
+            icon_kind.add_icon_to_text(matched_item.display_text()),
+            matched_item.shifted_indices(icon::ICON_CHAR_LEN),
+        )
+    } else {
+        (
+            matched_item.display_text().into(),
+            matched_item.indices.clone(),
+        )
+    }
+}
+
 impl Watcher {
     pub fn new(initial_total: usize, icon: Icon) -> Self {
         Self {
@@ -154,7 +168,7 @@ impl Watcher {
                 let mut lines = Vec::with_capacity(ITEMS_TO_SHOW);
                 for &idx in top_results.iter() {
                     let matched_item = std::ops::Index::index(buffer, idx);
-                    let (line, line_indices) = printer::decorate_line(matched_item, self.icon);
+                    let (line, line_indices) = decorate_line(matched_item, self.icon);
                     indices.push(line_indices);
                     lines.push(line);
                 }
@@ -357,7 +371,7 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
-        let display_lines = printer::decorate_lines(matched_items, winwidth.unwrap_or(100), icon);
+        let display_lines = printer::to_display_lines(matched_items, winwidth.unwrap_or(100), icon);
         print_on_dyn_run_finished(display_lines, total_matched);
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);

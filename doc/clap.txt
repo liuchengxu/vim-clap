@@ -472,6 +472,16 @@ g:clap_enable_icon                               *g:clap_enable_icon*
   |g:clap_provider_live_grep_enable_icon| .
 
 
+g:clap_preserve_selections_on_query_change *g:clap_preserve_selections_on_query_change*
+
+  Type: |Bool|
+  Default: `v:false`
+
+  When set to `v:true`, the current selections will be preserved when the
+  input query changes, the items selected from multiple queries will be
+  combined for the final processing.
+
+
 g:clap_fuzzy_match_hl_groups                      *g:clap_fuzzy_match_hl_groups*
 
   Type: |List|

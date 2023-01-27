@@ -1,6 +1,6 @@
 mod searcher;
 
-use self::searcher::{SearchEngine, SearchingWorker};
+use self::searcher::{SearchEngine, SearchWorker};
 use crate::find_usages::{CtagsSearcher, GtagsSearcher, QueryType, Usage, UsageMatcher, Usages};
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::CachedPreviewImpl;
@@ -227,10 +227,9 @@ impl DumbJumpProvider {
     /// Starts a new searching task.
     async fn start_search(
         &self,
-        searching_worker: SearchingWorker,
+        search_worker: SearchWorker,
         query: String,
         query_info: QueryInfo,
-        ctx: &Context,
     ) -> Result<SearchResults> {
         if query.is_empty() {
             return Ok(Default::default());
@@ -245,44 +244,47 @@ impl DumbJumpProvider {
             _ => SearchEngine::Regex,
         };
 
-        let (response, usages) = match search_engine.run(searching_worker).await {
-            Ok(usages) => {
-                let response = {
-                    let total = usages.len();
-                    // Only show the top 200 items.
-                    let (lines, indices): (Vec<_>, Vec<_>) = usages
-                        .iter()
-                        .take(200)
-                        .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
-                        .unzip();
-                    json!({ "lines": lines, "indices": indices, "total": total })
-                };
+        let usages = search_engine.run(search_worker).await?;
 
-                (response, usages)
-            }
-            Err(e) => {
-                tracing::error!(error = ?e, "Error at running dumb_jump");
-                let response = json!({ "error": { "message": e.to_string() } });
-                (response, Default::default())
-            }
-        };
+        Ok(SearchResults { usages, query_info })
+    }
+
+    fn on_new_search_results(
+        &mut self,
+        search_results: SearchResults,
+        ctx: &Context,
+    ) -> Result<()> {
+        let matched = search_results.usages.len();
+
+        // Only show the top 200 items.
+        let (lines, indices): (Vec<_>, Vec<_>) = search_results
+            .usages
+            .iter()
+            .take(200)
+            .map(|usage| (usage.line.as_str(), usage.indices.as_slice()))
+            .unzip();
+
+        let response = json!({ "lines": lines, "indices": indices, "matched": matched });
 
         ctx.vim
             .exec("clap#state#process_response_on_typed", response)?;
 
-        Ok(SearchResults { usages, query_info })
+        self.cached_results = search_results;
+        self.current_usages.take();
+
+        Ok(())
     }
 }
 
 #[async_trait::async_trait]
 impl ClapProvider for DumbJumpProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = ctx.vim.working_dir().await?;
-        let extension = ctx.start_buffer_extension()?;
+        let source_file_extension = ctx.start_buffer_extension()?;
 
         tokio::task::spawn({
             let cwd = cwd.clone();
-            let extension = extension.clone();
+            let extension = source_file_extension.clone();
             let dumb_jump = self.clone();
 
             async move {
@@ -295,15 +297,15 @@ impl ClapProvider for DumbJumpProvider {
         let query = ctx.vim.context_query_or_input().await?;
         if !query.is_empty() {
             let query_info = parse_query_info(&query);
-            let searching_worker = SearchingWorker {
+            let search_worker = SearchWorker {
                 cwd,
                 query_info: query_info.clone(),
-                source_file_extension: extension,
+                source_file_extension,
             };
-            self.cached_results = self
-                .start_search(searching_worker, query, query_info, ctx)
-                .await?;
-            self.current_usages.take();
+
+            let search_results = self.start_search(search_worker, query, query_info).await?;
+
+            self.on_new_search_results(search_results, ctx)?;
         }
 
         Ok(())
@@ -359,13 +361,13 @@ impl ClapProvider for DumbJumpProvider {
                         .map(|(line, indices)| Usage::new(line, indices))
                 })
                 .collect::<Vec<_>>();
-            let total = refiltered.len();
+            let matched = refiltered.len();
             let (lines, indices): (Vec<&str>, Vec<&[usize]>) = refiltered
                 .iter()
                 .take(200)
                 .map(|Usage { line, indices }| (line.as_str(), indices.as_slice()))
                 .unzip();
-            let response = json!({ "lines": lines, "indices": indices, "total": total });
+            let response = json!({ "lines": lines, "indices": indices, "matched": matched });
             ctx.vim
                 .exec("clap#state#process_response_on_typed", response)?;
             self.current_usages.replace(refiltered.into());
@@ -373,15 +375,14 @@ impl ClapProvider for DumbJumpProvider {
         }
 
         let cwd: AbsPathBuf = ctx.vim.working_dir().await?;
-        let searching_worker = SearchingWorker {
+        let search_worker = SearchWorker {
             cwd,
             query_info: query_info.clone(),
             source_file_extension: ctx.start_buffer_extension()?,
         };
-        self.cached_results = self
-            .start_search(searching_worker, query, query_info, ctx)
-            .await?;
-        self.current_usages.take();
+        let search_results = self.start_search(search_worker, query, query_info).await?;
+
+        self.on_new_search_results(search_results, ctx)?;
 
         Ok(())
     }

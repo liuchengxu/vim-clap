@@ -12,6 +12,9 @@ let s:last_signed_id = -1
 let s:sign_group = 'PopUpClapSelected'
 let s:sign_cur_group = 'PopUpClapCurrentSelected'
 
+" Store the selected lines on query changes.
+let s:preserved_selections = []
+
 if !exists('s:sign_inited')
   call sign_define(s:sign_group, get(g:, 'clap_selected_sign', {
         \ 'text': ' >',
@@ -102,10 +105,6 @@ function! clap#sign#toggle() abort
   return ''
 endfunction
 
-function! clap#sign#get() abort
-  return s:signed
-endfunction
-
 if s:is_nvim
   function! s:unplace_all_signs() abort
     if nvim_buf_is_valid(g:clap.display.bufnr)
@@ -127,15 +126,34 @@ function! clap#sign#ensure_exists() abort
   endif
 endfunction
 
-function! clap#sign#reset() abort
+function! clap#sign#get() abort
+  return s:signed
+endfunction
+
+function! clap#sign#current_selections_count() abort
+  return len(s:signed) + len(s:preserved_selections)
+endfunction
+
+function! clap#sign#preserved_selections() abort
+  return s:preserved_selections
+endfunction
+
+function! clap#sign#reset_all() abort
   call s:unplace_all_signs()
   let s:signed = []
   let s:last_signed_id = -1
+  let s:preserved_selections = []
 endfunction
 
-function! clap#sign#reset_selected() abort
+function! clap#sign#reset_on_query_change() abort
   if !empty(s:signed)
-    call clap#sign#reset()
+    if get(g:, 'clap_preserve_selections_on_query_change', v:false)
+      let selected = map(s:signed, 'clap#api#get_origin_line_at(v:val)')
+      let s:preserved_selections = extend(s:preserved_selections, selected)
+    endif
+    call s:unplace_all_signs()
+    let s:signed = []
+    let s:last_signed_id = -1
   endif
 endfunction
 

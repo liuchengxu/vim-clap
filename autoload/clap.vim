@@ -73,16 +73,15 @@ let s:default_action = {
 let g:clap_open_preview = get(g:, 'clap_open_preview', 'always')
 let g:clap_open_action = get(g:, 'clap_open_action', s:default_action)
 let g:clap_enable_icon = get(g:, 'clap_enable_icon', exists('g:loaded_webdevicons') || get(g:, 'spacevim_nerd_fonts', 0))
+let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 let g:clap_preview_size = get(g:, 'clap_preview_size', 5)
 let g:clap_preview_direction = get(g:, 'clap_preview_direction', 'AUTO')
-let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v:false)
-let g:clap_background_shadow_blend = get(g:, 'clap_background_shadow_blend', 50)
 let g:clap_insert_mode_only = get(g:, 'clap_insert_mode_only', v:false)
+let g:clap_background_shadow_blend = get(g:, 'clap_background_shadow_blend', 50)
 let g:clap_providers_relaunch_code = get(g:, 'clap_providers_relaunch_code', '@@')
+let g:clap_enable_background_shadow = get(g:, 'clap_enable_background_shadow', v:false)
 let g:clap_disable_matches_indicator = get(g:, 'clap_disable_matches_indicator', v:false)
 let g:clap_multi_selection_warning_silent = get(g:, 'clap_multi_selection_warning_silent', 0)
-
-let g:clap_popup_border = get(g:, 'clap_popup_border', has('nvim') ? 'single' : 'rounded')
 
 function! clap#builtin_providers() abort
   if !exists('s:builtin_providers')
@@ -166,7 +165,7 @@ function! clap#_exit() abort
   call g:clap.input.clear()
   call g:clap.display.clear()
 
-  call clap#sign#reset()
+  call clap#sign#reset_all()
 
   call clap#state#clear_post()
 
@@ -296,6 +295,9 @@ function! clap#for(provider_id_or_alias) abort
   let g:__clap_open_win_pre = v:true
   call g:clap.open_win()
   let g:__clap_open_win_pre = v:false
+
+  " the indicator winwidth is available now, adjust the indicator.
+  call clap#indicator#render()
 endfunction
 
 if !exists('g:clap')

@@ -12,13 +12,13 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     let config_file = specified_file.unwrap_or_else(|| {
         // Linux: ~/.config/vimclap/config.toml
         // macOS: ~/Library/Application\ Support/org.vim.Vim-Clap/config.toml
-        let config_dir = PROJECT_DIRS.config_dir().to_path_buf();
+        let config_file_path = PROJECT_DIRS.config_dir().join("config.toml");
 
-        if !config_dir.exists() {
-            std::fs::create_dir_all(&config_dir).ok();
+        if !config_file_path.exists() {
+            std::fs::create_dir_all(&config_file_path).ok();
         }
 
-        config_dir.join("config.toml")
+        config_file_path
     });
 
     CONFIG_FILE.set(config_file).ok();

@@ -201,7 +201,7 @@ impl ClapProvider for GenericProvider {
                     indices,
                     truncated_map,
                     icon_added,
-                } = printer::decorate_lines(
+                } = printer::to_display_lines(
                     matched_items.iter().take(200).cloned().collect(),
                     ctx.env.display_winwidth,
                     ctx.env.icon,

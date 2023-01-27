@@ -57,20 +57,14 @@ pub fn cache_metadata_path() -> Option<&'static PathBuf> {
 pub fn generate_data_file_path(filename: &str) -> std::io::Result<PathBuf> {
     let data_dir = PROJECT_DIRS.data_dir();
     std::fs::create_dir_all(data_dir)?;
-
-    let file = data_dir.to_path_buf().join(filename);
-
-    Ok(file)
+    Ok(data_dir.join(filename))
 }
 
 /// Returns a `PathBuf` using given file name under the project cache directory.
 pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<PathBuf> {
     let cache_dir = PROJECT_DIRS.cache_dir();
     std::fs::create_dir_all(cache_dir)?;
-
-    let file = cache_dir.to_path_buf().join(filename);
-
-    Ok(file)
+    Ok(cache_dir.join(filename))
 }
 
 fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> std::io::Result<T> {

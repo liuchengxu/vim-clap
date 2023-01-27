@@ -236,7 +236,7 @@ endfunction
 function! s:on_exit_common() abort
   if s:has_no_matches()
     call g:clap.display.set_lines([g:clap_no_matches_msg])
-    call clap#indicator#set_matches_number(0)
+    call clap#indicator#update_matched(0)
     call clap#sign#disable_cursorline()
   else
     call clap#sign#reset_to_first_line()

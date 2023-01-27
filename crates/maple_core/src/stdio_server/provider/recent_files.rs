@@ -54,9 +54,9 @@ impl RecentFilesProvider {
         } else {
             recent_files.filter_on_query(&query, cwd.clone())
         };
-        let initial_size = recent_files.len();
 
-        let total = ranked.len();
+        let processed = recent_files.len();
+        let matched = ranked.len();
 
         // process the new preview
         let preview = match (preview_size, ranked.get(lnum - 1)) {
@@ -78,7 +78,7 @@ impl RecentFilesProvider {
             indices,
             truncated_map,
             icon_added,
-        } = printer::decorate_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
+        } = printer::to_display_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
 
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);
@@ -97,9 +97,9 @@ impl RecentFilesProvider {
         let mut value = json!({
             "lines": lines,
             "indices": indices,
-            "total": total,
+            "matched": matched,
+            "processed": processed,
             "icon_added": icon_added,
-            "initial_size": initial_size,
             "preview": preview,
         });
 
@@ -119,7 +119,7 @@ impl RecentFilesProvider {
 
 #[async_trait::async_trait]
 impl ClapProvider for RecentFilesProvider {
-    async fn on_create(&mut self, ctx: &mut Context) -> Result<()> {
+    async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
         let cwd = ctx.vim.working_dir().await?;
 

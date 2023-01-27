@@ -172,7 +172,7 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
                     icon_added,
                     truncated_map,
                     ..
-                } = printer::decorate_lines(items, ctx.env.display_winwidth, ctx.env.icon);
+                } = printer::to_display_lines(items, ctx.env.display_winwidth, ctx.env.icon);
 
                 let using_cache = provider_source.using_cache();
 
