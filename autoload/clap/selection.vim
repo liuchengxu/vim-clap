@@ -51,7 +51,6 @@ function! clap#selection#toggle() abort
   noautocmd call clap#sign#toggle_cursorline_multi()
   call clap#navigation#linewise_scroll_down()
   call clap#indicator#render()
-  " redraw
 
   let s:multi_select_enabled = v:true
 

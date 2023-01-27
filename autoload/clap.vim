@@ -295,6 +295,9 @@ function! clap#for(provider_id_or_alias) abort
   let g:__clap_open_win_pre = v:true
   call g:clap.open_win()
   let g:__clap_open_win_pre = v:false
+
+  " the indicator winwidth is available now, adjust the indicator.
+  call clap#indicator#render()
 endfunction
 
 if !exists('g:clap')
