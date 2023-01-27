@@ -1,5 +1,4 @@
-use super::{walk_parallel, WalkConfig};
-use crate::searcher::SearchContext;
+use crate::searcher::{walk_parallel, SearchContext, WalkConfig};
 use crate::stdio_server::VimProgressor;
 use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
