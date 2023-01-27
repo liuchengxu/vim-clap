@@ -37,9 +37,9 @@ endfunction
 function! s:indicator.format() abort
   let selected = clap#sign#current_selections_count()
   if self.processed == -1
-    return printf("%d [%d]", self.matched, selected)
+    return printf('%d [%d]', self.matched, selected)
   else
-    return printf("%d/%d [%d]", self.matched, self.processed, selected)
+    return printf('%d/%d [%d]', self.matched, self.processed, selected)
   endif
 endfunction
 
