@@ -110,8 +110,8 @@ fn bench_ctags(c: &mut Criterion) {
         ctags_cmd
             .lines()
             .unwrap()
-            .filter_map(|&tag| {
-                if let Ok(tag) = serde_json::from_str::<ProjectTag>(tag) {
+            .filter_map(|tag| {
+                if let Ok(tag) = serde_json::from_str::<ProjectTag>(&tag) {
                     Some(tag.format_proj_tag())
                 } else {
                     None

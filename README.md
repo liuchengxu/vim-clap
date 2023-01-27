@@ -92,7 +92,7 @@ Plug 'liuchengxu/vim-clap', { 'do': { -> clap#installer#force_download() } }
 Plug 'liuchengxu/vim-clap', { 'do': has('win32') ? 'cargo build --release' : 'make' }
 ```
 
-Using the `do` hook for installing the Rust binary automatically is recommended. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing it manually.
+It's recommended to install the Rust binary automatically via the `do` hook. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing it manually.
 
 ## Usage
 
