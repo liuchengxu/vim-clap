@@ -46,14 +46,14 @@ function! s:on_complete() abort
           \ 'args: '.join(s:cmd[1:], ' '),
           \ 'error:',
           \ ] + split(decoded.error, "\n"))
-    call clap#indicator#set_matches_number(0)
+    call clap#indicator#update_matched(0)
     call clap#sign#disable_cursorline()
     return
   endif
 
   if decoded.total == 0
     call g:clap.display.set_lines([g:clap_no_matches_msg])
-    call clap#indicator#set_matches_number(0)
+    call clap#indicator#update_matched(0)
     call clap#sign#disable_cursorline()
     call clap#spinner#set_idle()
     call g:clap#display_win.shrink_if_undersize()

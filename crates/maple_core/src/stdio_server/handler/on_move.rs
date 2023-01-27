@@ -213,7 +213,9 @@ impl<'a> CachedPreviewImpl<'a> {
             .take(self.preview_height)
             .map(Into::into)
             .collect::<Vec<_>>();
-        Ok(Preview::new(lines))
+        let mut preview = Preview::new(lines);
+        preview.syntax.replace("diff".into());
+        Ok(preview)
     }
 
     fn preview_help_subject(
@@ -510,7 +512,7 @@ impl<'a> CachedPreviewImpl<'a> {
         &self,
         lines: impl Iterator<Item = String>,
     ) -> impl Iterator<Item = String> {
-        previewer::truncate_preview_lines(self.max_line_width(), lines)
+        previewer::truncate_lines(lines, self.max_line_width())
     }
 
     /// Returns the maximum line width.

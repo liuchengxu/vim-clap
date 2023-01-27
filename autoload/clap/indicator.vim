@@ -4,6 +4,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let s:indicator = { 'matched': 0, 'processed': -1 }
+
 function! s:padding(indicator) abort
   let indicator_len = strlen(a:indicator)
   if indicator_len < get(g:, '__clap_indicator_winwidth', 0)
@@ -14,18 +16,32 @@ function! s:padding(indicator) abort
 endfunction
 
 if has('nvim')
-  function! s:set_indicator(indicator) abort
+  function! s:update_indicator(indicator) abort
     if bufexists(g:__clap_indicator_bufnr)
-      call setbufline(g:__clap_indicator_bufnr, 1, s:padding(a:indicator))
+      call setbufline(g:__clap_indicator_bufnr, 1, a:indicator)
     endif
   endfunction
 else
-  function! s:set_indicator(indicator) abort
+  function! s:update_indicator(indicator) abort
     if exists('g:clap_indicator_winid')
-      call popup_settext(g:clap_indicator_winid, s:padding(a:indicator))
+      call popup_settext(g:clap_indicator_winid, a:indicator)
     endif
   endfunction
 endif
+
+function! s:indicator.reset() abort
+  let self.matched = 0
+  let self.processed = -1
+endfunction
+
+function! s:indicator.format() abort
+  let selected = clap#sign#current_selections_count()
+  if self.processed == -1
+    return printf('%d [%d]', self.matched, selected)
+  else
+    return printf('%d/%d [%d]', self.matched, self.processed, selected)
+  endif
+endfunction
 
 " Caveat: This function can have a peformance bottle neck if update frequently.
 "
@@ -34,50 +50,55 @@ endif
 "
 " If the initial_size is possible, use clap#state#refresh_matches_count()
 " instead in that it will combine the initial_size info.
-function! clap#indicator#set(indicator) abort
-  if !g:clap_disable_matches_indicator
-    call s:set_indicator(a:indicator)
+function! s:indicator.render(formatted) abort
+  if g:clap_disable_matches_indicator
+    return
   endif
+  call s:update_indicator(s:padding(a:formatted))
 endfunction
 
-function! clap#indicator#set_matches_number(number) abort
-  let s:matches_number = a:number
-
-  if get(g:clap.display, 'initial_size', -1) > 0
-    let l:matches_cnt = a:number.'/'.g:clap.display.initial_size
-  else
-    let l:matches_cnt = a:number
-  endif
-
-  call clap#indicator#set('['.l:matches_cnt.']')
+function! clap#indicator#update_on_deletecurline() abort
+  let s:indicator.matched -= 1
+  let s:indicator.processed -= 1
+  call s:indicator.render(s:indicator.format())
 endfunction
 
-function! clap#indicator#update_matches_on_deletecurline() abort
-  let s:matches_number -= 1
-  if get(g:clap.display, 'initial_size', -1) > 0
-    let g:clap.display.initial_size -= 1
-    let l:matches_cnt = s:matches_number.'/'.g:clap.display.initial_size
-  else
-    let l:matches_cnt = s:matches_number
-  endif
-  call clap#indicator#set('['.l:matches_cnt.']')
+function! clap#indicator#update_matched(matched) abort
+  let s:indicator.matched = a:matched
+  call s:indicator.render(s:indicator.format())
 endfunction
 
-function! clap#indicator#update_matches_on_forerunner_done() abort
-  if exists('s:matches_number')
-    call clap#indicator#set(printf('[%s/%s]', s:matches_number, g:clap.display.initial_size))
-  else
-    call clap#indicator#set(printf('[%s/%s]', g:clap.display.initial_size, g:clap.display.initial_size))
-  endif
+function! clap#indicator#update_processed(processed) abort
+  let s:indicator.processed = a:processed
+  call s:indicator.render(s:indicator.format())
 endfunction
 
-function! clap#indicator#clear() abort
-  silent! unlet s:matches_number
+function! clap#indicator#update(matched, processed) abort
+  let s:indicator.matched = a:matched
+  let s:indicator.processed = a:processed
+  call s:indicator.render(s:indicator.format())
+endfunction
+
+" API for specific provider like dumb_jump.
+function! clap#indicator#update_matched_only(matched) abort
+  let s:indicator.matched = a:matched
+  let s:indicator.processed = -1
+  let selected = clap#sign#current_selections_count()
+  call s:indicator.render(printf('%d [%d]', a:matched, selected))
+endfunction
+
+function! clap#indicator#render() abort
+  call s:indicator.render(s:indicator.format())
+endfunction
+
+function! clap#indicator#reset() abort
+  call s:indicator.reset()
+  call s:indicator.render(s:indicator.format())
 endfunction
 
 function! clap#indicator#set_none() abort
   " Don't repeat(' ') directly as we can see the trailing char of listchars.
-  call clap#indicator#set(repeat(' ', &columns).' for eliminating the trailing char')
+  call s:update_indicator(repeat(' ', &columns).' for eliminating the trailing char')
 endfunction
 
 let &cpoptions = s:save_cpo

@@ -130,6 +130,10 @@ function! clap#sign#get() abort
   return s:signed
 endfunction
 
+function! clap#sign#current_selections_count() abort
+  return len(s:signed) + len(s:preserved_selections)
+endfunction
+
 function! clap#sign#preserved_selections() abort
   return s:preserved_selections
 endfunction

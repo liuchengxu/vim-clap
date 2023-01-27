@@ -54,9 +54,9 @@ impl RecentFilesProvider {
         } else {
             recent_files.filter_on_query(&query, cwd.clone())
         };
-        let initial_size = recent_files.len();
 
-        let total = ranked.len();
+        let processed = recent_files.len();
+        let matched = ranked.len();
 
         // process the new preview
         let preview = match (preview_size, ranked.get(lnum - 1)) {
@@ -92,9 +92,9 @@ impl RecentFilesProvider {
             json!({
                 "lines": lines,
                 "indices": indices,
-                "total": total,
+                "matched": matched,
+                "processed": processed,
                 "icon_added": icon_added,
-                "initial_size": initial_size,
                 "preview": preview,
             })
         } else {
@@ -102,9 +102,9 @@ impl RecentFilesProvider {
                 "lines": lines,
                 "indices": indices,
                 "truncated_map": truncated_map,
-                "total": total,
+                "matched": matched,
+                "processed": processed,
                 "icon_added": icon_added,
-                "initial_size": initial_size,
                 "preview": preview,
             })
         };

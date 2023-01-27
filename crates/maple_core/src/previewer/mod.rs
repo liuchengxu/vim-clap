@@ -10,9 +10,9 @@ use utils::read_first_lines;
 /// Preview of a file.
 #[derive(Clone, Debug)]
 pub struct FilePreview {
-    /// Line number at which the preview starts.
+    /// Line number at which the preview starts (exclusive).
     pub start: usize,
-    /// Line number at which the preview ends.
+    /// Line number at which the preview ends (inclusive).
     pub end: usize,
     /// Line number of the line that should be highlighed in the preview window.
     pub highlight_lnum: usize,
@@ -36,7 +36,14 @@ pub fn get_file_preview<P: AsRef<Path>>(
         (0, winheight, target_line_number)
     };
 
-    read_preview_lines_impl(path, start, end, highlight_lnum)
+    let lines = read_preview_lines(path, start, end)?;
+
+    Ok(FilePreview {
+        start,
+        end,
+        highlight_lnum,
+        lines,
+    })
 }
 
 // Copypasted from stdlib.
@@ -48,17 +55,16 @@ fn initial_buffer_size(file: &File) -> usize {
     file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0)
 }
 
-fn read_preview_lines_impl<P: AsRef<Path>>(
+fn read_preview_lines<P: AsRef<Path>>(
     path: P,
     start: usize,
     end: usize,
-    highlight_lnum: usize,
-) -> std::io::Result<FilePreview> {
+) -> std::io::Result<Vec<String>> {
     let mut filebuf: Vec<u8> = Vec::new();
 
     File::open(path)
         .and_then(|mut file| {
-            //x XXX: is megabyte enough for any text file?
+            // XXX: is megabyte enough for any text file?
             const MEGABYTE: usize = 32 * 1_048_576;
 
             let filesize = initial_buffer_size(&file);
@@ -73,19 +79,12 @@ fn read_preview_lines_impl<P: AsRef<Path>>(
             file.read_to_end(&mut filebuf)
         })
         .map(|_| {
-            let lines = ByteLines::new(&filebuf)
+            ByteLines::new(&filebuf)
                 .skip(start)
                 .take(end - start)
                 // trim_end() to get rid of ^M on Windows.
                 .map(|l| l.trim_end().to_string())
-                .collect::<Vec<_>>();
-
-            FilePreview {
-                start,
-                end,
-                highlight_lnum,
-                lines,
-            }
+                .collect()
         })
 }
 
@@ -107,9 +106,9 @@ fn as_absolute_path<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
 /// Truncates the lines that are awfully long as vim can not handle them properly.
 ///
 /// Ref https://github.com/liuchengxu/vim-clap/issues/543
-pub fn truncate_preview_lines(
-    max_width: usize,
+pub fn truncate_lines(
     lines: impl Iterator<Item = String>,
+    max_width: usize,
 ) -> impl Iterator<Item = String> {
     lines.map(move |line| {
         if line.len() > max_width {
@@ -141,7 +140,7 @@ pub fn preview_file<P: AsRef<Path>>(
     let abs_path = as_absolute_path(path.as_ref())?;
     let lines_iter = read_first_lines(path.as_ref(), size)?;
     let lines = std::iter::once(abs_path.clone())
-        .chain(truncate_preview_lines(max_width, lines_iter))
+        .chain(truncate_lines(lines_iter, max_width))
         .collect::<Vec<_>>();
 
     Ok((lines, abs_path))
@@ -157,7 +156,7 @@ pub fn preview_file_with_truncated_title<P: AsRef<Path>>(
     let truncated_abs_path = truncate_absolute_path(&abs_path, max_title_width).into_owned();
     let lines_iter = read_first_lines(path.as_ref(), size)?;
     let lines = std::iter::once(truncated_abs_path.clone())
-        .chain(truncate_preview_lines(max_line_width, lines_iter))
+        .chain(truncate_lines(lines_iter, max_line_width))
         .collect::<Vec<_>>();
 
     Ok((lines, truncated_abs_path))
@@ -177,8 +176,8 @@ pub fn preview_file_at<P: AsRef<Path>>(
         ..
     } = get_file_preview(path.as_ref(), lnum, winheight)?;
 
-    let lines = std::iter::once(format!("{}:{}", path.as_ref().display(), lnum))
-        .chain(truncate_preview_lines(max_width, lines.into_iter()))
+    let lines = std::iter::once(format!("{}:{lnum}", path.as_ref().display()))
+        .chain(truncate_lines(lines.into_iter(), max_width))
         .collect::<Vec<_>>();
 
     Ok((lines, highlight_lnum))
