@@ -10,6 +10,8 @@ impl Rpc {
     pub async fn run(&self, args: Args) -> Result<()> {
         maple_core::config::initialize_config_file(args.config_file.clone());
 
+        let config = maple_core::config::config();
+
         let maybe_log = if let Some(log_path) = args.log {
             Some(log_path)
         } else if let Ok(log_path) =
@@ -17,11 +19,7 @@ impl Rpc {
         {
             Some(log_path)
         } else {
-            maple_core::config::config()
-                .log
-                .log_file
-                .as_ref()
-                .map(std::path::PathBuf::from)
+            config.log.log_file.as_ref().map(std::path::PathBuf::from)
         };
 
         if let Some(log_path) = maybe_log {
@@ -42,8 +40,14 @@ impl Rpc {
             let file_appender = tracing_appender::rolling::never(directory, file_name);
             let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
+            let max_level = config
+                .log
+                .max_level
+                .parse()
+                .unwrap_or(tracing::Level::DEBUG);
+
             let subscriber = tracing_subscriber::FmtSubscriber::builder()
-                .with_max_level(tracing::Level::DEBUG)
+                .with_max_level(max_level)
                 .with_line_number(true)
                 .with_writer(non_blocking)
                 .finish();

@@ -243,7 +243,7 @@ impl BestFileResults {
     }
 }
 
-pub async fn search(matcher: Matcher, search_context: SearchContext) {
+pub async fn search(query: String, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
         winwidth,
@@ -402,5 +402,10 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     progressor.on_finished(display_lines, total_matched, total_processed);
     let _ = vim.bare_exec("clap#spinner#set_idle");
 
-    tracing::debug!("Searching completed in {elapsed:?}ms, {total_matched}/{total_processed}");
+    tracing::debug!(
+        ?query,
+        total_matched,
+        total_processed,
+        "Searching is completed in {elapsed:?}ms"
+    );
 }

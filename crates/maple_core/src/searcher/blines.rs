@@ -84,7 +84,12 @@ fn search_lines(
     Ok(())
 }
 
-pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: SearchContext) {
+pub async fn search(
+    query: String,
+    source_file: PathBuf,
+    matcher: Matcher,
+    search_context: SearchContext,
+) {
     let SearchContext {
         icon,
         winwidth,
@@ -145,5 +150,10 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
-    tracing::debug!("Searching completed in {elapsed:?}ms, {total_matched}/{total_processed}");
+    tracing::debug!(
+        ?query,
+        total_matched,
+        total_processed,
+        "Searching is completed in {elapsed:?}ms"
+    );
 }

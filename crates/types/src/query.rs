@@ -1,5 +1,6 @@
 use crate::search_term::{ExactTerm, FuzzyTerm, InverseTerm, SearchTerm, TermType};
 
+/// [`Query`] represents the structural search info parsed from the initial user input.
 #[derive(Debug, Clone)]
 pub struct Query {
     pub fuzzy_terms: Vec<FuzzyTerm>,
