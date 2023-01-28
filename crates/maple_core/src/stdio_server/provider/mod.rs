@@ -300,6 +300,7 @@ impl Context {
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
+            self.vim.bare_exec("clap#state#clear_preview")?;
             return Ok(());
         }
 

@@ -151,6 +151,10 @@ function! clap#state#clear_screen() abort
   call clap#indicator#set_none()
 endfunction
 
+function! clap#state#clear_preview() abort
+  call g:clap.preview.clear()
+endfunction
+
 function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
   if empty(g:clap.input.get())
     if g:clap.provider.id ==# 'blines'
