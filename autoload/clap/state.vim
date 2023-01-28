@@ -262,6 +262,9 @@ function! clap#state#clear_post() abort
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_lines_truncated_map',
         \ ])
+
+  call map(g:clap.tmps, 'delete(v:val)')
+  let g:clap.tmps = []
 endfunction
 
 let &cpoptions = s:save_cpo
