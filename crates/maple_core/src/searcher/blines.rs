@@ -145,8 +145,5 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
-    tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}ms, \
-        total_matched: {total_matched:?}, total_processed: {total_processed}",
-    );
+    tracing::debug!("Searching completed in {elapsed:?}ms, {total_matched}/{total_processed}");
 }

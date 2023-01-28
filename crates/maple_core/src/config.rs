@@ -47,9 +47,28 @@ pub fn config() -> &'static Config {
     })
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct LogConfig {
+    pub log_file: Option<String>,
+    pub max_level: String,
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            log_file: None,
+            max_level: "debug".into(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
+    /// Log configuration.
+    pub log: LogConfig,
+
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
     /// Ignore configuration per project.
@@ -101,6 +120,10 @@ mod tests {
 
           [provider-ignore.dumb_jump]
           comment-line = true
+
+          [log]
+          max-level = "trace"
+          log-file = "/tmp/clap.log"
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();
         println!("{user_config:?}");

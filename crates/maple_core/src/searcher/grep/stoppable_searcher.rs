@@ -402,8 +402,5 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     progressor.on_finished(display_lines, total_matched, total_processed);
     let _ = vim.bare_exec("clap#spinner#set_idle");
 
-    tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}ms, \
-        total_matched: {total_matched:?}, total_processed: {total_processed}",
-    );
+    tracing::debug!("Searching completed in {elapsed:?}ms, {total_matched}/{total_processed}");
 }

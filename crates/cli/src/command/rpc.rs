@@ -1,5 +1,5 @@
 use crate::app::Args;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 
 /// Starts a RPC service using stdio.
@@ -8,6 +8,8 @@ pub struct Rpc;
 
 impl Rpc {
     pub async fn run(&self, args: Args) -> Result<()> {
+        maple_core::config::initialize_config_file(args.config_file.clone());
+
         let maybe_log = if let Some(log_path) = args.log {
             Some(log_path)
         } else if let Ok(log_path) =
@@ -15,10 +17,12 @@ impl Rpc {
         {
             Some(log_path)
         } else {
-            None
+            maple_core::config::config()
+                .log
+                .log_file
+                .as_ref()
+                .map(std::path::PathBuf::from)
         };
-
-        maple_core::config::initialize_config_file(args.config_file.clone());
 
         if let Some(log_path) = maybe_log {
             if let Ok(metadata) = std::fs::metadata(&log_path) {
@@ -27,8 +31,13 @@ impl Rpc {
                 }
             }
 
-            let file_name = log_path.file_name().expect("Invalid file name");
-            let directory = log_path.parent().expect("A file must have a parent");
+            let file_name = log_path
+                .file_name()
+                .ok_or_else(|| anyhow!("no file name in {log_path:?}"))?;
+
+            let directory = log_path
+                .parent()
+                .ok_or_else(|| anyhow!("{log_path:?} has no parent"))?;
 
             let file_appender = tracing_appender::rolling::never(directory, file_name);
             let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
