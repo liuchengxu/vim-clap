@@ -7,7 +7,7 @@ pub use self::matcher::{MatchResult, Score};
 pub use self::query::Query;
 pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,
-    TermType,
+    TermType, WordTerm,
 };
 pub use self::source_item::{
     extract_fuzzy_text, AsAny, ClapItem, FileNameItem, FuzzyText, GrepItem, MatchScope,

@@ -1,3 +1,5 @@
+use crate::Score;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExactTermType {
     /// exact-match.
@@ -17,12 +19,12 @@ pub enum ExactTermType {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExactTerm {
     pub ty: ExactTermType,
-    pub word: String,
+    pub text: String,
 }
 
 impl ExactTerm {
-    pub fn new(ty: ExactTermType, word: String) -> Self {
-        Self { ty, word }
+    pub fn new(ty: ExactTermType, text: String) -> Self {
+        Self { ty, text }
     }
 
     /// Returns `true` if the result of The results of applying `self`
@@ -33,7 +35,7 @@ impl ExactTerm {
         match (&self.ty, &other.ty) {
             (Exact, Exact) | (PrefixExact, PrefixExact) | (SuffixExact, SuffixExact) => {
                 // Comparing with `'hello`, `'he` has more results.
-                other.word.starts_with(&self.word)
+                other.text.starts_with(&self.text)
             }
             (Exact, PrefixExact) | (Exact, SuffixExact) => true,
             _ => false,
@@ -60,12 +62,12 @@ pub enum InverseTermType {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct InverseTerm {
     pub ty: InverseTermType,
-    pub word: String,
+    pub text: String,
 }
 
 impl InverseTerm {
-    pub fn new(ty: InverseTermType, word: String) -> Self {
-        Self { ty, word }
+    pub fn new(ty: InverseTermType, text: String) -> Self {
+        Self { ty, text }
     }
 
     /// Returns `true` if the result of The results of applying `self`
@@ -74,12 +76,12 @@ impl InverseTerm {
         use InverseTermType::*;
 
         // Comparing with `!hello`, `!he` has less results.
-        // In order to have a superset results, `self.word` needs to be longer.
+        // In order to have a superset results, `self.text` needs to be longer.
 
         match (&self.ty, &other.ty) {
             (InverseExact, InverseExact)
             | (InversePrefixExact, InversePrefixExact)
-            | (InverseSuffixExact, InverseSuffixExact) => self.word.starts_with(&other.word),
+            | (InverseSuffixExact, InverseSuffixExact) => self.text.starts_with(&other.text),
             (InversePrefixExact, InverseExact) | (InverseSuffixExact, InverseExact) => true,
             _ => false,
         }
@@ -87,7 +89,7 @@ impl InverseTerm {
 
     /// Returns true if the full line of given `item` matches the inverse term.
     pub fn is_match(&self, full_search_line: &str) -> bool {
-        let query = self.word.as_str();
+        let query = self.text.as_str();
         let trimmed = full_search_line.trim();
         match self.ty {
             InverseTermType::InverseExact => trimmed.contains(query),
@@ -108,20 +110,20 @@ pub enum FuzzyTermType {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FuzzyTerm {
     pub ty: FuzzyTermType,
-    pub word: String,
+    pub text: String,
 }
 
 impl FuzzyTerm {
-    pub fn new(ty: FuzzyTermType, word: String) -> Self {
-        Self { ty, word }
+    pub fn new(ty: FuzzyTermType, text: String) -> Self {
+        Self { ty, text }
     }
 
     pub fn len(&self) -> usize {
-        self.word.len()
+        self.text.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.word.is_empty()
+        self.text.is_empty()
     }
 }
 
@@ -133,6 +135,21 @@ pub enum TermType {
     Exact(ExactTermType),
     /// Items that do not match something.
     Inverse(InverseTermType),
+    /// Items that match a text.
+    Word,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct WordTerm {
+    pub text: String,
+}
+
+impl WordTerm {
+    pub fn score(&self, match_start: usize) -> Score {
+        (self.text.len() + 1024 / match_start.max(1))
+            .try_into()
+            .unwrap_or_default()
+    }
 }
 
 impl TermType {
@@ -148,12 +165,12 @@ impl TermType {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SearchTerm {
     pub ty: TermType,
-    pub word: String,
+    pub text: String,
 }
 
 impl SearchTerm {
-    pub fn new(ty: TermType, word: String) -> Self {
-        Self { ty, word }
+    pub fn new(ty: TermType, text: String) -> Self {
+        Self { ty, text }
     }
 
     pub fn is_inverse_term(&self) -> bool {
@@ -167,7 +184,9 @@ impl SearchTerm {
 
 impl From<&str> for SearchTerm {
     fn from(s: &str) -> Self {
-        let (ty, word) = if let Some(stripped) = s.strip_prefix('\'') {
+        let (ty, text) = if let Some(stripped) = s.strip_prefix('"') {
+            (TermType::Word, stripped)
+        } else if let Some(stripped) = s.strip_prefix('\'') {
             (TermType::Exact(ExactTermType::Exact), stripped)
         } else if let Some(stripped) = s.strip_prefix('^') {
             (TermType::Exact(ExactTermType::PrefixExact), stripped)
@@ -193,7 +212,7 @@ impl From<&str> for SearchTerm {
 
         Self {
             ty,
-            word: word.into(),
+            text: text.into(),
         }
     }
 }

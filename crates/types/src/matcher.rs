@@ -12,4 +12,14 @@ impl MatchResult {
     pub fn new(score: Score, indices: Vec<usize>) -> Self {
         Self { score, indices }
     }
+
+    pub fn add_score(&mut self, score: Score) {
+        self.score += score;
+    }
+
+    pub fn extend_indices(&mut self, indices: Vec<usize>) {
+        self.indices.extend(indices);
+        self.indices.sort_unstable();
+        self.indices.dedup();
+    }
 }

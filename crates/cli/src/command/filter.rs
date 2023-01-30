@@ -4,11 +4,12 @@ use clap::Parser;
 use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
 use icon::Icon;
 use maple_core::paths::AbsPathBuf;
-use matcher::{Bonus, ClapItem, FuzzyAlgorithm, MatchScope, MatcherBuilder};
+use matcher::{Bonus, FuzzyAlgorithm, MatchScope, MatcherBuilder};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use subprocess::Exec;
+use types::ClapItem;
 use types::MatchedItem;
 
 fn parse_bonus(s: &str) -> Bonus {
