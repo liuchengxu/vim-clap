@@ -55,7 +55,7 @@ impl QueryInfo {
 /// - `query`: Initial query typed in the input window.
 fn parse_query_info(query: &str) -> QueryInfo {
     let Query {
-        word_terms,
+        word_terms: _, // TODO: add word_terms to UsageMatcher
         exact_terms,
         fuzzy_terms,
         inverse_terms,

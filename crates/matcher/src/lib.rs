@@ -46,6 +46,7 @@ pub use self::bonus::cwd::Cwd;
 pub use self::bonus::language::Language;
 pub use self::bonus::Bonus;
 use crate::substring::substr_indices;
+use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 use std::path::Path;
 use std::sync::Arc;
 use types::{
@@ -75,7 +76,7 @@ impl InverseMatcher {
     pub fn match_any(&self, match_text: &str) -> bool {
         self.inverse_terms
             .iter()
-            .any(|inverse_term| inverse_term.is_match(match_text))
+            .any(|inverse_term| inverse_term.exact_matched(match_text))
     }
 }
 
@@ -91,6 +92,10 @@ impl ExactMatcher {
             exact_terms,
             case_matching,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.exact_terms.is_empty()
     }
 
     pub fn exact_terms(&self) -> &[ExactTerm] {
@@ -186,6 +191,10 @@ impl FuzzyMatcher {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.fuzzy_terms.is_empty()
+    }
+
     pub fn find_matches(&self, item: &Arc<dyn ClapItem>) -> Option<(Score, Vec<usize>)> {
         item.fuzzy_text(self.match_scope)
             .as_ref()
@@ -205,8 +214,8 @@ impl FuzzyMatcher {
                 self.fuzzy_algo
                     .fuzzy_match(query, fuzzy_text, self.case_matching)
             {
-                fuzzy_indices.extend_from_slice(&indices);
                 fuzzy_score += score;
+                fuzzy_indices.extend(indices);
             } else {
                 return None;
             }
@@ -215,8 +224,6 @@ impl FuzzyMatcher {
         Some((fuzzy_score, fuzzy_indices))
     }
 }
-
-use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 
 /// Word matching using the `RegexMatcher`.
 #[derive(Debug, Clone, Default)]
@@ -229,11 +236,11 @@ impl WordMatcher {
         let matchers = word_terms
             .into_iter()
             .filter_map(|word_term| {
-                let word_matcher = RegexMatcherBuilder::default()
+                RegexMatcherBuilder::default()
                     .word(true)
                     .build(&word_term.text)
-                    .ok()?;
-                Some((word_term, word_matcher))
+                    .ok()
+                    .map(|word_matcher| (word_term, word_matcher))
             })
             .collect();
 
@@ -248,6 +255,7 @@ impl WordMatcher {
         use grep_matcher::Matcher;
 
         let mut score = Score::default();
+
         let byte_indices: Vec<_> = self
             .matchers
             .iter()
@@ -266,6 +274,8 @@ impl WordMatcher {
             .flatten()
             .collect();
 
+        // In order to be consistent with the other matchers which use char-positions, even all
+        // char-positions will be converted to byte-positions before sending to Vim/Neovim in the end.
         let indices = line
             .char_indices()
             .enumerate()
@@ -278,7 +288,7 @@ impl WordMatcher {
             })
             .collect::<Vec<_>>();
 
-        if score > 0 {
+        if !indices.is_empty() {
             Some((score, indices))
         } else {
             None
@@ -428,12 +438,12 @@ impl Matcher {
 
         // Merge the results from multi matchers.
         let mut match_result = if fuzzy_indices.is_empty() {
+            exact_indices.sort_unstable();
+            exact_indices.dedup();
+
             let bonus_score =
                 self.bonus_matcher
                     .calc_item_bonus(&item, exact_score, &exact_indices);
-
-            exact_indices.sort_unstable();
-            exact_indices.dedup();
 
             MatchResult::new(exact_score + bonus_score, exact_indices)
         } else {
@@ -492,6 +502,7 @@ impl Matcher {
         let (mut fuzzy_score, mut fuzzy_indices) =
             self.fuzzy_matcher.match_fuzzy_text(&fuzzy_text)?;
 
+        // Apply the word matcher against the line content.
         if !word_indices.is_empty() {
             fuzzy_score += word_score;
             fuzzy_indices.extend(word_indices)
@@ -507,15 +518,17 @@ impl Matcher {
             exact_indices.sort_unstable();
             exact_indices.dedup();
 
+            let score = exact_score + bonus_score;
+
             if exact_indices_in_path {
                 MatchedFileResult {
-                    score: exact_score + bonus_score,
+                    score,
                     exact_indices,
                     fuzzy_indices: Vec::new(),
                 }
             } else {
                 MatchedFileResult {
-                    score: exact_score + bonus_score,
+                    score,
                     exact_indices: Vec::new(),
                     fuzzy_indices: exact_indices,
                 }
@@ -532,9 +545,9 @@ impl Matcher {
 
             if exact_indices_in_path {
                 MatchedFileResult {
+                    score,
                     exact_indices,
                     fuzzy_indices,
-                    score,
                 }
             } else {
                 let mut indices = exact_indices;
@@ -543,9 +556,9 @@ impl Matcher {
                 indices.dedup();
 
                 MatchedFileResult {
+                    score,
                     exact_indices: Vec::new(),
                     fuzzy_indices: indices,
-                    score,
                 }
             }
         };
@@ -556,7 +569,7 @@ impl Matcher {
 
 #[derive(Debug)]
 pub struct MatchedFileResult {
+    pub score: Score,
     pub exact_indices: Vec<usize>,
     pub fuzzy_indices: Vec<usize>,
-    pub score: Score,
 }

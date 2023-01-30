@@ -88,13 +88,13 @@ impl InverseTerm {
     }
 
     /// Returns true if the full line of given `item` matches the inverse term.
-    pub fn is_match(&self, full_search_line: &str) -> bool {
-        let query = self.text.as_str();
-        let trimmed = full_search_line.trim();
+    pub fn exact_matched(&self, full_search_line: &str) -> bool {
+        let niddle = self.text.as_str();
+        let haystack = full_search_line.trim();
         match self.ty {
-            InverseTermType::InverseExact => trimmed.contains(query),
-            InverseTermType::InversePrefixExact => trimmed.starts_with(query),
-            InverseTermType::InverseSuffixExact => trimmed.ends_with(query),
+            InverseTermType::InverseExact => haystack.contains(niddle),
+            InverseTermType::InversePrefixExact => haystack.starts_with(niddle),
+            InverseTermType::InverseSuffixExact => haystack.ends_with(niddle),
         }
     }
 }
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn parse_term_should_work() {
         use TermType::*;
-        let query = "aaa 'bbb ^ccc ddd$ !eee !'fff !^ggg !hhh$";
+        let query = "aaa 'bbb ^ccc ddd$ !eee !'fff !^ggg !hhh$ \"iii";
         let terms = query.split_whitespace().map(Into::into).collect::<Vec<_>>();
 
         let expected = vec![
@@ -236,6 +236,7 @@ mod tests {
             SearchTerm::new(Inverse(InverseTermType::InverseExact), "'fff".into()),
             SearchTerm::new(Inverse(InverseTermType::InversePrefixExact), "ggg".into()),
             SearchTerm::new(Inverse(InverseTermType::InverseSuffixExact), "hhh".into()),
+            SearchTerm::new(Word, "iii".into()),
         ];
 
         for (expected, got) in expected.iter().zip(terms.iter()) {
