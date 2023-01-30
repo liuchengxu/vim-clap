@@ -4,6 +4,7 @@ use anyhow::Result;
 use matcher::{Bonus, MatchScope};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use types::Query;
 
 #[derive(Debug)]
 pub struct BlinesProvider {
@@ -31,9 +32,9 @@ impl BlinesProvider {
         let matcher = if let Some(extension) = source_file.extension().and_then(|s| s.to_str()) {
             matcher_builder
                 .bonuses(vec![Bonus::Language(extension.into())])
-                .build(query.into())
+                .build(Query::from(&query))
         } else {
-            matcher_builder.build(query.into())
+            matcher_builder.build(Query::from(&query))
         };
 
         let new_control = {
@@ -43,7 +44,8 @@ impl BlinesProvider {
                 let search_context = ctx.search_context(stop_signal.clone());
 
                 tokio::spawn(async move {
-                    crate::searcher::blines::search(source_file, matcher, search_context).await;
+                    crate::searcher::blines::search(query, source_file, matcher, search_context)
+                        .await;
                 })
             };
 

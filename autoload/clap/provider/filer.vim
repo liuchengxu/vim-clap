@@ -12,11 +12,30 @@ let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ?
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
 let s:CREATE_FILE = ' [Create new file]'
 
+if has('win32')
+  function! s:normalize_path_sep(path) abort
+    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
+  endfunction
+
+  function! s:is_root_directory(dir) abort
+    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
+  endfunction
+else
+  function! s:normalize_path_sep(path) abort
+    return a:path
+  endfunction
+
+  function! s:is_root_directory(dir) abort
+    return a:dir ==# s:PATH_SEPERATOR
+  endfunction
+endif
+
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*Directory is empty/
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
+" APIs used by Rust backend.
 function! clap#provider#filer#handle_on_initialize(result) abort
   let result = a:result
   call g:clap.display.set_lines(result.entries)
@@ -57,41 +76,6 @@ function! clap#provider#filer#set_prompt(current_dir) abort
   call s:set_prompt(current_dir)
 endfunction
 
-if has('win32')
-  function! s:is_root_directory(dir) abort
-    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
-  endfunction
-else
-  function! s:is_root_directory(dir) abort
-    return a:dir ==# s:PATH_SEPERATOR
-  endfunction
-endif
-
-if has('nvim')
-  function! s:bs_action() abort
-    call clap#client#notify('backspace')
-    return ''
-  endfunction
-else
-  function! s:bs_action(before_bs) abort
-    call clap#client#notify('backspace')
-    return ''
-  endfunction
-endif
-
-function! s:build_create_file_line(input) abort
-  return (g:clap_enable_icon ? ' ' : '') . a:input . s:CREATE_FILE
-endfunction
-
-function! s:get_entry_by_line(line) abort
-  let curline = a:line
-  if g:clap_enable_icon
-    let curline = curline[4:]
-  endif
-  let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
-  return s:smart_concatenate(s:current_dir, curline)
-endfunction
-
 function! clap#provider#filer#handle_special_entries(abs_path) abort
   let curline = g:clap.display.getcurline()
 
@@ -112,6 +96,34 @@ function! clap#provider#filer#handle_special_entries(abs_path) abort
   return v:false
 endfunction
 
+function! clap#provider#filer#set_create_file_entry() abort
+  call clap#highlight#clear()
+  let input = g:clap.input.get()
+  let create_file_line = (g:clap_enable_icon ? ' ' : '') . input . s:CREATE_FILE
+  call g:clap.display.set_lines([create_file_line])
+endfunction
+
+if has('nvim')
+  function! s:bs_action() abort
+    call clap#client#notify('backspace')
+    return ''
+  endfunction
+else
+  function! s:bs_action(before_bs) abort
+    call clap#client#notify('backspace')
+    return ''
+  endfunction
+endif
+
+function! s:get_entry_by_line(line) abort
+  let curline = a:line
+  if g:clap_enable_icon
+    let curline = curline[4:]
+  endif
+  let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
+  return s:smart_concatenate(s:current_dir, curline)
+endfunction
+
 function! s:smart_concatenate(cur_dir, curline) abort
   if a:cur_dir[-1:] ==# s:PATH_SEPERATOR
     return a:cur_dir.a:curline
@@ -128,11 +140,6 @@ function! clap#provider#filer#sink(entry) abort
   call clap#handler#sink_with({ -> execute('edit '.fnameescape(a:entry))})
 endfunction
 
-function! clap#provider#filer#set_create_file_entry() abort
-  call clap#highlight#clear()
-  call g:clap.display.set_lines([s:build_create_file_line(g:clap.input.get())])
-endfunction
-
 function! s:filer.on_move_async() abort
   if stridx(g:clap.display.getcurline(), s:CREATE_FILE) > -1
     call g:clap.preview.hide()
@@ -144,16 +151,6 @@ endfunction
 function! s:filer_on_no_matches(input) abort
   execute 'edit' s:smart_concatenate(s:current_dir, a:input)
 endfunction
-
-if has('win32')
-  function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
-  endfunction
-else
-  function! s:normalize_path_sep(path) abort
-    return a:path
-  endfunction
-endif
 
 function! s:set_initial_current_dir() abort
   if empty(g:clap.provider.args)

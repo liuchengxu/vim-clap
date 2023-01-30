@@ -3,6 +3,7 @@ name = "maple"
 build = "build.rs"
 edition = "2021"
 version = "0.1.40"
+rust-version = "1.65"
 license = "MIT"
 publish = false
 include = ["/Cargo.toml", "src/*.rs"]
@@ -20,6 +21,7 @@ upgrade = { path = "crates/upgrade" }
 
 [build-dependencies]
 built = { package = "built", version = "0.5", features = ["git2"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [profile.production]
 inherits = "release"

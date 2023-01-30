@@ -1,6 +1,6 @@
+use cli::command::dumb_jump::DumbJump;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use filter::{MatchedItem, Query, SourceItem};
-use maple_cli::command::dumb_jump::DumbJump;
 use maple_core::find_largest_cache_digest;
 use maple_core::tools::ctags::{ProjectCtagsCommand, ProjectTag};
 use matcher::{Matcher, MatcherBuilder};

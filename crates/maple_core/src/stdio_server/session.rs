@@ -42,7 +42,8 @@ impl Session {
         tracing::debug!(
             session_id = self.session_id,
             provider_id = %self.ctx.provider_id(),
-            "Spawning a new session event loop task",
+            debounce = self.ctx.env.debounce,
+            "Spawning a new session task",
         );
 
         tokio::spawn(async move {
@@ -88,7 +89,7 @@ impl Session {
                 maybe_event = self.event_recv.recv() => {
                     match maybe_event {
                         Some(event) => {
-                            tracing::debug!("[with_debounce] Received event: {event:?}");
+                            tracing::trace!("[with_debounce] Received event: {event:?}");
 
                             match event {
                                 ProviderEvent::NewSession => unreachable!(),
@@ -167,7 +168,7 @@ impl Session {
 
     async fn run_event_loop_without_debounce(mut self) {
         while let Some(event) = self.event_recv.recv().await {
-            tracing::debug!("[without_debounce] Received event: {event:?}");
+            tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
                 ProviderEvent::NewSession => unreachable!(),

@@ -3,9 +3,9 @@ use crate::config::IgnoreConfig;
 use crate::find_usages::{AddressableUsage, CtagsSearcher, GtagsSearcher, RegexSearcher, Usages};
 use crate::paths::AbsPathBuf;
 use crate::tools::ctags::{get_language, TagsGenerator};
-use anyhow::Result;
 use rayon::prelude::*;
 use std::collections::HashSet;
+use std::io::Result;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -235,19 +235,19 @@ mod tests {
         let dir = dir.parent().unwrap().parent().unwrap();
 
         let now = Instant::now();
-        let exists = is_git_tracked("./autoload/clap.vim", &dir);
+        let exists = is_git_tracked("./autoload/clap.vim", dir);
         println!("File exists: {exists:?}");
         let elapsed = now.elapsed();
-        println!("Elapsed: {:.3?}", elapsed);
+        println!("Elapsed: {elapsed:.3?}");
 
         let now = Instant::now();
-        let repo = git::Repository::open(&dir).expect("Not a git repo");
+        let repo = git::Repository::open(dir).expect("Not a git repo");
         let elapsed = now.elapsed();
-        println!("Open repository elapsed: {:.3?}", elapsed);
+        println!("Open repository elapsed: {elapsed:.3?}");
         let now = Instant::now();
-        let status = repo.status_file(&std::path::Path::new("autoload/clap1.vim"));
+        let status = repo.status_file(std::path::Path::new("autoload/clap1.vim"));
         println!("File status: {status:?}");
         let elapsed = now.elapsed();
-        println!("Elapsed: {:.3?}", elapsed);
+        println!("Elapsed: {elapsed:.3?}");
     }
 }

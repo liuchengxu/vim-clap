@@ -4,6 +4,7 @@ use anyhow::Result;
 use matcher::MatchScope;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use types::Query;
 
 #[derive(Debug)]
 pub struct FilesProvider {
@@ -38,7 +39,7 @@ impl FilesProvider {
             } else {
                 MatchScope::Full
             })
-            .build(query.into());
+            .build(Query::from(&query));
 
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
@@ -47,7 +48,7 @@ impl FilesProvider {
                 let search_context = ctx.search_context(stop_signal.clone());
                 let hidden = self.hidden;
                 tokio::spawn(async move {
-                    crate::searcher::files::search(hidden, matcher, search_context).await;
+                    crate::searcher::files::search(query, hidden, matcher, search_context).await;
                 })
             };
 

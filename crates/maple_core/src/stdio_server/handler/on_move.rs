@@ -1,4 +1,4 @@
-use crate::paths::truncate_absolute_path;
+use crate::paths::{expand_tilde, truncate_absolute_path};
 use crate::previewer;
 use crate::previewer::vim_help::HelpTagPreview;
 use crate::previewer::{get_file_preview, FilePreview};
@@ -6,9 +6,9 @@ use crate::stdio_server::job;
 use crate::stdio_server::provider::{read_dir_entries, Context, ProviderSource};
 use crate::stdio_server::vim::preview_syntax;
 use crate::tools::ctags::{current_context_tag_async, BufferTag};
-use anyhow::{anyhow, Result};
 use pattern::*;
 use serde::{Deserialize, Serialize};
+use std::io::{Error, ErrorKind, Result};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -64,9 +64,12 @@ impl PreviewTarget {
 
 fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget, Option<String>)> {
     let err = || {
-        anyhow!(
-            "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
-            ctx.provider_id()
+        Error::new(
+            ErrorKind::Other,
+            format!(
+                "Failed to parse PreviewTarget for provider_id: {} from `{curline}`",
+                ctx.provider_id()
+            ),
         )
     };
 
@@ -83,7 +86,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
         "recent_files" => PreviewTarget::File(PathBuf::from(&curline)),
         "history" => {
             let path = if curline.starts_with('~') {
-                crate::paths::expand_tilde(curline)
+                expand_tilde(curline)
             } else {
                 ctx.cwd.join(&curline)
             };
@@ -99,7 +102,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
                 let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
                 let path = ctx.cwd.join(fpath);
 
-                Ok::<_, anyhow::Error>((path, lnum))
+                Ok::<_, Error>((path, lnum))
             };
 
             let (path, line_number) = try_extract_file_path(&curline)?;
@@ -132,9 +135,12 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             PreviewTarget::Commit(rev.into())
         }
         unknown_provider_id => {
-            return Err(anyhow!(
-                "Failed to parse PreviewTarget, you probably forget to \
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Failed to parse PreviewTarget, you probably forget to \
                     add an implementation for this provider: {unknown_provider_id}",
+                ),
             ))
         }
     };
@@ -241,7 +247,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
+    fn preview_directory<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let enable_icon = self.ctx.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
@@ -260,18 +266,18 @@ impl<'a> CachedPreviewImpl<'a> {
         Ok(Preview::new(lines))
     }
 
-    fn preview_file<P: AsRef<Path>>(&self, path: P) -> std::io::Result<Preview> {
+    fn preview_file<P: AsRef<Path>>(&self, path: P) -> Result<Preview> {
         let path = path.as_ref();
 
         if !path.is_file() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            return Err(Error::new(
+                ErrorKind::Other,
                 format!("Failed to preview as {} is not a file", path.display()),
             ));
         }
 
-        let handle_io_error = |e: &std::io::Error| {
-            if e.kind() == std::io::ErrorKind::NotFound {
+        let handle_io_error = |e: &Error| {
+            if e.kind() == ErrorKind::NotFound {
                 tracing::debug!(
                     "TODO: {} not found, the files cache might be invalid, try refreshing the cache",
                     path.display()

@@ -2,11 +2,11 @@ use super::Symbol;
 use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::process::subprocess::exec;
 use crate::tools::gtags::GTAGS_DIR;
-use anyhow::{anyhow, Result};
 use dumb_analyzer::resolve_reference_kind;
 use rayon::prelude::*;
+use std::io::{Error, ErrorKind, Result};
 use std::path::{PathBuf, MAIN_SEPARATOR};
-use subprocess::Exec;
+use subprocess::{Exec, Redirection};
 
 #[derive(Clone, Debug)]
 pub struct GtagsSearcher {
@@ -51,6 +51,7 @@ impl GtagsSearcher {
     /// Constructs a `gtags` command with proper env variables.
     fn gtags(&self) -> Exec {
         Exec::cmd("gtags")
+            .stderr(Redirection::None)
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
     }
@@ -58,6 +59,8 @@ impl GtagsSearcher {
     /// Constructs a `global` command with proper env variables.
     fn global(&self) -> Exec {
         Exec::cmd("global")
+            .stderr(Redirection::None) // Ignore the error message, the exit status will tell us
+            // whether it's executed sucessfully.
             .env("GTAGSROOT", &self.project_root)
             .env("GTAGSDBPATH", &self.db_path)
     }
@@ -69,12 +72,14 @@ impl GtagsSearcher {
             .env("GTAGSLABEL", "native-pygments")
             .cwd(&self.project_root)
             .arg(&self.db_path)
-            .join()?;
+            .join()
+            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to run gtags: {e:?}")))?;
         if exit_status.success() {
             Ok(())
         } else {
-            Err(anyhow!(
-                "Creating gtags failed, exit_status: {exit_status:?}"
+            Err(Error::new(
+                ErrorKind::Other,
+                format!("Creating gtags failed, exit_status: {exit_status:?}"),
             ))
         }
     }
@@ -87,13 +92,15 @@ impl GtagsSearcher {
             .env("GTAGSLABEL", "native-pygments")
             .cwd(&self.project_root)
             .arg("--update")
-            .join()?;
+            .join()
+            .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to update gtags: {e:?}")))?;
 
         if exit_status.success() {
             Ok(())
         } else {
-            Err(anyhow!(
-                "Updating gtags failed, exit_status: {exit_status:?}"
+            Err(Error::new(
+                ErrorKind::Other,
+                format!("Updating gtags failed, exit_status: {exit_status:?}"),
             ))
         }
     }

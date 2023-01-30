@@ -17,8 +17,9 @@ use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
+use filter::Query;
 use icon::{Icon, IconKind};
-use matcher::{Bonus, MatchScope, MatcherBuilder};
+use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -157,8 +158,8 @@ impl Context {
             cwd,
             vim,
             env: Arc::new(env),
-            terminated: Arc::new(AtomicBool::new(false)),
             maybe_preview_size: None,
+            terminated: Arc::new(AtomicBool::new(false)),
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
             input_recorder,
             provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
@@ -171,6 +172,10 @@ impl Context {
 
     pub fn matcher_builder(&self) -> MatcherBuilder {
         self.env.matcher_builder.clone()
+    }
+
+    pub fn matcher(&self, query: impl Into<Query>) -> Matcher {
+        self.env.matcher_builder.clone().build(query.into())
     }
 
     pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
@@ -212,17 +217,6 @@ impl Context {
         *provider_source = new;
     }
 
-    pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
-        let preview_cache = self.preview_cache.read();
-        // TODO: not clone?
-        preview_cache.get(preview_target).cloned()
-    }
-
-    pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
-        let mut preview_cache = self.preview_cache.write();
-        preview_cache.insert(preview_target, preview);
-    }
-
     pub fn signify_terminated(&self, session_id: u64) {
         self.terminated.store(true, Ordering::SeqCst);
         let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
@@ -233,26 +227,15 @@ impl Context {
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
     }
 
-    pub async fn update_on_empty_query(&self) -> Result<()> {
-        if let Some(items) = self
-            .provider_source
-            .read()
-            .try_skim(self.provider_id(), 100)
-        {
-            let printer::DisplayLines {
-                lines,
-                icon_added,
-                truncated_map,
-                ..
-            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
+    pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
+        let preview_cache = self.preview_cache.read();
+        // TODO: not clone?
+        preview_cache.get(preview_target).cloned()
+    }
 
-            self.vim.exec(
-                "clap#state#update_on_empty_query",
-                json!([lines, truncated_map, icon_added]),
-            )
-        } else {
-            self.vim.bare_exec("clap#state#clear_screen")
-        }
+    pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
+        let mut preview_cache = self.preview_cache.write();
+        preview_cache.insert(preview_target, preview);
     }
 
     pub async fn record_input(&mut self) -> Result<()> {
@@ -307,7 +290,7 @@ impl Context {
     }
 
     pub fn render_preview(&self, preview: Preview) -> Result<()> {
-        self.vim.exec("clap#state#process_preview_result", preview)
+        self.vim.exec("clap#state#render_preview", preview)
     }
 
     pub async fn update_preview(&mut self) -> Result<()> {
@@ -317,10 +300,12 @@ impl Context {
 
         if curline.is_empty() {
             tracing::debug!("Skipping preview as curline is empty");
+            self.vim.bare_exec("clap#state#clear_preview")?;
             return Ok(());
         }
 
         let preview_height = self.preview_height().await?;
+
         let preview = CachedPreviewImpl::new(curline, preview_height, self)?
             .get_preview()
             .await?;
@@ -332,6 +317,28 @@ impl Context {
         }
 
         Ok(())
+    }
+
+    pub async fn update_on_empty_query(&self) -> Result<()> {
+        if let Some(items) = self
+            .provider_source
+            .read()
+            .try_skim(self.provider_id(), 100)
+        {
+            let printer::DisplayLines {
+                lines,
+                icon_added,
+                truncated_map,
+                ..
+            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
+
+            self.vim.exec(
+                "clap#state#update_on_empty_query",
+                json!([lines, truncated_map, icon_added]),
+            )
+        } else {
+            self.vim.bare_exec("clap#state#clear_screen")
+        }
     }
 }
 

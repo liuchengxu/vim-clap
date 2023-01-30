@@ -5,13 +5,12 @@ mod project_tag;
 use crate::dirs::PROJECT_DIRS;
 use crate::paths::AbsPathBuf;
 use crate::process::ShellCommand;
-use anyhow::Result;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Result};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use subprocess::{Exec, NullFile};
@@ -68,10 +67,7 @@ pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> = Lazy::new(|| {
         if stdout.split('\n').any(|x| x.starts_with("json")) {
             Ok(true)
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "ctags executable has no +json feature",
-            ))
+            Err(Error::new(ErrorKind::Other, "ctags has no +json feature"))
         }
     }
 
@@ -80,7 +76,7 @@ pub static CTAGS_HAS_JSON_FEATURE: Lazy<bool> = Lazy::new(|| {
 
 /// Used to specify the language when working with `readtags`.
 static LANG_MAPS: Lazy<HashMap<String, String>> = Lazy::new(|| {
-    fn generate_lang_maps() -> std::io::Result<HashMap<String, String>> {
+    fn generate_lang_maps() -> Result<HashMap<String, String>> {
         let output = std::process::Command::new("ctags")
             .arg("--list-maps")
             .stderr(std::process::Stdio::inherit())
@@ -177,7 +173,7 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
     }
 
     /// Executes the command to generate the tags file.
-    pub fn generate_tags(&self) -> std::io::Result<()> {
+    pub fn generate_tags(&self) -> Result<()> {
         // TODO: detect the languages by dir if not explicitly specified?
         let languages_opt = self
             .languages
@@ -205,13 +201,10 @@ impl<'a, P: AsRef<Path> + Hash> TagsGenerator<'a, P> {
             .stderr(NullFile) // ignore the line: ctags: warning...
             .cwd(self.dir.as_ref())
             .join()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| Error::new(ErrorKind::Other, e.to_string()))?;
 
         if !exit_status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Error occured when creating tags file",
-            ));
+            return Err(Error::new(ErrorKind::Other, "Failed to generate tags file"));
         }
 
         Ok(())
@@ -250,7 +243,7 @@ impl ProjectCtagsCommand {
     }
 
     /// Parallel version of [`formatted_lines`].
-    pub fn par_formatted_lines(&mut self) -> std::io::Result<Vec<String>> {
+    pub fn par_formatted_lines(&mut self) -> Result<Vec<String>> {
         self.std_cmd.output().map(|output| {
             output
                 .stdout
@@ -275,7 +268,13 @@ impl ProjectCtagsCommand {
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
         let exec_cmd = Exec::cmd(self.std_cmd.get_program())
             .args(self.std_cmd.get_args().collect::<Vec<_>>().as_slice());
-        Ok(BufReader::new(exec_cmd.stream_stdout()?).lines().flatten())
+        Ok(BufReader::new(
+            exec_cmd
+                .stream_stdout()
+                .map_err(|err| Error::new(ErrorKind::Other, err.to_string()))?,
+        )
+        .lines()
+        .flatten())
     }
 
     /// Returns an iterator of tag line in a formatted form.
@@ -324,7 +323,7 @@ impl ProjectCtagsCommand {
         Ok((total, cache_path))
     }
 
-    /// Parallel version of [`create_cache`].
+    /// Parallel version of `create_cache`.
     pub fn par_create_cache(&mut self) -> Result<(usize, PathBuf)> {
         // TODO: do not store all the output in memory and redirect them to a file directly.
         let lines = self.par_formatted_lines()?;

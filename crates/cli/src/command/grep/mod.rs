@@ -161,7 +161,7 @@ mod tests {
         let res = create_cache_deprecated(&dir).await;
         println!("Cache creation result(old): {res:?}");
         let elapsed = now.elapsed();
-        println!("Elapsed: {:.3?}", elapsed);
+        println!("Elapsed: {elapsed:.3?}");
 
         let now = Instant::now();
         let rg_cmd = RgTokioCommand::new(dir);
@@ -171,6 +171,6 @@ mod tests {
             (res.total, res.cached_path)
         );
         let elapsed = now.elapsed();
-        println!("Elapsed: {:.3?}", elapsed);
+        println!("Elapsed: {elapsed:.3?}");
     }
 }

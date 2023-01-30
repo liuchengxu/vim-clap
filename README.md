@@ -76,9 +76,7 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 ### [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
-Plug 'liuchengxu/vim-clap'
-
-" Build the extra binary if cargo exists on your system.
+" Build the Rust binary if `cargo` exists on your system.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
 
 " The bang version will try to download the prebuilt binary if cargo does not exist.
@@ -94,7 +92,7 @@ Plug 'liuchengxu/vim-clap', { 'do': { -> clap#installer#force_download() } }
 Plug 'liuchengxu/vim-clap', { 'do': has('win32') ? 'cargo build --release' : 'make' }
 ```
 
-The `do` hook for installing the extra binary is highly recommended, which can mostly help you get a performant vim-clap easily. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing the optional dependencies manually.
+It's recommended to install the Rust binary automatically via the `do` hook. If that does not work for you, please refer to [INSTALL.md](INSTALL.md) for installing it manually.
 
 ## Usage
 
@@ -197,8 +195,6 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 - `g:clap_disable_run_rooter`: Bool, `v:false`, vim-clap by default will try to run from the project root by changing `cwd` temporarily. Set it to `v:true` to run from the origin `cwd`. The project root here means the git base directory. Create an issue if you want to see more support about the project root.
 
 The option naming convention for provider is `g:clap_provider_{provider_id}_{opt}`.
-
-- `g:clap_provider_grep_delay`: 300ms by default, delay for actually spawning the grep job in the background.
 
 - `g:clap_provider_grep_blink`: [2, 100] by default, blink 2 times with 100ms timeout when jumping the result. Set it to [0, 0] to disable the blink.
 

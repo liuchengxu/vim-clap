@@ -58,7 +58,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --manifest-path crates/Cargo.toml -- -D warnings
+          args: --all-features --all-targets --manifest-path crates/Cargo.toml -- -D warnings
 
   crates:
     name: Rust Tests

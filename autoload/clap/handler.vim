@@ -32,19 +32,14 @@ function! clap#handler#on_typed() abort
     return
   endif
 
-  if g:clap.provider.is_rpc_type()
-    call g:clap.provider.on_typed()
-    return
-  endif
-
+  " This check is necessary for now, but it might be removed if the underlying
+  " logic can be revisited why removing it breaks the sink behavior.
   let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return
-  elseif strlen(s:old_input) > strlen(l:cur_input)
-    " If we should refilter?
-    let g:__clap_should_refilter = v:true
   endif
   let s:old_input = l:cur_input
+
   call g:clap.provider.on_typed()
 endfunction
 

@@ -159,7 +159,13 @@ function! clap#legacy#filter#on_typed(FilterFn, query, candidates) abort
 
   if !g:__clap_has_no_matches
     if exists('g:__clap_fuzzy_matched_indices')
-      call clap#highlight#add_fuzzy_sync()
+      " Due the cache strategy, g:__clap_fuzzy_matched_indices may be oversize
+      " than the actual display buffer, the rest highlight indices of g:__clap_fuzzy_matched_indices
+      " belong to the cached lines.
+      "
+      " TODO: also add highlights for the cached lines?
+      let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
+      call clap#highlight#add_highlights(hl_lines)
     else
       call g:clap.display.add_highlight()
     endif

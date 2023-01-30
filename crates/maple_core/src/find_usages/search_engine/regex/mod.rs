@@ -12,13 +12,13 @@ mod definition;
 mod executable_searcher;
 
 use self::definition::{definitions_and_references, DefinitionSearchResult, MatchKind};
-use self::executable_searcher::{LanguageRegexSearcher, WordRegexSearcher};
+use self::executable_searcher::{word_regex_search_with_extension, LanguageRegexSearcher};
 use crate::find_usages::{AddressableUsage, Usage, UsageMatcher, Usages};
 use crate::tools::rg::{get_language, Match, Word};
-use anyhow::Result;
 use dumb_analyzer::{get_comment_syntax, resolve_reference_kind, Priority};
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::io::{Error, ErrorKind, Result};
 use std::path::PathBuf;
 
 /// [`Usage`] with some structured information.
@@ -103,18 +103,21 @@ impl RegexSearcher {
             dir,
         } = self;
 
-        let word = Word::new(word.clone())?;
+        let re = regex::Regex::new(&format!("\\b{word}\\b")).map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("{word} is an invalid regex expression: {e}"),
+            )
+        })?;
+
+        let word = Word::new(word.clone(), re);
 
         let lang = match get_language(extension) {
             Some(lang) => lang,
             None => {
                 // Search the occurrences if no language detected.
-                let word_regex_searcher = WordRegexSearcher {
-                    word: word.clone(),
-                    file_ext: extension.to_string(),
-                    dir: dir.clone(),
-                };
-                let occurrences = word_regex_searcher.word_regexp_search(true)?;
+                let occurrences =
+                    word_regex_search_with_extension(&word.raw, true, extension, dir.as_ref())?;
                 let mut usages = occurrences
                     .into_par_iter()
                     .filter_map(|matched| {

@@ -4,10 +4,10 @@ use super::{QueryType, Symbol};
 use crate::find_usages::{AddressableUsage, UsageMatcher};
 use crate::process::subprocess::exec;
 use crate::tools::ctags::TagsGenerator;
-use anyhow::Result;
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::hash::Hash;
+use std::io::Result;
 use std::path::{Path, PathBuf};
 use subprocess::{Exec, Redirection};
 
@@ -33,7 +33,7 @@ impl<'a, P: AsRef<Path> + Hash> CtagsSearcher<'a, P> {
     }
 
     /// Generate the `tags` file.
-    pub fn generate_tags(&self) -> std::io::Result<()> {
+    pub fn generate_tags(&self) -> Result<()> {
         self.tags_generator.generate_tags()
     }
 

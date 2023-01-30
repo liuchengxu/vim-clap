@@ -440,7 +440,7 @@ mod tests {
 
                     total_lines_created += 1;
                     if total_lines_created % 99999_usize.next_power_of_two() == 0 {
-                        println!("Total lines created: {}", total_lines_created)
+                        println!("Total lines created: {total_lines_created}")
                     }
 
                     let item: Arc<dyn ClapItem> =

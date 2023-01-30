@@ -1,10 +1,9 @@
 use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
-use anyhow::Result;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
 use std::borrow::Cow;
-use std::io::BufRead;
+use std::io::{BufRead, Result};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -70,15 +69,12 @@ fn search_lines(
                         line_number: index + 1,
                     });
 
-                    if let Some(matched_item) = matcher.match_item(item) {
-                        item_sender
-                            .send(SearcherMessage::Match(matched_item))
-                            .map_err(|_| ())?;
+                    let msg = if let Some(matched_item) = matcher.match_item(item) {
+                        SearcherMessage::Match(matched_item)
                     } else {
-                        item_sender
-                            .send(SearcherMessage::ProcessedOne)
-                            .map_err(|_| ())?;
-                    }
+                        SearcherMessage::ProcessedOne
+                    };
+                    item_sender.send(msg).map_err(|_| ())?;
                 }
             }
 
@@ -88,7 +84,12 @@ fn search_lines(
     Ok(())
 }
 
-pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: SearchContext) {
+pub async fn search(
+    query: String,
+    source_file: PathBuf,
+    matcher: Matcher,
+    search_context: SearchContext,
+) {
     let SearchContext {
         icon,
         winwidth,
@@ -150,7 +151,9 @@ pub async fn search(source_file: PathBuf, matcher: Matcher, search_context: Sear
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}ms, \
-        total_matched: {total_matched:?}, total_processed: {total_processed}",
+        ?query,
+        total_matched,
+        total_processed,
+        "Searching is completed in {elapsed:?}ms"
     );
 }

@@ -3,6 +3,7 @@ use anyhow::Result;
 use matcher::MatchScope;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use types::Query;
 
 #[derive(Debug)]
 pub struct GrepProvider {
@@ -25,15 +26,15 @@ impl GrepProvider {
 
         let matcher = ctx
             .matcher_builder()
-            .match_scope(MatchScope::Full)
-            .build(query.into());
+            .match_scope(MatchScope::Full) // Force using MatchScope::Full.
+            .build(Query::from(&query));
 
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
 
             let search_context = ctx.search_context(stop_signal.clone());
             let join_handle = tokio::spawn(async move {
-                crate::searcher::grep::search(matcher, search_context).await
+                crate::searcher::grep::search(query, matcher, search_context).await
             });
 
             SearcherControl {
@@ -59,7 +60,7 @@ impl ClapProvider for GrepProvider {
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
         if query.is_empty() {
-            ctx.vim.bare_exec("clap#state#clear_screen")?;
+            ctx.update_on_empty_query().await?;
         } else {
             self.process_query(query, ctx);
         }

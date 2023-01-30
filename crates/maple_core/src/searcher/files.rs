@@ -62,7 +62,7 @@ fn search_files(
     });
 }
 
-pub async fn search(hidden: bool, matcher: Matcher, search_context: SearchContext) {
+pub async fn search(query: String, hidden: bool, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         cwd,
         vim,
@@ -125,7 +125,9 @@ pub async fn search(hidden: bool, matcher: Matcher, search_context: SearchContex
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}ms, \
-        total_matched: {total_matched:?}, total_processed: {total_processed}",
+        ?query,
+        total_matched,
+        total_processed,
+        "Searching is completed in {elapsed:?}ms"
     );
 }

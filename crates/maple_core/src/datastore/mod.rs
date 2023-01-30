@@ -4,7 +4,6 @@ use crate::cache::{CacheInfo, MAX_DIGESTS};
 use crate::dirs::PROJECT_DIRS;
 use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
-use anyhow::Result;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use std::io::BufReader;
@@ -68,10 +67,15 @@ pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<P
     Ok(cache_dir.join(filename))
 }
 
-fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> Result<T> {
-    let file = std::fs::File::open(path)?;
-    let reader = BufReader::new(file);
-    let deserializd = serde_json::from_reader(reader)?;
+fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> std::io::Result<T> {
+    let file = std::fs::File::open(&path)?;
+    let reader = BufReader::new(&file);
+    let deserializd = serde_json::from_reader(reader).map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to write {} as json: {e:?}", path.as_ref().display()),
+        )
+    })?;
 
     Ok(deserializd)
 }

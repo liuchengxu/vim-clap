@@ -1,5 +1,4 @@
-use super::{walk_parallel, WalkConfig};
-use crate::searcher::SearchContext;
+use crate::searcher::{walk_parallel, SearchContext, WalkConfig};
 use crate::stdio_server::VimProgressor;
 use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -244,7 +243,7 @@ impl BestFileResults {
     }
 }
 
-pub async fn search(matcher: Matcher, search_context: SearchContext) {
+pub async fn search(query: String, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
         winwidth,
@@ -404,7 +403,9 @@ pub async fn search(matcher: Matcher, search_context: SearchContext) {
     let _ = vim.bare_exec("clap#spinner#set_idle");
 
     tracing::debug!(
-        "Searching is done, elapsed: {elapsed:?}ms, \
-        total_matched: {total_matched:?}, total_processed: {total_processed}",
+        ?query,
+        total_matched,
+        total_processed,
+        "Searching is completed in {elapsed:?}ms"
     );
 }

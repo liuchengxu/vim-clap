@@ -168,9 +168,6 @@ function! clap#_exit() abort
   call clap#sign#reset_all()
 
   call clap#state#clear_post()
-
-  call map(g:clap.tmps, 'delete(v:val)')
-  let g:clap.tmps = []
 endfunction
 
 function! clap#_for(provider_id_or_alias) abort

@@ -100,9 +100,9 @@ mod tests {
     #[test]
     #[ignore]
     fn ripgrep_forerunner_command_works() {
-        let params = Args::parse_from(&["--no-cache", "--icon=Grep"]);
+        let params = Args::parse_from(["--no-cache", "--icon=Grep"]);
 
-        let ripgrep_forerunner = RipGrepForerunner::parse_from(&[
+        let ripgrep_forerunner = RipGrepForerunner::parse_from([
             "",
             "--cmd-dir",
             std::env::current_dir()

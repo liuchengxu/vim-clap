@@ -19,7 +19,7 @@ if clap#maple#is_available()
     if a:error isnot v:null
       return
     endif
-    call clap#state#process_preview_result(a:result)
+    call clap#state#render_preview(a:result)
   endfunction
 
   function! s:dispatch_on_move_impl() abort

@@ -57,7 +57,7 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 
   if has_key(decoded, 'indices')
     try
-      call clap#highlight#add_fuzzy_async_with_delay(decoded.indices)
+      call clap#highlight#add_highlights_with_delay(decoded.indices)
     catch
       return
     endtry
@@ -71,7 +71,7 @@ endfunction
 function! clap#state#process_progress_full(display_lines, matched, processed) abort
   call clap#indicator#update(a:matched, a:processed)
   call g:clap.display.set_lines(a:display_lines.lines)
-  call clap#highlight#add_fuzzy_async_with_delay(a:display_lines.indices)
+  call clap#highlight#add_highlights_with_delay(a:display_lines.indices)
   call clap#preview#update_with_delay()
   if a:matched > 0
     call clap#sign#ensure_exists()
@@ -82,24 +82,24 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   endif
 endfunction
 
-function! clap#state#process_preview_result(result) abort
-  if has_key(a:result, 'lines')
+function! clap#state#render_preview(preview) abort
+  if has_key(a:preview, 'lines')
     try
-      call g:clap.preview.show(a:result.lines)
+      call g:clap.preview.show(a:preview.lines)
     catch
       " Neovim somehow has a bug decoding the lines
-      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:result.lines)])
+      call g:clap.preview.show(['Error occurred while showing the preview:', v:exception, '', string(a:preview.lines)])
       return
     endtry
-    if has_key(a:result, 'syntax')
-      call g:clap.preview.set_syntax(a:result.syntax)
-    elseif has_key(a:result, 'fname')
-      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:result.fname))
+    if has_key(a:preview, 'syntax')
+      call g:clap.preview.set_syntax(a:preview.syntax)
+    elseif has_key(a:preview, 'fname')
+      call g:clap.preview.set_syntax(clap#ext#into_filetype(a:preview.fname))
     endif
     call clap#preview#highlight_header()
 
-    if has_key(a:result, 'hi_lnum')
-      call g:clap.preview.add_highlight(a:result.hi_lnum+1)
+    if has_key(a:preview, 'hi_lnum')
+      call g:clap.preview.add_highlight(a:preview.hi_lnum+1)
     endif
   endif
 endfunction
@@ -129,12 +129,13 @@ function! clap#state#process_response_on_typed(result) abort
   endif
 
   call g:clap.display.set_lines(a:result.lines)
-  call clap#highlight#add_fuzzy_async_with_delay(a:result.indices)
+  call clap#highlight#add_highlights_with_delay(a:result.indices)
   call clap#sign#ensure_exists()
+  call clap#preview#update_with_delay()
 
   if has_key(a:result, 'preview')
     if !empty(a:result.preview)
-      call clap#state#process_preview_result(a:result.preview)
+      call clap#state#render_preview(a:result.preview)
     endif
   else
     call clap#preview#update_with_delay()
@@ -150,6 +151,10 @@ function! clap#state#clear_screen() abort
   call clap#indicator#set_none()
 endfunction
 
+function! clap#state#clear_preview() abort
+  call g:clap.preview.clear()
+endfunction
+
 function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
   if empty(g:clap.input.get())
     if g:clap.provider.id ==# 'blines'
@@ -160,24 +165,27 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     call g:clap#display_win.shrink_if_undersize()
   endif
 
+  let g:__clap_icon_added_by_maple = a:icon_added
   if !empty(a:truncated_map)
     let g:__clap_lines_truncated_map = a:truncated_map
   endif
-  let g:__clap_icon_added_by_maple = a:icon_added
-
-  call clap#indicator#update_processed(g:clap.display.initial_size)
-  call clap#sign#ensure_exists()
 
   if a:using_cache
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
   else
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
   endif
+
+  call clap#indicator#update_processed(g:clap.display.initial_size)
+  call clap#sign#ensure_exists()
   call clap#spinner#refresh()
   call clap#preview#update_with_delay()
 endfunction
 
 function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   call g:clap.display.set_lines_lazy(a:lines)
   call g:clap#display_win.shrink_if_undersize()
   if !empty(a:truncated_map)
@@ -258,6 +266,9 @@ function! clap#state#clear_post() abort
         \ 'g:__clap_fuzzy_matched_indices',
         \ 'g:__clap_lines_truncated_map',
         \ ])
+
+  call map(g:clap.tmps, 'delete(v:val)')
+  let g:clap.tmps = []
 endfunction
 
 let &cpoptions = s:save_cpo

@@ -91,24 +91,34 @@ function! s:init_display() abort
       return clap#util#nvim_buf_get_first_line(self.bufnr)
     endfunction
 
-    function! display.clear_highlight() abort
-      noautocmd call self.goto_win()
-      " Clear all matches added in the display window
-      "
-      " We should not use clearmatches() as it will clear the
-      " ClapNoMatchesFound highlight as well.
-      "
-      " call clearmatches()
-      call self.matchdelete()
-      noautocmd call g:clap.input.goto_win()
-    endfunction
+    if exists('*win_execute')
+      function! display.clear_highlight() abort
+        call win_execute(self.winid, 'noautocmd call self.matchdelete()')
+      endfunction
 
-    " Argument: list, multiple pattern to be highlighed
-    function! display._apply_matchadd(patterns) abort
-      call g:clap.display.goto_win()
-      call clap#highlight#matchadd_substr(a:patterns)
-      call g:clap.input.goto_win()
-    endfunction
+      function! display._apply_matchadd(patterns) abort
+        call win_execute(self.winid, 'call clap#highlight#matchadd_substr(a:patterns)')
+      endfunction
+    else
+      function! display.clear_highlight() abort
+        noautocmd call self.goto_win()
+        " Clear all matches added in the display window
+        "
+        " We should not use clearmatches() as it will clear the
+        " ClapNoMatchesFound highlight as well.
+        "
+        " call clearmatches()
+        call self.matchdelete()
+        noautocmd call g:clap.input.goto_win()
+      endfunction
+
+      " Argument: list, multiple pattern to be highlighed
+      function! display._apply_matchadd(patterns) abort
+        call g:clap.display.goto_win()
+        call clap#highlight#matchadd_substr(a:patterns)
+        call g:clap.input.goto_win()
+      endfunction
+    endif
 
   else
 

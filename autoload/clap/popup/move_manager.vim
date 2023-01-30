@@ -107,9 +107,6 @@ function! s:move_manager.bs(_winid) abort
 endfunction
 
 function! s:trigger_on_typed() abort
-  if g:clap.provider.is_sync()
-    let g:__clap_should_refilter = v:true
-  endif
   call g:clap.provider.on_typed()
   call s:mock_input()
 endfunction
