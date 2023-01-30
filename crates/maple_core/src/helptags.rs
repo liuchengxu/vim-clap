@@ -1,16 +1,9 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use utils::read_lines;
 
 #[inline]
-fn strip_trailing_slash(x: &str) -> Cow<str> {
-    if x.ends_with('/') {
-        let mut x: String = x.into();
-        x.pop();
-        x.into()
-    } else {
-        x.into()
-    }
+fn strip_trailing_slash(x: &str) -> &str {
+    x.strip_suffix('/').unwrap_or(x)
 }
 
 pub fn generate_tag_lines(
@@ -21,7 +14,7 @@ pub fn generate_tag_lines(
     for doc_tag in doc_tags {
         let tags_files = runtimepath
             .split(',')
-            .map(|x| format!("{}{}", strip_trailing_slash(x), doc_tag));
+            .map(|x| format!("{}{doc_tag}", strip_trailing_slash(x)));
         let mut seen = HashMap::new();
         let mut v: Vec<String> = Vec::new();
         for tags_file in tags_files {

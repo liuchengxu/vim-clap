@@ -135,7 +135,7 @@ pub enum TermType {
     Exact(ExactTermType),
     /// Items that do not match something.
     Inverse(InverseTermType),
-    /// Items that match a text.
+    /// Items that match a word.
     Word,
 }
 
