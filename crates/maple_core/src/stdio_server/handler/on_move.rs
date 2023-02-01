@@ -251,7 +251,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let enable_icon = self.ctx.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
-            vec!["Directory is empty".to_string()]
+            vec!["<Empty directory>".to_string()]
         } else {
             lines
         };
