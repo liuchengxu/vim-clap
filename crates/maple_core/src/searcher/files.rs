@@ -7,6 +7,7 @@ use matcher::Matcher;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 
@@ -89,7 +90,13 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let mut best_items = BestItems::new(icon, winwidth, number, progressor);
+    let mut best_items = BestItems::new(
+        icon,
+        winwidth,
+        number,
+        progressor,
+        Duration::from_millis(200),
+    );
 
     let now = std::time::Instant::now();
 

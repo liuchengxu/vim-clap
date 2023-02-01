@@ -7,6 +7,7 @@ use std::io::{BufRead, Result};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem};
@@ -102,7 +103,13 @@ pub async fn search(
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(icon, winwidth, number, progressor);
+    let mut best_items = BestItems::new(
+        icon,
+        winwidth,
+        number,
+        progressor,
+        Duration::from_millis(200),
+    );
 
     let (sender, mut receiver) = unbounded_channel();
 

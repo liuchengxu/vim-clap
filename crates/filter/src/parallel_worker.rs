@@ -15,9 +15,6 @@ use subprocess::Exec;
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem, Query};
 
-/// Refresh the top filtered results per 200 ms.
-const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
-
 /// Parallelable source.
 #[derive(Debug)]
 pub enum ParallelSource {
@@ -79,10 +76,17 @@ pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
     pub winwidth: usize,
     pub max_capacity: usize,
     pub progressor: P,
+    pub update_interval: Duration,
 }
 
 impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
-    pub fn new(icon: Icon, winwidth: usize, max_capacity: usize, progressor: P) -> Self {
+    pub fn new(
+        icon: Icon,
+        winwidth: usize,
+        max_capacity: usize,
+        progressor: P,
+        update_interval: Duration,
+    ) -> Self {
         Self {
             icon,
             past: Instant::now(),
@@ -92,6 +96,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
             winwidth,
             max_capacity,
             progressor,
+            update_interval,
         }
     }
 
@@ -110,7 +115,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
             self.sort();
 
             let now = Instant::now();
-            if now > self.past + UPDATE_INTERVAL {
+            if now > self.past + self.update_interval {
                 let display_lines =
                     printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
                 self.progressor
@@ -132,7 +137,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
 
             if total_matched % 16 == 0 || total_processed % 16 == 0 {
                 let now = Instant::now();
-                if now > self.past + UPDATE_INTERVAL {
+                if now > self.past + self.update_interval {
                     let display_lines =
                         printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
 
@@ -267,7 +272,13 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Mutex::new(BestItems::new(icon, winwidth, number, StdioProgressor));
+    let best_items = Mutex::new(BestItems::new(
+        icon,
+        winwidth,
+        number,
+        StdioProgressor,
+        Duration::from_millis(200),
+    ));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
         if let Some(matched_item) = matcher.match_item(item) {
@@ -345,7 +356,13 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let best_items = Mutex::new(BestItems::new(icon, winwidth, number, progressor));
+    let best_items = Mutex::new(BestItems::new(
+        icon,
+        winwidth,
+        number,
+        progressor,
+        Duration::from_millis(200),
+    ));
 
     let process_item = |item: Arc<dyn ClapItem>, processed: usize| {
         if let Some(matched_item) = matcher.match_item(item) {
