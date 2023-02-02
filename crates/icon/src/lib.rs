@@ -137,6 +137,10 @@ pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
         })
 }
 
+pub fn icon_or_default(path: &Path) -> IconType {
+    get_icon_or(path, DEFAULT_ICON)
+}
+
 fn buffer_tags_icon(line: &str) -> IconType {
     pattern::extract_buffer_tags_kind(line)
         .map(tags_kind_icon)

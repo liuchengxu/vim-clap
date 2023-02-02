@@ -3,7 +3,7 @@ use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
-use icon::prepend_filer_icon;
+use icon::{icon_or_default, FOLDER_ICON};
 use serde_json::json;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -11,67 +11,25 @@ use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::sync::Arc;
 use types::{ClapItem, MatchResult};
 
-/// Display the inner path in a nicer way.
-struct DisplayPath<P> {
-    inner: P,
-    enable_icon: bool,
+#[inline]
+fn file_name(path: &Path) -> &str {
+    path.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .expect("Path terminates in `..`")
 }
 
-impl<P: AsRef<Path>> DisplayPath<P> {
-    fn new(inner: P, enable_icon: bool) -> Self {
-        Self { inner, enable_icon }
-    }
-
-    #[inline]
-    fn as_file_name_unsafe(&self) -> &str {
-        self.inner
-            .as_ref()
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str)
-            .expect("Path terminates in `..`")
-    }
-}
-
-impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut write_with_icon = |path: &str| {
-            if self.enable_icon {
-                write!(f, "{}", prepend_filer_icon(self.inner.as_ref(), path))
-            } else {
-                write!(f, "{path}")
-            }
-        };
-
-        if self.inner.as_ref().is_dir() {
-            let path = format!("{}{}", self.as_file_name_unsafe(), MAIN_SEPARATOR);
-            write_with_icon(&path)
+fn to_string_nicer(path: PathBuf, enable_icon: bool) -> String {
+    if path.is_dir() {
+        let dir_name = file_name(&path);
+        if enable_icon {
+            format!("{FOLDER_ICON} {dir_name}{MAIN_SEPARATOR}")
         } else {
-            write_with_icon(self.as_file_name_unsafe())
+            format!("{dir_name}{MAIN_SEPARATOR}")
         }
-    }
-}
-
-#[allow(unused)]
-fn goto_parent(cur_dir: String) {
-    // Root directory.
-    if Path::new(&cur_dir).parent().is_none() {
-        // noop
-        return;
-    }
-
-    let parent_dir = match Path::new(&cur_dir).parent() {
-        Some(dir) => dir,
-        None => return,
-    };
-
-    let _new_cur_dir = if parent_dir.parent().is_none() {
-        parent_dir.to_string_lossy().to_string()
+    } else if enable_icon {
+        format!("{} {}", icon_or_default(&path), file_name(&path))
     } else {
-        format!("{}{MAIN_SEPARATOR}", parent_dir.display())
-    };
-
-    if let Some(last_char) = cur_dir.chars().last() {
-        if last_char == MAIN_SEPARATOR {}
+        file_name(&path).to_string()
     }
 }
 
@@ -80,8 +38,8 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     enable_icon: bool,
     max: Option<usize>,
 ) -> std::io::Result<Vec<String>> {
-    let entries_iter = std::fs::read_dir(dir)?
-        .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
+    let entries_iter =
+        std::fs::read_dir(dir)?.map(|res| res.map(|x| to_string_nicer(x.path(), enable_icon)));
 
     let mut entries = if let Some(m) = max {
         entries_iter.take(m).collect::<std::io::Result<Vec<_>>>()?
