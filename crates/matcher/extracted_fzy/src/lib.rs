@@ -195,6 +195,13 @@ fn calculate_score(
                 D.set(i, j, score);
                 M.set(i, j, prev_score);
             } else {
+                // XXX: I guess something weired occurred: `j` is less than `haystack_length` in
+                // theory but I did run into a bug which is `j` == `haystack_length` causing core
+                // dumped and took quite some time to find it out.
+                if j == haystack_length {
+                    return (D, M);
+                }
+
                 prev_score = score_add(prev_score, gap_score);
 
                 D.set(i, j, SCORE_MIN);
