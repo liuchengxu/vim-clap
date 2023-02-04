@@ -21,7 +21,7 @@ pub const RG_EXEC_CMD: &str =
 #[derive(Parser, Debug, Clone)]
 pub struct Grep {
     /// Specify the query string for GREP_CMD.
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     grep_query: String,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.

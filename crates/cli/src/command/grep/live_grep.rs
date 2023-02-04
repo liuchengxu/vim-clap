@@ -15,7 +15,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug, Clone)]
 pub struct LiveGrep {
     /// Specify the query string for GREP_CMD.
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     grep_query: String,
 
     /// Delegate to -g option of rg

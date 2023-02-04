@@ -24,7 +24,7 @@ fn parse_bonus(s: &str) -> Bonus {
 #[derive(Parser, Debug, Clone)]
 pub struct Filter {
     /// Initial query string
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     query: String,
 
     /// Fuzzy matching algorithm
