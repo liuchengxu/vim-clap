@@ -328,7 +328,7 @@ impl Vim {
     }
 
     pub async fn provider_args(&self) -> Result<Vec<String>> {
-        self.eval("g:clap.provider.args").await
+        self.bare_call("provider_args").await
     }
 
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {
