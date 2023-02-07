@@ -34,7 +34,7 @@ impl GrepProvider {
 
             let search_context = ctx.search_context(stop_signal.clone());
             let join_handle = tokio::spawn(async move {
-                crate::searcher::grep::search(query, matcher, search_context).await
+                crate::searcher::grep::search(query, matcher, search_context, true).await
             });
 
             SearcherControl {

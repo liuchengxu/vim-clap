@@ -92,7 +92,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             };
             PreviewTarget::File(path)
         }
-        "coc_location" | "grep" | "live_grep" => {
+        "coc_location" | "grep" | "live_grep" | "interactive_grep" => {
             let mut try_extract_file_path = |line: &str| {
                 let (fpath, lnum, _col, cache_line) =
                     extract_grep_position(line).ok_or_else(err)?;

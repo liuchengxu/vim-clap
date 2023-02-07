@@ -4,6 +4,7 @@ mod filer;
 mod files;
 mod generic_provider;
 mod grep;
+mod interactive_grep;
 mod recent_files;
 
 pub use self::filer::read_dir_entries;
@@ -37,6 +38,9 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         "filer" => Box::new(filer::FilerProvider::new(ctx.cwd.to_path_buf())),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new()),
+        "interactive_grep" => Box::new(interactive_grep::InteractiveGrepProvider::new(
+            ctx.cwd.to_path_buf(),
+        )),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
     };

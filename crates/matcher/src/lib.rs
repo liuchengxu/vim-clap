@@ -107,6 +107,10 @@ impl ExactMatcher {
         let mut indices = Vec::<usize>::new();
         let mut exact_score = Score::default();
 
+        if full_search_line.is_empty() {
+            return None;
+        }
+
         for term in &self.exact_terms {
             let sub_query = &term.text;
 

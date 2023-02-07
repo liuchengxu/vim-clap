@@ -43,6 +43,10 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     endif
   endif
 
+  if exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+
   if has_key(decoded, 'truncated_map')
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif
@@ -69,6 +73,9 @@ function! clap#state#process_progress(matched, processed) abort
 endfunction
 
 function! clap#state#process_progress_full(display_lines, matched, processed) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   call clap#indicator#update(a:matched, a:processed)
   call g:clap.display.set_lines(a:display_lines.lines)
   call clap#highlight#add_highlights_with_delay(a:display_lines.indices)
