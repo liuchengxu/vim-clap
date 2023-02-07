@@ -102,11 +102,16 @@ function! s:api.set_var(name, value) abort
 endfunction
 
 function! clap#api#call(method, args) abort
-  if has_key(s:api, a:method)
-    return call(s:api[a:method], a:args)
-  else
-    return call(a:method, a:args)
-  endif
+  " Catch all the exceptions, otherwise the memory leakage could happen.
+  try
+    if has_key(s:api, a:method)
+      return call(s:api[a:method], a:args)
+    else
+      return call(a:method, a:args)
+    endif
+  catch
+    echoerr printf('[clap#api#call] method: %s, args: %s, exception: %s', a:method, string(a:args), v:exception)
+  endtry
 endfunction
 
 let &cpoptions = s:save_cpo
