@@ -86,6 +86,9 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
 endfunction
 
 function! clap#state#render_preview(preview) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   if has_key(a:preview, 'lines')
     try
       call g:clap.preview.show(a:preview.lines)
