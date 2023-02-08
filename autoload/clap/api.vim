@@ -102,7 +102,7 @@ function! s:api.set_var(name, value) abort
 endfunction
 
 function! clap#api#call(method, args) abort
-  " Catch all the exceptions, otherwise the memory leakage could happen.
+  " Catch all the exceptions
   try
     if has_key(s:api, a:method)
       return call(s:api[a:method], a:args)
