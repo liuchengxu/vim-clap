@@ -185,9 +185,9 @@ async fn loop_write(writer: impl Write, mut rx: UnboundedReceiver<RawMessage>) -
     while let Some(msg) = rx.recv().await {
         let s = serde_json::to_string(&msg)?;
         if s.len() < 100 {
-            tracing::trace!(?msg, "Sending message to Vim");
+            tracing::trace!(?msg, "=> Vim");
         } else {
-            tracing::trace!(msg_size = ?s.len(), msg_kind = msg.kind(), method = ?msg.method(), "Sending message to Vim");
+            tracing::trace!(msg_size = ?s.len(), msg_kind = msg.kind(), method = ?msg.method(), "=> Vim");
         }
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim
