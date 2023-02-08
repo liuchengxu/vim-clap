@@ -109,6 +109,7 @@ function! clap#api#call(method, args) abort
     else
       return call(a:method, a:args)
     endif
+  catch /^Vim:Interrupt$/ " catch interrupts (CTRL-C)
   catch
     echoerr printf('[clap#api#call] method: %s, args: %s, exception: %s', a:method, string(a:args), v:exception)
   endtry
