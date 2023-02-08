@@ -36,10 +36,10 @@ pub static RECENT_FILES_IN_MEMORY: Lazy<Mutex<SortedRecentFiles>> = Lazy::new(||
     Mutex::new(maybe_persistent)
 });
 
-pub static INPUT_HISTORY_IN_MEMORY: Lazy<Arc<Mutex<InputHistory>>> = Lazy::new(|| {
-    // TODO: make input history persistent?
-    Arc::new(Mutex::new(InputHistory::new()))
-});
+// pub static INPUT_HISTORY_IN_MEMORY: Lazy<Arc<Mutex<InputHistory>>> = Lazy::new(|| {
+    // // TODO: make input history persistent?
+    // Arc::new(Mutex::new(InputHistory::new()))
+// });
 
 pub fn store_cache_info(cache_info: &CacheInfo) -> std::io::Result<()> {
     write_json(cache_info, CACHE_METADATA_PATH.as_ref())
