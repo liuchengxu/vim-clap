@@ -102,11 +102,10 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
                 //
                 // TODO: Implement the proper initialization for files
                 if ctx.provider_id() == "files" {
-                    return Ok(ProviderSource::Unactionable);
-                    // let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
-                    // tokio_cmd.current_dir(&ctx.cwd);
-                    // let lines = tokio_cmd.lines().await?;
-                    // return Ok(to_small_provider_source(lines));
+                    let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
+                    tokio_cmd.current_dir(&ctx.cwd);
+                    let lines = tokio_cmd.lines().await?;
+                    return Ok(to_small_provider_source(lines));
                 }
 
                 let shell_cmd = ShellCommand::new(command, ctx.cwd.to_path_buf());
