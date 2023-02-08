@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::session::SessionId;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::oneshot;
 
 #[derive(Debug)]
 pub enum Event {
@@ -21,7 +20,6 @@ pub enum ProviderEvent {
     OnMove,
     OnTyped,
     Terminate,
-    ForceTerminate(oneshot::Sender<()>),
     Key(KeyEvent),
 }
 

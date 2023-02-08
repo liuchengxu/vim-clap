@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::oneshot;
 use tokio::time::Instant;
 
 pub type SessionId = u64;
@@ -94,11 +93,6 @@ impl Session {
 
                             match event {
                                 ProviderEvent::NewSession => unreachable!(),
-                                ProviderEvent::ForceTerminate(sender) => {
-                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
-                                    let _ = sender.send(());
-                                    break;
-                                }
                                 ProviderEvent::Terminate => {
                                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                                     break;
@@ -178,11 +172,6 @@ impl Session {
 
             match event {
                 ProviderEvent::NewSession => unreachable!(),
-                ProviderEvent::ForceTerminate(sender) => {
-                    self.provider.on_terminate(&mut self.ctx, self.session_id);
-                    let _ = sender.send(());
-                    break;
-                }
                 ProviderEvent::Terminate => {
                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                     break;
@@ -226,18 +215,15 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Creates a new session if session_id does not exist.
-    pub async fn new_session(
+    pub fn new_session(
         &mut self,
         session_id: SessionId,
         provider: Box<dyn ClapProvider>,
         ctx: Context,
     ) {
         for (session_id, sender) in self.sessions.drain() {
-            let (tx, rx) = oneshot::channel();
-            tracing::debug!("Force terminate session {session_id} internally");
-            sender.send(ProviderEvent::ForceTerminate(tx));
+            tracing::debug!(?session_id, "Sending internal Terminate signal");
             sender.send(ProviderEvent::Terminate);
-            let _ = rx.await;
         }
 
         if let Entry::Vacant(v) = self.sessions.entry(session_id) {

@@ -162,9 +162,7 @@ impl Client {
                     let provider = create_provider(&provider_id, &ctx).await?;
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
-                    session_manager
-                        .new_session(session_id()?, provider, ctx)
-                        .await;
+                    session_manager.new_session(session_id()?, provider, ctx);
                 }
                 ProviderEvent::Terminate => {
                     let mut session_manager = self.session_manager_mutex.lock();
