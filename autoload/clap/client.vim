@@ -75,6 +75,9 @@ function! clap#client#call(method, callback, ...) abort
 endfunction
 
 function! clap#client#notify_on_init(...) abort
+  if g:clap.display.winid < 0
+    return
+  endif
   call clap#rooter#try_set_cwd()
   let s:session_id += 1
   let params = {
