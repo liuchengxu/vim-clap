@@ -58,34 +58,91 @@ impl Client {
     ///
     /// Handle the message actively initiated from Vim.
     async fn loop_call(self, mut rx: UnboundedReceiver<Call>) {
-        while let Some(call) = rx.recv().await {
-            let session_client = self.clone();
-            tokio::spawn(async move {
-                match call {
-                    Call::Notification(notification) => {
-                        if let Err(e) = session_client.process_notification(notification).await {
-                            tracing::error!(error = ?e, "Error at processing Vim Notification");
-                        }
-                    }
-                    Call::MethodCall(method_call) => {
-                        let id = method_call.id;
+        use std::time::Duration;
+        use tokio::time::Instant;
 
-                        match session_client.process_method_call(method_call).await {
-                            Ok(Some(result)) => {
-                                // Send back the result of method call.
-                                let state = session_client.state_mutex.lock();
-                                if let Err(e) = state.vim.send(id, Ok(result)) {
-                                    tracing::debug!(error = ?e, "Failed to send the output result");
-                                }
+        // If the debounce timer isn't active, it will be set to expire "never",
+        // which is actually just 1 year in the future.
+        const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+
+        let mut pending_notification = None;
+        let mut notification_dirty = false;
+        let notification_delay = Duration::from_millis(200);
+        let notification_timer = tokio::time::sleep(NEVER);
+        tokio::pin!(notification_timer);
+
+        loop {
+            tokio::select! {
+                maybe_call = rx.recv() => {
+                    match maybe_call {
+                        Some(call) => {
+                            match call {
+                                Call::Notification(notification) => {
+                                    // Avoid spawn too frequently if user opens and
+                                    // closes the provider frequently in a very short time.
+                                    match Event::from_method(&notification.method) {
+                                        Event::Provider(ProviderEvent::NewSession) => {
+                                            pending_notification.replace(notification);
+
+                                            notification_dirty = true;
+                                            notification_timer.as_mut().reset(Instant::now() + notification_delay);
+                                        }
+                                        _ => {
+                                          if let Some(session_id) = notification.session_id {
+                                              if self.session_manager_mutex.lock().exists(session_id) {
+                                                  let session_client = self.clone();
+                                                  tokio::spawn(async move {
+                                                      if let Err(e) = session_client.process_notification(notification).await {
+                                                          tracing::error!(?session_id, error = ?e, "Error at processing Vim Notification");
+                                                      }
+                                                  });
+                                              }
+                                          }
+                                        }
+                                    }
+                                },
+                                Call::MethodCall(method_call) => {
+                                    let session_client = self.clone();
+                                    tokio::spawn(async move {
+                                        let id = method_call.id;
+
+                                        match session_client.process_method_call(method_call).await {
+                                            Ok(Some(result)) => {
+                                                // Send back the result of method call.
+                                                let state = session_client.state_mutex.lock();
+                                                if let Err(e) = state.vim.send(id, Ok(result)) {
+                                                    tracing::debug!(error = ?e, "Failed to send the output result");
+                                                }
+                                            }
+                                            Ok(None) => {}
+                                            Err(e) => {
+                                                tracing::error!(error = ?e, "Error at processing Vim MethodCall");
+                                            }
+                                        }
+                                    });
+
+                                },
                             }
-                            Ok(None) => {}
-                            Err(e) => {
-                                tracing::error!(error = ?e, "Error at processing Vim MethodCall");
-                            }
+                        }
+                        None => break, // channel has closed.
+                    }
+                }
+                _ = notification_timer.as_mut(), if notification_dirty => {
+                    notification_dirty = false;
+                    notification_timer.as_mut().reset(Instant::now() + NEVER);
+
+                    if let Some(notification) = pending_notification.take() {
+                        let last_session_id = notification.session_id.unwrap_or_default().saturating_sub(1);
+                        if self.session_manager_mutex.lock().exists(last_session_id) {
+                            self.session_manager_mutex.lock().terminate(last_session_id);
+                        }
+                        let session_id = notification.session_id;
+                        if let Err(e) = self.process_notification(notification).await {
+                            tracing::error!(?session_id, error = ?e, "Error at processing Vim Notification");
                         }
                     }
                 }
-            });
+            }
         }
     }
 
@@ -105,7 +162,9 @@ impl Client {
                     let provider = create_provider(&provider_id, &ctx).await?;
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
-                    session_manager.new_session(session_id()?, provider, ctx);
+                    session_manager
+                        .new_session(session_id()?, provider, ctx)
+                        .await;
                 }
                 ProviderEvent::Terminate => {
                     let mut session_manager = self.session_manager_mutex.lock();

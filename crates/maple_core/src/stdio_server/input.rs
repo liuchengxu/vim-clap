@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::session::SessionId;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::oneshot;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Event {
     Provider(ProviderEvent),
     Key(KeyEvent),
@@ -12,7 +13,7 @@ pub enum Event {
 }
 
 /// Provider specific events.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ProviderEvent {
     NewSession,
     /// Internal signal.
@@ -20,6 +21,7 @@ pub enum ProviderEvent {
     OnMove,
     OnTyped,
     Terminate,
+    ForceTerminate(oneshot::Sender<()>),
     Key(KeyEvent),
 }
 

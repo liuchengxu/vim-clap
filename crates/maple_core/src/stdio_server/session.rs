@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::oneshot;
 use tokio::time::Instant;
 
 pub type SessionId = u64;
@@ -93,6 +94,11 @@ impl Session {
 
                             match event {
                                 ProviderEvent::NewSession => unreachable!(),
+                                ProviderEvent::ForceTerminate(sender) => {
+                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                    let _ = sender.send(());
+                                    break;
+                                }
                                 ProviderEvent::Terminate => {
                                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                                     break;
@@ -172,6 +178,11 @@ impl Session {
 
             match event {
                 ProviderEvent::NewSession => unreachable!(),
+                ProviderEvent::ForceTerminate(sender) => {
+                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                    let _ = sender.send(());
+                    break;
+                }
                 ProviderEvent::Terminate => {
                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                     break;
@@ -215,12 +226,20 @@ pub struct SessionManager {
 
 impl SessionManager {
     /// Creates a new session if session_id does not exist.
-    pub fn new_session(
+    pub async fn new_session(
         &mut self,
         session_id: SessionId,
         provider: Box<dyn ClapProvider>,
         ctx: Context,
     ) {
+        for (session_id, sender) in self.sessions.drain() {
+            let (tx, rx) = oneshot::channel();
+            tracing::debug!("Force terminate session {session_id} internally");
+            sender.send(ProviderEvent::ForceTerminate(tx));
+            sender.send(ProviderEvent::Terminate);
+            let _ = rx.await;
+        }
+
         if let Entry::Vacant(v) = self.sessions.entry(session_id) {
             let (session, session_sender) = Session::new(session_id, ctx, provider);
             session.start_event_loop();
@@ -233,6 +252,10 @@ impl SessionManager {
         } else {
             tracing::error!(session_id, "Skipped as given session already exists");
         }
+    }
+
+    pub fn exists(&self, session_id: SessionId) -> bool {
+        self.sessions.contains_key(&session_id)
     }
 
     /// Stop the session task by sending [`ProviderEvent::Terminate`].
