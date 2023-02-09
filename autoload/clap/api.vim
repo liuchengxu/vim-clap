@@ -85,6 +85,10 @@ function! s:api.provider_source_cmd() abort
   return []
 endfunction
 
+function! s:api.provider_args() abort
+  return get(g:clap.provider, 'args', [])
+endfunction
+
 function! s:api.input_set(value) abort
   call g:clap.input.set(a:value)
 endfunction
@@ -98,11 +102,17 @@ function! s:api.set_var(name, value) abort
 endfunction
 
 function! clap#api#call(method, args) abort
-  if has_key(s:api, a:method)
-    return call(s:api[a:method], a:args)
-  else
-    return call(a:method, a:args)
-  endif
+  " Catch all the exceptions
+  try
+    if has_key(s:api, a:method)
+      return call(s:api[a:method], a:args)
+    else
+      return call(a:method, a:args)
+    endif
+  catch /^Vim:Interrupt$/ " catch interrupts (CTRL-C)
+  catch
+    echoerr printf('[clap#api#call] method: %s, args: %s, exception: %s', a:method, string(a:args), v:exception)
+  endtry
 endfunction
 
 let &cpoptions = s:save_cpo

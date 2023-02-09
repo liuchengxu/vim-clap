@@ -279,11 +279,21 @@ impl Vim {
     }
 
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
-        self.call("winwidth", json![winid]).await
+        let width: i32 = self.call("winwidth", json![winid]).await?;
+        if width < 0 {
+            Err(anyhow::anyhow!("window {winid} doesn't exist"))
+        } else {
+            Ok(width as usize)
+        }
     }
 
     pub async fn winheight(&self, winid: usize) -> Result<usize> {
-        self.call("winheight", json![winid]).await
+        let height: i32 = self.call("winheight", json![winid]).await?;
+        if height < 0 {
+            Err(anyhow::anyhow!("window {winid} doesn't exist"))
+        } else {
+            Ok(height as usize)
+        }
     }
 
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
@@ -328,7 +338,7 @@ impl Vim {
     }
 
     pub async fn provider_args(&self) -> Result<Vec<String>> {
-        self.eval("g:clap.provider.args").await
+        self.bare_call("provider_args").await
     }
 
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {

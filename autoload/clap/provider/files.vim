@@ -32,7 +32,7 @@ function! s:files.source() abort
   if has_key(g:clap.context, 'finder')
     let finder = g:clap.context.finder
     return finder.' '.join(g:clap.provider.args, ' ')
-  elseif g:clap.provider.args == ['--hidden']
+  elseif get(g:clap.provider, 'args', []) == ['--hidden']
     if s:default_finder ==# 'fd' || s:default_finder ==# 'rg'
       return join([s:default_finder, s:default_opts[s:default_finder], '--hidden'], ' ')
     endif

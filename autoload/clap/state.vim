@@ -69,6 +69,9 @@ function! clap#state#process_progress(matched, processed) abort
 endfunction
 
 function! clap#state#process_progress_full(display_lines, matched, processed) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   call clap#indicator#update(a:matched, a:processed)
   call g:clap.display.set_lines(a:display_lines.lines)
   call clap#highlight#add_highlights_with_delay(a:display_lines.indices)
@@ -83,6 +86,9 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
 endfunction
 
 function! clap#state#render_preview(preview) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   if has_key(a:preview, 'lines')
     try
       call g:clap.preview.show(a:preview.lines)
@@ -105,6 +111,9 @@ function! clap#state#render_preview(preview) abort
 endfunction
 
 function! clap#state#process_response_on_typed(result) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   if has_key(a:result, 'matched')
     if has_key(a:result, 'processed')
       call clap#indicator#update(a:result.matched, a:result.processed)
@@ -156,6 +165,9 @@ function! clap#state#clear_preview() abort
 endfunction
 
 function! clap#state#init_display(lines, truncated_map, icon_added, using_cache) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   if empty(g:clap.input.get())
     if g:clap.provider.id ==# 'blines'
       call clap#provider#blines#initialize(a:lines)
