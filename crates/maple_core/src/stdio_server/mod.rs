@@ -19,7 +19,9 @@ use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::time::Instant;
 
 /// Starts and keep running the server on top of stdio.
 pub async fn start() {
@@ -58,9 +60,6 @@ impl Client {
     ///
     /// Handle the message actively initiated from Vim.
     async fn loop_call(self, mut rx: UnboundedReceiver<Call>) {
-        use std::time::Duration;
-        use tokio::time::Instant;
-
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
