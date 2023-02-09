@@ -11,16 +11,22 @@ pub enum Event {
     Other(String),
 }
 
+#[derive(Debug)]
+pub enum InternalProviderEvent {
+    OnInitialize,
+    Terminate,
+}
+
 /// Provider specific events.
 #[derive(Debug)]
 pub enum ProviderEvent {
     NewSession,
-    /// Internal signal.
-    OnInitialize,
     OnMove,
     OnTyped,
-    Terminate,
+    Exit,
     Key(KeyEvent),
+    /// Signal fired internally.
+    Internal(InternalProviderEvent),
 }
 
 /// Represents a key event.
@@ -48,7 +54,7 @@ impl Event {
             "new_session" => Self::Provider(ProviderEvent::NewSession),
             "on_typed" => Self::Provider(ProviderEvent::OnTyped),
             "on_move" => Self::Provider(ProviderEvent::OnMove),
-            "exit" => Self::Provider(ProviderEvent::Terminate),
+            "exit" => Self::Provider(ProviderEvent::Exit),
             "cr" => Self::Key(KeyEvent::CarriageReturn),
             "tab" => Self::Key(KeyEvent::Tab),
             "backspace" => Self::Key(KeyEvent::Backspace),

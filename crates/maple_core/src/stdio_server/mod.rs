@@ -144,7 +144,7 @@ impl Client {
                             .session_id
                             .unwrap_or_default()
                             .saturating_sub(1);
-                        self.session_manager_mutex.lock().try_terminate(last_session_id);
+                        self.session_manager_mutex.lock().try_exit(last_session_id);
                         let session_id = notification.session_id;
                         if let Err(err) = self.process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
@@ -173,9 +173,9 @@ impl Client {
                     let mut session_manager = session_manager.lock();
                     session_manager.new_session(session_id()?, provider, ctx);
                 }
-                ProviderEvent::Terminate => {
+                ProviderEvent::Exit => {
                     let mut session_manager = self.session_manager_mutex.lock();
-                    session_manager.terminate(session_id()?);
+                    session_manager.exit_session(session_id()?);
                 }
                 to_send => {
                     let session_manager = self.session_manager_mutex.lock();
