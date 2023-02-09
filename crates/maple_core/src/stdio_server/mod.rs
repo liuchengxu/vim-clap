@@ -66,7 +66,7 @@ impl Client {
 
         let mut pending_notification = None;
         let mut notification_dirty = false;
-        let notification_delay = Duration::from_millis(200);
+        let notification_delay = Duration::from_millis(100);
         let notification_timer = tokio::time::sleep(NEVER);
         tokio::pin!(notification_timer);
 
