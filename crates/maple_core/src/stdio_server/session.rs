@@ -1,6 +1,6 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
-use crate::stdio_server::input::{ProviderEvent, ProviderEventSender};
+use crate::stdio_server::input::{InternalProviderEvent, ProviderEvent, ProviderEventSender};
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -93,36 +93,44 @@ impl Session {
 
                             match event {
                                 ProviderEvent::NewSession => unreachable!(),
-                                ProviderEvent::Terminate => {
-                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
-                                    break;
-                                }
-                                ProviderEvent::OnInitialize => {
-                                    match self.provider.on_initialize(&mut self.ctx).await {
-                                        Ok(()) => {
-                                            // Set a smaller debounce if the source scale is small.
-                                            if let ProviderSource::Small { total, .. } = *self
-                                                .ctx
-                                                .provider_source
-                                                .read()
-                                            {
-                                                if total < 10_000 {
-                                                    on_typed_delay = Duration::from_millis(10);
-                                                } else if total < 100_000 {
-                                                    on_typed_delay = Duration::from_millis(50);
-                                                } else if total < 200_000 {
-                                                    on_typed_delay = Duration::from_millis(100);
+                                ProviderEvent::Internal(internal_event) => {
+                                    match internal_event {
+                                        InternalProviderEvent::Terminate => {
+                                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                            break;
+                                        }
+                                        InternalProviderEvent::OnInitialize => {
+                                            match self.provider.on_initialize(&mut self.ctx).await {
+                                                Ok(()) => {
+                                                    // Set a smaller debounce if the source scale is small.
+                                                    if let ProviderSource::Small { total, .. } = *self
+                                                        .ctx
+                                                        .provider_source
+                                                        .read()
+                                                    {
+                                                        if total < 10_000 {
+                                                            on_typed_delay = Duration::from_millis(10);
+                                                        } else if total < 100_000 {
+                                                            on_typed_delay = Duration::from_millis(50);
+                                                        } else if total < 200_000 {
+                                                            on_typed_delay = Duration::from_millis(100);
+                                                        }
+                                                    }
+                                                    // Try to fulfill the preview window
+                                                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                                                        tracing::debug!(?err, "Failed to preview after on_initialize completed");
+                                                    }
+                                                }
+                                                Err(err) => {
+                                                    tracing::error!(?err, "Failed to process {internal_event:?}");
                                                 }
                                             }
-                                            // Try to fulfill the preview window
-                                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                                                tracing::debug!(?err, "Failed to preview after on_initialize completed");
-                                            }
-                                        }
-                                        Err(err) => {
-                                            tracing::error!(?err, "Failed to process {event:?}");
                                         }
                                     }
+                                }
+                                ProviderEvent::Exit => {
+                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                    break;
                                 }
                                 ProviderEvent::OnMove => {
                                     on_move_dirty = true;
@@ -172,19 +180,30 @@ impl Session {
 
             match event {
                 ProviderEvent::NewSession => unreachable!(),
-                ProviderEvent::Terminate => {
+                ProviderEvent::Internal(internal_event) => {
+                    match internal_event {
+                        InternalProviderEvent::OnInitialize => {
+                            if let Err(err) = self.provider.on_initialize(&mut self.ctx).await {
+                                tracing::error!(?err, "Failed at process {internal_event:?}");
+                                continue;
+                            }
+                            // Try to fulfill the preview window
+                            if let Err(err) = self.provider.on_move(&mut self.ctx).await {
+                                tracing::debug!(
+                                    ?err,
+                                    "Failed to preview after on_initialize completed"
+                                );
+                            }
+                        }
+                        InternalProviderEvent::Terminate => {
+                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                            break;
+                        }
+                    }
+                }
+                ProviderEvent::Exit => {
                     self.provider.on_terminate(&mut self.ctx, self.session_id);
                     break;
-                }
-                ProviderEvent::OnInitialize => {
-                    if let Err(err) = self.provider.on_initialize(&mut self.ctx).await {
-                        tracing::error!(?err, "Failed at process {event:?}");
-                        continue;
-                    }
-                    // Try to fulfill the preview window
-                    if let Err(err) = self.provider.on_move(&mut self.ctx).await {
-                        tracing::debug!(?err, "Failed to preview after on_initialize completed");
-                    }
                 }
                 ProviderEvent::OnMove => {
                     if let Err(err) = self.provider.on_move(&mut self.ctx).await {
@@ -221,12 +240,17 @@ impl SessionManager {
         provider: Box<dyn ClapProvider>,
         ctx: Context,
     ) {
+        for (session_id, sender) in self.sessions.drain() {
+            tracing::debug!(?session_id, "Sending internal Terminate signal");
+            sender.send(ProviderEvent::Internal(InternalProviderEvent::Terminate));
+        }
+
         if let Entry::Vacant(v) = self.sessions.entry(session_id) {
             let (session, session_sender) = Session::new(session_id, ctx, provider);
             session.start_event_loop();
 
             session_sender
-                .send(ProviderEvent::OnInitialize)
+                .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
                 .expect("Failed to send ProviderEvent::OnInitialize");
 
             v.insert(ProviderEventSender::new(session_sender, session_id));
@@ -235,10 +259,20 @@ impl SessionManager {
         }
     }
 
-    /// Stop the session task by sending [`ProviderEvent::Terminate`].
-    pub fn terminate(&mut self, session_id: SessionId) {
+    pub fn exists(&self, session_id: SessionId) -> bool {
+        self.sessions.contains_key(&session_id)
+    }
+
+    /// Stop the session task by sending [`ProviderEvent::Exit`].
+    pub fn exit_session(&mut self, session_id: SessionId) {
         if let Some(sender) = self.sessions.remove(&session_id) {
-            sender.send(ProviderEvent::Terminate);
+            sender.send(ProviderEvent::Exit);
+        }
+    }
+
+    pub fn try_exit(&mut self, session_id: SessionId) {
+        if self.exists(session_id) {
+            self.exit_session(session_id);
         }
     }
 

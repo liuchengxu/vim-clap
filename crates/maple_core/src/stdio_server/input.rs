@@ -1,26 +1,32 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::session::SessionId;
 use tokio::sync::mpsc::UnboundedSender;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Event {
     Provider(ProviderEvent),
     Key(KeyEvent),
     Other(String),
 }
 
+#[derive(Debug)]
+pub enum InternalProviderEvent {
+    OnInitialize,
+    Terminate,
+}
+
 /// Provider specific events.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ProviderEvent {
     NewSession,
-    /// Internal signal.
-    OnInitialize,
     OnMove,
     OnTyped,
-    Terminate,
+    Exit,
     Key(KeyEvent),
+    /// Signal fired internally.
+    Internal(InternalProviderEvent),
 }
 
 /// Represents a key event.
@@ -48,7 +54,7 @@ impl Event {
             "new_session" => Self::Provider(ProviderEvent::NewSession),
             "on_typed" => Self::Provider(ProviderEvent::OnTyped),
             "on_move" => Self::Provider(ProviderEvent::OnMove),
-            "exit" => Self::Provider(ProviderEvent::Terminate),
+            "exit" => Self::Provider(ProviderEvent::Exit),
             "cr" => Self::Key(KeyEvent::CarriageReturn),
             "tab" => Self::Key(KeyEvent::Tab),
             "backspace" => Self::Key(KeyEvent::Backspace),
@@ -89,34 +95,34 @@ impl ProviderEventSender {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct InputHistory(HashMap<ProviderId, Vec<String>>);
+pub struct InputHistory(HashMap<ProviderId, VecDeque<String>>);
 
 impl InputHistory {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn inputs(&self, provider_id: &ProviderId) -> Vec<String> {
+    pub fn inputs(&self, provider_id: &ProviderId) -> VecDeque<String> {
         self.0.get(provider_id).cloned().unwrap_or_default()
     }
 
-    pub fn append(&mut self, provider_id: ProviderId, mut new_inputs: Vec<String>) {
-        self.0
-            .entry(provider_id)
-            .and_modify(|v| v.append(&mut new_inputs))
-            .or_insert(new_inputs);
+    pub fn insert(&mut self, provider_id: ProviderId, new_value: VecDeque<String>) {
+        self.0.insert(provider_id, new_value);
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct InputRecorder {
-    pub inputs: Vec<String>,
+    pub inputs: VecDeque<String>,
     pub last_input: String,
     pub current_index: usize,
 }
 
 impl InputRecorder {
-    pub fn new(inputs: Vec<String>) -> Self {
+    /// Maximum size of inputs per provider.
+    const MAX_INPUTS: usize = 20;
+
+    pub fn new(inputs: VecDeque<String>) -> Self {
         Self {
             inputs,
             last_input: Default::default(),
@@ -124,7 +130,7 @@ impl InputRecorder {
         }
     }
 
-    pub fn into_inputs(self) -> Vec<String> {
+    pub fn into_inputs(self) -> VecDeque<String> {
         self.inputs
     }
 
@@ -158,8 +164,12 @@ impl InputRecorder {
         if !self.inputs.is_empty() {
             self.current_index += 1;
         }
-        self.inputs.push(new.to_string());
+        self.inputs.push_back(new.to_string());
         self.last_input = new.to_string();
+
+        if self.inputs.len() > Self::MAX_INPUTS {
+            self.inputs.pop_front();
+        }
     }
 
     /// Returns the next input if inputs are not empty.

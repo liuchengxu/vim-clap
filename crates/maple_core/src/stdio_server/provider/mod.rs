@@ -224,7 +224,7 @@ impl Context {
     pub fn signify_terminated(&self, session_id: u64) {
         self.terminated.store(true, Ordering::SeqCst);
         let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        input_history.append(
+        input_history.insert(
             self.env.provider_id.clone(),
             self.input_recorder.clone().into_inputs(),
         );
