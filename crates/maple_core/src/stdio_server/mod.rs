@@ -84,43 +84,52 @@ impl Client {
                                             pending_notification.replace(notification);
 
                                             notification_dirty = true;
-                                            notification_timer.as_mut().reset(Instant::now() + notification_delay);
+                                            notification_timer
+                                                .as_mut()
+                                                .reset(Instant::now() + notification_delay);
                                         }
                                         _ => {
-                                          if let Some(session_id) = notification.session_id {
-                                              if self.session_manager_mutex.lock().exists(session_id) {
-                                                  let session_client = self.clone();
-                                                  tokio::spawn(async move {
-                                                      if let Err(e) = session_client.process_notification(notification).await {
-                                                          tracing::error!(?session_id, error = ?e, "Error at processing Vim Notification");
-                                                      }
-                                                  });
-                                              }
-                                          }
+                                            if let Some(session_id) = notification.session_id {
+                                                if self.session_manager_mutex.lock().exists(session_id) {
+                                                    let client = self.clone();
+
+                                                    tokio::spawn(async move {
+                                                        if let Err(err) =
+                                                            client.process_notification(notification).await
+                                                        {
+                                                            tracing::error!(
+                                                                ?session_id,
+                                                                ?err,
+                                                                "Error at processing Vim Notification"
+                                                            );
+                                                        }
+                                                    });
+                                                }
+                                            }
                                         }
                                     }
-                                },
+                                }
                                 Call::MethodCall(method_call) => {
-                                    let session_client = self.clone();
+                                    let client = self.clone();
+
                                     tokio::spawn(async move {
                                         let id = method_call.id;
 
-                                        match session_client.process_method_call(method_call).await {
+                                        match client.process_method_call(method_call).await {
                                             Ok(Some(result)) => {
                                                 // Send back the result of method call.
-                                                let state = session_client.state_mutex.lock();
-                                                if let Err(e) = state.vim.send(id, Ok(result)) {
-                                                    tracing::debug!(error = ?e, "Failed to send the output result");
+                                                let state = client.state_mutex.lock();
+                                                if let Err(err) = state.vim.send(id, Ok(result)) {
+                                                    tracing::debug!(?err, "Failed to send the output result");
                                                 }
                                             }
                                             Ok(None) => {}
-                                            Err(e) => {
-                                                tracing::error!(error = ?e, "Error at processing Vim MethodCall");
+                                            Err(err) => {
+                                                tracing::error!(?err, "Error at processing Vim MethodCall");
                                             }
                                         }
                                     });
-
-                                },
+                                }
                             }
                         }
                         None => break, // channel has closed.
@@ -131,13 +140,14 @@ impl Client {
                     notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                     if let Some(notification) = pending_notification.take() {
-                        let last_session_id = notification.session_id.unwrap_or_default().saturating_sub(1);
-                        if self.session_manager_mutex.lock().exists(last_session_id) {
-                            self.session_manager_mutex.lock().terminate(last_session_id);
-                        }
+                        let last_session_id = notification
+                            .session_id
+                            .unwrap_or_default()
+                            .saturating_sub(1);
+                        self.session_manager_mutex.lock().try_terminate(last_session_id);
                         let session_id = notification.session_id;
-                        if let Err(e) = self.process_notification(notification).await {
-                            tracing::error!(?session_id, error = ?e, "Error at processing Vim Notification");
+                        if let Err(err) = self.process_notification(notification).await {
+                            tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
                         }
                     }
                 }

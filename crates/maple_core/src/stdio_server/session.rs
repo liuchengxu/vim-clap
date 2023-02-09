@@ -251,6 +251,12 @@ impl SessionManager {
         }
     }
 
+    pub fn try_terminate(&mut self, session_id: SessionId) {
+        if self.exists(session_id) {
+            self.terminate(session_id);
+        }
+    }
+
     /// Dispatch the session event to the background session task accordingly.
     pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
         if let Some(sender) = self.sessions.get(&session_id) {
