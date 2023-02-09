@@ -111,6 +111,9 @@ function! clap#state#render_preview(preview) abort
 endfunction
 
 function! clap#state#process_response_on_typed(result) abort
+  if !g:clap.display.win_is_valid()
+    return
+  endif
   if has_key(a:result, 'matched')
     if has_key(a:result, 'processed')
       call clap#indicator#update(a:result.matched, a:result.processed)
