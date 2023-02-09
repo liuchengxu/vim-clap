@@ -39,7 +39,7 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
   * [Change highlights](#change-highlights)
   * [Search syntax](#search-syntax)
     * [Fzf search syntax](#fzf-search-syntax)
-    * [Extended fzf search syntax](#extended-fzf-search-syntax)
+    * [Extended search syntax](#extended-search-syntax)
 * [How to define your own provider](#how-to-define-your-own-provider)
 * [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
@@ -133,8 +133,8 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap filetypes`                       | File types                                             | _none_                                                                                 |
 | `Clap gfiles` or `Clap git_files`      | Files managed by git                                   | **[git][git]**                                                                         |
 | `Clap git_diff_files`                  | Files managed by git and having uncommitted changes    | **[git][git]**                                                                         |
-| `Clap grep`**<sup>+</sup>**            | Grep using vim-clap fuzzy matcher                      | **[maple][maple]**                                                                     |
-| `Clap live_grep`**<sup>+</sup>**       | Grep on the fly                                        | **[rg][rg]**                                                                           |
+| `Clap grep`**<sup>+</sup>**            | Grep using fuzzy matcher                               | **[maple][maple]**                                                                     |
+| `Clap live_grep`**<sup>+</sup>**       | Grep using word-regexp matcher                         | **[rg][rg]**                                                                           |
 | `Clap history`                         | Open buffers and `v:oldfiles`                          | _none_                                                                                 |
 | `Clap help_tags`                       | Help tags                                              | _none_                                                                                 |
 | `Clap jumps`                           | Jumps                                                  | _none_                                                                                 |
@@ -292,13 +292,15 @@ See `:help clap-highlights` for more information.
 
 #### Fzf search syntax
 
-vim-clap adopts the fzf search syntax, please refer to [the search syntax section of fzf's README](https://github.com/junegunn/fzf#search-syntax) for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.
+vim-clap adopts the almost all fzf search syntax, please refer to [the search syntax section of fzf's README](https://github.com/junegunn/fzf#search-syntax) for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.
 
-#### Extended fzf search syntax
+#### Extended search syntax
 
 Apart from the basic fzf search syntax, more search syntax are supported:
 
-- `"foo`: match a word, e.g., given `"cli`, `crates/cli` matches but `clippy` does not.
+| Token  | Match type | Description                                                  |
+| ------ | ---------- | ------------------------------------------------------------ |
+| `"cli` | word-match | Items that match word `cli` (`clippy` does not match `"cli`) |
 
 ## How to define your own provider
 
