@@ -135,9 +135,8 @@ impl Context {
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
-        // let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        // let input_recorder = InputRecorder::new(input_history.inputs(&provider_id));
-        let input_recorder = InputRecorder::new(Vec::new());
+        let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
+        let input_recorder = InputRecorder::new(input_history.inputs(&provider_id));
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
@@ -220,11 +219,11 @@ impl Context {
 
     pub fn signify_terminated(&self, session_id: u64) {
         self.terminated.store(true, Ordering::SeqCst);
-        // let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        // input_history.append(
-            // self.env.provider_id.clone(),
-            // self.input_recorder.clone().into_inputs(),
-        // );
+        let mut input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
+        input_history.insert(
+            self.env.provider_id.clone(),
+            self.input_recorder.clone().into_inputs(),
+        );
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
     }
 
