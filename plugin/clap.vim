@@ -1,7 +1,7 @@
 " vim-clap - Modern interactive filter and dispatcher
 " Author:    Liu-Cheng Xu <xuliuchengxlc@gmail.com>
 " Website:   https://github.com/liuchengxu/vim-clap
-" Version:   0.40
+" Version:   0.41
 " License:   MIT
 
 if exists('g:loaded_clap')

@@ -2,7 +2,7 @@
 name = "maple"
 build = "build.rs"
 edition = "2021"
-version = "0.1.40"
+version = "0.1.41"
 rust-version = "1.65"
 license = "MIT"
 publish = false
