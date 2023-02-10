@@ -7,10 +7,11 @@ use filter::{FilterContext, SequentialSource};
 use itertools::Itertools;
 use maple_core::process::ShellCommand;
 use maple_core::tools::ctags::{ProjectCtagsCommand, CTAGS_HAS_JSON_FEATURE};
-use matcher::{ClapItem, MatchScope, MatcherBuilder};
+use matcher::{MatchScope, MatcherBuilder};
 use rayon::prelude::*;
 use std::ops::Deref;
 use std::sync::Arc;
+use types::ClapItem;
 
 /// Generate ctags recursively under the given directory.
 #[derive(Parser, Debug, Clone)]

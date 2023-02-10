@@ -12,11 +12,11 @@ use std::path::PathBuf;
 #[derive(Parser, Debug, Clone)]
 pub struct DumbJump {
     /// Search term.
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     pub word: String,
 
     /// File extension.
-    #[clap(index = 2, long)]
+    #[clap(index = 2)]
     pub extension: String,
 
     /// Definition kind.

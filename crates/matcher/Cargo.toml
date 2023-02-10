@@ -6,6 +6,8 @@ edition = "2021"
 
 [dependencies]
 fuzzy-matcher = "0.3"
+grep-matcher = "0.1"
+grep-regex = "0.1"
 
 dumb_analyzer = { path = "../dumb_analyzer" }
 extracted_fzy = { path = "extracted_fzy" }

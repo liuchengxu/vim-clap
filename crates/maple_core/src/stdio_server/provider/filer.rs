@@ -3,7 +3,7 @@ use crate::stdio_server::input::KeyEvent;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
-use icon::prepend_filer_icon;
+use icon::{icon_or_default, FOLDER_ICON};
 use serde_json::json;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -11,67 +11,25 @@ use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::sync::Arc;
 use types::{ClapItem, MatchResult};
 
-/// Display the inner path in a nicer way.
-struct DisplayPath<P> {
-    inner: P,
-    enable_icon: bool,
+#[inline]
+fn file_name(path: &Path) -> &str {
+    path.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .expect("Path terminates in `..`")
 }
 
-impl<P: AsRef<Path>> DisplayPath<P> {
-    fn new(inner: P, enable_icon: bool) -> Self {
-        Self { inner, enable_icon }
-    }
-
-    #[inline]
-    fn as_file_name_unsafe(&self) -> &str {
-        self.inner
-            .as_ref()
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str)
-            .expect("Path terminates in `..`")
-    }
-}
-
-impl<P: AsRef<Path>> std::fmt::Display for DisplayPath<P> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut write_with_icon = |path: &str| {
-            if self.enable_icon {
-                write!(f, "{}", prepend_filer_icon(self.inner.as_ref(), path))
-            } else {
-                write!(f, "{path}")
-            }
-        };
-
-        if self.inner.as_ref().is_dir() {
-            let path = format!("{}{}", self.as_file_name_unsafe(), MAIN_SEPARATOR);
-            write_with_icon(&path)
+fn to_string_nicer(path: PathBuf, enable_icon: bool) -> String {
+    if path.is_dir() {
+        let dir_name = file_name(&path);
+        if enable_icon {
+            format!("{FOLDER_ICON} {dir_name}{MAIN_SEPARATOR}")
         } else {
-            write_with_icon(self.as_file_name_unsafe())
+            format!("{dir_name}{MAIN_SEPARATOR}")
         }
-    }
-}
-
-#[allow(unused)]
-fn goto_parent(cur_dir: String) {
-    // Root directory.
-    if Path::new(&cur_dir).parent().is_none() {
-        // noop
-        return;
-    }
-
-    let parent_dir = match Path::new(&cur_dir).parent() {
-        Some(dir) => dir,
-        None => return,
-    };
-
-    let _new_cur_dir = if parent_dir.parent().is_none() {
-        parent_dir.to_string_lossy().to_string()
+    } else if enable_icon {
+        format!("{} {}", icon_or_default(&path), file_name(&path))
     } else {
-        format!("{}{MAIN_SEPARATOR}", parent_dir.display())
-    };
-
-    if let Some(last_char) = cur_dir.chars().last() {
-        if last_char == MAIN_SEPARATOR {}
+        file_name(&path).to_string()
     }
 }
 
@@ -80,8 +38,8 @@ pub fn read_dir_entries<P: AsRef<Path>>(
     enable_icon: bool,
     max: Option<usize>,
 ) -> std::io::Result<Vec<String>> {
-    let entries_iter = std::fs::read_dir(dir)?
-        .map(|res| res.map(|x| DisplayPath::new(x.path(), enable_icon).to_string()));
+    let entries_iter =
+        std::fs::read_dir(dir)?.map(|res| res.map(|x| to_string_nicer(x.path(), enable_icon)));
 
     let mut entries = if let Some(m) = max {
         entries_iter.take(m).collect::<std::io::Result<Vec<_>>>()?
@@ -95,7 +53,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Debug)]
-struct FilerItem(String);
+pub struct FilerItem(pub String);
 
 impl ClapItem for FilerItem {
     fn raw_text(&self) -> &str {
@@ -146,22 +104,13 @@ impl FilerProvider {
         let curline = self.current_line(ctx).await?;
         let target_dir = self.current_dir.join(curline);
 
-        let preview_target = if target_dir.is_dir() {
-            self.reset_to(target_dir, ctx)?;
-            let curline = self.current_line(ctx).await?;
-            let path: PathBuf = curline.into();
-            if path.is_dir() {
-                PreviewTarget::Directory(path)
-            } else {
-                PreviewTarget::File(path)
-            }
+        if target_dir.is_dir() {
+            self.goto_dir(target_dir, ctx)?;
+            self.preview_current_entry(ctx).await?;
         } else if target_dir.is_file() {
-            PreviewTarget::File(target_dir)
-        } else {
-            return Ok(());
-        };
-
-        self.update_preview(preview_target, ctx).await?;
+            let preview_target = PreviewTarget::File(target_dir);
+            self.update_preview(preview_target, ctx).await?;
+        }
 
         Ok(())
     }
@@ -170,7 +119,7 @@ impl FilerProvider {
         let mut input = ctx.vim.input_get().await?;
 
         if input.is_empty() {
-            self.load_parent(ctx)?;
+            self.goto_parent(ctx)?;
             ctx.vim
                 .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
         } else {
@@ -178,9 +127,30 @@ impl FilerProvider {
             ctx.vim.exec("input_set", [&input])?;
         }
 
-        let lines = self.on_query_change(&input, ctx)?;
-        self.current_lines = lines;
+        self.current_lines = self.on_query_change(&input, ctx)?;
+        self.preview_current_entry(ctx).await
+    }
 
+    async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
+        let curline = self.current_line(ctx).await?;
+        let target_dir = self.current_dir.join(curline);
+
+        if target_dir.is_dir() {
+            self.goto_dir(target_dir, ctx)?;
+        } else if target_dir.is_file() {
+            ctx.vim.exec("execute", ["stopinsert"])?;
+            ctx.vim.exec("clap#provider#filer#sink", [target_dir])?;
+        } else {
+            let input = ctx.vim.input_get().await?;
+            let target_file = self.current_dir.join(input);
+            ctx.vim
+                .exec("clap#provider#filer#handle_special_entries", [target_file])?;
+        }
+
+        Ok(())
+    }
+
+    async fn preview_current_entry(&self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
         let target_dir = self.current_dir.join(curline);
         let preview_target = if target_dir.is_dir() {
@@ -189,32 +159,7 @@ impl FilerProvider {
             PreviewTarget::File(target_dir)
         };
 
-        self.update_preview(preview_target, ctx).await?;
-
-        Ok(())
-    }
-
-    async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
-        let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.join(curline);
-
-        if target_dir.is_dir() {
-            self.reset_to(target_dir, ctx)?;
-            return Ok(());
-        } else if target_dir.is_file() {
-            ctx.vim.exec("execute", ["stopinsert"])?;
-            ctx.vim.exec("clap#provider#filer#sink", [target_dir])?;
-            return Ok(());
-        }
-
-        let input = ctx.vim.input_get().await?;
-        let target_file = self.current_dir.join(input);
-
-        ctx.vim
-            .call("clap#provider#filer#handle_special_entries", [target_file])
-            .await?;
-
-        Ok(())
+        self.update_preview(preview_target, ctx).await
     }
 
     fn on_query_change(&self, query: &str, ctx: &Context) -> Result<Vec<String>> {
@@ -251,7 +196,7 @@ impl FilerProvider {
             }
 
             let result = json!({
-              "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
+                "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
             });
 
             ctx.vim
@@ -297,17 +242,6 @@ impl FilerProvider {
         Ok(lines)
     }
 
-    fn reset_to(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
-        self.current_dir = dir.clone();
-        self.load_dir(dir, ctx)?;
-        ctx.vim.exec("input_set", [""])?;
-        ctx.vim
-            .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
-        let lines = self.on_query_change("", ctx)?;
-        self.current_lines = lines;
-        Ok(())
-    }
-
     async fn update_preview(&self, preview_target: PreviewTarget, ctx: &mut Context) -> Result<()> {
         let preview_height = ctx.preview_height().await?;
 
@@ -343,7 +277,18 @@ impl FilerProvider {
         Ok(())
     }
 
-    fn load_parent(&mut self, ctx: &Context) -> Result<()> {
+    fn goto_dir(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
+        self.current_dir = dir.clone();
+        self.load_dir(dir, ctx)?;
+        ctx.vim.exec("input_set", [""])?;
+        ctx.vim
+            .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
+        let lines = self.on_query_change("", ctx)?;
+        self.current_lines = lines;
+        Ok(())
+    }
+
+    fn goto_parent(&mut self, ctx: &Context) -> Result<()> {
         let parent_dir = match self.current_dir.parent() {
             Some(parent) => parent,
             None => return Ok(()),
@@ -411,14 +356,7 @@ impl ClapProvider for FilerProvider {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
-        let curline = self.current_line(ctx).await?;
-        let path = self.current_dir.join(curline);
-        let preview_target = if path.is_dir() {
-            PreviewTarget::Directory(path)
-        } else {
-            PreviewTarget::File(path)
-        };
-        self.update_preview(preview_target, ctx).await
+        self.preview_current_entry(ctx).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {

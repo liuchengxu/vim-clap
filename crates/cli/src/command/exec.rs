@@ -10,7 +10,7 @@ use std::process::Command;
 #[derive(Parser, Debug, Clone)]
 pub struct Exec {
     /// Specify the system command to run.
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     shell_cmd: String,
 
     /// Specify the working directory of CMD

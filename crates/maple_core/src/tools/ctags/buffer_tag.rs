@@ -1,7 +1,7 @@
 use itertools::Itertools;
-use matcher::{ClapItem, MatchScope};
+use matcher::MatchScope;
 use serde::{Deserialize, Serialize};
-use types::FuzzyText;
+use types::{ClapItem, FuzzyText};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 pub struct BufferTag {

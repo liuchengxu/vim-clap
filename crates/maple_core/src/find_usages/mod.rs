@@ -54,7 +54,7 @@ impl UsageMatcher {
         (jump_line, mut indices): (String, Vec<usize>),
     ) -> Option<(String, Vec<usize>)> {
         if let Some(exact_indices) = self.match_indices(&jump_line) {
-            indices.extend_from_slice(&exact_indices);
+            indices.extend(exact_indices);
             indices.sort_unstable();
             indices.dedup();
             Some((jump_line, indices))

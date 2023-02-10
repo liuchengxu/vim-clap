@@ -1,5 +1,6 @@
 use super::*;
 use crate::fzy;
+use types::SourceItem;
 
 #[test]
 fn test_resize() {
@@ -198,5 +199,30 @@ fn test_search_syntax() {
             Some(MatchResult::new(25, [0, 1].to_vec()))
         ],
         match_results
+    );
+}
+
+#[test]
+fn test_word_matcher() {
+    let line = r#"Cargo.toml:19:24:clippy = { path = "crates/cli" }"#;
+    let query: Query = "\"cli".into();
+
+    let matcher = MatcherBuilder::new().build(query);
+
+    let match_result = matcher
+        .match_item(Arc::new(line) as Arc<dyn ClapItem>)
+        .unwrap();
+
+    // match cli instead of clippy
+    assert_eq!(
+        "cli".to_string(),
+        line.chars()
+            .enumerate()
+            .filter_map(|(idx, c)| if match_result.indices.contains(&idx) {
+                Some(c)
+            } else {
+                None
+            })
+            .collect::<String>()
     );
 }

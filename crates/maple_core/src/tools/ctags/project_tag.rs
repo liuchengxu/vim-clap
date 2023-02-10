@@ -1,7 +1,7 @@
-use matcher::{ClapItem, MatchScope};
+use matcher::MatchScope;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use types::FuzzyText;
+use types::{ClapItem, FuzzyText};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ProjectTag {

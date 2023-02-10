@@ -11,10 +11,10 @@ mod sequential_source;
 mod sequential_worker;
 
 use icon::Icon;
-use matcher::{Bonus, ClapItem, MatchScope, Matcher, MatcherBuilder};
+use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use rayon::prelude::*;
 use std::sync::Arc;
-use types::{FileNameItem, GrepItem};
+use types::{ClapItem, FileNameItem, GrepItem};
 
 pub use self::parallel_worker::{
     par_dyn_run, par_dyn_run_inprocess, par_dyn_run_list, BestItems, ParallelSource,

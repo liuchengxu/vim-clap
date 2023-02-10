@@ -38,6 +38,8 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
   * [Execute some code during the process](#execute-some-code-during-the-process)
   * [Change highlights](#change-highlights)
   * [Search syntax](#search-syntax)
+    * [Fzf search syntax](#fzf-search-syntax)
+    * [Extended search syntax](#extended-search-syntax)
 * [How to define your own provider](#how-to-define-your-own-provider)
 * [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
@@ -54,7 +56,7 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
   - The Rust binary is required to have a decent user experience.
 - [x] Blazingly fast thanks to the powerful Rust backend.
 - [x] Extensible, easy to add new providers.
-- [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax).
+- [x] Support [the search syntax borrowed from fzf](https://github.com/junegunn/fzf#search-syntax) and more.
 - [x] Flexible UI layout.
 - [ ] Support searching by multiple providers simultaneously.
 
@@ -102,6 +104,9 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
+<details>
+  <summary>cache is no longer necessary since v0.37</summary>
+
 You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files +no-cache ~` for searching files under the home directory without cache, the shortcut for `+no-cache` option:
 
 - `:Clap!! [provider_id_or_alias] {provider_args}`, e.g, `:Clap!! files ~`.
@@ -110,6 +115,7 @@ You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files 
 Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forerunner_status_sign` to configure it.
 
 <img width="561" alt="cache spinner" src="https://user-images.githubusercontent.com/8850248/78767291-fafe3e00-79bc-11ea-91a8-e17518e7a1b2.png">
+</details>
 
 #### Providers
 
@@ -127,8 +133,8 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap filetypes`                       | File types                                             | _none_                                                                                 |
 | `Clap gfiles` or `Clap git_files`      | Files managed by git                                   | **[git][git]**                                                                         |
 | `Clap git_diff_files`                  | Files managed by git and having uncommitted changes    | **[git][git]**                                                                         |
-| `Clap grep`**<sup>+</sup>**            | Grep using vim-clap fuzzy matcher                      | **[maple][maple]**                                                                     |
-| `Clap live_grep`**<sup>+</sup>**       | Grep on the fly                                        | **[rg][rg]**                                                                           |
+| `Clap grep`**<sup>+</sup>**            | Grep using fuzzy matcher                               | **[maple][maple]**                                                                     |
+| `Clap live_grep`**<sup>+</sup>**       | Grep using word-regexp matcher                         | **[rg][rg]**                                                                           |
 | `Clap history`                         | Open buffers and `v:oldfiles`                          | _none_                                                                                 |
 | `Clap help_tags`                       | Help tags                                              | _none_                                                                                 |
 | `Clap jumps`                           | Jumps                                                  | _none_                                                                                 |
@@ -161,8 +167,6 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 - Use `:Clap grep ++query=<cword>` to grep the word under cursor.
 
 - Use `:Clap grep ++query=@visual` to grep the visual selection.
-
-- `:Clap grep` is not recommended now as it's relatively much slower to `:Clap grep2` and `:Clap dumb_jump`.
 
 [Send a pull request](https://github.com/liuchengxu/vim-clap/pulls) if you want to get your provider listed here.
 
@@ -286,7 +290,17 @@ See `:help clap-highlights` for more information.
 
 ### Search syntax
 
-vim-clap uses a search syntax similar to the one used in fzf, please refer to [the search syntax section of fzf's README](https://github.com/junegunn/fzf#search-syntax) for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.
+#### Fzf search syntax
+
+vim-clap adopts the almost all fzf search syntax, please refer to [the search syntax section of fzf's README](https://github.com/junegunn/fzf#search-syntax) for more details. Note that the OR operator defined by a single bar character is not yet implemented, but you can achieve that by using multiple exact matches.
+
+#### Extended search syntax
+
+Apart from the basic fzf search syntax, more search syntax are supported:
+
+| Token  | Match type | Description                                                  |
+| ------ | ---------- | ------------------------------------------------------------ |
+| `"cli` | word-match | Items that match word `cli` (`clippy` does not match `"cli`) |
 
 ## How to define your own provider
 

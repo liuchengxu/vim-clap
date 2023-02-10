@@ -92,7 +92,7 @@ fn parse_preview_target(curline: String, ctx: &Context) -> Result<(PreviewTarget
             };
             PreviewTarget::File(path)
         }
-        "coc_location" | "grep" | "live_grep" => {
+        "coc_location" | "grep" | "live_grep" | "interactive_grep" => {
             let mut try_extract_file_path = |line: &str| {
                 let (fpath, lnum, _col, cache_line) =
                     extract_grep_position(line).ok_or_else(err)?;
@@ -251,7 +251,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let enable_icon = self.ctx.env.icon.enabled();
         let lines = read_dir_entries(&path, enable_icon, Some(self.preview_height))?;
         let mut lines = if lines.is_empty() {
-            vec!["Directory is empty".to_string()]
+            vec!["<Empty directory>".to_string()]
         } else {
             lines
         };

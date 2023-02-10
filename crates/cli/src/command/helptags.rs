@@ -9,7 +9,7 @@ use utils::read_lines;
 #[derive(Parser, Debug, Clone)]
 pub struct Helptags {
     /// Tempfile containing the info of vim helptags.
-    #[clap(index = 1, long)]
+    #[clap(index = 1)]
     meta_info: AbsPathBuf,
 }
 

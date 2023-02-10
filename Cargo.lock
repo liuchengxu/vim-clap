@@ -73,6 +73,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b45ea9b00a7b3f2988e9a65ad3917e62123c38dba709b666506207be96d1790b"
 dependencies = [
  "memchr",
+ "once_cell",
+ "regex-automata",
  "serde",
 ]
 
@@ -569,6 +571,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "grep-regex"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "997598b41d53a37a2e3fc5300d5c11d825368c054420a9c65125b8fe1078463f"
+dependencies = [
+ "aho-corasick",
+ "bstr",
+ "grep-matcher",
+ "log",
+ "regex",
+ "regex-syntax",
+ "thread_local",
+]
+
+[[package]]
 name = "grep-searcher"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -942,6 +959,8 @@ dependencies = [
  "dumb_analyzer",
  "extracted_fzy",
  "fuzzy-matcher",
+ "grep-matcher",
+ "grep-regex",
  "pattern",
  "types",
 ]
@@ -1212,6 +1231,12 @@ dependencies = [
  "memchr",
  "regex-syntax",
 ]
+
+[[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
 
 [[package]]
 name = "regex-syntax"

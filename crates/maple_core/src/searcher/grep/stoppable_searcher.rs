@@ -254,14 +254,12 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     } = search_context;
 
     let search_root = cwd;
-    let progressor = VimProgressor::new(vim.clone(), stop_signal.clone());
+    let progressor = VimProgressor::new(vim, stop_signal.clone());
     let number = item_pool_size;
 
     let mut best_results = BestFileResults::new(number);
 
     let (sender, mut receiver) = unbounded_channel();
-
-    let _ = vim.bare_exec("clap#spinner#set_busy");
 
     std::thread::Builder::new()
         .name("grep-worker".into())
@@ -400,7 +398,6 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     let display_lines = to_display_lines(&results, winwidth, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
-    let _ = vim.bare_exec("clap#spinner#set_idle");
 
     tracing::debug!(
         ?query,

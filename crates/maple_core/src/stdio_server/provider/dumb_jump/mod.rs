@@ -55,9 +55,10 @@ impl QueryInfo {
 /// - `query`: Initial query typed in the input window.
 fn parse_query_info(query: &str) -> QueryInfo {
     let Query {
+        word_terms: _, // TODO: add word_terms to UsageMatcher
         exact_terms,
-        inverse_terms,
         fuzzy_terms,
+        inverse_terms,
     } = Query::from(query);
 
     // If there is no fuzzy term, use the full query as the keyword,
@@ -67,14 +68,14 @@ fn parse_query_info(query: &str) -> QueryInfo {
             (query.into(), QueryType::StartWith, UsageMatcher::default())
         } else {
             (
-                exact_terms[0].word.clone(),
+                exact_terms[0].text.clone(),
                 QueryType::Exact,
                 UsageMatcher::new(exact_terms, inverse_terms),
             )
         }
     } else {
         (
-            fuzzy_terms.iter().map(|term| &term.word).join(" "),
+            fuzzy_terms.iter().map(|term| &term.text).join(" "),
             QueryType::StartWith,
             UsageMatcher::new(exact_terms, inverse_terms),
         )

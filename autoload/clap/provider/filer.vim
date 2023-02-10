@@ -9,7 +9,7 @@ set cpoptions&vim
 let s:filer = {}
 
 let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
-let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'Directory is empty'
+let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'<Empty directory>'
 let s:CREATE_FILE = ' [Create new file]'
 
 if has('win32')
@@ -31,7 +31,7 @@ else
 endif
 
 function! clap#provider#filer#hi_empty_dir() abort
-  syntax match ClapEmptyDirectory /^.*Directory is empty/
+  syntax match ClapEmptyDirectory /^.*<Empty directory>/
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 

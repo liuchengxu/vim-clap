@@ -43,6 +43,10 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     endif
   endif
 
+  if exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
+  endif
+
   if has_key(decoded, 'truncated_map')
     let g:__clap_lines_truncated_map = decoded.truncated_map
   endif

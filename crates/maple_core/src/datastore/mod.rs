@@ -6,6 +6,8 @@ use crate::recent_files::SortedRecentFiles;
 use crate::stdio_server::InputHistory;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -67,7 +69,7 @@ pub fn generate_cache_file_path(filename: impl AsRef<Path>) -> std::io::Result<P
     Ok(cache_dir.join(filename))
 }
 
-fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> std::io::Result<T> {
+fn read_json_as<P: AsRef<Path>, T: DeserializeOwned>(path: P) -> std::io::Result<T> {
     let file = std::fs::File::open(&path)?;
     let reader = BufReader::new(&file);
     let deserializd = serde_json::from_reader(reader).map_err(|e| {
@@ -80,7 +82,7 @@ fn read_json_as<P: AsRef<Path>, T: serde::de::DeserializeOwned>(path: P) -> std:
     Ok(deserializd)
 }
 
-fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {
+fn load_json<T: DeserializeOwned, P: AsRef<Path>>(path: Option<P>) -> Option<T> {
     path.and_then(|json_path| {
         if json_path.as_ref().exists() {
             read_json_as::<_, T>(json_path).ok()
@@ -90,7 +92,7 @@ fn load_json<T: serde::de::DeserializeOwned, P: AsRef<Path>>(path: Option<P>) ->
     })
 }
 
-fn write_json<T: serde::Serialize, P: AsRef<Path>>(obj: T, path: Option<P>) -> std::io::Result<()> {
+fn write_json<T: Serialize, P: AsRef<Path>>(obj: T, path: Option<P>) -> std::io::Result<()> {
     if let Some(json_path) = path.as_ref() {
         utils::create_or_overwrite(json_path, serde_json::to_string(&obj)?.as_bytes())?;
     }

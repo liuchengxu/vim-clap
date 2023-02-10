@@ -3,11 +3,10 @@ use crate::paths::AbsPathBuf;
 use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use anyhow::Result;
-use matcher::ClapItem;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use types::{MatchedItem, Score};
+use types::{ClapItem, MatchedItem, Score};
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {

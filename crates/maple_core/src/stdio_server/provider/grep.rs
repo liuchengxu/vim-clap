@@ -32,9 +32,12 @@ impl GrepProvider {
         let new_control = {
             let stop_signal = Arc::new(AtomicBool::new(false));
 
+            let vim = ctx.vim.clone();
             let search_context = ctx.search_context(stop_signal.clone());
             let join_handle = tokio::spawn(async move {
-                crate::searcher::grep::search(query, matcher, search_context).await
+                let _ = vim.bare_exec("clap#spinner#set_busy");
+                crate::searcher::grep::search(query, matcher, search_context).await;
+                let _ = vim.bare_exec("clap#spinner#set_idle");
             });
 
             SearcherControl {
