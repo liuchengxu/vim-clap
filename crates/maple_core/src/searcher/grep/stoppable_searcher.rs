@@ -243,12 +243,7 @@ impl BestFileResults {
     }
 }
 
-pub async fn search(
-    query: String,
-    matcher: Matcher,
-    search_context: SearchContext,
-    update_spinner: bool,
-) {
+pub async fn search(query: String, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
         winwidth,
@@ -265,10 +260,6 @@ pub async fn search(
     let mut best_results = BestFileResults::new(number);
 
     let (sender, mut receiver) = unbounded_channel();
-
-    if update_spinner {
-        let _ = vim.bare_exec("clap#spinner#set_busy");
-    }
 
     std::thread::Builder::new()
         .name("grep-worker".into())
@@ -407,9 +398,6 @@ pub async fn search(
     let display_lines = to_display_lines(&results, winwidth, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
-    if update_spinner {
-        let _ = vim.bare_exec("clap#spinner#set_idle");
-    }
 
     tracing::debug!(
         ?query,
