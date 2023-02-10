@@ -95,6 +95,23 @@ function! s:move_manager.ctrl_u(_winid) abort
   call s:trigger_on_typed()
 endfunction
 
+function! s:move_manager.ctrl_w(_winid) abort
+  if empty(s:input)
+    return 1
+  endif
+  let words = split(s:input, '\W\zs')
+  " Remove the last word
+  let new_words = words[:-2]
+  if !empty(new_words)
+    " Remove the trailing non-word chars
+    let new_words[-1] = matchstr(new_words[-1], '\w*')
+  endif
+  let s:input = join(new_words, '')
+  let s:cursor_idx = strchars(s:input, 1)
+  call s:mock_input()
+  call s:trigger_on_typed()
+endfunction
+
 function! s:move_manager.bs(_winid) abort
   let before_bs = s:strpart_input(0, s:cursor_idx).s:strpart_input(s:cursor_idx)
   call s:backspace()
@@ -155,6 +172,7 @@ let s:move_manager["\<C-L>"] = s:move_manager.ctrl_l
 let s:move_manager["\<C-N>"] = s:move_manager.ctrl_n
 let s:move_manager["\<C-P>"] = s:move_manager.ctrl_p
 let s:move_manager["\<C-U>"] = s:move_manager.ctrl_u
+let s:move_manager["\<C-W>"] = s:move_manager.ctrl_w
 let s:move_manager["\<BS>"] = s:move_manager.bs
 let s:move_manager["\<C-H>"] = s:move_manager.bs
 let s:move_manager["\<Esc>"] = { _winid -> clap#handler#exit() }
