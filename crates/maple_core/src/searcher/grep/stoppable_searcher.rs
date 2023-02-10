@@ -254,7 +254,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     } = search_context;
 
     let search_root = cwd;
-    let progressor = VimProgressor::new(vim.clone(), stop_signal.clone());
+    let progressor = VimProgressor::new(vim, stop_signal.clone());
     let number = item_pool_size;
 
     let mut best_results = BestFileResults::new(number);
