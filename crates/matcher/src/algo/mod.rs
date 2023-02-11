@@ -6,8 +6,9 @@ use crate::MatchResult;
 use types::{CaseMatching, FuzzyText};
 
 /// Supported fuzzy match algorithm.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum FuzzyAlgorithm {
+    #[default]
     Skim,
     Fzy,
 }
@@ -26,12 +27,6 @@ impl<T: AsRef<str>> From<T> for FuzzyAlgorithm {
             "fzy" => Self::Fzy,
             _ => Self::Fzy,
         }
-    }
-}
-
-impl Default for FuzzyAlgorithm {
-    fn default() -> Self {
-        Self::Fzy
     }
 }
 

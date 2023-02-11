@@ -37,9 +37,9 @@ impl UsageMatcher {
     /// is a superset of applying `other` on the same source.
     pub fn is_superset(&self, other: &Self) -> bool {
         self.exact_matcher
-            .exact_terms()
+            .exact_terms
             .iter()
-            .zip(other.exact_matcher.exact_terms().iter())
+            .zip(other.exact_matcher.exact_terms.iter())
             .all(|(local, other)| local.is_superset(other))
             && self
                 .inverse_matcher

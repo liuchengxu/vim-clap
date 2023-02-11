@@ -3,7 +3,6 @@
 // pub use constants::*;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-use std::fmt::Display;
 use std::path::Path;
 
 /// The type used to represent icons.
@@ -116,8 +115,7 @@ impl IconKind {
 ///
 /// First try matching the [`EXACTMATCH_ICON_TABLE`] using the file name, and then finding the
 /// [`EXTENSION_ICON_TABLE`] using the file extension.
-#[inline]
-pub fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
+fn get_icon_or<P: AsRef<Path>>(path: P, default: IconType) -> IconType {
     path.as_ref()
         .file_name()
         .and_then(std::ffi::OsStr::to_str)
@@ -155,6 +153,13 @@ fn proj_tags_icon(line: &str) -> IconType {
         .unwrap_or(DEFAULT_ICON)
 }
 
+#[inline]
+fn grep_icon(line: &str) -> IconType {
+    pattern::extract_fpath_from_grep_line(line)
+        .map(file_icon)
+        .unwrap_or(DEFAULT_ICON)
+}
+
 pub fn file_icon(line: &str) -> IconType {
     get_icon_or(Path::new(line), DEFAULT_ICON)
 }
@@ -163,31 +168,6 @@ pub fn tags_kind_icon(kind: &str) -> IconType {
     bsearch_icon_table(kind, TAGKIND_ICON_TABLE)
         .map(|idx| TAGKIND_ICON_TABLE[idx].1)
         .unwrap_or(DEFAULT_ICON)
-}
-
-#[inline]
-pub fn filer_icon<P: AsRef<Path>>(path: P) -> IconType {
-    if path.as_ref().is_dir() {
-        FOLDER_ICON
-    } else {
-        get_icon_or(path, DEFAULT_FILER_ICON)
-    }
-}
-
-pub fn prepend_filer_icon<P: AsRef<Path>>(path: P, line: impl Display) -> String {
-    format!("{} {}", filer_icon(path), line)
-}
-
-#[inline]
-fn grep_icon(line: &str) -> IconType {
-    pattern::extract_fpath_from_grep_line(line)
-        .map(file_icon)
-        .unwrap_or(DEFAULT_ICON)
-}
-
-/// Prepend an icon to the output line of ripgrep.
-pub fn prepend_grep_icon(line: &str) -> String {
-    format!("{} {}", grep_icon(line), line)
 }
 
 #[cfg(test)]
