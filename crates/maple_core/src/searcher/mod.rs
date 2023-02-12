@@ -14,7 +14,7 @@ use std::sync::Arc;
 pub struct SearchContext {
     pub icon: Icon,
     pub winwidth: usize,
-    pub cwd: PathBuf,
+    pub paths: Vec<PathBuf>,
     pub vim: Vim,
     pub stop_signal: Arc<AtomicBool>,
     pub item_pool_size: usize,
@@ -63,8 +63,12 @@ impl Default for WalkConfig {
     }
 }
 
-fn walk_parallel(search_root: PathBuf, walk_config: WalkConfig) -> WalkParallel {
-    WalkBuilder::new(search_root)
+fn walk_parallel(paths: Vec<PathBuf>, walk_config: WalkConfig) -> WalkParallel {
+    let mut builder = WalkBuilder::new(&paths[0]);
+    for path in &paths[1..] {
+        builder.add(path);
+    }
+    builder
         .hidden(walk_config.hidden)
         .parents(walk_config.parents)
         .ignore(walk_config.ignore)

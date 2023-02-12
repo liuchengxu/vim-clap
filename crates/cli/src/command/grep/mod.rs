@@ -63,7 +63,8 @@ impl Grep {
 
             let clap_matcher = matcher::MatcherBuilder::new().build(self.grep_query.clone().into());
 
-            let search_result = maple_core::searcher::grep::cli_search(dir, clap_matcher).await;
+            let search_result =
+                maple_core::searcher::grep::cli_search(vec![dir], clap_matcher).await;
 
             println!(
                 "total_matched: {:?}, total_processed: {:?}",

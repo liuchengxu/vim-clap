@@ -303,6 +303,8 @@ endif
 
 function! s:parse_opts(args) abort
   let idx = 0
+  let g:clap.provider.raw_args = a:args
+  " TODO: Switch the argument parsing to CLI interface?
   let g:clap.provider.args = []
   for arg in a:args
     if arg ==# '--'

@@ -54,7 +54,7 @@ pub struct FileResult {
 
 #[derive(Debug)]
 struct StoppableSearchImpl {
-    search_root: PathBuf,
+    paths: Vec<PathBuf>,
     matcher: Matcher,
     sender: UnboundedSender<SearcherMessage>,
     stop_signal: Arc<AtomicBool>,
@@ -62,13 +62,13 @@ struct StoppableSearchImpl {
 
 impl StoppableSearchImpl {
     fn new(
-        search_root: PathBuf,
+        paths: Vec<PathBuf>,
         matcher: Matcher,
         sender: UnboundedSender<SearcherMessage>,
         stop_signal: Arc<AtomicBool>,
     ) -> Self {
         Self {
-            search_root,
+            paths,
             matcher,
             sender,
             stop_signal,
@@ -77,7 +77,7 @@ impl StoppableSearchImpl {
 
     fn run(self) {
         let Self {
-            search_root,
+            paths,
             matcher,
             sender,
             stop_signal,
@@ -87,7 +87,9 @@ impl StoppableSearchImpl {
             .binary_detection(BinaryDetection::quit(b'\x00'))
             .build();
 
-        walk_parallel(search_root.clone(), WalkConfig::default()).run(|| {
+        let search_root = paths[0].clone();
+
+        walk_parallel(paths, WalkConfig::default()).run(|| {
             let mut searcher = searcher.clone();
             let matcher = matcher.clone();
             let sender = sender.clone();
@@ -173,14 +175,14 @@ pub struct SearchResult {
     pub total_processed: u64,
 }
 
-pub async fn cli_search(search_root: PathBuf, matcher: Matcher) -> SearchResult {
+pub async fn cli_search(paths: Vec<PathBuf>, matcher: Matcher) -> SearchResult {
     let (sender, mut receiver) = unbounded_channel();
 
     let stop_signal = Arc::new(AtomicBool::new(false));
 
     std::thread::Builder::new()
         .name("searcher-worker".into())
-        .spawn(move || StoppableSearchImpl::new(search_root, matcher, sender, stop_signal).run())
+        .spawn(move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run())
         .expect("Failed to spawn searcher worker thread");
 
     let mut matches = Vec::new();
@@ -248,14 +250,14 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         icon,
         winwidth,
         vim,
-        cwd,
+        paths,
         stop_signal,
         item_pool_size,
     } = search_context;
 
-    let search_root = cwd;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
     let number = item_pool_size;
+    let search_root = paths[0].clone();
 
     let mut best_results = BestFileResults::new(number);
 
@@ -265,8 +267,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         .name("grep-worker".into())
         .spawn({
             let stop_signal = stop_signal.clone();
-            let search_root = search_root.clone();
-            move || StoppableSearchImpl::new(search_root, matcher, sender, stop_signal).run()
+            move || StoppableSearchImpl::new(paths, matcher, sender, stop_signal).run()
         })
         .expect("Failed to spawn grep-worker thread");
 
