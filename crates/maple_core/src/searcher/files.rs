@@ -12,7 +12,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 
 fn search_files(
-    search_root: PathBuf,
+    paths: Vec<PathBuf>,
     hidden: bool,
     matcher: Matcher,
     stop_signal: Arc<AtomicBool>,
@@ -23,7 +23,9 @@ fn search_files(
         ..Default::default()
     };
 
-    walk_parallel(search_root.clone(), walk_config).run(|| {
+    let search_root = paths[0].clone();
+
+    walk_parallel(paths, walk_config).run(|| {
         let matcher = matcher.clone();
         let sender = sender.clone();
         let stop_signal = stop_signal.clone();
@@ -65,7 +67,7 @@ fn search_files(
 
 pub async fn search(query: String, hidden: bool, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
-        cwd,
+        paths,
         vim,
         icon,
         winwidth,
@@ -75,7 +77,6 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
 
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
-    let search_root = cwd;
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -83,7 +84,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
         .name("files-worker".into())
         .spawn({
             let stop_signal = stop_signal.clone();
-            move || search_files(search_root, hidden, matcher, stop_signal, sender)
+            move || search_files(paths, hidden, matcher, stop_signal, sender)
         })
         .expect("Failed to spawn blines worker thread");
 

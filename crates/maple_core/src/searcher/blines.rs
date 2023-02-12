@@ -94,7 +94,7 @@ pub async fn search(
     let SearchContext {
         icon,
         winwidth,
-        cwd: _,
+        paths: _,
         vim,
         stop_signal,
         item_pool_size,
