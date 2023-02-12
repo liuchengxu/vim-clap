@@ -133,7 +133,15 @@ impl Context {
             "buffertags" => Icon::Enabled(IconKind::BufferTags),
             _ => Icon::Null,
         };
-        let matcher_builder = provider_id.matcher_builder();
+
+        let rank_criteria = crate::config::config()
+            .matcher
+            .tiebreak
+            .split(',')
+            .filter_map(|s| types::parse_criteria(s.trim()))
+            .collect();
+        let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
+
         let display_winwidth = vim.winwidth(display.winid).await?;
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;

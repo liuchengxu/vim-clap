@@ -3,7 +3,7 @@ mod query;
 mod search_term;
 mod source_item;
 
-pub use self::matcher::{MatchResult, Rank, RankCalculator, RankCriterion, Score};
+pub use self::matcher::{parse_criteria, MatchResult, Rank, RankCalculator, RankCriterion, Score};
 pub use self::query::Query;
 pub use self::search_term::{
     ExactTerm, ExactTermType, FuzzyTerm, FuzzyTermType, InverseTerm, InverseTermType, SearchTerm,

@@ -121,17 +121,21 @@ mod tests {
     fn test_default_rank_sort() {
         let rank_calculator = RankCalculator::default();
 
-        // By default, the greator `score` is, the smaller `begin` is, the smaller `end` is, the
-        // smaller `length` is, the higher the rank.
         let rank0 = rank_calculator.calculate_rank(99, 5, 10, 15);
+        // The greater `score`, the higher the rank.
         let rank1 = rank_calculator.calculate_rank(100, 5, 10, 15);
-        let rank2 = rank_calculator.calculate_rank(100, 8, 10, 15);
-        let rank3 = rank_calculator.calculate_rank(100, 8, 12, 15);
-        let rank4 = rank_calculator.calculate_rank(100, 8, 12, 17);
-
         assert!(rank0 < rank1);
+
+        // The smaller `begin`, the higher the rank.
+        let rank2 = rank_calculator.calculate_rank(100, 8, 10, 15);
         assert!(rank1 > rank2);
+
+        // The smaller `end`, the higher the rank.
+        let rank3 = rank_calculator.calculate_rank(100, 8, 12, 15);
         assert!(rank2 > rank3);
+
+        // The smaller `length`, the higher the rank.
+        let rank4 = rank_calculator.calculate_rank(100, 8, 12, 17);
         assert!(rank3 > rank4);
     }
 }
