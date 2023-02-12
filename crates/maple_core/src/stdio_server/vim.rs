@@ -296,6 +296,10 @@ impl Vim {
         }
     }
 
+    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
+        self.call("fnamemodify", json!([fname, mods])).await
+    }
+
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
         self.call("eval", json!([s])).await
     }
@@ -339,6 +343,10 @@ impl Vim {
 
     pub async fn provider_args(&self) -> Result<Vec<String>> {
         self.bare_call("provider_args").await
+    }
+
+    pub async fn provider_raw_args(&self) -> Result<Vec<String>> {
+        self.bare_call("provider_raw_args").await
     }
 
     pub async fn working_dir(&self) -> Result<AbsPathBuf> {

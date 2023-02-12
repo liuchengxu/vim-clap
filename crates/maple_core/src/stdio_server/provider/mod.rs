@@ -186,7 +186,7 @@ impl Context {
         SearchContext {
             icon: self.env.icon,
             winwidth: self.env.display_winwidth,
-            paths: vec![self.cwd.clone().into()],
+            paths: vec![self.cwd.to_path_buf()],
             vim: self.vim.clone(),
             stop_signal,
             item_pool_size: self.env.display_winheight,

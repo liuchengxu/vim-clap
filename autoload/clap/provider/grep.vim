@@ -11,7 +11,8 @@ function! s:grep.on_typed() abort
 endfunction
 
 function! s:grep.init() abort
-  call clap#client#notify_on_init()
+  let cwd = clap#rooter#working_dir()
+  call clap#client#notify_on_init({'cwd': cwd})
 endfunction
 
 let s:grep.sink = g:clap#provider#live_grep#.sink
