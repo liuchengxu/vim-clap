@@ -4,13 +4,13 @@ use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
 use ignore::{DirEntry, WalkState};
-use matcher::{Matcher, Score};
+use matcher::Matcher;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::ProgressUpdate;
+use types::{ProgressUpdate, Rank};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -47,7 +47,7 @@ pub struct FileResult {
     pub path: PathBuf,
     pub line_number: u64,
     pub line: String,
-    pub score: Score,
+    pub rank: Rank,
     pub indices_in_path: Vec<usize>,
     pub indices_in_line: Vec<usize>,
 }
@@ -138,7 +138,7 @@ impl StoppableSearchImpl {
                                     path: entry.path().to_path_buf(),
                                     line_number,
                                     line: line.to_string(),
-                                    score: matched.score,
+                                    rank: matched.rank,
                                     indices_in_path: matched.exact_indices,
                                     indices_in_line: matched.fuzzy_indices,
                                 });
@@ -241,7 +241,7 @@ impl BestFileResults {
     }
 
     fn sort(&mut self) {
-        self.results.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+        self.results.sort_unstable_by(|a, b| b.rank.cmp(&a.rank));
     }
 }
 
@@ -300,7 +300,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
                     let matched_item = MatchedItem {
                         item: Arc::new(fmt_line),
-                        score: file_result.score,
+                        rank: file_result.rank,
                         indices,
                         display_text: None,
                         output_text: None,
@@ -344,7 +344,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                         .expect("Max capacity is non-zero; qed");
 
                     let new = file_result;
-                    if new.score > last.score {
+                    if let std::cmp::Ordering::Greater = new.rank.cmp(&last.rank) {
                         *last = new;
                         best_results.sort();
                     }

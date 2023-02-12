@@ -49,7 +49,7 @@ pub use self::bonus::Bonus;
 pub use self::matchers::{BonusMatcher, ExactMatcher, FuzzyMatcher, InverseMatcher, WordMatcher};
 use std::path::Path;
 use std::sync::Arc;
-use types::{CaseMatching, ClapItem, FuzzyText, MatchedItem};
+use types::{CaseMatching, ClapItem, FuzzyText, MatchedItem, Rank, RankCalculator, RankCriterion};
 
 // Re-export types
 pub use types::{MatchResult, MatchScope, Query, Score};
@@ -60,6 +60,7 @@ pub struct MatcherBuilder {
     fuzzy_algo: FuzzyAlgorithm,
     match_scope: MatchScope,
     case_matching: CaseMatching,
+    rank_criteria: Vec<RankCriterion>,
 }
 
 impl MatcherBuilder {
@@ -88,12 +89,18 @@ impl MatcherBuilder {
         self
     }
 
+    pub fn rank_criteria(mut self, sort_criteria: Vec<RankCriterion>) -> Self {
+        self.rank_criteria = sort_criteria;
+        self
+    }
+
     pub fn build(self, query: Query) -> Matcher {
         let Self {
             bonuses,
             fuzzy_algo,
             match_scope,
             case_matching,
+            rank_criteria,
         } = self;
 
         let Query {
@@ -109,12 +116,19 @@ impl MatcherBuilder {
         let fuzzy_matcher = FuzzyMatcher::new(match_scope, fuzzy_algo, fuzzy_terms, case_matching);
         let bonus_matcher = BonusMatcher::new(bonuses);
 
+        let rank_calculator = if rank_criteria.is_empty() {
+            RankCalculator::default()
+        } else {
+            RankCalculator::new(rank_criteria)
+        };
+
         Matcher {
             inverse_matcher,
             word_matcher,
             exact_matcher,
             fuzzy_matcher,
             bonus_matcher,
+            rank_calculator,
         }
     }
 }
@@ -126,6 +140,7 @@ pub struct Matcher {
     exact_matcher: ExactMatcher,
     fuzzy_matcher: FuzzyMatcher,
     bonus_matcher: BonusMatcher,
+    rank_calculator: RankCalculator,
 }
 
 impl Matcher {
@@ -190,7 +205,14 @@ impl Matcher {
 
         let MatchResult { score, indices } = item.match_result_callback(match_result);
 
-        Some(MatchedItem::new(item, score, indices))
+        let begin = indices.first().copied().unwrap_or(0);
+        let end = indices.last().copied().unwrap_or(0);
+        let length = item.raw_text().len();
+        let rank = self
+            .rank_calculator
+            .calculate_rank(score, begin, end, length);
+
+        Some(MatchedItem::new(item, rank, indices))
     }
 
     /// Actually performs the matching algorithm.
@@ -229,7 +251,7 @@ impl Matcher {
         }
 
         // Merge the results from multi matchers.
-        let matched_file_result = if fuzzy_indices.is_empty() {
+        let (score, exact_indices, fuzzy_indices) = if fuzzy_indices.is_empty() {
             let bonus_score = self
                 .bonus_matcher
                 .calc_text_bonus(line, exact_score, &exact_indices);
@@ -241,17 +263,9 @@ impl Matcher {
             let score = exact_score + bonus_score;
 
             if exact_indices_in_path {
-                MatchedFileResult {
-                    score,
-                    exact_indices,
-                    fuzzy_indices: Vec::new(),
-                }
+                (score, exact_indices, Vec::new())
             } else {
-                MatchedFileResult {
-                    score,
-                    exact_indices: Vec::new(),
-                    fuzzy_indices: exact_indices,
-                }
+                (score, Vec::new(), exact_indices)
             }
         } else {
             fuzzy_indices.sort_unstable();
@@ -264,32 +278,42 @@ impl Matcher {
             let score = exact_score + bonus_score + fuzzy_score;
 
             if exact_indices_in_path {
-                MatchedFileResult {
-                    score,
-                    exact_indices,
-                    fuzzy_indices,
-                }
+                (score, exact_indices, fuzzy_indices)
             } else {
                 let mut indices = exact_indices;
                 indices.extend_from_slice(fuzzy_indices.as_slice());
                 indices.sort_unstable();
                 indices.dedup();
 
-                MatchedFileResult {
-                    score,
-                    exact_indices: Vec::new(),
-                    fuzzy_indices: indices,
-                }
+                (score, Vec::new(), indices)
             }
         };
 
-        Some(matched_file_result)
+        let begin = exact_indices
+            .first()
+            .copied()
+            .unwrap_or_else(|| fuzzy_indices.first().copied().unwrap_or(0));
+        let end = fuzzy_indices
+            .last()
+            .copied()
+            .unwrap_or_else(|| exact_indices.last().copied().unwrap_or(0));
+        let length = line.len();
+
+        let rank = self
+            .rank_calculator
+            .calculate_rank(score, begin, end, length);
+
+        Some(MatchedFileResult {
+            rank,
+            exact_indices,
+            fuzzy_indices,
+        })
     }
 }
 
 #[derive(Debug)]
 pub struct MatchedFileResult {
-    pub score: Score,
+    pub rank: Rank,
     pub exact_indices: Vec<usize>,
     pub fuzzy_indices: Vec<usize>,
 }

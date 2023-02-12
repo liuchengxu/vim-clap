@@ -1,5 +1,5 @@
 use super::*;
-use crate::fzy;
+use crate::algo::fzy;
 use types::SourceItem;
 
 #[test]
@@ -81,7 +81,7 @@ fn test_filename_bonus() {
             .unwrap();
         let match_result_with_bonus = matcher.match_item(item).unwrap();
         assert!(match_result_base.indices == match_result_with_bonus.indices);
-        assert!(match_result_with_bonus.score > match_result_base.score);
+        assert!(match_result_with_bonus.rank[0] > match_result_base.score);
     }
 }
 
@@ -99,7 +99,7 @@ fn test_language_keyword_bonus() {
         .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>)
         .unwrap();
     assert!(matched_item1.indices == matched_item2.indices);
-    assert!(matched_item1.score < matched_item2.score);
+    assert!(matched_item1.rank < matched_item2.rank);
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn test_exact_search_term_bonus() {
         .match_item(Arc::new(lines[1]) as Arc<dyn ClapItem>)
         .unwrap();
     assert!(matched_item1.indices == matched_item2.indices);
-    assert!(matched_item1.score < matched_item2.score);
+    assert!(matched_item1.rank < matched_item2.rank);
 }
 
 #[test]
@@ -139,7 +139,7 @@ fn test_search_syntax() {
             })
             .map(|maybe_matched_item| {
                 if let Some(matched_item) = maybe_matched_item {
-                    Some(MatchResult::new(matched_item.score, matched_item.indices))
+                    Some(MatchResult::new(matched_item.rank[0], matched_item.indices))
                 } else {
                     None
                 }

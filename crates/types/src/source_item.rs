@@ -1,6 +1,7 @@
-use crate::{MatchResult, Score};
+use crate::matcher::{MatchResult, Rank};
 use icon::Icon;
 use pattern::{extract_file_name, extract_grep_pattern, extract_tag_name};
+use std::cmp::Ordering;
 use std::sync::Arc;
 use std::{any::Any, borrow::Cow};
 
@@ -301,8 +302,8 @@ pub fn extract_fuzzy_text(full: &str, match_scope: MatchScope) -> Option<FuzzyTe
 pub struct MatchedItem {
     /// Tuple of (matched line text, filtering score, indices of matched elements)
     pub item: Arc<dyn ClapItem>,
-    /// Filtering score.
-    pub score: Score,
+    /// Item rank.
+    pub rank: Rank,
     /// Indices of matched elements.
     ///
     /// The indices may be truncated when truncating the text.
@@ -315,11 +316,31 @@ pub struct MatchedItem {
     pub output_text: Option<String>,
 }
 
+impl PartialEq for MatchedItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.rank.eq(&other.rank)
+    }
+}
+
+impl Eq for MatchedItem {}
+
+impl Ord for MatchedItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.rank.cmp(&other.rank)
+    }
+}
+
+impl PartialOrd for MatchedItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.rank.partial_cmp(&other.rank)
+    }
+}
+
 impl From<Arc<dyn ClapItem>> for MatchedItem {
     fn from(item: Arc<dyn ClapItem>) -> Self {
         Self {
             item,
-            score: Score::default(),
+            rank: Rank::default(),
             indices: Vec::new(),
             display_text: None,
             output_text: None,
@@ -328,10 +349,10 @@ impl From<Arc<dyn ClapItem>> for MatchedItem {
 }
 
 impl MatchedItem {
-    pub fn new(item: Arc<dyn ClapItem>, score: Score, indices: Vec<usize>) -> Self {
+    pub fn new(item: Arc<dyn ClapItem>, rank: Rank, indices: Vec<usize>) -> Self {
         Self {
             item,
-            score,
+            rank,
             indices,
             display_text: None,
             output_text: None,

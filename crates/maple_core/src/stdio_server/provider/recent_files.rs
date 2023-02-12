@@ -6,7 +6,7 @@ use anyhow::Result;
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use types::{ClapItem, MatchedItem, Score};
+use types::{ClapItem, MatchedItem, RankCalculator, Score};
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
@@ -41,13 +41,21 @@ impl RecentFilesProvider {
             let mut cwd = cwd.clone();
             cwd.push(std::path::MAIN_SEPARATOR);
 
+            let rank_calculator = RankCalculator::default();
+
             recent_files
                 .entries
                 .iter()
                 .map(|entry| {
                     let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
+                    let rank = rank_calculator.calculate_rank(
+                        entry.frecent_score as Score,
+                        0,
+                        0,
+                        item.raw_text().len(),
+                    );
                     // frecent_score will not be larger than i32::MAX.
-                    MatchedItem::new(item, entry.frecent_score as Score, Default::default())
+                    MatchedItem::new(item, rank, Default::default())
                 })
                 .collect::<Vec<_>>()
         } else {
