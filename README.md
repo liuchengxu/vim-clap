@@ -105,7 +105,7 @@ Vim-clap is utterly easy to use, just type, press Ctrl-J/K to locate the wanted 
 The paradigm is `Clap [provider_id_or_alias] {provider_args}`, where the `provider_id_or_alias` is obviously either the name or alias of provider. Technically the `provider_id` can be anything that can be used a key of a Dict, but I recommend you using an _identifier_ like name as the provider id, and use the alias rule if you prefer a special name.
 
 <details>
-  <summary>cache is no longer necessary since v0.37</summary>
+  <summary>cache is no longer necessary since v0.37.</summary>
 
 You can use `+no-cache` option to disable/refresh the cache, e.g., `:Clap files +no-cache ~` for searching files under the home directory without cache, the shortcut for `+no-cache` option:
 
