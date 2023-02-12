@@ -81,12 +81,12 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
 " Build the Rust binary if `cargo` exists on your system.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary' }
 
-" The bang version will try to download the prebuilt binary if cargo does not exist.
+" The bang version will try to download the prebuilt binary if `cargo` does not exist.
 Plug 'liuchengxu/vim-clap', { 'do': ':Clap install-binary!' }
 
-" :Clap install-binary[!] will always try to compile the binary locally,
-" if you do care about the disk used for the compilation, try using the force download way,
-" which will download the prebuilt binary even you have installed cargo.
+" `:Clap install-binary[!]` will always try to compile the binary locally.
+" If you do care about the disk used for the compilation, use the way of force download,
+" which will directly download the prebuilt binary even if `cargo` is available.
 Plug 'liuchengxu/vim-clap', { 'do': { -> clap#installer#force_download() } }
 
 " `:Clap install-binary[!]` will run using the terminal feature which is inherently async.
