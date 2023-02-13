@@ -448,6 +448,8 @@ function! clap#floating_win#open() abort
   let g:__clap_display_curlnum = 1
 
   let s:save_winheight = &winheight
+  let s:save_winminheight = &winminheight
+  let &winminheight = 1
   let &winheight = 1
 
   let s:indicator_width = clap#layout#indicator_width()
@@ -508,6 +510,7 @@ endfunction
 
 function! clap#floating_win#close() abort
   let &winheight = s:save_winheight
+  let &winminheight = s:save_winminheight
   silent! autocmd! ClapEnsureAllClosed
 
   if s:symbol_width > 0
