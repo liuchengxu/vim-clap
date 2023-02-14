@@ -142,7 +142,7 @@ mod tests {
           max-level = "trace"
           log-file = "/tmp/clap.log"
 
-          #[matcher]
+          [matcher]
           tiebreak = "score,-begin,-end,-length"
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();

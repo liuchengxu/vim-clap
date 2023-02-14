@@ -1,4 +1,7 @@
-use crate::bonus::Bonus;
+mod bonus;
+
+pub use self::bonus::Bonus;
+
 use std::sync::Arc;
 use types::{ClapItem, Score};
 

@@ -5,11 +5,10 @@ pub mod substring;
 use crate::MatchResult;
 use types::{CaseMatching, FuzzyText};
 
-/// Supported fuzzy match algorithm.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum FuzzyAlgorithm {
-    #[default]
     Skim,
+    #[default]
     Fzy,
 }
 
@@ -31,7 +30,6 @@ impl<T: AsRef<str>> From<T> for FuzzyAlgorithm {
 }
 
 impl FuzzyAlgorithm {
-    /// Does the fuzzy match against the match text.
     pub fn fuzzy_match(
         &self,
         query: &str,

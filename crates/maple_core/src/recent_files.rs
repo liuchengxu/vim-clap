@@ -177,7 +177,7 @@ impl SortedRecentFiles {
         cwd.pop();
 
         let matcher = MatcherBuilder::new()
-            .bonuses(vec![Bonus::cwd(cwd), Bonus::FileName])
+            .bonuses(vec![Bonus::Cwd(cwd.into()), Bonus::FileName])
             .build(query.into());
 
         filter::par_filter(source_items, &matcher)

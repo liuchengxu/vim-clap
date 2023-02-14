@@ -37,16 +37,14 @@
 //!
 
 mod algo;
-mod bonus;
 mod matchers;
 #[cfg(test)]
 mod tests;
 
-pub use self::algo::FuzzyAlgorithm;
-pub use self::bonus::cwd::Cwd;
-pub use self::bonus::language::Language;
-pub use self::bonus::Bonus;
-pub use self::matchers::{BonusMatcher, ExactMatcher, FuzzyMatcher, InverseMatcher, WordMatcher};
+pub use self::algo::{substring, FuzzyAlgorithm};
+pub use self::matchers::{
+    Bonus, BonusMatcher, ExactMatcher, FuzzyMatcher, InverseMatcher, WordMatcher,
+};
 use std::path::Path;
 use std::sync::Arc;
 use types::{CaseMatching, ClapItem, FuzzyText, MatchedItem, Rank, RankCalculator, RankCriterion};
@@ -208,6 +206,7 @@ impl Matcher {
         let begin = indices.first().copied().unwrap_or(0);
         let end = indices.last().copied().unwrap_or(0);
         let length = item.raw_text().len();
+
         let rank = self
             .rank_calculator
             .calculate_rank(score, begin, end, length);

@@ -14,19 +14,19 @@ use types::ClapItem;
 /// Tweak the matching score calculated by the base match algorithm.
 #[derive(Debug, Clone, Default)]
 pub enum Bonus {
-    /// Give a bonus if the needle matches in the basename of the haystack.
-    ///
-    /// Ref https://github.com/liuchengxu/vim-clap/issues/561
-    FileName,
+    /// Give a bonus if the item is an absolute file path and matches the cwd.
+    Cwd(Cwd),
 
-    /// Give a bonus to for the keywords if the language type is known.
+    /// Give a bonus if the item contains a language keyword.
     Language(Language),
 
     /// Give a bonus if the item is in the list of recently opened files.
     RecentFiles(RecentFiles),
 
-    /// Give a bonus if the entry is an absolute file path and matches the cwd.
-    Cwd(Cwd),
+    /// Give a bonus if the item is a file path and the matches are in the file name.
+    ///
+    /// Ref https://github.com/liuchengxu/vim-clap/issues/561
+    FileName,
 
     /// No additional bonus.
     #[default]
@@ -43,11 +43,6 @@ impl<T: AsRef<str>> From<T> for Bonus {
 }
 
 impl Bonus {
-    /// Constructs a new instance of [`Bonus::Cwd`].
-    pub fn cwd(abs_path: String) -> Self {
-        Self::Cwd(abs_path.into())
-    }
-
     /// Calculates the bonus score given the match result of base algorithm.
     pub fn item_bonus_score(
         &self,
@@ -65,10 +60,10 @@ impl Bonus {
 
     pub fn text_bonus_score(&self, bonus_text: &str, score: Score, indices: &[usize]) -> Score {
         match self {
-            Self::FileName => calc_bonus_file_name(bonus_text, score, indices),
-            Self::RecentFiles(recent_files) => recent_files.calc_bonus(bonus_text, score),
-            Self::Language(language) => language.calc_bonus(bonus_text, score),
             Self::Cwd(cwd) => cwd.calc_bonus(bonus_text, score),
+            Self::Language(language) => language.calc_bonus(bonus_text, score),
+            Self::RecentFiles(recent_files) => recent_files.calc_bonus(bonus_text, score),
+            Self::FileName => calc_bonus_file_name(bonus_text, score, indices),
             Self::None => 0,
         }
     }

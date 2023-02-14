@@ -48,13 +48,9 @@ impl RecentFilesProvider {
                 .iter()
                 .map(|entry| {
                     let item: Arc<dyn ClapItem> = Arc::new(entry.fpath.replacen(&cwd, "", 1));
-                    let rank = rank_calculator.calculate_rank(
-                        entry.frecent_score as Score,
-                        0,
-                        0,
-                        item.raw_text().len(),
-                    );
                     // frecent_score will not be larger than i32::MAX.
+                    let score = entry.frecent_score as Score;
+                    let rank = rank_calculator.calculate_rank(score, 0, 0, item.raw_text().len());
                     MatchedItem::new(item, rank, Default::default())
                 })
                 .collect::<Vec<_>>()
