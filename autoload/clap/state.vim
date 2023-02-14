@@ -49,6 +49,8 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 
   if has_key(decoded, 'truncated_map')
     let g:__clap_lines_truncated_map = decoded.truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
   endif
 
   if has_key(decoded, 'icon_added')
@@ -86,6 +88,8 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   let g:__clap_icon_added_by_maple = a:display_lines.icon_added
   if !empty(a:display_lines.truncated_map)
     let g:__clap_lines_truncated_map = a:display_lines.truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
   endif
 endfunction
 
@@ -135,6 +139,8 @@ function! clap#state#process_response_on_typed(result) abort
 
   if has_key(a:result, 'truncated_map')
     let g:__clap_lines_truncated_map = a:result.truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
   endif
 
   if has_key(a:result, 'icon_added')
@@ -181,15 +187,17 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     call g:clap#display_win.shrink_if_undersize()
   endif
 
-  let g:__clap_icon_added_by_maple = a:icon_added
-  if !empty(a:truncated_map)
-    let g:__clap_lines_truncated_map = a:truncated_map
-  endif
-
   if a:using_cache
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.using_cache
   else
     let g:__clap_current_forerunner_status = g:clap_forerunner_status_sign.done
+  endif
+
+  let g:__clap_icon_added_by_maple = a:icon_added
+  if !empty(a:truncated_map)
+    let g:__clap_lines_truncated_map = a:truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
   endif
 
   call clap#indicator#update_processed(g:clap.display.initial_size)
@@ -206,11 +214,11 @@ function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abo
   call g:clap#display_win.shrink_if_undersize()
   if !empty(a:truncated_map)
     let g:__clap_lines_truncated_map = a:truncated_map
+  elseif exists('g:__clap_lines_truncated_map')
+    unlet g:__clap_lines_truncated_map
   endif
   let g:__clap_icon_added_by_maple = a:icon_added
-
   call clap#sign#ensure_exists()
-
   call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
 endfunction

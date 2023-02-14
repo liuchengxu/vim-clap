@@ -278,35 +278,31 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         let items = best_results
             .iter()
             .filter_map(|file_result| {
-                let maybe_column = match file_result.indices_in_path.first() {
-                    Some(first_indice) => Some(first_indice),
-                    None => file_result.indices_in_line.first(),
-                };
+                let FileResult {
+                    path,
+                    line_number,
+                    line,
+                    rank,
+                    indices_in_path,
+                    indices_in_line,
+                } = file_result;
+
+                let maybe_column = indices_in_path.first().or_else(|| indices_in_line.first());
 
                 if let Some(mut column) = maybe_column.copied() {
-                    let line_number = file_result.line_number;
                     column += 1;
-                    let mut fmt_line =
-                        if let Ok(relative_path) = file_result.path.strip_prefix(&search_root) {
-                            format!("{}:{line_number}:{column}:", relative_path.display())
-                        } else {
-                            format!("{}:{line_number}:{column}:", file_result.path.display())
-                        };
-                    let offset = fmt_line.len();
-                    fmt_line.push_str(&file_result.line);
-
-                    let mut indices = file_result.indices_in_path.clone();
-                    indices.extend(file_result.indices_in_line.iter().map(|x| *x + offset));
-
-                    let matched_item = MatchedItem {
-                        item: Arc::new(fmt_line),
-                        rank: file_result.rank,
-                        indices,
-                        display_text: None,
-                        output_text: None,
+                    let mut fmt_line = if let Ok(relative_path) = path.strip_prefix(&search_root) {
+                        format!("{}:{line_number}:{column}:", relative_path.display())
+                    } else {
+                        format!("{}:{line_number}:{column}:", path.display())
                     };
+                    let offset = fmt_line.len();
+                    fmt_line.push_str(line);
 
-                    Some(matched_item)
+                    let mut indices = indices_in_path.clone();
+                    indices.extend(indices_in_line.iter().map(|x| *x + offset));
+
+                    Some(MatchedItem::new(Arc::new(fmt_line), *rank, indices))
                 } else {
                     None
                 }

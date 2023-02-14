@@ -15,11 +15,12 @@ function! s:sync_run_with_delay() abort
 endfunction
 
 if clap#maple#is_available()
+  " Deprecated.
   function! clap#impl#on_move#handler(result, error) abort
     if a:error isnot v:null
       return
     endif
-    call clap#state#render_preview(a:result)
+    call clap#state#render_preview(has_key(a:result, 'result') ? a:result.result : a:result)
   endfunction
 
   function! s:dispatch_on_move_impl() abort

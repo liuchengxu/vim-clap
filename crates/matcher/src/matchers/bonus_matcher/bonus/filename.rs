@@ -21,6 +21,6 @@ mod tests {
     #[test]
     fn test_calc_bonus_file_name() {
         let bonus_score = calc_bonus_file_name("autoload/clap/action.vim", 10, &[1, 2, 3, 20, 25]);
-        assert_eq!(bonus_score, 2 / 10);
+        assert_eq!(bonus_score, 2);
     }
 }
