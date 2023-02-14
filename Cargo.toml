@@ -20,7 +20,7 @@ cli = { path = "crates/cli" }
 upgrade = { path = "crates/upgrade" }
 
 [build-dependencies]
-built = { package = "built", version = "0.5", features = ["git2"] }
+built = { package = "built", version = "0.6", features = ["git2"] }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [profile.production]
