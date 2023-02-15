@@ -40,6 +40,7 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
   * [Search syntax](#search-syntax)
     * [Fzf search syntax](#fzf-search-syntax)
     * [Extended search syntax](#extended-search-syntax)
+  * [Config file](#config-file)
 * [How to define your own provider](#how-to-define-your-own-provider)
 * [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
@@ -301,6 +302,20 @@ Apart from the basic fzf search syntax, more search syntax are supported:
 | Token  | Match type | Description                                                  |
 | ------ | ---------- | ------------------------------------------------------------ |
 | `"cli` | word-match | Items that match word `cli` (`clippy` does not match `"cli`) |
+
+### Config file
+
+User config file is loaded from:
+
+- Linux: `~/.config/vimclap/config.toml`
+- macOS: `~/Library/Application\ Support/org.vim.Vim-Clap/config.toml`
+- Windows: `C:\Users\Alice\AppData\Roaming\Vim\Vim Clap\config\config.toml`
+
+```toml
+[matcher]
+# There are four sort keys for results: score, begin, end, length, you can specify how the records are sorted using `tiebreak`.
+tiebreak = "score,-begin,-end,-length"
+```
 
 ## How to define your own provider
 
