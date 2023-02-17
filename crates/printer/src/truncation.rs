@@ -39,14 +39,12 @@ fn truncate_line_v1(
         let text = line.chars().skip(skipped).collect::<String>();
         indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
-        trim_text_v1(&text, indices, container_width, 4).map(|(text, mut indices)| {
-            (
-                format!("{}{}", line.chars().take(skipped).collect::<String>(), text),
-                {
-                    indices.iter_mut().for_each(|x| *x += 2);
-                    indices
-                },
-            )
+        trim_text_v1(&text, indices, container_width, 4).map(|(truncated_text, mut indices)| {
+            let mut text = String::with_capacity(skipped + truncated_text.len());
+            line.chars().take(skipped).for_each(|c| text.push(c));
+            text.push_str(&truncated_text);
+            indices.iter_mut().for_each(|x| *x += 2);
+            (text, indices)
         })
     } else {
         trim_text_v1(line, indices, winwidth, 4)
