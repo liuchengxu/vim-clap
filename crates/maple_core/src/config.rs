@@ -49,6 +49,20 @@ pub fn config() -> &'static Config {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MatcherConfig {
+    pub tiebreak: String,
+}
+
+impl Default for MatcherConfig {
+    fn default() -> Self {
+        Self {
+            tiebreak: "score,-begin,-end,-length".into(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     pub log_file: Option<String>,
     pub max_level: String,
@@ -68,6 +82,9 @@ impl Default for LogConfig {
 pub struct Config {
     /// Log configuration.
     pub log: LogConfig,
+
+    /// Matcher configuration.
+    pub matcher: MatcherConfig,
 
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
@@ -124,6 +141,9 @@ mod tests {
           [log]
           max-level = "trace"
           log-file = "/tmp/clap.log"
+
+          [matcher]
+          tiebreak = "score,-begin,-end,-length"
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();
         println!("{user_config:?}");

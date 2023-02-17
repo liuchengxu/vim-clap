@@ -5,7 +5,7 @@ use pyo3::{prelude::*, wrap_pyfunction};
 
 use matcher::{Bonus, MatchResult, MatcherBuilder};
 use printer::truncate_item_output_text_v0;
-use types::{ClapItem, MatchScope, Query, SourceItem};
+use types::{ClapItem, MatchScope, SourceItem};
 
 /// Pass a Vector of lines to Vim for setting them in Vim with one single API call.
 type LinesInBatch = Vec<String>;
@@ -118,7 +118,7 @@ fn fuzzy_match(
         })
         .collect::<Vec<_>>();
 
-    ranked.sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+    ranked.sort_unstable_by(|v1, v2| v2.cmp(v1));
 
     // " " is 4 bytes, but the offset of highlight is 2.
     // 2 = chars(icon)

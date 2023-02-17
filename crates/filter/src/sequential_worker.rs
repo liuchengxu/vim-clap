@@ -8,7 +8,7 @@ use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use types::{ClapItem, MatchedItem, Query, Score};
+use types::{ClapItem, MatchedItem, Query, Rank};
 
 /// The constant to define the length of `top_` queues.
 const ITEMS_TO_SHOW: usize = 40;
@@ -37,7 +37,7 @@ impl<T: Copy> Insert<T> for [T; ITEMS_TO_SHOW] {
 macro_rules! insert_both {
     // This macro pushes all things into buffer, pops one worst item from each top queue
     // and then inserts all things into `top_` queues.
-    (pop; $index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+    (pop; $index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_ranks:expr) => {{
         match $index {
             // If index is last possible, then the worst item is better than this we want to push in,
             // and we do nothing.
@@ -45,20 +45,20 @@ macro_rules! insert_both {
             // Else, one item gets popped from the queue
             // and other is inserted.
             Some(idx) => {
-                insert_both!(idx + 1, $score, $item => $buffer, $top_results, $top_scores);
+                insert_both!(idx + 1, $score, $item => $buffer, $top_results, $top_ranks);
             }
             None => {
-                insert_both!(0, $score, $item => $buffer, $top_results, $top_scores);
+                insert_both!(0, $score, $item => $buffer, $top_results, $top_ranks);
             }
         }
     }};
 
     // This macro pushes all things into buffer and inserts all things into
     // `top_` queues.
-    ($index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_scores:expr) => {{
+    ($index:expr, $score:expr, $item:expr => $buffer:expr, $top_results:expr, $top_ranks:expr) => {{
         $buffer.push($item);
         $top_results.pop_and_insert($index, $buffer.len() - 1);
-        $top_scores.pop_and_insert($index, $score);
+        $top_ranks.pop_and_insert($index, $score);
     }};
 }
 
@@ -66,7 +66,7 @@ struct BufferInitializationResult {
     // If all items have been processed.
     finished: bool,
     total: usize,
-    top_scores: [Score; ITEMS_TO_SHOW],
+    top_ranks: [Rank; ITEMS_TO_SHOW],
     top_results: [usize; ITEMS_TO_SHOW],
 }
 
@@ -75,18 +75,18 @@ fn initialize_buffer(
     buffer: &mut Vec<MatchedItem>,
     iter: &mut impl Iterator<Item = MatchedItem>,
 ) -> BufferInitializationResult {
-    let mut top_scores: [Score; ITEMS_TO_SHOW] = [Score::min_value(); ITEMS_TO_SHOW];
+    let mut top_ranks: [Rank; ITEMS_TO_SHOW] = [Rank::default(); ITEMS_TO_SHOW];
     let mut top_results: [usize; ITEMS_TO_SHOW] = [usize::min_value(); ITEMS_TO_SHOW];
 
     let mut total = 0;
     let res = iter.try_for_each(|matched_item| {
-        let score = matched_item.score;
-        let idx = match find_best_score_idx(&top_scores, score) {
+        let rank = matched_item.rank;
+        let idx = match find_best_rank_idx(&top_ranks, rank) {
             Some(idx) => idx + 1,
             None => 0,
         };
 
-        insert_both!(idx, score, matched_item => buffer, top_results, top_scores);
+        insert_both!(idx, rank, matched_item => buffer, top_results, top_ranks);
 
         // Stop iterating after `ITEMS_TO_SHOW` iterations.
         total += 1;
@@ -100,21 +100,21 @@ fn initialize_buffer(
     BufferInitializationResult {
         finished: res.is_ok(),
         total,
-        top_scores,
+        top_ranks,
         top_results,
     }
 }
 
-/// Returns the index of best score in `top_scores`.
+/// Returns the index of best score in `top_ranks`.
 ///
 /// Best results are stored in front, the bigger the better.
 #[inline]
-fn find_best_score_idx(top_scores: &[Score; ITEMS_TO_SHOW], score: Score) -> Option<usize> {
-    top_scores
+fn find_best_rank_idx(top_ranks: &[Rank; ITEMS_TO_SHOW], rank: Rank) -> Option<usize> {
+    top_ranks
         .iter()
         .enumerate()
         .rev() // .rev(), because worse items are at the end.
-        .find(|&(_, &other_score)| other_score > score)
+        .find(|&(_, &other_rank)| other_rank > rank)
         .map(|(idx, _)| idx)
 }
 
@@ -217,7 +217,7 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = MatchedItem>, icon: Icon) -> V
     let BufferInitializationResult {
         finished,
         total,
-        mut top_scores,
+        mut top_ranks,
         mut top_results,
     } = initialize_buffer(&mut buffer, &mut iter);
 
@@ -230,11 +230,11 @@ fn dyn_collect_all(mut iter: impl Iterator<Item = MatchedItem>, icon: Icon) -> V
     // Now we have the full queue and can just pair `.pop_back()` with `.insert()` to keep
     // the queue with best results the same size.
     iter.for_each(|item| {
-        let score = item.score;
+        let rank = item.rank;
 
-        let idx = find_best_score_idx(&top_scores, score);
+        let idx = find_best_rank_idx(&top_ranks, rank);
 
-        insert_both!(pop; idx, score, item => buffer, top_results, top_scores);
+        insert_both!(pop; idx, rank, item => buffer, top_results, top_ranks);
 
         watcher.total += 1;
 
@@ -267,7 +267,7 @@ fn dyn_collect_number(
     let BufferInitializationResult {
         finished,
         total,
-        mut top_scores,
+        mut top_ranks,
         mut top_results,
     } = initialize_buffer(&mut buffer, &mut iter);
 
@@ -280,20 +280,20 @@ fn dyn_collect_number(
     // Now we have the full queue and can just pair `.pop_back()` with
     // `.insert()` to keep the queue with best results the same size.
     iter.for_each(|matched_item| {
-        let score = matched_item.score;
-        let idx = find_best_score_idx(&top_scores, score);
+        let rank = matched_item.rank;
+        let idx = find_best_rank_idx(&top_ranks, rank);
 
-        insert_both!(pop; idx, score, matched_item => buffer, top_results, top_scores);
+        insert_both!(pop; idx, rank, matched_item => buffer, top_results, top_ranks);
 
         watcher.total += 1;
 
         watcher.try_notify(&top_results, &buffer);
 
         if buffer.len() == buffer.capacity() {
-            buffer.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+            buffer.par_sort_unstable_by(|v1, v2| v2.rank.cmp(&v1.rank));
 
-            for (idx, MatchedItem { score, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
-                top_scores[idx] = *score;
+            for (idx, MatchedItem { rank, .. }) in buffer[..ITEMS_TO_SHOW].iter().enumerate() {
+                top_ranks[idx] = *rank;
                 top_results[idx] = idx;
             }
 

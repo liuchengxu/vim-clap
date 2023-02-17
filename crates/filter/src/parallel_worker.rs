@@ -6,6 +6,7 @@ use icon::Icon;
 use parking_lot::Mutex;
 use printer::{println_json_with_length, DisplayLines};
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
+use std::cmp::Ordering as CmpOrdering;
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -101,7 +102,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
     }
 
     fn sort(&mut self) {
-        self.items.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+        self.items.sort_unstable_by(|a, b| b.cmp(a));
     }
 
     pub fn on_new_match(
@@ -130,7 +131,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                 .expect("Max capacity is non-zero; qed");
 
             let new = matched_item;
-            if new.score > last.score {
+            if let CmpOrdering::Greater = new.cmp(last) {
                 *last = new;
                 self.sort();
             }

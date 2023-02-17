@@ -1,10 +1,7 @@
-#![allow(unused)]
-
-use super::handler::Preview;
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::rpc::RpcClient;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use printer::DisplayLines;
 use rayon::prelude::*;
@@ -281,7 +278,7 @@ impl Vim {
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {
-            Err(anyhow::anyhow!("window {winid} doesn't exist"))
+            Err(anyhow!("window {winid} doesn't exist"))
         } else {
             Ok(width as usize)
         }
@@ -290,7 +287,7 @@ impl Vim {
     pub async fn winheight(&self, winid: usize) -> Result<usize> {
         let height: i32 = self.call("winheight", json![winid]).await?;
         if height < 0 {
-            Err(anyhow::anyhow!("window {winid} doesn't exist"))
+            Err(anyhow!("window {winid} doesn't exist"))
         } else {
             Ok(height as usize)
         }

@@ -32,7 +32,7 @@ impl MatchedItems {
     /// The item with highest score first, the item with lowest score last.
     pub fn par_sort(self) -> Self {
         let mut items = self.0;
-        items.par_sort_unstable_by(|v1, v2| v2.score.partial_cmp(&v1.score).unwrap());
+        items.par_sort_unstable_by(|v1, v2| v2.cmp(v1));
         Self(items)
     }
 

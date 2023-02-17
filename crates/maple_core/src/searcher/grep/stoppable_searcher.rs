@@ -4,13 +4,13 @@ use filter::MatchedItem;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use icon::Icon;
 use ignore::{DirEntry, WalkState};
-use matcher::{Matcher, Score};
+use matcher::Matcher;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::ProgressUpdate;
+use types::{ProgressUpdate, Rank};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -47,7 +47,7 @@ pub struct FileResult {
     pub path: PathBuf,
     pub line_number: u64,
     pub line: String,
-    pub score: Score,
+    pub rank: Rank,
     pub indices_in_path: Vec<usize>,
     pub indices_in_line: Vec<usize>,
 }
@@ -138,7 +138,7 @@ impl StoppableSearchImpl {
                                     path: entry.path().to_path_buf(),
                                     line_number,
                                     line: line.to_string(),
-                                    score: matched.score,
+                                    rank: matched.rank,
                                     indices_in_path: matched.exact_indices,
                                     indices_in_line: matched.fuzzy_indices,
                                 });
@@ -241,7 +241,7 @@ impl BestFileResults {
     }
 
     fn sort(&mut self) {
-        self.results.sort_unstable_by(|a, b| b.score.cmp(&a.score));
+        self.results.sort_unstable_by(|a, b| b.rank.cmp(&a.rank));
     }
 }
 
@@ -278,35 +278,31 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
         let items = best_results
             .iter()
             .filter_map(|file_result| {
-                let maybe_column = match file_result.indices_in_path.first() {
-                    Some(first_indice) => Some(first_indice),
-                    None => file_result.indices_in_line.first(),
-                };
+                let FileResult {
+                    path,
+                    line_number,
+                    line,
+                    rank,
+                    indices_in_path,
+                    indices_in_line,
+                } = file_result;
+
+                let maybe_column = indices_in_path.first().or_else(|| indices_in_line.first());
 
                 if let Some(mut column) = maybe_column.copied() {
-                    let line_number = file_result.line_number;
                     column += 1;
-                    let mut fmt_line =
-                        if let Ok(relative_path) = file_result.path.strip_prefix(&search_root) {
-                            format!("{}:{line_number}:{column}:", relative_path.display())
-                        } else {
-                            format!("{}:{line_number}:{column}:", file_result.path.display())
-                        };
-                    let offset = fmt_line.len();
-                    fmt_line.push_str(&file_result.line);
-
-                    let mut indices = file_result.indices_in_path.clone();
-                    indices.extend(file_result.indices_in_line.iter().map(|x| *x + offset));
-
-                    let matched_item = MatchedItem {
-                        item: Arc::new(fmt_line),
-                        score: file_result.score,
-                        indices,
-                        display_text: None,
-                        output_text: None,
+                    let mut fmt_line = if let Ok(relative_path) = path.strip_prefix(&search_root) {
+                        format!("{}:{line_number}:{column}:", relative_path.display())
+                    } else {
+                        format!("{}:{line_number}:{column}:", path.display())
                     };
+                    let offset = fmt_line.len();
+                    fmt_line.push_str(line);
 
-                    Some(matched_item)
+                    let mut indices = indices_in_path.clone();
+                    indices.extend(indices_in_line.iter().map(|x| *x + offset));
+
+                    Some(MatchedItem::new(Arc::new(fmt_line), *rank, indices))
                 } else {
                     None
                 }
@@ -344,7 +340,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                         .expect("Max capacity is non-zero; qed");
 
                     let new = file_result;
-                    if new.score > last.score {
+                    if let std::cmp::Ordering::Greater = new.rank.cmp(&last.rank) {
                         *last = new;
                         best_results.sort();
                     }
