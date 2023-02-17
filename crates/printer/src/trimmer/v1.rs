@@ -85,6 +85,18 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> &str {
     }
 }
 
+#[derive(Debug)]
+pub struct TrimmedText {
+    pub text: String,
+    pub indices: Vec<usize>,
+}
+
+impl TrimmedText {
+    pub fn new(text: String, indices: Vec<usize>) -> Self {
+        Self { text, indices }
+    }
+}
+
 /// Returns the potential trimmed text.
 ///
 /// In order to make the highlights of matches visible in the container as much as possible,
@@ -110,7 +122,7 @@ pub fn trim_text(
     indices: &[usize],
     container_width: usize,
     tabstop: usize,
-) -> Option<(String, Vec<usize>)> {
+) -> Option<TrimmedText> {
     let match_start = indices[0];
     let match_end = *indices.last()?;
 
@@ -152,7 +164,7 @@ pub fn trim_text(
             .filter(|x| *x > 1) // Ignore the highlights in `..`
             .collect();
 
-        Some((text, indices))
+        Some(TrimmedText { text, indices })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
         let trimmed_text = trim_right(text, container_width - 2, tabstop);
@@ -164,7 +176,7 @@ pub fn trim_text(
             .copied()
             .collect::<Vec<_>>();
 
-        Some((text, indices))
+        Some(TrimmedText { text, indices })
     } else {
         // Convert the char-position to byte-position.
         let match_start_byte_idx = text.char_indices().nth(match_start)?.0;
@@ -180,7 +192,7 @@ pub fn trim_text(
             .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
-        Some((text, indices))
+        Some(TrimmedText { text, indices })
     }
 }
 
@@ -303,7 +315,7 @@ mod tests {
             let MatchedItem { indices, .. } = ranked[0].clone();
 
             let (display_line_got, indices_post) = trim_text(text, &indices, container_width, 4)
-                .unwrap_or((text.into(), indices.clone()));
+                .unwrap_or_else(|| TrimmedText::new(text.into(), indices.clone()));
 
             let truncated_text_got = display_line_got.clone();
 

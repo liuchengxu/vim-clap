@@ -1,4 +1,4 @@
-use crate::trimmer::v1::trim_text as trim_text_v1;
+use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
 use std::collections::HashMap;
 use std::slice::IterMut;
 use types::MatchedItem;
@@ -29,7 +29,7 @@ fn truncate_line_v1(
     indices: &mut [usize],
     winwidth: usize,
     skipped: Option<usize>,
-) -> Option<(String, Vec<usize>)> {
+) -> Option<TrimmedText> {
     if line.is_empty() || indices.is_empty() {
         return None;
     }
@@ -39,12 +39,14 @@ fn truncate_line_v1(
         let text = line.chars().skip(skipped).collect::<String>();
         indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
-        trim_text_v1(&text, indices, container_width, 4).map(|(truncated_text, mut indices)| {
+        trim_text_v1(&text, indices, container_width, 4).map(|trimmed_text| {
+            let TrimmedText { text, mut indices } = trimmed_text;
+            let truncated_text = text;
             let mut text = String::with_capacity(skipped + truncated_text.len());
             line.chars().take(skipped).for_each(|c| text.push(c));
             text.push_str(&truncated_text);
             indices.iter_mut().for_each(|x| *x += 2);
-            (text, indices)
+            TrimmedText::new(text, indices)
         })
     } else {
         trim_text_v1(line, indices, winwidth, 4)
@@ -74,13 +76,13 @@ pub(super) fn truncate_item_output_text(
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             matched_item.display_text = Some(truncated_output_text);
             matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some((truncated_output_text, truncated_indices)) =
+        } else if let Some(TrimmedText { text, indices }) =
             truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, output_text);
 
-            matched_item.display_text = Some(truncated_output_text);
-            matched_item.indices = truncated_indices;
+            matched_item.display_text = Some(text);
+            matched_item.indices = indices;
         } else {
             // Use the origin `output_text` as the final `display_text`.
             matched_item.display_text.replace(output_text);
@@ -126,11 +128,9 @@ pub fn truncate_grep_lines(
         .map(|(line, mut indices)| {
             lnum += 1;
 
-            if let Some((truncated_line, truncated_indices)) =
-                truncate_line_v1(&line, &mut indices, winwidth, skipped)
-            {
+            if let Some(trimmed_text) = truncate_line_v1(&line, &mut indices, winwidth, skipped) {
                 truncated_map.insert(lnum, line);
-                (truncated_line, truncated_indices)
+                (trimmed_text.text, trimmed_text.indices)
             } else {
                 (line, indices)
             }
