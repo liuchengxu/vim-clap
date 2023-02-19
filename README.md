@@ -236,7 +236,7 @@ See `:help clap-options` for more information.
 
 #### Vim only
 
-- [x] Use <kbd>F1</kbd> and <kbd>F2</kbd> to scroll the preview.
+- [x] Use <kbd>F1</kbd> and <kbd>F12</kbd> to scroll the preview.
 
 #### NeoVim only
 

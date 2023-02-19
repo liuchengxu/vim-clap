@@ -416,7 +416,10 @@ impl Context {
         self.vim.exec("clap#state#render_preview", preview)
     }
 
-    pub async fn update_preview(&mut self) -> Result<()> {
+    pub async fn update_preview(
+        &mut self,
+        maybe_preview_target: Option<PreviewTarget>,
+    ) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
         let curline = self.vim.display_getcurline().await?;
@@ -429,9 +432,13 @@ impl Context {
 
         let preview_height = self.preview_height().await?;
 
-        let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, self)?
-            .get_preview()
-            .await?;
+        let cached_preview_impl = if let Some(preview_target) = maybe_preview_target {
+            CachedPreviewImpl::with_preview_target(preview_target, preview_height, self)
+        } else {
+            CachedPreviewImpl::new(curline, preview_height, self)?
+        };
+
+        let (preview_target, preview) = cached_preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
         let cur_lnum = self.vim.display_getcurlnum().await?;
@@ -448,42 +455,8 @@ impl Context {
 
     async fn scroll_preview(&mut self, direction: Direction) -> Result<()> {
         if let Ok(new_preview_target) = self.preview_manager.scroll_preview(direction) {
-            self.update_preview_with_target(new_preview_target).await?;
+            self.update_preview(Some(new_preview_target)).await?;
         }
-        Ok(())
-    }
-
-    pub async fn update_preview_with_target(
-        &mut self,
-        preview_target: PreviewTarget,
-    ) -> Result<()> {
-        let lnum = self.vim.display_getcurlnum().await?;
-
-        let curline = self.vim.display_getcurline().await?;
-
-        if curline.is_empty() {
-            tracing::debug!("Skipping preview as curline is empty");
-            self.vim.bare_exec("clap#state#clear_preview")?;
-            return Ok(());
-        }
-
-        let preview_height = self.preview_height().await?;
-
-        let (preview_target, preview) =
-            CachedPreviewImpl::with_preview_target(preview_target, preview_height, self)
-                .get_preview()
-                .await?;
-
-        // Ensure the preview result is not out-dated.
-        let cur_lnum = self.vim.display_getcurlnum().await?;
-        if cur_lnum == lnum {
-            self.render_preview(preview)?;
-        }
-
-        self.preview_manager
-            .current_preview_target
-            .replace(preview_target);
-
         Ok(())
     }
 
@@ -643,7 +616,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
             return Ok(());
         }
         ctx.preview_manager.reset_preview();
-        ctx.update_preview().await
+        ctx.update_preview(None).await
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()>;
