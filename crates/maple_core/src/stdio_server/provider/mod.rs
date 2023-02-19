@@ -17,7 +17,7 @@ use crate::stdio_server::handler::{
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
 use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use types::{ClapItem, MatchedItem};
@@ -100,7 +100,7 @@ struct ScrollFile {
 }
 
 impl ScrollFile {
-    fn new(line_start: usize, path: &std::path::Path) -> Result<Self> {
+    fn new(line_start: usize, path: &Path) -> Result<Self> {
         Ok(Self {
             line_start,
             total_lines: utils::count_lines(std::fs::File::open(path)?)?,
@@ -139,7 +139,7 @@ impl PreviewManager {
         preview_cache.insert(preview_target, preview);
     }
 
-    fn reset_preview(&mut self) {
+    fn reset_scroll(&mut self) {
         self.scroll_file.take();
         self.scroll_offset = 0;
         self.current_preview_target.take();
@@ -174,13 +174,13 @@ impl PreviewManager {
         let (scroll_file, path) = match self
             .current_preview_target
             .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Current preview target does not exist"))?
+            .ok_or_else(|| anyhow!("Current preview target does not exist"))?
         {
             PreviewTarget::LineInFile { path, line_number } => {
                 self.prepare_scroll_file_info(*line_number, path.clone())?
             }
             PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
-            _ => return Err(anyhow::anyhow!("Preview scroll unsupported")),
+            _ => return Err(anyhow!("Preview scroll unsupported")),
         };
 
         let ScrollFile {
@@ -194,7 +194,7 @@ impl PreviewManager {
             // Reaching the start of file.
             0
         } else if new_line_number as usize > total_lines {
-            return Err(anyhow::anyhow!("Reaching the end of file"));
+            return Err(anyhow!("Reaching the end of file"));
         } else {
             self.scroll_offset = new_scroll_offset;
             new_line_number
@@ -416,10 +416,7 @@ impl Context {
         self.vim.exec("clap#state#render_preview", preview)
     }
 
-    pub async fn update_preview(
-        &mut self,
-        maybe_preview_target: Option<PreviewTarget>,
-    ) -> Result<()> {
+    async fn update_preview(&mut self, maybe_preview_target: Option<PreviewTarget>) -> Result<()> {
         let lnum = self.vim.display_getcurlnum().await?;
 
         let curline = self.vim.display_getcurline().await?;
@@ -615,7 +612,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
-        ctx.preview_manager.reset_preview();
+        ctx.preview_manager.reset_scroll();
         ctx.update_preview(None).await
     }
 

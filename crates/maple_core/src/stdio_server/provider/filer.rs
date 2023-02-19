@@ -254,6 +254,7 @@ impl FilerProvider {
 
         match preview_impl.get_preview().await {
             Ok((preview_target, preview)) => {
+                ctx.preview_manager.reset_scroll();
                 ctx.render_preview(preview)?;
 
                 let maybe_syntax = preview_target.path().and_then(|path| {

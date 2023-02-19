@@ -160,10 +160,12 @@ impl ClapProvider for RecentFilesProvider {
 
         if let Some(curline) = maybe_curline {
             let preview_height = ctx.preview_height().await?;
-            let (_, preview) = CachedPreviewImpl::new(curline, preview_height, ctx)?
+            let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, ctx)?
                 .get_preview()
                 .await?;
+            ctx.preview_manager.reset_scroll();
             ctx.render_preview(preview)?;
+            ctx.preview_manager.set_preview_target(preview_target);
         }
 
         Ok(())

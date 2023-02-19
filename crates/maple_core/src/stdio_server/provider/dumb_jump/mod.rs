@@ -331,15 +331,18 @@ impl ClapProvider for DumbJumpProvider {
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_height = ctx.preview_height().await?;
-        let (_, preview) = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?
-            .get_preview()
-            .await?;
+        let (preview_target, preview) =
+            CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?
+                .get_preview()
+                .await?;
 
         let current_input = ctx.vim.input_get().await?;
         let current_lnum = ctx.vim.display_getcurlnum().await?;
         // Only send back the result if the request is not out-dated.
         if input == current_input && lnum == current_lnum {
+            ctx.preview_manager.reset_scroll();
             ctx.render_preview(preview)?;
+            ctx.preview_manager.set_preview_target(preview_target);
         }
 
         Ok(())
