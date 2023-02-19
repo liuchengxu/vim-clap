@@ -145,7 +145,7 @@ impl PreviewManager {
         self.current_preview_target.take();
     }
 
-    fn prepare_new_preview_target(
+    fn prepare_scroll_file_info(
         &mut self,
         line_start: usize,
         path: PathBuf,
@@ -177,9 +177,9 @@ impl PreviewManager {
             .ok_or_else(|| anyhow::anyhow!("Current preview target does not exist"))?
         {
             PreviewTarget::LineInFile { path, line_number } => {
-                self.prepare_new_preview_target(*line_number, path.clone())?
+                self.prepare_scroll_file_info(*line_number, path.clone())?
             }
-            PreviewTarget::File(path) => self.prepare_new_preview_target(0, path.clone())?,
+            PreviewTarget::File(path) => self.prepare_scroll_file_info(0, path.clone())?,
             _ => return Err(anyhow::anyhow!("Preview scroll unsupported")),
         };
 
