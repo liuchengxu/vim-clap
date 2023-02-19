@@ -88,17 +88,42 @@ pub struct ProviderEnvironment {
 }
 
 #[derive(Debug, Clone)]
+pub enum Direction {
+    Down,
+    Up,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ScrollFile {
+    line_start: usize,
+    total_lines: usize,
+}
+
+impl ScrollFile {
+    fn new(line_start: usize, path: &std::path::Path) -> Result<Self> {
+        Ok(Self {
+            line_start,
+            total_lines: utils::count_lines(std::fs::File::open(path)?)?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct PreviewManager {
-    scroll_down: usize,
-    scroll_up: usize,
+    scroll_file: Option<ScrollFile>,
+    scroll_offset: i32,
+    current_preview_target: Option<PreviewTarget>,
     preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
 }
 
 impl PreviewManager {
+    const SCROLL_SIZE: i32 = 10;
+
     pub fn new() -> Self {
         Self {
-            scroll_down: 0,
-            scroll_up: 0,
+            scroll_file: None,
+            scroll_offset: 0,
+            current_preview_target: None,
             preview_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -112,6 +137,71 @@ impl PreviewManager {
     pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
         let mut preview_cache = self.preview_cache.write();
         preview_cache.insert(preview_target, preview);
+    }
+
+    fn reset_preview(&mut self) {
+        self.scroll_file.take();
+        self.scroll_offset = 0;
+        self.current_preview_target.take();
+    }
+
+    fn prepare_new_preview_target(
+        &mut self,
+        line_start: usize,
+        path: PathBuf,
+    ) -> Result<(ScrollFile, PathBuf)> {
+        let scroll_file = match self.scroll_file {
+            Some(scroll_file) => scroll_file,
+            None => {
+                let scroll_file = ScrollFile::new(line_start, &path)?;
+                self.scroll_file.replace(scroll_file);
+                scroll_file
+            }
+        };
+        Ok((scroll_file, path))
+    }
+
+    fn scroll_preview(&mut self, direction: Direction) -> Result<PreviewTarget> {
+        let new_scroll_offset = match direction {
+            Direction::Up => self.scroll_offset - 1,
+            Direction::Down => self.scroll_offset + 1,
+        };
+
+        let (scroll_file, path) = match self
+            .current_preview_target
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Current preview target does not exist"))?
+        {
+            PreviewTarget::LineInFile { path, line_number } => {
+                self.prepare_new_preview_target(*line_number, path.clone())?
+            }
+            PreviewTarget::File(path) => self.prepare_new_preview_target(0, path.clone())?,
+            _ => return Err(anyhow::anyhow!("Preview scroll unsupported")),
+        };
+
+        let ScrollFile {
+            line_start,
+            total_lines,
+        } = scroll_file;
+
+        let new_line_number = line_start as i32 + new_scroll_offset * Self::SCROLL_SIZE;
+
+        let new_line_number = if new_line_number < 0 {
+            // Reaching the start of file.
+            0
+        } else if new_line_number as usize > total_lines {
+            return Err(anyhow::anyhow!("Reaching the end of file"));
+        } else {
+            self.scroll_offset = new_scroll_offset;
+            new_line_number
+        };
+
+        let new_target = PreviewTarget::LineInFile {
+            path,
+            line_number: new_line_number as usize,
+        };
+
+        Ok(new_target)
     }
 }
 
@@ -335,7 +425,7 @@ impl Context {
 
         let preview_height = self.preview_height().await?;
 
-        let preview = CachedPreviewImpl::new(curline, preview_height, self)?
+        let (preview_target, preview) = CachedPreviewImpl::new(curline, preview_height, self)?
             .get_preview()
             .await?;
 
@@ -344,6 +434,51 @@ impl Context {
         if cur_lnum == lnum {
             self.render_preview(preview)?;
         }
+
+        self.preview_manager
+            .current_preview_target
+            .replace(preview_target);
+
+        Ok(())
+    }
+
+    async fn scroll_preview(&mut self, direction: Direction) -> Result<()> {
+        if let Ok(new_preview_target) = self.preview_manager.scroll_preview(direction) {
+            self.update_preview_with_target(new_preview_target).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn update_preview_with_target(
+        &mut self,
+        preview_target: PreviewTarget,
+    ) -> Result<()> {
+        let lnum = self.vim.display_getcurlnum().await?;
+
+        let curline = self.vim.display_getcurline().await?;
+
+        if curline.is_empty() {
+            tracing::debug!("Skipping preview as curline is empty");
+            self.vim.bare_exec("clap#state#clear_preview")?;
+            return Ok(());
+        }
+
+        let preview_height = self.preview_height().await?;
+
+        let (preview_target, preview) =
+            CachedPreviewImpl::with_preview_target(preview_target, preview_height, self)
+                .get_preview()
+                .await?;
+
+        // Ensure the preview result is not out-dated.
+        let cur_lnum = self.vim.display_getcurlnum().await?;
+        if cur_lnum == lnum {
+            self.render_preview(preview)?;
+        }
+
+        self.preview_manager
+            .current_preview_target
+            .replace(preview_target);
 
         Ok(())
     }
@@ -503,6 +638,7 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
         if !ctx.env.preview_enabled {
             return Ok(());
         }
+        ctx.preview_manager.reset_preview();
         ctx.update_preview().await
     }
 
@@ -517,12 +653,8 @@ pub trait ClapProvider: Debug + Send + Sync + 'static {
 
     async fn on_key_event(&mut self, ctx: &mut Context, key_event: KeyEvent) -> Result<()> {
         match key_event {
-            KeyEvent::ShiftUp => {
-                // Preview scroll up
-            }
-            KeyEvent::ShiftDown => {
-                // Preview scroll down
-            }
+            KeyEvent::ShiftUp => ctx.scroll_preview(Direction::Up).await?,
+            KeyEvent::ShiftDown => ctx.scroll_preview(Direction::Down).await?,
             KeyEvent::CtrlN => ctx.next_input().await?,
             KeyEvent::CtrlP => ctx.previous_input().await?,
             _ => {}

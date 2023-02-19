@@ -331,7 +331,7 @@ impl ClapProvider for DumbJumpProvider {
             .ok_or_else(|| anyhow::anyhow!("Can not find curline on Rust end for lnum: {lnum}"))?;
 
         let preview_height = ctx.preview_height().await?;
-        let preview = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?
+        let (_, preview) = CachedPreviewImpl::new(curline.to_string(), preview_height, ctx)?
             .get_preview()
             .await?;
 

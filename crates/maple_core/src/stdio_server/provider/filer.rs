@@ -253,7 +253,7 @@ impl FilerProvider {
         };
 
         match preview_impl.get_preview().await {
-            Ok(preview) => {
+            Ok((_, preview)) => {
                 ctx.render_preview(preview)?;
 
                 let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {

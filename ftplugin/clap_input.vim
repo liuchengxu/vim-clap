@@ -126,8 +126,8 @@ inoremap <silent> <buffer> <C-n> <C-R>=<SID>Notify('ctrl-n')<CR>
 inoremap <silent> <buffer> <C-p> <C-R>=<SID>Notify('ctrl-p')<CR>
 
 " TODO: preview scroll
-" nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify('shift-up')<CR>
-" nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify('shift-down')<CR>
+nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify('shift-up')<CR>
+nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify('shift-down')<CR>
 
-" inoremap <silent> <buffer> <S-Up>   <C-R>=<SID>Notify('shift-up')<CR>
-" inoremap <silent> <buffer> <S-Down> <C-R>=<SID>Notify('shift-down')<CR>
+inoremap <silent> <buffer> <S-Up>   <C-R>=<SID>Notify('shift-up')<CR>
+inoremap <silent> <buffer> <S-Down> <C-R>=<SID>Notify('shift-down')<CR>

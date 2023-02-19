@@ -178,7 +178,7 @@ impl ClapProvider for GenericProvider {
                 CachedPreviewImpl::new(curline, preview_height, ctx)?
             };
 
-        let preview = preview_impl.get_preview().await?;
+        let (_, preview) = preview_impl.get_preview().await?;
 
         // Ensure the preview result is not out-dated.
         let curlnum = ctx.vim.display_getcurlnum().await?;
