@@ -187,7 +187,11 @@ impl<'a> CachedPreviewImpl<'a> {
     }
 
     pub async fn get_preview(&self) -> Result<Preview> {
-        if let Some(preview) = self.ctx.cached_preview(&self.preview_target) {
+        if let Some(preview) = self
+            .ctx
+            .preview_manager
+            .cached_preview(&self.preview_target)
+        {
             return Ok(preview);
         }
 
@@ -206,6 +210,7 @@ impl<'a> CachedPreviewImpl<'a> {
         };
 
         self.ctx
+            .preview_manager
             .insert_preview(self.preview_target.clone(), preview.clone());
 
         Ok(preview)

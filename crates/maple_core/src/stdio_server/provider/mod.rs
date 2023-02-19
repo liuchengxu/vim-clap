@@ -88,14 +88,42 @@ pub struct ProviderEnvironment {
 }
 
 #[derive(Debug, Clone)]
+pub struct PreviewManager {
+    scroll_down: usize,
+    scroll_up: usize,
+    preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
+}
+
+impl PreviewManager {
+    pub fn new() -> Self {
+        Self {
+            scroll_down: 0,
+            scroll_up: 0,
+            preview_cache: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
+        let preview_cache = self.preview_cache.read();
+        // TODO: not clone?
+        preview_cache.get(preview_target).cloned()
+    }
+
+    pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
+        let mut preview_cache = self.preview_cache.write();
+        preview_cache.insert(preview_target, preview);
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Context {
     pub cwd: AbsPathBuf,
     pub vim: Vim,
     pub env: Arc<ProviderEnvironment>,
     pub maybe_preview_size: Option<usize>,
     pub terminated: Arc<AtomicBool>,
-    pub preview_cache: Arc<RwLock<HashMap<PreviewTarget, Preview>>>,
     pub input_recorder: InputRecorder,
+    pub preview_manager: PreviewManager,
     pub provider_source: Arc<RwLock<ProviderSource>>,
 }
 
@@ -172,8 +200,8 @@ impl Context {
             env: Arc::new(env),
             maybe_preview_size: None,
             terminated: Arc::new(AtomicBool::new(false)),
-            preview_cache: Arc::new(RwLock::new(HashMap::new())),
             input_recorder,
+            preview_manager: PreviewManager::new(),
             provider_source: Arc::new(RwLock::new(ProviderSource::Unactionable)),
         })
     }
@@ -237,17 +265,6 @@ impl Context {
             self.input_recorder.clone().into_inputs(),
         );
         tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
-    }
-
-    pub fn cached_preview(&self, preview_target: &PreviewTarget) -> Option<Preview> {
-        let preview_cache = self.preview_cache.read();
-        // TODO: not clone?
-        preview_cache.get(preview_target).cloned()
-    }
-
-    pub fn insert_preview(&self, preview_target: PreviewTarget, preview: Preview) {
-        let mut preview_cache = self.preview_cache.write();
-        preview_cache.insert(preview_target, preview);
     }
 
     pub async fn record_input(&mut self) -> Result<()> {
