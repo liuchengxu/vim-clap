@@ -1,4 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
+use crate::TrimmedInfo;
 use std::collections::HashMap;
 use std::slice::IterMut;
 use types::MatchedItem;
@@ -40,7 +41,9 @@ fn truncate_line_v1(
         indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
         trim_text_v1(&text, indices, container_width, 4).map(|trimmed_text| {
-            let TrimmedText { text, mut indices } = trimmed_text;
+            let TrimmedText {
+                text, mut indices, ..
+            } = trimmed_text;
             let truncated_text = text;
             let mut text = String::with_capacity(skipped + truncated_text.len());
             line.chars().take(skipped).for_each(|c| text.push(c));
@@ -61,7 +64,7 @@ const MAX_LINE_LEN: usize = 500;
 ///
 /// - `winwidth`: width of the display window.
 /// - `skipped`: number of skipped chars, used when need to skip the leading icons.
-pub(super) fn truncate_item_output_text(
+pub fn truncate_item_output_text(
     items: IterMut<MatchedItem>,
     winwidth: usize,
     skipped: Option<usize>,
@@ -76,7 +79,7 @@ pub(super) fn truncate_item_output_text(
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             matched_item.display_text = Some(truncated_output_text);
             matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some(TrimmedText { text, indices }) =
+        } else if let Some(TrimmedText { text, indices, .. }) =
             truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, output_text);
@@ -86,6 +89,94 @@ pub(super) fn truncate_item_output_text(
         } else {
             // Use the origin `output_text` as the final `display_text`.
             matched_item.display_text.replace(output_text);
+        }
+    });
+    truncated_map
+}
+
+/// Truncate the output text of item if it's too long.
+///
+/// # Arguments
+///
+/// - `winwidth`: width of the display window.
+/// - `skipped`: number of skipped chars, used when need to skip the leading icons.
+pub fn truncate_item_output_text_grep(
+    items: IterMut<crate::MatchedFileResult>,
+    winwidth: usize,
+    skipped: Option<usize>,
+) -> LinesTruncatedMap {
+    let mut truncated_map = HashMap::new();
+    let winwidth = winwidth - WINWIDTH_OFFSET;
+    items.enumerate().for_each(|(lnum, mut item)| {
+        let output_text = item.matched_item.output_text().to_string();
+
+        // Truncate the text simply if it's too long.
+        if output_text.len() > MAX_LINE_LEN {
+            let truncated_output_text: String = output_text.chars().take(1000).collect();
+            item.matched_item.display_text = Some(truncated_output_text);
+            item.matched_item.indices.retain(|&x| x < 1000);
+        } else if let Some(TrimmedText {
+            text,
+            indices,
+            trimmed_info,
+        }) = truncate_line_v1(
+            &output_text,
+            &mut item.matched_item.indices,
+            winwidth,
+            skipped,
+        ) {
+            truncated_map.insert(lnum + 1, output_text);
+
+            // Adjust the trimmed text further.
+            let (text, indices) = match trimmed_info {
+                TrimmedInfo::Left { start } | TrimmedInfo::Both { start } => {
+                    let file_name = item.path.file_name().unwrap().to_str().unwrap();
+                    let p = item
+                        .path
+                        .to_str()
+                        .expect("Failed to convert PathBuf to str");
+                    let file_name_start = p.len() - file_name.len();
+
+                    let truncated_text = text;
+
+                    // src/lib.rs:100:90:
+                    // ..ib.rs:100:90:
+                    // file name is truncated.
+                    if start > file_name_start {
+                        let text = if start < item.column_end {
+                            format!(
+                                "../{file_name}:{}:{}{}",
+                                item.line_number,
+                                item.column,
+                                &truncated_text[item.column_end - start..]
+                            )
+                        } else {
+                            format!(
+                                "../{file_name}:{}:{}{truncated_text}",
+                                item.line_number, item.column
+                            )
+                        };
+                        let offset = 3
+                            + file_name.len()
+                            + utils::display_width(item.line_number)
+                            + utils::display_width(item.column)
+                            + 2;
+                        let mut indices = indices;
+                        indices.iter_mut().for_each(|x| *x += offset);
+
+                        (text, indices)
+                    } else {
+                        (truncated_text, indices)
+                    }
+                }
+                _ => (text, indices),
+            };
+
+            item.matched_item.display_text = Some(text);
+            item.matched_item.indices = indices;
+        } else {
+            // Use the origin `output_text` as the final `display_text`.
+            item.matched_item.display_text.replace(output_text);
         }
     });
     truncated_map

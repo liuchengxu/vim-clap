@@ -302,13 +302,28 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                     let mut indices = indices_in_path.clone();
                     indices.extend(indices_in_line.iter().map(|x| *x + offset));
 
-                    Some(MatchedItem::new(Arc::new(fmt_line), *rank, indices))
+                    let matched_item = MatchedItem::new(Arc::new(fmt_line), *rank, indices);
+
+                    let line_number = *line_number as usize;
+                    let column_start = offset - utils::display_width(column);
+                    let line_number_end = column_start - 1;
+                    let line_number_start = line_number_end - utils::display_width(line_number);
+                    Some(printer::MatchedFileResult {
+                        matched_item,
+                        path: path.clone(),
+                        line_number,
+                        line_number_start,
+                        line_number_end,
+                        column,
+                        column_start,
+                        column_end: offset,
+                    })
                 } else {
                     None
                 }
             })
             .collect();
-        printer::to_display_lines(items, winwidth, icon)
+        printer::to_display_lines_grep(items, winwidth, icon)
     };
 
     let now = std::time::Instant::now();

@@ -86,14 +86,31 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> &str {
 }
 
 #[derive(Debug)]
+pub enum TrimmedInfo {
+    // ..ring
+    Left { start: usize },
+    // Stri..
+    Right,
+    // ..ri..
+    Both { start: usize },
+    // Not trimmed.
+    Unchanged,
+}
+
+#[derive(Debug)]
 pub struct TrimmedText {
     pub text: String,
     pub indices: Vec<usize>,
+    pub trimmed_info: TrimmedInfo,
 }
 
 impl TrimmedText {
     pub fn new(text: String, indices: Vec<usize>) -> Self {
-        Self { text, indices }
+        Self {
+            text,
+            indices,
+            trimmed_info: TrimmedInfo::Unchanged,
+        }
     }
 }
 
@@ -164,7 +181,13 @@ pub fn trim_text(
             .filter(|x| *x > 1) // Ignore the highlights in `..`
             .collect();
 
-        Some(TrimmedText { text, indices })
+        let trimmed_info = TrimmedInfo::Left { start: trimmed_len };
+
+        Some(TrimmedText {
+            text,
+            indices,
+            trimmed_info,
+        })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
         let trimmed_text = trim_right(text, container_width - 2, tabstop);
@@ -176,7 +199,11 @@ pub fn trim_text(
             .copied()
             .collect::<Vec<_>>();
 
-        Some(TrimmedText { text, indices })
+        Some(TrimmedText {
+            text,
+            indices,
+            trimmed_info: TrimmedInfo::Right,
+        })
     } else {
         // Convert the char-position to byte-position.
         let match_start_byte_idx = text.char_indices().nth(match_start)?.0;
@@ -192,7 +219,13 @@ pub fn trim_text(
             .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
-        Some(TrimmedText { text, indices })
+        Some(TrimmedText {
+            text,
+            indices,
+            trimmed_info: TrimmedInfo::Both {
+                start: match_start_byte_idx,
+            },
+        })
     }
 }
 

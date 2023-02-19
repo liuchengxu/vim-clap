@@ -4,12 +4,16 @@
 mod trimmer;
 mod truncation;
 
-use self::truncation::{truncate_item_output_text, LinesTruncatedMap};
+use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
+use truncation::truncate_item_output_text_grep;
 use types::MatchedItem;
 
-pub use self::truncation::{truncate_grep_lines, truncate_item_output_text_v0};
+pub use self::trimmer::v1::{trim_text, TrimmedInfo, TrimmedText};
+pub use self::truncation::{
+    truncate_grep_lines, truncate_item_output_text, truncate_item_output_text_v0,
+};
 
 /// Combine json and println macro.
 #[macro_export]
@@ -135,6 +139,69 @@ pub fn to_display_lines(
                 let (line, indices) = (
                     matched_item.display_text().to_string(),
                     matched_item.indices,
+                );
+                let indices = char_indices_to_byte_indices(&line, &indices);
+                (line, indices)
+            })
+            .unzip();
+
+        DisplayLines::new(lines, indices, truncated_map, false)
+    }
+}
+
+use std::path::PathBuf;
+
+pub struct MatchedFileResult {
+    pub matched_item: MatchedItem,
+    pub path: PathBuf,
+    pub line_number: usize,
+    pub line_number_start: usize,
+    pub line_number_end: usize,
+    pub column: usize,
+    pub column_start: usize,
+    pub column_end: usize,
+}
+
+/// Returns the info of the truncated top items ranked by the filtering score.
+pub fn to_display_lines_grep(
+    matched_items: Vec<MatchedFileResult>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let mut matched_items = matched_items;
+    let mut truncated_map =
+        truncate_item_output_text_grep(matched_items.iter_mut(), winwidth, None);
+    if let Some(icon_kind) = icon.icon_kind() {
+        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
+            .into_iter()
+            .enumerate()
+            .map(|(idx, item)| {
+                let display_text = item.matched_item.display_text();
+                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
+                    let icon = item
+                        .matched_item
+                        .item
+                        .icon(icon)
+                        .expect("Icon must be provided if specified");
+                    *output_text = format!("{icon} {output_text}");
+                    format!("{icon} {display_text}")
+                } else {
+                    icon_kind.add_icon_to_text(&display_text)
+                };
+                let (line, indices) = (iconized, item.matched_item.shifted_indices(ICON_CHAR_LEN));
+                let indices = char_indices_to_byte_indices(&line, &indices);
+                (line, indices)
+            })
+            .unzip();
+
+        DisplayLines::new(lines, indices, truncated_map, true)
+    } else {
+        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
+            .into_iter()
+            .map(|item| {
+                let (line, indices) = (
+                    item.matched_item.display_text().to_string(),
+                    item.matched_item.indices,
                 );
                 let indices = char_indices_to_byte_indices(&line, &indices);
                 (line, indices)
