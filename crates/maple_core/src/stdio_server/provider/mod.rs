@@ -161,6 +161,10 @@ impl PreviewManager {
         Ok((scroll_file, path))
     }
 
+    fn set_preview_target(&mut self, preview_target: PreviewTarget) {
+        self.current_preview_target.replace(preview_target);
+    }
+
     fn scroll_preview(&mut self, direction: Direction) -> Result<PreviewTarget> {
         let new_scroll_offset = match direction {
             Direction::Up => self.scroll_offset - 1,
