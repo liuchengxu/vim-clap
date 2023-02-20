@@ -32,7 +32,6 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
   * [Global variables](#global-variables)
   * [Keybindings](#keybindings)
     * [Insert mode](#insert-mode)
-    * [Vim only](#vim-only)
     * [NeoVim only](#neovim-only)
       * [Normal mode](#normal-mode)
       * [Cmdline mode](#cmdline-mode)
@@ -233,10 +232,7 @@ See `:help clap-options` for more information.
 - [x] Use <kbd>Ctrl-u</kbd> to clear inputs.
 - [x] Use <kbd>Ctrl-l</kbd> to launch the whole provider list panel for invoking another provider at any time.
 - [x] Use <kbd>Shift-Tab</kbd> to invoke the action dialog(vim only).
-
-#### Vim only
-
-- [x] Use <kbd>F1</kbd> and <kbd>F12</kbd> to scroll the preview.
+- [x] Use <kbd>Shift-up</kbd> and <kbd>Shift-down</kbd> to scroll the preview.
 
 #### NeoVim only
 
