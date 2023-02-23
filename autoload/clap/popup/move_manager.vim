@@ -86,6 +86,14 @@ function! s:move_manager.ctrl_p(_winwid) abort
   call clap#client#notify('ctrl-p')
 endfunction
 
+function! s:move_manager.shift_up(_winwid) abort
+  call clap#client#notify('shift-up')
+endfunction
+
+function! s:move_manager.shift_down(_winwid) abort
+  call clap#client#notify('shift-down')
+endfunction
+
 function! s:move_manager.ctrl_u(_winid) abort
   if empty(s:input)
     return 1
@@ -186,6 +194,8 @@ let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call cla
 let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
 let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
 let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
+let s:move_manager["\<S-Up>"] = s:move_manager.shift_up
+let s:move_manager["\<S-Down>"] = s:move_manager.shift_down
 let s:move_manager["\<PageUp>"] = s:move_manager.scroll_up
 let s:move_manager["\<PageDown>"] = s:move_manager.scroll_down
 let s:move_manager["\<LeftMouse>"] = s:move_manager["\<Tab>"]

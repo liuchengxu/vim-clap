@@ -186,9 +186,26 @@ impl<'a> CachedPreviewImpl<'a> {
         })
     }
 
-    pub async fn get_preview(&self) -> Result<Preview> {
-        if let Some(preview) = self.ctx.cached_preview(&self.preview_target) {
-            return Ok(preview);
+    pub fn with_preview_target(
+        preview_target: PreviewTarget,
+        preview_height: usize,
+        ctx: &'a Context,
+    ) -> Self {
+        Self {
+            ctx,
+            preview_height,
+            preview_target,
+            cache_line: None,
+        }
+    }
+
+    pub async fn get_preview(&self) -> Result<(PreviewTarget, Preview)> {
+        if let Some(preview) = self
+            .ctx
+            .preview_manager
+            .cached_preview(&self.preview_target)
+        {
+            return Ok((self.preview_target.clone(), preview));
         }
 
         let preview = match &self.preview_target {
@@ -206,9 +223,10 @@ impl<'a> CachedPreviewImpl<'a> {
         };
 
         self.ctx
+            .preview_manager
             .insert_preview(self.preview_target.clone(), preview.clone());
 
-        Ok(preview)
+        Ok((self.preview_target.clone(), preview))
     }
 
     fn preview_commits(&self, rev: &str) -> std::io::Result<Preview> {

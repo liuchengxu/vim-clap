@@ -133,6 +133,12 @@ if has('nvim')
   endif
 
 else
+  function! clap#navigation#scroll(direction) abort
+    call win_execute(g:clap.display.winid, 'noautocmd call s:scroll(a:direction)')
+    call s:trigger_on_move()
+    return ''
+  endfunction
+
   function! clap#navigation#linewise_scroll(direction) abort
     call s:linewise_scroll(a:direction)
     " redraw is neccessary!

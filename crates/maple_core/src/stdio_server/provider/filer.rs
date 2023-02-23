@@ -1,6 +1,6 @@
 use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
-use crate::stdio_server::provider::{ClapProvider, Context};
+use crate::stdio_server::provider::{ClapProvider, Context, Direction};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
 use icon::{icon_or_default, FOLDER_ICON};
@@ -253,10 +253,11 @@ impl FilerProvider {
         };
 
         match preview_impl.get_preview().await {
-            Ok(preview) => {
+            Ok((preview_target, preview)) => {
+                ctx.preview_manager.reset_scroll();
                 ctx.render_preview(preview)?;
 
-                let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
+                let maybe_syntax = preview_target.path().and_then(|path| {
                     if path.is_dir() {
                         Some("clap_filer")
                     } else if path.is_file() {
@@ -269,12 +270,13 @@ impl FilerProvider {
                 if let Some(syntax) = maybe_syntax {
                     ctx.vim.set_preview_syntax(syntax)?;
                 }
+
+                ctx.preview_manager.set_preview_target(preview_target);
+
+                Ok(())
             }
-            Err(err) => {
-                ctx.render_preview(Preview::new(vec![err.to_string()]))?;
-            }
+            Err(err) => ctx.render_preview(Preview::new(vec![err.to_string()])),
         }
-        Ok(())
     }
 
     fn goto_dir(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
@@ -383,14 +385,8 @@ impl ClapProvider for FilerProvider {
             KeyEvent::Tab => self.on_tab(ctx).await,
             KeyEvent::Backspace => self.on_backspace(ctx).await,
             KeyEvent::CarriageReturn => self.on_carriage_return(ctx).await,
-            KeyEvent::ShiftUp => {
-                tracing::debug!("TODO: ShiftUp, Preview scroll up");
-                Ok(())
-            }
-            KeyEvent::ShiftDown => {
-                tracing::debug!("TODO: ShiftDown, Preview scroll down");
-                Ok(())
-            }
+            KeyEvent::ShiftUp => ctx.scroll_preview(Direction::Up).await,
+            KeyEvent::ShiftDown => ctx.scroll_preview(Direction::Down).await,
             KeyEvent::CtrlN => ctx.next_input().await,
             KeyEvent::CtrlP => ctx.previous_input().await,
         }
