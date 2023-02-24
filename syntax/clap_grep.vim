@@ -1,20 +1,20 @@
 " No usual did_ftplugin_loaded check
 scriptencoding utf-8
 
-syntax match ClapLinNr /^.*:\zs\d\+\ze:\d\+:/hs=s+1,he=e-1 contained
-syntax match ClapColumn /:\d\+:\zs\d\+\ze:/ contains=ClapLinNr contained
-syntax match ClapLinNrColumn /\zs:\d\+:\d\+:\ze/ contains=ClapLinNr,ClapColumn contained
+syntax case ignore
 
-" Not sure why this icon somehow are unable to be highlighted in clap#icon#add_head_hl_groups()
-syntax match ClapIconUnknown /^\s*/
+syntax match GrepFile       /^\f*[^:]*/             nextgroup=GrepSeparator1
+syntax match GrepSeparator1 /:\ze\d\+/    contained nextgroup=GrepLineNr
+syntax match GrepLineNr     /\d\+/        contained nextgroup=GrepSeparator2
+syntax match GrepSeparator2 /:\ze\d\+/    contained nextgroup=GrepColumnNr
+syntax match GrepColumnNr   /\d\+/        contained nextgroup=GrepSeparator3
+syntax match GrepSeparator3 /:/           contained nextgroup=GrepPattern
+syntax match GrepPattern    /.*/          contained
 
-execute 'syntax match ClapFpath' '/^.\{-}:\d\+:\d\+:/' 'contains=ClapLinNrColumn,'.join(clap#icon#add_head_hl_groups(), ',')
-execute 'syntax match ClapFpathTruncated' '/^.\.\..\{-}:\d\+:\d\+:/' 'contains=ClapLinNrColumn,'.join(clap#icon#add_head_hl_groups(), ',').',ClapFpathDots'
-syntax match ClapFpathDots '\.\.' contained
-
-hi default link ClapFpath            Keyword
-hi default link ClapFpathTruncated   Keyword
-hi default link ClapLinNr            LineNr
-hi default link ClapColumn           Comment
-hi default link ClapLinNrColumn      Type
-hi default link ClapIconUnknown      Character
+hi default link GrepFile            Keyword
+hi default link GrepSeperator1      Label
+hi default link GrepSeperator2      Label
+hi default link GrepSeperator3      Label
+hi default link GrepLineNr          Character
+hi default link GrepColumnNr        Type
+hi default link GrepPattern         Normal
