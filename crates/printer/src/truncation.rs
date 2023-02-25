@@ -1,6 +1,7 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
-use crate::TrimmedInfo;
+use crate::{MatchedFileResult, TrimmedInfo};
 use std::collections::HashMap;
+use std::path::MAIN_SEPARATOR;
 use std::slice::IterMut;
 use types::MatchedItem;
 
@@ -101,7 +102,7 @@ pub fn truncate_item_output_text(
 /// - `winwidth`: width of the display window.
 /// - `skipped`: number of skipped chars, used when need to skip the leading icons.
 pub fn truncate_item_output_text_grep(
-    items: IterMut<crate::MatchedFileResult>,
+    items: IterMut<MatchedFileResult>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
@@ -115,58 +116,62 @@ pub fn truncate_item_output_text_grep(
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             item.matched_item.display_text = Some(truncated_output_text);
             item.matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some(TrimmedText {
-            text,
-            indices,
-            trimmed_info,
-        }) = truncate_line_v1(
+        } else if let Some(trimmed_text) = truncate_line_v1(
             &output_text,
             &mut item.matched_item.indices,
             winwidth,
             skipped,
         ) {
+            let TrimmedText {
+                text,
+                indices,
+                trimmed_info,
+            } = trimmed_text;
+
             truncated_map.insert(lnum + 1, output_text);
 
             // Adjust the trimmed text further.
             let (text, indices) = match trimmed_info {
                 TrimmedInfo::Left { start } | TrimmedInfo::Both { start } => {
-                    let file_name = item.path.file_name().unwrap().to_str().unwrap();
-                    let p = item
-                        .path
-                        .to_str()
-                        .expect("Failed to convert PathBuf to str");
-                    let file_name_start = p.len() - file_name.len();
+                    let crate::MatchedFileResult {
+                        path,
+                        line_number,
+                        line_number_start: _,
+                        line_number_end: _,
+                        column,
+                        column_start: _,
+                        column_end,
+                        ..
+                    } = item;
 
-                    let truncated_text = text;
+                    let (file_name, file_name_start) =
+                        pattern::extract_file_name(path.to_str().unwrap()).unwrap();
+
+                    let trimmed_text = text;
 
                     // src/lib.rs:100:90:
                     // ..ib.rs:100:90:
                     // file name is truncated.
                     if start > file_name_start {
-                        let text = if start < item.column_end {
+                        let text = if start < *column_end {
                             format!(
-                                "../{file_name}:{}:{}{}",
-                                item.line_number,
-                                item.column,
-                                &truncated_text[item.column_end - start..]
+                                "..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{}",
+                                &trimmed_text[*column_end - start..]
                             )
                         } else {
-                            format!(
-                                "../{file_name}:{}:{}{truncated_text}",
-                                item.line_number, item.column
-                            )
+                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
                         };
-                        let offset = 3
+                        let offset = 3 // .. + MAIN_SEPARATOR
                             + file_name.len()
-                            + utils::display_width(item.line_number)
-                            + utils::display_width(item.column)
-                            + 2;
+                            + utils::display_width(*line_number)
+                            + utils::display_width(*column)
+                            + 2; // : + :
                         let mut indices = indices;
                         indices.iter_mut().for_each(|x| *x += offset);
 
                         (text, indices)
                     } else {
-                        (truncated_text, indices)
+                        (trimmed_text, indices)
                     }
                 }
                 _ => (text, indices),
@@ -228,4 +233,38 @@ pub fn truncate_grep_lines(
         })
         .unzip();
     (lines, indices, truncated_map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MatchedFileResult;
+    use std::sync::Arc;
+    use types::ClapItem;
+
+    #[test]
+    fn test_grep_print() {
+        // MatchedFileResult { matched_item: MatchedItem { item: "crates/maple_core/src/paths.rs:198:31:let expected = \"~/.rustup/.../src/rust/library/alloc/src/string.rs\";", rank: [874, -30, -68, 0], indices: [68, 69, 77, 91, 92], display_text: None, output_text: None }, path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs", line_number: 198, line_number_start: 32, line_number_end: 35, column: 31, column_start: 36, column_end: 38 }, winwidth: 62, icon: Enabled(Grep)
+
+        use types::Rank;
+        let line = r#"crates/maple_core/src/paths.rs:198:31:let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";"#;
+        let mut items = vec![MatchedFileResult {
+            matched_item: MatchedItem::new(
+                Arc::new(line.to_string()) as Arc<dyn ClapItem>,
+                [874, -30, -68, 0],
+                vec![68, 69, 77, 91, 92],
+            ),
+            path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs".into(),
+            line_number: 198,
+            line_number_start: 32,
+            line_number_end: 35,
+            column: 31,
+            column_start: 36,
+            column_end: 38,
+        }];
+        let winwidth = 62;
+        let icon = icon::Icon::Enabled(icon::IconKind::Grep);
+
+        truncate_item_output_text_grep(items.iter_mut(), winwidth, None);
+    }
 }

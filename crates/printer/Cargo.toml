@@ -13,6 +13,7 @@ serde_json = "1.0"
 unicode-width = "0.1.4"
 
 icon = { path = "../icon" }
+pattern = { path = "../pattern" }
 types = { path = "../types" }
 utils = { path = "../utils" }
 

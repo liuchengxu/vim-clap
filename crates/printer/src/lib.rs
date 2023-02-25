@@ -7,6 +7,7 @@ mod truncation;
 use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
+use std::path::PathBuf;
 use truncation::truncate_item_output_text_grep;
 use types::MatchedItem;
 
@@ -149,10 +150,10 @@ pub fn to_display_lines(
     }
 }
 
-use std::path::PathBuf;
-
+#[derive(Debug)]
 pub struct MatchedFileResult {
     pub matched_item: MatchedItem,
+    /// File path in the final grep line, might be relative path.
     pub path: PathBuf,
     pub line_number: usize,
     pub line_number_start: usize,

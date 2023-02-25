@@ -310,7 +310,10 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                     let line_number_start = line_number_end - utils::display_width(line_number);
                     Some(printer::MatchedFileResult {
                         matched_item,
-                        path: path.clone(),
+                        path: path
+                            .strip_prefix(&search_root)
+                            .unwrap_or(path)
+                            .to_path_buf(),
                         line_number,
                         line_number_start,
                         line_number_end,
