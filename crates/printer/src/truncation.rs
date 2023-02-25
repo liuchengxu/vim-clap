@@ -149,23 +149,21 @@ pub fn truncate_item_output_text_grep(
 
                     let trimmed_text = text;
 
-                    // src/lib.rs:100:90:
-                    // ..ib.rs:100:90:
-                    // file name is truncated.
+                    // In the middle of file name
                     if start > file_name_start {
-                        let text = if start < *column_end {
-                            format!(
-                                "..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{}",
-                                &trimmed_text[*column_end - start..]
-                            )
-                        } else {
-                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
-                        };
-                        let offset = 3 // .. + MAIN_SEPARATOR
+                        let mut offset = 3 // .. + MAIN_SEPARATOR
                             + file_name.len()
                             + utils::display_width(*line_number)
                             + utils::display_width(*column)
                             + 2; // : + :
+                        // In the middle of file name and column
+                        let text = if start < *column_end {
+                          let trimmed_pattern = &trimmed_text[*column_end - start..];
+                            offset -= *column_end - start;
+                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
+                        } else {
+                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
+                        };
                         let mut indices = indices;
                         indices.iter_mut().for_each(|x| *x += offset);
 
