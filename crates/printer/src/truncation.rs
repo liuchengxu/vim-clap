@@ -1,5 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
-use crate::{MatchedFileResult, TrimmedInfo};
+use crate::{GrepResult, TrimmedInfo};
 use std::collections::HashMap;
 use std::path::MAIN_SEPARATOR;
 use std::slice::IterMut;
@@ -102,23 +102,23 @@ pub fn truncate_item_output_text(
 /// - `winwidth`: width of the display window.
 /// - `skipped`: number of skipped chars, used when need to skip the leading icons.
 pub fn truncate_item_output_text_grep(
-    items: IterMut<MatchedFileResult>,
+    grep_results: IterMut<GrepResult>,
     winwidth: usize,
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
-    items.enumerate().for_each(|(lnum, mut item)| {
-        let output_text = item.matched_item.output_text().to_string();
+    grep_results.enumerate().for_each(|(lnum, mut grep_result)| {
+        let output_text = grep_result.matched_item.output_text().to_string();
 
         // Truncate the text simply if it's too long.
         if output_text.len() > MAX_LINE_LEN {
             let truncated_output_text: String = output_text.chars().take(1000).collect();
-            item.matched_item.display_text = Some(truncated_output_text);
-            item.matched_item.indices.retain(|&x| x < 1000);
+            grep_result.matched_item.display_text = Some(truncated_output_text);
+            grep_result.matched_item.indices.retain(|&x| x < 1000);
         } else if let Some(trimmed_text) = truncate_line_v1(
             &output_text,
-            &mut item.matched_item.indices,
+            &mut grep_result.matched_item.indices,
             winwidth,
             skipped,
         ) {
@@ -133,16 +133,13 @@ pub fn truncate_item_output_text_grep(
             // Adjust the trimmed text further.
             let (text, indices) = match trimmed_info {
                 TrimmedInfo::Left { start } | TrimmedInfo::Both { start } => {
-                    let crate::MatchedFileResult {
+                    let crate::GrepResult {
                         path,
                         line_number,
-                        line_number_start: _,
-                        line_number_end: _,
                         column,
-                        column_start: _,
                         column_end,
                         ..
-                    } = item;
+                    } = grep_result;
 
                     let (file_name, file_name_start) =
                         pattern::extract_file_name(path.to_str().unwrap()).unwrap();
@@ -175,11 +172,11 @@ pub fn truncate_item_output_text_grep(
                 _ => (text, indices),
             };
 
-            item.matched_item.display_text = Some(text);
-            item.matched_item.indices = indices;
+            grep_result.matched_item.display_text = Some(text);
+            grep_result.matched_item.indices = indices;
         } else {
             // Use the origin `output_text` as the final `display_text`.
-            item.matched_item.display_text.replace(output_text);
+            grep_result.matched_item.display_text.replace(output_text);
         }
     });
     truncated_map
@@ -236,15 +233,15 @@ pub fn truncate_grep_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MatchedFileResult;
+    use crate::GrepResult;
     use std::sync::Arc;
     use types::ClapItem;
 
     #[test]
     fn test_grep_print() {
-        // MatchedFileResult { matched_item: MatchedItem { item: "crates/maple_core/src/paths.rs:198:31:let expected = \"~/.rustup/.../src/rust/library/alloc/src/string.rs\";", rank: [874, -30, -68, 0], indices: [68, 69, 77, 91, 92], display_text: None, output_text: None }, path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs", line_number: 198, line_number_start: 32, line_number_end: 35, column: 31, column_start: 36, column_end: 38 }, winwidth: 62, icon: Enabled(Grep)
+        // GrepResult { matched_item: MatchedItem { item: "crates/maple_core/src/paths.rs:198:31:let expected = \"~/.rustup/.../src/rust/library/alloc/src/string.rs\";", rank: [874, -30, -68, 0], indices: [68, 69, 77, 91, 92], display_text: None, output_text: None }, path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs", line_number: 198, line_number_start: 32, line_number_end: 35, column: 31, column_start: 36, column_end: 38 }, winwidth: 62, icon: Enabled(Grep)
         let line = r#"crates/maple_core/src/paths.rs:198:31:let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";"#;
-        let mut items = vec![MatchedFileResult {
+        let mut items = vec![GrepResult {
             matched_item: MatchedItem::new(
                 Arc::new(line.to_string()) as Arc<dyn ClapItem>,
                 [874, -30, -68, 0],
@@ -252,10 +249,7 @@ mod tests {
             ),
             path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs".into(),
             line_number: 198,
-            line_number_start: 32,
-            line_number_end: 35,
             column: 31,
-            column_start: 36,
             column_end: 38,
         }];
         let winwidth = 62;

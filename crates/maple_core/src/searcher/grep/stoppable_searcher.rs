@@ -305,20 +305,14 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                     let matched_item = MatchedItem::new(Arc::new(fmt_line), *rank, indices);
 
                     let line_number = *line_number as usize;
-                    let column_start = offset - utils::display_width(column);
-                    let line_number_end = column_start - 1;
-                    let line_number_start = line_number_end - utils::display_width(line_number);
-                    Some(printer::MatchedFileResult {
+                    Some(printer::GrepResult {
                         matched_item,
                         path: path
                             .strip_prefix(&search_root)
                             .unwrap_or(path)
                             .to_path_buf(),
                         line_number,
-                        line_number_start,
-                        line_number_end,
                         column,
-                        column_start,
                         column_end: offset,
                     })
                 } else {

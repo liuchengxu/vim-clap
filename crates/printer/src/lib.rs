@@ -151,21 +151,18 @@ pub fn to_display_lines(
 }
 
 #[derive(Debug)]
-pub struct MatchedFileResult {
+pub struct GrepResult {
     pub matched_item: MatchedItem,
     /// File path in the final grep line, might be relative path.
     pub path: PathBuf,
     pub line_number: usize,
-    pub line_number_start: usize,
-    pub line_number_end: usize,
     pub column: usize,
-    pub column_start: usize,
     pub column_end: usize,
 }
 
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn to_display_lines_grep(
-    matched_items: Vec<MatchedFileResult>,
+    matched_items: Vec<GrepResult>,
     winwidth: usize,
     icon: Icon,
 ) -> DisplayLines {
