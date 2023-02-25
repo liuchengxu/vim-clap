@@ -243,8 +243,6 @@ mod tests {
     #[test]
     fn test_grep_print() {
         // MatchedFileResult { matched_item: MatchedItem { item: "crates/maple_core/src/paths.rs:198:31:let expected = \"~/.rustup/.../src/rust/library/alloc/src/string.rs\";", rank: [874, -30, -68, 0], indices: [68, 69, 77, 91, 92], display_text: None, output_text: None }, path: "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/paths.rs", line_number: 198, line_number_start: 32, line_number_end: 35, column: 31, column_start: 36, column_end: 38 }, winwidth: 62, icon: Enabled(Grep)
-
-        use types::Rank;
         let line = r#"crates/maple_core/src/paths.rs:198:31:let expected = "~/.rustup/.../src/rust/library/alloc/src/string.rs";"#;
         let mut items = vec![MatchedFileResult {
             matched_item: MatchedItem::new(
@@ -261,7 +259,6 @@ mod tests {
             column_end: 38,
         }];
         let winwidth = 62;
-        let icon = icon::Icon::Enabled(icon::IconKind::Grep);
 
         truncate_item_output_text_grep(items.iter_mut(), winwidth, None);
     }

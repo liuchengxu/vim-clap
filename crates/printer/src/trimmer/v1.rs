@@ -347,18 +347,21 @@ mod tests {
 
             let MatchedItem { indices, .. } = ranked[0].clone();
 
-            // let (display_line_got, indices_post) = trim_text(text, &indices, container_width, 4)
-            // .unwrap_or_else(|| TrimmedText::new(text.into(), indices.clone()));
+            let TrimmedText { text, indices, .. } = trim_text(text, &indices, container_width, 4)
+                .unwrap_or_else(|| TrimmedText::new(text.into(), indices.clone()));
 
-            // let truncated_text_got = display_line_got.clone();
+            let display_line_got = text;
+            let indices_post = indices;
 
-            // let highlighted_got = indices_post
-            // .iter()
-            // .filter_map(|i| truncated_text_got.chars().nth(*i))
-            // .collect::<String>();
+            let truncated_text_got = display_line_got.clone();
 
-            // assert_eq!(display_line, display_line_got);
-            // assert_eq!(highlighted, highlighted_got);
+            let highlighted_got = indices_post
+                .iter()
+                .filter_map(|i| truncated_text_got.chars().nth(*i))
+                .collect::<String>();
+
+            assert_eq!(display_line, display_line_got);
+            assert_eq!(highlighted, highlighted_got);
         }
     }
 }
