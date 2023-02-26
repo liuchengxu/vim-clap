@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use truncation::truncate_item_output_text_grep;
 use types::MatchedItem;
 
-pub use self::trimmer::v1::{trim_text, TrimmedInfo, TrimmedText};
+pub use self::trimmer::v1::{trim_text, TrimInfo, TrimmedText};
 pub use self::truncation::{
     truncate_grep_lines, truncate_item_output_text, truncate_item_output_text_v0,
 };

@@ -1,5 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
-use crate::{GrepResult, TrimmedInfo};
+use crate::GrepResult;
 use std::collections::HashMap;
 use std::path::MAIN_SEPARATOR;
 use std::slice::IterMut;
@@ -41,16 +41,17 @@ fn truncate_line_v1(
         let text = line.chars().skip(skipped).collect::<String>();
         indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
-        trim_text_v1(&text, indices, container_width, 4).map(|trimmed_text| {
-            let TrimmedText {
-                text, mut indices, ..
-            } = trimmed_text;
-            let truncated_text = text;
-            let mut text = String::with_capacity(skipped + truncated_text.len());
-            line.chars().take(skipped).for_each(|c| text.push(c));
-            text.push_str(&truncated_text);
+        trim_text_v1(&text, indices, container_width, 4).map(|mut trimmed| {
+            // Rejoin the skipped chars.
+            let mut new_text = String::with_capacity(skipped + trimmed.trimmed_text.len());
+            line.chars().take(skipped).for_each(|c| new_text.push(c));
+            new_text.push_str(&trimmed.trimmed_text);
+            trimmed.trimmed_text = new_text;
+            trimmed.indices.iter_mut().for_each(|x| *x += skipped);
+
             indices.iter_mut().for_each(|x| *x += 2);
-            TrimmedText::new(text, indices)
+
+            trimmed
         })
     } else {
         trim_text_v1(line, indices, winwidth, 4)
@@ -80,12 +81,15 @@ pub fn truncate_item_output_text(
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             matched_item.display_text = Some(truncated_output_text);
             matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some(TrimmedText { text, indices, .. }) =
-            truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
+        } else if let Some(TrimmedText {
+            trimmed_text,
+            indices,
+            ..
+        }) = truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
         {
             truncated_map.insert(lnum + 1, output_text);
 
-            matched_item.display_text = Some(text);
+            matched_item.display_text = Some(trimmed_text);
             matched_item.indices = indices;
         } else {
             // Use the origin `output_text` as the final `display_text`.
@@ -116,23 +120,23 @@ pub fn truncate_item_output_text_grep(
             let truncated_output_text: String = output_text.chars().take(1000).collect();
             grep_result.matched_item.display_text = Some(truncated_output_text);
             grep_result.matched_item.indices.retain(|&x| x < 1000);
-        } else if let Some(trimmed_text) = truncate_line_v1(
+        } else if let Some(trimmed) = truncate_line_v1(
             &output_text,
             &mut grep_result.matched_item.indices,
             winwidth,
             skipped,
         ) {
             let TrimmedText {
-                text,
+                trimmed_text,
                 indices,
-                trimmed_info,
-            } = trimmed_text;
+                trim_info,
+            } = trimmed;
 
             truncated_map.insert(lnum + 1, output_text);
 
             // Adjust the trimmed text further.
-            let (text, indices) = match trimmed_info {
-                TrimmedInfo::Left { start } | TrimmedInfo::Both { start } => {
+            let (text, indices) = match trim_info.left_trim_start() {
+                Some(start) => {
                     let crate::GrepResult {
                         path,
                         line_number,
@@ -141,35 +145,33 @@ pub fn truncate_item_output_text_grep(
                         ..
                     } = grep_result;
 
-                    let (file_name, file_name_start) =
-                        pattern::extract_file_name(path.to_str().unwrap()).unwrap();
+                    match path.to_str().and_then(pattern::extract_file_name) {
+                        Some((file_name, file_name_start)) if start > file_name_start => {
+                            let mut offset = 3 // .. + MAIN_SEPARATOR
+                                + file_name.len()
+                                + utils::display_width(*line_number)
+                                + utils::display_width(*column)
+                                + 2; // : + :
 
-                    let trimmed_text = text;
+                            // In the middle of file name and column
+                            let trimmed_text_with_visible_filename = if start < *column_end {
+                                let trimmed_pattern = &trimmed_text[*column_end - start..];
+                                offset -= *column_end - start;
 
-                    // In the middle of file name
-                    if start > file_name_start {
-                        let mut offset = 3 // .. + MAIN_SEPARATOR
-                            + file_name.len()
-                            + utils::display_width(*line_number)
-                            + utils::display_width(*column)
-                            + 2; // : + :
-                        // In the middle of file name and column
-                        let text = if start < *column_end {
-                          let trimmed_pattern = &trimmed_text[*column_end - start..];
-                            offset -= *column_end - start;
-                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
-                        } else {
-                            format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
-                        };
-                        let mut indices = indices;
-                        indices.iter_mut().for_each(|x| *x += offset);
+                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
+                            } else {
+                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
+                            };
 
-                        (text, indices)
-                    } else {
-                        (trimmed_text, indices)
+                            let mut indices = indices;
+                            indices.iter_mut().for_each(|x| *x += offset);
+
+                            (trimmed_text_with_visible_filename, indices)
+                        }
+                        _ => (trimmed_text, indices),
                     }
                 }
-                _ => (text, indices),
+                _ => (trimmed_text, indices),
             };
 
             grep_result.matched_item.display_text = Some(text);
@@ -219,9 +221,9 @@ pub fn truncate_grep_lines(
         .map(|(line, mut indices)| {
             lnum += 1;
 
-            if let Some(trimmed_text) = truncate_line_v1(&line, &mut indices, winwidth, skipped) {
+            if let Some(trimmed) = truncate_line_v1(&line, &mut indices, winwidth, skipped) {
                 truncated_map.insert(lnum, line);
-                (trimmed_text.text, trimmed_text.indices)
+                (trimmed.trimmed_text, trimmed.indices)
             } else {
                 (line, indices)
             }
