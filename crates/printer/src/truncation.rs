@@ -89,7 +89,7 @@ pub fn truncate_item_output_text(
         {
             truncated_map.insert(lnum + 1, output_text);
 
-            matched_item.display_text = Some(trimmed_text);
+            matched_item.display_text.replace(trimmed_text);
             matched_item.indices = indices;
         } else {
             // Use the origin `output_text` as the final `display_text`.
@@ -105,7 +105,7 @@ pub fn truncate_item_output_text(
 ///
 /// - `winwidth`: width of the display window.
 /// - `skipped`: number of skipped chars, used when need to skip the leading icons.
-pub fn truncate_item_output_text_grep(
+pub fn truncate_grep_results(
     grep_results: IterMut<GrepResult>,
     winwidth: usize,
     skipped: Option<usize>,
@@ -135,7 +135,7 @@ pub fn truncate_item_output_text_grep(
             truncated_map.insert(lnum + 1, output_text);
 
             // Adjust the trimmed text further.
-            let (text, indices) = match trim_info.left_trim_start() {
+            let (better_trimmed_text, indices) = match trim_info.left_trim_start() {
                 Some(start) => {
                     let crate::GrepResult {
                         path,
@@ -174,7 +174,7 @@ pub fn truncate_item_output_text_grep(
                 _ => (trimmed_text, indices),
             };
 
-            grep_result.matched_item.display_text = Some(text);
+            grep_result.matched_item.display_text.replace(better_trimmed_text);
             grep_result.matched_item.indices = indices;
         } else {
             // Use the origin `output_text` as the final `display_text`.
@@ -256,6 +256,6 @@ mod tests {
         }];
         let winwidth = 62;
 
-        truncate_item_output_text_grep(items.iter_mut(), winwidth, None);
+        truncate_grep_results(items.iter_mut(), winwidth, None);
     }
 }

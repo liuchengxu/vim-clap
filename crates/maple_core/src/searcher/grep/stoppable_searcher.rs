@@ -275,7 +275,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     let mut total_processed = 0usize;
 
     let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
-        let items = best_results
+        let grep_results = best_results
             .iter()
             .filter_map(|file_result| {
                 let FileResult {
@@ -320,7 +320,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                 }
             })
             .collect();
-        printer::to_display_lines_grep(items, winwidth, icon)
+        printer::grep_results_to_display_lines(grep_results, winwidth, icon)
     };
 
     let now = std::time::Instant::now();

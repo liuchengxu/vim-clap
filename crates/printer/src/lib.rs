@@ -8,7 +8,7 @@ use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
 use std::path::PathBuf;
-use truncation::truncate_item_output_text_grep;
+use truncation::truncate_grep_results;
 use types::MatchedItem;
 
 pub use self::trimmer::v1::{trim_text, TrimInfo, TrimmedText};
@@ -102,14 +102,11 @@ fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usize> {
         .collect::<Vec<_>>()
 }
 
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn to_display_lines(
-    matched_items: Vec<MatchedItem>,
-    winwidth: usize,
+fn convert_truncated_matched_items_to_display_lines(
+    matched_items: impl IntoIterator<Item = MatchedItem>,
     icon: Icon,
+    mut truncated_map: LinesTruncatedMap,
 ) -> DisplayLines {
-    let mut matched_items = matched_items;
-    let mut truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
     if let Some(icon_kind) = icon.icon_kind() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
@@ -150,6 +147,16 @@ pub fn to_display_lines(
     }
 }
 
+/// Returns the info of the truncated top items ranked by the filtering score.
+pub fn to_display_lines(
+    mut matched_items: Vec<MatchedItem>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
+    convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
+}
+
 #[derive(Debug)]
 pub struct GrepResult {
     pub matched_item: MatchedItem,
@@ -160,54 +167,17 @@ pub struct GrepResult {
     pub column_end: usize,
 }
 
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn to_display_lines_grep(
-    matched_items: Vec<GrepResult>,
+pub fn grep_results_to_display_lines(
+    mut grep_results: Vec<GrepResult>,
     winwidth: usize,
     icon: Icon,
 ) -> DisplayLines {
-    let mut matched_items = matched_items;
-    let mut truncated_map =
-        truncate_item_output_text_grep(matched_items.iter_mut(), winwidth, None);
-    if let Some(icon_kind) = icon.icon_kind() {
-        let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
-            .into_iter()
-            .enumerate()
-            .map(|(idx, item)| {
-                let display_text = item.matched_item.display_text();
-                let iconized = if let Some(output_text) = truncated_map.get_mut(&(idx + 1)) {
-                    let icon = item
-                        .matched_item
-                        .item
-                        .icon(icon)
-                        .expect("Icon must be provided if specified");
-                    *output_text = format!("{icon} {output_text}");
-                    format!("{icon} {display_text}")
-                } else {
-                    icon_kind.add_icon_to_text(&display_text)
-                };
-                let (line, indices) = (iconized, item.matched_item.shifted_indices(ICON_CHAR_LEN));
-                let indices = char_indices_to_byte_indices(&line, &indices);
-                (line, indices)
-            })
-            .unzip();
-
-        DisplayLines::new(lines, indices, truncated_map, true)
-    } else {
-        let (lines, indices): (Vec<_>, Vec<_>) = matched_items
-            .into_iter()
-            .map(|item| {
-                let (line, indices) = (
-                    item.matched_item.display_text().to_string(),
-                    item.matched_item.indices,
-                );
-                let indices = char_indices_to_byte_indices(&line, &indices);
-                (line, indices)
-            })
-            .unzip();
-
-        DisplayLines::new(lines, indices, truncated_map, false)
-    }
+    let truncated_map = truncate_grep_results(grep_results.iter_mut(), winwidth, None);
+    convert_truncated_matched_items_to_display_lines(
+        grep_results.into_iter().map(|i| i.matched_item),
+        icon,
+        truncated_map,
+    )
 }
 
 #[cfg(test)]
