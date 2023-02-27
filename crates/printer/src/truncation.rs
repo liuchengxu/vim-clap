@@ -137,26 +137,22 @@ pub fn truncate_grep_results(
             // Adjust the trimmed text further.
             let (better_trimmed_text, indices) = match trim_info.left_trim_start() {
                 Some(start) => {
-                    let crate::GrepResult {
-                        path,
-                        line_number,
-                        column,
-                        column_end,
-                        ..
-                    } = grep_result;
-
-                    match path.to_str().and_then(pattern::extract_file_name) {
+                    match grep_result.path.to_str().and_then(pattern::extract_file_name) {
                         Some((file_name, file_name_start)) if start > file_name_start => {
+                            let line_number = grep_result.line_number;
+                            let column = grep_result.column;
+                            let column_end = grep_result.column_end;
+
                             let mut offset = 3 // .. + MAIN_SEPARATOR
                                 + file_name.len()
-                                + utils::display_width(*line_number)
-                                + utils::display_width(*column)
+                                + utils::display_width(line_number)
+                                + utils::display_width(column)
                                 + 2; // : + :
 
                             // In the middle of file name and column
-                            let trimmed_text_with_visible_filename = if start < *column_end {
-                                let trimmed_pattern = &trimmed_text[*column_end - start..];
-                                offset -= *column_end - start;
+                            let trimmed_text_with_visible_filename = if start < column_end {
+                                let trimmed_pattern = &trimmed_text[column_end - start..];
+                                offset -= column_end - start;
 
                                 format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
                             } else {
