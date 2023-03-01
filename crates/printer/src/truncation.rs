@@ -160,7 +160,13 @@ pub fn truncate_grep_results(
                             };
 
                             let mut indices = indices;
-                            indices.iter_mut().for_each(|x| *x += offset);
+                            let file_name_end = 3 + file_name.len();
+                            indices.iter_mut().for_each(|x| {
+                                *x += offset;
+                                if *x <= file_name_end {
+                                    *x -= 1;
+                                }
+                            });
 
                             (trimmed_text_with_visible_filename, indices)
                         }
