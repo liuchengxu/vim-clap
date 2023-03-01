@@ -144,7 +144,7 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
                     }
                 }
             } else {
-                let top = abs_path.splitn(5, MAIN_SEPARATOR).collect::<Vec<_>>();
+                let top = abs_path.splitn(8, MAIN_SEPARATOR).collect::<Vec<_>>();
                 if let Some(last) = top.last() {
                     if let Some((_head, tail)) = last.split_once(MAIN_SEPARATOR) {
                         let mut to_hide = 0usize;
