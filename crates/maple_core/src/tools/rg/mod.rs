@@ -16,6 +16,14 @@ use utils::display_width;
 
 pub use self::jsont::{Match, Message, SubMatch};
 
+pub static RG_EXISTS: Lazy<bool> = Lazy::new(|| {
+    std::process::Command::new("rg")
+        .arg("--version")
+        .status()
+        .map(|exit_status| exit_status.success())
+        .unwrap_or(false)
+});
+
 /// Map of file extension to ripgrep language.
 ///
 /// https://github.com/BurntSushi/ripgrep/blob/20534fad04/crates/ignore/src/default_types.rs
