@@ -19,6 +19,7 @@ pub use self::jsont::{Match, Message, SubMatch};
 pub static RG_EXISTS: Lazy<bool> = Lazy::new(|| {
     std::process::Command::new("rg")
         .arg("--version")
+        .stdout(std::process::Stdio::null())
         .status()
         .map(|exit_status| exit_status.success())
         .unwrap_or(false)
