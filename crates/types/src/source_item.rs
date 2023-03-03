@@ -361,19 +361,17 @@ impl MatchedItem {
 
     /// Maybe truncated display text.
     pub fn display_text(&self) -> Cow<str> {
-        if let Some(ref text) = self.display_text {
-            text.into()
-        } else {
-            self.item.output_text()
-        }
+        self.display_text
+            .as_ref()
+            .map(Into::into)
+            .unwrap_or_else(|| self.item.output_text())
     }
 
     pub fn output_text(&self) -> Cow<str> {
-        if let Some(ref text) = self.output_text {
-            text.into()
-        } else {
-            self.item.output_text()
-        }
+        self.output_text
+            .as_ref()
+            .map(Into::into)
+            .unwrap_or_else(|| self.item.output_text())
     }
 
     /// Returns the match indices shifted by `offset`.
