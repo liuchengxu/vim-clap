@@ -4,12 +4,17 @@
 mod trimmer;
 mod truncation;
 
-use self::truncation::{truncate_item_output_text, LinesTruncatedMap};
+use self::truncation::LinesTruncatedMap;
 use icon::{Icon, ICON_CHAR_LEN};
 use serde::Serialize;
+use std::path::PathBuf;
+use truncation::truncate_grep_results;
 use types::MatchedItem;
 
-pub use self::truncation::{truncate_grep_lines, truncate_item_output_text_v0};
+pub use self::trimmer::v1::{trim_text, TrimInfo, TrimmedText};
+pub use self::truncation::{
+    truncate_grep_lines, truncate_item_output_text, truncate_item_output_text_v0,
+};
 
 /// Combine json and println macro.
 #[macro_export]
@@ -97,14 +102,11 @@ fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usize> {
         .collect::<Vec<_>>()
 }
 
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn to_display_lines(
-    matched_items: Vec<MatchedItem>,
-    winwidth: usize,
+fn convert_truncated_matched_items_to_display_lines(
+    matched_items: impl IntoIterator<Item = MatchedItem>,
     icon: Icon,
+    mut truncated_map: LinesTruncatedMap,
 ) -> DisplayLines {
-    let mut matched_items = matched_items;
-    let mut truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
     if let Some(icon_kind) = icon.icon_kind() {
         let (lines, indices): (Vec<_>, Vec<Vec<usize>>) = matched_items
             .into_iter()
@@ -143,6 +145,39 @@ pub fn to_display_lines(
 
         DisplayLines::new(lines, indices, truncated_map, false)
     }
+}
+
+/// Returns the info of the truncated top items ranked by the filtering score.
+pub fn to_display_lines(
+    mut matched_items: Vec<MatchedItem>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
+    convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
+}
+
+#[derive(Debug)]
+pub struct GrepResult {
+    pub matched_item: MatchedItem,
+    /// File path in the final grep line, might be relative path.
+    pub path: PathBuf,
+    pub line_number: usize,
+    pub column: usize,
+    pub column_end: usize,
+}
+
+pub fn grep_results_to_display_lines(
+    mut grep_results: Vec<GrepResult>,
+    winwidth: usize,
+    icon: Icon,
+) -> DisplayLines {
+    let truncated_map = truncate_grep_results(grep_results.iter_mut(), winwidth, None);
+    convert_truncated_matched_items_to_display_lines(
+        grep_results.into_iter().map(|i| i.matched_item),
+        icon,
+        truncated_map,
+    )
 }
 
 #[cfg(test)]

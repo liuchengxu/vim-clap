@@ -275,7 +275,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     let mut total_processed = 0usize;
 
     let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
-        let items = best_results
+        let grep_results = best_results
             .iter()
             .filter_map(|file_result| {
                 let FileResult {
@@ -302,13 +302,25 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                     let mut indices = indices_in_path.clone();
                     indices.extend(indices_in_line.iter().map(|x| *x + offset));
 
-                    Some(MatchedItem::new(Arc::new(fmt_line), *rank, indices))
+                    let matched_item = MatchedItem::new(Arc::new(fmt_line), *rank, indices);
+
+                    let line_number = *line_number as usize;
+                    Some(printer::GrepResult {
+                        matched_item,
+                        path: path
+                            .strip_prefix(&search_root)
+                            .unwrap_or(path)
+                            .to_path_buf(),
+                        line_number,
+                        column,
+                        column_end: offset,
+                    })
                 } else {
                     None
                 }
             })
             .collect();
-        printer::to_display_lines(items, winwidth, icon)
+        printer::grep_results_to_display_lines(grep_results, winwidth, icon)
     };
 
     let now = std::time::Instant::now();

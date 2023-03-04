@@ -85,6 +85,33 @@ fn trim_right(text: &str, width: usize, tabstop: usize) -> &str {
     }
 }
 
+#[derive(Debug)]
+pub enum TrimInfo {
+    // ..ring
+    Left { start: usize },
+    // Stri..
+    Right,
+    // ..ri..
+    Both { start: usize },
+}
+
+impl TrimInfo {
+    pub fn left_trim_start(&self) -> Option<usize> {
+        match self {
+            Self::Left { start } | Self::Both { start } => Some(*start),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TrimmedText {
+    // Trimmed text with dots.
+    pub trimmed_text: String,
+    pub indices: Vec<usize>,
+    pub trim_info: TrimInfo,
+}
+
 /// Returns the potential trimmed text.
 ///
 /// In order to make the highlights of matches visible in the container as much as possible,
@@ -110,7 +137,7 @@ pub fn trim_text(
     indices: &[usize],
     container_width: usize,
     tabstop: usize,
-) -> Option<(String, Vec<usize>)> {
+) -> Option<TrimmedText> {
     let match_start = indices[0];
     let match_end = *indices.last()?;
 
@@ -145,26 +172,34 @@ pub fn trim_text(
         // right-fixed, ..ring
         let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
 
-        let text = format!("..{trimmed_text}");
+        let trimmed_text = format!("..{trimmed_text}");
         let indices = indices
             .iter()
             .filter_map(|x| (x + 2).checked_sub(trimmed_len))
             .filter(|x| *x > 1) // Ignore the highlights in `..`
             .collect();
 
-        Some((text, indices))
+        Some(TrimmedText {
+            trimmed_text,
+            indices,
+            trim_info: TrimInfo::Left { start: trimmed_len },
+        })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
         let trimmed_text = trim_right(text, container_width - 2, tabstop);
 
-        let text = format!("{trimmed_text}..");
+        let trimmed_text = format!("{trimmed_text}..");
         let indices = indices
             .iter()
             .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .copied()
             .collect::<Vec<_>>();
 
-        Some((text, indices))
+        Some(TrimmedText {
+            trimmed_text,
+            indices,
+            trim_info: TrimInfo::Right,
+        })
     } else {
         // Convert the char-position to byte-position.
         let match_start_byte_idx = text.char_indices().nth(match_start)?.0;
@@ -173,14 +208,20 @@ pub fn trim_text(
         let left_truncated_text = &text[match_start_byte_idx..];
         let trimmed_text = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
 
-        let text = format!("..{trimmed_text}..");
+        let trimmed_text = format!("..{trimmed_text}..");
         let indices = indices
             .iter()
             .map(|x| x - match_start + 2)
             .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
-        Some((text, indices))
+        Some(TrimmedText {
+            trimmed_text,
+            indices,
+            trim_info: TrimInfo::Both {
+                start: match_start_byte_idx,
+            },
+        })
     }
 }
 
@@ -303,7 +344,8 @@ mod tests {
             let MatchedItem { indices, .. } = ranked[0].clone();
 
             let (display_line_got, indices_post) = trim_text(text, &indices, container_width, 4)
-                .unwrap_or((text.into(), indices.clone()));
+                .map(|trimmed| (trimmed.trimmed_text, trimmed.indices))
+                .unwrap_or_else(|| (text.into(), indices.clone()));
 
             let truncated_text_got = display_line_got.clone();
 

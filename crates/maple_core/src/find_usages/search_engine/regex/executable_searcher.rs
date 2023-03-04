@@ -25,6 +25,13 @@ impl ExecutableSearcher {
     ///
     /// Convert the entire output into a stream of ripgrep `Match`.
     fn search(self, maybe_comments: Option<&[&str]>) -> Result<Vec<Match>> {
+        if !*crate::tools::rg::RG_EXISTS {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                String::from("rg executable not found"),
+            ));
+        }
+
         let mut cmd = self.command;
 
         let cmd_output = cmd.output()?;
