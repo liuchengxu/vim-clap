@@ -73,6 +73,7 @@ pub struct BufnrWinid {
 #[derive(Debug, Clone)]
 pub struct ProviderEnvironment {
     pub is_nvim: bool,
+    pub has_nvim_09: bool,
     pub provider_id: ProviderId,
     pub start: BufnrWinid,
     pub input: BufnrWinid,
@@ -267,6 +268,7 @@ impl Context {
         let display_winwidth = vim.winwidth(display.winid).await?;
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
+        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
@@ -274,6 +276,7 @@ impl Context {
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
+            has_nvim_09: has_nvim_09 == 1,
             provider_id,
             start,
             input,
