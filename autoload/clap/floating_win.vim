@@ -350,6 +350,11 @@ function! s:get_config_preview(height) abort
       let opts.height -= 2
     endif
   endif
+
+  if has("nvim-0.9")
+    let opts = clap#preview#inject_title_opt(opts, opts.width)
+  endif
+
   return opts
 endfunction
 
