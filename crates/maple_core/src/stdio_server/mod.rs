@@ -13,6 +13,7 @@ use self::provider::{create_provider, Context};
 use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
+use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
@@ -190,7 +191,13 @@ impl Client {
                 match other_method.as_str() {
                     "initialize_global_env" => {
                         // Should be called only once.
-                        notification.initialize(self.vim.clone()).await?;
+                        let output: String = self
+                            .vim
+                            .call("execute", json!(["autocmd filetypedetect"]))
+                            .await?;
+                        let ext_map = initialize_syntax_map(&output);
+                        self.vim.exec("clap#ext#set", json![ext_map])?;
+                        tracing::debug!("Client initialized successfully");
                     }
                     "note_recent_files" => notification.note_recent_file().await?,
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),

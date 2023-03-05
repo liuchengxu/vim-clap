@@ -136,11 +136,7 @@ endfunction
 function! clap#job#daemon#start(MessageHandler) abort
   let s:MessageHandler = a:MessageHandler
   call s:start_service_job(clap#maple#build_cmd('rpc'))
-  call clap#client#notify('initialize_global_env', {
-      \   'is_nvim': has('nvim') ? v:true : v:false,
-      \   'enable_icon': g:clap_enable_icon ? v:true : v:false,
-      \   'clap_preview_size': g:clap_preview_size,
-      \ })
+  call clap#client#notify('initialize_global_env')
   return
 endfunction
 
