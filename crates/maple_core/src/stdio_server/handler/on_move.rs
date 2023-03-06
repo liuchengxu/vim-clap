@@ -156,6 +156,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
         "grep",
         "live_grep",
         "coc_location",
+        "dumb_jump",
         "proj_tags",
     ];
     SET.contains(&provider_id)
@@ -363,7 +364,8 @@ impl<'a> CachedPreviewImpl<'a> {
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !self.ctx.env.is_nvim && should_truncate_cwd_relative(self.ctx.provider_id()) {
+            let support_float_title = !self.ctx.env.is_nvim || self.ctx.env.has_nvim_09;
+            if support_float_title && should_truncate_cwd_relative(self.ctx.provider_id()) {
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative = fname.replacen(self.ctx.cwd.as_str(), ".", 1);
                 format!("{cwd_relative}:{lnum}")
