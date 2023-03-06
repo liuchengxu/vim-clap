@@ -175,6 +175,7 @@ function! clap#preview#inject_title_opt(opts, width) abort
   let should_enable_title = ['grep', 'live_grep', 'dumb_jump', 'files', 'git_files', 'proj_tags']
   if index(should_enable_title, g:clap.provider.id) > -1
     let working_dir = clap#rooter#working_dir()
+    let working_dir = fnamemodify(working_dir, ':~')
     if has('nvim')
       let opts.title = ' '.working_dir.' '
       let opts.title_pos = 'center'
