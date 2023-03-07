@@ -122,6 +122,7 @@ impl CursorWordHighligher {
             if cursor_char.is_whitespace()
                 || cursor_char.is_ascii_punctuation()
                 || cursor_char == '='
+                || cursor_char == '_'
             {
                 self.last_cword = cursor_char.to_string();
                 return Ok(());
