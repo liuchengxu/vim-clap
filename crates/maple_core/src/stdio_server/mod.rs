@@ -192,51 +192,6 @@ impl Client {
                     }
                     "note_recent_files" => {
                         handler::messages::note_recent_file(notification).await?
-                    "autocmd" => {
-                        tracing::debug!("============= autocmd: {notification:?}");
-                    }
-                    "plugin/highlight-cursor-word" => {
-                        #[derive(serde::Deserialize)]
-                        struct InnerParams {
-                            source_file: String,
-                            start: usize,
-                            end: usize,
-                            cword: String,
-                        }
-
-                        #[derive(serde::Serialize)]
-                        struct WordHighlights {
-                            highlights: Vec<(usize, usize)>,
-                            cword: String,
-                        }
-
-                        let InnerParams {
-                            source_file,
-                            start,
-                            end,
-                            cword,
-                        } = notification.params.parse()?;
-
-                        tracing::debug!("============ source_file: {source_file:?}, start: {start}, end: {end:?}, cword: {cword:?}");
-
-                        let source_file = std::path::PathBuf::from(source_file);
-                        if let Ok(highlights) = crate::highlight_cursor_word::find_highlights(
-                            &source_file,
-                            start,
-                            end,
-                            cword.clone(),
-                        ) {
-                            tracing::debug!("======================== highlights: {highlights:?}");
-                            let match_ids: Vec<usize> = self
-                                .vim
-                                .call(
-                                    "clap#highlight#add_cursor_word_highlight",
-                                    WordHighlights { highlights, cword },
-                                )
-                                .await?;
-                            tracing::debug!("======================== match_ids: {match_ids:?}");
-                        }
-                    }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }
             }
