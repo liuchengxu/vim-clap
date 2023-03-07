@@ -127,6 +127,7 @@ impl CursorWordHighligher {
                 return Ok(());
             }
         } else {
+            self.last_cword = Default::default();
             return Ok(());
         }
 
