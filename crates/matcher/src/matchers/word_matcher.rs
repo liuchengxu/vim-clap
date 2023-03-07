@@ -71,26 +71,30 @@ impl WordMatcher {
         }
     }
 
-    pub fn find_all_matches_in_byte_indices(&self, line: &str) -> Option<Vec<usize>> {
+    pub fn find_all_matches_start(&self, line: &str) -> Vec<usize> {
         use grep_matcher::Matcher;
 
-        let byte_indices: Vec<_> = self
-            .matchers
-            .iter()
-            .filter_map(|(_word_term, word_matcher)| {
-                word_matcher
-                    .find_at(line.as_bytes(), 0)
-                    .ok()
-                    .flatten()
-                    .map(|mat| {
-                        let start = mat.start();
-                        let end = mat.end();
-                        start..end
-                    })
-            })
-            .flatten()
-            .collect();
+        let mut match_start_indices = vec![];
 
-        Some(byte_indices)
+        self.matchers.iter().for_each(|(_word_term, word_matcher)| {
+            let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
+                match_start_indices.push(matched.start());
+                true
+            });
+        });
+
+        match_start_indices
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_all_matches_start() {
+        let word_matcher = WordMatcher::new(vec!["world".to_string().into()]);
+        let line = "hello world world";
+        assert_eq!(vec![6, 12], word_matcher.find_all_matches_start(line));
     }
 }

@@ -28,12 +28,13 @@ fn find_highlight_positions(
     let end = line_end - 1;
     let highlights = read_lines_from(source_file, start, end - start)?
         .enumerate()
-        .filter_map(|(idx, line)| {
+        .map(|(idx, line)| {
             word_matcher
-                .find_all_matches_in_byte_indices(&line)
-                .and_then(|indices| indices.get(0).copied())
-                .map(|highlight_start| (idx + start + 1, highlight_start))
+                .find_all_matches_start(&line)
+                .into_iter()
+                .map(move |highlight_start| ((idx + start + 1, highlight_start)))
         })
+        .flatten()
         .collect();
     Ok(WordHighlights {
         highlights,
