@@ -325,6 +325,10 @@ impl Vim {
         self.call("fnamemodify", json!([fname, mods])).await
     }
 
+    pub async fn matchdelete(&self, id: i32) -> Result<i32> {
+        self.call("matchdelete", json![id]).await
+    }
+
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
         self.call("eval", json!([s])).await
     }

@@ -1,13 +1,15 @@
 mod handler;
 mod input;
 mod job;
+mod plugin;
 mod provider;
 mod session;
 mod state;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Autocmd, Event, ProviderEvent};
+use self::input::{Event, ProviderEvent};
+use self::plugin::{ClapPlugin, CursorWordHighligher};
 use self::provider::{create_provider, Context};
 use self::session::SessionManager;
 use self::state::State;
@@ -49,10 +51,13 @@ impl Client {
     /// Creates a new instnace of [`Client`].
     fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
         let vim = Vim::new(rpc_client);
+        let mut session_manager = SessionManager::default();
+        session_manager
+            .new_plugin(Box::new(CursorWordHighligher::new(vim.clone())) as Box<dyn ClapPlugin>);
         Self {
             vim,
             state_mutex: Arc::new(Mutex::new(state)),
-            session_manager_mutex: Arc::new(Mutex::new(SessionManager::default())),
+            session_manager_mutex: Arc::new(Mutex::new(session_manager)),
         }
     }
 
@@ -154,7 +159,7 @@ impl Client {
                     let provider = create_provider(&provider_id, &ctx).await?;
                     let session_manager = self.session_manager_mutex.clone();
                     let mut session_manager = session_manager.lock();
-                    session_manager.new_session(session_id()?, provider, ctx);
+                    session_manager.new_provider(session_id()?, provider, ctx);
                 }
                 ProviderEvent::Exit => {
                     let mut session_manager = self.session_manager_mutex.lock();
@@ -169,47 +174,10 @@ impl Client {
                 let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(session_id()?, ProviderEvent::Key(key_event));
             }
-            Event::Autocmd(autocmd) => match autocmd {
-                Autocmd::CursorMoved => {
-                    let cword = self.vim.expand("<cword>").await?;
-                    tracing::debug!("======================= cword: {cword:?}");
-                    if !cword.is_empty() {
-                        let source_file = self.vim.current_buffer_path().await?;
-                        let start = self.vim.line("w0").await?;
-                        let end = self.vim.line("w$").await?;
-                        tracing::debug!("======================= source_file: {source_file:?}, start: {start}, end: {end}");
-                        let source_file = std::path::PathBuf::from(source_file);
-                        if source_file.is_file() {
-                            #[derive(serde::Serialize)]
-                            struct WordHighlights {
-                                highlights: Vec<(usize, usize)>,
-                                cword: String,
-                            }
-
-                            if let Ok(highlights) = crate::highlight_cursor_word::find_highlights(
-                                &source_file,
-                                start,
-                                end,
-                                cword.clone(),
-                            ) {
-                                tracing::debug!(
-                                    "======================== highlights: {highlights:?}"
-                                );
-                                let match_ids: Vec<usize> = self
-                                    .vim
-                                    .call(
-                                        "clap#highlight#add_cursor_word_highlight",
-                                        WordHighlights { highlights, cword },
-                                    )
-                                    .await?;
-                                tracing::debug!(
-                                    "======================== match_ids: {match_ids:?}"
-                                );
-                            }
-                        }
-                    }
-                }
-            },
+            Event::Autocmd(autocmd) => {
+                let session_manager = self.session_manager_mutex.lock();
+                session_manager.notify_plugins(input::PluginEvent::Autocmd(autocmd));
+            }
             Event::Other(other_method) => {
                 match other_method.as_str() {
                     "initialize_global_env" => {

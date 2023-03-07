@@ -18,6 +18,11 @@ pub enum InternalProviderEvent {
     Terminate,
 }
 
+#[derive(Debug, Clone)]
+pub enum PluginEvent {
+    Autocmd(Autocmd),
+}
+
 /// Provider specific events.
 #[derive(Debug)]
 pub enum ProviderEvent {

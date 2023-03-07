@@ -7,14 +7,14 @@ set cpoptions&vim
 let s:default_priority = 10
 
 function! clap#highlight#add_cursor_word_highlight(word_highlights) abort
-  let word_len = len(a:word_highlights.cword)
+  let cword_len = a:word_highlights.cword_len
   let match_ids = []
   for [lnum, col] in a:word_highlights.highlights
-    let match_id = matchaddpos('Search', [[lnum, col+1, word_len]])
-    call add(match_ids, match_id)
+    let match_id = matchaddpos('Search', [[lnum, col+1, cword_len]])
+    if match_id > -1
+      call add(match_ids, match_id)
+    endif
   endfor
-  let g:clap_cursor_word_match_ids = match_ids
-  autocmd CursorMoved * if exists('g:clap_cursor_word_match_ids') | call map(g:clap_cursor_word_match_ids, 'matchdelete(v:val)') | unlet g:clap_cursor_word_match_ids | endif
   return match_ids
 endfunction
 

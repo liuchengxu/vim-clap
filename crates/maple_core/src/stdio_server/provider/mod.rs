@@ -361,7 +361,10 @@ impl Context {
             self.env.provider_id.clone(),
             self.input_recorder.clone().into_inputs(),
         );
-        tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
+        tracing::debug!(
+            "ProviderSession {session_id:?}-{} terminated",
+            self.provider_id()
+        );
     }
 
     pub async fn record_input(&mut self) -> Result<()> {
