@@ -105,6 +105,10 @@ function! s:api.set_var(name, value) abort
   execute 'let '.a:name.'= a:value'
 endfunction
 
+function! s:api.current_buffer_path() abort
+  return expand('#'.bufnr('%').':p')
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

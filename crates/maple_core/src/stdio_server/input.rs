@@ -7,6 +7,7 @@ use tokio::sync::mpsc::UnboundedSender;
 #[derive(Debug)]
 pub enum Event {
     Provider(ProviderEvent),
+    Autocmd(Autocmd),
     Key(KeyEvent),
     Other(String),
 }
@@ -48,6 +49,12 @@ pub enum KeyEvent {
     CtrlP,
 }
 
+/// Represents a key event.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub enum Autocmd {
+    CursorMoved,
+}
+
 impl Event {
     pub fn from_method(method: &str) -> Self {
         match method {
@@ -62,6 +69,7 @@ impl Event {
             "shift-down" => Self::Key(KeyEvent::ShiftDown),
             "ctrl-n" => Self::Key(KeyEvent::CtrlN),
             "ctrl-p" => Self::Key(KeyEvent::CtrlP),
+            "autocmd/CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
             other => Self::Other(other.to_string()),
         }
     }

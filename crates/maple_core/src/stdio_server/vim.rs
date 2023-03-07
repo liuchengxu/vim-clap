@@ -300,6 +300,18 @@ impl Vim {
         }
     }
 
+    pub async fn line(&self, expr: &str) -> Result<usize> {
+        self.call("line", json![expr]).await
+    }
+
+    pub async fn col(&self, expr: &str) -> Result<usize> {
+        self.call("col", json![expr]).await
+    }
+
+    pub async fn expand(&self, string: &str) -> Result<String> {
+        self.call("expand", json![string]).await
+    }
+
     pub async fn winheight(&self, winid: usize) -> Result<usize> {
         let height: i32 = self.call("winheight", json![winid]).await?;
         if height < 0 {
@@ -373,6 +385,10 @@ impl Vim {
     pub async fn files_name_only(&self) -> Result<bool> {
         let context: HashMap<String, Value> = self.eval("g:clap.context").await?;
         Ok(context.contains_key("name-only"))
+    }
+
+    pub async fn current_buffer_path(&self) -> Result<String> {
+        self.bare_call("current_buffer_path").await
     }
 
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {

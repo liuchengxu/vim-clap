@@ -42,12 +42,23 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
+function! s:send_notification_with_session_id(method, params) abort
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#send_message(json_encode({
+          \ 'method': a:method,
+          \ 'params': a:params,
+          \ 'session_id': s:session_id,
+          \ }))
+  endif
+endfunction
+
 function! s:send_notification(method, params) abort
-  call clap#job#daemon#send_message(json_encode({
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#send_message(json_encode({
+          \ 'method': a:method,
+          \ 'params': a:params,
+          \ }))
+  endif
 endfunction
 
 function! s:send_method_call(method, params) abort
@@ -63,7 +74,11 @@ endfunction
 " Recommended API
 " Optional argument: params: v:null, List, Dict
 function! clap#client#notify(method, ...) abort
-  call s:send_notification(a:method, get(a:000, 0, v:null))
+  call s:send_notification_with_session_id(a:method, get(a:000, 0, v:null))
+endfunction
+
+function! clap#client#send_notification(method, ...) abort
+  call s:send_notification(a:method, a:000)
 endfunction
 
 " Optional argument: params: v:null, List, Dict
@@ -94,7 +109,23 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:send_notification('new_session', params)
+  call s:send_notification_with_session_id('new_session', params)
+endfunction
+
+function! clap#client#notify_highlight_cursor_word() abort
+  let cword = expand('<cword>')
+  if !empty(cword)
+    call s:send_notification('plugin/highlight-cursor-word', {
+          \ 'source_file': expand('#'.bufnr('%').':p'),
+          \ 'start': line('w0'),
+          \ 'end': line('w$'),
+          \ 'cword': cword,
+          \ })
+  endif
+endfunction
+
+function! clap#client#start() abort
+  call clap#job#daemon#start(function('clap#client#handle'))
 endfunction
 
 function! clap#client#notify_recent_file() abort
@@ -105,7 +136,7 @@ function! clap#client#notify_recent_file() abort
     return
   endif
   let file = expand(expand('<afile>:p'))
-  call s:send_notification('note_recent_files', [file])
+  call s:send_notification_with_session_id('note_recent_files', [file])
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

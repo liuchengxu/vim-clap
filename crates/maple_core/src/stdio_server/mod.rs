@@ -7,7 +7,7 @@ mod state;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Event, ProviderEvent};
+use self::input::{Autocmd, Event, ProviderEvent};
 use self::provider::{create_provider, Context};
 use self::session::SessionManager;
 use self::state::State;
@@ -88,48 +88,10 @@ impl Client {
                                                 .as_mut()
                                                 .reset(Instant::now() + notification_delay);
                                         }
-                                        _ => {
-                                            if let Some(session_id) = notification.session_id {
-                                                if self.session_manager_mutex.lock().exists(session_id) {
-                                                    let client = self.clone();
-
-                                                    tokio::spawn(async move {
-                                                        if let Err(err) =
-                                                            client.process_notification(notification).await
-                                                        {
-                                                            tracing::error!(
-                                                                ?session_id,
-                                                                ?err,
-                                                                "Error at processing Vim Notification"
-                                                            );
-                                                        }
-                                                    });
-                                                }
-                                            }
-                                        }
+                                        _ => self.process_notification(notification),
                                     }
                                 }
-                                Call::MethodCall(method_call) => {
-                                    let client = self.clone();
-
-                                    tokio::spawn(async move {
-                                        let id = method_call.id;
-
-                                        match client.process_method_call(method_call).await {
-                                            Ok(Some(result)) => {
-                                                // Send back the result of method call.
-                                                let state = client.state_mutex.lock();
-                                                if let Err(err) = state.vim.send(id, Ok(result)) {
-                                                    tracing::debug!(?err, "Failed to send the output result");
-                                                }
-                                            }
-                                            Ok(None) => {}
-                                            Err(err) => {
-                                                tracing::error!(?err, "Error at processing Vim MethodCall");
-                                            }
-                                        }
-                                    });
-                                }
+                                Call::MethodCall(method_call) => self.process_method_call(method_call),
                             }
                         }
                         None => break, // channel has closed.
@@ -146,7 +108,7 @@ impl Client {
                             .saturating_sub(1);
                         self.session_manager_mutex.lock().try_exit(last_session_id);
                         let session_id = notification.session_id;
-                        if let Err(err) = self.process_notification(notification).await {
+                        if let Err(err) = self.do_process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
                         }
                     }
@@ -155,8 +117,29 @@ impl Client {
         }
     }
 
-    /// Process a Vim notification message.
-    async fn process_notification(&self, notification: Notification) -> Result<()> {
+    fn process_notification(&self, notification: Notification) {
+        if let Some(session_id) = notification.session_id {
+            if self.session_manager_mutex.lock().exists(session_id) {
+                let client = self.clone();
+
+                tokio::spawn(async move {
+                    if let Err(err) = client.do_process_notification(notification).await {
+                        tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
+                    }
+                });
+            }
+        } else {
+            let client = self.clone();
+            tokio::spawn(async move {
+                if let Err(err) = client.do_process_notification(notification).await {
+                    tracing::error!(?err, "Error at processing Vim Notification");
+                }
+            });
+        }
+    }
+
+    /// Actually process a Vim notification message.
+    async fn do_process_notification(&self, notification: Notification) -> Result<()> {
         let session_id = || {
             notification
                 .session_id
@@ -186,6 +169,47 @@ impl Client {
                 let session_manager = self.session_manager_mutex.lock();
                 session_manager.send(session_id()?, ProviderEvent::Key(key_event));
             }
+            Event::Autocmd(autocmd) => match autocmd {
+                Autocmd::CursorMoved => {
+                    let cword = self.vim.expand("<cword>").await?;
+                    tracing::debug!("======================= cword: {cword:?}");
+                    if !cword.is_empty() {
+                        let source_file = self.vim.current_buffer_path().await?;
+                        let start = self.vim.line("w0").await?;
+                        let end = self.vim.line("w$").await?;
+                        tracing::debug!("======================= source_file: {source_file:?}, start: {start}, end: {end}");
+                        let source_file = std::path::PathBuf::from(source_file);
+                        if source_file.is_file() {
+                            #[derive(serde::Serialize)]
+                            struct WordHighlights {
+                                highlights: Vec<(usize, usize)>,
+                                cword: String,
+                            }
+
+                            if let Ok(highlights) = crate::highlight_cursor_word::find_highlights(
+                                &source_file,
+                                start,
+                                end,
+                                cword.clone(),
+                            ) {
+                                tracing::debug!(
+                                    "======================== highlights: {highlights:?}"
+                                );
+                                let match_ids: Vec<usize> = self
+                                    .vim
+                                    .call(
+                                        "clap#highlight#add_cursor_word_highlight",
+                                        WordHighlights { highlights, cword },
+                                    )
+                                    .await?;
+                                tracing::debug!(
+                                    "======================== match_ids: {match_ids:?}"
+                                );
+                            }
+                        }
+                    }
+                }
+            },
             Event::Other(other_method) => {
                 match other_method.as_str() {
                     "initialize_global_env" => {
@@ -200,6 +224,50 @@ impl Client {
                     }
                     "note_recent_files" => {
                         handler::messages::note_recent_file(notification).await?
+                    "autocmd" => {
+                        tracing::debug!("============= autocmd: {notification:?}");
+                    }
+                    "plugin/highlight-cursor-word" => {
+                        #[derive(serde::Deserialize)]
+                        struct InnerParams {
+                            source_file: String,
+                            start: usize,
+                            end: usize,
+                            cword: String,
+                        }
+
+                        #[derive(serde::Serialize)]
+                        struct WordHighlights {
+                            highlights: Vec<(usize, usize)>,
+                            cword: String,
+                        }
+
+                        let InnerParams {
+                            source_file,
+                            start,
+                            end,
+                            cword,
+                        } = notification.params.parse()?;
+
+                        tracing::debug!("============ source_file: {source_file:?}, start: {start}, end: {end:?}, cword: {cword:?}");
+
+                        let source_file = std::path::PathBuf::from(source_file);
+                        if let Ok(highlights) = crate::highlight_cursor_word::find_highlights(
+                            &source_file,
+                            start,
+                            end,
+                            cword.clone(),
+                        ) {
+                            tracing::debug!("======================== highlights: {highlights:?}");
+                            let match_ids: Vec<usize> = self
+                                .vim
+                                .call(
+                                    "clap#highlight#add_cursor_word_highlight",
+                                    WordHighlights { highlights, cword },
+                                )
+                                .await?;
+                            tracing::debug!("======================== match_ids: {match_ids:?}");
+                        }
                     }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }
@@ -209,8 +277,30 @@ impl Client {
         Ok(())
     }
 
+    fn process_method_call(&self, method_call: MethodCall) {
+        let client = self.clone();
+
+        tokio::spawn(async move {
+            let id = method_call.id;
+
+            match client.do_process_method_call(method_call).await {
+                Ok(Some(result)) => {
+                    // Send back the result of method call.
+                    let state = client.state_mutex.lock();
+                    if let Err(err) = state.vim.send(id, Ok(result)) {
+                        tracing::debug!(?err, "Failed to send the output result");
+                    }
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    tracing::error!(?err, "Error at processing Vim MethodCall");
+                }
+            }
+        });
+    }
+
     /// Process a Vim method call message.
-    async fn process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
+    async fn do_process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
         let msg = method_call;
 
         let value = match msg.method.as_str() {

@@ -73,14 +73,9 @@ function! clap#init#() abort
   call s:init_submatches_hl_group()
   call s:init_fuzzy_match_hl_groups()
 
-  " Spawn the daemon process eagerly
-  if clap#maple#is_available()
+  " Spawn the daemon process if not running
+  if !clap#job#daemon#is_running()
     call clap#job#daemon#start(function('clap#client#handle'))
-
-    augroup ClapRecentFiles
-      autocmd!
-      autocmd BufAdd,BufEnter * call clap#client#notify_recent_file()
-    augroup END
   endif
 endfunction
 
