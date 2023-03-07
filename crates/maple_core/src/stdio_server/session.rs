@@ -334,7 +334,7 @@ impl SessionManager {
     }
 
     /// Dispatch the session event to the background session task accordingly.
-    pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
+    pub fn notify_provider(&self, session_id: SessionId, event: ProviderEvent) {
         if let Some(sender) = self.providers.get(&session_id) {
             sender.send(event);
         } else {

@@ -167,12 +167,12 @@ impl Client {
                 }
                 to_send => {
                     let session_manager = self.session_manager_mutex.lock();
-                    session_manager.send(session_id()?, to_send);
+                    session_manager.notify_provider(session_id()?, to_send);
                 }
             },
             Event::Key(key_event) => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(session_id()?, ProviderEvent::Key(key_event));
+                session_manager.notify_provider(session_id()?, ProviderEvent::Key(key_event));
             }
             Event::Autocmd(autocmd) => {
                 let session_manager = self.session_manager_mutex.lock();
@@ -278,7 +278,7 @@ impl Client {
             // Deprecated but not remove them for now.
             "on_move" => {
                 let session_manager = self.session_manager_mutex.lock();
-                session_manager.send(msg.session_id, ProviderEvent::OnMove);
+                session_manager.notify_provider(msg.session_id, ProviderEvent::OnMove);
                 None
             }
 
