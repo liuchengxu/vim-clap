@@ -30,8 +30,8 @@ fn find_highlight_positions(
         .enumerate()
         .filter_map(|(idx, line)| {
             word_matcher
-                .find_matches(&line)
-                .and_then(|(_score, indices)| indices.get(0).copied())
+                .find_all_matches_in_byte_indices(&line)
+                .and_then(|indices| indices.get(0).copied())
                 .map(|highlight_start| (idx + start + 1, highlight_start))
         })
         .collect();
@@ -86,7 +86,10 @@ impl CursorWordHighligher {
         let curline = self.vim.getcurbufline(lnum).await?;
 
         if let Some(cursor_char) = curline.chars().nth(col - 1) {
-            if cursor_char.is_ascii_punctuation() || cursor_char == '=' {
+            if cursor_char.is_whitespace()
+                || cursor_char.is_ascii_punctuation()
+                || cursor_char == '='
+            {
                 self.last_cword = cursor_char.to_string();
                 return Ok(());
             }

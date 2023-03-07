@@ -70,4 +70,27 @@ impl WordMatcher {
             None
         }
     }
+
+    pub fn find_all_matches_in_byte_indices(&self, line: &str) -> Option<Vec<usize>> {
+        use grep_matcher::Matcher;
+
+        let byte_indices: Vec<_> = self
+            .matchers
+            .iter()
+            .filter_map(|(_word_term, word_matcher)| {
+                word_matcher
+                    .find_at(line.as_bytes(), 0)
+                    .ok()
+                    .flatten()
+                    .map(|mat| {
+                        let start = mat.start();
+                        let end = mat.end();
+                        start..end
+                    })
+            })
+            .flatten()
+            .collect();
+
+        Some(byte_indices)
+    }
 }
