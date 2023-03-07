@@ -27,8 +27,6 @@ else
   let s:maple_bin = v:null
 endif
 
-echom 'maple_bin:'.s:maple_bin
-
 if s:maple_bin isnot v:null
   function! clap#maple#clean_up() abort
     call clap#client#notify('exit')
