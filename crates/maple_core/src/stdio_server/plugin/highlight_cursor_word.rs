@@ -79,6 +79,7 @@ impl CursorWordHighligher {
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         if cword.is_empty() {
+            self.last_cword = cword;
             return Ok(());
         }
 
