@@ -325,8 +325,8 @@ impl Vim {
         self.call("fnamemodify", json!([fname, mods])).await
     }
 
-    pub async fn matchdelete(&self, id: i32) -> Result<i32> {
-        self.call("matchdelete", json![id]).await
+    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
+        self.call("matchdelete", json!([id, win])).await
     }
 
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
@@ -395,6 +395,10 @@ impl Vim {
         self.bare_call("current_buffer_path").await
     }
 
+    pub async fn current_winid(&self) -> Result<usize> {
+        self.bare_call("win_getid").await
+    }
+
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
@@ -404,6 +408,18 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
+        let value = match value {
+            Value::Bool(b) => b,
+            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
+            _ => false,
+        };
+        Ok(value)
+    }
+
+    pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
+        let value: Value = self
+            .call("clap#api#floating_win_is_valid", json!([winid]))
+            .await?;
         let value = match value {
             Value::Bool(b) => b,
             Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),

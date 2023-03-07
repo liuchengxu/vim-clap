@@ -12,14 +12,22 @@ pub trait ClapPlugin: Debug + Send + Sync + 'static {
 #[derive(Debug)]
 pub struct CursorWordHighligher {
     vim: Vim,
-    // matchaddpos() returns -1 on error.
-    current_highlights: Option<Vec<i32>>,
+    current_highlights: Option<CurrentHighlights>,
     last_cword: String,
+}
+
+#[derive(Debug)]
+struct CurrentHighlights {
+    // matchaddpos() returns -1 on error.
+    match_ids: Vec<i32>,
+    winid: usize,
 }
 
 #[derive(serde::Serialize)]
 struct WordHighlights {
+    // (line_number, highlight_start)
     highlights: Vec<(usize, usize)>,
+    // highlight length.
     cword_len: usize,
 }
 
@@ -34,20 +42,23 @@ impl CursorWordHighligher {
 
     async fn highlight_cursor_word(&mut self) -> Result<()> {
         let cword = self.vim.expand("<cword>").await?;
-        // TODO: filter the false positive results
-        if cword.is_empty() {
-            return Ok(());
-        }
 
         if self.last_cword == cword {
             return Ok(());
         }
 
-        if let Some(highlights) = self.current_highlights.take() {
+        if let Some(CurrentHighlights { match_ids, winid }) = self.current_highlights.take() {
             // clear the existing highlights
-            for id in highlights {
-                self.vim.matchdelete(id).await?;
+            if self.vim.win_is_valid(winid).await? {
+                for match_id in match_ids {
+                    self.vim.matchdelete(match_id, winid).await?;
+                }
             }
+        }
+
+        // TODO: filter the false positive results, using a blocklist of filetypes?
+        if cword.is_empty() {
+            return Ok(());
         }
 
         let source_file = self.vim.current_buffer_path().await?;
@@ -57,13 +68,17 @@ impl CursorWordHighligher {
             return Ok(());
         }
 
+        let winid = self.vim.current_winid().await?;
         let start = self.vim.line("w0").await?;
         let end = self.vim.line("w$").await?;
+
+        // TODO: Perhaps cache the lines in [start, end] as when the cursor moves, the lines may remain
+        // unchanged.
+
         if let Ok(highlights) =
             crate::highlight_cursor_word::find_highlights(&source_file, start, end, cword.clone())
         {
             let cword_len = cword.len();
-            self.last_cword = cword;
             let match_ids: Vec<i32> = self
                 .vim
                 .call(
@@ -74,7 +89,9 @@ impl CursorWordHighligher {
                     },
                 )
                 .await?;
-            self.current_highlights.replace(match_ids);
+            self.last_cword = cword;
+            self.current_highlights
+                .replace(CurrentHighlights { match_ids, winid });
         }
 
         Ok(())
