@@ -17,12 +17,15 @@ struct WordHighlights {
 
 fn find_highlight_positions(
     source_file: &Path,
-    start: usize,
-    end: usize,
+    line_start: usize,
+    line_end: usize,
     cword: String,
 ) -> std::io::Result<WordHighlights> {
     let cword_len = cword.len();
     let word_matcher = WordMatcher::new(vec![cword.into()]);
+    // line_start and line_end is 1-based.
+    let start = line_start - 1;
+    let end = line_end - 1;
     let highlights = read_lines_from(source_file, start, end - start)?
         .enumerate()
         .filter_map(|(idx, line)| {
@@ -91,14 +94,14 @@ impl CursorWordHighligher {
         }
 
         let winid = self.vim.current_winid().await?;
-        let start = self.vim.line("w0").await?;
-        let end = self.vim.line("w$").await?;
+        let line_start = self.vim.line("w0").await?;
+        let line_end = self.vim.line("w$").await?;
 
         // TODO: Perhaps cache the lines in [start, end] as when the cursor moves, the lines may remain
         // unchanged.
 
         if let Ok(word_highlights) =
-            find_highlight_positions(&source_file, start, end, cword.clone())
+            find_highlight_positions(&source_file, line_start, line_end, cword.clone())
         {
             let match_ids: Vec<i32> = self
                 .vim
