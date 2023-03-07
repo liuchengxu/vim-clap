@@ -10,7 +10,8 @@ use utils::read_lines_from;
 #[derive(Debug, serde::Serialize)]
 struct WordHighlights {
     // (line_number, highlight_start)
-    highlights: Vec<(usize, usize)>,
+    other_words_highlight: Vec<(usize, usize)>,
+    cword_highlight: (usize, usize),
     // highlight length.
     cword_len: usize,
 }
@@ -19,27 +20,58 @@ fn find_highlight_positions(
     source_file: &Path,
     line_start: usize,
     line_end: usize,
+    curlnum: usize,
+    col: usize,
     cword: String,
-) -> std::io::Result<WordHighlights> {
+) -> std::io::Result<Option<WordHighlights>> {
     let cword_len = cword.len();
     let word_matcher = WordMatcher::new(vec![cword.into()]);
     // line_start and line_end is 1-based.
-    let start = line_start - 1;
-    let end = line_end - 1;
-    let highlights = read_lines_from(source_file, start, end - start)?
+    let line_start = line_start - 1;
+    let line_end = line_end - 1;
+    let mut current_word_highlight = None;
+    let other_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
         .enumerate()
         .map(|(idx, line)| {
-            word_matcher
-                .find_all_matches_start(&line)
+            let matches_range = word_matcher.find_all_matches_range(&line);
+
+            let line_number = idx + line_start + 1;
+
+            if line_number == curlnum {
+                let cursor_word_start = matches_range.iter().find_map(|highlight_range| {
+                    if highlight_range.contains(&(col - 1)) {
+                        Some(highlight_range.start)
+                    } else {
+                        None
+                    }
+                });
+                if let Some(start) = cursor_word_start {
+                    current_word_highlight.replace((line_number, start));
+                }
+            }
+
+            matches_range
                 .into_iter()
-                .map(move |highlight_start| ((idx + start + 1, highlight_start)))
+                .filter_map(move |highlight_range| {
+                    // Skip the cursor word highlight.
+                    if line_number == curlnum && highlight_range.contains(&(col - 1)) {
+                        None
+                    } else {
+                        Some((line_number, highlight_range.start))
+                    }
+                })
         })
         .flatten()
         .collect();
-    Ok(WordHighlights {
-        highlights,
-        cword_len,
-    })
+    if let Some(cword_highlight) = current_word_highlight {
+        Ok(Some(WordHighlights {
+            other_words_highlight,
+            cword_highlight,
+            cword_len,
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 #[derive(Debug)]
@@ -82,9 +114,9 @@ impl CursorWordHighligher {
         }
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
-        let lnum = self.vim.line(".").await?;
+        let curlnum = self.vim.line(".").await?;
         let col = self.vim.col(".").await?;
-        let curline = self.vim.getcurbufline(lnum).await?;
+        let curline = self.vim.getcurbufline(curlnum).await?;
 
         if let Some(cursor_char) = curline.chars().nth(col - 1) {
             if cursor_char.is_whitespace()
@@ -118,9 +150,14 @@ impl CursorWordHighligher {
         // TODO: Perhaps cache the lines in [start, end] as when the cursor moves, the lines may remain
         // unchanged.
 
-        if let Ok(word_highlights) =
-            find_highlight_positions(&source_file, line_start, line_end, cword.clone())
-        {
+        if let Ok(Some(word_highlights)) = find_highlight_positions(
+            &source_file,
+            line_start,
+            line_end,
+            curlnum,
+            col,
+            cword.clone(),
+        ) {
             let match_ids: Vec<i32> = self
                 .vim
                 .call("clap#highlight#add_cursor_word_highlight", word_highlights)
@@ -140,24 +177,5 @@ impl ClapPlugin for CursorWordHighligher {
         match autocmd {
             Autocmd::CursorMoved => self.highlight_cursor_word().await,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_highlight_cursor_word() {
-        let res = find_highlight_positions(
-            Path::new(
-                "/home/xlc/.vim/plugged/vim-clap/crates/maple_core/src/highlight_cursor_word.rs",
-            ),
-            1,
-            30,
-            "line".to_string(),
-        )
-        .unwrap();
-        println!("res: {res:?}");
     }
 }

@@ -9,7 +9,12 @@ let s:default_priority = 10
 function! clap#highlight#add_cursor_word_highlight(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
   let match_ids = []
-  for [lnum, col] in a:word_highlights.highlights
+  let [lnum, col] = a:word_highlights.cword_highlight
+  let match_id = matchaddpos('ErrorMsg', [[lnum, col+1, cword_len]])
+  if match_id > -1
+    call add(match_ids, match_id)
+  endif
+  for [lnum, col] in a:word_highlights.other_words_highlight
     let match_id = matchaddpos('Search', [[lnum, col+1, cword_len]])
     if match_id > -1
       call add(match_ids, match_id)
