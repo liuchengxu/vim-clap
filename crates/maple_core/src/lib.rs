@@ -4,7 +4,6 @@ pub mod datastore;
 pub mod dirs;
 pub mod find_usages;
 pub mod helptags;
-pub mod highlight_cursor_word;
 pub mod paths;
 mod previewer;
 pub mod process;
