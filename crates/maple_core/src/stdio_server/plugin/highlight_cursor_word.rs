@@ -7,14 +7,23 @@ use std::fmt::Debug;
 use std::path::Path;
 use utils::read_lines_from;
 
+#[derive(Debug, serde::Serialize)]
+struct WordHighlights {
+    // (line_number, highlight_start)
+    highlights: Vec<(usize, usize)>,
+    // highlight length.
+    cword_len: usize,
+}
+
 fn find_highlight_positions(
     source_file: &Path,
     start: usize,
     end: usize,
-    word: String,
-) -> std::io::Result<Vec<(usize, usize)>> {
-    let word_matcher = WordMatcher::new(vec![word.into()]);
-    Ok(read_lines_from(source_file, start, end - start)?
+    cword: String,
+) -> std::io::Result<WordHighlights> {
+    let cword_len = cword.len();
+    let word_matcher = WordMatcher::new(vec![cword.into()]);
+    let highlights = read_lines_from(source_file, start, end - start)?
         .enumerate()
         .filter_map(|(idx, line)| {
             word_matcher
@@ -22,7 +31,11 @@ fn find_highlight_positions(
                 .and_then(|(_score, indices)| indices.get(0).copied())
                 .map(|highlight_start| (idx + start + 1, highlight_start))
         })
-        .collect())
+        .collect();
+    Ok(WordHighlights {
+        highlights,
+        cword_len,
+    })
 }
 
 #[derive(Debug)]
@@ -37,14 +50,6 @@ struct CurrentHighlights {
     // matchaddpos() returns -1 on error.
     match_ids: Vec<i32>,
     winid: usize,
-}
-
-#[derive(serde::Serialize)]
-struct WordHighlights {
-    // (line_number, highlight_start)
-    highlights: Vec<(usize, usize)>,
-    // highlight length.
-    cword_len: usize,
 }
 
 impl CursorWordHighligher {
@@ -91,17 +96,12 @@ impl CursorWordHighligher {
         // TODO: Perhaps cache the lines in [start, end] as when the cursor moves, the lines may remain
         // unchanged.
 
-        if let Ok(highlights) = find_highlight_positions(&source_file, start, end, cword.clone()) {
-            let cword_len = cword.len();
+        if let Ok(word_highlights) =
+            find_highlight_positions(&source_file, start, end, cword.clone())
+        {
             let match_ids: Vec<i32> = self
                 .vim
-                .call(
-                    "clap#highlight#add_cursor_word_highlight",
-                    WordHighlights {
-                        highlights,
-                        cword_len,
-                    },
-                )
+                .call("clap#highlight#add_cursor_word_highlight", word_highlights)
                 .await?;
             self.last_cword = cword;
             self.current_highlights
