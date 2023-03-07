@@ -81,6 +81,19 @@ impl CursorWordHighligher {
         }
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
+        let lnum = self.vim.line(".").await?;
+        let col = self.vim.col(".").await?;
+        let curline = self.vim.getcurbufline(lnum).await?;
+
+        if let Some(cursor_char) = curline.chars().nth(col - 1) {
+            if cursor_char.is_ascii_punctuation() || cursor_char == '=' {
+                self.last_cword = cursor_char.to_string();
+                return Ok(());
+            }
+        } else {
+            return Ok(());
+        }
+
         if cword.is_empty() {
             self.last_cword = cword;
             return Ok(());
@@ -94,6 +107,7 @@ impl CursorWordHighligher {
         }
 
         let winid = self.vim.current_winid().await?;
+
         let line_start = self.vim.line("w0").await?;
         let line_end = self.vim.line("w$").await?;
 

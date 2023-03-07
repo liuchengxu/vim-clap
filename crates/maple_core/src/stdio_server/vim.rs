@@ -304,6 +304,10 @@ impl Vim {
         self.call("line", json![expr]).await
     }
 
+    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
+        self.call("getbufoneline", json!(["", lnum])).await
+    }
+
     pub async fn col(&self, expr: &str) -> Result<usize> {
         self.call("col", json![expr]).await
     }
