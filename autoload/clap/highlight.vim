@@ -12,7 +12,7 @@ hi DefaultCurrentWordTwins      ctermbg=238 guibg=#444444
 hi default link ClapCurrentWord      ErrorMsg
 hi default link ClapCurrentWordTwins Search
 
-function! clap#highlight#add_cursor_word_highlight(word_highlights) abort
+function! clap#highlight#add_cursor_word_highlights(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
   let match_ids = []
   let [lnum, col] = a:word_highlights.cword_highlight

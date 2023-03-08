@@ -110,22 +110,6 @@ function! clap#client#notify_on_init(...) abort
   call s:send_notification_with_session_id('new_session', params)
 endfunction
 
-function! clap#client#notify_highlight_cursor_word() abort
-  let cword = expand('<cword>')
-  if !empty(cword)
-    call s:send_notification('plugin/highlight-cursor-word', {
-          \ 'source_file': expand('#'.bufnr('%').':p'),
-          \ 'start': line('w0'),
-          \ 'end': line('w$'),
-          \ 'cword': cword,
-          \ })
-  endif
-endfunction
-
-function! clap#client#start() abort
-  call clap#job#daemon#start()
-endfunction
-
 function! clap#client#notify_recent_file() abort
   if !clap#job#daemon#is_running()
     return

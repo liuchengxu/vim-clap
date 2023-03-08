@@ -43,31 +43,22 @@ function! s:OnBufDelete(bufnr) abort
   endif
 endfunction
 
-augroup ClapBuffers
+augroup VimClap
   autocmd!
+
   if exists('g:clap_provider_buffers_cur_tab_only')
     autocmd BufEnter             * call s:OnBufEnter(+expand('<abuf>'))
   endif
   autocmd BufDelete            * call s:OnBufDelete(+expand('<abuf>'))
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
-augroup END
 
-augroup ClapRecentFiles
-  autocmd!
   autocmd BufAdd,BufEnter * call clap#client#notify_recent_file()
-augroup END
-
-augroup ClapAutocmds
-  autocmd!
 
   " autocmd CursorMoved * call clap#client#send_notification('autocmd', 'CursorMoved', +expand('<abuf>'))
   autocmd CursorMoved * call clap#client#send_notification('autocmd/CursorMoved')
-augroup END
 
-" yanks provider
-if get(g:, 'clap_enable_yanks_provider', 1)
-  augroup ClapYanks
-    autocmd!
-    autocmd VimEnter * call clap#provider#yanks#init()
-  augroup END
-endif
+  " yanks provider
+  if get(g:, 'clap_enable_yanks_provider', 1)
+      autocmd VimEnter * call clap#provider#yanks#init()
+  endif
+augroup END

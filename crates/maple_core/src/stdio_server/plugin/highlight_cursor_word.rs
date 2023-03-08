@@ -161,7 +161,7 @@ impl CursorWordHighligher {
         ) {
             let match_ids: Vec<i32> = self
                 .vim
-                .call("clap#highlight#add_cursor_word_highlight", word_highlights)
+                .call("clap#highlight#add_cursor_word_highlights", word_highlights)
                 .await?;
             self.last_cword = cword;
             self.current_highlights
