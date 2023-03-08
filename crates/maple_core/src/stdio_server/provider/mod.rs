@@ -15,13 +15,13 @@ use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
-use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
+use rpc::Params;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;

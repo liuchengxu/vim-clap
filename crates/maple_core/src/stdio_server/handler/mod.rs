@@ -1,3 +1,4 @@
+pub mod messages;
 mod on_initialize;
 mod on_move;
 

@@ -10,6 +10,7 @@ members = [
     "matcher/extracted_fzy",
     "pattern",
     "printer",
+    "rpc",
     "types",
     "utils",
     "upgrade",

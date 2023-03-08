@@ -1,5 +1,5 @@
-use crate::stdio_server::rpc::{Call, RpcClient};
 use crate::stdio_server::vim::Vim;
+use rpc::{Call, RpcClient};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;

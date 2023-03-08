@@ -1,10 +1,10 @@
 use crate::paths::AbsPathBuf;
 use crate::stdio_server::provider::ProviderId;
-use crate::stdio_server::rpc::RpcClient;
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
 use printer::DisplayLines;
 use rayon::prelude::*;
+use rpc::RpcClient;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -243,29 +243,45 @@ impl Vim {
         method: impl AsRef<str>,
         params: impl Serialize,
     ) -> Result<R> {
-        self.rpc_client.request(method, params).await
+        self.rpc_client
+            .request(method, params)
+            .await
+            .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 
     /// Calls the method with no arguments.
     pub async fn bare_call<R: DeserializeOwned>(&self, method: impl AsRef<str>) -> Result<R> {
-        self.rpc_client.request(method, json!([])).await
+        self.rpc_client
+            .request(method, json!([]))
+            .await
+            .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 
     /// Executes the method with given params in Vim, ignoring the call result.
     ///
     /// `method`: Same with `{func}` in `:h call()`.
     pub fn exec(&self, method: impl AsRef<str>, params: impl Serialize) -> Result<()> {
-        self.rpc_client.notify(method, params)
+        self.rpc_client
+            .notify(method, params)
+            .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 
     /// Executes the method with no arguments.
     pub fn bare_exec(&self, method: impl AsRef<str>) -> Result<()> {
-        self.rpc_client.notify(method, json!([]))
+        self.rpc_client
+            .notify(method, json!([]))
+            .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 
     /// Send back the result with specified id.
-    pub fn send(&self, id: u64, output_result: Result<impl Serialize>) -> Result<()> {
-        self.rpc_client.output(id, output_result)
+    pub fn send(
+        &self,
+        id: u64,
+        output_result: Result<impl Serialize, rpc::RpcError>,
+    ) -> Result<()> {
+        self.rpc_client
+            .output(id, output_result)
+            .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 
     /////////////////////////////////////////////////////////////////
