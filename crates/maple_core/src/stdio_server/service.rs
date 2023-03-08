@@ -1,6 +1,9 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
-use crate::stdio_server::input::{InternalProviderEvent, ProviderEvent, ProviderEventSender};
+use crate::stdio_server::input::{
+    InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
+};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -8,9 +11,6 @@ use std::fmt::Debug;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
-
-use super::input::PluginEvent;
-use super::plugin::ClapPlugin;
 
 pub type ProviderSessionId = u64;
 
@@ -233,25 +233,24 @@ impl ProviderSession {
 
 #[derive(Debug)]
 pub struct PluginSession {
-    /// Each provider session can have its own message processing logic.
     plugin: Box<dyn ClapPlugin>,
     plugin_events: UnboundedReceiver<PluginEvent>,
 }
 
 impl PluginSession {
     pub fn new(plugin: Box<dyn ClapPlugin>) -> (Self, UnboundedSender<PluginEvent>) {
-        let (plugin_session_sender, plugin_session_receiver) = unbounded_channel();
+        let (plugin_event_sender, plugin_event_receiver) = unbounded_channel();
 
         let plugin_session = PluginSession {
             plugin,
-            plugin_events: plugin_session_receiver,
+            plugin_events: plugin_event_receiver,
         };
 
-        (plugin_session, plugin_session_sender)
+        (plugin_session, plugin_event_sender)
     }
 
     pub fn start_event_loop(mut self) {
-        tracing::debug!("Spawning a new session task",);
+        tracing::debug!("Spawning a new plugin session task");
 
         tokio::spawn(async move {
             while let Some(plugin_event) = self.plugin_events.recv().await {
@@ -269,8 +268,8 @@ impl PluginSession {
 
 /// This structs manages all the created sessions.
 ///
-/// A plugin is a general service, a provider is a specialized plugin which is specific to provide
-/// the filtering service.
+/// A plugin is a general service, a provider is a specialized plugin
+/// which is dedicated to provide the filtering service.
 #[derive(Debug, Default)]
 pub struct ServiceManager {
     providers: HashMap<ProviderSessionId, ProviderEventSender>,
@@ -291,16 +290,16 @@ impl ServiceManager {
         }
 
         if let Entry::Vacant(v) = self.providers.entry(provider_session_id) {
-            let (provider_session, provider_session_sender) =
+            let (provider_session, provider_event_sender) =
                 ProviderSession::new(ctx, provider_session_id, provider);
             provider_session.start_event_loop();
 
-            provider_session_sender
+            provider_event_sender
                 .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
                 .expect("Failed to send ProviderEvent::OnInitialize");
 
             v.insert(ProviderEventSender::new(
-                provider_session_sender,
+                provider_event_sender,
                 provider_session_id,
             ));
         } else {
@@ -313,32 +312,23 @@ impl ServiceManager {
 
     /// Creates a new plugin session.
     pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
-        let (plugin_session, plugin_session_sender) = PluginSession::new(plugin);
+        let (plugin_session, plugin_event_sender) = PluginSession::new(plugin);
         plugin_session.start_event_loop();
-        self.plugins.push(plugin_session_sender);
+        self.plugins.push(plugin_event_sender);
     }
 
-    pub fn notify_plugins(&self, plugin_event: PluginEvent) {
-        for plugin_sender in &self.plugins {
-            // TODO: remove failed senders
-            let _ = plugin_sender.send(plugin_event.clone());
-        }
+    pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
+        self.plugins
+            .retain(|plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok())
     }
 
     pub fn exists(&self, provider_session_id: ProviderSessionId) -> bool {
         self.providers.contains_key(&provider_session_id)
     }
 
-    /// Stop the session task by sending [`ProviderEvent::Exit`].
-    pub fn exit_session(&mut self, provider_session_id: ProviderSessionId) {
-        if let Some(sender) = self.providers.remove(&provider_session_id) {
-            sender.send(ProviderEvent::Exit);
-        }
-    }
-
     pub fn try_exit(&mut self, provider_session_id: ProviderSessionId) {
         if self.exists(provider_session_id) {
-            self.exit_session(provider_session_id);
+            self.notify_provider_exit(provider_session_id);
         }
     }
 
@@ -352,6 +342,13 @@ impl ServiceManager {
                 sessions = ?self.providers.keys(),
                 "Couldn't find the sender for given session",
             );
+        }
+    }
+
+    /// Stop the session task by sending [`ProviderEvent::Exit`].
+    pub fn notify_provider_exit(&mut self, provider_session_id: ProviderSessionId) {
+        if let Some(sender) = self.providers.remove(&provider_session_id) {
+            sender.send(ProviderEvent::Exit);
         }
     }
 }

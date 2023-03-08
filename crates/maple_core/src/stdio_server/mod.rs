@@ -8,7 +8,7 @@ mod state;
 mod vim;
 
 pub use self::input::InputHistory;
-use self::input::{Event, ProviderEvent};
+use self::input::{Event, PluginEvent, ProviderEvent};
 use self::plugin::{ClapPlugin, CursorWordHighligher};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
@@ -145,7 +145,7 @@ impl Client {
 
     /// Actually process a Vim notification message.
     async fn do_process_notification(&self, notification: Notification) -> Result<()> {
-        let session_id = || {
+        let provider_session_id = || {
             notification
                 .session_id
                 .ok_or_else(|| anyhow!("Notification must contain `session_id` field"))
@@ -157,26 +157,32 @@ impl Client {
                     let provider_id = self.vim.provider_id().await?;
                     let ctx = Context::new(notification.params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;
-                    let service_manager = self.service_manager_mutex.clone();
-                    let mut service_manager = service_manager.lock();
-                    service_manager.new_provider(session_id()?, provider, ctx);
+                    self.service_manager_mutex.lock().new_provider(
+                        provider_session_id()?,
+                        provider,
+                        ctx,
+                    );
                 }
                 ProviderEvent::Exit => {
-                    let mut service_manager = self.service_manager_mutex.lock();
-                    service_manager.exit_session(session_id()?);
+                    self.service_manager_mutex
+                        .lock()
+                        .notify_provider_exit(provider_session_id()?);
                 }
                 to_send => {
-                    let service_manager = self.service_manager_mutex.lock();
-                    service_manager.notify_provider(session_id()?, to_send);
+                    self.service_manager_mutex
+                        .lock()
+                        .notify_provider(provider_session_id()?, to_send);
                 }
             },
             Event::Key(key_event) => {
-                let service_manager = self.service_manager_mutex.lock();
-                service_manager.notify_provider(session_id()?, ProviderEvent::Key(key_event));
+                self.service_manager_mutex
+                    .lock()
+                    .notify_provider(provider_session_id()?, ProviderEvent::Key(key_event));
             }
             Event::Autocmd(autocmd) => {
-                let service_manager = self.service_manager_mutex.lock();
-                service_manager.notify_plugins(input::PluginEvent::Autocmd(autocmd));
+                self.service_manager_mutex
+                    .lock()
+                    .notify_plugins(PluginEvent::Autocmd(autocmd));
             }
             Event::Other(other_method) => {
                 match other_method.as_str() {
@@ -192,6 +198,7 @@ impl Client {
                     }
                     "note_recent_files" => {
                         handler::messages::note_recent_file(notification).await?
+                    }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }
             }
