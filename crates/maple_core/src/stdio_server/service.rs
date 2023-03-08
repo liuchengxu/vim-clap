@@ -256,7 +256,7 @@ impl PluginSession {
             while let Some(plugin_event) = self.plugin_events.recv().await {
                 match plugin_event {
                     PluginEvent::Autocmd(autocmd) => {
-                        if let Err(err) = self.plugin.on_autocmd(autocmd.clone()).await {
+                        if let Err(err) = self.plugin.on_autocmd(autocmd).await {
                             tracing::error!(?err, "Failed at process {autocmd:?}");
                         }
                     }

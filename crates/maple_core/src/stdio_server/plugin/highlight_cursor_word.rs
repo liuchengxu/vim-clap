@@ -32,7 +32,7 @@ fn find_highlight_positions(
     let mut current_word_highlight = None;
     let other_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
         .enumerate()
-        .map(|(idx, line)| {
+        .flat_map(|(idx, line)| {
             let matches_range = word_matcher.find_all_matches_range(&line);
 
             let line_number = idx + line_start + 1;
@@ -61,7 +61,6 @@ fn find_highlight_positions(
                     }
                 })
         })
-        .flatten()
         .collect();
     if let Some(cword_highlight) = current_word_highlight {
         Ok(Some(WordHighlights {
@@ -152,7 +151,7 @@ impl CursorWordHighligher {
         // unchanged.
 
         if let Ok(Some(word_highlights)) = find_highlight_positions(
-            &source_file,
+            source_file,
             line_start,
             line_end,
             curlnum,
