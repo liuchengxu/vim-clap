@@ -2,7 +2,6 @@ mod handler;
 mod input;
 mod job;
 mod provider;
-mod rpc;
 mod session;
 mod state;
 mod vim;
@@ -10,12 +9,13 @@ mod vim;
 pub use self::input::InputHistory;
 use self::input::{Event, ProviderEvent};
 use self::provider::{create_provider, Context};
-use self::rpc::{Call, MethodCall, Notification, RpcClient};
 use self::session::SessionManager;
 use self::state::State;
+use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
+use rpc::{Call, MethodCall, Notification, RpcClient};
 use serde_json::{json, Value};
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
@@ -190,9 +190,17 @@ impl Client {
                 match other_method.as_str() {
                     "initialize_global_env" => {
                         // Should be called only once.
-                        notification.initialize(self.vim.clone()).await?;
+                        let output: String = self
+                            .vim
+                            .call("execute", json!(["autocmd filetypedetect"]))
+                            .await?;
+                        let ext_map = initialize_syntax_map(&output);
+                        self.vim.exec("clap#ext#set", json![ext_map])?;
+                        tracing::debug!("Client initialized successfully");
                     }
-                    "note_recent_files" => notification.note_recent_file().await?,
+                    "note_recent_files" => {
+                        handler::messages::note_recent_file(notification).await?
+                    }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }
             }
@@ -206,8 +214,8 @@ impl Client {
         let msg = method_call;
 
         let value = match msg.method.as_str() {
-            "preview/file" => Some(msg.preview_file().await?),
-            "quickfix" => Some(msg.preview_quickfix().await?),
+            "preview/file" => Some(handler::messages::preview_file(msg).await?),
+            "quickfix" => Some(handler::messages::preview_quickfix(msg).await?),
 
             // Deprecated but not remove them for now.
             "on_move" => {

@@ -115,21 +115,7 @@ function! s:create_preview() abort
           \ 'maxwidth': pos.width,
           \ 'posinvert': v:false,
           \ }
-    let should_enable_title = ['grep', 'live_grep', 'dumb_jump', 'files', 'git_files', 'proj_tags']
-    if index(should_enable_title, g:clap.provider.id) > -1
-      let working_dir = clap#rooter#working_dir()
-      let working_dir_len = strwidth(working_dir)
-      if pos.width > working_dir_len
-        let spaces_len = (pos.width - working_dir_len) / 2
-      else
-        let spaces_len = 0
-      endif
-      if g:clap_popup_border !=? 'nil'
-        let preview_opts.title = repeat('─', spaces_len).' '.working_dir.' '
-      else
-        let preview_opts.title = repeat(' ', spaces_len).' '.working_dir.' '
-      endif
-    endif
+    let preview_opts = clap#preview#inject_title_opt(preview_opts, pos.width)
     if clap#preview#direction() ==# 'LR'
       let preview_opts['line'] = pos.line - 1
       let preview_opts['height'] = pos.height

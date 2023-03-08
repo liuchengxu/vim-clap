@@ -1,7 +1,24 @@
-use super::{MethodCall, Notification};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct MethodCall {
+    pub id: u64,
+    pub method: String,
+    pub params: Params,
+    pub session_id: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Notification {
+    pub method: String,
+    pub params: Params,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<u64>,
+}
 
 /// Request message actively sent from the Vim side.
 ///

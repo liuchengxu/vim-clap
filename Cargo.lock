@@ -942,6 +942,7 @@ dependencies = [
  "printer",
  "rayon",
  "regex",
+ "rpc",
  "serde",
  "serde_json",
  "subprocess",
@@ -1297,6 +1298,16 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "rpc"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

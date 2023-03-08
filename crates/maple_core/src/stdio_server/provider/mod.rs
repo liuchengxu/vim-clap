@@ -15,13 +15,13 @@ use crate::stdio_server::handler::{
     initialize_provider, CachedPreviewImpl, Preview, PreviewTarget,
 };
 use crate::stdio_server::input::{InputRecorder, KeyEvent};
-use crate::stdio_server::rpc::Params;
 use crate::stdio_server::vim::Vim;
 use anyhow::{anyhow, Result};
 use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
+use rpc::Params;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -73,6 +73,7 @@ pub struct BufnrWinid {
 #[derive(Debug, Clone)]
 pub struct ProviderEnvironment {
     pub is_nvim: bool,
+    pub has_nvim_09: bool,
     pub provider_id: ProviderId,
     pub start: BufnrWinid,
     pub input: BufnrWinid,
@@ -267,6 +268,7 @@ impl Context {
         let display_winwidth = vim.winwidth(display.winid).await?;
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
+        let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
@@ -274,6 +276,7 @@ impl Context {
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
+            has_nvim_09: has_nvim_09 == 1,
             provider_id,
             start,
             input,

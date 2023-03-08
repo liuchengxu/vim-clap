@@ -49,6 +49,20 @@ function! s:hi_clap_symbol() abort
         \ )
 endfunction
 
+function! s:hi_clap_float_title() abort
+  let preview_ctermbg = s:extract_or('ClapPreview', 'bg', 'cterm', '60')
+  let preview_guibg = s:extract_or('ClapPreview', 'bg', 'gui', '#544a65')
+  let title_ctermfg = s:extract_or('Title', 'fg', 'cterm', '170')
+  let title_guifg = s:extract_or('Title', 'fg', 'gui', '#bc6ec5')
+  execute printf(
+        \ 'hi FloatTitle guifg=%s ctermfg=%s ctermbg=%s guibg=%s',
+        \ title_guifg,
+        \ title_ctermfg,
+        \ preview_ctermbg,
+        \ preview_guibg,
+        \ )
+endfunction
+
 " Try the palette, otherwise use the built-in material_design_dark theme.
 function! s:highlight_for(group_name, type) abort
   if has_key(s:palette, a:type)
@@ -184,6 +198,7 @@ function! s:init_theme() abort
   endif
 
   call s:hi_clap_symbol()
+  call s:hi_clap_float_title()
   call s:make_display_EndOfBuffer_invisible()
   call s:make_preview_EndOfBuffer_invisible()
   call clap#icon#def_color_components()

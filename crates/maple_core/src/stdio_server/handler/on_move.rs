@@ -156,6 +156,7 @@ fn should_truncate_cwd_relative(provider_id: &str) -> bool {
         "grep",
         "live_grep",
         "coc_location",
+        "dumb_jump",
         "proj_tags",
     ];
     SET.contains(&provider_id)
@@ -303,31 +304,34 @@ impl<'a> CachedPreviewImpl<'a> {
             }
         };
 
-        let (lines, fname) = if !self.ctx.env.is_nvim {
-            let (lines, abs_path) =
-                previewer::preview_file(path, self.preview_height, self.max_line_width()).map_err(
-                    |e| {
-                        handle_io_error(&e);
-                        e
-                    },
-                )?;
-            // cwd is shown via the popup title, no need to include it again.
-            let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
-            let mut lines = lines;
-            lines[0] = cwd_relative;
-            (lines, abs_path)
-        } else {
-            let max_fname_len = self.ctx.env.display_winwidth - 1;
-            previewer::preview_file_with_truncated_title(
-                path,
-                self.preview_height,
-                self.max_line_width(),
-                max_fname_len,
-            )
-            .map_err(|e| {
-                handle_io_error(&e);
-                e
-            })?
+        let (lines, fname) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
+            (true, false) => {
+                // Title is not available before nvim 0.9
+                let max_fname_len = self.ctx.env.display_winwidth - 1;
+                previewer::preview_file_with_truncated_title(
+                    path,
+                    self.preview_height,
+                    self.max_line_width(),
+                    max_fname_len,
+                )
+                .map_err(|e| {
+                    handle_io_error(&e);
+                    e
+                })?
+            }
+            _ => {
+                let (lines, abs_path) =
+                    previewer::preview_file(path, self.preview_height, self.max_line_width())
+                        .map_err(|e| {
+                            handle_io_error(&e);
+                            e
+                        })?;
+                // cwd is shown via the popup title, no need to include it again.
+                let cwd_relative = abs_path.replacen(self.ctx.cwd.as_str(), ".", 1);
+                let mut lines = lines;
+                lines[0] = cwd_relative;
+                (lines, abs_path)
+            }
         };
 
         if std::fs::metadata(path)?.len() == 0 {
@@ -360,7 +364,8 @@ impl<'a> CachedPreviewImpl<'a> {
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
-            if !self.ctx.env.is_nvim && should_truncate_cwd_relative(self.ctx.provider_id()) {
+            let support_float_title = !self.ctx.env.is_nvim || self.ctx.env.has_nvim_09;
+            if support_float_title && should_truncate_cwd_relative(self.ctx.provider_id()) {
                 // cwd is shown via the popup title, no need to include it again.
                 let cwd_relative = fname.replacen(self.ctx.cwd.as_str(), ".", 1);
                 format!("{cwd_relative}:{lnum}")
