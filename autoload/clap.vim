@@ -297,10 +297,6 @@ function! clap#for(provider_id_or_alias) abort
   call clap#indicator#render()
 endfunction
 
-if !exists('g:clap')
-  call clap#init#()
-endif
-
 function! s:parse_opts(args) abort
   let idx = 0
   let g:clap.provider.raw_args = a:args
@@ -337,6 +333,10 @@ function! s:parse_opts(args) abort
 endfunction
 
 function! clap#(bang, ...) abort
+  if !exists('g:clap')
+    call clap#init#()
+  endif
+
   if a:000 == ['install-binary']
     call clap#installer#install(v:false)
     return

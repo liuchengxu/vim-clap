@@ -74,8 +74,8 @@ function! clap#init#() abort
   call s:init_fuzzy_match_hl_groups()
 
   " Spawn the daemon process if not running
-  if !clap#job#daemon#is_running()
-    call clap#job#daemon#start(function('clap#client#handle'))
+  if !get(g:, 'clap_server_started', 0)
+    call clap#job#daemon#start()
   endif
 endfunction
 

@@ -4,12 +4,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-if exists('s:loaded')
-  finish
-endif
-
-let s:loaded = 1
-
 let s:bin_suffix = has('win32') ? '.exe' : ''
 
 let s:maple_bin_localbuilt = fnamemodify(g:clap#autoload_dir, ':h').'/target/release/maple'.s:bin_suffix
@@ -51,8 +45,6 @@ endfunction
 function! clap#maple#build_cmd_list(cmd_list) abort
   return insert(a:cmd_list, s:maple_bin)
 endfunction
-
-echom "s:save_cpo:".s:save_cpo
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

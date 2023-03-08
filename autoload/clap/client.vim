@@ -8,8 +8,6 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 let s:session_id = get(s:, 'session_id', 0)
 
-let s:last_recent_file = v:null
-
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
@@ -125,7 +123,7 @@ function! clap#client#notify_highlight_cursor_word() abort
 endfunction
 
 function! clap#client#start() abort
-  call clap#job#daemon#start(function('clap#client#handle'))
+  call clap#job#daemon#start()
 endfunction
 
 function! clap#client#notify_recent_file() abort

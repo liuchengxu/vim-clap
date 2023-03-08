@@ -14,7 +14,7 @@ function! s:OnExit(status, bufnr, success_info, ErrorCallback) abort
     call a:ErrorCallback()
   endif
   if clap#maple#is_available()
-    call clap#job#daemon#start(function('clap#client#handle'))
+    call clap#job#daemon#start()
   endif
 endfunction
 

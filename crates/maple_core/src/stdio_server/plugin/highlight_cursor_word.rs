@@ -120,9 +120,8 @@ impl CursorWordHighligher {
 
         if let Some(cursor_char) = curline.chars().nth(col - 1) {
             if cursor_char.is_whitespace()
-                || cursor_char.is_ascii_punctuation()
+                || (cursor_char.is_ascii_punctuation() && cursor_char != '_')
                 || cursor_char == '='
-                || cursor_char == '_'
             {
                 self.last_cword = cursor_char.to_string();
                 return Ok(());

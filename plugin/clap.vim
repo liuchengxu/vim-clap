@@ -10,6 +10,10 @@ endif
 
 let g:loaded_clap = 1
 
+if !get(g:, 'clap_server_started', 0)
+  call clap#job#daemon#start()
+endif
+
 command! -bang -nargs=* -bar -range -complete=customlist,clap#helper#complete Clap call clap#(<bang>0, <f-args>)
 
 let g:__clap_buffers = get(g:, '__clap_buffers', {})
