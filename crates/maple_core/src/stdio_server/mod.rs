@@ -239,8 +239,11 @@ impl Client {
 
             // Deprecated but not remove them for now.
             "on_move" => {
-                let service_manager = self.service_manager_mutex.lock();
-                service_manager.notify_provider(msg.session_id, ProviderEvent::OnMove);
+                if let Some(session_id) = msg.session_id {
+                    self.service_manager_mutex
+                        .lock()
+                        .notify_provider(session_id, ProviderEvent::OnMove);
+                }
                 None
             }
 

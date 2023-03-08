@@ -8,7 +8,8 @@ pub struct MethodCall {
     pub id: u64,
     pub method: String,
     pub params: Params,
-    pub session_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]

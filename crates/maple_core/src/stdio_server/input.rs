@@ -11,12 +11,6 @@ pub enum Event {
     Other(String),
 }
 
-#[derive(Debug)]
-pub enum InternalProviderEvent {
-    OnInitialize,
-    Terminate,
-}
-
 #[derive(Debug, Clone)]
 pub enum PluginEvent {
     Autocmd(Autocmd),
@@ -32,6 +26,12 @@ pub enum ProviderEvent {
     Key(KeyEvent),
     /// Signal fired internally.
     Internal(InternalProviderEvent),
+}
+
+#[derive(Debug)]
+pub enum InternalProviderEvent {
+    OnInitialize,
+    Terminate,
 }
 
 /// Represents a key event.
