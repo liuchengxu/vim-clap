@@ -234,30 +234,67 @@ impl ProviderSession {
 #[derive(Debug)]
 pub struct PluginSession {
     plugin: Box<dyn ClapPlugin>,
+    event_delay: Duration,
     plugin_events: UnboundedReceiver<PluginEvent>,
 }
 
 impl PluginSession {
-    pub fn new(plugin: Box<dyn ClapPlugin>) -> (Self, UnboundedSender<PluginEvent>) {
+    pub fn create(
+        plugin: Box<dyn ClapPlugin>,
+        event_delay: Duration,
+    ) -> UnboundedSender<PluginEvent> {
         let (plugin_event_sender, plugin_event_receiver) = unbounded_channel();
 
         let plugin_session = PluginSession {
             plugin,
+            event_delay,
             plugin_events: plugin_event_receiver,
         };
 
-        (plugin_session, plugin_event_sender)
+        plugin_session.start_event_loop();
+
+        plugin_event_sender
     }
 
-    pub fn start_event_loop(mut self) {
+    fn start_event_loop(mut self) {
         tracing::debug!("Spawning a new plugin session task");
 
         tokio::spawn(async move {
-            while let Some(plugin_event) = self.plugin_events.recv().await {
-                match plugin_event {
-                    PluginEvent::Autocmd(autocmd) => {
-                        if let Err(err) = self.plugin.on_autocmd(autocmd).await {
-                            tracing::error!(?err, "Failed at process {autocmd:?}");
+            // If the debounce timer isn't active, it will be set to expire "never",
+            // which is actually just 1 year in the future.
+            const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+
+            let mut pending_autocmd = None;
+            let mut notification_dirty = false;
+            let notification_timer = tokio::time::sleep(NEVER);
+            tokio::pin!(notification_timer);
+
+            loop {
+                tokio::select! {
+                    maybe_plugin_event = self.plugin_events.recv() => {
+                        match maybe_plugin_event {
+                            Some(plugin_event) => {
+                                match plugin_event {
+                                    PluginEvent::Autocmd(autocmd) => {
+                                        pending_autocmd.replace(autocmd);
+                                        notification_dirty = true;
+                                        notification_timer
+                                            .as_mut()
+                                            .reset(Instant::now() + self.event_delay);
+                                    }
+                                }
+                            }
+                            None => break, // channel has closed.
+                        }
+                    }
+                    _ = notification_timer.as_mut(), if notification_dirty => {
+                        notification_dirty = false;
+                        notification_timer.as_mut().reset(Instant::now() + NEVER);
+
+                        if let Some(autocmd) = pending_autocmd.take() {
+                            if let Err(err) = self.plugin.on_autocmd(autocmd).await {
+                                tracing::error!(?err, "Failed at process {autocmd:?}");
+                            }
                         }
                     }
                 }
@@ -310,11 +347,10 @@ impl ServiceManager {
         }
     }
 
-    /// Creates a new plugin session.
+    /// Creates a new plugin session with the default debounce setting.
     pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
-        let (plugin_session, plugin_event_sender) = PluginSession::new(plugin);
-        plugin_session.start_event_loop();
-        self.plugins.push(plugin_event_sender);
+        self.plugins
+            .push(PluginSession::create(plugin, Duration::from_millis(50)));
     }
 
     pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
