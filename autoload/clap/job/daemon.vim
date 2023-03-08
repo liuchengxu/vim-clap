@@ -137,7 +137,6 @@ function! clap#job#daemon#start() abort
   let s:MessageHandler = function('clap#client#handle')
   call s:start_service_job(clap#maple#build_cmd('rpc'))
   call clap#client#notify('initialize_global_env')
-  let g:clap_server_started = 1
 endfunction
 
 let &cpoptions = s:save_cpo

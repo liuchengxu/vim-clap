@@ -10,7 +10,7 @@ endif
 
 let g:loaded_clap = 1
 
-if !get(g:, 'clap_server_started', 0)
+if get(g:, 'clap_start_server_on_startup', 1)
   call clap#job#daemon#start()
 endif
 
