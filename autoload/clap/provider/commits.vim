@@ -64,10 +64,6 @@ function! clap#provider#commits#on_move_callback(result, error) abort
   call clap#preview#highlight_header()
 endfunction
 
-function! s:commits.on_move_async() abort
-  call clap#client#notify('on_move')
-endfunction
-
 function! clap#provider#commits#sink_inner(bang_cmd) abort
   vertical botright new
   setlocal buftype=nofile bufhidden=wipe noswapfile nomodeline
@@ -85,6 +81,7 @@ function! s:commits.sink(line) abort
 endfunction
 
 let s:commits.syntax = 'clap_diff'
+let s:commits.on_move_async = { -> clap#client#notify_provider('on_move') }
 
 let g:clap#provider#commits# = s:commits
 

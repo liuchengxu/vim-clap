@@ -3,7 +3,7 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-hi default link ClapCurrentWord      ErrorMsg
+hi default link ClapCurrentWord      IncSearch
 hi default link ClapCurrentWordTwins Search
 
 function! clap#plugin#highlight_cursor_word#add_highlights(word_highlights) abort

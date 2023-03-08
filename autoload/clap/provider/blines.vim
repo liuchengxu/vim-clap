@@ -87,7 +87,7 @@ function! s:blines.on_typed() abort
 
   if clap#maple#is_available()
     if filereadable(expand('#'.g:clap.start.bufnr.':p'))
-      call clap#client#notify('on_typed')
+      call clap#client#notify_provider('on_typed')
     elseif empty(l:cur_input)
       call g:clap.display.set_lines_lazy(s:lines_on_empty())
       call clap#indicator#update_matched(g:clap.display.initial_size)

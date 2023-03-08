@@ -234,10 +234,7 @@ let s:grep['sink*'] = function('s:grep_sink_star')
 let s:grep.on_move = function('s:grep_on_move')
 let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_exit = function('s:grep_exit')
-
-function! s:grep.on_move_async() abort
-  call clap#client#notify('on_move')
-endfunction
+let s:grep.on_move_async = { -> clap#client#notify_provider('on_move') }
 
 if clap#maple#is_available()
   function! s:grep.init() abort

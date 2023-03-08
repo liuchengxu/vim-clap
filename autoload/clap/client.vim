@@ -40,7 +40,7 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! s:send_notification_with_session_id(method, params) abort
+function! s:notify_provider(method, params) abort
   if clap#job#daemon#is_running()
     call clap#job#daemon#send_message(json_encode({
           \ 'method': a:method,
@@ -71,12 +71,12 @@ endfunction
 
 " Recommended API
 " Optional argument: params: v:null, List, Dict
-function! clap#client#notify(method, ...) abort
-  call s:send_notification_with_session_id(a:method, get(a:000, 0, v:null))
+function! clap#client#notify_provider(method, ...) abort
+  call s:notify_provider(a:method, get(a:000, 0, v:null))
 endfunction
 
 function! clap#client#send_notification(method, ...) abort
-  call s:send_notification(a:method, a:000)
+  call s:send_notification(a:method, get(a:000, 0, v:null))
 endfunction
 
 " Optional argument: params: v:null, List, Dict
@@ -107,18 +107,15 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:send_notification_with_session_id('new_session', params)
+  call s:notify_provider('new_session', params)
 endfunction
 
 function! clap#client#notify_recent_file() abort
-  if !clap#job#daemon#is_running()
-    return
-  endif
   if &buftype ==# 'nofile'
     return
   endif
   let file = expand(expand('<afile>:p'))
-  call s:send_notification_with_session_id('note_recent_files', [file])
+  call s:notify_provider('note_recent_files', [file])
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

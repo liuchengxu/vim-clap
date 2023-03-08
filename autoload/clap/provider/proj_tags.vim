@@ -14,10 +14,6 @@ if !s:support_json_format
   finish
 endif
 
-function! s:proj_tags.on_typed() abort
-  call clap#client#notify('on_typed')
-endfunction
-
 function! s:proj_tags.init() abort
   call clap#client#notify_on_init()
 endfunction
@@ -38,13 +34,8 @@ function! s:proj_tags.on_move() abort
   call clap#preview#file_at(path, lnum)
 endfunction
 
-function! s:proj_tags.on_exit() abort
-  if exists('g:__clap_match_scope_enum')
-    unlet g:__clap_match_scope_enum
-  endif
-endfunction
-
 let s:proj_tags.on_move_async = function('clap#impl#on_move#async')
+let s:proj_tags.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:proj_tags.enable_rooter = v:true
 let s:proj_tags.support_open_action = v:true
 let s:proj_tags.icon = 'ProjTags'
