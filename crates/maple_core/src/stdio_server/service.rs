@@ -12,41 +12,41 @@ use tokio::time::Instant;
 use super::input::PluginEvent;
 use super::plugin::ClapPlugin;
 
-pub type SessionId = u64;
+pub type ProviderSessionId = u64;
 
 #[derive(Debug)]
 pub struct ProviderSession {
     ctx: Context,
-    session_id: SessionId,
+    provider_session_id: ProviderSessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
-    event_recv: UnboundedReceiver<ProviderEvent>,
+    provider_events: UnboundedReceiver<ProviderEvent>,
 }
 
 impl ProviderSession {
     pub fn new(
-        session_id: u64,
         ctx: Context,
+        provider_session_id: ProviderSessionId,
         provider: Box<dyn ClapProvider>,
     ) -> (Self, UnboundedSender<ProviderEvent>) {
-        let (session_sender, session_receiver) = unbounded_channel();
+        let (provider_event_sender, provider_event_receiver) = unbounded_channel();
 
-        let session = ProviderSession {
+        let provider_session = ProviderSession {
             ctx,
-            session_id,
+            provider_session_id,
             provider,
-            event_recv: session_receiver,
+            provider_events: provider_event_receiver,
         };
 
-        (session, session_sender)
+        (provider_session, provider_event_sender)
     }
 
     pub fn start_event_loop(self) {
         tracing::debug!(
-            session_id = self.session_id,
+            provider_session_id = self.provider_session_id,
             provider_id = %self.ctx.provider_id(),
             debounce = self.ctx.env.debounce,
-            "Spawning a new session task",
+            "Spawning a new provider session task",
         );
 
         tokio::spawn(async move {
@@ -89,7 +89,7 @@ impl ProviderSession {
 
         loop {
             tokio::select! {
-                maybe_event = self.event_recv.recv() => {
+                maybe_event = self.provider_events.recv() => {
                     match maybe_event {
                         Some(event) => {
                             tracing::trace!("[with_debounce] Received event: {event:?}");
@@ -99,7 +99,7 @@ impl ProviderSession {
                                 ProviderEvent::Internal(internal_event) => {
                                     match internal_event {
                                         InternalProviderEvent::Terminate => {
-                                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                            self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
                                             break;
                                         }
                                         InternalProviderEvent::OnInitialize => {
@@ -132,7 +132,7 @@ impl ProviderSession {
                                     }
                                 }
                                 ProviderEvent::Exit => {
-                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                    self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
                                     break;
                                 }
                                 ProviderEvent::OnMove => {
@@ -178,7 +178,7 @@ impl ProviderSession {
     }
 
     async fn run_event_loop_without_debounce(mut self) {
-        while let Some(event) = self.event_recv.recv().await {
+        while let Some(event) = self.provider_events.recv().await {
             tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
@@ -199,13 +199,15 @@ impl ProviderSession {
                             }
                         }
                         InternalProviderEvent::Terminate => {
-                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                            self.provider
+                                .on_terminate(&mut self.ctx, self.provider_session_id);
                             break;
                         }
                     }
                 }
                 ProviderEvent::Exit => {
-                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                    self.provider
+                        .on_terminate(&mut self.ctx, self.provider_session_id);
                     break;
                 }
                 ProviderEvent::OnMove => {
@@ -233,7 +235,7 @@ impl ProviderSession {
 pub struct PluginSession {
     /// Each provider session can have its own message processing logic.
     plugin: Box<dyn ClapPlugin>,
-    event_recv: UnboundedReceiver<PluginEvent>,
+    plugin_events: UnboundedReceiver<PluginEvent>,
 }
 
 impl PluginSession {
@@ -242,7 +244,7 @@ impl PluginSession {
 
         let plugin_session = PluginSession {
             plugin,
-            event_recv: plugin_session_receiver,
+            plugin_events: plugin_session_receiver,
         };
 
         (plugin_session, plugin_session_sender)
@@ -252,7 +254,7 @@ impl PluginSession {
         tracing::debug!("Spawning a new session task",);
 
         tokio::spawn(async move {
-            while let Some(plugin_event) = self.event_recv.recv().await {
+            while let Some(plugin_event) = self.plugin_events.recv().await {
                 match plugin_event {
                     PluginEvent::Autocmd(autocmd) => {
                         if let Err(err) = self.plugin.on_autocmd(autocmd.clone()).await {
@@ -265,30 +267,33 @@ impl PluginSession {
     }
 }
 
-/// This structs manages all the created sessions tracked by the session id.
+/// This structs manages all the created sessions.
+///
+/// A plugin is a general service, a provider is a specialized plugin which is specific to provide
+/// the filtering service.
 #[derive(Debug, Default)]
-pub struct SessionManager {
-    providers: HashMap<SessionId, ProviderEventSender>,
+pub struct ServiceManager {
+    providers: HashMap<ProviderSessionId, ProviderEventSender>,
     plugins: Vec<UnboundedSender<PluginEvent>>,
 }
 
-impl SessionManager {
-    /// Creates a new session if session_id does not exist.
+impl ServiceManager {
+    /// Creates a new provider session if `provider_session_id` does not exist.
     pub fn new_provider(
         &mut self,
-        session_id: SessionId,
+        provider_session_id: ProviderSessionId,
         provider: Box<dyn ClapProvider>,
         ctx: Context,
     ) {
-        for (session_id, sender) in self.providers.drain() {
-            tracing::debug!(?session_id, "Sending internal Terminate signal");
+        for (provider_session_id, sender) in self.providers.drain() {
+            tracing::debug!(?provider_session_id, "Sending internal Terminate signal");
             sender.send(ProviderEvent::Internal(InternalProviderEvent::Terminate));
         }
 
-        if let Entry::Vacant(v) = self.providers.entry(session_id) {
-            let (session, provider_session_sender) =
-                ProviderSession::new(session_id, ctx, provider);
-            session.start_event_loop();
+        if let Entry::Vacant(v) = self.providers.entry(provider_session_id) {
+            let (provider_session, provider_session_sender) =
+                ProviderSession::new(ctx, provider_session_id, provider);
+            provider_session.start_event_loop();
 
             provider_session_sender
                 .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
@@ -296,13 +301,17 @@ impl SessionManager {
 
             v.insert(ProviderEventSender::new(
                 provider_session_sender,
-                session_id,
+                provider_session_id,
             ));
         } else {
-            tracing::error!(session_id, "Skipped as given session already exists");
+            tracing::error!(
+                provider_session_id,
+                "Skipped as given provider session already exists"
+            );
         }
     }
 
+    /// Creates a new plugin session.
     pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
         let (plugin_session, plugin_session_sender) = PluginSession::new(plugin);
         plugin_session.start_event_loop();
@@ -316,30 +325,30 @@ impl SessionManager {
         }
     }
 
-    pub fn exists(&self, session_id: SessionId) -> bool {
-        self.providers.contains_key(&session_id)
+    pub fn exists(&self, provider_session_id: ProviderSessionId) -> bool {
+        self.providers.contains_key(&provider_session_id)
     }
 
     /// Stop the session task by sending [`ProviderEvent::Exit`].
-    pub fn exit_session(&mut self, session_id: SessionId) {
-        if let Some(sender) = self.providers.remove(&session_id) {
+    pub fn exit_session(&mut self, provider_session_id: ProviderSessionId) {
+        if let Some(sender) = self.providers.remove(&provider_session_id) {
             sender.send(ProviderEvent::Exit);
         }
     }
 
-    pub fn try_exit(&mut self, session_id: SessionId) {
-        if self.exists(session_id) {
-            self.exit_session(session_id);
+    pub fn try_exit(&mut self, provider_session_id: ProviderSessionId) {
+        if self.exists(provider_session_id) {
+            self.exit_session(provider_session_id);
         }
     }
 
     /// Dispatch the session event to the background session task accordingly.
-    pub fn notify_provider(&self, session_id: SessionId, event: ProviderEvent) {
-        if let Some(sender) = self.providers.get(&session_id) {
+    pub fn notify_provider(&self, provider_session_id: ProviderSessionId, event: ProviderEvent) {
+        if let Some(sender) = self.providers.get(&provider_session_id) {
             sender.send(event);
         } else {
             tracing::error!(
-                session_id,
+                provider_session_id,
                 sessions = ?self.providers.keys(),
                 "Couldn't find the sender for given session",
             );

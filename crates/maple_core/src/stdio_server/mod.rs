@@ -3,7 +3,7 @@ mod input;
 mod job;
 mod plugin;
 mod provider;
-mod session;
+mod service;
 mod state;
 mod vim;
 
@@ -11,7 +11,7 @@ pub use self::input::InputHistory;
 use self::input::{Event, ProviderEvent};
 use self::plugin::{ClapPlugin, CursorWordHighligher};
 use self::provider::{create_provider, Context};
-use self::session::SessionManager;
+use self::service::ServiceManager;
 use self::state::State;
 use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
@@ -44,20 +44,20 @@ pub async fn start() {
 struct Client {
     vim: Vim,
     state_mutex: Arc<Mutex<State>>,
-    session_manager_mutex: Arc<Mutex<SessionManager>>,
+    service_manager_mutex: Arc<Mutex<ServiceManager>>,
 }
 
 impl Client {
     /// Creates a new instnace of [`Client`].
     fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
         let vim = Vim::new(rpc_client);
-        let mut session_manager = SessionManager::default();
-        session_manager
+        let mut service_manager = ServiceManager::default();
+        service_manager
             .new_plugin(Box::new(CursorWordHighligher::new(vim.clone())) as Box<dyn ClapPlugin>);
         Self {
             vim,
             state_mutex: Arc::new(Mutex::new(state)),
-            session_manager_mutex: Arc::new(Mutex::new(session_manager)),
+            service_manager_mutex: Arc::new(Mutex::new(service_manager)),
         }
     }
 
@@ -111,7 +111,7 @@ impl Client {
                             .session_id
                             .unwrap_or_default()
                             .saturating_sub(1);
-                        self.session_manager_mutex.lock().try_exit(last_session_id);
+                        self.service_manager_mutex.lock().try_exit(last_session_id);
                         let session_id = notification.session_id;
                         if let Err(err) = self.do_process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
@@ -124,7 +124,7 @@ impl Client {
 
     fn process_notification(&self, notification: Notification) {
         if let Some(session_id) = notification.session_id {
-            if self.session_manager_mutex.lock().exists(session_id) {
+            if self.service_manager_mutex.lock().exists(session_id) {
                 let client = self.clone();
 
                 tokio::spawn(async move {
@@ -157,26 +157,26 @@ impl Client {
                     let provider_id = self.vim.provider_id().await?;
                     let ctx = Context::new(notification.params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;
-                    let session_manager = self.session_manager_mutex.clone();
-                    let mut session_manager = session_manager.lock();
-                    session_manager.new_provider(session_id()?, provider, ctx);
+                    let service_manager = self.service_manager_mutex.clone();
+                    let mut service_manager = service_manager.lock();
+                    service_manager.new_provider(session_id()?, provider, ctx);
                 }
                 ProviderEvent::Exit => {
-                    let mut session_manager = self.session_manager_mutex.lock();
-                    session_manager.exit_session(session_id()?);
+                    let mut service_manager = self.service_manager_mutex.lock();
+                    service_manager.exit_session(session_id()?);
                 }
                 to_send => {
-                    let session_manager = self.session_manager_mutex.lock();
-                    session_manager.notify_provider(session_id()?, to_send);
+                    let service_manager = self.service_manager_mutex.lock();
+                    service_manager.notify_provider(session_id()?, to_send);
                 }
             },
             Event::Key(key_event) => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.notify_provider(session_id()?, ProviderEvent::Key(key_event));
+                let service_manager = self.service_manager_mutex.lock();
+                service_manager.notify_provider(session_id()?, ProviderEvent::Key(key_event));
             }
             Event::Autocmd(autocmd) => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.notify_plugins(input::PluginEvent::Autocmd(autocmd));
+                let service_manager = self.service_manager_mutex.lock();
+                service_manager.notify_plugins(input::PluginEvent::Autocmd(autocmd));
             }
             Event::Other(other_method) => {
                 match other_method.as_str() {
@@ -232,8 +232,8 @@ impl Client {
 
             // Deprecated but not remove them for now.
             "on_move" => {
-                let session_manager = self.session_manager_mutex.lock();
-                session_manager.notify_provider(msg.session_id, ProviderEvent::OnMove);
+                let service_manager = self.service_manager_mutex.lock();
+                service_manager.notify_provider(msg.session_id, ProviderEvent::OnMove);
                 None
             }
 

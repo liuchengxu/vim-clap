@@ -1,7 +1,6 @@
-use std::collections::{HashMap, VecDeque};
-
 use crate::stdio_server::provider::ProviderId;
-use crate::stdio_server::session::SessionId;
+use crate::stdio_server::service::ProviderSessionId;
+use std::collections::{HashMap, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug)]
@@ -84,11 +83,11 @@ impl Event {
 #[derive(Debug)]
 pub struct ProviderEventSender {
     pub sender: UnboundedSender<ProviderEvent>,
-    pub id: SessionId,
+    pub id: ProviderSessionId,
 }
 
 impl ProviderEventSender {
-    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
+    pub fn new(sender: UnboundedSender<ProviderEvent>, id: ProviderSessionId) -> Self {
         Self { sender, id }
     }
 }
