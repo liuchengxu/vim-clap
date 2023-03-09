@@ -74,17 +74,17 @@ fn find_highlight_positions(
 }
 
 #[derive(Debug)]
-pub struct CursorWordHighligher {
-    vim: Vim,
-    current_highlights: Option<CurrentHighlights>,
-    last_cword: String,
-}
-
-#[derive(Debug)]
 struct CurrentHighlights {
     // matchaddpos() returns -1 on error.
     match_ids: Vec<i32>,
     winid: usize,
+}
+
+#[derive(Debug)]
+pub struct CursorWordHighligher {
+    vim: Vim,
+    current_highlights: Option<CurrentHighlights>,
+    last_cword: String,
 }
 
 impl CursorWordHighligher {
@@ -96,13 +96,7 @@ impl CursorWordHighligher {
         }
     }
 
-    async fn highlight_cursor_word(&mut self) -> Result<()> {
-        let cword = self.vim.expand("<cword>").await?;
-
-        if self.last_cword == cword {
-            return Ok(());
-        }
-
+    async fn clear_current_highlights(&mut self) -> Result<()> {
         if let Some(CurrentHighlights { match_ids, winid }) = self.current_highlights.take() {
             // clear the existing highlights
             if self.vim.win_is_valid(winid).await? {
@@ -111,6 +105,15 @@ impl CursorWordHighligher {
                 }
             }
         }
+        Ok(())
+    }
+
+    async fn highlight_cursor_word(&mut self) -> Result<()> {
+        let cword = self.vim.expand("<cword>").await?;
+
+        // if self.last_cword == cword {
+        // return Ok(());
+        // }
 
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let curlnum = self.vim.line(".").await?;
@@ -123,15 +126,18 @@ impl CursorWordHighligher {
                 || cursor_char == '='
             {
                 self.last_cword = cursor_char.to_string();
+                self.clear_current_highlights().await?;
                 return Ok(());
             }
         } else {
             self.last_cword = Default::default();
+            self.clear_current_highlights().await?;
             return Ok(());
         }
 
         if cword.is_empty() {
             self.last_cword = cword;
+            self.clear_current_highlights().await?;
             return Ok(());
         }
 
@@ -139,6 +145,7 @@ impl CursorWordHighligher {
         let source_file = Path::new(&source_file);
 
         if !source_file.is_file() {
+            self.clear_current_highlights().await?;
             return Ok(());
         }
 
@@ -166,8 +173,19 @@ impl CursorWordHighligher {
                 )
                 .await?;
             self.last_cword = cword;
-            self.current_highlights
+
+            let old_highlights = self
+                .current_highlights
                 .replace(CurrentHighlights { match_ids, winid });
+
+            if let Some(CurrentHighlights { match_ids, winid }) = old_highlights {
+                // clear the existing highlights
+                if self.vim.win_is_valid(winid).await? {
+                    for match_id in match_ids {
+                        self.vim.matchdelete(match_id, winid).await?;
+                    }
+                }
+            }
         }
 
         Ok(())
