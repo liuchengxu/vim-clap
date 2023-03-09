@@ -23,7 +23,7 @@ pub struct Notification {
 
 /// Request message actively sent from the Vim side.
 ///
-/// Message sent via `clap#client#notify` or `clap#client#call`.
+/// Message sent via `clap#client#notify` or `clap#client#request_async`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Call {

@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 mod highlight_cursor_word;
 
-pub use highlight_cursor_word::CursorWordHighligher;
+pub use highlight_cursor_word::CursorWordHighlighter;
 
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]

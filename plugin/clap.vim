@@ -54,8 +54,7 @@ augroup VimClap
 
   autocmd BufAdd,BufEnter * call clap#client#notify_recent_file()
 
-  " autocmd CursorMoved * call clap#client#send_notification('autocmd', 'CursorMoved', +expand('<abuf>'))
-  autocmd CursorMoved * call clap#client#send_notification('autocmd/CursorMoved')
+  autocmd CursorMoved * call clap#client#notify('CursorMoved')
 
   " yanks provider
   if get(g:, 'clap_enable_yanks_provider', 1)

@@ -73,7 +73,7 @@ impl Event {
             "shift-down" => Self::Key(KeyEvent::ShiftDown),
             "ctrl-n" => Self::Key(KeyEvent::CtrlN),
             "ctrl-p" => Self::Key(KeyEvent::CtrlP),
-            "autocmd/CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
+            "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
             other => Self::Other(other.to_string()),
         }
     }

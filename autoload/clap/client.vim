@@ -50,23 +50,15 @@ function! s:notify_provider(method, params) abort
   endif
 endfunction
 
-function! s:send_notification(method, params) abort
+function! s:request_async(method, params) abort
   if clap#job#daemon#is_running()
+    let s:req_id += 1
     call clap#job#daemon#send_message(json_encode({
+          \ 'id': s:req_id,
           \ 'method': a:method,
           \ 'params': a:params,
           \ }))
   endif
-endfunction
-
-function! s:send_method_call(method, params) abort
-  let s:req_id += 1
-  call clap#job#daemon#send_message(json_encode({
-        \ 'id': s:req_id,
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
 endfunction
 
 " Recommended API
@@ -75,13 +67,18 @@ function! clap#client#notify_provider(method, ...) abort
   call s:notify_provider(a:method, get(a:000, 0, v:null))
 endfunction
 
-function! clap#client#send_notification(method, ...) abort
-  call s:send_notification(a:method, get(a:000, 0, v:null))
+function! clap#client#notify(method, ...) abort
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#send_message(json_encode({
+          \ 'method': a:method,
+          \ 'params': get(a:000, 0, v:null),
+          \ }))
+  endif
 endfunction
 
 " Optional argument: params: v:null, List, Dict
-function! clap#client#call(method, callback, ...) abort
-  call s:send_method_call(a:method, get(a:000, 0, v:null))
+function! clap#client#request_async(method, callback, ...) abort
+  call s:request_async(a:method, get(a:000, 0, v:null))
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
@@ -122,7 +119,7 @@ endfunction
 ""  Deprecated and unused in clap repo, but keep them to not break the users using old version.
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! clap#client#call_preview_file(extra) abort
-  call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
+  call clap#client#request_async('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction
 
 " One optional argument: Dict, extra params
@@ -135,7 +132,7 @@ function! clap#client#call_on_move(method, callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#call(a:method, a:callback, params)
+  call clap#client#request_async(a:method, a:callback, params)
 endfunction
 
 let &cpoptions = s:save_cpo

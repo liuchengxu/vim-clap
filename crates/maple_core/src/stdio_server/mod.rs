@@ -9,7 +9,7 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{Event, PluginEvent, ProviderEvent};
-use self::plugin::{ClapPlugin, CursorWordHighligher};
+use self::plugin::{ClapPlugin, CursorWordHighlighter};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::state::State;
@@ -53,7 +53,7 @@ impl Client {
         let vim = Vim::new(rpc_client);
         let mut service_manager = ServiceManager::default();
         service_manager
-            .new_plugin(Box::new(CursorWordHighligher::new(vim.clone())) as Box<dyn ClapPlugin>);
+            .new_plugin(Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>);
         Self {
             vim,
             state_mutex: Arc::new(Mutex::new(state)),
