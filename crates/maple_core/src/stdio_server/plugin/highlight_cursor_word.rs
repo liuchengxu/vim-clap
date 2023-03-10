@@ -42,7 +42,7 @@ fn find_word_highlights(
     // line_start and line_end is 1-based.
     let line_start = line_start - 1;
     let line_end = line_end - 1;
-    let mut current_word_highlight = None;
+    let mut cursor_word_highlight = None;
     let other_words_highlight = read_lines_from(source_file, line_start, line_end - line_start)?
         .enumerate()
         .flat_map(|(idx, line)| {
@@ -51,31 +51,29 @@ fn find_word_highlights(
             let line_number = idx + line_start + 1;
 
             if line_number == curlnum {
-                let cursor_word_start = matches_range.iter().find_map(|highlight_range| {
-                    if highlight_range.contains(&(col - 1)) {
-                        Some(highlight_range.start)
+                let cursor_word_start = matches_range.iter().find_map(|word_range| {
+                    if word_range.contains(&(col - 1)) {
+                        Some(word_range.start)
                     } else {
                         None
                     }
                 });
                 if let Some(start) = cursor_word_start {
-                    current_word_highlight.replace((line_number, start));
+                    cursor_word_highlight.replace((line_number, start));
                 }
             }
 
-            matches_range
-                .into_iter()
-                .filter_map(move |highlight_range| {
-                    // Skip the cursor word highlight.
-                    if line_number == curlnum && highlight_range.contains(&(col - 1)) {
-                        None
-                    } else {
-                        Some((line_number, highlight_range.start))
-                    }
-                })
+            matches_range.into_iter().filter_map(move |word_range| {
+                // Skip the cursor word highlight.
+                if line_number == curlnum && word_range.contains(&(col - 1)) {
+                    None
+                } else {
+                    Some((line_number, word_range.start))
+                }
+            })
         })
         .collect();
-    if let Some(cword_highlight) = current_word_highlight {
+    if let Some(cword_highlight) = cursor_word_highlight {
         Ok(Some(WordHighlights {
             other_words_highlight,
             cword_highlight,
@@ -186,6 +184,12 @@ impl ClapPlugin for CursorWordHighlighter {
     async fn on_autocmd(&mut self, autocmd: Autocmd) -> Result<()> {
         match autocmd {
             Autocmd::CursorMoved => self.highlight_symbol_under_cursor().await,
+            Autocmd::InsertEnter => {
+                if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
+                    self.vim.matchdelete_batch(match_ids, winid).await?;
+                }
+                Ok(())
+            }
         }
     }
 }

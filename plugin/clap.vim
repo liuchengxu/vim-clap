@@ -55,6 +55,7 @@ augroup VimClap
   autocmd BufAdd,BufEnter * call clap#client#notify_recent_file()
 
   autocmd CursorMoved * call clap#client#notify('CursorMoved')
+  autocmd InsertEnter * call clap#client#notify('InsertEnter')
 
   " yanks provider
   if get(g:, 'clap_enable_yanks_provider', 1)

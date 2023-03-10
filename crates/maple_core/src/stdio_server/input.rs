@@ -57,6 +57,7 @@ pub enum KeyEvent {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub enum Autocmd {
     CursorMoved,
+    InsertEnter
 }
 
 impl Event {
@@ -74,6 +75,7 @@ impl Event {
             "ctrl-n" => Self::Key(KeyEvent::CtrlN),
             "ctrl-p" => Self::Key(KeyEvent::CtrlP),
             "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
+            "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
             other => Self::Other(other.to_string()),
         }
     }
