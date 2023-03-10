@@ -3,6 +3,8 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+hi ClapUnderline gui=underline cterm=underline
+
 hi default link ClapCurrentWord      IncSearch
 hi default link ClapCurrentWordTwins Search
 

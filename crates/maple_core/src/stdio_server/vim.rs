@@ -223,6 +223,16 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
     }
 }
 
+// Vim may return 1/0 for true/false.
+#[inline(always)]
+fn into_bool(value: Value) -> bool {
+    match value {
+        Value::Bool(b) => b,
+        Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
+        _ => false,
+    }
+}
+
 /// Shareable Vim instance.
 #[derive(Debug, Clone)]
 pub struct Vim {
@@ -412,24 +422,14 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
-        let value = match value {
-            Value::Bool(b) => b,
-            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
-            _ => false,
-        };
-        Ok(value)
+        Ok(into_bool(value))
     }
 
     pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
         let value: Value = self
             .call("clap#api#floating_win_is_valid", json!([winid]))
             .await?;
-        let value = match value {
-            Value::Bool(b) => b,
-            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
-            _ => false,
-        };
-        Ok(value)
+        Ok(into_bool(value))
     }
 
     pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
@@ -438,6 +438,13 @@ impl Vim {
 
     pub fn echo_info(&self, msg: &str) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
+        if self.win_is_valid(win).await? {
+            self.exec("matchdelete_batch", json!([ids, win]))?;
+        }
+        Ok(())
     }
 
     /// Size for fulfilling the preview window.

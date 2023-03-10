@@ -109,6 +109,10 @@ function! s:api.current_buffer_path() abort
   return expand('#'.bufnr('%').':p')
 endfunction
 
+function! s:api.matchdelete_batch(match_ids, winid) abort
+  call map(a:match_ids, 'matchdelete(v:val, a:winid)')
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

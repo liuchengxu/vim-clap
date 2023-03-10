@@ -16,6 +16,19 @@ struct WordHighlights {
     cword_len: usize,
 }
 
+/// Returns the char at given byte index in a line.
+fn char_at(byte_idx: usize, line: &str) -> Option<char> {
+    line.char_indices().enumerate().find_map(
+        |(_c_idx, (b_idx, c))| {
+            if byte_idx == b_idx {
+                Some(c)
+            } else {
+                None
+            }
+        },
+    )
+}
+
 fn find_word_highlights(
     source_file: &Path,
     line_start: usize,
@@ -83,16 +96,14 @@ struct WinHighlights {
 #[derive(Debug)]
 pub struct CursorWordHighlighter {
     vim: Vim,
-    current_highlights: Option<WinHighlights>,
-    last_cword: String,
+    cursor_highlights: Option<WinHighlights>,
 }
 
 impl CursorWordHighlighter {
     pub fn new(vim: Vim) -> Self {
         Self {
             vim,
-            current_highlights: None,
-            last_cword: Default::default(),
+            cursor_highlights: None,
         }
     }
 
@@ -104,21 +115,17 @@ impl CursorWordHighlighter {
         let col = self.vim.col(".").await?;
         let curline = self.vim.getcurbufline(curlnum).await?;
 
-        if let Some(cursor_char) = curline.chars().nth(col - 1) {
-            if cursor_char.is_whitespace()
-                || (cursor_char.is_ascii_punctuation() && cursor_char != '_')
-                || cursor_char == '='
-            {
-                self.last_cword = cursor_char.to_string();
+        let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '_';
+
+        if let Some(cursor_char) = char_at(col, &curline) {
+            if !is_word(cursor_char) {
                 return Ok(None);
             }
         } else {
-            self.last_cword = Default::default();
             return Ok(None);
         }
 
         if cword.is_empty() {
-            self.last_cword = cword;
             return Ok(None);
         }
 
@@ -131,6 +138,7 @@ impl CursorWordHighlighter {
 
         let winid = self.vim.current_winid().await?;
 
+        // Lines in view.
         let line_start = self.vim.line("w0").await?;
         let line_end = self.vim.line("w$").await?;
 
@@ -149,7 +157,6 @@ impl CursorWordHighlighter {
                     word_highlights,
                 )
                 .await?;
-            self.last_cword = cword;
             let new_highlights = WinHighlights { match_ids, winid };
             return Ok(Some(new_highlights));
         }
@@ -157,20 +164,17 @@ impl CursorWordHighlighter {
         Ok(None)
     }
 
-    async fn highlight_cursor_word(&mut self) -> Result<()> {
+    /// Highlight the cursor word and all the occurrences.
+    async fn highlight_symbol_under_cursor(&mut self) -> Result<()> {
         let maybe_new_highlights = self.create_new_highlights().await?;
         let old_highlights = match maybe_new_highlights {
-            Some(new_highlights) => self.current_highlights.replace(new_highlights),
-            None => self.current_highlights.take(),
+            Some(new_highlights) => self.cursor_highlights.replace(new_highlights),
+            None => self.cursor_highlights.take(),
         };
 
+        // Clear the old highlights after the new added ones so that no flicker occurs.
         if let Some(WinHighlights { winid, match_ids }) = old_highlights {
-            // clear the existing highlights
-            if self.vim.win_is_valid(winid).await? {
-                for match_id in match_ids {
-                    self.vim.matchdelete(match_id, winid).await?;
-                }
-            }
+            self.vim.matchdelete_batch(match_ids, winid).await?;
         }
 
         Ok(())
@@ -181,7 +185,7 @@ impl CursorWordHighlighter {
 impl ClapPlugin for CursorWordHighlighter {
     async fn on_autocmd(&mut self, autocmd: Autocmd) -> Result<()> {
         match autocmd {
-            Autocmd::CursorMoved => self.highlight_cursor_word().await,
+            Autocmd::CursorMoved => self.highlight_symbol_under_cursor().await,
         }
     }
 }
