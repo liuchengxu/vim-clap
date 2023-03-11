@@ -30,29 +30,41 @@ fn truncate_line_v1(
     line: &str,
     indices: &mut [usize],
     winwidth: usize,
-    skipped: Option<usize>,
+    skipped_chars: Option<usize>,
 ) -> Option<TrimmedText> {
     if line.is_empty() || indices.is_empty() {
         return None;
     }
 
-    if let Some(skipped) = skipped {
-        let container_width = winwidth - skipped;
-        let text = line.chars().skip(skipped).collect::<String>();
-        // indices.iter_mut().for_each(|x| *x -= 2);
+    if let Some(skipped) = skipped_chars {
+        let byte_idx = line
+            .char_indices()
+            .nth(skipped)
+            .map(|(byte_idx, _char)| byte_idx)?;
+
+        let container_width = winwidth - byte_idx;
+
+        indices.iter_mut().for_each(|x| *x -= byte_idx);
+
+        let text_to_trim = &line[byte_idx..];
+
         // TODO: tabstop is not always 4, `:h vim9-differences`
-        trim_text_v1(&text, indices, container_width, 4).map(|mut trimmed| {
-            // Rejoin the skipped chars.
-            let mut new_text = String::with_capacity(skipped + trimmed.trimmed_text.len());
-            line.chars().take(skipped).for_each(|c| new_text.push(c));
-            new_text.push_str(&trimmed.trimmed_text);
-            trimmed.trimmed_text = new_text;
-            trimmed.indices.iter_mut().for_each(|x| *x += skipped);
+        let maybe_trimmed =
+            trim_text_v1(&text_to_trim, indices, container_width, 4).map(|mut trimmed| {
+                // Rejoin the skipped chars.
+                let mut new_text = String::with_capacity(byte_idx + trimmed.trimmed_text.len());
+                new_text.push_str(&line[..byte_idx]);
+                new_text.push_str(&trimmed.trimmed_text);
+                trimmed.trimmed_text = new_text;
 
-            // indices.iter_mut().for_each(|x| *x += 2);
+                trimmed.indices.iter_mut().for_each(|x| *x += byte_idx);
 
-            trimmed
-        })
+                trimmed
+            });
+
+        indices.iter_mut().for_each(|x| *x += byte_idx);
+
+        maybe_trimmed
     } else {
         trim_text_v1(line, indices, winwidth, 4)
     }
@@ -69,13 +81,13 @@ const MAX_LINE_LEN: usize = 500;
 pub fn truncate_item_output_text(
     items: IterMut<MatchedItem>,
     winwidth: usize,
-    skipped: Option<usize>,
+    skipped_chars: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut matched_item)| {
         let output_text = matched_item.output_text().to_string();
-        let truncation_offset = skipped.or(matched_item.item.truncation_offset());
+        let truncation_offset = skipped_chars.or(matched_item.item.truncation_offset());
 
         // Truncate the text simply if it's too long.
         if output_text.len() > MAX_LINE_LEN {
@@ -113,7 +125,7 @@ pub fn truncate_item_output_text(
 pub fn truncate_grep_results(
     grep_results: IterMut<GrepResult>,
     winwidth: usize,
-    skipped: Option<usize>,
+    skipped_chars: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
     let winwidth = winwidth - WINWIDTH_OFFSET;
@@ -129,7 +141,7 @@ pub fn truncate_grep_results(
             &output_text,
             &mut grep_result.matched_item.indices,
             winwidth,
-            skipped,
+            skipped_chars,
         ) {
             let TrimmedText {
                 trimmed_text,
@@ -217,7 +229,7 @@ pub fn truncate_grep_lines(
     lines: impl IntoIterator<Item = String>,
     indices: impl IntoIterator<Item = Vec<usize>>,
     winwidth: usize,
-    skipped: Option<usize>,
+    skipped_chars: Option<usize>,
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
     let mut lnum = 0usize;
@@ -228,7 +240,7 @@ pub fn truncate_grep_lines(
         .map(|(line, mut indices)| {
             lnum += 1;
 
-            if let Some(trimmed) = truncate_line_v1(&line, &mut indices, winwidth, skipped) {
+            if let Some(trimmed) = truncate_line_v1(&line, &mut indices, winwidth, skipped_chars) {
                 truncated_map.insert(lnum, line);
                 (trimmed.trimmed_text, trimmed.indices)
             } else {
