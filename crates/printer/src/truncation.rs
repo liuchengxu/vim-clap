@@ -19,13 +19,6 @@ pub type VimLineNumber = usize;
 ///
 pub type LinesTruncatedMap = HashMap<VimLineNumber, String>;
 
-/// sign column width 2
-#[cfg(not(test))]
-const WINWIDTH_OFFSET: usize = 4;
-
-#[cfg(test)]
-const WINWIDTH_OFFSET: usize = 0;
-
 fn truncate_line_v1(
     line: &str,
     indices: &mut [usize],
@@ -50,7 +43,7 @@ fn truncate_line_v1(
 
         // TODO: tabstop is not always 4, `:h vim9-differences`
         let maybe_trimmed =
-            trim_text_v1(&text_to_trim, indices, container_width, 4).map(|mut trimmed| {
+            trim_text_v1(text_to_trim, indices, container_width, 4).map(|mut trimmed| {
                 // Rejoin the skipped chars.
                 let mut new_text = String::with_capacity(byte_idx + trimmed.trimmed_text.len());
                 new_text.push_str(&line[..byte_idx]);
@@ -84,7 +77,6 @@ pub fn truncate_item_output_text(
     skipped_chars: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
-    let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut matched_item)| {
         let output_text = matched_item.output_text().to_string();
         let truncation_offset = skipped_chars.or(matched_item.item.truncation_offset());
@@ -128,7 +120,6 @@ pub fn truncate_grep_results(
     skipped_chars: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
-    let winwidth = winwidth - WINWIDTH_OFFSET;
     grep_results.enumerate().for_each(|(lnum, mut grep_result)| {
         let output_text = grep_result.matched_item.output_text().to_string();
 
@@ -209,7 +200,6 @@ pub fn truncate_item_output_text_v0(
     skipped: Option<usize>,
 ) -> LinesTruncatedMap {
     let mut truncated_map = HashMap::new();
-    let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, matched_item)| {
         let output_text = matched_item.item.output_text();
 
@@ -233,7 +223,6 @@ pub fn truncate_grep_lines(
 ) -> (Vec<String>, Vec<Vec<usize>>, LinesTruncatedMap) {
     let mut truncated_map = HashMap::new();
     let mut lnum = 0usize;
-    let winwidth = winwidth - WINWIDTH_OFFSET;
     let (lines, indices): (Vec<String>, Vec<Vec<usize>>) = lines
         .into_iter()
         .zip(indices.into_iter())
