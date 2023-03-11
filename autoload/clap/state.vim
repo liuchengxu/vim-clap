@@ -179,11 +179,7 @@ function! clap#state#init_display(lines, truncated_map, icon_added, using_cache)
     return
   endif
   if empty(g:clap.input.get())
-    if g:clap.provider.id ==# 'blines'
-      call clap#provider#blines#initialize(a:lines)
-    else
-      call g:clap.display.set_lines_lazy(a:lines)
-    endif
+    call g:clap.display.set_lines_lazy(a:lines)
     call g:clap#display_win.shrink_if_undersize()
   endif
 

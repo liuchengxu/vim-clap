@@ -39,7 +39,7 @@ fn truncate_line_v1(
     if let Some(skipped) = skipped {
         let container_width = winwidth - skipped;
         let text = line.chars().skip(skipped).collect::<String>();
-        indices.iter_mut().for_each(|x| *x -= 2);
+        // indices.iter_mut().for_each(|x| *x -= 2);
         // TODO: tabstop is not always 4, `:h vim9-differences`
         trim_text_v1(&text, indices, container_width, 4).map(|mut trimmed| {
             // Rejoin the skipped chars.
@@ -49,7 +49,7 @@ fn truncate_line_v1(
             trimmed.trimmed_text = new_text;
             trimmed.indices.iter_mut().for_each(|x| *x += skipped);
 
-            indices.iter_mut().for_each(|x| *x += 2);
+            // indices.iter_mut().for_each(|x| *x += 2);
 
             trimmed
         })
@@ -75,6 +75,7 @@ pub fn truncate_item_output_text(
     let winwidth = winwidth - WINWIDTH_OFFSET;
     items.enumerate().for_each(|(lnum, mut matched_item)| {
         let output_text = matched_item.output_text().to_string();
+        let truncation_offset = skipped.or(matched_item.item.truncation_offset());
 
         // Truncate the text simply if it's too long.
         if output_text.len() > MAX_LINE_LEN {
@@ -85,8 +86,12 @@ pub fn truncate_item_output_text(
             trimmed_text,
             indices,
             ..
-        }) = truncate_line_v1(&output_text, &mut matched_item.indices, winwidth, skipped)
-        {
+        }) = truncate_line_v1(
+            &output_text,
+            &mut matched_item.indices,
+            winwidth,
+            truncation_offset,
+        ) {
             truncated_map.insert(lnum + 1, output_text);
 
             matched_item.display_text.replace(trimmed_text);

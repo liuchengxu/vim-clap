@@ -39,17 +39,17 @@ endfunction
 
 function! s:lines_on_empty() abort
   if !exists('s:lines_on_empty_query')
-    let s:lines_on_empty_query = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+    let lines = getbufline(g:clap.start.bufnr, 1, g:clap.display.preload_capacity)
+    let s:lines_on_empty_query = s:format(lines)
   endif
   return copy(s:lines_on_empty_query)
 endfunction
 
 if clap#maple#is_available()
-  function! clap#provider#blines#initialize(lines) abort
-    let s:lines_on_empty_query = a:lines
-    call g:clap.display.set_lines_lazy(s:format(a:lines))
-  endfunction
   function! s:blines.init() abort
+    if exists('s:lines_on_empty')
+      unlet s:lines_on_empty
+    endif
     call clap#client#notify_on_init()
   endfunction
 else

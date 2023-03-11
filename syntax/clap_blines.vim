@@ -1,4 +1,4 @@
-syntax match ClapBlinesLineNr /^\s*\d\+ /
+syntax match ClapBlinesLineNr /^\s*\d\+/ contained
 syntax match ClapBlines  /^.*$/ contains=ClapBlinesLineNr
 
 hi default link ClapBlinesLineNr Number
