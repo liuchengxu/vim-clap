@@ -123,6 +123,13 @@ pub trait ClapItem: AsAny + std::fmt::Debug + Send + Sync {
         icon.icon_kind()
             .map(|icon_kind| icon_kind.icon(&self.output_text()))
     }
+
+    /// Offset in chars for the truncation.
+    ///
+    /// Used by `blines` to not strip out the line_number during the truncation.
+    fn truncation_offset(&self) -> Option<usize> {
+        None
+    }
 }
 
 // Impl [`ClapItem`] for raw String.

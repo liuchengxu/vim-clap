@@ -264,8 +264,8 @@ impl Context {
             .filter_map(|s| types::parse_criteria(s.trim()))
             .collect();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
-
-        let display_winwidth = vim.winwidth(display.winid).await?;
+        // Sign column occupies 2 spaces.
+        let display_winwidth = vim.winwidth(display.winid).await? - 2;
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;

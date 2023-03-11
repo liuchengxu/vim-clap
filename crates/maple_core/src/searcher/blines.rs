@@ -34,6 +34,10 @@ impl ClapItem for BlinesItem {
         });
         match_result
     }
+
+    fn truncation_offset(&self) -> Option<usize> {
+        Some(utils::display_width(self.line_number))
+    }
 }
 
 #[derive(Debug)]
