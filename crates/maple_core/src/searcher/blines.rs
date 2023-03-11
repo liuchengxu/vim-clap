@@ -97,7 +97,7 @@ pub async fn search(
 ) {
     let SearchContext {
         icon,
-        winwidth,
+        line_width,
         paths: _,
         vim,
         stop_signal,
@@ -109,7 +109,7 @@ pub async fn search(
 
     let mut best_items = BestItems::new(
         icon,
-        winwidth,
+        line_width,
         number,
         progressor,
         Duration::from_millis(200),

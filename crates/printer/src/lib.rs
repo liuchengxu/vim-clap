@@ -150,10 +150,10 @@ fn convert_truncated_matched_items_to_display_lines(
 /// Returns the info of the truncated top items ranked by the filtering score.
 pub fn to_display_lines(
     mut matched_items: Vec<MatchedItem>,
-    winwidth: usize,
+    line_width: usize,
     icon: Icon,
 ) -> DisplayLines {
-    let truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
+    let truncated_map = truncate_item_output_text(matched_items.iter_mut(), line_width, None);
     convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
 }
 
@@ -169,10 +169,10 @@ pub struct GrepResult {
 
 pub fn grep_results_to_display_lines(
     mut grep_results: Vec<GrepResult>,
-    winwidth: usize,
+    line_width: usize,
     icon: Icon,
 ) -> DisplayLines {
-    let truncated_map = truncate_grep_results(grep_results.iter_mut(), winwidth, None);
+    let truncated_map = truncate_grep_results(grep_results.iter_mut(), line_width, None);
     convert_truncated_matched_items_to_display_lines(
         grep_results.into_iter().map(|i| i.matched_item),
         icon,

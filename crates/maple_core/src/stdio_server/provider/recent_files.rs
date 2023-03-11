@@ -136,16 +136,20 @@ impl ClapProvider for RecentFilesProvider {
             None
         };
 
-        let winwidth = ctx.env.display_winwidth;
         let icon = if ctx.env.icon.enabled() {
             icon::Icon::Enabled(icon::IconKind::File)
         } else {
             icon::Icon::Null
         };
 
-        let response = self
-            .clone()
-            .process_query(cwd, query, preview_size, 1, winwidth, icon)?;
+        let response = self.clone().process_query(
+            cwd,
+            query,
+            preview_size,
+            1,
+            ctx.env.display_line_width,
+            icon,
+        )?;
 
         ctx.vim
             .exec("clap#state#process_response_on_typed", response)?;

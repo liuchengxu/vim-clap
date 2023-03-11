@@ -183,7 +183,7 @@ impl FilerProvider {
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                ctx.env.display_winwidth,
+                ctx.env.display_line_width,
                 icon::Icon::Null, // icon is handled inside the provider impl.
             );
 

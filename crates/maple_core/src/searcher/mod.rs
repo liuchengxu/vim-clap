@@ -13,7 +13,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct SearchContext {
     pub icon: Icon,
-    pub winwidth: usize,
+    pub line_width: usize,
     pub paths: Vec<PathBuf>,
     pub vim: Vim,
     pub stop_signal: Arc<AtomicBool>,

@@ -57,7 +57,7 @@ pub enum KeyEvent {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub enum Autocmd {
     CursorMoved,
-    InsertEnter
+    InsertEnter,
 }
 
 impl Event {

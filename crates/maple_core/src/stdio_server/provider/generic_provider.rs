@@ -205,7 +205,7 @@ impl ClapProvider for GenericProvider {
                     icon_added,
                 } = printer::to_display_lines(
                     matched_items.iter().take(200).cloned().collect(),
-                    ctx.env.display_winwidth,
+                    ctx.env.display_line_width,
                     ctx.env.icon,
                 );
                 let msg = json!({

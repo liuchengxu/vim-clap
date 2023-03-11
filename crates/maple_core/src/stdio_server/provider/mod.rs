@@ -85,6 +85,9 @@ pub struct ProviderEnvironment {
     pub preview_enabled: bool,
     pub display_winwidth: usize,
     pub display_winheight: usize,
+    /// Actual width for displaying the line content due to the sign column is included in
+    /// winwidth.
+    pub display_line_width: usize,
     pub start_buffer_path: PathBuf,
 }
 
@@ -264,8 +267,13 @@ impl Context {
             .filter_map(|s| types::parse_criteria(s.trim()))
             .collect();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
+        let display_winwidth = vim.winwidth(display.winid).await?;
         // Sign column occupies 2 spaces.
-        let display_winwidth = vim.winwidth(display.winid).await? - 2;
+        let display_line_width = if provider_id.as_str() == "grep" {
+            display_winwidth - 4
+        } else {
+            display_winwidth - 2
+        };
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
@@ -287,6 +295,7 @@ impl Context {
             start_buffer_path,
             display_winwidth,
             display_winheight,
+            display_line_width,
             matcher_builder,
             icon,
         };
@@ -318,7 +327,7 @@ impl Context {
     pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
         SearchContext {
             icon: self.env.icon,
-            winwidth: self.env.display_winwidth,
+            line_width: self.env.display_line_width,
             paths: vec![self.cwd.to_path_buf()],
             vim: self.vim.clone(),
             stop_signal,
@@ -474,7 +483,7 @@ impl Context {
                 icon_added,
                 truncated_map,
                 ..
-            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
+            } = printer::to_display_lines(items, self.env.display_line_width, self.env.icon);
 
             self.vim.exec(
                 "clap#state#update_on_empty_query",

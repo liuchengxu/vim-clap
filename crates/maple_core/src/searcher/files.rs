@@ -70,7 +70,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
         paths,
         vim,
         icon,
-        winwidth,
+        line_width,
         stop_signal,
         item_pool_size,
     } = search_context;
@@ -93,7 +93,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
 
     let mut best_items = BestItems::new(
         icon,
-        winwidth,
+        line_width,
         number,
         progressor,
         Duration::from_millis(200),
