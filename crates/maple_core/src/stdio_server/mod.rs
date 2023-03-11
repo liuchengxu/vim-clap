@@ -52,7 +52,7 @@ impl Client {
     fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
         let vim = Vim::new(rpc_client);
         let mut service_manager = ServiceManager::default();
-        if crate::config::config().plugin.highlight_cursor_word {
+        if crate::config::config().plugin.highlight_cursor_word.enable {
             service_manager.new_plugin(
                 Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
             );

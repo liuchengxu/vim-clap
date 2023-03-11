@@ -108,10 +108,29 @@ impl CursorWordHighlighter {
     async fn create_new_highlights(&mut self) -> Result<Option<WinHighlights>> {
         let cword = self.vim.expand("<cword>").await?;
 
+        let source_file = self.vim.current_buffer_path().await?;
+        let source_file = Path::new(&source_file);
+
+        if !source_file.is_file() {
+            return Ok(None);
+        }
+
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let curlnum = self.vim.line(".").await?;
         let col = self.vim.col(".").await?;
         let curline = self.vim.getcurbufline(curlnum).await?;
+
+        if crate::config::config()
+            .plugin
+            .highlight_cursor_word
+            .ignore_comment_line
+        {
+            if let Some(ext) = source_file.extension().and_then(|s| s.to_str()) {
+                if dumb_analyzer::is_comment(curline.as_str(), ext) {
+                    return Ok(None);
+                }
+            }
+        }
 
         let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '_';
 
@@ -124,13 +143,6 @@ impl CursorWordHighlighter {
         }
 
         if cword.is_empty() {
-            return Ok(None);
-        }
-
-        let source_file = self.vim.current_buffer_path().await?;
-        let source_file = Path::new(&source_file);
-
-        if !source_file.is_file() {
             return Ok(None);
         }
 

@@ -83,9 +83,15 @@ impl Default for LogConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct HighlightCursorWordConfig {
+    pub enable: bool,
+    pub ignore_comment_line: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
-    /// Enable highlight-cursor-word plugin.
-    pub highlight_cursor_word: bool,
+    pub highlight_cursor_word: HighlightCursorWordConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
