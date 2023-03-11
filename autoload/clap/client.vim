@@ -84,6 +84,10 @@ function! clap#client#request_async(method, callback, ...) abort
   endif
 endfunction
 
+function! clap#client#request(method, ...) abort
+  call s:request_async(a:method, get(a:000, 0, v:null))
+endfunction
+
 function! clap#client#notify_on_init(...) abort
   if g:clap.display.winid < 0
     return

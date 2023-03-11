@@ -24,6 +24,10 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
     CONFIG_FILE.set(config_file).ok();
 }
 
+pub fn config_file() -> &'static PathBuf {
+    CONFIG_FILE.get().expect("Config file uninitialized")
+}
+
 // TODO: reload-config
 pub fn config() -> &'static Config {
     static CONFIG: OnceCell<Config> = OnceCell::new();
@@ -79,6 +83,13 @@ impl Default for LogConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PluginConfig {
+    /// Enable highlight-cursor-word plugin.
+    pub highlight_cursor_word: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Log configuration.
     pub log: LogConfig,
@@ -86,12 +97,17 @@ pub struct Config {
     /// Matcher configuration.
     pub matcher: MatcherConfig,
 
+    /// Plugin configuration.
+    pub plugin: PluginConfig,
+
     /// Global ignore configuration.
     pub global_ignore: IgnoreConfig,
+
     /// Ignore configuration per project.
     ///
     /// The project path must be specified as absolute path or a path relative to the home directory.
     pub project_ignore: HashMap<AbsPathBuf, IgnoreConfig>,
+
     /// Ignore configuration per provider.
     ///
     /// Priorities of the ignore config:

@@ -52,8 +52,11 @@ impl Client {
     fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
         let vim = Vim::new(rpc_client);
         let mut service_manager = ServiceManager::default();
-        service_manager
-            .new_plugin(Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>);
+        if crate::config::config().plugin.highlight_cursor_word {
+            service_manager.new_plugin(
+                Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
+            );
+        }
         Self {
             vim,
             state_mutex: Arc::new(Mutex::new(state)),
@@ -198,6 +201,11 @@ impl Client {
                     }
                     "note_recent_files" => {
                         handler::messages::note_recent_file(notification).await?
+                    }
+                    "open-config" => {
+                        let config_file = crate::config::config_file();
+                        self.vim
+                            .exec("execute", format!("edit {}", config_file.display()))?;
                     }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }
