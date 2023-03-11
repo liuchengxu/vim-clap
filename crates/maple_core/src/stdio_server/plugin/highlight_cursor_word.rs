@@ -87,7 +87,7 @@ fn find_word_highlights(
 #[derive(Debug)]
 struct WinHighlights {
     winid: usize,
-    // matchaddpos() returns -1 on error.
+    // Use `i32` as matchaddpos() returns -1 on error.
     match_ids: Vec<i32>,
 }
 
@@ -107,6 +107,10 @@ impl CursorWordHighlighter {
 
     async fn create_new_highlights(&mut self) -> Result<Option<WinHighlights>> {
         let cword = self.vim.expand("<cword>").await?;
+
+        if cword.is_empty() {
+            return Ok(None);
+        }
 
         let source_file = self.vim.current_buffer_path().await?;
         let source_file = Path::new(&source_file);
@@ -142,24 +146,15 @@ impl CursorWordHighlighter {
             return Ok(None);
         }
 
-        if cword.is_empty() {
-            return Ok(None);
-        }
-
         let winid = self.vim.current_winid().await?;
 
         // Lines in view.
         let line_start = self.vim.line("w0").await?;
         let line_end = self.vim.line("w$").await?;
 
-        if let Ok(Some(word_highlights)) = find_word_highlights(
-            source_file,
-            line_start,
-            line_end,
-            curlnum,
-            col,
-            cword.clone(),
-        ) {
+        if let Ok(Some(word_highlights)) =
+            find_word_highlights(source_file, line_start, line_end, curlnum, col, cword)
+        {
             let match_ids: Vec<i32> = self
                 .vim
                 .call(
@@ -167,8 +162,7 @@ impl CursorWordHighlighter {
                     word_highlights,
                 )
                 .await?;
-            let new_highlights = WinHighlights { match_ids, winid };
-            return Ok(Some(new_highlights));
+            return Ok(Some(WinHighlights { match_ids, winid }));
         }
 
         Ok(None)
