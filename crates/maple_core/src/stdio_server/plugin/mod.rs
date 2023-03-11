@@ -1,8 +1,8 @@
+mod highlight_cursor_word;
+
 use crate::stdio_server::input::Autocmd;
 use anyhow::Result;
 use std::fmt::Debug;
-
-mod highlight_cursor_word;
 
 pub use highlight_cursor_word::CursorWordHighlighter;
 

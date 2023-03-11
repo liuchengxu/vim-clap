@@ -115,7 +115,7 @@ impl CursorWordHighlighter {
 
         let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '_';
 
-        if let Some(cursor_char) = char_at(col, &curline) {
+        if let Some(cursor_char) = char_at(col-1, &curline) {
             if !is_word(cursor_char) {
                 return Ok(None);
             }
