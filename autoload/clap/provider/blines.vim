@@ -47,8 +47,8 @@ endfunction
 
 if clap#maple#is_available()
   function! s:blines.init() abort
-    if exists('s:lines_on_empty')
-      unlet s:lines_on_empty
+    if exists('s:lines_on_empty_query')
+      unlet s:lines_on_empty_query
     endif
     call clap#client#notify_on_init()
   endfunction
