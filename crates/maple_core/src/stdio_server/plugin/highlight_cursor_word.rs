@@ -119,6 +119,28 @@ impl CursorWordHighlighter {
             return Ok(None);
         }
 
+        let Some(file_extension) = source_file.extension().and_then(|s| s.to_str()) else {
+            return Ok(None)
+        };
+
+        let Some(file_name) = source_file.file_name().and_then(|s| s.to_str()) else {
+            return Ok(None)
+        };
+
+        let (ignore_extensions, ignore_file_names): (Vec<_>, Vec<_>) = crate::config::config()
+            .plugin
+            .highlight_cursor_word
+            .ignore_files
+            .split(",")
+            .into_iter()
+            .partition(|s| s.starts_with("*."));
+
+        if ignore_extensions.iter().any(|s| &s[2..] == file_extension)
+            || ignore_file_names.contains(&file_name)
+        {
+            return Ok(None);
+        }
+
         // TODO: filter the false positive results, using a blocklist of filetypes?
         let curlnum = self.vim.line(".").await?;
         let col = self.vim.col(".").await?;

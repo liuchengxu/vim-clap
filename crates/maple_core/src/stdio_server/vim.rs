@@ -301,6 +301,22 @@ impl Vim {
         self.call("bufname", json!([bufnr])).await
     }
 
+    pub async fn col(&self, expr: &str) -> Result<usize> {
+        self.call("col", json![expr]).await
+    }
+
+    pub async fn expand(&self, string: &str) -> Result<String> {
+        self.call("expand", json![string]).await
+    }
+
+    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
+        self.call("eval", json!([s])).await
+    }
+
+    pub async fn line(&self, expr: &str) -> Result<usize> {
+        self.call("line", json![expr]).await
+    }
+
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {
@@ -308,22 +324,6 @@ impl Vim {
         } else {
             Ok(width as usize)
         }
-    }
-
-    pub async fn line(&self, expr: &str) -> Result<usize> {
-        self.call("line", json![expr]).await
-    }
-
-    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
-        self.call("getbufoneline", json!(["", lnum])).await
-    }
-
-    pub async fn col(&self, expr: &str) -> Result<usize> {
-        self.call("col", json![expr]).await
-    }
-
-    pub async fn expand(&self, string: &str) -> Result<String> {
-        self.call("expand", json![string]).await
     }
 
     pub async fn winheight(&self, winid: usize) -> Result<usize> {
@@ -343,10 +343,6 @@ impl Vim {
         self.call("matchdelete", json!([id, win])).await
     }
 
-    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
-        self.call("eval", json!([s])).await
-    }
-
     /////////////////////////////////////////////////////////////////
     //    Clap related APIs
     /////////////////////////////////////////////////////////////////
@@ -358,7 +354,7 @@ impl Vim {
                 let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
                 let curline = match arr.into_iter().next() {
                     Some(Value::String(s)) => s,
-                    e => return Err(anyhow::anyhow!("curline expects a String, but got {e:?}")),
+                    e => return Err(anyhow!("curline expects a String, but got {e:?}")),
                 };
                 if icon_added_by_maple {
                     Ok(curline.chars().skip(2).collect())
@@ -366,7 +362,7 @@ impl Vim {
                     Ok(curline)
                 }
             }
-            _ => Err(anyhow::anyhow!(
+            _ => Err(anyhow!(
                 "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
             )),
         }
@@ -380,12 +376,12 @@ impl Vim {
         self.eval("g:clap.input.get()").await
     }
 
-    pub async fn provider_id(&self) -> Result<String> {
-        self.eval("g:clap.provider.id").await
-    }
-
     pub async fn provider_args(&self) -> Result<Vec<String>> {
         self.bare_call("provider_args").await
+    }
+
+    pub async fn provider_id(&self) -> Result<String> {
+        self.eval("g:clap.provider.id").await
     }
 
     pub async fn provider_raw_args(&self) -> Result<Vec<String>> {
@@ -409,10 +405,6 @@ impl Vim {
         self.bare_call("current_buffer_path").await
     }
 
-    pub async fn current_winid(&self) -> Result<usize> {
-        self.bare_call("win_getid").await
-    }
-
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
@@ -420,24 +412,21 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     //    General helpers
     /////////////////////////////////////////////////////////////////
+    pub fn echo_info(&self, msg: &str) -> Result<()> {
+        self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    pub async fn current_winid(&self) -> Result<usize> {
+        self.bare_call("win_getid").await
+    }
+
+    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
+        self.call("getbufoneline", json!(["", lnum])).await
+    }
+
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
         Ok(into_bool(value))
-    }
-
-    pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
-        let value: Value = self
-            .call("clap#api#floating_win_is_valid", json!([winid]))
-            .await?;
-        Ok(into_bool(value))
-    }
-
-    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
-        self.exec("set_var", json!([var_name, value]))
-    }
-
-    pub fn echo_info(&self, msg: &str) -> Result<()> {
-        self.exec("clap#helper#echo_info", json!([msg]))
     }
 
     pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
@@ -459,6 +448,17 @@ impl Vim {
         Ok(preview_config
             .preview_size(provider_id.as_str())
             .max(preview_winheight / 2))
+    }
+
+    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
+        self.exec("set_var", json!([var_name, value]))
+    }
+
+    pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
+        let value: Value = self
+            .call("clap#api#floating_win_is_valid", json!([winid]))
+            .await?;
+        Ok(into_bool(value))
     }
 }
 

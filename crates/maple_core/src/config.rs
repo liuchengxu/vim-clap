@@ -81,13 +81,25 @@ impl Default for LogConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct HighlightCursorWordConfig {
     /// Whether to enable this plugin.
     pub enable: bool,
     /// Whether to ignore the comment line
     pub ignore_comment_line: bool,
+    /// Disable the plugin when the file matches this pattern.
+    pub ignore_files: String,
+}
+
+impl Default for HighlightCursorWordConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            ignore_comment_line: false,
+            ignore_files: "*.toml,*.json,*.yml,*.log,tmp".to_string(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
