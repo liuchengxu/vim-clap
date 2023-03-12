@@ -84,7 +84,9 @@ impl Default for LogConfig {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct HighlightCursorWordConfig {
+    /// Whether to enable this plugin.
     pub enable: bool,
+    /// Whether to ignore the comment line
     pub ignore_comment_line: bool,
 }
 

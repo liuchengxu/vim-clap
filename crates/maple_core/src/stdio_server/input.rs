@@ -63,17 +63,17 @@ pub enum Autocmd {
 impl Event {
     pub fn from_method(method: &str) -> Self {
         match method {
-            "new_session" => Self::Provider(ProviderEvent::NewSession),
-            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
-            "on_move" => Self::Provider(ProviderEvent::OnMove),
             "exit" => Self::Provider(ProviderEvent::Exit),
+            "on_move" => Self::Provider(ProviderEvent::OnMove),
+            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
+            "new_session" => Self::Provider(ProviderEvent::NewSession),
             "cr" => Self::Key(KeyEvent::CarriageReturn),
             "tab" => Self::Key(KeyEvent::Tab),
-            "backspace" => Self::Key(KeyEvent::Backspace),
-            "shift-up" => Self::Key(KeyEvent::ShiftUp),
-            "shift-down" => Self::Key(KeyEvent::ShiftDown),
             "ctrl-n" => Self::Key(KeyEvent::CtrlN),
             "ctrl-p" => Self::Key(KeyEvent::CtrlP),
+            "shift-up" => Self::Key(KeyEvent::ShiftUp),
+            "shift-down" => Self::Key(KeyEvent::ShiftDown),
+            "backspace" => Self::Key(KeyEvent::Backspace),
             "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
             "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
             other => Self::Other(other.to_string()),
