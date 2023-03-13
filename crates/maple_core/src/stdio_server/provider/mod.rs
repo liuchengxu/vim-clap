@@ -423,6 +423,12 @@ impl Context {
         }
     }
 
+    pub async fn preview_winwidth(&self) -> Result<usize> {
+        let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
+        let winwidth = self.vim.winwidth(preview_winid).await?;
+        Ok(winwidth)
+    }
+
     pub async fn preview_height(&mut self) -> Result<usize> {
         self.preview_size().await.map(|x| 2 * x)
     }

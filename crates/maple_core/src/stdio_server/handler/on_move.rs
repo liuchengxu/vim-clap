@@ -200,7 +200,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    pub async fn get_preview(&self) -> Result<(PreviewTarget, Preview)> {
+    pub async fn get_preview(&self) -> anyhow::Result<(PreviewTarget, Preview)> {
         if let Some(preview) = self
             .ctx
             .preview_manager
@@ -213,7 +213,9 @@ impl<'a> CachedPreviewImpl<'a> {
             PreviewTarget::Directory(path) => self.preview_directory(path)?,
             PreviewTarget::File(path) => self.preview_file(path)?,
             PreviewTarget::LineInFile { path, line_number } => {
-                self.preview_file_at(path, *line_number).await
+                let container_width = self.ctx.preview_winwidth().await?;
+                self.preview_file_at(path, *line_number, container_width)
+                    .await
             }
             PreviewTarget::Commit(rev) => self.preview_commits(rev)?,
             PreviewTarget::HelpTags {
@@ -357,10 +359,9 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
+    async fn preview_file_at(&self, path: &Path, lnum: usize, container_width: usize) -> Preview {
         tracing::debug!(path = ?path.display(), lnum, "Previewing file");
 
-        let container_width = self.ctx.env.display_line_width;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
