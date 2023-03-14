@@ -317,6 +317,10 @@ impl Vim {
         self.call("line", json![expr]).await
     }
 
+    pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
+        self.call("getpos", json![expr]).await
+    }
+
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {
