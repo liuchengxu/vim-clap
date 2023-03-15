@@ -134,6 +134,15 @@ function! s:grep_sink(selected) abort
   let matched = s:strip_icon_and_match(line, pattern)
   let [fpath, linenr, column] = [matched[1], str2nr(matched[2]), str2nr(matched[3])]
   call clap#sink#open_file(fpath, linenr, column)
+  " Try to adjust the column offset as Rust grep searcher strips the leading
+  " whitespaces.
+  if exists('*getbufoneline')
+    let full_line = getbufoneline(fpath, linenr)
+    let offset = len(matchstr(full_line, '^\s*'))
+    if offset > 0
+      noautocmd call cursor(linenr, column + offset)
+    endif
+  endif
   call call('clap#util#blink', s:grep_blink)
   let s:icon_appended = v:false
 endfunction
