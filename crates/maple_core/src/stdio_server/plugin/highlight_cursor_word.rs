@@ -131,8 +131,7 @@ impl CursorWordHighlighter {
             .plugin
             .highlight_cursor_word
             .ignore_files
-            .split(",")
-            .into_iter()
+            .split(',')
             .partition(|s| s.starts_with("*."));
 
         if ignore_extensions.iter().any(|s| &s[2..] == file_extension)
@@ -157,7 +156,7 @@ impl CursorWordHighlighter {
             }
         }
 
-        let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '_';
+        let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_';
 
         if let Some(cursor_char) = char_at(col - 1, &curline) {
             if !is_word(cursor_char) {
