@@ -136,7 +136,8 @@ function! clap#client#call_on_move(method, callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#request_async(a:method, a:callback, params)
+  " on_move callback is unused as it's already handled by Rust backend.
+  call s:notify_provider(a:method, params)
 endfunction
 
 let &cpoptions = s:save_cpo
