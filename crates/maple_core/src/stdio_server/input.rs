@@ -8,7 +8,8 @@ pub enum Event {
     Provider(ProviderEvent),
     Autocmd(Autocmd),
     Key(KeyEvent),
-    Other(String),
+    /// Various uncategoried actions.
+    Action(String),
 }
 
 #[derive(Debug, Clone)]
@@ -76,7 +77,7 @@ impl Event {
             "backspace" => Self::Key(KeyEvent::Backspace),
             "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
             "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
-            other => Self::Other(other.to_string()),
+            action => Self::Action(action.to_string()),
         }
     }
 }

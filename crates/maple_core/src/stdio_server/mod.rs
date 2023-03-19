@@ -187,8 +187,8 @@ impl Client {
                     .lock()
                     .notify_plugins(PluginEvent::Autocmd(autocmd));
             }
-            Event::Other(other_method) => {
-                match other_method.as_str() {
+            Event::Action(action) => {
+                match action.as_str() {
                     "initialize_global_env" => {
                         // Should be called only once.
                         let output: String = self
@@ -206,6 +206,17 @@ impl Client {
                         let config_file = crate::config::config_file();
                         self.vim
                             .exec("execute", format!("edit {}", config_file.display()))?;
+                    }
+                    "generate-toc" => {
+                        let curlnum = self.vim.line(".").await?;
+                        let file = self.vim.current_buffer_path().await?;
+                        let toc = plugin::generate_toc(&std::path::Path::new(&file), curlnum)?;
+                        self.vim.exec("append", serde_json::json!([curlnum, toc]))?;
+                    }
+                    "update-toc" => {
+                        // Find the markers
+                        // generate new toc
+                        // replace old with new toc
                     }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }

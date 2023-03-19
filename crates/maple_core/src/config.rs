@@ -102,10 +102,24 @@ impl Default for HighlightCursorWordConfig {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MarkdownTocConfig {
+    /// Whether to enable this plugin.
+    pub enable: bool,
+}
+
+impl Default for MarkdownTocConfig {
+    fn default() -> Self {
+        Self { enable: false }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct PluginConfig {
     pub highlight_cursor_word: HighlightCursorWordConfig,
+    pub markdown_toc: MarkdownTocConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
