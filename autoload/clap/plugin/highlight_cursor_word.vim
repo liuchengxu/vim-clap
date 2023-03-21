@@ -6,7 +6,7 @@ set cpoptions&vim
 hi ClapUnderline gui=underline cterm=underline
 
 hi default link ClapCurrentWord      IncSearch
-hi default link ClapCurrentWordTwins Search
+hi default link ClapCurrentWordTwins ClapUnderline
 
 function! clap#plugin#highlight_cursor_word#add_highlights(word_highlights) abort
   let cword_len = a:word_highlights.cword_len
