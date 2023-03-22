@@ -5,7 +5,7 @@ use std::path::Path;
 use std::str::FromStr;
 
 fn slugify(text: &str) -> String {
-    percent_encode(text.replace(" ", "-").to_lowercase().as_bytes(), CONTROLS).to_string()
+    percent_encode(text.replace(' ', "-").to_lowercase().as_bytes(), CONTROLS).to_string()
 }
 
 #[derive(Debug)]
@@ -80,13 +80,11 @@ impl Heading {
 
             if config.no_link {
                 Some(format!("{indent}{bullet} {title}"))
+            } else if let Some(cap) = MARKDOWN_LINK.captures(title) {
+                let title = cap.get(1).map(|x| x.as_str())?;
+                Some(format!("{indent}{bullet} [{title}]({title})"))
             } else {
-                if let Some(cap) = MARKDOWN_LINK.captures(title) {
-                    let title = cap.get(1).map(|x| x.as_str())?;
-                    Some(format!("{indent}{bullet} [{title}]({title})"))
-                } else {
-                    Some(format!("{indent}{bullet} [{title}](#{})", slugify(title)))
-                }
+                Some(format!("{indent}{bullet} [{title}](#{})", slugify(title)))
             }
         } else {
             None
@@ -106,7 +104,6 @@ fn parse_toc(
 ) -> std::io::Result<Vec<String>> {
     let mut code_fence = None;
     Ok(utils::read_lines(input_file)?
-        .into_iter()
         .skip(line_start)
         .filter_map(Result::ok)
         .filter(|line| match &code_fence {

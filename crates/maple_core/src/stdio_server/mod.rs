@@ -210,7 +210,7 @@ impl Client {
                     "generate-toc" => {
                         let curlnum = self.vim.line(".").await?;
                         let file = self.vim.current_buffer_path().await?;
-                        let toc = plugin::generate_toc(&std::path::Path::new(&file), curlnum)?;
+                        let toc = plugin::generate_toc(std::path::Path::new(&file), curlnum)?;
                         self.vim.exec("append", serde_json::json!([curlnum, toc]))?;
                     }
                     "update-toc" => {

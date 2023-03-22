@@ -29,9 +29,9 @@ impl RecentFilesProvider {
         winwidth: usize,
         icon: icon::Icon,
     ) -> Result<Value> {
-        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         let cwd = cwd.to_string();
 
+        let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         let ranked = if query.is_empty() {
             // Sort the initial list according to the cwd.
             //
@@ -64,6 +64,8 @@ impl RecentFilesProvider {
 
         let processed = recent_files.len();
         let matched = ranked.len();
+
+        drop(recent_files);
 
         // process the new preview
         let preview = match (preview_size, ranked.get(lnum - 1)) {
