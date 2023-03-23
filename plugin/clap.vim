@@ -52,7 +52,7 @@ augroup VimClap
   autocmd BufDelete            * call s:OnBufDelete(+expand('<abuf>'))
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
 
-  autocmd BufAdd,BufEnter * call clap#client#notify_recent_file()
+  autocmd BufAdd,BufEnter * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
 
   autocmd CursorMoved * call clap#client#notify('CursorMoved')
   autocmd InsertEnter * call clap#client#notify('InsertEnter')

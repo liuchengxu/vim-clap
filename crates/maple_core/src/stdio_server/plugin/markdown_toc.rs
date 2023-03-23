@@ -42,7 +42,7 @@ impl FromStr for Heading {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let trimmed = s.trim_end();
-        if trimmed.starts_with("#") {
+        if trimmed.starts_with('#') {
             let mut depth = 0usize;
             let title = trimmed
                 .chars()

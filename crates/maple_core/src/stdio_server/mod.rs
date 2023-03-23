@@ -200,7 +200,12 @@ impl Client {
                         tracing::debug!("Client initialized successfully");
                     }
                     "note_recent_files" => {
-                        handler::messages::note_recent_file(notification).await?
+                        let bufnr: Vec<usize> = notification.params.parse()?;
+                        let bufnr = bufnr
+                            .first()
+                            .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
+                        let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
+                        handler::messages::note_recent_file(file_path)?
                     }
                     "open-config" => {
                         let config_file = crate::config::config_file();

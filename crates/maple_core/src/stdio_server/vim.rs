@@ -305,8 +305,8 @@ impl Vim {
         self.call("col", json![expr]).await
     }
 
-    pub async fn expand(&self, string: &str) -> Result<String> {
-        self.call("expand", json![string]).await
+    pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
+        self.call("expand", json![string.as_ref()]).await
     }
 
     pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
