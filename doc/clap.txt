@@ -64,6 +64,14 @@ Checkout |write-clap-provider| for the details.
 ===============================================================================
 5. Global Options                                                 *clap-options*
 
+g:clap_start_server_on_startup                  *g:clap_start_server_on_startup*
+
+  Type: |Number|
+  Default: `1`
+
+  Start the Rust backend on startup. Recommended, otherwise the recent files
+  tracking may won't be started until the server is initialized.
+
 
 g:clap_provider_alias                                    *g:clap_provider_alias*
 

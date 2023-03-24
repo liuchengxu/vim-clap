@@ -52,13 +52,12 @@ augroup VimClap
   autocmd BufDelete            * call s:OnBufDelete(+expand('<abuf>'))
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
 
-  autocmd BufAdd,BufEnter * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
-
+  autocmd BufAdd      * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
   autocmd CursorMoved * call clap#client#notify('CursorMoved')
   autocmd InsertEnter * call clap#client#notify('InsertEnter')
 
   " yanks provider
   if get(g:, 'clap_enable_yanks_provider', 1)
-      autocmd VimEnter * call clap#provider#yanks#init()
+    autocmd VimEnter * call clap#provider#yanks#init()
   endif
 augroup END

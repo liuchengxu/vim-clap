@@ -164,7 +164,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("README.md");
-        println!("");
+        println!();
         for line in generate_toc(&file, 0).unwrap() {
             println!("{line}");
         }
