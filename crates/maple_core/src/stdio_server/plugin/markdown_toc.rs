@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use percent_encoding::{percent_encode, CONTROLS};
 use regex::Regex;
+use std::collections::VecDeque;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -139,16 +140,39 @@ fn parse_toc(
         .collect())
 }
 
-pub fn generate_toc(input_file: &Path, line_start: usize) -> std::io::Result<Vec<String>> {
+pub fn generate_toc(
+    input_file: impl AsRef<Path>,
+    line_start: usize,
+) -> std::io::Result<VecDeque<String>> {
     let toc_config = TocConfig::default();
-    let mut toc = parse_toc(input_file, &toc_config, line_start)?;
+    let mut toc: VecDeque<_> = parse_toc(input_file.as_ref(), &toc_config, line_start)?.into();
 
-    toc.insert(0, "<!-- clap-markdown-toc -->".to_string());
-    toc.insert(1, Default::default());
-    toc.push(Default::default());
-    toc.push("<!-- /clap-markdown-toc -->".to_string());
+    toc.push_front(Default::default());
+    toc.push_front("<!-- clap-markdown-toc -->".to_string());
+    toc.push_back(Default::default());
+    toc.push_back("<!-- /clap-markdown-toc -->".to_string());
 
     Ok(toc)
+}
+
+pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {
+    let mut start = 0;
+
+    for (idx, line) in utils::read_lines(input_file)?
+        .filter_map(Result::ok)
+        .enumerate()
+    {
+        let line = line.trim();
+        if line == "<!-- clap-markdown-toc -->" {
+            start = idx;
+        } else if line == "<!-- /clap-markdown-toc -->" {
+            return Ok(Some((start, idx)));
+        } else {
+            continue;
+        }
+    }
+
+    Ok(None)
 }
 
 #[cfg(test)]

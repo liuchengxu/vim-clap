@@ -215,13 +215,36 @@ impl Client {
                     "generate-toc" => {
                         let curlnum = self.vim.line(".").await?;
                         let file = self.vim.current_buffer_path().await?;
-                        let toc = plugin::generate_toc(std::path::Path::new(&file), curlnum)?;
-                        self.vim.exec("append", serde_json::json!([curlnum, toc]))?;
+                        let mut toc = plugin::generate_toc(file, curlnum)?;
+                        let prev_line = self.vim.curbufline(curlnum - 1).await?;
+                        if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
+                            toc.push_front(Default::default());
+                        }
+                        self.vim
+                            .exec("append", serde_json::json!([curlnum - 1, toc]))?;
                     }
                     "update-toc" => {
-                        // Find the markers
-                        // generate new toc
-                        // replace old with new toc
+                        let file = self.vim.current_buffer_path().await?;
+                        let bufnr = self.vim.current_bufnr().await?;
+                        if let Some((start, end)) = plugin::find_toc_range(&file)? {
+                            let new_toc = plugin::generate_toc(file, start + 1)?;
+                            self.vim.exec(
+                                "deletebufline",
+                                serde_json::json!([bufnr, start + 1, end + 1]),
+                            )?;
+                            self.vim
+                                .exec("append", serde_json::json!([start + 1, new_toc]))?;
+                        }
+                    }
+                    "delete-toc" => {
+                        let file = self.vim.current_buffer_path().await?;
+                        let bufnr = self.vim.current_bufnr().await?;
+                        if let Some((start, end)) = plugin::find_toc_range(file)? {
+                            self.vim.exec(
+                                "deletebufline",
+                                serde_json::json!([bufnr, start + 1, end + 1]),
+                            )?;
+                        }
                     }
                     _ => return Err(anyhow!("Unknown notification: {notification:?}")),
                 }

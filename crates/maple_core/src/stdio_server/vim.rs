@@ -409,6 +409,10 @@ impl Vim {
         self.bare_call("current_buffer_path").await
     }
 
+    pub async fn curbufline(&self, lnum: usize) -> Result<Option<String>> {
+        self.call("curbufline", json!([lnum])).await
+    }
+
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
@@ -422,6 +426,15 @@ impl Vim {
 
     pub async fn current_winid(&self) -> Result<usize> {
         self.bare_call("win_getid").await
+    }
+
+    pub async fn current_bufnr(&self) -> Result<usize> {
+        let bufnr: i32 = self.call("bufnr", json![""]).await?;
+        if bufnr < 0 {
+            Err(anyhow!("bufnr doesn't exist"))
+        } else {
+            Ok(bufnr as usize)
+        }
     }
 
     pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {

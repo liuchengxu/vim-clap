@@ -113,6 +113,10 @@ function! s:api.matchdelete_batch(match_ids, winid) abort
   call map(a:match_ids, 'matchdelete(v:val, a:winid)')
 endfunction
 
+function! s:api.curbufline(lnum) abort
+  return get(getbufline(bufnr(''), a:lnum), 0, v:null)
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

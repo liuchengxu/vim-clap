@@ -6,7 +6,7 @@ use anyhow::Result;
 use std::fmt::Debug;
 
 pub use highlight_cursor_word::CursorWordHighlighter;
-pub use markdown_toc::generate_toc;
+pub use markdown_toc::{find_toc_range, generate_toc};
 
 /// A trait each Clap plugin must implement.
 #[async_trait::async_trait]
