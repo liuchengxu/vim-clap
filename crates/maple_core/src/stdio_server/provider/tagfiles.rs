@@ -1,14 +1,11 @@
 use anyhow::anyhow;
 use anyhow::Result;
-use filter::{matcher::LineSplitter, Source};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
-use types::SourceItem;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TagInfo {
@@ -20,7 +17,7 @@ struct TagInfo {
 
 impl TagInfo {
     pub fn format(&self, cwd: &PathBuf, winwidth: usize) -> String {
-        static HOME: OnceCell<Option<PathBuf>> = OnceCell::new();
+        static HOME: OnceCell<PathBuf> = OnceCell::new();
 
         let name = format!("{} ", self.name);
         let taken_width = name.len() + 1;
@@ -29,20 +26,17 @@ impl TagInfo {
 
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
-        let path = path.strip_prefix(cwd).unwrap_or(
-            HOME.get_or_init(|| dirs::home_dir())
-                .as_deref()
-                .map(|home| {
-                    path.strip_prefix(home)
-                        .map(|path| {
-                            home_path.push("~");
-                            home_path = home_path.join(path);
-                            home_path.as_path()
-                        })
-                        .unwrap_or(path)
+        let path = path.strip_prefix(cwd).unwrap_or({
+            let home = HOME.get_or_init(|| crate::dirs::BASE_DIRS.home_dir().to_path_buf());
+
+            path.strip_prefix(home)
+                .map(|path| {
+                    home_path.push("~");
+                    home_path = home_path.join(path);
+                    home_path.as_path()
                 })
-                .unwrap_or(path),
-        );
+                .unwrap_or(path)
+        });
         let path = path.display();
 
         let path_label = if taken_width > winwidth {
@@ -216,22 +210,18 @@ impl TagInfo {
 }
 
 /// Generate ctags recursively given the directory.
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TagFiles {
     /// Initial query string
-    #[structopt(index = 1, short, long)]
     query: String,
 
     /// The directory to generate recursive ctags.
-    #[structopt(long, parse(from_os_str))]
     files: Vec<PathBuf>,
 
     /// Specify the language.
-    #[structopt(long = "languages")]
     languages: Option<String>,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[structopt(long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
 }
 
@@ -239,7 +229,7 @@ fn read_tag_files<'a>(
     cwd: &'a PathBuf,
     winwidth: usize,
     files: &'a [[PathBuf; 2]],
-) -> Result<impl Iterator<Item = SourceItem> + 'a> {
+) -> Result<impl Iterator<Item = TagInfo> + 'a> {
     Ok(files
         .iter()
         .filter_map(move |path| read_tag_file(path, &cwd, winwidth).ok())
@@ -250,7 +240,7 @@ fn read_tag_file<'a>(
     paths: &'a [PathBuf; 2],
     cwd: &'a PathBuf,
     winwidth: usize,
-) -> Result<impl Iterator<Item = SourceItem> + 'a> {
+) -> Result<impl Iterator<Item = TagInfo> + 'a> {
     let file = File::open(&paths[0]);
     let file = if let Ok(file) = file {
         file
@@ -263,10 +253,7 @@ fn read_tag_file<'a>(
             if input.starts_with("!_TAG") {
                 None
             } else if let Ok(tag) = TagInfo::parse(&paths[1], &input) {
-                Some(SourceItem {
-                    display: tag.format(&cwd, winwidth),
-                    filter: Some(tag.name),
-                })
+                Some(tag)
             } else {
                 None
             }
@@ -286,27 +273,11 @@ fn get_paths_from_files<'a>(files: &'a Vec<PathBuf>) -> Vec<[PathBuf; 2]> {
 }
 
 impl TagFiles {
-    pub fn run(&self, options: &crate::Maple) -> Result<()> {
-        /* let icon_painter = options
-         *     .icon_painter
-         *     .clone()
-         *     .map(|_| icon::IconPainter::ProjTags); */
-
-        let cwd = options.cwd.clone().unwrap();
-        let winwidth = options.winwidth.unwrap_or(120);
-
+    pub fn run(&self) -> Result<()> {
         let files = &self.files.clone();
         let tag_paths = get_paths_from_files(files);
 
-        filter::dyn_run(
-            &self.query,
-            Source::List(read_tag_files(&cwd, winwidth, &tag_paths)?),
-            None,
-            Some(30),
-            None,
-            None,
-            LineSplitter::TagNameOnly,
-        )?;
+        // TODO: tagfiles searcher
 
         Ok(())
     }
