@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -8,14 +7,14 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct TagInfo {
+struct TagItem {
     name: String,
     path: String,
     address: String,
     kind: String,
 }
 
-impl TagInfo {
+impl TagItem {
     pub fn format(&self, cwd: &PathBuf, winwidth: usize) -> String {
         static HOME: OnceCell<PathBuf> = OnceCell::new();
 
@@ -76,7 +75,7 @@ impl TagInfo {
         )
     }
 
-    pub fn parse(base: &PathBuf, input: &str) -> anyhow::Result<Self> {
+    pub fn parse(base: &Path, input: &str) -> anyhow::Result<Self> {
         let mut field = 0;
         let mut index_last = 0;
 
@@ -171,7 +170,7 @@ impl TagInfo {
                     0 => name.push_str(&input[index_last..i]),
                     1 => {
                         let path_buf = base.join(String::from(&input[index_last..i]));
-                        write!(&mut path, "{}", path_buf.display()).unwrap();
+                        path.push_str(&path_buf.to_string_lossy());
                         is_parsing_address = true;
                     }
                     2 => { /* skip: already parsed above */ }
@@ -188,7 +187,7 @@ impl TagInfo {
             0 => name.push_str(&input[index_last..]),
             1 => {
                 let path_buf = base.join(String::from(&input[index_last..]));
-                write!(&mut path, "{}", path_buf.display()).unwrap();
+                path.push_str(&path_buf.to_string_lossy());
             }
             2 => { /* skip: already parsed above */ }
             3 => kind.push_str(&input[index_last..]),
@@ -197,9 +196,9 @@ impl TagInfo {
 
         /* Not enough fields for us */
         if field <= 1 {
-            Err(anyhow::anyhow! {"Invalid tag line: not enough fields"})
+            Err(anyhow::anyhow!("Invalid tag line: not enough fields"))
         } else {
-            Ok(TagInfo {
+            Ok(TagItem {
                 name,
                 path,
                 address,
@@ -212,70 +211,17 @@ impl TagInfo {
 /// Generate ctags recursively given the directory.
 #[derive(Debug, Clone)]
 pub struct TagFiles {
-    /// Initial query string
-    query: String,
-
-    /// The directory to generate recursive ctags.
-    files: Vec<PathBuf>,
-
-    /// Specify the language.
-    languages: Option<String>,
-
-    /// Read input from a cached grep tempfile, only absolute file path is supported.
-    input: Option<PathBuf>,
-}
-
-fn read_tag_files<'a>(
-    cwd: &'a PathBuf,
-    winwidth: usize,
-    files: &'a [[PathBuf; 2]],
-) -> Result<impl Iterator<Item = TagInfo> + 'a> {
-    Ok(files
-        .iter()
-        .filter_map(move |path| read_tag_file(path, &cwd, winwidth).ok())
-        .flatten())
-}
-
-fn read_tag_file<'a>(
-    paths: &'a [PathBuf; 2],
-    cwd: &'a PathBuf,
-    winwidth: usize,
-) -> Result<impl Iterator<Item = TagInfo> + 'a> {
-    let file = File::open(&paths[0]);
-    let file = if let Ok(file) = file {
-        file
-    } else {
-        return Err(anyhow! {"File does not exists"});
-    };
-
-    Ok(BufReader::new(file).lines().filter_map(move |line| {
-        line.ok().and_then(|input| {
-            if input.starts_with("!_TAG") {
-                None
-            } else if let Ok(tag) = TagInfo::parse(&paths[1], &input) {
-                Some(tag)
-            } else {
-                None
-            }
-        })
-    }))
-}
-
-fn get_paths_from_files<'a>(files: &'a Vec<PathBuf>) -> Vec<[PathBuf; 2]> {
-    files
-        .iter()
-        .map(|path| {
-            let mut dirname = path.clone();
-            dirname.pop();
-            [path.to_owned(), dirname]
-        })
-        .collect::<Vec<_>>()
+    /// The directory to find tagfiles.
+    tagfiles: Vec<PathBuf>,
 }
 
 impl TagFiles {
     pub fn run(&self) -> Result<()> {
-        let files = &self.files.clone();
-        let tag_paths = get_paths_from_files(files);
+        let _tag_item_stream = self
+            .tagfiles
+            .iter()
+            .filter_map(|tagfile| read_tag_file(tagfile).ok())
+            .flatten();
 
         // TODO: tagfiles searcher
 
@@ -283,58 +229,81 @@ impl TagFiles {
     }
 }
 
-#[test]
-fn test_parse_ctags_line() {
-    let empty_path = PathBuf::new();
+fn read_tag_file(tagfile: &Path) -> std::io::Result<impl Iterator<Item = TagItem> + '_> {
+    let parent_dir = tagfile.parent().unwrap_or(tagfile);
 
-    // With escaped characters
-    let data = r#"run	crates/maple_cli/src/app.rs	/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/;"	P	implementation:Maple"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.name, "run");
-    assert_eq!(tag.path, "crates/maple_cli/src/app.rs");
-    assert_eq!(
-        tag.address,
-        r#"/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/"#
-    );
-    assert_eq!(tag.kind, "P");
+    Ok(BufReader::new(File::open(tagfile)?)
+        .lines()
+        .filter_map(move |line| {
+            line.ok().and_then(|input| {
+                if input.starts_with("!_TAG") {
+                    None
+                } else if let Ok(tag) = TagItem::parse(parent_dir, &input) {
+                    Some(tag)
+                } else {
+                    None
+                }
+            })
+        }))
+}
 
-    // With invalid escaped characters
-    let data = r#"tag_name	filepath_here.py	/def ta\g_name/	f	"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.name, "tag_name");
-    assert_eq!(tag.path, "filepath_here.py");
-    assert_eq!(tag.address, r#"/def ta\g_name/"#);
-    assert_eq!(tag.kind, "f");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // with different characters after pattern
-    let data = r#"tagname	filename	/pattern/[;"	f	"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.address, "/pattern/");
+    #[test]
+    fn test_parse_tag_from_tagfile() {
+        let empty_path = PathBuf::new();
 
-    // Without kind
-    let data = r#"tag_with_no_kind	filepath_here.py	/tag_with_no_kind/"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.name, "tag_with_no_kind");
-    assert_eq!(tag.path, "filepath_here.py");
-    assert_eq!(tag.address, r#"/tag_with_no_kind/"#);
-    assert_eq!(tag.kind, "");
+        // With escaped characters
+        let data = r#"run	crates/maple_cli/src/app.rs	/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/;"	P	implementation:Maple"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.name, "run");
+        assert_eq!(tag.path, "crates/maple_cli/src/app.rs");
+        assert_eq!(
+            tag.address,
+            r#"/^	pub \/* \\\/ *\/ fn	run(self) -> Result<()> {$/"#
+        );
+        assert_eq!(tag.kind, "P");
 
-    // Invalid: pattern
-    let data = r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
-    assert_eq!(TagInfo::parse(&empty_path, data).is_err(), true);
+        // With invalid escaped characters
+        let data = r#"tag_name	filepath_here.py	/def ta\g_name/	f	"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.name, "tag_name");
+        assert_eq!(tag.path, "filepath_here.py");
+        assert_eq!(tag.address, r#"/def ta\g_name/"#);
+        assert_eq!(tag.kind, "f");
 
-    // With line-number address
-    let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.name, ".Button.--icon .Button__icon");
-    assert_eq!(tag.path, "client/src/styles/Button.scss");
-    assert_eq!(tag.address, r#"86"#);
-    assert_eq!(tag.kind, "r");
+        // with different characters after pattern
+        let data = r#"tagname	filename	/pattern/[;"	f	"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.address, "/pattern/");
 
-    // With line-number address (hasktags style)
-    let data = r#"EndlessList	example.hs	3"#;
-    let tag = TagInfo::parse(&empty_path, data).unwrap();
-    assert_eq!(tag.name, "EndlessList");
-    assert_eq!(tag.path, "example.hs");
-    assert_eq!(tag.address, r#"3"#);
+        // Without kind
+        let data = r#"tag_with_no_kind	filepath_here.py	/tag_with_no_kind/"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.name, "tag_with_no_kind");
+        assert_eq!(tag.path, "filepath_here.py");
+        assert_eq!(tag.address, r#"/tag_with_no_kind/"#);
+        assert_eq!(tag.kind, "");
+
+        // Invalid: pattern
+        let data = r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
+        assert_eq!(TagItem::parse(&empty_path, data).is_err(), true);
+
+        // With line-number address
+        let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.name, ".Button.--icon .Button__icon");
+        assert_eq!(tag.path, "client/src/styles/Button.scss");
+        assert_eq!(tag.address, r#"86"#);
+        assert_eq!(tag.kind, "r");
+
+        // With line-number address (hasktags style)
+        let data = r#"EndlessList	example.hs	3"#;
+        let tag = TagItem::parse(&empty_path, data).unwrap();
+        assert_eq!(tag.name, "EndlessList");
+        assert_eq!(tag.path, "example.hs");
+        assert_eq!(tag.address, r#"3"#);
+    }
 }
