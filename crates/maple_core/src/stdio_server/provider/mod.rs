@@ -4,6 +4,7 @@ mod filer;
 mod files;
 mod generic_provider;
 mod grep;
+mod tagfiles;
 // mod interactive_grep;
 mod recent_files;
 
