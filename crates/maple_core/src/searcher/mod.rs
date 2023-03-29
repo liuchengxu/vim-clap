@@ -1,6 +1,7 @@
 pub mod blines;
 pub mod files;
 pub mod grep;
+pub mod tagfiles;
 
 use crate::stdio_server::Vim;
 use icon::Icon;
