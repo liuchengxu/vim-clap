@@ -43,6 +43,7 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         // ctx.cwd.to_path_buf(),
         // )),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new()),
+        "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
     };
     Ok(provider)
@@ -266,7 +267,11 @@ impl Context {
             .collect();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
         // Sign column occupies 2 spaces.
-        let display_winwidth = vim.winwidth(display.winid).await? - 2;
+        let display_line_width = match provider_id.as_str() {
+            "grep" => display_winwidth - 4,
+            "tagfiles" => display_winwidth,
+            _ => display_winwidth - 2,
+        };
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
         let has_nvim_09: usize = vim.call("has", ["nvim-0.9"]).await?;
