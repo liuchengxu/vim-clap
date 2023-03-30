@@ -118,6 +118,26 @@ pub struct PluginConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct IgnoreConfig {
+    /// Whether to ignore the comment line when it's possible.
+    pub comment_line: bool,
+    /// Only include the results from the files being tracked by git if in a git repo.
+    pub git_tracked_only: bool,
+    /// Ignore the results from the files whose file name matches this pattern.
+    pub file_name_pattern: Vec<String>,
+    /// Ignore the results from the files whose file path matches this pattern.
+    pub file_path_pattern: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct InputHistoryConfig {
+    /// Whether to share the input history of each provider.
+    pub share_all_inputs: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Log configuration.
     pub log: LogConfig,
@@ -141,6 +161,9 @@ pub struct Config {
     /// Priorities of the ignore config:
     ///   provider_ignores > provider_ignores > global_ignore
     pub provider_ignore: HashMap<String, IgnoreConfig>,
+
+    /// Input history configuration
+    pub input_history: InputHistoryConfig,
 }
 
 impl Config {
@@ -151,19 +174,6 @@ impl Config {
                 .unwrap_or(&self.global_ignore)
         })
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
-pub struct IgnoreConfig {
-    /// Whether to ignore the comment line when it's possible.
-    pub comment_line: bool,
-    /// Only include the results from the files being tracked by git if in a git repo.
-    pub git_tracked_only: bool,
-    /// Ignore the results from the files whose file name matches this pattern.
-    pub file_name_pattern: Vec<String>,
-    /// Ignore the results from the files whose file path matches this pattern.
-    pub file_path_pattern: Vec<String>,
 }
 
 #[cfg(test)]

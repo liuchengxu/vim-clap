@@ -1,6 +1,6 @@
 use crate::stdio_server::provider::ProviderId;
 use crate::stdio_server::service::ProviderSessionId;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug)]
@@ -119,6 +119,17 @@ impl InputHistory {
 
     pub fn inputs(&self, provider_id: &ProviderId) -> VecDeque<String> {
         self.0.get(provider_id).cloned().unwrap_or_default()
+    }
+
+    pub fn all_inputs(&self) -> VecDeque<String> {
+        // HashSet gurantees no duplicated elements.
+        self.0
+            .values()
+            .flatten()
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect()
     }
 
     pub fn insert(&mut self, provider_id: ProviderId, new_value: VecDeque<String>) {
