@@ -280,7 +280,12 @@ impl Context {
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        let input_recorder = InputRecorder::new(input_history.inputs(&provider_id));
+        let inputs = if crate::config::config().input_history.share_all_inputs {
+            input_history.all_inputs()
+        } else {
+            input_history.inputs(&provider_id)
+        };
+        let input_recorder = InputRecorder::new(inputs);
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
