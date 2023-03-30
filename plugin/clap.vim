@@ -47,14 +47,17 @@ augroup VimClap
   autocmd!
 
   if exists('g:clap_provider_buffers_cur_tab_only')
-    autocmd BufEnter             * call s:OnBufEnter(+expand('<abuf>'))
+    autocmd BufEnter           * call s:OnBufEnter(+expand('<abuf>'))
   endif
   autocmd BufDelete            * call s:OnBufDelete(+expand('<abuf>'))
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
 
   autocmd BufAdd      * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
-  autocmd CursorMoved * call clap#client#notify('CursorMoved')
-  autocmd InsertEnter * call clap#client#notify('InsertEnter')
+
+  if get(g:, 'clap_plugin_experimental', 0)
+    autocmd CursorMoved * call clap#client#notify('CursorMoved')
+    autocmd InsertEnter * call clap#client#notify('InsertEnter')
+  endif
 
   " yanks provider
   if get(g:, 'clap_enable_yanks_provider', 1)
