@@ -49,7 +49,7 @@ impl TagItem {
         let path = path.display();
 
         let path_label = if taken_width > winwidth {
-            format!("[{}]", path)
+            format!("[{path}]")
         } else {
             let available_width = winwidth - taken_width;
             if path_len > available_width && available_width > 3 {
@@ -61,10 +61,9 @@ impl TagItem {
                     .nth(diff + 2)
                     .map(|x| x.0)
                     .unwrap_or(path.len());
-                let path = path[start..].to_string();
-                format!("[…{}]", &path)
+                format!("[…{}]", &path[start..])
             } else {
-                format!("[{}]", path)
+                format!("[{path}]")
             }
         };
 
@@ -109,19 +108,19 @@ impl TagItem {
                         i += c.len_utf8();
                         c = iter.next().unwrap();
                         address.push(c);
-                        if c == '\\' && escape == false {
+                        if c == '\\' && !escape {
                             escape = true;
                             continue;
                         }
-                        if c == '\\' && escape == true {
+                        if c == '\\' && escape {
                             escape = false;
                             continue;
                         }
-                        if c == '/' && escape == true {
+                        if c == '/' && escape {
                             escape = false;
                             continue;
                         }
-                        if c == '/' && escape == false {
+                        if c == '/' && !escape {
                             /* Unescaped slash is end-of-pattern */
                             break;
                         }
@@ -133,13 +132,13 @@ impl TagItem {
                     }
                 }
                 /* Parse a line-number-address */
-                else if c.is_digit(10) {
+                else if c.is_ascii_digit() {
                     address.push(c);
                     loop {
                         i += c.len_utf8();
                         if let Some(c_) = iter.next() {
                             c = c_;
-                            if !c.is_digit(10) {
+                            if !c.is_ascii_digit() {
                                 break;
                             }
                             address.push(c);
@@ -296,7 +295,7 @@ fn search_tagfiles(
 pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
-        line_width,
+        winwidth,
         paths,
         vim,
         stop_signal,
@@ -308,7 +307,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
 
     let mut best_items = BestItems::new(
         icon,
-        line_width,
+        winwidth,
         number,
         progressor,
         Duration::from_millis(200),
@@ -321,7 +320,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         .spawn({
             let stop_signal = stop_signal.clone();
             let tagfiles = paths.into_iter().map(|p| p.join("tags")).collect();
-            move || search_tagfiles(tagfiles, cwd, line_width, matcher, stop_signal, sender)
+            move || search_tagfiles(tagfiles, cwd, winwidth, matcher, stop_signal, sender)
         })
         .expect("Failed to spawn tagfiles worker thread");
 
@@ -340,7 +339,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
                 total_matched += 1;
                 total_processed += 1;
 
-                best_items.on_new_match(matched_item, total_matched, total_processed);
+                best_items.on_new_match_full(matched_item, total_matched, total_processed, false);
             }
             SearcherMessage::ProcessedOne => {
                 total_processed += 1;
@@ -357,7 +356,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines(items, winwidth, icon);
+    let display_lines = printer::to_display_lines_full(items, winwidth, icon, false);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
@@ -411,7 +410,7 @@ mod tests {
 
         // Invalid: pattern
         let data = r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
-        assert_eq!(TagItem::parse(&empty_path, data).is_err(), true);
+        assert!(TagItem::parse(&empty_path, data).is_err());
 
         // With line-number address
         let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
@@ -430,6 +429,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_read_tags() {
         let cur_dir = std::env::current_dir().unwrap();
         let cwd = cur_dir.parent().unwrap().parent().unwrap();

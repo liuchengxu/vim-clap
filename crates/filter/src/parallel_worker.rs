@@ -105,11 +105,12 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
         self.items.sort_unstable_by(|a, b| b.cmp(a));
     }
 
-    pub fn on_new_match(
+    pub fn on_new_match_full(
         &mut self,
         matched_item: MatchedItem,
         total_matched: usize,
         total_processed: usize,
+        truncate_text: bool,
     ) {
         if self.items.len() < self.max_capacity {
             self.items.push(matched_item);
@@ -117,8 +118,12 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
 
             let now = Instant::now();
             if now > self.past + self.update_interval {
-                let display_lines =
-                    printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
+                let display_lines = printer::to_display_lines_full(
+                    self.items.clone(),
+                    self.winwidth,
+                    self.icon,
+                    truncate_text,
+                );
                 self.progressor
                     .update_all(&display_lines, total_matched, total_processed);
                 self.last_lines = display_lines.lines;
@@ -139,8 +144,12 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
             if total_matched % 16 == 0 || total_processed % 16 == 0 {
                 let now = Instant::now();
                 if now > self.past + self.update_interval {
-                    let display_lines =
-                        printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
+                    let display_lines = printer::to_display_lines_full(
+                        self.items.clone(),
+                        self.winwidth,
+                        self.icon,
+                        truncate_text,
+                    );
 
                     let visible_highlights = display_lines
                         .indices
@@ -169,6 +178,15 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                 }
             }
         }
+    }
+
+    pub fn on_new_match(
+        &mut self,
+        matched_item: MatchedItem,
+        total_matched: usize,
+        total_processed: usize,
+    ) {
+        self.on_new_match_full(matched_item, total_matched, total_processed, true)
     }
 }
 
