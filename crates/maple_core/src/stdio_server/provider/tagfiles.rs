@@ -70,6 +70,11 @@ impl ClapProvider for TagfilesProvider {
         Ok(())
     }
 
+    async fn on_move(&mut self, _ctx: &mut Context) -> Result<()> {
+        // TODO: Possible to include the line number in tagfiles?
+        Ok(())
+    }
+
     fn on_terminate(&mut self, ctx: &mut Context, session_id: u64) {
         if let Some(control) = self.searcher_control.take() {
             // NOTE: The kill operation can not block current task.
