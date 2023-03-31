@@ -75,6 +75,13 @@ impl TagItem {
             winwidth
         } + adjustment;
 
+        // format!(
+        // "{text:<text_width$}{path_label}",
+        // text = name,
+        // text_width = text_width,
+        // path_label = path_label,
+        // )
+
         format!(
             "{text:<text_width$}{path_label}::::{path}::::{address}",
             text = name,
@@ -340,7 +347,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
                 total_matched += 1;
                 total_processed += 1;
 
-                best_items.on_new_match(matched_item, total_matched, total_processed);
+                best_items.on_new_match_full(matched_item, total_matched, total_processed, false);
             }
             SearcherMessage::ProcessedOne => {
                 total_processed += 1;
@@ -357,7 +364,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines(items, winwidth, icon);
+    let display_lines = printer::to_display_lines_full(items, winwidth, icon, false);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

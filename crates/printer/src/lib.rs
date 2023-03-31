@@ -157,6 +157,20 @@ pub fn to_display_lines(
     convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
 }
 
+pub fn to_display_lines_full(
+    mut matched_items: Vec<MatchedItem>,
+    line_width: usize,
+    icon: Icon,
+    truncate_text: bool,
+) -> DisplayLines {
+    let truncated_map = if truncate_text {
+        truncate_item_output_text(matched_items.iter_mut(), line_width, None)
+    } else {
+        Default::default()
+    };
+    convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
+}
+
 #[derive(Debug)]
 pub struct GrepResult {
     pub matched_item: MatchedItem,
