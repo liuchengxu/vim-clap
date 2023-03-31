@@ -273,7 +273,6 @@ impl Context {
         // Sign column occupies 2 spaces.
         let display_line_width = match provider_id.as_str() {
             "grep" => display_winwidth - 4,
-            "tagfiles" => display_winwidth,
             _ => display_winwidth - 2,
         };
         let display_winheight = vim.winheight(display.winid).await?;

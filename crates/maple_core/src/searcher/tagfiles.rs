@@ -76,13 +76,20 @@ impl TagItem {
         } + adjustment;
 
         format!(
-            "{text:<text_width$}{path_label}::::{path}::::{address}",
+            "{text:<text_width$}{path_label}",
             text = name,
             text_width = text_width,
             path_label = path_label,
-            path = self.path,
-            address = self.address,
         )
+
+        // format!(
+        // "{text:<text_width$}{path_label}::::{path}::::{address}",
+        // text = name,
+        // text_width = text_width,
+        // path_label = path_label,
+        // path = self.path,
+        // address = self.address,
+        // )
     }
 
     pub fn parse(base: &Path, input: &str) -> anyhow::Result<Self> {
