@@ -1,9 +1,8 @@
+use crate::dirs::HOME;
 use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::Matcher;
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Result};
@@ -15,7 +14,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 struct TagItem {
     name: String,
     path: String,
@@ -26,19 +25,14 @@ struct TagItem {
 
 impl TagItem {
     pub fn format(&self, cwd: &Path, winwidth: usize) -> String {
-        static HOME: OnceCell<PathBuf> = OnceCell::new();
-
-        let name = format!("{} ", self.name);
-        let taken_width = name.len() + 1;
+        let taken_width = self.name.len() + 1;
         let path_len = self.path.len() + 2;
         let mut adjustment = 0;
 
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or({
-            let home = HOME.get_or_init(|| crate::dirs::BASE_DIRS.home_dir().to_path_buf());
-
-            path.strip_prefix(home)
+            path.strip_prefix(HOME.as_path())
                 .map(|path| {
                     home_path.push("~");
                     home_path = home_path.join(path);
@@ -55,13 +49,13 @@ impl TagItem {
             if path_len > available_width && available_width > 3 {
                 let diff = path_len - available_width;
                 adjustment = 2;
-                let path = path.to_string();
-                let start = path
+                let start = self
+                    .path
                     .char_indices()
                     .nth(diff + 2)
                     .map(|x| x.0)
-                    .unwrap_or(path.len());
-                format!("[…{}]", &path[start..])
+                    .unwrap_or(self.path.len());
+                format!("[…{}]", &self.path[start..])
             } else {
                 format!("[{path}]")
             }
@@ -76,7 +70,7 @@ impl TagItem {
 
         format!(
             "{text:<text_width$}{path_label}::::{path}::::{address}",
-            text = name,
+            text = self.name,
             text_width = text_width,
             path_label = path_label,
             path = self.path,
