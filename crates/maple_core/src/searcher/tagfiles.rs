@@ -19,7 +19,8 @@ struct TagItem {
     name: String,
     path: String,
     address: String,
-    kind: String,
+    // TODO: display kind?
+    _kind: String,
     display: Option<String>,
 }
 
@@ -246,6 +247,7 @@ fn read_tag_file<'a>(
                 if input.starts_with("!_TAG") {
                     None
                 } else if let Ok(mut tag) = TagItem::parse(parent_dir, &input) {
+                    // TODO: dispaly text can be lazy evalulated.
                     tag.display.replace(tag.format(cwd, winwidth));
                     Some(tag)
                 } else {
