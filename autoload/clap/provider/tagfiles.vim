@@ -40,17 +40,17 @@ function! s:extract(tag_row) abort
   " let line = parts[0]
   let file    = parts[1]
   let address = parts[2]
-  if address[0] == '/'
+  if address[0] ==# '/'
     " Format: `/^function example()$/`
     " inside the `/^` and `$/` is like nomagic, but some ctags program
     " put the ^ and $ anyway.
     let address = address[1:-2]
-    if address[0] == '^'
+    if address[0] ==# '^'
       let address = '\v^\V' . address[1:]
     else
       let address = '\V' . address
     end
-    if address[-1:] == '$'
+    if address[-1:] ==# '$'
       let address = address[:-2] . '\v$'
     end
   else
@@ -59,7 +59,7 @@ function! s:extract(tag_row) abort
   return [file, address]
 endfunction
 
-function! s:jump_to(position)
+function! s:jump_to(position) abort
   let [file, address] = a:position
 
   execute 'edit' file
