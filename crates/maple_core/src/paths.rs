@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::canonicalize;
-use std::path::{Display, Path, PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR};
+use std::path::{Display, Path, PathBuf, MAIN_SEPARATOR};
 
 /// Unit type wrapper of [`PathBuf`] that is absolute path.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize)]
@@ -152,7 +152,10 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
                             if to_hide > gap + 2 {
                                 let mut tail = tail.to_string();
                                 tail.replace_range(..to_hide - 1, "...");
-                                let head = top.iter().take(top.len() - 1).join(MAIN_SEPARATOR_STR);
+                                let head = top
+                                    .iter()
+                                    .take(top.len() - 1)
+                                    .join(MAIN_SEPARATOR.to_string().as_str());
                                 return format!("{head}{MAIN_SEPARATOR}{tail}").into();
                             } else {
                                 to_hide += component.len() + 1;

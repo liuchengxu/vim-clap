@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
+            toolchain: stable
             components: rustfmt
             override: true
       - uses: actions-rs/cargo@v1
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
+            toolchain: stable
             components: clippy
             override: true
       - uses: actions-rs/cargo@v1
