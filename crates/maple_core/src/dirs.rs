@@ -13,6 +13,8 @@ pub static PROJECT_DIRS: Lazy<ProjectDirs> = Lazy::new(|| {
 pub static BASE_DIRS: Lazy<BaseDirs> =
     Lazy::new(|| BaseDirs::new().expect("Failed to construct BaseDirs"));
 
+pub static HOME: Lazy<PathBuf> = Lazy::new(|| BASE_DIRS.home_dir().to_path_buf());
+
 pub fn clap_cache_dir() -> std::io::Result<PathBuf> {
     let cache_dir = PROJECT_DIRS.cache_dir();
     std::fs::create_dir_all(cache_dir)?;

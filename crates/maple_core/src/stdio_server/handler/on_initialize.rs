@@ -6,7 +6,7 @@ use crate::tools::ctags::ProjectCtagsCommand;
 use crate::tools::rg::{RgTokioCommand, RG_EXEC_CMD};
 use anyhow::Result;
 use filter::SourceItem;
-use printer::DisplayLines;
+use printer::{DisplayLines, Printer};
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -167,12 +167,13 @@ pub async fn initialize_provider(ctx: &Context) -> Result<()> {
             }
 
             if let Some(items) = provider_source.try_skim(ctx.provider_id(), 100) {
+                let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
                 let DisplayLines {
                     lines,
                     icon_added,
                     truncated_map,
                     ..
-                } = printer::to_display_lines(items, ctx.env.display_line_width, ctx.env.icon);
+                } = printer.to_display_lines(items);
 
                 let using_cache = provider_source.using_cache();
 

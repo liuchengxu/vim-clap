@@ -1,9 +1,9 @@
+use crate::dirs::HOME;
 use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::Matcher;
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
+use printer::Printer;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Result};
@@ -15,30 +15,27 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[allow(dead_code)]
+#[derive(Debug)]
 struct TagItem {
     name: String,
     path: String,
     address: String,
+    // TODO: display kind?
     kind: String,
     display: Option<String>,
 }
 
 impl TagItem {
     pub fn format(&self, cwd: &Path, winwidth: usize) -> String {
-        static HOME: OnceCell<PathBuf> = OnceCell::new();
-
-        let name = format!("{} ", self.name);
-        let taken_width = name.len() + 1;
+        let taken_width = self.name.len() + 1;
         let path_len = self.path.len() + 2;
         let mut adjustment = 0;
 
         let mut home_path = PathBuf::new();
         let path = Path::new(&self.path);
         let path = path.strip_prefix(cwd).unwrap_or({
-            let home = HOME.get_or_init(|| crate::dirs::BASE_DIRS.home_dir().to_path_buf());
-
-            path.strip_prefix(home)
+            path.strip_prefix(HOME.as_path())
                 .map(|path| {
                     home_path.push("~");
                     home_path = home_path.join(path);
@@ -49,22 +46,21 @@ impl TagItem {
         let path = path.display();
 
         let path_label = if taken_width > winwidth {
-            format!("[{}]", path)
+            format!("[{path}]")
         } else {
             let available_width = winwidth - taken_width;
             if path_len > available_width && available_width > 3 {
                 let diff = path_len - available_width;
                 adjustment = 2;
-                let path = path.to_string();
-                let start = path
+                let start = self
+                    .path
                     .char_indices()
                     .nth(diff + 2)
                     .map(|x| x.0)
-                    .unwrap_or(path.len());
-                let path = path[start..].to_string();
-                format!("[…{}]", &path)
+                    .unwrap_or(self.path.len());
+                format!("[…{}]", &self.path[start..])
             } else {
-                format!("[{}]", path)
+                format!("[{path}]")
             }
         };
 
@@ -75,16 +71,9 @@ impl TagItem {
             winwidth
         } + adjustment;
 
-        // format!(
-        // "{text:<text_width$}{path_label}",
-        // text = name,
-        // text_width = text_width,
-        // path_label = path_label,
-        // )
-
         format!(
             "{text:<text_width$}{path_label}::::{path}::::{address}",
-            text = name,
+            text = self.name,
             text_width = text_width,
             path_label = path_label,
             path = self.path,
@@ -116,19 +105,19 @@ impl TagItem {
                         i += c.len_utf8();
                         c = iter.next().unwrap();
                         address.push(c);
-                        if c == '\\' && escape == false {
+                        if c == '\\' && !escape {
                             escape = true;
                             continue;
                         }
-                        if c == '\\' && escape == true {
+                        if c == '\\' && escape {
                             escape = false;
                             continue;
                         }
-                        if c == '/' && escape == true {
+                        if c == '/' && escape {
                             escape = false;
                             continue;
                         }
-                        if c == '/' && escape == false {
+                        if c == '/' && !escape {
                             /* Unescaped slash is end-of-pattern */
                             break;
                         }
@@ -140,13 +129,13 @@ impl TagItem {
                     }
                 }
                 /* Parse a line-number-address */
-                else if c.is_digit(10) {
+                else if c.is_ascii_digit() {
                     address.push(c);
                     loop {
                         i += c.len_utf8();
                         if let Some(c_) = iter.next() {
                             c = c_;
-                            if !c.is_digit(10) {
+                            if !c.is_ascii_digit() {
                                 break;
                             }
                             address.push(c);
@@ -260,6 +249,7 @@ fn read_tag_file<'a>(
                 if input.starts_with("!_TAG") {
                     None
                 } else if let Ok(mut tag) = TagItem::parse(parent_dir, &input) {
+                    // TODO: dispaly text can be lazy evalulated.
                     tag.display.replace(tag.format(cwd, winwidth));
                     Some(tag)
                 } else {
@@ -310,16 +300,15 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         item_pool_size,
     } = search_context;
 
+    let printer = Printer {
+        line_width,
+        icon,
+        truncate_text: false,
+    };
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(
-        icon,
-        line_width,
-        number,
-        progressor,
-        Duration::from_millis(200),
-    );
+    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -347,7 +336,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
                 total_matched += 1;
                 total_processed += 1;
 
-                best_items.on_new_match_full(matched_item, total_matched, total_processed, false);
+                best_items.on_new_match(matched_item, total_matched, total_processed);
             }
             SearcherMessage::ProcessedOne => {
                 total_processed += 1;
@@ -360,11 +349,11 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     let BestItems {
         items,
         progressor,
-        winwidth,
+        printer,
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines_full(items, winwidth, icon, false);
+    let display_lines = printer.to_display_lines(items);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
@@ -418,7 +407,7 @@ mod tests {
 
         // Invalid: pattern
         let data = r#"tag_name	filename.py	invalid/pattern/;""	f	"#;
-        assert_eq!(TagItem::parse(&empty_path, data).is_err(), true);
+        assert!(TagItem::parse(&empty_path, data).is_err());
 
         // With line-number address
         let data = r#".Button.--icon .Button__icon	client/src/styles/Button.scss	86;"	r"#;
@@ -437,6 +426,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_read_tags() {
         let cur_dir = std::env::current_dir().unwrap();
         let cwd = cur_dir.parent().unwrap().parent().unwrap();

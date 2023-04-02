@@ -2,6 +2,7 @@ use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
+use printer::Printer;
 use std::borrow::Cow;
 use std::io::{BufRead, Result};
 use std::path::PathBuf;
@@ -104,16 +105,11 @@ pub async fn search(
         item_pool_size,
     } = search_context;
 
+    let printer = Printer::new(line_width, icon);
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(
-        icon,
-        line_width,
-        number,
-        progressor,
-        Duration::from_millis(200),
-    );
+    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -153,11 +149,11 @@ pub async fn search(
     let BestItems {
         items,
         progressor,
-        winwidth,
+        printer,
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines(items, winwidth, icon);
+    let display_lines = printer.to_display_lines(items);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

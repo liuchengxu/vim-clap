@@ -155,7 +155,7 @@ pub fn truncate_absolute_path(abs_path: &str, max_len: usize) -> Cow<'_, str> {
                                 let head = top
                                     .iter()
                                     .take(top.len() - 1)
-                                    .join(&MAIN_SEPARATOR.to_string());
+                                    .join(MAIN_SEPARATOR.to_string().as_str());
                                 return format!("{head}{MAIN_SEPARATOR}{tail}").into();
                             } else {
                                 to_hide += component.len() + 1;

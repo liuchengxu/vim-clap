@@ -22,6 +22,7 @@ use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
+use printer::Printer;
 use rpc::Params;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -36,13 +37,13 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
     let provider: Box<dyn ClapProvider> = match provider_id {
         "blines" => Box::new(blines::BlinesProvider::new()),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
-        "filer" => Box::new(filer::FilerProvider::new(ctx.cwd.to_path_buf())),
+        "filer" => Box::new(filer::FilerProvider::new(ctx)),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new()),
         // "interactive_grep" => Box::new(interactive_grep::InteractiveGrepProvider::new(
         // ctx.cwd.to_path_buf(),
         // )),
-        "recent_files" => Box::new(recent_files::RecentFilesProvider::new()),
+        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx)),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
     };
@@ -490,12 +491,13 @@ impl Context {
             .read()
             .try_skim(self.provider_id(), 100)
         {
+            let printer = Printer::new(self.env.display_winwidth, self.env.icon);
             let printer::DisplayLines {
                 lines,
                 icon_added,
                 truncated_map,
                 ..
-            } = printer::to_display_lines(items, self.env.display_line_width, self.env.icon);
+            } = printer.to_display_lines(items);
 
             self.vim.exec(
                 "clap#state#update_on_empty_query",
