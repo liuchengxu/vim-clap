@@ -79,14 +79,19 @@ pub struct FilerProvider {
     current_dir: PathBuf,
     dir_entries: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
     current_lines: Vec<String>,
+    printer: Printer,
 }
 
 impl FilerProvider {
-    pub fn new(current_dir: PathBuf) -> Self {
+    pub fn new(ctx: &Context) -> Self {
+        let current_dir = ctx.cwd.to_path_buf();
+        // icon is handled inside the provider impl.
+        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         Self {
             current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
+            printer,
         }
     }
 
@@ -171,15 +176,13 @@ impl FilerProvider {
 
         let processed = current_items.len();
 
-        // icon is handled inside the provider impl.
-        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         if query.is_empty() {
             let printer::DisplayLines {
                 lines,
                 mut indices,
                 truncated_map: _,
                 icon_added,
-            } = printer.to_display_lines(
+            } = self.printer.to_display_lines(
                 current_items
                     .iter()
                     .take(200)
@@ -212,14 +215,12 @@ impl FilerProvider {
 
         matched_items.truncate(200);
 
-        // icon is handled inside the provider impl.
-        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         let printer::DisplayLines {
             lines,
             mut indices,
             truncated_map,
             icon_added,
-        } = printer.to_display_lines(matched_items);
+        } = self.printer.to_display_lines(matched_items);
 
         if ctx.env.icon.enabled() {
             indices.iter_mut().for_each(|v| {

@@ -147,7 +147,7 @@ fn convert_truncated_matched_items_to_display_lines(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Printer {
     pub line_width: usize,
     pub icon: Icon,

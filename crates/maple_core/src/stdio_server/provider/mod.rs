@@ -37,13 +37,13 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
     let provider: Box<dyn ClapProvider> = match provider_id {
         "blines" => Box::new(blines::BlinesProvider::new()),
         "dumb_jump" => Box::new(dumb_jump::DumbJumpProvider::new()),
-        "filer" => Box::new(filer::FilerProvider::new(ctx.cwd.to_path_buf())),
+        "filer" => Box::new(filer::FilerProvider::new(ctx)),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new()),
         // "interactive_grep" => Box::new(interactive_grep::InteractiveGrepProvider::new(
         // ctx.cwd.to_path_buf(),
         // )),
-        "recent_files" => Box::new(recent_files::RecentFilesProvider::new()),
+        "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx)),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
     };

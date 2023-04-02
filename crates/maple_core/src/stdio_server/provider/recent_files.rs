@@ -11,12 +11,21 @@ use types::{ClapItem, MatchedItem, RankCalculator, Score};
 
 #[derive(Debug, Clone)]
 pub struct RecentFilesProvider {
+    printer: Printer,
     lines: Arc<Mutex<Vec<MatchedItem>>>,
 }
 
 impl RecentFilesProvider {
-    pub fn new() -> Self {
+    pub fn new(ctx: &Context) -> Self {
+        let winwidth = ctx.env.display_winwidth;
+        let icon = if ctx.env.icon.enabled() {
+            icon::Icon::Enabled(icon::IconKind::File)
+        } else {
+            icon::Icon::Null
+        };
+        let printer = Printer::new(ctx.env.display_winwidth, icon);
         Self {
+            printer,
             lines: Default::default(),
         }
     }
@@ -27,8 +36,6 @@ impl RecentFilesProvider {
         query: String,
         preview_size: Option<usize>,
         lnum: usize,
-        winwidth: usize,
-        icon: icon::Icon,
     ) -> Result<Value> {
         let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
         let cwd = cwd.to_string();
@@ -71,7 +78,7 @@ impl RecentFilesProvider {
             (Some(size), Some(new_entry)) => {
                 let new_curline = new_entry.display_text().to_string();
                 if let Ok((lines, fname)) =
-                    crate::previewer::preview_file(new_curline, size, winwidth)
+                    crate::previewer::preview_file(new_curline, size, self.printer.line_width)
                 {
                     Some(json!({ "lines": lines, "fname": fname }))
                 } else {
@@ -81,13 +88,14 @@ impl RecentFilesProvider {
             _ => None,
         };
 
-        let printer = Printer::new(winwidth, icon);
         let printer::DisplayLines {
             lines,
             indices,
             truncated_map,
             icon_added,
-        } = printer.to_display_lines(ranked.iter().take(200).cloned().collect());
+        } = self
+            .printer
+            .to_display_lines(ranked.iter().take(200).cloned().collect());
 
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);
@@ -138,16 +146,7 @@ impl ClapProvider for RecentFilesProvider {
             None
         };
 
-        let winwidth = ctx.env.display_winwidth;
-        let icon = if ctx.env.icon.enabled() {
-            icon::Icon::Enabled(icon::IconKind::File)
-        } else {
-            icon::Icon::Null
-        };
-
-        let response = self
-            .clone()
-            .process_query(cwd, query, preview_size, 1, winwidth, icon)?;
+        let response = self.clone().process_query(cwd, query, preview_size, 1)?;
 
         ctx.vim
             .exec("clap#state#process_response_on_typed", response)?;
@@ -198,7 +197,7 @@ impl ClapProvider for RecentFilesProvider {
                 icon::Icon::Null
             };
 
-            move || recent_files.process_query(cwd, query, preview_size, lnum, winwidth, icon)
+            move || recent_files.process_query(cwd, query, preview_size, lnum)
         })
         .await??;
 
