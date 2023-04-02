@@ -3,6 +3,7 @@ use crate::searcher::SearchContext;
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::Matcher;
+use printer::Printer;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Result};
@@ -14,13 +15,14 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use types::ProgressUpdate;
 use types::{ClapItem, MatchedItem};
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct TagItem {
     name: String,
     path: String,
     address: String,
     // TODO: display kind?
-    _kind: String,
+    kind: String,
     display: Option<String>,
 }
 
@@ -298,16 +300,15 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         item_pool_size,
     } = search_context;
 
+    let printer = Printer {
+        line_width: winwidth,
+        icon,
+        truncate_text: false,
+    };
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
 
-    let mut best_items = BestItems::new(
-        icon,
-        winwidth,
-        number,
-        progressor,
-        Duration::from_millis(200),
-    );
+    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let (sender, mut receiver) = unbounded_channel();
 
@@ -335,7 +336,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
                 total_matched += 1;
                 total_processed += 1;
 
-                best_items.on_new_match_full(matched_item, total_matched, total_processed, false);
+                best_items.on_new_match(matched_item, total_matched, total_processed);
             }
             SearcherMessage::ProcessedOne => {
                 total_processed += 1;
@@ -348,11 +349,11 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     let BestItems {
         items,
         progressor,
-        winwidth,
+        printer,
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines_full(items, winwidth, icon, false);
+    let display_lines = printer.to_display_lines(items);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 
