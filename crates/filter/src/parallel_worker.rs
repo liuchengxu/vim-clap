@@ -2,9 +2,8 @@
 
 use crate::{to_clap_item, FilterContext};
 use anyhow::Result;
-use icon::Icon;
 use parking_lot::Mutex;
-use printer::{println_json_with_length, DisplayLines};
+use printer::{println_json_with_length, DisplayLines, Printer};
 use rayon::iter::{Empty, IntoParallelIterator, ParallelBridge, ParallelIterator};
 use std::cmp::Ordering as CmpOrdering;
 use std::io::{BufRead, Read};
@@ -67,34 +66,31 @@ pub fn par_dyn_run_list<'a, 'b: 'a>(
 
 #[derive(Debug)]
 pub struct BestItems<P: ProgressUpdate<DisplayLines>> {
-    pub icon: Icon,
     /// Time of last notification.
     pub past: Instant,
     /// Top N items.
     pub items: Vec<MatchedItem>,
     pub last_lines: Vec<String>,
     pub last_visible_highlights: Vec<Vec<usize>>,
-    pub winwidth: usize,
     pub max_capacity: usize,
     pub progressor: P,
     pub update_interval: Duration,
+    pub printer: Printer,
 }
 
 impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
     pub fn new(
-        icon: Icon,
-        winwidth: usize,
+        printer: Printer,
         max_capacity: usize,
         progressor: P,
         update_interval: Duration,
     ) -> Self {
         Self {
-            icon,
+            printer,
             past: Instant::now(),
             items: Vec::with_capacity(max_capacity),
             last_lines: Vec::with_capacity(max_capacity),
             last_visible_highlights: Vec::with_capacity(max_capacity),
-            winwidth,
             max_capacity,
             progressor,
             update_interval,
@@ -117,8 +113,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
 
             let now = Instant::now();
             if now > self.past + self.update_interval {
-                let display_lines =
-                    printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
+                let display_lines = self.printer.to_display_lines(self.items.clone());
                 self.progressor
                     .update_all(&display_lines, total_matched, total_processed);
                 self.last_lines = display_lines.lines;
@@ -139,8 +134,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
             if total_matched % 16 == 0 || total_processed % 16 == 0 {
                 let now = Instant::now();
                 if now > self.past + self.update_interval {
-                    let display_lines =
-                        printer::to_display_lines(self.items.clone(), self.winwidth, self.icon);
+                    let display_lines = self.printer.to_display_lines(self.items.clone());
 
                     let visible_highlights = display_lines
                         .indices
@@ -149,7 +143,7 @@ impl<P: ProgressUpdate<DisplayLines>> BestItems<P> {
                             line_highlights
                                 .iter()
                                 .copied()
-                                .filter(|&x| x <= self.winwidth)
+                                .filter(|&x| x <= self.printer.line_width)
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>();
@@ -273,9 +267,9 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
+    let printer = Printer::new(winwidth, icon);
     let best_items = Mutex::new(BestItems::new(
-        icon,
-        winwidth,
+        printer,
         number,
         StdioProgressor,
         Duration::from_millis(200),
@@ -317,12 +311,15 @@ where
     let total_processed = processed_count.into_inner();
 
     let BestItems {
-        items, progressor, ..
+        items,
+        progressor,
+        printer,
+        ..
     } = best_items.into_inner();
 
     let matched_items = items;
 
-    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
+    let display_lines = printer.to_display_lines(matched_items);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
@@ -357,9 +354,9 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
+    let printer = Printer::new(winwidth, icon);
     let best_items = Mutex::new(BestItems::new(
-        icon,
-        winwidth,
+        printer,
         number,
         progressor,
         Duration::from_millis(200),
@@ -415,12 +412,15 @@ where
     }
 
     let BestItems {
-        items, progressor, ..
+        items,
+        progressor,
+        printer,
+        ..
     } = best_items.into_inner();
 
     let matched_items = items;
 
-    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
+    let display_lines = printer.to_display_lines(matched_items);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())

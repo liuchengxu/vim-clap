@@ -2,9 +2,9 @@ use crate::app::Args;
 use anyhow::Result;
 use clap::Parser;
 use filter::{filter_sequential, FilterContext, ParallelSource, SequentialSource};
-use icon::Icon;
 use maple_core::paths::AbsPathBuf;
 use matcher::{Bonus, FuzzyAlgorithm, MatchScope, MatcherBuilder};
+use printer::Printer;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -67,14 +67,15 @@ pub struct Filter {
 fn print_sync_filter_results(
     matched_items: Vec<MatchedItem>,
     number: Option<usize>,
-    winwidth: usize,
-    icon: Icon,
+    printer: Printer,
 ) {
     if let Some(number) = number {
         let total_matched = matched_items.len();
         let mut matched_items = matched_items;
         matched_items.truncate(number);
-        printer::to_display_lines(matched_items, winwidth, icon).print_json(total_matched);
+        printer
+            .to_display_lines(matched_items)
+            .print_json(total_matched);
     } else {
         matched_items.iter().for_each(|matched_item| {
             let indices = &matched_item.indices;
@@ -159,7 +160,8 @@ impl Filter {
                 matcher_builder.build(self.query.as_str().into()),
             )?;
 
-            print_sync_filter_results(ranked, number, winwidth.unwrap_or(100), icon);
+            let printer = Printer::new(winwidth.unwrap_or(100), icon);
+            print_sync_filter_results(ranked, number, printer);
         } else if self.par_run {
             filter::par_dyn_run(
                 &self.query,

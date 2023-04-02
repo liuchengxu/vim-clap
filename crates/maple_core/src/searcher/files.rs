@@ -4,6 +4,7 @@ use crate::stdio_server::VimProgressor;
 use filter::{BestItems, MatchedItem};
 use ignore::{DirEntry, WalkState};
 use matcher::Matcher;
+use printer::Printer;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -91,13 +92,8 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let mut best_items = BestItems::new(
-        icon,
-        winwidth,
-        number,
-        progressor,
-        Duration::from_millis(200),
-    );
+    let printer = Printer::new(winwidth, icon);
+    let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let now = std::time::Instant::now();
 
@@ -124,11 +120,11 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let BestItems {
         items,
         progressor,
-        winwidth,
+        printer,
         ..
     } = best_items;
 
-    let display_lines = printer::to_display_lines(items, winwidth, icon);
+    let display_lines = printer.to_display_lines(items);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

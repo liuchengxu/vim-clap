@@ -147,14 +147,38 @@ fn convert_truncated_matched_items_to_display_lines(
     }
 }
 
-/// Returns the info of the truncated top items ranked by the filtering score.
-pub fn to_display_lines(
-    mut matched_items: Vec<MatchedItem>,
-    winwidth: usize,
-    icon: Icon,
-) -> DisplayLines {
-    let truncated_map = truncate_item_output_text(matched_items.iter_mut(), winwidth, None);
-    convert_truncated_matched_items_to_display_lines(matched_items, icon, truncated_map)
+#[derive(Debug, Clone)]
+pub struct Printer {
+    pub line_width: usize,
+    pub icon: Icon,
+    pub truncate_text: bool,
+}
+
+impl Printer {
+    /// Constructs a new instance of `[Printer]` with text truncation enabled.
+    pub fn new(line_width: usize, icon: Icon) -> Self {
+        Self {
+            line_width,
+            icon,
+            truncate_text: true,
+        }
+    }
+
+    pub fn to_display_lines(&self, mut matched_items: Vec<MatchedItem>) -> DisplayLines {
+        let Self {
+            line_width,
+            icon,
+            truncate_text,
+        } = self;
+
+        let truncated_map = if *truncate_text {
+            truncate_item_output_text(matched_items.iter_mut(), *line_width, None)
+        } else {
+            Default::default()
+        };
+
+        convert_truncated_matched_items_to_display_lines(matched_items, *icon, truncated_map)
+    }
 }
 
 #[derive(Debug)]
