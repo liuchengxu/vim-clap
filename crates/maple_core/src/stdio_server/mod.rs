@@ -187,68 +187,72 @@ impl Client {
                     .lock()
                     .notify_plugins(PluginEvent::Autocmd(autocmd));
             }
-            Event::Action(action) => {
-                match action.as_str() {
-                    "initialize_global_env" => {
-                        // Should be called only once.
-                        let output: String = self
-                            .vim
-                            .call("execute", json!(["autocmd filetypedetect"]))
-                            .await?;
-                        let ext_map = initialize_syntax_map(&output);
-                        self.vim.exec("clap#ext#set", json![ext_map])?;
-                        tracing::debug!("Client initialized successfully");
-                    }
-                    "note_recent_files" => {
-                        let bufnr: Vec<usize> = notification.params.parse()?;
-                        let bufnr = bufnr
-                            .first()
-                            .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
-                        let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
-                        handler::messages::note_recent_file(file_path)?
-                    }
-                    "open-config" => {
-                        let config_file = crate::config::config_file();
-                        self.vim
-                            .exec("execute", format!("edit {}", config_file.display()))?;
-                    }
-                    "generate-toc" => {
-                        let curlnum = self.vim.line(".").await?;
-                        let file = self.vim.current_buffer_path().await?;
-                        let mut toc = plugin::generate_toc(file, curlnum)?;
-                        let prev_line = self.vim.curbufline(curlnum - 1).await?;
-                        if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
-                            toc.push_front(Default::default());
-                        }
-                        self.vim
-                            .exec("append", serde_json::json!([curlnum - 1, toc]))?;
-                    }
-                    "update-toc" => {
-                        let file = self.vim.current_buffer_path().await?;
-                        let bufnr = self.vim.current_bufnr().await?;
-                        if let Some((start, end)) = plugin::find_toc_range(&file)? {
-                            let new_toc = plugin::generate_toc(file, start + 1)?;
-                            self.vim.exec(
-                                "deletebufline",
-                                serde_json::json!([bufnr, start + 1, end + 1]),
-                            )?;
-                            self.vim
-                                .exec("append", serde_json::json!([start + 1, new_toc]))?;
-                        }
-                    }
-                    "delete-toc" => {
-                        let file = self.vim.current_buffer_path().await?;
-                        let bufnr = self.vim.current_bufnr().await?;
-                        if let Some((start, end)) = plugin::find_toc_range(file)? {
-                            self.vim.exec(
-                                "deletebufline",
-                                serde_json::json!([bufnr, start + 1, end + 1]),
-                            )?;
-                        }
-                    }
-                    _ => return Err(anyhow!("Unknown notification: {notification:?}")),
+            Event::Action(action) => self.handle_action(notification, action).await?,
+        }
+
+        Ok(())
+    }
+
+    async fn handle_action(&self, notification: Notification, action: String) -> Result<()> {
+        match action.as_str() {
+            "initialize_global_env" => {
+                // Should be called only once.
+                let output: String = self
+                    .vim
+                    .call("execute", json!(["autocmd filetypedetect"]))
+                    .await?;
+                let ext_map = initialize_syntax_map(&output);
+                self.vim.exec("clap#ext#set", json![ext_map])?;
+                tracing::debug!("Client initialized successfully");
+            }
+            "note_recent_files" => {
+                let bufnr: Vec<usize> = notification.params.parse()?;
+                let bufnr = bufnr
+                    .first()
+                    .ok_or(anyhow!("bufnr not found in `note_recent_file`"))?;
+                let file_path: String = self.vim.expand(format!("#{bufnr}:p")).await?;
+                handler::messages::note_recent_file(file_path)?
+            }
+            "open-config" => {
+                let config_file = crate::config::config_file();
+                self.vim
+                    .exec("execute", format!("edit {}", config_file.display()))?;
+            }
+            "generate-toc" => {
+                let curlnum = self.vim.line(".").await?;
+                let file = self.vim.current_buffer_path().await?;
+                let mut toc = plugin::generate_toc(file, curlnum)?;
+                let prev_line = self.vim.curbufline(curlnum - 1).await?;
+                if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
+                    toc.push_front(Default::default());
+                }
+                self.vim
+                    .exec("append", serde_json::json!([curlnum - 1, toc]))?;
+            }
+            "update-toc" => {
+                let file = self.vim.current_buffer_path().await?;
+                let bufnr = self.vim.current_bufnr().await?;
+                if let Some((start, end)) = plugin::find_toc_range(&file)? {
+                    let new_toc = plugin::generate_toc(file, start + 1)?;
+                    self.vim.exec(
+                        "deletebufline",
+                        serde_json::json!([bufnr, start + 1, end + 1]),
+                    )?;
+                    self.vim
+                        .exec("append", serde_json::json!([start + 1, new_toc]))?;
                 }
             }
+            "delete-toc" => {
+                let file = self.vim.current_buffer_path().await?;
+                let bufnr = self.vim.current_bufnr().await?;
+                if let Some((start, end)) = plugin::find_toc_range(file)? {
+                    self.vim.exec(
+                        "deletebufline",
+                        serde_json::json!([bufnr, start + 1, end + 1]),
+                    )?;
+                }
+            }
+            _ => return Err(anyhow!("Unknown notification: {notification:?}")),
         }
 
         Ok(())
