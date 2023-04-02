@@ -17,7 +17,6 @@ pub struct RecentFilesProvider {
 
 impl RecentFilesProvider {
     pub fn new(ctx: &Context) -> Self {
-        let winwidth = ctx.env.display_winwidth;
         let icon = if ctx.env.icon.enabled() {
             icon::Icon::Enabled(icon::IconKind::File)
         } else {
@@ -190,12 +189,6 @@ impl ClapProvider for RecentFilesProvider {
                 None
             };
             let lnum = ctx.vim.display_getcurlnum().await?;
-            let winwidth = ctx.env.display_winwidth;
-            let icon = if ctx.env.icon.enabled() {
-                icon::Icon::Enabled(icon::IconKind::File)
-            } else {
-                icon::Icon::Null
-            };
 
             move || recent_files.process_query(cwd, query, preview_size, lnum)
         })
