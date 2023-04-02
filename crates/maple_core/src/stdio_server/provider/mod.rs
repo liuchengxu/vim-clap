@@ -22,6 +22,7 @@ use filter::Query;
 use icon::{Icon, IconKind};
 use matcher::{Bonus, MatchScope, Matcher, MatcherBuilder};
 use parking_lot::RwLock;
+use printer::Printer;
 use rpc::Params;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -472,12 +473,13 @@ impl Context {
             .read()
             .try_skim(self.provider_id(), 100)
         {
+            let printer = Printer::new(self.env.display_winwidth, self.env.icon);
             let printer::DisplayLines {
                 lines,
                 icon_added,
                 truncated_map,
                 ..
-            } = printer::to_display_lines(items, self.env.display_winwidth, self.env.icon);
+            } = printer.to_display_lines(items);
 
             self.vim.exec(
                 "clap#state#update_on_empty_query",

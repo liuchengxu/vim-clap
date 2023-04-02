@@ -4,6 +4,7 @@ use crate::stdio_server::handler::CachedPreviewImpl;
 use crate::stdio_server::provider::{ClapProvider, Context};
 use anyhow::Result;
 use parking_lot::Mutex;
+use printer::Printer;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use types::{ClapItem, MatchedItem, RankCalculator, Score};
@@ -80,12 +81,13 @@ impl RecentFilesProvider {
             _ => None,
         };
 
+        let printer = Printer::new(winwidth, icon);
         let printer::DisplayLines {
             lines,
             indices,
             truncated_map,
             icon_added,
-        } = printer::to_display_lines(ranked.iter().take(200).cloned().collect(), winwidth, icon);
+        } = printer.to_display_lines(ranked.iter().take(200).cloned().collect());
 
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);

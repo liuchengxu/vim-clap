@@ -92,11 +92,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let printer = Printer {
-        line_width: winwidth,
-        icon,
-        truncate_text: true,
-    };
+    let printer = Printer::new(winwidth, icon);
     let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let now = std::time::Instant::now();

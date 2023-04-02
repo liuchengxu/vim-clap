@@ -105,11 +105,7 @@ pub async fn search(
         item_pool_size,
     } = search_context;
 
-    let printer = Printer {
-        line_width: winwidth,
-        icon,
-        truncate_text: true,
-    };
+    let printer = Printer::new(winwidth, icon);
     let number = item_pool_size;
     let progressor = VimProgressor::new(vim, stop_signal.clone());
 

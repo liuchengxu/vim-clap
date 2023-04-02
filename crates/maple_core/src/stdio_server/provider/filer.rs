@@ -4,6 +4,7 @@ use crate::stdio_server::provider::{ClapProvider, Context, Direction};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
 use icon::{icon_or_default, FOLDER_ICON};
+use printer::Printer;
 use serde_json::json;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -170,21 +171,21 @@ impl FilerProvider {
 
         let processed = current_items.len();
 
+        // icon is handled inside the provider impl.
+        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         if query.is_empty() {
             let printer::DisplayLines {
                 lines,
                 mut indices,
                 truncated_map: _,
                 icon_added,
-            } = printer::to_display_lines(
+            } = printer.to_display_lines(
                 current_items
                     .iter()
                     .take(200)
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                ctx.env.display_winwidth,
-                icon::Icon::Null, // icon is handled inside the provider impl.
             );
 
             if ctx.env.icon.enabled() {
@@ -211,16 +212,14 @@ impl FilerProvider {
 
         matched_items.truncate(200);
 
+        // icon is handled inside the provider impl.
+        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         let printer::DisplayLines {
             lines,
             mut indices,
             truncated_map,
             icon_added,
-        } = printer::to_display_lines(
-            matched_items,
-            ctx.env.display_winwidth,
-            icon::Icon::Null, // icon is handled inside the provider impl.
-        );
+        } = printer.to_display_lines(matched_items);
 
         if ctx.env.icon.enabled() {
             indices.iter_mut().for_each(|v| {

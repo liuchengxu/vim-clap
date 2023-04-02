@@ -4,7 +4,7 @@ use crate::stdio_server::vim::VimProgressor;
 use anyhow::Result;
 use filter::{FilterContext, ParallelSource};
 use parking_lot::Mutex;
-use printer::DisplayLines;
+use printer::{DisplayLines, Printer};
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -197,17 +197,14 @@ impl ClapProvider for GenericProvider {
         let quick_response =
             if let ProviderSource::Small { ref items, .. } = *ctx.provider_source.read() {
                 let matched_items = filter::par_filter_items(items, &ctx.matcher(&query));
+                let printer = Printer::new(ctx.env.display_winwidth, ctx.env.icon);
                 // Take the first 200 entries and add an icon to each of them.
                 let DisplayLines {
                     lines,
                     indices,
                     truncated_map,
                     icon_added,
-                } = printer::to_display_lines(
-                    matched_items.iter().take(200).cloned().collect(),
-                    ctx.env.display_winwidth,
-                    ctx.env.icon,
-                );
+                } = printer.to_display_lines(matched_items.iter().take(200).cloned().collect());
                 let msg = json!({
                     "total": matched_items.len(),
                     "lines": lines,

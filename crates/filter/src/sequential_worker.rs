@@ -3,7 +3,7 @@
 use crate::{to_clap_item, FilterContext, MatchedItems, SequentialSource};
 use anyhow::Result;
 use icon::Icon;
-use printer::{println_json, println_json_with_length, DisplayLines};
+use printer::{println_json, println_json_with_length, DisplayLines, Printer};
 use rayon::slice::ParallelSliceMut;
 use std::io::BufRead;
 use std::sync::Arc;
@@ -371,7 +371,8 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
         let mut matched_items = MatchedItems::from(matched_items).par_sort().inner();
         matched_items.truncate(number);
 
-        let display_lines = printer::to_display_lines(matched_items, winwidth.unwrap_or(100), icon);
+        let printer = Printer::new(winwidth.unwrap_or(100), icon);
+        let display_lines = printer.to_display_lines(matched_items);
         print_on_dyn_run_finished(display_lines, total_matched);
     } else {
         let matched_items = dyn_collect_all(matched_item_stream, icon);

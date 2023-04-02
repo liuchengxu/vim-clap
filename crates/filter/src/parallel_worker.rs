@@ -267,11 +267,7 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let printer = Printer {
-        line_width: winwidth,
-        icon,
-        truncate_text: true,
-    };
+    let printer = Printer::new(winwidth, icon);
     let best_items = Mutex::new(BestItems::new(
         printer,
         number,
@@ -315,12 +311,15 @@ where
     let total_processed = processed_count.into_inner();
 
     let BestItems {
-        items, progressor, ..
+        items,
+        progressor,
+        printer,
+        ..
     } = best_items.into_inner();
 
     let matched_items = items;
 
-    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
+    let display_lines = printer.to_display_lines(matched_items);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
@@ -355,11 +354,7 @@ where
     let matched_count = AtomicUsize::new(0);
     let processed_count = AtomicUsize::new(0);
 
-    let printer = Printer {
-        line_width: winwidth,
-        icon,
-        truncate_text: true,
-    };
+    let printer = Printer::new(winwidth, icon);
     let best_items = Mutex::new(BestItems::new(
         printer,
         number,
@@ -417,12 +412,15 @@ where
     }
 
     let BestItems {
-        items, progressor, ..
+        items,
+        progressor,
+        printer,
+        ..
     } = best_items.into_inner();
 
     let matched_items = items;
 
-    let display_lines = printer::to_display_lines(matched_items, winwidth, icon);
+    let display_lines = printer.to_display_lines(matched_items);
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     Ok(())
