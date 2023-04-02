@@ -14,6 +14,8 @@ use types::{ProgressUpdate, Rank};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
+type SearcherMessage = crate::searcher::SearcherMessage<FileResult>;
+
 #[derive(Debug, Default)]
 struct MatchEverything;
 
@@ -33,12 +35,6 @@ impl grep_matcher::Matcher for MatchEverything {
     fn new_captures(&self) -> Result<Self::Captures, Self::Error> {
         Ok(grep_matcher::NoCaptures::new())
     }
-}
-
-#[derive(Debug)]
-enum SearcherMessage {
-    Match(FileResult),
-    ProcessedOne,
 }
 
 /// Represents an matched item by searching a file.
@@ -401,9 +397,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let elapsed = now.elapsed().as_millis();
 
-    let BestFileResults { results, .. } = best_results;
-
-    let display_lines = to_display_lines(&results, icon);
+    let display_lines = to_display_lines(&best_results.results, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

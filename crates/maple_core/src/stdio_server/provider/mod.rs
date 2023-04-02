@@ -272,9 +272,10 @@ impl Context {
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
         let display_winwidth = vim.winwidth(display.winid).await?;
         // Sign column occupies 2 spaces.
+        let display_line_width = display_winwidth - 2;
         let display_line_width = match provider_id.as_str() {
-            "grep" => display_winwidth - 4,
-            _ => display_winwidth - 2,
+            "grep" => display_line_width - 2,
+            _ => display_line_width,
         };
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;

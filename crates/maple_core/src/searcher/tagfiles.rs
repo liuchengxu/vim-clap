@@ -1,5 +1,5 @@
 use crate::dirs::HOME;
-use crate::searcher::SearchContext;
+use crate::searcher::{SearchContext, SearcherMessage};
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::Matcher;
@@ -12,8 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::ProgressUpdate;
-use types::{ClapItem, MatchedItem};
+use types::{ClapItem, ProgressUpdate};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -227,12 +226,6 @@ impl ClapItem for TagItem {
                 .expect("must be initialized when parsing"),
         )
     }
-}
-
-#[derive(Debug)]
-enum SearcherMessage {
-    Match(MatchedItem),
-    ProcessedOne,
 }
 
 fn read_tag_file<'a>(

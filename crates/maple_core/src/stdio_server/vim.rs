@@ -225,7 +225,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
 
 // Vim may return 1/0 for true/false.
 #[inline(always)]
-fn into_bool(value: Value) -> bool {
+fn from_vim_bool(value: Value) -> bool {
     match value {
         Value::Bool(b) => b,
         Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
@@ -443,7 +443,7 @@ impl Vim {
 
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
         let value: Value = self.call("get_var", json!([var])).await?;
-        Ok(into_bool(value))
+        Ok(from_vim_bool(value))
     }
 
     pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
@@ -475,7 +475,7 @@ impl Vim {
         let value: Value = self
             .call("clap#api#floating_win_is_valid", json!([winid]))
             .await?;
-        Ok(into_bool(value))
+        Ok(from_vim_bool(value))
     }
 }
 

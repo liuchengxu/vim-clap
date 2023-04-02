@@ -1,4 +1,4 @@
-use crate::searcher::SearchContext;
+use crate::searcher::{SearchContext, SearcherMessage};
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::{MatchResult, Matcher};
@@ -10,8 +10,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::ProgressUpdate;
-use types::{ClapItem, MatchedItem};
+use types::{ClapItem, ProgressUpdate};
 
 #[derive(Debug)]
 pub struct BlinesItem {
@@ -39,12 +38,6 @@ impl ClapItem for BlinesItem {
     fn truncation_offset(&self) -> Option<usize> {
         Some(utils::display_width(self.line_number))
     }
-}
-
-#[derive(Debug)]
-enum SearcherMessage {
-    Match(MatchedItem),
-    ProcessedOne,
 }
 
 fn search_lines(
