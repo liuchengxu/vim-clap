@@ -18,6 +18,7 @@ tokio = { version = "1.23", features = ["rt"] }
 
 cli = { path = "crates/cli" }
 upgrade = { path = "crates/upgrade" }
+color-eyre = "0.6.2"
 
 [build-dependencies]
 built = { package = "built", version = "0.6", features = ["git2"] }
