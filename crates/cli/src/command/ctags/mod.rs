@@ -14,7 +14,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug, Clone)]
 pub struct CtagsCommonArgs {
     /// The directory for executing the ctags command.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     dir: Option<PathBuf>,
 
     /// Specify the language.

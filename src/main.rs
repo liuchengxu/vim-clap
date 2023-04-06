@@ -1,4 +1,4 @@
-use clap::{AppSettings, Parser};
+use clap::Parser;
 use cli::{Args, RunCmd};
 
 const BUILD_TIME: &str = include!(concat!(env!("OUT_DIR"), "/compiled_at.txt"));
@@ -30,7 +30,7 @@ pub enum Cmd {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "maple", global_setting(AppSettings::NoAutoVersion))]
+#[clap(name = "maple", disable_version_flag = true)]
 pub struct Maple {
     #[clap(flatten)]
     pub args: Args,

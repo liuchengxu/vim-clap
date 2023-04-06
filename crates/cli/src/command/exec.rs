@@ -14,7 +14,7 @@ pub struct Exec {
     shell_cmd: String,
 
     /// Specify the working directory of CMD
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     cmd_dir: Option<PathBuf>,
 
     /// Specify the threshold for writing the output of command to a tempfile.
