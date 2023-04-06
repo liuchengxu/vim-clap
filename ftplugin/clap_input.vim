@@ -1,8 +1,6 @@
-if exists('b:clap_input_loaded') || !has('nvim')
+if !has('nvim')
   finish
 endif
-
-let b:clap_input_loaded = 1
 
 setlocal
   \ nonumber

@@ -1,9 +1,3 @@
-if exists('b:clap_spinner_loaded')
-  finish
-endif
-
-let b:clap_spinner_loaded = 1
-
 setlocal
   \ nonumber
   \ norelativenumber
