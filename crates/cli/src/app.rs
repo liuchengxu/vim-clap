@@ -60,11 +60,11 @@ pub struct Args {
     pub winwidth: Option<usize>,
 
     /// Prepend an icon for item of files and grep provider, valid only when --number is used.
-    #[clap(long, parse(from_str), default_value = "unknown")]
+    #[clap(long, value_parser, default_value = "unknown")]
     pub icon: Icon,
 
     /// Case matching strategy.
-    #[clap(long, parse(from_str), default_value = "smart")]
+    #[clap(long, value_parser, default_value = "smart")]
     pub case_matching: CaseMatching,
 
     /// Do not use the cached file for exec subcommand.
@@ -79,11 +79,11 @@ pub struct Args {
     pub rayon_num_threads: Option<usize>,
 
     /// Enable the logging system.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     pub log: Option<std::path::PathBuf>,
 
     /// Specify the path of the config file.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     pub config_file: Option<std::path::PathBuf>,
 }
 

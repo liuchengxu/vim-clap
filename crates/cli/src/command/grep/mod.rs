@@ -25,11 +25,11 @@ pub struct Grep {
     grep_query: String,
 
     /// Read input from a cached grep tempfile, only absolute file path is supported.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     input: Option<PathBuf>,
 
     /// Specify the working directory of CMD
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     cmd_dir: Option<PathBuf>,
 
     /// Recreate the cache, only intended for the test purpose.

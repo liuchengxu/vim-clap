@@ -24,7 +24,7 @@ pub struct DumbJump {
     pub kind: Option<String>,
 
     /// Specify the working directory.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     pub cmd_dir: Option<PathBuf>,
 
     /// Use RegexSearcher instead of CtagsSearcher

@@ -12,11 +12,11 @@ use subprocess::Exec;
 use types::ClapItem;
 use types::MatchedItem;
 
-fn parse_bonus(s: &str) -> Bonus {
+fn parse_bonus(s: &str) -> Result<Bonus> {
     if s.to_lowercase().as_str() == "filename" {
-        Bonus::FileName
+        Ok(Bonus::FileName)
     } else {
-        Bonus::None
+        Ok(Bonus::None)
     }
 }
 
@@ -28,7 +28,7 @@ pub struct Filter {
     query: String,
 
     /// Fuzzy matching algorithm
-    #[clap(long, parse(from_str), default_value = "fzy")]
+    #[clap(long, value_parser, default_value = "fzy")]
     algo: FuzzyAlgorithm,
 
     /// Shell command to produce the whole dataset that query is applied on.
@@ -40,7 +40,7 @@ pub struct Filter {
     cmd_dir: Option<String>,
 
     /// Recently opened file list for adding a bonus to the initial score.
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     recent_files: Option<PathBuf>,
 
     /// Read input from a file instead of stdin, only absolute file path is supported.
@@ -48,11 +48,11 @@ pub struct Filter {
     input: Option<AbsPathBuf>,
 
     /// Apply the filter on the full line content or parial of it.
-    #[clap(long, parse(from_str), default_value = "full")]
+    #[clap(long, value_parser, default_value = "full")]
     match_scope: MatchScope,
 
     /// Add a bonus to the score of base matching algorithm.
-    #[clap(long, parse(from_str = parse_bonus), default_value = "none")]
+    #[clap(long, value_parser = parse_bonus, default_value = "none")]
     bonus: Bonus,
 
     /// Synchronous filtering, returns until the input stream is complete.

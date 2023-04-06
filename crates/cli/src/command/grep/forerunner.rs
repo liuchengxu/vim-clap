@@ -10,7 +10,7 @@ use utils::is_git_repo;
 #[derive(Parser, Debug, Clone)]
 pub struct RipGrepForerunner {
     /// Specify the working directory of CMD
-    #[clap(long = "cmd-dir", parse(from_os_str))]
+    #[clap(long = "cmd-dir", value_parser)]
     cmd_dir: Option<PathBuf>,
 
     /// Specify the threshold for writing the output of command to a tempfile.
