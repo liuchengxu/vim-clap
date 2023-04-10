@@ -322,7 +322,7 @@ tiebreak = "score,-begin,-end,-length"
 
 ### Plugin
 
-Apart from the providers, vim-clap has an experimental support of a varity of vim plugins which are reimplemented in Rust.
+Apart from the providers focusing on the general searching/filtering, vim-clap has an experimental support of a varity of vim plugins reimplemented in Rust. I created them in order to shorten my plugin list in vimrc, use at your own risk.
 
 - highlight-cursor-word
 - vim-markdown-toc

@@ -243,6 +243,7 @@ impl Client {
                         .vim
                         .call("getbufvar", serde_json::json!(["", "&shiftwidth"]))
                         .await?;
+                    // TODO: skip update if the new doc is the same as the old one.
                     let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
                     self.vim.exec(
                         "deletebufline",
