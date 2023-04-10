@@ -231,9 +231,7 @@ impl Client {
                     toc.push_front(Default::default());
                 }
                 self.vim
-                    .exec("append", serde_json::json!([curlnum - 1, toc]))?;
-                self.vim
-                    .exec("execute", serde_json::json!(["noautocmd write", "silent"]))?;
+                    .exec("append_and_write", serde_json::json!([curlnum - 1, toc]))?;
             }
             "update-toc" => {
                 let file = self.vim.current_buffer_path().await?;
@@ -250,9 +248,7 @@ impl Client {
                         serde_json::json!([bufnr, start + 1, end + 1]),
                     )?;
                     self.vim
-                        .exec("append", serde_json::json!([start, new_toc]))?;
-                    self.vim
-                        .exec("execute", serde_json::json!(["noautocmd write", "silent"]))?;
+                        .exec("append_and_write", serde_json::json!([start, new_toc]))?;
                 }
             }
             "delete-toc" => {

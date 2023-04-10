@@ -126,6 +126,11 @@ function! s:api.curbufline(lnum) abort
   return get(getbufline(bufnr(''), a:lnum), 0, v:null)
 endfunction
 
+function! s:api.append_and_write(lnum, text) abort
+  call append(a:lnum, a:text)
+  silent noautocmd write
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

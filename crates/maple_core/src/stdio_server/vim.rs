@@ -313,6 +313,14 @@ impl Vim {
         self.call("eval", json!([s])).await
     }
 
+    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
+        self.call("fnamemodify", json!([fname, mods])).await
+    }
+
+    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
+        self.call("matchdelete", json!([id, win])).await
+    }
+
     pub async fn line(&self, expr: &str) -> Result<usize> {
         self.call("line", json![expr]).await
     }
@@ -337,14 +345,6 @@ impl Vim {
         } else {
             Ok(height as usize)
         }
-    }
-
-    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
-        self.call("fnamemodify", json!([fname, mods])).await
-    }
-
-    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
-        self.call("matchdelete", json!([id, win])).await
     }
 
     /////////////////////////////////////////////////////////////////
