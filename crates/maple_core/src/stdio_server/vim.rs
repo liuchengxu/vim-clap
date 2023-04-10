@@ -472,9 +472,7 @@ impl Vim {
     }
 
     pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
-        let value: Value = self
-            .call("clap#api#floating_win_is_valid", json!([winid]))
-            .await?;
+        let value: Value = self.call("win_is_valid", json!([winid])).await?;
         Ok(from_vim_bool(value))
     }
 }
