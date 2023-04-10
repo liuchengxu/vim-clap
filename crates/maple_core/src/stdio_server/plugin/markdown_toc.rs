@@ -22,7 +22,7 @@ pub struct TocConfig {
 impl Default for TocConfig {
     fn default() -> Self {
         TocConfig {
-            bullet: String::from("* "),
+            bullet: String::from("*"),
             indent: 4,
             max_depth: None,
             min_depth: 1,
@@ -76,16 +76,27 @@ impl Heading {
             && config.max_depth.map(|d| self.depth <= d).unwrap_or(true)
         {
             let Self { depth, title } = self;
-            let indent = " ".repeat(config.indent).repeat(depth - config.min_depth);
+            let indent_before_bullet = " "
+                .repeat(config.indent)
+                .repeat(depth.saturating_sub(config.min_depth));
             let bullet = &config.bullet;
+            let indent_after_bullet = " ".repeat(config.indent.saturating_sub(1));
 
             if config.no_link {
-                Some(format!("{indent}{bullet} {title}"))
+                Some(format!(
+                    "{indent_before_bullet}{bullet}{indent_after_bullet}{title}"
+                ))
             } else if let Some(cap) = MARKDOWN_LINK.captures(title) {
                 let title = cap.get(1).map(|x| x.as_str())?;
-                Some(format!("{indent}{bullet} [{title}]({title})"))
+                Some(format!(
+                    "{indent_before_bullet}{bullet}{indent_after_bullet}[{title}](#{})",
+                    slugify(title)
+                ))
             } else {
-                Some(format!("{indent}{bullet} [{title}](#{})", slugify(title)))
+                Some(format!(
+                    "{indent_before_bullet}{bullet}{indent_after_bullet}[{title}](#{})",
+                    slugify(title)
+                ))
             }
         } else {
             None
@@ -143,16 +154,22 @@ fn parse_toc(
 pub fn generate_toc(
     input_file: impl AsRef<Path>,
     line_start: usize,
+    shiftwidth: usize,
 ) -> std::io::Result<VecDeque<String>> {
-    let toc_config = TocConfig::default();
-    let mut toc: VecDeque<_> = parse_toc(input_file.as_ref(), &toc_config, line_start)?.into();
+    let toc_config = TocConfig {
+        indent: shiftwidth,
+        ..Default::default()
+    };
+    let toc = parse_toc(input_file.as_ref(), &toc_config, line_start)?;
 
-    toc.push_front(Default::default());
-    toc.push_front("<!-- clap-markdown-toc -->".to_string());
-    toc.push_back(Default::default());
-    toc.push_back("<!-- /clap-markdown-toc -->".to_string());
+    let mut full_toc = Vec::with_capacity(toc.len() + 4);
+    full_toc.push("<!-- clap-markdown-toc -->".to_string());
+    full_toc.push(Default::default());
+    full_toc.extend(toc);
+    full_toc.push(Default::default());
+    full_toc.push("<!-- /clap-markdown-toc -->".to_string());
 
-    Ok(toc)
+    Ok(full_toc.into())
 }
 
 pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(usize, usize)>> {

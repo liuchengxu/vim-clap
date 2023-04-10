@@ -221,25 +221,37 @@ impl Client {
             "generate-toc" => {
                 let curlnum = self.vim.line(".").await?;
                 let file = self.vim.current_buffer_path().await?;
-                let mut toc = plugin::generate_toc(file, curlnum)?;
+                let shiftwidth = self
+                    .vim
+                    .call("getbufvar", serde_json::json!(["", "&shiftwidth"]))
+                    .await?;
+                let mut toc = plugin::generate_toc(file, curlnum, shiftwidth)?;
                 let prev_line = self.vim.curbufline(curlnum - 1).await?;
                 if !prev_line.map(|line| line.is_empty()).unwrap_or(false) {
                     toc.push_front(Default::default());
                 }
                 self.vim
                     .exec("append", serde_json::json!([curlnum - 1, toc]))?;
+                self.vim
+                    .exec("execute", serde_json::json!(["noautocmd write", "silent"]))?;
             }
             "update-toc" => {
                 let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.current_bufnr().await?;
                 if let Some((start, end)) = plugin::find_toc_range(&file)? {
-                    let new_toc = plugin::generate_toc(file, start + 1)?;
+                    let shiftwidth = self
+                        .vim
+                        .call("getbufvar", serde_json::json!(["", "&shiftwidth"]))
+                        .await?;
+                    let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
                     self.vim.exec(
                         "deletebufline",
                         serde_json::json!([bufnr, start + 1, end + 1]),
                     )?;
                     self.vim
-                        .exec("append", serde_json::json!([start + 1, new_toc]))?;
+                        .exec("append", serde_json::json!([start, new_toc]))?;
+                    self.vim
+                        .exec("execute", serde_json::json!(["noautocmd write", "silent"]))?;
                 }
             }
             "delete-toc" => {
