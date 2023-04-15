@@ -56,7 +56,7 @@ impl Upgrade {
                 }
             }
         } else {
-            println!("No newer release, current maple version: {latest_tag}");
+            println!("No newer prebuilt binary release, current maple version: {local_version}");
         }
 
         Ok(())
