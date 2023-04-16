@@ -5,6 +5,7 @@ authors = ["Liu-Cheng Xu <xuliuchengxlc@gmail.com>"]
 edition = "2021"
 license = "MIT"
 publish = false
+include = ["/Cargo.toml", "src/*.rs"]
 homepage = "https://github.com/liuchengxu/vim-clap"
 description = """
 icon is a tool for drawing an icon according to the path name for vim-clap.

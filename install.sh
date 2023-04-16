@@ -5,18 +5,6 @@ set -u
 REPO=https://github.com/liuchengxu/vim-clap
 APP=maple
 
-remote_latest_tag() {
-  git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags "$REPO" 'v0.*' \
-    | tail --lines=1 \
-    | cut --delimiter='/' --fields=3
-}
-
-local_tag() {
-  "bin/$APP" version | cut --delimiter=' ' --fields=4 | cut --delimiter='-' --fields=1
-}
-
-remote_latest_tag=$(remote_latest_tag)
-
 exists() {
   command -v "$1" >/dev/null 2>&1
 }
@@ -34,7 +22,16 @@ download() {
   fi
 }
 
+remote_latest_tag() {
+  git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags "$REPO" 'v0.*' \
+    | tail --lines=1 \
+    | awk -F "/" '{print $NF}'
+}
+
 try_download() {
+  local remote_latest_tag=$(remote_latest_tag)
+  echo "bin/$APP is empty, try downloading the latest prebuilt binary $APP $remote_latest_tag from GitHub ..."
+
   local DOWNLOAD_URL="$REPO/releases/download/$remote_latest_tag"
   local asset=$1
   if [ -z "${TMPDIR+x}" ]; then
@@ -48,7 +45,7 @@ try_download() {
   chmod a+x "bin/$APP"
 }
 
-do_download() {
+download_prebuilt_binary() {
   arch=$(uname -sm)
   case "${arch}" in
       "Linux x86_64")
@@ -60,21 +57,15 @@ do_download() {
       "Darwin arm64")
         try_download "$APP"-aarch64-apple-darwin ;;
       *)
-        echo "No prebuilt maple binary available for ${arch}."
+        echo "No prebuilt maple binary available for this platform ${arch}."
+        echo "You can compile the binary locally by running `make` or `cargo build --release` if Rust has been installed."
         exit 1
         ;;
   esac
 }
 
 if [ ! -f "bin/$APP" ]; then
-  echo "bin/$APP is empty, try downloading $APP $remote_latest_tag from GitHub directly..."
-  do_download
+  download_prebuilt_binary
 else
-  if [ $(local_tag) == remote_latest_tag ]; then
-    echo "Local binary "bin/$APP" is already the latest version"
-    exit 0
-  else
-    echo "Try downloading latest version of $APP $remote_latest_tag from GitHub..."
-    do_download
-  fi
+  "bin/$APP" upgrade
 fi
