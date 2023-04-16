@@ -1,25 +1,19 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use anyhow::{anyhow, Result};
-use rpc::{MethodCall, Notification};
+use rpc::MethodCall;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-pub async fn note_recent_file(msg: Notification) -> Result<()> {
-    let file: Vec<String> = msg.params.parse()?;
-    let file = file
-        .into_iter()
-        .next()
-        .ok_or_else(|| anyhow!("file is empty"))?;
+pub fn note_recent_file(file_path: String) -> Result<()> {
+    tracing::debug!(?file_path, "Received a recent file notification");
 
-    tracing::debug!(?file, "Received a recent file notification");
-
-    let path = std::path::Path::new(&file);
+    let path = std::path::Path::new(&file_path);
     if !path.exists() || !path.is_file() {
         return Ok(());
     }
 
     let mut recent_files = RECENT_FILES_IN_MEMORY.lock();
-    recent_files.upsert(file);
+    recent_files.upsert(file_path);
 
     Ok(())
 }

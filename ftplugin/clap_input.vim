@@ -1,8 +1,6 @@
-if exists('b:clap_input_loaded') || !has('nvim')
+if !has('nvim')
   finish
 endif
-
-let b:clap_input_loaded = 1
 
 setlocal
   \ nonumber
@@ -115,19 +113,19 @@ nnoremap <silent> <buffer> k :<c-u>call clap#navigation#linewise_scroll('up')<CR
 nnoremap <silent> <buffer> <S-Tab> :<c-u>call clap#action#invoke()<CR>
 
 function! s:Notify(key) abort
-  call clap#client#notify(a:key)
+  call clap#client#notify_provider(a:key)
   return ''
 endfunction
 
-nnoremap <silent> <buffer> <C-n> :<c-u>call clap#client#notify('ctrl-n')<CR>
-nnoremap <silent> <buffer> <C-p> :<c-u>call clap#client#notify('ctrl-p')<CR>
+nnoremap <silent> <buffer> <C-n> :<c-u>call clap#client#notify_provider('ctrl-n')<CR>
+nnoremap <silent> <buffer> <C-p> :<c-u>call clap#client#notify_provider('ctrl-p')<CR>
 
 inoremap <silent> <buffer> <C-n> <C-R>=<SID>Notify('ctrl-n')<CR>
 inoremap <silent> <buffer> <C-p> <C-R>=<SID>Notify('ctrl-p')<CR>
 
 " Preview scroll
-nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify('shift-up')<CR>
-nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify('shift-down')<CR>
+nnoremap <silent> <buffer> <S-Up>   :<c-u>call clap#client#notify_provider('shift-up')<CR>
+nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify_provider('shift-down')<CR>
 
 inoremap <silent> <buffer> <S-Up>   <C-R>=<SID>Notify('shift-up')<CR>
 inoremap <silent> <buffer> <S-Down> <C-R>=<SID>Notify('shift-down')<CR>

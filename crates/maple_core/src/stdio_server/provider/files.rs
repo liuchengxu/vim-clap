@@ -1,7 +1,7 @@
 use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
-use matcher::MatchScope;
+use matcher::{Bonus, MatchScope};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
@@ -32,6 +32,10 @@ impl FilesProvider {
             });
         }
 
+        let recent_files = crate::datastore::RECENT_FILES_IN_MEMORY
+            .lock()
+            .recent_n_files(50);
+        let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
         let matcher = ctx
             .matcher_builder()
             .match_scope(if self.name_only {
@@ -39,6 +43,7 @@ impl FilesProvider {
             } else {
                 MatchScope::Full
             })
+            .bonuses(vec![recent_files_bonus])
             .build(Query::from(&query));
 
         let new_control = {

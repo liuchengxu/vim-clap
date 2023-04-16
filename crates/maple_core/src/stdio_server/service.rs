@@ -1,6 +1,9 @@
 //! Each invocation of Clap provider is a session. When you exit the provider, the session ends.
 
-use crate::stdio_server::input::{InternalProviderEvent, ProviderEvent, ProviderEventSender};
+use crate::stdio_server::input::{
+    InternalProviderEvent, PluginEvent, ProviderEvent, ProviderEventSender,
+};
+use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::provider::{ClapProvider, Context, ProviderSource};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -9,41 +12,41 @@ use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::time::Instant;
 
-pub type SessionId = u64;
+pub type ProviderSessionId = u64;
 
 #[derive(Debug)]
-pub struct Session {
+pub struct ProviderSession {
     ctx: Context,
-    session_id: SessionId,
+    provider_session_id: ProviderSessionId,
     /// Each provider session can have its own message processing logic.
     provider: Box<dyn ClapProvider>,
-    event_recv: UnboundedReceiver<ProviderEvent>,
+    provider_events: UnboundedReceiver<ProviderEvent>,
 }
 
-impl Session {
+impl ProviderSession {
     pub fn new(
-        session_id: u64,
         ctx: Context,
+        provider_session_id: ProviderSessionId,
         provider: Box<dyn ClapProvider>,
     ) -> (Self, UnboundedSender<ProviderEvent>) {
-        let (session_sender, session_receiver) = unbounded_channel();
+        let (provider_event_sender, provider_event_receiver) = unbounded_channel();
 
-        let session = Session {
+        let provider_session = ProviderSession {
             ctx,
-            session_id,
+            provider_session_id,
             provider,
-            event_recv: session_receiver,
+            provider_events: provider_event_receiver,
         };
 
-        (session, session_sender)
+        (provider_session, provider_event_sender)
     }
 
     pub fn start_event_loop(self) {
         tracing::debug!(
-            session_id = self.session_id,
+            provider_session_id = self.provider_session_id,
             provider_id = %self.ctx.provider_id(),
             debounce = self.ctx.env.debounce,
-            "Spawning a new session task",
+            "Spawning a new provider session task",
         );
 
         tokio::spawn(async move {
@@ -86,7 +89,7 @@ impl Session {
 
         loop {
             tokio::select! {
-                maybe_event = self.event_recv.recv() => {
+                maybe_event = self.provider_events.recv() => {
                     match maybe_event {
                         Some(event) => {
                             tracing::trace!("[with_debounce] Received event: {event:?}");
@@ -96,7 +99,7 @@ impl Session {
                                 ProviderEvent::Internal(internal_event) => {
                                     match internal_event {
                                         InternalProviderEvent::Terminate => {
-                                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                            self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
                                             break;
                                         }
                                         InternalProviderEvent::OnInitialize => {
@@ -129,7 +132,7 @@ impl Session {
                                     }
                                 }
                                 ProviderEvent::Exit => {
-                                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                                    self.provider.on_terminate(&mut self.ctx, self.provider_session_id);
                                     break;
                                 }
                                 ProviderEvent::OnMove => {
@@ -175,7 +178,7 @@ impl Session {
     }
 
     async fn run_event_loop_without_debounce(mut self) {
-        while let Some(event) = self.event_recv.recv().await {
+        while let Some(event) = self.provider_events.recv().await {
             tracing::trace!("[without_debounce] Received event: {event:?}");
 
             match event {
@@ -196,13 +199,15 @@ impl Session {
                             }
                         }
                         InternalProviderEvent::Terminate => {
-                            self.provider.on_terminate(&mut self.ctx, self.session_id);
+                            self.provider
+                                .on_terminate(&mut self.ctx, self.provider_session_id);
                             break;
                         }
                     }
                 }
                 ProviderEvent::Exit => {
-                    self.provider.on_terminate(&mut self.ctx, self.session_id);
+                    self.provider
+                        .on_terminate(&mut self.ctx, self.provider_session_id);
                     break;
                 }
                 ProviderEvent::OnMove => {
@@ -226,66 +231,160 @@ impl Session {
     }
 }
 
-/// This structs manages all the created sessions tracked by the session id.
-#[derive(Debug, Default)]
-pub struct SessionManager {
-    sessions: HashMap<SessionId, ProviderEventSender>,
+#[derive(Debug)]
+pub struct PluginSession {
+    plugin: Box<dyn ClapPlugin>,
+    event_delay: Duration,
+    plugin_events: UnboundedReceiver<PluginEvent>,
 }
 
-impl SessionManager {
-    /// Creates a new session if session_id does not exist.
-    pub fn new_session(
+impl PluginSession {
+    pub fn create(
+        plugin: Box<dyn ClapPlugin>,
+        event_delay: Duration,
+    ) -> UnboundedSender<PluginEvent> {
+        let (plugin_event_sender, plugin_event_receiver) = unbounded_channel();
+
+        let plugin_session = PluginSession {
+            plugin,
+            event_delay,
+            plugin_events: plugin_event_receiver,
+        };
+
+        plugin_session.start_event_loop();
+
+        plugin_event_sender
+    }
+
+    fn start_event_loop(mut self) {
+        tracing::debug!("Spawning a new plugin session task");
+
+        tokio::spawn(async move {
+            // If the debounce timer isn't active, it will be set to expire "never",
+            // which is actually just 1 year in the future.
+            const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
+
+            let mut pending_autocmd = None;
+            let mut notification_dirty = false;
+            let notification_timer = tokio::time::sleep(NEVER);
+            tokio::pin!(notification_timer);
+
+            loop {
+                tokio::select! {
+                    maybe_plugin_event = self.plugin_events.recv() => {
+                        match maybe_plugin_event {
+                            Some(plugin_event) => {
+                                match plugin_event {
+                                    PluginEvent::Autocmd(autocmd) => {
+                                        pending_autocmd.replace(autocmd);
+                                        notification_dirty = true;
+                                        notification_timer
+                                            .as_mut()
+                                            .reset(Instant::now() + self.event_delay);
+                                    }
+                                }
+                            }
+                            None => break, // channel has closed.
+                        }
+                    }
+                    _ = notification_timer.as_mut(), if notification_dirty => {
+                        notification_dirty = false;
+                        notification_timer.as_mut().reset(Instant::now() + NEVER);
+
+                        if let Some(autocmd) = pending_autocmd.take() {
+                            if let Err(err) = self.plugin.on_autocmd(autocmd).await {
+                                tracing::error!(?err, "Failed at process {autocmd:?}");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+/// This structs manages all the created sessions.
+///
+/// A plugin is a general service, a provider is a specialized plugin
+/// which is dedicated to provide the filtering service.
+#[derive(Debug, Default)]
+pub struct ServiceManager {
+    providers: HashMap<ProviderSessionId, ProviderEventSender>,
+    plugins: Vec<UnboundedSender<PluginEvent>>,
+}
+
+impl ServiceManager {
+    /// Creates a new provider session if `provider_session_id` does not exist.
+    pub fn new_provider(
         &mut self,
-        session_id: SessionId,
+        provider_session_id: ProviderSessionId,
         provider: Box<dyn ClapProvider>,
         ctx: Context,
     ) {
-        for (session_id, sender) in self.sessions.drain() {
-            tracing::debug!(?session_id, "Sending internal Terminate signal");
+        for (provider_session_id, sender) in self.providers.drain() {
+            tracing::debug!(?provider_session_id, "Sending internal Terminate signal");
             sender.send(ProviderEvent::Internal(InternalProviderEvent::Terminate));
         }
 
-        if let Entry::Vacant(v) = self.sessions.entry(session_id) {
-            let (session, session_sender) = Session::new(session_id, ctx, provider);
-            session.start_event_loop();
+        if let Entry::Vacant(v) = self.providers.entry(provider_session_id) {
+            let (provider_session, provider_event_sender) =
+                ProviderSession::new(ctx, provider_session_id, provider);
+            provider_session.start_event_loop();
 
-            session_sender
+            provider_event_sender
                 .send(ProviderEvent::Internal(InternalProviderEvent::OnInitialize))
                 .expect("Failed to send ProviderEvent::OnInitialize");
 
-            v.insert(ProviderEventSender::new(session_sender, session_id));
+            v.insert(ProviderEventSender::new(
+                provider_event_sender,
+                provider_session_id,
+            ));
         } else {
-            tracing::error!(session_id, "Skipped as given session already exists");
+            tracing::error!(
+                provider_session_id,
+                "Skipped as given provider session already exists"
+            );
         }
     }
 
-    pub fn exists(&self, session_id: SessionId) -> bool {
-        self.sessions.contains_key(&session_id)
+    /// Creates a new plugin session with the default debounce setting.
+    pub fn new_plugin(&mut self, plugin: Box<dyn ClapPlugin>) {
+        self.plugins
+            .push(PluginSession::create(plugin, Duration::from_millis(50)));
     }
 
-    /// Stop the session task by sending [`ProviderEvent::Exit`].
-    pub fn exit_session(&mut self, session_id: SessionId) {
-        if let Some(sender) = self.sessions.remove(&session_id) {
-            sender.send(ProviderEvent::Exit);
-        }
+    pub fn notify_plugins(&mut self, plugin_event: PluginEvent) {
+        self.plugins
+            .retain(|plugin_sender| plugin_sender.send(plugin_event.clone()).is_ok())
     }
 
-    pub fn try_exit(&mut self, session_id: SessionId) {
-        if self.exists(session_id) {
-            self.exit_session(session_id);
+    pub fn exists(&self, provider_session_id: ProviderSessionId) -> bool {
+        self.providers.contains_key(&provider_session_id)
+    }
+
+    pub fn try_exit(&mut self, provider_session_id: ProviderSessionId) {
+        if self.exists(provider_session_id) {
+            self.notify_provider_exit(provider_session_id);
         }
     }
 
     /// Dispatch the session event to the background session task accordingly.
-    pub fn send(&self, session_id: SessionId, event: ProviderEvent) {
-        if let Some(sender) = self.sessions.get(&session_id) {
+    pub fn notify_provider(&self, provider_session_id: ProviderSessionId, event: ProviderEvent) {
+        if let Some(sender) = self.providers.get(&provider_session_id) {
             sender.send(event);
         } else {
             tracing::error!(
-                session_id,
-                sessions = ?self.sessions.keys(),
+                provider_session_id,
+                sessions = ?self.providers.keys(),
                 "Couldn't find the sender for given session",
             );
+        }
+    }
+
+    /// Stop the session task by sending [`ProviderEvent::Exit`].
+    pub fn notify_provider_exit(&mut self, provider_session_id: ProviderSessionId) {
+        if let Some(sender) = self.providers.remove(&provider_session_id) {
+            sender.send(ProviderEvent::Exit);
         }
     }
 }

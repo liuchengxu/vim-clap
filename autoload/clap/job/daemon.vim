@@ -133,11 +133,10 @@ function! clap#job#daemon#is_running() abort
   return s:job_id != -1
 endfunction
 
-function! clap#job#daemon#start(MessageHandler) abort
-  let s:MessageHandler = a:MessageHandler
+function! clap#job#daemon#start() abort
+  let s:MessageHandler = function('clap#client#handle')
   call s:start_service_job(clap#maple#build_cmd('rpc'))
-  call clap#client#notify('initialize_global_env')
-  return
+  call clap#client#notify_provider('initialize_global_env')
 endfunction
 
 let &cpoptions = s:save_cpo

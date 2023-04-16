@@ -80,7 +80,11 @@ endfunction
 function! s:trigger_on_move() abort
   " try
   if g:clap.display.win_is_valid()
-    call g:clap.provider.on_move()
+    if has_key(g:clap.provider._(), 'on_move_async')
+      call g:clap.provider._().on_move_async()
+    else
+      call g:clap.provider.on_move()
+    endif
   endif
   " catch
     " call g:clap.preview.show([v:exception])

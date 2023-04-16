@@ -14,6 +14,8 @@ use types::{ProgressUpdate, Rank};
 
 const UPDATE_INTERVAL: Duration = Duration::from_millis(200);
 
+type SearcherMessage = crate::searcher::SearcherMessage<FileResult>;
+
 #[derive(Debug, Default)]
 struct MatchEverything;
 
@@ -33,12 +35,6 @@ impl grep_matcher::Matcher for MatchEverything {
     fn new_captures(&self) -> Result<Self::Captures, Self::Error> {
         Ok(grep_matcher::NoCaptures::new())
     }
-}
-
-#[derive(Debug)]
-enum SearcherMessage {
-    Match(FileResult),
-    ProcessedOne,
 }
 
 /// Represents an matched item by searching a file.
@@ -248,7 +244,7 @@ impl BestFileResults {
 pub async fn search(query: String, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
-        winwidth,
+        line_width,
         vim,
         paths,
         stop_signal,
@@ -274,7 +270,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let to_display_lines = |best_results: &[FileResult], winwidth: usize, icon: Icon| {
+    let to_display_lines = |best_results: &[FileResult], icon: Icon| {
         let grep_results = best_results
             .iter()
             .filter_map(|file_result| {
@@ -320,7 +316,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                 }
             })
             .collect();
-        printer::grep_results_to_display_lines(grep_results, winwidth, icon)
+        printer::grep_results_to_display_lines(grep_results, line_width, icon)
     };
 
     let now = std::time::Instant::now();
@@ -340,7 +336,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
                     let now = Instant::now();
                     if now > best_results.past + UPDATE_INTERVAL {
-                        let display_lines = to_display_lines(&best_results.results, winwidth, icon);
+                        let display_lines = to_display_lines(&best_results.results, icon);
                         progressor.update_all(&display_lines, total_matched, total_processed);
                         best_results.last_lines = display_lines.lines;
                         best_results.past = now;
@@ -360,8 +356,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                     if total_matched % 16 == 0 || total_processed % 16 == 0 {
                         let now = Instant::now();
                         if now > best_results.past + UPDATE_INTERVAL {
-                            let display_lines =
-                                to_display_lines(&best_results.results, winwidth, icon);
+                            let display_lines = to_display_lines(&best_results.results, icon);
 
                             let visible_highlights = display_lines
                                 .indices
@@ -370,7 +365,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
                                     line_highlights
                                         .iter()
                                         .copied()
-                                        .filter(|&x| x <= winwidth)
+                                        .filter(|&x| x <= line_width)
                                         .collect::<Vec<_>>()
                                 })
                                 .collect::<Vec<_>>();
@@ -402,9 +397,7 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
 
     let elapsed = now.elapsed().as_millis();
 
-    let BestFileResults { results, .. } = best_results;
-
-    let display_lines = to_display_lines(&results, winwidth, icon);
+    let display_lines = to_display_lines(&best_results.results, icon);
 
     progressor.on_finished(display_lines, total_matched, total_processed);
 

@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:provider = {}
 
 function! s:provider.on_typed() abort
-  call clap#client#notify('on_typed')
+  call clap#client#notify_provider('on_typed')
 endfunction
 
 function! s:provider.init() abort

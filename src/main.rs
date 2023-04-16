@@ -1,5 +1,6 @@
 use clap::Parser;
 use cli::{Args, RunCmd};
+use color_eyre::eyre::Result;
 
 const BUILD_TIME: &str = include!(concat!(env!("OUT_DIR"), "/compiled_at.txt"));
 
@@ -40,7 +41,9 @@ pub struct Maple {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
+    color_eyre::install()?;
+
     let maple = Maple::parse();
 
     match maple.cmd {
@@ -48,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!(
                 "version {}{}, compiled at: {}, built for {} by {}.",
                 built_info::PKG_VERSION,
-                built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+                built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {v})")),
                 BUILD_TIME,
                 built_info::TARGET,
                 built_info::RUSTC_VERSION
@@ -63,13 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .run(local_git_tag)
                 .await
             {
-                eprintln!("failed to upgrade: {:?}", e);
+                eprintln!("failed to upgrade: {e:?}");
                 std::process::exit(1);
             }
         }
         Cmd::Run(run_cmd) => {
             if let Err(e) = run_cmd.run(maple.args).await {
-                eprintln!("error: {:?}", e);
+                eprintln!("error: {e:?}");
                 std::process::exit(1);
             }
         }

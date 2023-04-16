@@ -10,11 +10,18 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use types::MatchedItem;
+
+#[derive(Debug)]
+enum SearcherMessage<T = MatchedItem> {
+    Match(T),
+    ProcessedOne,
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchContext {
     pub icon: Icon,
-    pub winwidth: usize,
+    pub line_width: usize,
     pub paths: Vec<PathBuf>,
     pub vim: Vim,
     pub stop_signal: Arc<AtomicBool>,

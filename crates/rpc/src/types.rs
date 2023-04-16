@@ -8,7 +8,8 @@ pub struct MethodCall {
     pub id: u64,
     pub method: String,
     pub params: Params,
-    pub session_id: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -22,7 +23,7 @@ pub struct Notification {
 
 /// Request message actively sent from the Vim side.
 ///
-/// Message sent via `clap#client#notify` or `clap#client#call`.
+/// Message sent via `clap#client#notify` or `clap#client#request_async`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Call {

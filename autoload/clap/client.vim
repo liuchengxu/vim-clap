@@ -8,8 +8,6 @@ let s:req_id = get(s:, 'req_id', 0)
 let s:handlers = get(s:, 'handlers', {})
 let s:session_id = get(s:, 'session_id', 0)
 
-let s:last_recent_file = v:null
-
 function! clap#client#handle(msg) abort
   let decoded = json_decode(a:msg)
 
@@ -42,36 +40,52 @@ function! clap#client#handle(msg) abort
   endif
 endfunction
 
-function! s:send_notification(method, params) abort
-  call clap#job#daemon#send_message(json_encode({
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
+function! s:notify_provider(method, params) abort
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#send_message(json_encode({
+          \ 'method': a:method,
+          \ 'params': a:params,
+          \ 'session_id': s:session_id,
+          \ }))
+  endif
 endfunction
 
-function! s:send_method_call(method, params) abort
-  let s:req_id += 1
-  call clap#job#daemon#send_message(json_encode({
-        \ 'id': s:req_id,
-        \ 'method': a:method,
-        \ 'params': a:params,
-        \ 'session_id': s:session_id,
-        \ }))
+function! s:request_async(method, params) abort
+  if clap#job#daemon#is_running()
+    let s:req_id += 1
+    call clap#job#daemon#send_message(json_encode({
+          \ 'id': s:req_id,
+          \ 'method': a:method,
+          \ 'params': a:params,
+          \ }))
+  endif
 endfunction
 
 " Recommended API
 " Optional argument: params: v:null, List, Dict
+function! clap#client#notify_provider(method, ...) abort
+  call s:notify_provider(a:method, get(a:000, 0, v:null))
+endfunction
+
 function! clap#client#notify(method, ...) abort
-  call s:send_notification(a:method, get(a:000, 0, v:null))
+  if clap#job#daemon#is_running()
+    call clap#job#daemon#send_message(json_encode({
+          \ 'method': a:method,
+          \ 'params': get(a:000, 0, v:null),
+          \ }))
+  endif
 endfunction
 
 " Optional argument: params: v:null, List, Dict
-function! clap#client#call(method, callback, ...) abort
-  call s:send_method_call(a:method, get(a:000, 0, v:null))
+function! clap#client#request_async(method, callback, ...) abort
+  call s:request_async(a:method, get(a:000, 0, v:null))
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
+endfunction
+
+function! clap#client#request(method, ...) abort
+  call s:request_async(a:method, get(a:000, 0, v:null))
 endfunction
 
 function! clap#client#notify_on_init(...) abort
@@ -94,25 +108,22 @@ function! clap#client#notify_on_init(...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call s:send_notification('new_session', params)
+  call s:notify_provider('new_session', params)
 endfunction
 
 function! clap#client#notify_recent_file() abort
-  if !clap#job#daemon#is_running()
-    return
-  endif
   if &buftype ==# 'nofile'
     return
   endif
   let file = expand(expand('<afile>:p'))
-  call s:send_notification('note_recent_files', [file])
+  call s:notify_provider('note_recent_files', [file])
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 ""  Deprecated and unused in clap repo, but keep them to not break the users using old version.
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! clap#client#call_preview_file(extra) abort
-  call clap#client#call('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
+  call clap#client#request_async('preview/file', function('clap#impl#on_move#handler'), clap#preview#maple_opts(a:extra))
 endfunction
 
 " One optional argument: Dict, extra params
@@ -125,7 +136,8 @@ function! clap#client#call_on_move(method, callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  call clap#client#call(a:method, a:callback, params)
+  " on_move callback is unused as it's already handled by Rust backend.
+  call s:notify_provider(a:method, params)
 endfunction
 
 let &cpoptions = s:save_cpo

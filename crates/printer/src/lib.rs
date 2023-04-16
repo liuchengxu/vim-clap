@@ -193,10 +193,10 @@ pub struct GrepResult {
 
 pub fn grep_results_to_display_lines(
     mut grep_results: Vec<GrepResult>,
-    winwidth: usize,
+    line_width: usize,
     icon: Icon,
 ) -> DisplayLines {
-    let truncated_map = truncate_grep_results(grep_results.iter_mut(), winwidth, None);
+    let truncated_map = truncate_grep_results(grep_results.iter_mut(), line_width, None);
     convert_truncated_matched_items_to_display_lines(
         grep_results.into_iter().map(|i| i.matched_item),
         icon,

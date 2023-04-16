@@ -15,7 +15,7 @@ if clap#maple#is_available()
   " No source attribute as it's implemented on the Rust side directly.
 
   function! s:help_tags.on_typed() abort
-    call clap#client#notify('on_typed')
+    call clap#client#notify_provider('on_typed')
   endfunction
 
   function! s:help_tags_sink(line) abort

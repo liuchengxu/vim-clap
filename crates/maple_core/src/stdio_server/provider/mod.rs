@@ -88,6 +88,9 @@ pub struct ProviderEnvironment {
     pub preview_enabled: bool,
     pub display_winwidth: usize,
     pub display_winheight: usize,
+    /// Actual width for displaying the line content due to the sign column is included in
+    /// winwidth.
+    pub display_line_width: usize,
     pub start_buffer_path: PathBuf,
 }
 
@@ -267,11 +270,12 @@ impl Context {
             .filter_map(|s| types::parse_criteria(s.trim()))
             .collect();
         let matcher_builder = provider_id.matcher_builder().rank_criteria(rank_criteria);
+        let display_winwidth = vim.winwidth(display.winid).await?;
         // Sign column occupies 2 spaces.
-        let display_winwidth = vim.winwidth(display.winid).await? - 2;
-        let display_winwidth = match provider_id.as_str() {
-            "grep" => display_winwidth - 2,
-            _ => display_winwidth,
+        let display_line_width = display_winwidth - 2;
+        let display_line_width = match provider_id.as_str() {
+            "grep" => display_line_width - 2,
+            _ => display_line_width,
         };
         let display_winheight = vim.winheight(display.winid).await?;
         let is_nvim: usize = vim.call("has", ["nvim"]).await?;
@@ -279,7 +283,12 @@ impl Context {
         let preview_enabled: usize = vim.bare_call("clap#preview#is_enabled").await?;
 
         let input_history = crate::datastore::INPUT_HISTORY_IN_MEMORY.lock();
-        let input_recorder = InputRecorder::new(input_history.inputs(&provider_id));
+        let inputs = if crate::config::config().input_history.share_all_inputs {
+            input_history.all_inputs()
+        } else {
+            input_history.inputs(&provider_id)
+        };
+        let input_recorder = InputRecorder::new(inputs);
 
         let env = ProviderEnvironment {
             is_nvim: is_nvim == 1,
@@ -294,6 +303,7 @@ impl Context {
             start_buffer_path,
             display_winwidth,
             display_winheight,
+            display_line_width,
             matcher_builder,
             icon,
         };
@@ -325,7 +335,7 @@ impl Context {
     pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
         SearchContext {
             icon: self.env.icon,
-            winwidth: self.env.display_winwidth,
+            line_width: self.env.display_line_width,
             paths: vec![self.cwd.to_path_buf()],
             vim: self.vim.clone(),
             stop_signal,
@@ -368,7 +378,10 @@ impl Context {
             self.env.provider_id.clone(),
             self.input_recorder.clone().into_inputs(),
         );
-        tracing::debug!("Session {session_id:?}-{} terminated", self.provider_id());
+        tracing::debug!(
+            "ProviderSession {session_id:?}-{} terminated",
+            self.provider_id()
+        );
     }
 
     pub async fn record_input(&mut self) -> Result<()> {
@@ -416,6 +429,12 @@ impl Context {
                 Ok(size)
             }
         }
+    }
+
+    pub async fn preview_winwidth(&self) -> Result<usize> {
+        let preview_winid = self.vim.eval("g:clap.preview.winid").await?;
+        let winwidth = self.vim.winwidth(preview_winid).await?;
+        Ok(winwidth)
     }
 
     pub async fn preview_height(&mut self) -> Result<usize> {

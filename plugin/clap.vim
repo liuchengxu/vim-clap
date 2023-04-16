@@ -10,6 +10,10 @@ endif
 
 let g:loaded_clap = 1
 
+if get(g:, 'clap_start_server_on_startup', 1)
+  call clap#job#daemon#start()
+endif
+
 command! -bang -nargs=* -bar -range -complete=customlist,clap#helper#complete Clap call clap#(<bang>0, <f-args>)
 
 let g:__clap_buffers = get(g:, '__clap_buffers', {})
@@ -39,19 +43,24 @@ function! s:OnBufDelete(bufnr) abort
   endif
 endfunction
 
-augroup ClapBuffers
+augroup VimClap
   autocmd!
+
   if exists('g:clap_provider_buffers_cur_tab_only')
-    autocmd BufEnter             * call s:OnBufEnter(+expand('<abuf>'))
+    autocmd BufEnter           * call s:OnBufEnter(+expand('<abuf>'))
   endif
   autocmd BufDelete            * call s:OnBufDelete(+expand('<abuf>'))
   autocmd BufWinEnter,WinEnter * let g:__clap_buffers[bufnr('')] = reltimefloat(reltime())
-augroup END
 
-" yanks provider
-if get(g:, 'clap_enable_yanks_provider', 1)
-  augroup ClapYanks
-    autocmd!
+  autocmd BufAdd      * call clap#client#notify('note_recent_files', [+expand('<abuf>')])
+
+  if get(g:, 'clap_plugin_experimental', 0)
+    autocmd CursorMoved * call clap#client#notify('CursorMoved')
+    autocmd InsertEnter * call clap#client#notify('InsertEnter')
+  endif
+
+  " yanks provider
+  if get(g:, 'clap_enable_yanks_provider', 1)
     autocmd VimEnter * call clap#provider#yanks#init()
-  augroup END
-endif
+  endif
+augroup END

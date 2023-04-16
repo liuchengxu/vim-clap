@@ -79,19 +79,19 @@ function! s:move_manager.ctrl_l(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_n(_winwid) abort
-  call clap#client#notify('ctrl-n')
+  call clap#client#notify_provider('ctrl-n')
 endfunction
 
 function! s:move_manager.ctrl_p(_winwid) abort
-  call clap#client#notify('ctrl-p')
+  call clap#client#notify_provider('ctrl-p')
 endfunction
 
 function! s:move_manager.shift_up(_winwid) abort
-  call clap#client#notify('shift-up')
+  call clap#client#notify_provider('shift-up')
 endfunction
 
 function! s:move_manager.shift_down(_winwid) abort
-  call clap#client#notify('shift-down')
+  call clap#client#notify_provider('shift-down')
 endfunction
 
 function! s:move_manager.ctrl_u(_winid) abort

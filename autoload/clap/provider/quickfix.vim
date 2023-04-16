@@ -54,7 +54,7 @@ function! s:quickfix.on_move() abort
 endfunction
 
 function! s:quickfix.on_move_async() abort
-  call clap#client#call('quickfix', function('clap#impl#on_move#handler'), {
+  call clap#client#request_async('quickfix', function('clap#impl#on_move#handler'), {
         \ 'curline': g:clap.display.getcurline(),
         \ 'cwd': clap#rooter#working_dir(),
         \ 'winwidth': winwidth(g:clap.display.winid),

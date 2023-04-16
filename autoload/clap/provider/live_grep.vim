@@ -134,6 +134,15 @@ function! s:grep_sink(selected) abort
   let matched = s:strip_icon_and_match(line, pattern)
   let [fpath, linenr, column] = [matched[1], str2nr(matched[2]), str2nr(matched[3])]
   call clap#sink#open_file(fpath, linenr, column)
+  " Try to adjust the column offset as Rust grep searcher strips the leading
+  " whitespaces.
+  if exists('*getbufoneline')
+    let full_line = getbufoneline(fpath, linenr)
+    let offset = len(matchstr(full_line, '^\s*'))
+    if offset > 0
+      noautocmd call cursor(linenr, column + offset)
+    endif
+  endif
   call call('clap#util#blink', s:grep_blink)
   let s:icon_appended = v:false
 endfunction
@@ -234,10 +243,7 @@ let s:grep['sink*'] = function('s:grep_sink_star')
 let s:grep.on_move = function('s:grep_on_move')
 let s:grep.on_typed = function('s:grep_on_typed')
 let s:grep.on_exit = function('s:grep_exit')
-
-function! s:grep.on_move_async() abort
-  call clap#client#notify('on_move')
-endfunction
+let s:grep.on_move_async = { -> clap#client#notify_provider('on_move') }
 
 if clap#maple#is_available()
   function! s:grep.init() abort

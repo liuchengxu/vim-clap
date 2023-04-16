@@ -200,7 +200,7 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    pub async fn get_preview(&self) -> Result<(PreviewTarget, Preview)> {
+    pub async fn get_preview(&self) -> anyhow::Result<(PreviewTarget, Preview)> {
         if let Some(preview) = self
             .ctx
             .preview_manager
@@ -213,7 +213,9 @@ impl<'a> CachedPreviewImpl<'a> {
             PreviewTarget::Directory(path) => self.preview_directory(path)?,
             PreviewTarget::File(path) => self.preview_file(path)?,
             PreviewTarget::LineInFile { path, line_number } => {
-                self.preview_file_at(path, *line_number).await
+                let container_width = self.ctx.preview_winwidth().await?;
+                self.preview_file_at(path, *line_number, container_width)
+                    .await
             }
             PreviewTarget::Commit(rev) => self.preview_commits(rev)?,
             PreviewTarget::HelpTags {
@@ -307,7 +309,7 @@ impl<'a> CachedPreviewImpl<'a> {
         let (lines, fname) = match (self.ctx.env.is_nvim, self.ctx.env.has_nvim_09) {
             (true, false) => {
                 // Title is not available before nvim 0.9
-                let max_fname_len = self.ctx.env.display_winwidth - 1;
+                let max_fname_len = self.ctx.env.display_line_width - 1;
                 previewer::preview_file_with_truncated_title(
                     path,
                     self.preview_height,
@@ -357,10 +359,9 @@ impl<'a> CachedPreviewImpl<'a> {
         }
     }
 
-    async fn preview_file_at(&self, path: &Path, lnum: usize) -> Preview {
+    async fn preview_file_at(&self, path: &Path, lnum: usize, container_width: usize) -> Preview {
         tracing::debug!(path = ?path.display(), lnum, "Previewing file");
 
-        let container_width = self.ctx.env.display_winwidth;
         let fname = path.display().to_string();
 
         let truncated_preview_header = || {
@@ -547,7 +548,7 @@ impl<'a> CachedPreviewImpl<'a> {
     /// Returns the maximum line width.
     #[inline]
     fn max_line_width(&self) -> usize {
-        2 * self.ctx.env.display_winwidth
+        2 * self.ctx.env.display_line_width
     }
 }
 

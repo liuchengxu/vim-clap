@@ -1,8 +1,6 @@
-if exists('b:clap_display_loaded') || !has('nvim')
+if !has('nvim')
   finish
 endif
-
-let b:clap_display_loaded = 1
 
 setlocal
   \ nowrap

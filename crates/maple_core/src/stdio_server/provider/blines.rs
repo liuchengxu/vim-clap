@@ -73,6 +73,12 @@ impl ClapProvider for BlinesProvider {
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.input_get().await?;
+        // TODO:
+        // if &modified {
+        //      get buf content
+        // } else {
+        //      read from file
+        // }
         if query.is_empty() {
             ctx.update_on_empty_query().await?;
         } else {

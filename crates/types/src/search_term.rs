@@ -144,6 +144,12 @@ pub struct WordTerm {
     pub text: String,
 }
 
+impl From<String> for WordTerm {
+    fn from(text: String) -> Self {
+        Self { text }
+    }
+}
+
 impl WordTerm {
     pub fn score(&self, match_start: usize) -> Score {
         (self.text.len() + 1024 / match_start.max(1))

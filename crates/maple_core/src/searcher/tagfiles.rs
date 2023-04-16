@@ -1,5 +1,5 @@
 use crate::dirs::HOME;
-use crate::searcher::SearchContext;
+use crate::searcher::{SearchContext, SearcherMessage};
 use crate::stdio_server::VimProgressor;
 use filter::BestItems;
 use matcher::Matcher;
@@ -12,8 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use types::ProgressUpdate;
-use types::{ClapItem, MatchedItem};
+use types::{ClapItem, ProgressUpdate};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -229,12 +228,6 @@ impl ClapItem for TagItem {
     }
 }
 
-#[derive(Debug)]
-enum SearcherMessage {
-    Match(MatchedItem),
-    ProcessedOne,
-}
-
 fn read_tag_file<'a>(
     tagfile: &'a Path,
     cwd: &'a Path,
@@ -293,7 +286,7 @@ fn search_tagfiles(
 pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_context: SearchContext) {
     let SearchContext {
         icon,
-        winwidth,
+        line_width,
         paths,
         vim,
         stop_signal,
@@ -301,7 +294,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     } = search_context;
 
     let printer = Printer {
-        line_width: winwidth,
+        line_width,
         icon,
         truncate_text: false,
     };
@@ -317,7 +310,7 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
         .spawn({
             let stop_signal = stop_signal.clone();
             let tagfiles = paths.into_iter().map(|p| p.join("tags")).collect();
-            move || search_tagfiles(tagfiles, cwd, winwidth, matcher, stop_signal, sender)
+            move || search_tagfiles(tagfiles, cwd, line_width, matcher, stop_signal, sender)
         })
         .expect("Failed to spawn tagfiles worker thread");
 

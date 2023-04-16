@@ -71,7 +71,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
         paths,
         vim,
         icon,
-        winwidth,
+        line_width,
         stop_signal,
         item_pool_size,
     } = search_context;
@@ -92,7 +92,7 @@ pub async fn search(query: String, hidden: bool, matcher: Matcher, search_contex
     let mut total_matched = 0usize;
     let mut total_processed = 0usize;
 
-    let printer = Printer::new(winwidth, icon);
+    let printer = Printer::new(line_width, icon);
     let mut best_items = BestItems::new(printer, number, progressor, Duration::from_millis(200));
 
     let now = std::time::Instant::now();

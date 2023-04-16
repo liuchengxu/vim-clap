@@ -1,4 +1,5 @@
 use grep_regex::{RegexMatcher, RegexMatcherBuilder};
+use std::ops::Range;
 use types::{Score, WordTerm};
 
 /// Word matching using the `RegexMatcher`.
@@ -69,5 +70,39 @@ impl WordMatcher {
         } else {
             None
         }
+    }
+
+    pub fn find_all_matches_range(&self, line: &str) -> Vec<Range<usize>> {
+        use grep_matcher::Matcher;
+
+        let mut match_start_indices = vec![];
+
+        self.matchers.iter().for_each(|(_word_term, word_matcher)| {
+            let _ = word_matcher.find_iter(line.as_bytes(), |matched| {
+                match_start_indices.push(Range {
+                    start: matched.start(),
+                    end: matched.end(),
+                });
+
+                true
+            });
+        });
+
+        match_start_indices
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_all_matches_start() {
+        let word_matcher = WordMatcher::new(vec!["world".to_string().into()]);
+        let line = "hello world world";
+        assert_eq!(
+            vec![Range { start: 6, end: 11 }, Range { start: 12, end: 17 }],
+            word_matcher.find_all_matches_range(line)
+        );
     }
 }

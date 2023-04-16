@@ -1,20 +1,20 @@
-use std::collections::{HashMap, VecDeque};
-
 use crate::stdio_server::provider::ProviderId;
-use crate::stdio_server::session::SessionId;
+use crate::stdio_server::service::ProviderSessionId;
+use std::collections::{HashMap, HashSet, VecDeque};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug)]
 pub enum Event {
     Provider(ProviderEvent),
+    Autocmd(Autocmd),
     Key(KeyEvent),
-    Other(String),
+    /// Various uncategoried actions.
+    Action(String),
 }
 
-#[derive(Debug)]
-pub enum InternalProviderEvent {
-    OnInitialize,
-    Terminate,
+#[derive(Debug, Clone)]
+pub enum PluginEvent {
+    Autocmd(Autocmd),
 }
 
 /// Provider specific events.
@@ -27,6 +27,12 @@ pub enum ProviderEvent {
     Key(KeyEvent),
     /// Signal fired internally.
     Internal(InternalProviderEvent),
+}
+
+#[derive(Debug)]
+pub enum InternalProviderEvent {
+    OnInitialize,
+    Terminate,
 }
 
 /// Represents a key event.
@@ -48,21 +54,30 @@ pub enum KeyEvent {
     CtrlP,
 }
 
+/// Represents a key event.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+pub enum Autocmd {
+    CursorMoved,
+    InsertEnter,
+}
+
 impl Event {
     pub fn from_method(method: &str) -> Self {
         match method {
-            "new_session" => Self::Provider(ProviderEvent::NewSession),
-            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
-            "on_move" => Self::Provider(ProviderEvent::OnMove),
             "exit" => Self::Provider(ProviderEvent::Exit),
+            "on_move" => Self::Provider(ProviderEvent::OnMove),
+            "on_typed" => Self::Provider(ProviderEvent::OnTyped),
+            "new_session" => Self::Provider(ProviderEvent::NewSession),
             "cr" => Self::Key(KeyEvent::CarriageReturn),
             "tab" => Self::Key(KeyEvent::Tab),
-            "backspace" => Self::Key(KeyEvent::Backspace),
-            "shift-up" => Self::Key(KeyEvent::ShiftUp),
-            "shift-down" => Self::Key(KeyEvent::ShiftDown),
             "ctrl-n" => Self::Key(KeyEvent::CtrlN),
             "ctrl-p" => Self::Key(KeyEvent::CtrlP),
-            other => Self::Other(other.to_string()),
+            "shift-up" => Self::Key(KeyEvent::ShiftUp),
+            "shift-down" => Self::Key(KeyEvent::ShiftDown),
+            "backspace" => Self::Key(KeyEvent::Backspace),
+            "CursorMoved" => Self::Autocmd(Autocmd::CursorMoved),
+            "InsertEnter" => Self::Autocmd(Autocmd::InsertEnter),
+            action => Self::Action(action.to_string()),
         }
     }
 }
@@ -71,11 +86,11 @@ impl Event {
 #[derive(Debug)]
 pub struct ProviderEventSender {
     pub sender: UnboundedSender<ProviderEvent>,
-    pub id: SessionId,
+    pub id: ProviderSessionId,
 }
 
 impl ProviderEventSender {
-    pub fn new(sender: UnboundedSender<ProviderEvent>, id: SessionId) -> Self {
+    pub fn new(sender: UnboundedSender<ProviderEvent>, id: ProviderSessionId) -> Self {
         Self { sender, id }
     }
 }
@@ -104,6 +119,17 @@ impl InputHistory {
 
     pub fn inputs(&self, provider_id: &ProviderId) -> VecDeque<String> {
         self.0.get(provider_id).cloned().unwrap_or_default()
+    }
+
+    pub fn all_inputs(&self) -> VecDeque<String> {
+        // HashSet gurantees no duplicated elements.
+        self.0
+            .values()
+            .flatten()
+            .cloned()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect()
     }
 
     pub fn insert(&mut self, provider_id: ProviderId, new_value: VecDeque<String>) {

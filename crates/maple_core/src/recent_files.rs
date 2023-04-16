@@ -164,6 +164,14 @@ impl SortedRecentFiles {
         });
     }
 
+    pub fn recent_n_files(&self, n: usize) -> Vec<String> {
+        self.entries
+            .iter()
+            .take(n)
+            .map(|entry| entry.fpath.clone())
+            .collect()
+    }
+
     pub fn filter_on_query(&self, query: &str, cwd: String) -> Vec<filter::MatchedItem> {
         let mut cwd = cwd;
         cwd.push(std::path::MAIN_SEPARATOR);

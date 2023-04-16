@@ -105,12 +105,12 @@ endfunction
 
 if has('nvim')
   function! s:bs_action() abort
-    call clap#client#notify('backspace')
+    call clap#client#notify_provider('backspace')
     return ''
   endfunction
 else
   function! s:bs_action(before_bs) abort
-    call clap#client#notify('backspace')
+    call clap#client#notify_provider('backspace')
     return ''
   endfunction
 endif
@@ -145,7 +145,7 @@ function! s:filer.on_move_async() abort
     call g:clap.preview.hide()
     return
   endif
-  call clap#client#notify('on_move')
+  call clap#client#notify_provider('on_move')
 endfunction
 
 function! s:filer_on_no_matches(input) abort
@@ -195,11 +195,11 @@ let s:filer.init = function('s:start_rpc_service')
 let s:filer.sink = function('s:filer_sink')
 let s:filer.icon = 'File'
 let s:filer.syntax = 'clap_filer'
-let s:filer.on_typed = { -> clap#client#notify('on_typed') }
+let s:filer.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:filer.bs_action = function('s:bs_action')
-let s:filer.back_action = { -> clap#client#notify('backspace') }
-let s:filer.tab_action = { -> clap#client#notify('tab') }
-let s:filer.cr_action = { -> clap#client#notify('cr') }
+let s:filer.back_action = { -> clap#client#notify_provider('backspace') }
+let s:filer.tab_action = { -> clap#client#notify_provider('tab') }
+let s:filer.cr_action = { -> clap#client#notify_provider('cr') }
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
 let g:clap#provider#filer# = s:filer

@@ -223,6 +223,16 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
     }
 }
 
+// Vim may return 1/0 for true/false.
+#[inline(always)]
+fn from_vim_bool(value: Value) -> bool {
+    match value {
+        Value::Bool(b) => b,
+        Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
+        _ => false,
+    }
+}
+
 /// Shareable Vim instance.
 #[derive(Debug, Clone)]
 pub struct Vim {
@@ -291,6 +301,34 @@ impl Vim {
         self.call("bufname", json!([bufnr])).await
     }
 
+    pub async fn col(&self, expr: &str) -> Result<usize> {
+        self.call("col", json![expr]).await
+    }
+
+    pub async fn expand(&self, string: impl AsRef<str>) -> Result<String> {
+        self.call("expand", json![string.as_ref()]).await
+    }
+
+    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
+        self.call("eval", json!([s])).await
+    }
+
+    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
+        self.call("fnamemodify", json!([fname, mods])).await
+    }
+
+    pub async fn matchdelete(&self, id: i32, win: usize) -> Result<i32> {
+        self.call("matchdelete", json!([id, win])).await
+    }
+
+    pub async fn line(&self, expr: &str) -> Result<usize> {
+        self.call("line", json![expr]).await
+    }
+
+    pub async fn getpos(&self, expr: &str) -> Result<[usize; 4]> {
+        self.call("getpos", json![expr]).await
+    }
+
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {
@@ -309,14 +347,6 @@ impl Vim {
         }
     }
 
-    pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {
-        self.call("fnamemodify", json!([fname, mods])).await
-    }
-
-    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
-        self.call("eval", json!([s])).await
-    }
-
     /////////////////////////////////////////////////////////////////
     //    Clap related APIs
     /////////////////////////////////////////////////////////////////
@@ -328,7 +358,7 @@ impl Vim {
                 let icon_added_by_maple = arr[1].as_bool().unwrap_or(false);
                 let curline = match arr.into_iter().next() {
                     Some(Value::String(s)) => s,
-                    e => return Err(anyhow::anyhow!("curline expects a String, but got {e:?}")),
+                    e => return Err(anyhow!("curline expects a String, but got {e:?}")),
                 };
                 if icon_added_by_maple {
                     Ok(curline.chars().skip(2).collect())
@@ -336,7 +366,7 @@ impl Vim {
                     Ok(curline)
                 }
             }
-            _ => Err(anyhow::anyhow!(
+            _ => Err(anyhow!(
                 "Invalid return value of `s:api.display_getcurline()`, [String, Bool] expected"
             )),
         }
@@ -350,12 +380,12 @@ impl Vim {
         self.eval("g:clap.input.get()").await
     }
 
-    pub async fn provider_id(&self) -> Result<String> {
-        self.eval("g:clap.provider.id").await
-    }
-
     pub async fn provider_args(&self) -> Result<Vec<String>> {
         self.bare_call("provider_args").await
+    }
+
+    pub async fn provider_id(&self) -> Result<String> {
+        self.eval("g:clap.provider.id").await
     }
 
     pub async fn provider_raw_args(&self) -> Result<Vec<String>> {
@@ -375,6 +405,14 @@ impl Vim {
         Ok(context.contains_key("name-only"))
     }
 
+    pub async fn current_buffer_path(&self) -> Result<String> {
+        self.bare_call("current_buffer_path").await
+    }
+
+    pub async fn curbufline(&self, lnum: usize) -> Result<Option<String>> {
+        self.call("curbufline", json!([lnum])).await
+    }
+
     pub fn set_preview_syntax(&self, syntax: &str) -> Result<()> {
         self.exec("eval", [format!("g:clap.preview.set_syntax('{syntax}')")])
     }
@@ -382,22 +420,37 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     //    General helpers
     /////////////////////////////////////////////////////////////////
-    pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
-        let value: Value = self.call("get_var", json!([var])).await?;
-        let value = match value {
-            Value::Bool(b) => b,
-            Value::Number(n) => n.as_u64().map(|n| n == 1).unwrap_or(false),
-            _ => false,
-        };
-        Ok(value)
-    }
-
-    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
-        self.exec("set_var", json!([var_name, value]))
-    }
-
     pub fn echo_info(&self, msg: &str) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg]))
+    }
+
+    pub async fn current_winid(&self) -> Result<usize> {
+        self.bare_call("win_getid").await
+    }
+
+    pub async fn current_bufnr(&self) -> Result<usize> {
+        let bufnr: i32 = self.call("bufnr", json![""]).await?;
+        if bufnr < 0 {
+            Err(anyhow!("bufnr doesn't exist"))
+        } else {
+            Ok(bufnr as usize)
+        }
+    }
+
+    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
+        self.call("getbufoneline", json!(["", lnum])).await
+    }
+
+    pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
+        let value: Value = self.call("get_var", json!([var])).await?;
+        Ok(from_vim_bool(value))
+    }
+
+    pub async fn matchdelete_batch(&self, ids: Vec<i32>, win: usize) -> Result<()> {
+        if self.win_is_valid(win).await? {
+            self.exec("matchdelete_batch", json!([ids, win]))?;
+        }
+        Ok(())
     }
 
     /// Size for fulfilling the preview window.
@@ -412,6 +465,15 @@ impl Vim {
         Ok(preview_config
             .preview_size(provider_id.as_str())
             .max(preview_winheight / 2))
+    }
+
+    pub fn set_var(&self, var_name: &str, value: impl Serialize) -> Result<()> {
+        self.exec("set_var", json!([var_name, value]))
+    }
+
+    pub async fn win_is_valid(&self, winid: usize) -> Result<bool> {
+        let value: Value = self.call("win_is_valid", json!([winid])).await?;
+        Ok(from_vim_bool(value))
     }
 }
 
