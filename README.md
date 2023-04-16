@@ -41,7 +41,6 @@ Vim-clap is a modern generic performant finder using the `floating_win` of neovi
     * [Fzf search syntax](#fzf-search-syntax)
     * [Extended search syntax](#extended-search-syntax)
   * [Config file](#config-file)
-  * [Plugin](#plugin)
 * [How to define your own provider](#how-to-define-your-own-provider)
 * [Disable auto-completion plugin in clap input window](#disable-auto-completion-plugin-in-clap-input-window)
 * [Contribution](#contribution)
@@ -320,12 +319,12 @@ User config file is loaded from:
 tiebreak = "score,-begin,-end,-length"
 ```
 
-### Plugin
+<!-- ### Plugin -->
 
-Apart from the providers focusing on the general searching/filtering, vim-clap has an experimental support of a varity of vim plugins reimplemented in Rust. I created them in order to shorten my plugin list in vimrc, use at your own risk.
+<!-- Apart from the providers focusing on the general searching/filtering, vim-clap has an experimental support of a varity of vim plugins reimplemented in Rust. I created them in order to shorten my plugin list in vimrc, use at your own risk. -->
 
-- highlight-cursor-word
-- vim-markdown-toc
+<!-- - highlight-cursor-word -->
+<!-- - vim-markdown-toc -->
 
 ## How to define your own provider
 
