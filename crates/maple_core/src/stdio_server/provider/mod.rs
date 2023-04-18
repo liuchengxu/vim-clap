@@ -4,9 +4,9 @@ mod filer;
 mod files;
 mod generic_provider;
 mod grep;
-mod tagfiles;
-// mod interactive_grep;
+mod igrep;
 mod recent_files;
+mod tagfiles;
 
 pub use self::filer::read_dir_entries;
 use crate::paths::AbsPathBuf;
@@ -40,9 +40,7 @@ pub async fn create_provider(provider_id: &str, ctx: &Context) -> Result<Box<dyn
         "filer" => Box::new(filer::FilerProvider::new(ctx).await?),
         "files" => Box::new(files::FilesProvider::new(ctx).await?),
         "grep" => Box::new(grep::GrepProvider::new()),
-        // "interactive_grep" => Box::new(interactive_grep::InteractiveGrepProvider::new(
-        // ctx.cwd.to_path_buf(),
-        // )),
+        "igrep" => Box::new(igrep::IgrepProvider::new(ctx)),
         "recent_files" => Box::new(recent_files::RecentFilesProvider::new(ctx)),
         "tagfiles" => Box::new(tagfiles::TagfilesProvider::new()),
         _ => Box::new(generic_provider::GenericProvider::new()),
