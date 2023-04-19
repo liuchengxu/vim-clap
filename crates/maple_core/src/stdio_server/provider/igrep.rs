@@ -65,6 +65,8 @@ impl IgrepProvider {
                 let preview_target = PreviewTarget::File(target_dir);
                 self.update_preview(preview_target, ctx).await?;
             }
+        } else {
+            ctx.vim.bare_exec("clap#selection#toggle")?;
         }
 
         Ok(())

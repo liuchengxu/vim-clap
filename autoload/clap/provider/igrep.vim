@@ -30,11 +30,6 @@ else
   endfunction
 endif
 
-function! clap#provider#igrep#hi_empty_dir() abort
-  syntax match ClapEmptyDirectory /^.*<Empty directory>/
-  hi default link ClapEmptyDirectory WarningMsg
-endfunction
-
 " APIs used by Rust backend.
 function! clap#provider#igrep#handle_on_initialize(result) abort
   let result = a:result
@@ -198,7 +193,9 @@ let s:igrep.syntax = 'clap_grep'
 let s:igrep.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:igrep.bs_action = function('s:bs_action')
 let s:igrep.back_action = { -> clap#client#notify_provider('backspace') }
-let s:igrep.tab_action = { -> clap#client#notify_provider('tab') }
+let s:igrep.mappings = {
+      \ "<Tab>": { ->  clap#client#notify_provider('tab') },
+      \ }
 let s:igrep.cr_action = { -> clap#client#notify_provider('cr') }
 let s:igrep.source_type = g:__t_rpc
 let s:igrep.on_no_matches = function('s:igrep_on_no_matches')
