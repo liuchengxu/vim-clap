@@ -6,6 +6,7 @@ use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use crate::stdio_server::vim::preview_syntax;
 use anyhow::Result;
 use matcher::MatchScope;
+use pattern::extract_grep_position;
 use printer::Printer;
 use serde_json::json;
 use std::collections::hash_map::Entry;
@@ -356,10 +357,22 @@ impl ClapProvider for IgrepProvider {
         }
         let query: String = ctx.vim.input_get().await?;
         if query.is_empty() {
-            self.preview_current_entry(ctx).await
+            self.preview_current_entry(ctx).await?;
         } else {
-            ctx.update_preview(None).await
+            let curline = ctx.vim.display_getcurline().await?;
+            if let Some((fpath, lnum, _col, _cache_line)) = extract_grep_position(&curline) {
+                let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
+                let path = self.current_dir.join(fpath);
+
+                let preview_target = PreviewTarget::LineInFile {
+                    path,
+                    line_number: lnum,
+                };
+
+                ctx.update_preview(Some(preview_target)).await?;
+            }
         }
+        Ok(())
     }
 
     async fn on_typed(&mut self, ctx: &mut Context) -> Result<()> {
