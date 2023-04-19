@@ -195,8 +195,8 @@ let s:igrep.bs_action = function('s:bs_action')
 let s:igrep.back_action = { -> clap#client#notify_provider('backspace') }
 let s:igrep.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
+      \ "<CR>": { ->  clap#client#notify_provider('cr') },
       \ }
-let s:igrep.cr_action = { -> clap#client#notify_provider('cr') }
 let s:igrep.source_type = g:__t_rpc
 let s:igrep.on_no_matches = function('s:igrep_on_no_matches')
 let g:clap#provider#igrep# = s:igrep

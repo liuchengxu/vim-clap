@@ -50,7 +50,7 @@ inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR
 " Use this way when we need stopinsert inside the handler.
 inoremap <silent> <buffer> <C-c> <Esc>:<c-u>call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-g> <Esc>:<c-u>call clap#handler#exit()<CR>
-inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#cr_action()<CR>
+inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#handle_mapping_cr()<CR>
 
 inoremap <silent> <buffer> <Down> <C-R>=clap#navigation#linewise_scroll('down')<CR>
 inoremap <silent> <buffer> <Up>   <C-R>=clap#navigation#linewise_scroll('up')<CR>

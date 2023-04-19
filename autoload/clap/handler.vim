@@ -125,9 +125,9 @@ function! clap#handler#back_action() abort
   return ''
 endfunction
 
-function! clap#handler#cr_action() abort
-  if has_key(g:clap.provider._(), 'cr_action')
-    call g:clap.provider._().cr_action()
+function! clap#handler#handle_mapping_cr() abort
+  if has_key(get(g:clap.provider._(), 'mappings', {}), "<CR>")
+    call g:clap.provider._().mappings["<CR>"]()
     return ''
   endif
   call clap#handler#sink()

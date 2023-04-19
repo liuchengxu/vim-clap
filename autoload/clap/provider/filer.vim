@@ -191,9 +191,9 @@ let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:filer.bs_action = function('s:bs_action')
 let s:filer.back_action = { -> clap#client#notify_provider('backspace') }
-let s:filer.cr_action = { -> clap#client#notify_provider('cr') }
 let s:filer.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
+      \ "<CR>": { ->  clap#client#notify_provider('cr') },
       \ }
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
