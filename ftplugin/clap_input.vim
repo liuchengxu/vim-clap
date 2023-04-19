@@ -61,12 +61,12 @@ inoremap <silent> <buffer> <ScrollWheelUp>   <C-R>=clap#navigation#linewise_scro
 inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
-inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#tab_action()<CR>
+inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#handle_mapping_tab()<CR>
 inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>
 inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#back_action()<CR>
 
-inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#tab_action()<CR>
-inoremap <silent> <buffer> <RightMouse>      <C-R>=clap#handler#tab_action()<CR>
+inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#handle_mapping_tab()<CR>
+inoremap <silent> <buffer> <RightMouse>      <C-R>=clap#handler#handle_mapping_tab()<CR>
 
 inoremap <silent> <buffer> <C-j> <C-R>=clap#navigation#linewise_scroll('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#navigation#linewise_scroll('up')<CR>
@@ -92,13 +92,13 @@ nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise_scroll('up
 nnoremap <silent> <buffer> <ScrollWheelDown> :<c-u>call clap#navigation#linewise_scroll('down')<CR>
 nnoremap <silent> <buffer> <ScrollWheelUp>   :<c-u>call clap#navigation#linewise_scroll('up')<CR>
 
-nnoremap <silent> <buffer> <LeftMouse>       :<c-u>call clap#handler#tab_action()<CR>
-nnoremap <silent> <buffer> <RightMouse>      :<c-u>call clap#handler#tab_action()<CR>
+nnoremap <silent> <buffer> <LeftMouse>       :<c-u>call clap#handler#handle_mapping_tab()<CR>
+nnoremap <silent> <buffer> <RightMouse>      :<c-u>call clap#handler#handle_mapping_tab()<CR>
 
 nnoremap <silent> <buffer> <PageDown> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <PageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
 
-nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#tab_action()<CR>
+nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#handle_mapping_tab()<CR>
 nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#back_action()<CR>
 
 nnoremap <silent> <buffer> <C-d> :<c-u>call clap#navigation#scroll('down')<CR>

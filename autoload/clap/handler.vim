@@ -134,7 +134,7 @@ function! clap#handler#cr_action() abort
   return ''
 endfunction
 
-function! clap#handler#tab_action() abort
+function! clap#handler#handle_mapping_tab() abort
   if has_key(get(g:clap.provider._(), 'mappings', {}), "<Tab>")
     call g:clap.provider._().mappings["<Tab>"]()
     return ''
