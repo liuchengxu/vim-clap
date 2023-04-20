@@ -134,7 +134,13 @@ impl FilerProvider {
     }
 
     async fn on_backspace(&mut self, ctx: &mut Context) -> Result<()> {
-        let mut input = ctx.vim.input_get().await?;
+        let mut input: String = if ctx.env.is_nvim {
+            ctx.vim.input_get().await?
+        } else {
+            ctx.vim
+                .eval("g:__clap_popup_input_before_backspace_applied")
+                .await?
+        };
 
         if input.is_empty() {
             self.goto_parent(ctx)?;

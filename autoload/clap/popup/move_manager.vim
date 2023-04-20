@@ -122,10 +122,12 @@ endfunction
 
 function! s:move_manager.bs(_winid) abort
   let before_bs = s:strpart_input(0, s:cursor_idx).s:strpart_input(s:cursor_idx)
+  " Rust backend needs to react against the value before UI changed.
+  let g:__clap_popup_input_before_backspace_applied = before_bs
   call s:backspace()
   if has_key(g:clap.provider._(), 'bs_action')
     call s:mock_input()
-    call g:clap.provider._().bs_action(before_bs)
+    call g:clap.provider._().bs_action()
   else
     call s:trigger_on_typed()
   endif

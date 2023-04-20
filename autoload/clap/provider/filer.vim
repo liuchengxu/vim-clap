@@ -103,17 +103,10 @@ function! clap#provider#filer#set_create_file_entry() abort
   call g:clap.display.set_lines([create_file_line])
 endfunction
 
-if has('nvim')
-  function! s:bs_action() abort
-    call clap#client#notify_provider('backspace')
-    return ''
-  endfunction
-else
-  function! s:bs_action(before_bs) abort
-    call clap#client#notify_provider('backspace')
-    return ''
-  endfunction
-endif
+function! s:bs_action() abort
+  call clap#client#notify_provider('backspace')
+  return ''
+endfunction
 
 function! s:get_entry_by_line(line) abort
   let curline = a:line
