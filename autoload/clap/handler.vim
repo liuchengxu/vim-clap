@@ -125,12 +125,17 @@ function! clap#handler#back_action() abort
   return ''
 endfunction
 
-function! clap#handler#handle_mapping_cr() abort
-  if has_key(get(g:clap.provider._(), 'mappings', {}), "<CR>")
-    call g:clap.provider._().mappings["<CR>"]()
+let s:default_mappings = {
+      \ "<Tab>": function('clap#selection#toggle'),
+      \ "<CR>": function('clap#handler#sink'),
+      \ }
+
+function! clap#handler#handle_mappings(mapping) abort
+  if has_key(get(g:clap.provider._(), 'mappings', {}), a:mapping)
+    call g:clap.provider._().mappings[a:mapping]()
     return ''
   endif
-  call clap#handler#sink()
+  call s:default_mappings[a:mapping]()
   return ''
 endfunction
 

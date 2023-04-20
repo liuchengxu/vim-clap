@@ -198,6 +198,7 @@ impl CursorWordHighlighter {
 
         // Clear the old highlights after the new added ones so that no flicker occurs.
         if let Some(WinHighlights { winid, match_ids }) = old_highlights {
+            tracing::debug!("============ delete batch matchids: {match_ids:?}");
             self.vim.matchdelete_batch(match_ids, winid).await?;
         }
 
