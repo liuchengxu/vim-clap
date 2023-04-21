@@ -54,7 +54,16 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Debug)]
-pub struct FilerItem(pub String);
+pub struct FilerItemWithoutIcon(String);
+
+impl ClapItem for FilerItemWithoutIcon {
+    fn raw_text(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+#[derive(Debug)]
+pub struct FilerItem(String);
 
 impl ClapItem for FilerItem {
     fn raw_text(&self) -> &str {
@@ -80,25 +89,28 @@ pub struct FilerProvider {
     dir_entries: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
     current_lines: Vec<String>,
     printer: Printer,
+    icon_enabled: bool,
 }
 
 impl FilerProvider {
-    pub fn new(ctx: &Context) -> Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
         let current_dir = ctx.cwd.to_path_buf();
         // icon is handled inside the provider impl.
         let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
-        Self {
+        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        Ok(Self {
             current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
             printer,
-        }
+            icon_enabled,
+        })
     }
 
-    // Without the icon.
+    // Strip the leading icon.
     async fn current_line(&self, ctx: &Context) -> Result<String> {
         let curline = ctx.vim.display_getcurline().await?;
-        let curline = if ctx.vim.get_var_bool("clap_enable_icon").await? {
+        let curline = if self.icon_enabled {
             curline.chars().skip(2).collect()
         } else {
             curline
@@ -122,7 +134,13 @@ impl FilerProvider {
     }
 
     async fn on_backspace(&mut self, ctx: &mut Context) -> Result<()> {
-        let mut input = ctx.vim.input_get().await?;
+        let mut input: String = if ctx.env.is_nvim {
+            ctx.vim.input_get().await?
+        } else {
+            ctx.vim
+                .eval("g:__clap_popup_input_before_backspace_applied")
+                .await?
+        };
 
         if input.is_empty() {
             self.goto_parent(ctx)?;
@@ -191,7 +209,7 @@ impl FilerProvider {
                     .collect(),
             );
 
-            if ctx.env.icon.enabled() {
+            if self.icon_enabled {
                 indices.iter_mut().for_each(|v| {
                     v.iter_mut().for_each(|x| {
                         *x -= 2;
@@ -222,7 +240,7 @@ impl FilerProvider {
             icon_added,
         } = self.printer.to_display_lines(matched_items);
 
-        if ctx.env.icon.enabled() {
+        if self.icon_enabled {
             indices.iter_mut().for_each(|v| {
                 v.iter_mut().for_each(|x| {
                     *x -= 2;
@@ -301,7 +319,7 @@ impl FilerProvider {
 
     fn load_dir(&mut self, target_dir: PathBuf, ctx: &Context) -> Result<()> {
         if let Entry::Vacant(v) = self.dir_entries.entry(target_dir) {
-            let entries = match read_dir_entries(&self.current_dir, ctx.env.icon.enabled(), None) {
+            let entries = match read_dir_entries(&self.current_dir, self.icon_enabled, None) {
                 Ok(entries) => entries,
                 Err(err) => {
                     ctx.vim
@@ -313,7 +331,13 @@ impl FilerProvider {
             v.insert(
                 entries
                     .into_iter()
-                    .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
+                    .map(|line| {
+                        if self.icon_enabled {
+                            Arc::new(FilerItem(line)) as Arc<dyn ClapItem>
+                        } else {
+                            Arc::new(FilerItemWithoutIcon(line)) as Arc<dyn ClapItem>
+                        }
+                    })
                     .collect(),
             );
         }
@@ -327,7 +351,7 @@ impl ClapProvider for FilerProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let cwd = &ctx.cwd;
 
-        let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {
+        let entries = match read_dir_entries(cwd, self.icon_enabled, None) {
             Ok(entries) => entries,
             Err(err) => {
                 tracing::error!(?cwd, "Failed to read directory entries");
@@ -346,7 +370,13 @@ impl ClapProvider for FilerProvider {
             entries
                 .clone()
                 .into_iter()
-                .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
+                .map(|line| {
+                    if self.icon_enabled {
+                        Arc::new(FilerItem(line)) as Arc<dyn ClapItem>
+                    } else {
+                        Arc::new(FilerItemWithoutIcon(line)) as Arc<dyn ClapItem>
+                    }
+                })
                 .collect(),
         );
         self.current_lines = entries;

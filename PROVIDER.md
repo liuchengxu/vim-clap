@@ -168,12 +168,6 @@ Field           | Type    | Required      | Has default implementation
 `back_action`   | funcref | optional      | No
 `init`          | funcref | **mandatory** | No
 
-- `bs_action`: The signature is different between vim and neovim.
-
-  - neovim: `bs_action()`.
-  - vim: `bs_action(before_bs)`, the argument `before_bs` is the input before `BS` is pressed.
-
-
 This kind of provider requires you to be experienced in VimScript and Rust. Checkout the source code [autoload/clap/provider/filer.vim](autoload/clap/provider/filer.vim) and [src/rpc.rs](src/rpc.rs) directly.
 
 ### Register provider
