@@ -184,11 +184,11 @@ let s:igrep.sink = function('s:igrep_sink')
 let s:igrep.icon = 'File'
 let s:igrep.syntax = 'clap_grep'
 let s:igrep.on_typed = { -> clap#client#notify_provider('on_typed') }
-let s:igrep.back_action = { -> clap#client#notify_provider('backspace') }
 let s:igrep.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
       \ "<BS>": function('s:handle_mapping_bs'),
+      \ "<A-U>": { -> clap#client#notify_provider('backspace') },
       \ }
 let s:igrep.source_type = g:__t_rpc
 let s:igrep.on_no_matches = function('s:igrep_on_no_matches')

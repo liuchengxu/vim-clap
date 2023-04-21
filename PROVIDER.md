@@ -162,11 +162,10 @@ The RPC service will be started on initializing the display window when this kin
 Field           | Type    | Required      | Has default implementation
 :----           | :----   | :----         | :----
 `on_no_matches` | funcref | optional      | No
-`tab_action`    | funcref | optional      | No
-`bs_action`     | funcref | optional      | No
 `cr_action`     | funcref | optional      | No
-`back_action`   | funcref | optional      | No
 `init`          | funcref | **mandatory** | No
+
+TODO: `provider.mappings`
 
 This kind of provider requires you to be experienced in VimScript and Rust. Checkout the source code [autoload/clap/provider/filer.vim](autoload/clap/provider/filer.vim) and [src/rpc.rs](src/rpc.rs) directly.
 

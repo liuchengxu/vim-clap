@@ -117,34 +117,22 @@ function! clap#handler#internal_exit() abort
   call clap#exit()
 endfunction
 
-function! clap#handler#back_action() abort
-  if has_key(g:clap.provider._(), 'back_action')
-    call g:clap.provider._().back_action()
-    return ''
-  endif
-  return ''
+function! s:noop() abort
 endfunction
 
 let s:default_mappings = {
       \ "<Tab>": function('clap#selection#toggle'),
       \ "<CR>": function('clap#handler#sink'),
+      \ "<A-U>": function('s:noop'),
       \ }
 
 function! clap#handler#handle_mappings(mapping) abort
   if has_key(get(g:clap.provider._(), 'mappings', {}), a:mapping)
     call g:clap.provider._().mappings[a:mapping]()
-    return ''
+  else
+    call s:default_mappings[a:mapping]()
   endif
-  call s:default_mappings[a:mapping]()
   return ''
-endfunction
-
-function! clap#handler#handle_mapping_tab() abort
-  if has_key(get(g:clap.provider._(), 'mappings', {}), "<Tab>")
-    call g:clap.provider._().mappings["<Tab>"]()
-    return ''
-  endif
-  return clap#selection#toggle()
 endfunction
 
 function! clap#handler#handle_mapping_bs() abort

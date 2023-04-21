@@ -63,7 +63,7 @@ inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
 inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
 inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#handle_mapping_bs()<CR>
-inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#back_action()<CR>
+inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#handle_mappings("\<A-U\>")<CR>
 
 inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
 inoremap <silent> <buffer> <RightMouse>      <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
@@ -99,7 +99,7 @@ nnoremap <silent> <buffer> <PageDown> :<c-u>call clap#navigation#scroll('down')<
 nnoremap <silent> <buffer> <PageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
 
 nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#handle_mappings("\<CR\>")<CR>
-nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#back_action()<CR>
+nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#handle_mappings("\<A-U\>")<CR>
 
 nnoremap <silent> <buffer> <C-d> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <C-u> :<c-u>call clap#navigation#scroll('up')<CR>
