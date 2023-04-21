@@ -98,17 +98,10 @@ function! clap#provider#igrep#set_create_file_entry() abort
   call g:clap.display.set_lines([create_file_line])
 endfunction
 
-if has('nvim')
-  function! s:bs_action() abort
-    call clap#client#notify_provider('backspace')
-    return ''
-  endfunction
-else
-  function! s:bs_action(before_bs) abort
-    call clap#client#notify_provider('backspace')
-    return ''
-  endfunction
-endif
+function! s:handle_mapping_bs() abort
+  call clap#client#notify_provider('backspace')
+  return ''
+endfunction
 
 function! s:get_entry_by_line(line) abort
   let curline = a:line
@@ -191,11 +184,11 @@ let s:igrep.sink = function('s:igrep_sink')
 let s:igrep.icon = 'File'
 let s:igrep.syntax = 'clap_grep'
 let s:igrep.on_typed = { -> clap#client#notify_provider('on_typed') }
-let s:igrep.bs_action = function('s:bs_action')
 let s:igrep.back_action = { -> clap#client#notify_provider('backspace') }
 let s:igrep.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
+      \ "<BS>": function('s:handle_mapping_bs'),
       \ }
 let s:igrep.source_type = g:__t_rpc
 let s:igrep.on_no_matches = function('s:igrep_on_no_matches')

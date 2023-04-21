@@ -1,4 +1,4 @@
-use super::filer::{read_dir_entries, FilerItem};
+use super::filer::{read_dir_entries, FilerItem, FilerItemWithoutIcon};
 use super::Direction;
 use crate::stdio_server::handler::{CachedPreviewImpl, Preview, PreviewTarget};
 use crate::stdio_server::input::KeyEvent;
@@ -24,19 +24,22 @@ pub struct IgrepProvider {
     dir_entries: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
     current_lines: Vec<String>,
     searcher_control: Option<SearcherControl>,
+    icon_enabled: bool,
 }
 
 impl IgrepProvider {
-    pub fn new(ctx: &Context) -> Self {
+    pub async fn new(ctx: &Context) -> Result<Self> {
         let current_dir = ctx.cwd.to_path_buf();
         let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
-        Self {
+        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        Ok(Self {
             printer,
             current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
             searcher_control: None,
-        }
+            icon_enabled,
+        })
     }
 
     // Without the icon.
@@ -277,7 +280,13 @@ impl IgrepProvider {
             v.insert(
                 entries
                     .into_iter()
-                    .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
+                    .map(|line| {
+                        if self.icon_enabled {
+                            Arc::new(FilerItem(line)) as Arc<dyn ClapItem>
+                        } else {
+                            Arc::new(FilerItemWithoutIcon(line)) as Arc<dyn ClapItem>
+                        }
+                    })
                     .collect(),
             );
         }

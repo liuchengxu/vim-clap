@@ -147,9 +147,9 @@ function! clap#handler#handle_mapping_tab() abort
   return clap#selection#toggle()
 endfunction
 
-function! clap#handler#bs_action() abort
-  if has_key(g:clap.provider._(), 'bs_action')
-    call g:clap.provider._().bs_action()
+function! clap#handler#handle_mapping_bs() abort
+  if has_key(get(g:clap.provider._(), 'mappings', {}), "<BS>")
+    call g:clap.provider._().mappings["<BS>"]()
   else
     call nvim_feedkeys("\<BS>", 'n', v:true)
   endif

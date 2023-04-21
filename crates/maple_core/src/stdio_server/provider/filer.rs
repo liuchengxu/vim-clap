@@ -54,7 +54,7 @@ pub fn read_dir_entries<P: AsRef<Path>>(
 }
 
 #[derive(Debug)]
-pub struct FilerItemWithoutIcon(String);
+pub struct FilerItemWithoutIcon(pub String);
 
 impl ClapItem for FilerItemWithoutIcon {
     fn raw_text(&self) -> &str {
@@ -63,7 +63,7 @@ impl ClapItem for FilerItemWithoutIcon {
 }
 
 #[derive(Debug)]
-pub struct FilerItem(String);
+pub struct FilerItem(pub String);
 
 impl ClapItem for FilerItem {
     fn raw_text(&self) -> &str {

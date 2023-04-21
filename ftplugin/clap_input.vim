@@ -62,7 +62,7 @@ inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
 inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
-inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#bs_action()<CR>
+inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#handle_mapping_bs()<CR>
 inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#back_action()<CR>
 
 inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>

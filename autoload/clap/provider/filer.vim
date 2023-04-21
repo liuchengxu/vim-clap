@@ -103,7 +103,7 @@ function! clap#provider#filer#set_create_file_entry() abort
   call g:clap.display.set_lines([create_file_line])
 endfunction
 
-function! s:bs_action() abort
+function! s:handle_mapping_bs() abort
   call clap#client#notify_provider('backspace')
   return ''
 endfunction
@@ -189,11 +189,11 @@ let s:filer.sink = function('s:filer_sink')
 let s:filer.icon = 'File'
 let s:filer.syntax = 'clap_filer'
 let s:filer.on_typed = { -> clap#client#notify_provider('on_typed') }
-let s:filer.bs_action = function('s:bs_action')
 let s:filer.back_action = { -> clap#client#notify_provider('backspace') }
 let s:filer.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
+      \ "<BS>": function('s:handle_mapping_bs'),
       \ }
 let s:filer.source_type = g:__t_rpc
 let s:filer.on_no_matches = function('s:filer_on_no_matches')
