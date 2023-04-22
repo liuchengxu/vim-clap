@@ -17,7 +17,7 @@ function! s:init_ext2ft() abort
     endif
   endfor
 
-  let s:ext2ft = {'h': 'c', 'hpp': 'cpp', 'vimrc': 'vim'}
+  let s:ext2ft = {'c': 'c', 'h': 'c', 'hpp': 'cpp', 'vimrc': 'vim'}
   for line in matched
     let splitted = split(line)
     let ext = split(splitted[0], '\.')[-1]
@@ -27,7 +27,8 @@ function! s:init_ext2ft() abort
 endfunction
 
 function! clap#ext#set(ext_map) abort
-  let s:ext2ft = a:ext_map
+  let s:ext2ft = get(s:, 'ext2ft', {})
+  call extend(s:ext2ft, a:ext_map)
 endfunction
 
 function! clap#ext#into_filetype(fname) abort

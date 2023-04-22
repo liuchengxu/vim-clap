@@ -35,8 +35,24 @@ pub async fn start() {
         call_tx.clone(),
     ));
 
-    let state = State::new(call_tx, rpc_client.clone());
-    let session_client = Client::new(state, rpc_client);
+    let vim = Vim::new(rpc_client.clone());
+
+    tokio::spawn({
+        let vim = vim.clone();
+        async move {
+            // Do the initialization on startup.
+            let output: String = vim
+                .call("execute", json!(["autocmd filetypedetect"]))
+                .await?;
+            let ext_map = initialize_syntax_map(&output);
+            vim.exec("clap#ext#set", json![ext_map])?;
+            tracing::debug!("Client initialized successfully");
+            Ok::<_, anyhow::Error>(())
+        }
+    });
+
+    let state = State::new(call_tx, rpc_client);
+    let session_client = Client::new(state, vim);
     session_client.loop_call(call_rx).await;
 }
 
@@ -49,8 +65,7 @@ struct Client {
 
 impl Client {
     /// Creates a new instnace of [`Client`].
-    fn new(state: State, rpc_client: Arc<RpcClient>) -> Self {
-        let vim = Vim::new(rpc_client);
+    fn new(state: State, vim: Vim) -> Self {
         let mut service_manager = ServiceManager::default();
         if crate::config::config().plugin.highlight_cursor_word.enable {
             service_manager.new_plugin(
@@ -195,16 +210,6 @@ impl Client {
 
     async fn handle_action(&self, notification: Notification, action: String) -> Result<()> {
         match action.as_str() {
-            "initialize_global_env" => {
-                // Should be called only once.
-                let output: String = self
-                    .vim
-                    .call("execute", json!(["autocmd filetypedetect"]))
-                    .await?;
-                let ext_map = initialize_syntax_map(&output);
-                self.vim.exec("clap#ext#set", json![ext_map])?;
-                tracing::debug!("Client initialized successfully");
-            }
             "note_recent_files" => {
                 let bufnr: Vec<usize> = notification.params.parse()?;
                 let bufnr = bufnr
