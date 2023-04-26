@@ -25,6 +25,26 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Instant;
 
+// Do the initialization on startup.
+async fn initialize(vim: Vim) -> Result<()> {
+    // The output of `autocmd filetypedetect` could be incomplete as the
+    // filetype won't be instantly initialized, thus the current workaround
+    // is to introduce some delay.
+    //
+    // TODO: parse filetype.vim
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+
+    let output: String = vim
+        .call("execute", json!(["autocmd filetypedetect"]))
+        .await?;
+    let ext_map = initialize_syntax_map(&output);
+    vim.exec("clap#ext#set", json![ext_map])?;
+
+    tracing::debug!("Client initialized successfully");
+
+    Ok(())
+}
+
 /// Starts and keep running the server on top of stdio.
 pub async fn start() {
     let (call_tx, call_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -40,14 +60,9 @@ pub async fn start() {
     tokio::spawn({
         let vim = vim.clone();
         async move {
-            // Do the initialization on startup.
-            let output: String = vim
-                .call("execute", json!(["autocmd filetypedetect"]))
-                .await?;
-            let ext_map = initialize_syntax_map(&output);
-            vim.exec("clap#ext#set", json![ext_map])?;
-            tracing::debug!("Client initialized successfully");
-            Ok::<_, anyhow::Error>(())
+            if let Err(e) = initialize(vim).await {
+                tracing::error!(error = ?e, "Failed to initialize Client")
+            }
         }
     });
 
