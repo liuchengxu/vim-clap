@@ -192,9 +192,9 @@ let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
 let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
 let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#handle_mappings("\<Tab\>")') }
-let s:move_manager["\<CR>"] = { _winid -> clap#handler#handle_mappings("\<CR\>") }
-let s:move_manager["\<A-U>"] = { _winid -> clap#handler#handle_mappings("\<A-U\>") }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#handle_mapping("\<Tab\>")') }
+let s:move_manager["\<CR>"] = { _winid -> clap#handler#handle_mapping("\<CR\>") }
+let s:move_manager["\<A-U>"] = { _winid -> clap#handler#handle_mapping("\<A-U\>") }
 let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
 let s:move_manager["\<S-Up>"] = s:move_manager.shift_up
 let s:move_manager["\<S-Down>"] = s:move_manager.shift_down
@@ -249,7 +249,7 @@ function! s:apply_input(_timer) abort
 endfunction
 
 function! s:apply_input_with_delay() abort
-  if clap#handler#relaunch_is_ok()
+  if clap#handler#relaunch_is_ok(s:input)
     return
   endif
   if s:input_timer != -1

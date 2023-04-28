@@ -92,7 +92,7 @@ function! clap#provider#igrep#handle_special_entries(abs_path) abort
 endfunction
 
 function! clap#provider#igrep#set_create_file_entry() abort
-  call clap#highlight#clear()
+  call clap#highlighter#clear_display()
   let input = g:clap.input.get()
   let create_file_line = (g:clap_enable_icon ? ' ' : '') . input . s:CREATE_FILE
   call g:clap.display.set_lines([create_file_line])
@@ -184,14 +184,14 @@ let s:igrep.sink = function('s:igrep_sink')
 let s:igrep.icon = 'File'
 let s:igrep.syntax = 'clap_grep'
 let s:igrep.on_typed = { -> clap#client#notify_provider('on_typed') }
+let s:igrep.source_type = g:__t_rpc
+let s:igrep.on_no_matches = function('s:igrep_on_no_matches')
 let s:igrep.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
       \ "<BS>": function('s:handle_mapping_bs'),
       \ "<A-U>": { -> clap#client#notify_provider('backspace') },
       \ }
-let s:igrep.source_type = g:__t_rpc
-let s:igrep.on_no_matches = function('s:igrep_on_no_matches')
 let g:clap#provider#igrep# = s:igrep
 
 let &cpoptions = s:save_cpo

@@ -50,7 +50,7 @@ inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR
 " Use this way when we need stopinsert inside the handler.
 inoremap <silent> <buffer> <C-c> <Esc>:<c-u>call clap#handler#exit()<CR>
 inoremap <silent> <buffer> <C-g> <Esc>:<c-u>call clap#handler#exit()<CR>
-inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#handle_mappings("\<CR\>")<CR>
+inoremap <silent> <buffer> <CR>  <Esc>:<c-u>call clap#handler#handle_mapping("\<CR\>")<CR>
 
 inoremap <silent> <buffer> <Down> <C-R>=clap#navigation#linewise_scroll('down')<CR>
 inoremap <silent> <buffer> <Up>   <C-R>=clap#navigation#linewise_scroll('up')<CR>
@@ -61,12 +61,12 @@ inoremap <silent> <buffer> <ScrollWheelUp>   <C-R>=clap#navigation#linewise_scro
 inoremap <silent> <buffer> <PageDown> <C-R>=clap#navigation#scroll('down')<CR>
 inoremap <silent> <buffer> <PageUp>   <C-R>=clap#navigation#scroll('up')<CR>
 
-inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
-inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#handle_mapping_bs()<CR>
-inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#handle_mappings("\<A-U\>")<CR>
+inoremap <silent> <buffer> <Tab>       <C-R>=clap#handler#handle_mapping("\<Tab\>")<CR>
+inoremap <silent> <buffer> <Backspace> <C-R>=clap#handler#handle_mapping("\<BS\>")<CR>
+inoremap <silent> <buffer> <A-u>       <C-R>=clap#handler#handle_mapping("\<A-U\>")<CR>
 
-inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
-inoremap <silent> <buffer> <RightMouse>      <C-R>=clap#handler#handle_mappings("\<Tab\>")<CR>
+inoremap <silent> <buffer> <LeftMouse>       <C-R>=clap#handler#handle_mapping("\<Tab\>")<CR>
+inoremap <silent> <buffer> <RightMouse>      <C-R>=clap#handler#handle_mapping("\<Tab\>")<CR>
 
 inoremap <silent> <buffer> <C-j> <C-R>=clap#navigation#linewise_scroll('down')<CR>
 inoremap <silent> <buffer> <C-k> <C-R>=clap#navigation#linewise_scroll('up')<CR>
@@ -84,7 +84,7 @@ nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers(
 
 nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>
-nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#sink()<CR>
+nnoremap <silent> <buffer> <CR>      :<c-u>call clap#handler#handle_mapping("\<CR\>")<CR>
 
 nnoremap <silent> <buffer> <Down> :<c-u>call clap#navigation#linewise_scroll('down')<CR>
 nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise_scroll('up')<CR>
@@ -92,14 +92,14 @@ nnoremap <silent> <buffer> <Up>   :<c-u>call clap#navigation#linewise_scroll('up
 nnoremap <silent> <buffer> <ScrollWheelDown> :<c-u>call clap#navigation#linewise_scroll('down')<CR>
 nnoremap <silent> <buffer> <ScrollWheelUp>   :<c-u>call clap#navigation#linewise_scroll('up')<CR>
 
-nnoremap <silent> <buffer> <LeftMouse>       :<c-u>call clap#handler#handle_mappings("\<CR\>")<CR>
-nnoremap <silent> <buffer> <RightMouse>      :<c-u>call clap#handler#handle_mappings("\<CR\>")<CR>
+nnoremap <silent> <buffer> <LeftMouse>       :<c-u>call clap#handler#handle_mapping("\<CR\>")<CR>
+nnoremap <silent> <buffer> <RightMouse>      :<c-u>call clap#handler#handle_mapping("\<CR\>")<CR>
 
 nnoremap <silent> <buffer> <PageDown> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <PageUp>   :<c-u>call clap#navigation#scroll('up')<CR>
 
-nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#handle_mappings("\<CR\>")<CR>
-nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#handle_mappings("\<A-U\>")<CR>
+nnoremap <silent> <buffer> <Tab> :<c-u>call clap#handler#handle_mapping("\<CR\>")<CR>
+nnoremap <silent> <buffer> <A-u> :<c-u>call clap#handler#handle_mapping("\<A-U\>")<CR>
 
 nnoremap <silent> <buffer> <C-d> :<c-u>call clap#navigation#scroll('down')<CR>
 nnoremap <silent> <buffer> <C-u> :<c-u>call clap#navigation#scroll('up')<CR>
