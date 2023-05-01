@@ -1,4 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
+use crate::trimmer::AsciiDots;
 use crate::GrepResult;
 use std::collections::HashMap;
 use std::path::MAIN_SEPARATOR;
@@ -151,7 +152,9 @@ pub fn truncate_grep_results(
                             let column = grep_result.column;
                             let column_end = grep_result.column_end;
 
-                            let mut offset = 3 // .. + MAIN_SEPARATOR
+                            // dots + MAIN_SEPARATOR
+                            let mut offset = AsciiDots::CHAR_LEN
+                                + 1
                                 + file_name.len()
                                 + utils::display_width(line_number)
                                 + utils::display_width(column)
@@ -159,16 +162,19 @@ pub fn truncate_grep_results(
 
                             // In the middle of file name and column
                             let trimmed_text_with_visible_filename = if start < column_end {
-                                let trimmed_pattern = &trimmed_text[column_end - start..];
+                                let mut trimmed_text_chars = trimmed_text.chars();
+                                (0..column_end - start).for_each(|_| {trimmed_text_chars.next();});
+
+                                let trimmed_pattern = trimmed_text_chars.as_str();
                                 offset -= column_end - start;
 
-                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}", AsciiDots::DOTS)
                             } else {
-                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}", AsciiDots::DOTS)
                             };
 
                             let mut indices = indices;
-                            let file_name_end = 3 + file_name.len();
+                            let file_name_end = AsciiDots::CHAR_LEN + 1 + file_name.len();
                             indices.iter_mut().for_each(|x| {
                                 *x += offset;
                                 if *x <= file_name_end {
