@@ -1,12 +1,12 @@
-/// This implementation has been deprecated, but still used in the Python
-/// binding due to an unknown issue with the v1 implementation, to reproduce:
-///
-/// 1. `let g:clap_force_python = 1`.
-/// 2. open https://github.com/subspace/subspace/blob/c50bec907ab8ade923a2a0b4888f43bfc47e8a7f/polkadot/node/collation-generation/src/lib.rs
-/// 3. Type `sr` and then you'll see Neovim hang forever, have no idea&time to fix it
-/// properly therefore the old implementation are just kept.
+//! This implementation has been deprecated, but still used in the Python
+//! binding due to an unknown issue with the v1 implementation, to reproduce:
+//!
+//! 1. `let g:clap_force_python = 1`.
+//! 2. open https://github.com/subspace/subspace/blob/c50bec907ab8ade923a2a0b4888f43bfc47e8a7f/polkadot/node/collation-generation/src/lib.rs
+//! 3. Type `sr` and then you'll see Neovim hang forever, have no idea&time to fix it
+//! properly therefore the old implementation are just kept.
 
-const DOTS: &str = "..";
+use super::AsciiDots;
 
 // https://stackoverflow.com/questions/51982999/slice-a-string-containing-unicode-chars
 #[inline]
@@ -30,8 +30,8 @@ pub fn trim_text(
         // [--------------------------]
         // [-----------------------------------------------------------------xx--x--]
         for _ in 0..3 {
-            if indices[0] - start >= DOTS.len() && line_len - start >= container_width {
-                start += DOTS.len();
+            if indices[0] - start >= AsciiDots::CHAR_LEN && line_len - start >= container_width {
+                start += AsciiDots::CHAR_LEN;
             } else {
                 break;
             }
@@ -43,9 +43,14 @@ pub fn trim_text(
         let end = line.len();
         let left_truncated = if let Some(n) = skipped {
             let icon: String = line.chars().take(n).collect();
-            format!("{}{}{}", icon, DOTS, utf8_str_slice(line, start, end))
+            format!(
+                "{}{}{}",
+                icon,
+                AsciiDots::DOTS,
+                utf8_str_slice(line, start, end)
+            )
         } else {
-            format!("{}{}", DOTS, utf8_str_slice(line, start, end))
+            format!("{}{}", AsciiDots::DOTS, utf8_str_slice(line, start, end))
         };
 
         let offset = line_len.saturating_sub(left_truncated.len());
@@ -55,10 +60,13 @@ pub fn trim_text(
         let (truncated, max_index) = if left_truncated_len > container_width {
             if left_truncated_len == container_width + 1 {
                 let left_truncated = utf8_str_slice(&left_truncated, 0, container_width - 1);
-                (format!("{left_truncated}.",), container_width - 1)
+                (format!("{left_truncated}."), container_width - 1)
             } else {
                 let left_truncated = utf8_str_slice(&left_truncated, 0, container_width - 2);
-                (format!("{left_truncated}{DOTS}",), container_width - 2)
+                (
+                    format!("{left_truncated}{}", AsciiDots::DOTS),
+                    container_width - 2,
+                )
             }
         } else {
             (left_truncated, container_width)
