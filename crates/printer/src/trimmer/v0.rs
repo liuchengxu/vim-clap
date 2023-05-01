@@ -65,7 +65,7 @@ pub fn trim_text(
                 let left_truncated = utf8_str_slice(&left_truncated, 0, container_width - 2);
                 (
                     format!("{left_truncated}{}", AsciiDots::DOTS),
-                    container_width - 2,
+                    container_width - AsciiDots::BYTE_LEN,
                 )
             }
         } else {

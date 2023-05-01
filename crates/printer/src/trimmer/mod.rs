@@ -8,3 +8,11 @@ impl AsciiDots {
     pub const CHAR_LEN: usize = 2;
     pub const BYTE_LEN: usize = 2;
 }
+
+pub struct UnicodeDots;
+
+impl UnicodeDots {
+    pub const DOTS: char = '…';
+    pub const CHAR_LEN: usize = 1;
+    pub const BYTE_LEN: usize = 3;
+}

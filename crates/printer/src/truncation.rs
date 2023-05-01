@@ -1,5 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
-use crate::trimmer::AsciiDots;
+use crate::trimmer::UnicodeDots;
 use crate::GrepResult;
 use std::collections::HashMap;
 use std::path::MAIN_SEPARATOR;
@@ -153,7 +153,7 @@ pub fn truncate_grep_results(
                             let column_end = grep_result.column_end;
 
                             // dots + MAIN_SEPARATOR
-                            let mut offset = AsciiDots::CHAR_LEN
+                            let mut offset = UnicodeDots::CHAR_LEN
                                 + 1
                                 + file_name.len()
                                 + utils::display_width(line_number)
@@ -168,13 +168,13 @@ pub fn truncate_grep_results(
                                 let trimmed_pattern = trimmed_text_chars.as_str();
                                 offset -= column_end - start;
 
-                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}", AsciiDots::DOTS)
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}", UnicodeDots::DOTS)
                             } else {
-                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}", AsciiDots::DOTS)
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}", UnicodeDots::DOTS)
                             };
 
                             let mut indices = indices;
-                            let file_name_end = AsciiDots::CHAR_LEN + 1 + file_name.len();
+                            let file_name_end = UnicodeDots::CHAR_LEN + 1 + file_name.len();
                             indices.iter_mut().for_each(|x| {
                                 *x += offset;
                                 if *x <= file_name_end {

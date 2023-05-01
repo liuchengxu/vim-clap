@@ -1,4 +1,4 @@
-use super::AsciiDots;
+use super::UnicodeDots;
 use unicode_width::UnicodeWidthChar;
 
 /// Returns the displayed width in columns of a `text`.
@@ -41,8 +41,8 @@ fn remove_first_char(value: &str) -> &str {
 fn trim_left(text: &str, width: usize, tabstop: usize) -> (&str, usize) {
     // Assume each char takes at least one column
     let chars_count = text.chars().count();
-    let (mut text, mut trimmed_chars_len) = if chars_count > width + AsciiDots::CHAR_LEN {
-        let diff = chars_count - width - AsciiDots::CHAR_LEN;
+    let (mut text, mut trimmed_chars_len) = if chars_count > width + UnicodeDots::CHAR_LEN {
+        let diff = chars_count - width - UnicodeDots::CHAR_LEN;
         // 292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");, 56, 4
         // thread 'main' panicked at 'byte index 62 is not a char boundary; it is inside '💔' (bytes 61..65) of `292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");`', library/core/src/str/mod.rs:127:5
         //
@@ -173,11 +173,11 @@ pub fn trim_text(
         // right-fixed, ..ring
         let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
 
-        let trimmed_text = format!("{}{trimmed_text}", AsciiDots::DOTS);
+        let trimmed_text = format!("{}{trimmed_text}", UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .filter_map(|x| (x + AsciiDots::CHAR_LEN).checked_sub(trimmed_len))
-            .filter(|x| *x > AsciiDots::CHAR_LEN - 1) // Ignore the highlights in `..`
+            .filter_map(|x| (x + UnicodeDots::CHAR_LEN).checked_sub(trimmed_len))
+            .filter(|x| *x > UnicodeDots::CHAR_LEN - 1) // Ignore the highlights in `..`
             .collect();
 
         Some(TrimmedText {
@@ -187,12 +187,12 @@ pub fn trim_text(
         })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let trimmed_text = trim_right(text, container_width - AsciiDots::BYTE_LEN, tabstop);
+        let trimmed_text = trim_right(text, container_width - UnicodeDots::BYTE_LEN, tabstop);
 
-        let trimmed_text = format!("{trimmed_text}{}", AsciiDots::DOTS);
+        let trimmed_text = format!("{trimmed_text}{}", UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .filter(|x| *x + AsciiDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
+            .filter(|x| *x + UnicodeDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
             .copied()
             .collect::<Vec<_>>();
 
@@ -209,15 +209,15 @@ pub fn trim_text(
         let left_truncated_text = &text[match_start_byte_idx..];
         let trimmed_text = trim_right(
             left_truncated_text,
-            container_width - AsciiDots::BYTE_LEN - AsciiDots::BYTE_LEN,
+            container_width - UnicodeDots::BYTE_LEN - UnicodeDots::BYTE_LEN,
             tabstop,
         );
 
-        let trimmed_text = format!("{}{trimmed_text}{}", AsciiDots::DOTS, AsciiDots::DOTS);
+        let trimmed_text = format!("{}{trimmed_text}{}", UnicodeDots::DOTS, UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .map(|x| x - match_start + AsciiDots::CHAR_LEN)
-            .filter(|x| *x + AsciiDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
+            .map(|x| x - match_start + UnicodeDots::CHAR_LEN)
+            .filter(|x| *x + UnicodeDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
         Some(TrimmedText {
