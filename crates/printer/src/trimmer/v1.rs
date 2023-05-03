@@ -171,7 +171,8 @@ pub fn trim_text(
 
     if (w1 > w3 && w2 + w3 <= container_width) || (w3 <= 2) {
         // right-fixed, ..ring
-        let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
+        let (trimmed_text, trimmed_len) =
+            trim_left(text, container_width - UnicodeDots::CHAR_LEN, tabstop);
 
         let trimmed_text = format!("{}{trimmed_text}", UnicodeDots::DOTS);
         let indices = indices
@@ -187,7 +188,7 @@ pub fn trim_text(
         })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let trimmed_text = trim_right(text, container_width - UnicodeDots::BYTE_LEN, tabstop);
+        let trimmed_text = trim_right(text, container_width - UnicodeDots::CHAR_LEN, tabstop);
 
         let trimmed_text = format!("{trimmed_text}{}", UnicodeDots::DOTS);
         let indices = indices
@@ -209,7 +210,7 @@ pub fn trim_text(
         let left_truncated_text = &text[match_start_byte_idx..];
         let trimmed_text = trim_right(
             left_truncated_text,
-            container_width - UnicodeDots::BYTE_LEN - UnicodeDots::BYTE_LEN,
+            container_width - UnicodeDots::CHAR_LEN - UnicodeDots::CHAR_LEN,
             tabstop,
         );
 
@@ -262,84 +263,84 @@ mod tests {
                 "files",
                 "files",
                 50usize,
-                "..en/the/matched/items/will/be/invisible/file.scss",
+                format!("{}hen/the/matched/items/will/be/invisible/file.scss", UnicodeDots::DOTS),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
                 "files",
                 "files",
                 50usize,
-                "..atched/items/will/be/invisible/another-file.scss",
+                format!("{}matched/items/will/be/invisible/another-file.scss", UnicodeDots::DOTS),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
                 "files",
                 "files",
                 50usize,
-                "..then/the/matched/items/will/be/invisible/file.js",
+                format!("{}/then/the/matched/items/will/be/invisible/file.js", UnicodeDots::DOTS),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
                 "files",
                 "files",
                 50usize,
-                "../matched/items/will/be/invisible/another-file.js",
+                format!("{}e/matched/items/will/be/invisible/another-file.js", UnicodeDots::DOTS),
             ),
             (
                 "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
                 "srcggithub",
                 "srcg",
                 50usize,
-                "..s/Homebrew/universal-ctags--git/Units/afl-fuzz..",
+                format!("{}s/Homebrew/universal-ctags--git/Units/afl-fuzz.r{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
             ),
             (
                 "        // Wait until propagation delay period after block we plan to mine on",
                 "bmine",
                 "bmine",
                 58usize,
-                ".. propagation delay period after block we plan to mine on",
+                format!("{}l propagation delay period after block we plan to mine on", UnicodeDots::DOTS),
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
                 "srlisresource",
-                "srlis",
+                "srlisR",
                 50usize,
-                "..stversion-b273394e6c9c64f6.dylib.dSYM/Contents.."
+                format!("{}stversion-b273394e6c9c64f6.dylib.dSYM/Contents/R{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
             ),
             (
                 "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
                 "srlisresource",
                 "srli",
                 50usize,
-                "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
+                format!("{}structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Con{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
                 "srlisresource",
-                "srlis",
+                "srlisR",
                 50usize,
-                "..stversion-15764ff2535f190d.dylib.dSYM/Contents..",
+                format!("{}stversion-15764ff2535f190d.dylib.dSYM/Contents/R{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
             ),
             (
                 "crates/readtags/sys/libreadtags/autom4te.cache/requests",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                "../sys/libreadtags/autom4te.cache/requests",
+                format!("{}s/sys/libreadtags/autom4te.cache/requests", UnicodeDots::DOTS)
             ),
             (
                 "crates/maple_cli/src/dumb_analyzer/find_usages/default_types.rs",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                "..mb_analyzer/find_usages/default_types.rs",
+                format!("{}umb_analyzer/find_usages/default_types.rs", UnicodeDots::DOTS)
             ),
             (
                 r#"crates/printer/src/lib.rs:312:4:" crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib"#,
                 "ctagslisr",
                 "ctagsli",
                 80usize,
-                "..crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib..."
+                format!("{}crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dS{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
             ),
         ];
 

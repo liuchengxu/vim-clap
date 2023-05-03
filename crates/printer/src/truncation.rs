@@ -163,7 +163,7 @@ pub fn truncate_grep_results(
                             // In the middle of file name and column
                             let trimmed_text_with_visible_filename = if start < column_end {
                                 let mut trimmed_text_chars = trimmed_text.chars();
-                                (0..column_end - start).for_each(|_| {trimmed_text_chars.next();});
+                                (0..column_end - start).for_each(|_| { trimmed_text_chars.next(); });
 
                                 let trimmed_pattern = trimmed_text_chars.as_str();
                                 offset -= column_end - start;
