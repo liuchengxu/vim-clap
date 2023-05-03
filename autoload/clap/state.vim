@@ -63,7 +63,7 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
 
   if has_key(decoded, 'indices')
     try
-      call clap#highlight#add_highlights_with_delay(decoded.indices)
+      call clap#highlighter#add_highlights(decoded.indices)
     catch
       return
     endtry
@@ -80,7 +80,7 @@ function! clap#state#process_progress_full(display_lines, matched, processed) ab
   endif
   call clap#indicator#update(a:matched, a:processed)
   call g:clap.display.set_lines(a:display_lines.lines)
-  call clap#highlight#add_highlights_with_delay(a:display_lines.indices)
+  call clap#highlighter#add_highlights(a:display_lines.indices)
   call clap#preview#update_with_delay()
   if a:matched > 0
     call clap#sign#ensure_exists()
@@ -148,7 +148,7 @@ function! clap#state#process_response_on_typed(result) abort
   endif
 
   call g:clap.display.set_lines(a:result.lines)
-  call clap#highlight#add_highlights_with_delay(a:result.indices)
+  call clap#highlighter#add_highlights(a:result.indices)
   call clap#sign#ensure_exists()
   call clap#preview#update_with_delay()
 

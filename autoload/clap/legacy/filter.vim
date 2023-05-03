@@ -165,9 +165,9 @@ function! clap#legacy#filter#on_typed(FilterFn, query, candidates) abort
       "
       " TODO: also add highlights for the cached lines?
       let hl_lines = g:__clap_fuzzy_matched_indices[:g:clap.display.line_count()-1]
-      call clap#highlight#add_highlights(hl_lines)
+      call clap#highlighter#add_highlights(hl_lines)
     else
-      call g:clap.display.add_highlight()
+      call g:clap.display.legacy_add_highlight()
     endif
   endif
 endfunction

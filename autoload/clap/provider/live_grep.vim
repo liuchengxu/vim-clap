@@ -291,7 +291,7 @@ else
 
     call clap#rooter#run(function('clap#legacy#dispatcher#job_start'), cmd)
 
-    call g:clap.display.add_highlight(s:hl_pattern)
+    call g:clap.display.legacy_add_highlight(s:hl_pattern)
   endfunction
 
   function! s:strip_icon_and_match(line, pattern) abort

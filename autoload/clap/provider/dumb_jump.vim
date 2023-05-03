@@ -29,10 +29,10 @@ endfunction
 function! s:dumb_jump.on_typed() abort
   let query = g:clap.input.get()
   if empty(query)
-    call clap#highlight#clear()
-    return
+    call clap#highlighter#clear_display()
+  else
+    call clap#client#notify_provider('on_typed')
   endif
-  call clap#client#notify_provider('on_typed')
 endfunction
 
 function! s:dumb_jump.init() abort

@@ -69,7 +69,7 @@ function! s:on_complete() abort
   call g:clap.display.set_lines(s:Converter isnot v:null ? map(decoded.lines, 's:Converter(v:val)') : decoded.lines)
 
   if has_key(decoded, 'indices')
-    call clap#highlight#add_highlights(decoded.indices)
+    call clap#highlighter#add_highlights(decoded.indices)
   endif
 
   if has_key(decoded, 'truncated_map')

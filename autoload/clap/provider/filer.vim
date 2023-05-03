@@ -97,7 +97,7 @@ function! clap#provider#filer#handle_special_entries(abs_path) abort
 endfunction
 
 function! clap#provider#filer#set_create_file_entry() abort
-  call clap#highlight#clear()
+  call clap#highlighter#clear_display()
   let input = g:clap.input.get()
   let create_file_line = (g:clap_enable_icon ? ' ' : '') . input . s:CREATE_FILE
   call g:clap.display.set_lines([create_file_line])

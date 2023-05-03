@@ -96,8 +96,8 @@ function! s:init_display() abort
         call win_execute(self.winid, 'noautocmd call self.matchdelete()')
       endfunction
 
-      function! display._apply_matchadd(patterns) abort
-        call win_execute(self.winid, 'call clap#highlight#matchadd_substr(a:patterns)')
+      function! display.legacy_apply_matchadd(patterns) abort
+        call win_execute(self.winid, 'call clap#legacy#highlighter#highlight_substring(a:patterns)')
       endfunction
     else
       function! display.clear_highlight() abort
@@ -113,9 +113,9 @@ function! s:init_display() abort
       endfunction
 
       " Argument: list, multiple pattern to be highlighed
-      function! display._apply_matchadd(patterns) abort
+      function! display.legacy_apply_matchadd(patterns) abort
         call g:clap.display.goto_win()
-        call clap#highlight#matchadd_substr(a:patterns)
+        call clap#legacy#highlighter#highlight_substring(a:patterns)
         call g:clap.input.goto_win()
       endfunction
     endif
@@ -176,8 +176,8 @@ function! s:init_display() abort
       call win_execute(self.winid, 'call g:clap.display.matchdelete()')
     endfunction
 
-    function! display._apply_matchadd(patterns) abort
-      call win_execute(self.winid, 'call clap#highlight#matchadd_substr(a:patterns)')
+    function! display.legacy_apply_matchadd(patterns) abort
+      call win_execute(self.winid, 'call clap#legacy#highlighter#highlight_substring(a:patterns)')
     endfunction
 
   endif
@@ -218,7 +218,7 @@ function! s:init_display() abort
 
   " Optional argument: pattern to match
   " Default: input
-  function! display.add_highlight(...) abort
+  function! display.legacy_add_highlight(...) abort
     let pattern = a:0 > 0 ? a:1 : clap#legacy#filter#sync#viml#matchadd_pattern()
     if empty(pattern)
       return
@@ -226,7 +226,7 @@ function! s:init_display() abort
     if type(pattern) != v:t_list
       let pattern = [pattern]
     endif
-    call self._apply_matchadd(pattern)
+    call self.legacy_apply_matchadd(pattern)
   endfunction
 
   function! display.matchdelete() abort
