@@ -90,6 +90,7 @@ pub struct FilerProvider {
     current_lines: Vec<String>,
     printer: Printer,
     icon_enabled: bool,
+    winwidth: usize,
 }
 
 impl FilerProvider {
@@ -98,11 +99,13 @@ impl FilerProvider {
         // icon is handled inside the provider impl.
         let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
         Ok(Self {
             current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
             printer,
+            winwidth,
             icon_enabled,
         })
     }
@@ -144,8 +147,10 @@ impl FilerProvider {
 
         if input.is_empty() {
             self.goto_parent(ctx)?;
-            ctx.vim
-                .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
+            ctx.vim.exec(
+                "clap#file_explorer#set_prompt",
+                serde_json::json!([&self.current_dir, self.winwidth]),
+            )?;
         } else {
             input.pop();
             ctx.vim.exec("input_set", [&input])?;
@@ -168,7 +173,7 @@ impl FilerProvider {
             let input = ctx.vim.input_get().await?;
             let target_file = self.current_dir.join(input);
             ctx.vim
-                .exec("clap#provider#filer#handle_special_entries", [target_file])?;
+                .exec("clap#file_explorer#handle_special_entries", [target_file])?;
         }
 
         Ok(())
@@ -179,8 +184,10 @@ impl FilerProvider {
         let target_dir = self.current_dir.join(curline);
         let preview_target = if target_dir.is_dir() {
             PreviewTarget::Directory(target_dir)
-        } else {
+        } else if target_dir.is_file() {
             PreviewTarget::File(target_dir)
+        } else {
+            return Ok(());
         };
 
         self.update_preview(preview_target, ctx).await
@@ -301,8 +308,10 @@ impl FilerProvider {
         self.current_dir = dir.clone();
         self.load_dir(dir, ctx)?;
         ctx.vim.exec("input_set", [""])?;
-        ctx.vim
-            .exec("clap#provider#filer#set_prompt", [&self.current_dir])?;
+        ctx.vim.exec(
+            "clap#file_explorer#set_prompt",
+            serde_json::json!([&self.current_dir, self.winwidth]),
+        )?;
         let lines = self.on_query_change("", ctx)?;
         self.current_lines = lines;
         Ok(())
@@ -363,7 +372,7 @@ impl ClapProvider for FilerProvider {
 
         let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
         ctx.vim
-            .exec("clap#provider#filer#handle_on_initialize", response)?;
+            .exec("clap#file_explorer#handle_on_initialize", response)?;
 
         self.dir_entries.insert(
             cwd.to_path_buf(),

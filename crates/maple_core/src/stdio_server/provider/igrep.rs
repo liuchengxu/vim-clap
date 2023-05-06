@@ -25,6 +25,7 @@ pub struct IgrepProvider {
     current_lines: Vec<String>,
     searcher_control: Option<SearcherControl>,
     icon_enabled: bool,
+    winwidth: usize,
 }
 
 impl IgrepProvider {
@@ -32,12 +33,14 @@ impl IgrepProvider {
         let current_dir = ctx.cwd.to_path_buf();
         let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
         let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
         Ok(Self {
             printer,
             current_dir,
             dir_entries: HashMap::new(),
             current_lines: Vec::new(),
             searcher_control: None,
+            winwidth,
             icon_enabled,
         })
     }
@@ -91,8 +94,10 @@ impl IgrepProvider {
 
         if input.is_empty() {
             self.goto_parent(ctx)?;
-            ctx.vim
-                .exec("clap#provider#igrep#set_prompt", [&self.current_dir])?;
+            ctx.vim.exec(
+                "clap#file_explorer#set_prompt",
+                serde_json::json!([&self.current_dir, self.winwidth]),
+            )?;
             self.current_lines = self.list_files(ctx)?;
             self.preview_entry_for_file_listing(ctx).await?;
         } else {
@@ -122,7 +127,7 @@ impl IgrepProvider {
             let input = ctx.vim.input_get().await?;
             let target_file = self.current_dir.join(input);
             ctx.vim
-                .exec("clap#provider#igrep#handle_special_entries", [target_file])?;
+                .exec("clap#file_explorer#handle_special_entries", [target_file])?;
         }
 
         Ok(())
@@ -241,8 +246,10 @@ impl IgrepProvider {
         self.current_dir = dir.clone();
         self.load_dir(dir, ctx)?;
         ctx.vim.exec("input_set", [""])?;
-        ctx.vim
-            .exec("clap#provider#igrep#set_prompt", [&self.current_dir])?;
+        ctx.vim.exec(
+            "clap#file_explorer#set_prompt",
+            serde_json::json!([&self.current_dir, self.winwidth]),
+        )?;
         self.current_lines = self.list_files(ctx)?;
         Ok(())
     }
@@ -334,7 +341,7 @@ impl ClapProvider for IgrepProvider {
         if query.is_empty() {
             let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
             ctx.vim
-                .exec("clap#provider#igrep#handle_on_initialize", response)?;
+                .exec("clap#file_explorer#handle_on_initialize", response)?;
             self.current_lines = entries.clone();
         }
 

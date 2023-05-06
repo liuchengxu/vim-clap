@@ -12,66 +12,13 @@ let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ?
 let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'<Empty directory>'
 let s:CREATE_FILE = ' [Create new file]'
 
-if has('win32')
-  function! s:normalize_path_sep(path) abort
-    return substitute(a:path, '[/\\]',s:PATH_SEPERATOR, 'g')
-  endfunction
-
-  function! s:is_root_directory(dir) abort
-    return a:dir =~? '^\([a-z]:\|\(\\\\\|\/\/\)[^\\\/]\+\(\\\|\/\/\)[^\\\/]\+\)\(\\\|\/\)\+$'
-  endfunction
-else
-  function! s:normalize_path_sep(path) abort
-    return a:path
-  endfunction
-
-  function! s:is_root_directory(dir) abort
-    return a:dir ==# s:PATH_SEPERATOR
-  endfunction
-endif
-
 function! clap#provider#filer#hi_empty_dir() abort
   syntax match ClapEmptyDirectory /^.*<Empty directory>/
   hi default link ClapEmptyDirectory WarningMsg
 endfunction
 
-" APIs used by Rust backend.
-function! clap#provider#filer#handle_on_initialize(result) abort
-  let result = a:result
-  call g:clap.display.set_lines(result.entries)
-  call clap#sign#reset_to_first_line()
-  call clap#indicator#update_processed(result.total)
-  call clap#sign#reset_to_first_line()
-  call g:clap#display_win.shrink_if_undersize()
-endfunction
-
 function! clap#provider#filer#handle_error(error) abort
   call g:clap.preview.show([a:error])
-endfunction
-
-function! clap#provider#filer#set_prompt(current_dir) abort
-  let current_dir = a:current_dir[-1:] ==# s:PATH_SEPERATOR ? a:current_dir : a:current_dir.s:PATH_SEPERATOR
-  call clap#spinner#set_explorer_prompt(current_dir, s:winwidth)
-endfunction
-
-function! clap#provider#filer#handle_special_entries(abs_path) abort
-  let curline = g:clap.display.getcurline()
-
-  if curline =~# s:DIRECTORY_IS_EMPTY
-    let input = g:clap.input.get()
-    call clap#handler#sink_with({-> execute('edit '.a:abs_path)})
-    return v:true
-  endif
-
-  if curline =~# s:CREATE_FILE
-        \ || (g:clap.display.line_count() == 1 && g:clap.display.get_lines()[0] =~# s:CREATE_FILE)
-    " Create file if it doesn't exist
-    stopinsert
-    call clap#handler#sink_with({-> execute('edit '.a:abs_path)})
-    return v:true
-  endif
-
-  return v:false
 endfunction
 
 function! clap#provider#filer#set_create_file_entry() abort
@@ -81,26 +28,13 @@ function! clap#provider#filer#set_create_file_entry() abort
   call g:clap.display.set_lines([create_file_line])
 endfunction
 
-function! s:handle_mapping_bs() abort
-  call clap#client#notify_provider('backspace')
-  return ''
-endfunction
-
 function! s:get_entry_by_line(line) abort
   let curline = a:line
   if g:clap_enable_icon
     let curline = curline[4:]
   endif
   let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
-  return s:smart_concatenate(s:current_dir, curline)
-endfunction
-
-function! s:smart_concatenate(cur_dir, curline) abort
-  if a:cur_dir[-1:] ==# s:PATH_SEPERATOR
-    return a:cur_dir.a:curline
-  else
-    return a:cur_dir.s:PATH_SEPERATOR.a:curline
-  endif
+  return clap#file_explorer#join(s:current_dir, curline)
 endfunction
 
 function! s:filer_sink(selected) abort
@@ -119,46 +53,14 @@ function! s:filer.on_move_async() abort
   call clap#client#notify_provider('on_move')
 endfunction
 
-function! s:filer_on_no_matches(input) abort
-  execute 'edit' s:smart_concatenate(s:current_dir, a:input)
-endfunction
-
-function! s:set_initial_current_dir() abort
-  if empty(g:clap.provider.args)
-    let s:current_dir = getcwd()
-    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
-      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
-    endif
-    return
-  endif
-
-  let maybe_dir = g:clap.provider.args[0]
-  " %:p:h, % is actually g:clap.start.bufnr
-  if maybe_dir =~# '^%.\+'
-    let m = matchstr(maybe_dir, '^%\zs\(.*\)')
-    let target_dir = fnamemodify(bufname(g:clap.start.bufnr), m)
-  elseif isdirectory(expand(maybe_dir))
-    let target_dir = maybe_dir
-  else
-    let s:current_dir = getcwd()
-    if s:current_dir[-1:] !=# s:PATH_SEPERATOR
-      let s:current_dir = s:current_dir.s:PATH_SEPERATOR
-    endif
-    return
-  endif
-
-  let target_dir = s:normalize_path_sep(expand(target_dir))
-  if target_dir[-1:] ==# s:PATH_SEPERATOR
-    let s:current_dir = target_dir
-  else
-    let s:current_dir = target_dir.s:PATH_SEPERATOR
-  endif
+function! s:filer.on_no_matches(input) abort
+  execute 'edit' clap#file_explorer#join(s:current_dir, a:input)
 endfunction
 
 function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
-  call s:set_initial_current_dir()
-  call clap#spinner#set_explorer_prompt(s:current_dir, s:winwidth)
+  let s:current_dir = clap#file_explorer#init_current_dir()
+  call clap#file_explorer#set_prompt(s:current_dir, s:winwidth)
   call clap#client#notify_on_init({'cwd': s:current_dir})
 endfunction
 
@@ -166,13 +68,12 @@ let s:filer.init = function('s:start_rpc_service')
 let s:filer.sink = function('s:filer_sink')
 let s:filer.icon = 'File'
 let s:filer.syntax = 'clap_filer'
-let s:filer.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:filer.source_type = g:__t_rpc
-let s:filer.on_no_matches = function('s:filer_on_no_matches')
+let s:filer.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:filer.mappings = {
       \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
-      \ "<BS>": function('s:handle_mapping_bs'),
+      \ "<BS>": { -> clap#client#notify_provider('backspace') },
       \ "<A-U>": { -> clap#client#notify_provider('backspace') },
       \ }
 let g:clap#provider#filer# = s:filer
