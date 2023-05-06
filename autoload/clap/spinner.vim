@@ -146,5 +146,27 @@ function! clap#spinner#set_idle() abort
   call s:set_spinner()
 endfunction
 
+function! clap#spinner#set_explorer_prompt(current_dir, winwidth) abort
+  let current_dir = a:current_dir
+  let cwd = getcwd()
+  if stridx(current_dir, cwd) == 0
+    let current_dir = '.' . current_dir[len(cwd):]
+  else
+    let current_dir = fnamemodify(current_dir, ':~')
+  end
+  if strlen(current_dir) < a:winwidth * 3 / 4
+    call clap#spinner#set(current_dir)
+  else
+    let parent = fnamemodify(current_dir, ':p:h')
+    let last = fnamemodify(current_dir, ':p:t')
+    let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
+    if strlen(short_dir) < a:winwidth * 3 / 4
+      call clap#spinner#set(short_dir)
+    else
+      call clap#spinner#set(pathshorten(current_dir))
+    endif
+  endif
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -49,31 +49,9 @@ function! clap#provider#filer#handle_error(error) abort
   call g:clap.preview.show([a:error])
 endfunction
 
-function! s:set_prompt(current_dir) abort
-  let current_dir = a:current_dir
-  let cwd = getcwd()
-  if stridx(current_dir, cwd) == 0
-    let current_dir = '.' . current_dir[len(cwd):]
-  else
-    let current_dir = fnamemodify(current_dir, ':~')
-  end
-  if strlen(current_dir) < s:winwidth * 3 / 4
-    call clap#spinner#set(current_dir)
-  else
-    let parent = fnamemodify(current_dir, ':p:h')
-    let last = fnamemodify(current_dir, ':p:t')
-    let short_dir = pathshorten(parent).s:PATH_SEPERATOR.last
-    if strlen(short_dir) < s:winwidth * 3 / 4
-      call clap#spinner#set(short_dir)
-    else
-      call clap#spinner#set(pathshorten(current_dir))
-    endif
-  endif
-endfunction
-
 function! clap#provider#filer#set_prompt(current_dir) abort
   let current_dir = a:current_dir[-1:] ==# s:PATH_SEPERATOR ? a:current_dir : a:current_dir.s:PATH_SEPERATOR
-  call s:set_prompt(current_dir)
+  call clap#spinner#set_explorer_prompt(current_dir, s:winwidth)
 endfunction
 
 function! clap#provider#filer#handle_special_entries(abs_path) abort
@@ -180,7 +158,7 @@ endfunction
 function! s:start_rpc_service() abort
   let s:winwidth = winwidth(g:clap.display.winid)
   call s:set_initial_current_dir()
-  call s:set_prompt(s:current_dir)
+  call clap#spinner#set_explorer_prompt(s:current_dir, s:winwidth)
   call clap#client#notify_on_init({'cwd': s:current_dir})
 endfunction
 
