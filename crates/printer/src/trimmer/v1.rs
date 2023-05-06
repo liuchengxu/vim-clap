@@ -1,3 +1,4 @@
+use super::UnicodeDots;
 use unicode_width::UnicodeWidthChar;
 
 /// Returns the displayed width in columns of a `text`.
@@ -40,8 +41,8 @@ fn remove_first_char(value: &str) -> &str {
 fn trim_left(text: &str, width: usize, tabstop: usize) -> (&str, usize) {
     // Assume each char takes at least one column
     let chars_count = text.chars().count();
-    let (mut text, mut trimmed_char_len) = if chars_count > width + 2 {
-        let diff = chars_count - width - 2;
+    let (mut text, mut trimmed_chars_len) = if chars_count > width + UnicodeDots::CHAR_LEN {
+        let diff = chars_count - width - UnicodeDots::CHAR_LEN;
         // 292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");, 56, 4
         // thread 'main' panicked at 'byte index 62 is not a char boundary; it is inside '💔' (bytes 61..65) of `292                             tracing::error!(error = ?e, "💔 Error at initializing GTAGS, attempting to recreate...");`', library/core/src/str/mod.rs:127:5
         //
@@ -59,11 +60,11 @@ fn trim_left(text: &str, width: usize, tabstop: usize) -> (&str, usize) {
 
     while current_width > width && !text.is_empty() {
         text = remove_first_char(text);
-        trimmed_char_len += 1;
+        trimmed_chars_len += 1;
         current_width = display_width(text, tabstop);
     }
 
-    (text, trimmed_char_len)
+    (text, trimmed_chars_len)
 }
 
 /// `String` -> `Stri..`.
@@ -170,13 +171,14 @@ pub fn trim_text(
 
     if (w1 > w3 && w2 + w3 <= container_width) || (w3 <= 2) {
         // right-fixed, ..ring
-        let (trimmed_text, trimmed_len) = trim_left(text, container_width - 2, tabstop);
+        let (trimmed_text, trimmed_len) =
+            trim_left(text, container_width - UnicodeDots::CHAR_LEN, tabstop);
 
-        let trimmed_text = format!("..{trimmed_text}");
+        let trimmed_text = format!("{}{trimmed_text}", UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .filter_map(|x| (x + 2).checked_sub(trimmed_len))
-            .filter(|x| *x > 1) // Ignore the highlights in `..`
+            .filter_map(|x| (x + UnicodeDots::CHAR_LEN).checked_sub(trimmed_len))
+            .filter(|x| *x > UnicodeDots::CHAR_LEN - 1) // Ignore the highlights in `..`
             .collect();
 
         Some(TrimmedText {
@@ -186,12 +188,12 @@ pub fn trim_text(
         })
     } else if w1 <= w3 && w1 + w2 <= container_width {
         // left-fixed, Stri..
-        let trimmed_text = trim_right(text, container_width - 2, tabstop);
+        let trimmed_text = trim_right(text, container_width - UnicodeDots::CHAR_LEN, tabstop);
 
-        let trimmed_text = format!("{trimmed_text}..");
+        let trimmed_text = format!("{trimmed_text}{}", UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
+            .filter(|x| *x + UnicodeDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
             .copied()
             .collect::<Vec<_>>();
 
@@ -206,13 +208,17 @@ pub fn trim_text(
 
         // left-right, ..Stri..
         let left_truncated_text = &text[match_start_byte_idx..];
-        let trimmed_text = trim_right(left_truncated_text, container_width - 2 - 2, tabstop);
+        let trimmed_text = trim_right(
+            left_truncated_text,
+            container_width - UnicodeDots::CHAR_LEN - UnicodeDots::CHAR_LEN,
+            tabstop,
+        );
 
-        let trimmed_text = format!("..{trimmed_text}..");
+        let trimmed_text = format!("{}{trimmed_text}{}", UnicodeDots::DOTS, UnicodeDots::DOTS);
         let indices = indices
             .iter()
-            .map(|x| x - match_start + 2)
-            .filter(|x| *x + 2 < container_width) // Ignore the highlights in `..`
+            .map(|x| x - match_start + UnicodeDots::CHAR_LEN)
+            .filter(|x| *x + UnicodeDots::CHAR_LEN < container_width) // Ignore the highlights in `..`
             .collect::<Vec<_>>();
 
         Some(TrimmedText {
@@ -230,6 +236,8 @@ mod tests {
     use super::*;
     use crate::tests::filter_single_line;
     use types::MatchedItem;
+
+    const DOTS: char = UnicodeDots::DOTS;
 
     #[test]
     fn test_trim_left() {
@@ -257,84 +265,84 @@ mod tests {
                 "files",
                 "files",
                 50usize,
-                "..en/the/matched/items/will/be/invisible/file.scss",
+                format!("{DOTS}hen/the/matched/items/will/be/invisible/file.scss"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
                 "files",
                 "files",
                 50usize,
-                "..atched/items/will/be/invisible/another-file.scss",
+                format!("{DOTS}matched/items/will/be/invisible/another-file.scss"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
                 "files",
                 "files",
                 50usize,
-                "..then/the/matched/items/will/be/invisible/file.js",
+                format!("{DOTS}/then/the/matched/items/will/be/invisible/file.js"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
                 "files",
                 "files",
                 50usize,
-                "../matched/items/will/be/invisible/another-file.js",
+                format!("{DOTS}e/matched/items/will/be/invisible/another-file.js"),
             ),
             (
                 "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
                 "srcggithub",
                 "srcg",
                 50usize,
-                "..s/Homebrew/universal-ctags--git/Units/afl-fuzz..",
+                format!("{DOTS}s/Homebrew/universal-ctags--git/Units/afl-fuzz.r{DOTS}"),
             ),
             (
                 "        // Wait until propagation delay period after block we plan to mine on",
                 "bmine",
                 "bmine",
                 58usize,
-                ".. propagation delay period after block we plan to mine on",
+                format!("{DOTS}l propagation delay period after block we plan to mine on"),
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
                 "srlisresource",
-                "srlis",
+                "srlisR",
                 50usize,
-                "..stversion-b273394e6c9c64f6.dylib.dSYM/Contents.."
+                format!("{DOTS}stversion-b273394e6c9c64f6.dylib.dSYM/Contents/R{DOTS}"),
             ),
             (
                 "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
                 "srlisresource",
                 "srli",
                 50usize,
-                "..structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/C..",
+                format!("{DOTS}structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Con{DOTS}")
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
                 "srlisresource",
-                "srlis",
+                "srlisR",
                 50usize,
-                "..stversion-15764ff2535f190d.dylib.dSYM/Contents..",
+                format!("{DOTS}stversion-15764ff2535f190d.dylib.dSYM/Contents/R{DOTS}")
             ),
             (
                 "crates/readtags/sys/libreadtags/autom4te.cache/requests",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                "../sys/libreadtags/autom4te.cache/requests",
+                format!("{DOTS}s/sys/libreadtags/autom4te.cache/requests")
             ),
             (
                 "crates/maple_cli/src/dumb_analyzer/find_usages/default_types.rs",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                "..mb_analyzer/find_usages/default_types.rs",
+                format!("{DOTS}umb_analyzer/find_usages/default_types.rs")
             ),
             (
                 r#"crates/printer/src/lib.rs:312:4:" crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib"#,
                 "ctagslisr",
                 "ctagsli",
                 80usize,
-                "..crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib..."
+                format!("{DOTS}crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dS{DOTS}")
             ),
         ];
 

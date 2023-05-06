@@ -1,4 +1,5 @@
 use crate::trimmer::v1::{trim_text as trim_text_v1, TrimmedText};
+use crate::trimmer::UnicodeDots;
 use crate::GrepResult;
 use std::collections::HashMap;
 use std::path::MAIN_SEPARATOR;
@@ -35,27 +36,29 @@ fn truncate_line_v1(
             .nth(skipped)
             .map(|(byte_idx, _char)| byte_idx)?;
 
-        let container_width = winwidth - byte_idx;
+        // winwidth is char-sized.
+        let container_width = winwidth - skipped;
 
-        indices.iter_mut().for_each(|x| *x -= byte_idx);
+        // indices from matcher are char-sized.
+        indices.iter_mut().for_each(|x| *x -= skipped);
 
-        let text_to_trim = &line[byte_idx..];
+        let (text_skipped, text_to_trim) = line.split_at(byte_idx);
 
         // TODO: tabstop is not always 4, `:h vim9-differences`
         let maybe_trimmed =
             trim_text_v1(text_to_trim, indices, container_width, 4).map(|mut trimmed| {
                 // Rejoin the skipped chars.
                 let mut new_text = String::with_capacity(byte_idx + trimmed.trimmed_text.len());
-                new_text.push_str(&line[..byte_idx]);
+                new_text.push_str(text_skipped);
                 new_text.push_str(&trimmed.trimmed_text);
                 trimmed.trimmed_text = new_text;
 
-                trimmed.indices.iter_mut().for_each(|x| *x += byte_idx);
+                trimmed.indices.iter_mut().for_each(|x| *x += skipped);
 
                 trimmed
             });
 
-        indices.iter_mut().for_each(|x| *x += byte_idx);
+        indices.iter_mut().for_each(|x| *x += skipped);
 
         maybe_trimmed
     } else {
@@ -151,7 +154,9 @@ pub fn truncate_grep_results(
                             let column = grep_result.column;
                             let column_end = grep_result.column_end;
 
-                            let mut offset = 3 // .. + MAIN_SEPARATOR
+                            // dots + MAIN_SEPARATOR
+                            let mut offset = UnicodeDots::CHAR_LEN
+                                + 1
                                 + file_name.len()
                                 + utils::display_width(line_number)
                                 + utils::display_width(column)
@@ -159,22 +164,27 @@ pub fn truncate_grep_results(
 
                             // In the middle of file name and column
                             let trimmed_text_with_visible_filename = if start < column_end {
-                                let trimmed_pattern = &trimmed_text[column_end - start..];
+                                let mut trimmed_text_chars = trimmed_text.chars();
+                                (0..column_end - start).for_each(|_| { trimmed_text_chars.next(); });
+
+                                let trimmed_pattern = trimmed_text_chars.as_str();
                                 offset -= column_end - start;
 
-                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}")
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_pattern}", UnicodeDots::DOTS)
                             } else {
-                                format!("..{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}")
+                                format!("{}{MAIN_SEPARATOR}{file_name}:{line_number}:{column}{trimmed_text}", UnicodeDots::DOTS)
                             };
 
                             let mut indices = indices;
-                            let file_name_end = 3 + file_name.len();
+                            let file_name_end = UnicodeDots::CHAR_LEN + 1 + file_name.len();
                             indices.iter_mut().for_each(|x| {
                                 *x += offset;
                                 if *x <= file_name_end {
                                     *x -= 1;
                                 }
                             });
+                            // TODO: truncate the invisible text and indices caused by the inserted
+                            // file name.
 
                             (trimmed_text_with_visible_filename, indices)
                         }
