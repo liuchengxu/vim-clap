@@ -206,9 +206,8 @@ pub fn grep_results_to_display_lines(
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::trimmer::UnicodeDots;
-
     use super::*;
+    use crate::trimmer::UnicodeDots;
     use filter::{
         filter_sequential,
         matcher::{Bonus, MatcherBuilder},
@@ -323,11 +322,13 @@ pub(crate) mod tests {
         };
     }
 
+    const DOTS: char = UnicodeDots::DOTS;
+
     #[test]
     fn test_grep_line() {
         test_printer!(
             " bin/node/cli/src/command.rs:127:1:                          let PartialComponents { client, task_manager, ..}",
-            format!(" {}          let PartialComponents {{ client, task_manager, ..}}", UnicodeDots::DOTS),
+            format!(" {DOTS}            let PartialComponents {{ client, task_manager, ..}}"),
             ("PartialComponents", "PartialComponents", Some(2), 64)
         );
     }
@@ -335,30 +336,31 @@ pub(crate) mod tests {
     #[test]
     fn starting_point_should_work() {
         const QUERY: &str = "srlisrlisrsr";
+
         // TODO: revisit the tests, may not be accurate.
 
         test_printer!(
-        " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-        format!(" {}tes/fuzzy_filter/target/debug/deps/librustve{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
-        (QUERY, "srlis", Some(2), 50)
+            " crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+            format!(" {DOTS}s/fuzzy_filter/target/debug/deps/librustversio{DOTS}"),
+            (QUERY, "srlisr", Some(2), 50)
         );
 
         test_printer!(
-        " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
-        format!(" {}tes/fuzzy_filter/target/debug/deps/libstruct{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
-        (QUERY, "srlis", Some(2), 50)
+            " crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
+            format!(" {DOTS}s/fuzzy_filter/target/debug/deps/libstructopt_{DOTS}"),
+            (QUERY, "srlis", Some(2), 50)
         );
 
         test_printer!(
-        "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
-        format!("{}s/fuzzy_filter/target/debug/deps/librustversion-{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
-        (QUERY, "srlisr", None, 50)
+            "crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
+            format!("{DOTS}s/fuzzy_filter/target/debug/deps/librustversion-{DOTS}"),
+            (QUERY, "srlisr", None, 50)
         );
 
         test_printer!(
-        "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
-        format!("{}s/fuzzy_filter/target/debug/deps/libstructopt_de{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
-        (QUERY, "srlis", None, 50)
+            "crates/fuzzy_filter/target/debug/deps/libstructopt_derive-5cce984f248086cc.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-5cce984f248086cc.dylib",
+            format!("{DOTS}s/fuzzy_filter/target/debug/deps/libstructopt_de{DOTS}"),
+            (QUERY, "srlis", None, 50)
         );
     }
 

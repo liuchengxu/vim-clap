@@ -36,27 +36,29 @@ fn truncate_line_v1(
             .nth(skipped)
             .map(|(byte_idx, _char)| byte_idx)?;
 
-        let container_width = winwidth - byte_idx;
+        // winwidth is char-sized.
+        let container_width = winwidth - skipped;
 
-        indices.iter_mut().for_each(|x| *x -= byte_idx);
+        // indices from matcher are char-sized.
+        indices.iter_mut().for_each(|x| *x -= skipped);
 
-        let text_to_trim = &line[byte_idx..];
+        let (text_skipped, text_to_trim) = line.split_at(byte_idx);
 
         // TODO: tabstop is not always 4, `:h vim9-differences`
         let maybe_trimmed =
             trim_text_v1(text_to_trim, indices, container_width, 4).map(|mut trimmed| {
                 // Rejoin the skipped chars.
                 let mut new_text = String::with_capacity(byte_idx + trimmed.trimmed_text.len());
-                new_text.push_str(&line[..byte_idx]);
+                new_text.push_str(text_skipped);
                 new_text.push_str(&trimmed.trimmed_text);
                 trimmed.trimmed_text = new_text;
 
-                trimmed.indices.iter_mut().for_each(|x| *x += byte_idx);
+                trimmed.indices.iter_mut().for_each(|x| *x += skipped);
 
                 trimmed
             });
 
-        indices.iter_mut().for_each(|x| *x += byte_idx);
+        indices.iter_mut().for_each(|x| *x += skipped);
 
         maybe_trimmed
     } else {
@@ -181,6 +183,8 @@ pub fn truncate_grep_results(
                                     *x -= 1;
                                 }
                             });
+                            // TODO: truncate the invisible text and indices caused by the inserted
+                            // file name.
 
                             (trimmed_text_with_visible_filename, indices)
                         }

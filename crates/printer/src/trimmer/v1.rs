@@ -237,6 +237,8 @@ mod tests {
     use crate::tests::filter_single_line;
     use types::MatchedItem;
 
+    const DOTS: char = UnicodeDots::DOTS;
+
     #[test]
     fn test_trim_left() {
         let text = "0123456789abcdef";
@@ -263,84 +265,84 @@ mod tests {
                 "files",
                 "files",
                 50usize,
-                format!("{}hen/the/matched/items/will/be/invisible/file.scss", UnicodeDots::DOTS),
+                format!("{DOTS}hen/the/matched/items/will/be/invisible/file.scss"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.scss",
                 "files",
                 "files",
                 50usize,
-                format!("{}matched/items/will/be/invisible/another-file.scss", UnicodeDots::DOTS),
+                format!("{DOTS}matched/items/will/be/invisible/another-file.scss"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/file.js",
                 "files",
                 "files",
                 50usize,
-                format!("{}/then/the/matched/items/will/be/invisible/file.js", UnicodeDots::DOTS),
+                format!("{DOTS}/then/the/matched/items/will/be/invisible/file.js"),
             ),
             (
                 "directories/are/nested/a/lot/then/the/matched/items/will/be/invisible/another-file.js",
                 "files",
                 "files",
                 50usize,
-                format!("{}e/matched/items/will/be/invisible/another-file.js", UnicodeDots::DOTS),
+                format!("{DOTS}e/matched/items/will/be/invisible/another-file.js"),
             ),
             (
                 "/Users/xuliucheng/Library/Caches/Homebrew/universal-ctags--git/Units/afl-fuzz.r/github-issue-625-r.d/input.r",
                 "srcggithub",
                 "srcg",
                 50usize,
-                format!("{}s/Homebrew/universal-ctags--git/Units/afl-fuzz.r{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
+                format!("{DOTS}s/Homebrew/universal-ctags--git/Units/afl-fuzz.r{DOTS}"),
             ),
             (
                 "        // Wait until propagation delay period after block we plan to mine on",
                 "bmine",
                 "bmine",
                 58usize,
-                format!("{}l propagation delay period after block we plan to mine on", UnicodeDots::DOTS),
+                format!("{DOTS}l propagation delay period after block we plan to mine on"),
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-b273394e6c9c64f6.dylib.dSYM/Contents/Resources/DWARF/librustversion-b273394e6c9c64f6.dylib",
                 "srlisresource",
                 "srlisR",
                 50usize,
-                format!("{}stversion-b273394e6c9c64f6.dylib.dSYM/Contents/R{}", UnicodeDots::DOTS, UnicodeDots::DOTS),
+                format!("{DOTS}stversion-b273394e6c9c64f6.dylib.dSYM/Contents/R{DOTS}"),
             ),
             (
                 "target/debug/deps/libstructopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Contents/Resources/DWARF/libstructopt_derive-3921fbf02d8d2ffe.dylib",
                 "srlisresource",
                 "srli",
                 50usize,
-                format!("{}structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Con{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
+                format!("{DOTS}structopt_derive-3921fbf02d8d2ffe.dylib.dSYM/Con{DOTS}")
             ),
             (
                 "fuzzy-filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib",
                 "srlisresource",
                 "srlisR",
                 50usize,
-                format!("{}stversion-15764ff2535f190d.dylib.dSYM/Contents/R{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
+                format!("{DOTS}stversion-15764ff2535f190d.dylib.dSYM/Contents/R{DOTS}")
             ),
             (
                 "crates/readtags/sys/libreadtags/autom4te.cache/requests",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                format!("{}s/sys/libreadtags/autom4te.cache/requests", UnicodeDots::DOTS)
+                format!("{DOTS}s/sys/libreadtags/autom4te.cache/requests")
             ),
             (
                 "crates/maple_cli/src/dumb_analyzer/find_usages/default_types.rs",
                 "srlisrs",
                 "lisrs",
                 42usize,
-                format!("{}umb_analyzer/find_usages/default_types.rs", UnicodeDots::DOTS)
+                format!("{DOTS}umb_analyzer/find_usages/default_types.rs")
             ),
             (
                 r#"crates/printer/src/lib.rs:312:4:" crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dSYM/Contents/Resources/DWARF/librustversion-15764ff2535f190d.dylib"#,
                 "ctagslisr",
                 "ctagsli",
                 80usize,
-                format!("{}crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dS{}", UnicodeDots::DOTS, UnicodeDots::DOTS)
+                format!("{DOTS}crates/fuzzy_filter/target/debug/deps/librustversion-15764ff2535f190d.dylib.dS{DOTS}")
             ),
         ];
 
