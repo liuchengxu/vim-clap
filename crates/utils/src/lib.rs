@@ -71,3 +71,17 @@ where
     let mut cmd = as_std_command(shell_cmd, dir);
     cmd.output()
 }
+
+/// Converts the char positions to byte positions as Vim and Neovim highlights is byte-positioned.
+pub fn char_indices_to_byte_indices(s: &str, char_indices: &[usize]) -> Vec<usize> {
+    s.char_indices()
+        .enumerate()
+        .filter_map(|(char_idx, (byte_idx, _char))| {
+            if char_indices.contains(&char_idx) {
+                Some(byte_idx)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+}

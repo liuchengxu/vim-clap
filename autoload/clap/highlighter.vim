@@ -7,9 +7,9 @@ set cpoptions&vim
 let s:default_priority = 10
 
 if has('nvim')
-  function! s:add_highlight_at(lnum, col, hl_group) abort
-    " 0-based
-    call nvim_buf_add_highlight(g:clap.display.bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
+  " lnum is 0-based.
+  function! s:add_highlight_at(bufnr, lnum, col, hl_group) abort
+    call nvim_buf_add_highlight(a:bufnr, -1, a:hl_group, a:lnum, a:col, a:col+1)
   endfunction
 
   " lnum and col are 0-based.
@@ -66,9 +66,10 @@ if has('nvim')
   endif
 
 else
-  function! s:add_highlight_at(lnum, col, hl_group) abort
+  " lnum is 0-based.
+  function! s:add_highlight_at(bufnr, lnum, col, hl_group) abort
     " 1-based
-    call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': g:clap.display.bufnr})
+    call prop_add(a:lnum+1, a:col+1, {'length': 1, 'type': a:hl_group, 'bufnr': a:bufnr})
   endfunction
 
   function! s:add_display_highlights(hl_lines) abort
@@ -83,10 +84,10 @@ else
       let group_idx = 1
       for idx in indices
         if group_idx < g:__clap_fuzzy_matches_hl_group_cnt + 1
-          call s:add_highlight_at(lnum, idx, 'ClapFuzzyMatches'.group_idx)
+          call s:add_highlight_at(g:clap.display.bufnr, lnum, idx, 'ClapFuzzyMatches'.group_idx)
           let group_idx += 1
         else
-          call s:add_highlight_at(lnum, idx, g:__clap_fuzzy_last_hl_group)
+          call s:add_highlight_at(g:clap.display.bufnr, lnum, idx, g:__clap_fuzzy_last_hl_group)
         endif
       endfor
       let lnum += 1
@@ -103,6 +104,36 @@ function! clap#highlighter#add_highlights(hl_lines) abort
   catch
     return
   endtry
+endfunction
+
+function! s:create_highlight_group(group_name, ctermfg, ctermbg, guifg, guibg) abort
+  if !hlexists(a:group_name)
+    execute printf(
+          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s gui=None cterm=None',
+          \ a:group_name,
+          \ a:ctermfg,
+          \ a:guifg,
+          \ 'None',
+          \ 'None',
+          \ )
+          " \ a:ctermbg,
+          " \ a:guibg,
+  endif
+endfunction
+
+function! clap#highlighter#highlight_line(bufnr, lnum, vim_highlights) abort
+  for vim_highlight in a:vim_highlights
+    call s:create_highlight_group(
+          \ vim_highlight.group_name,
+          \ vim_highlight.ctermfg,
+          \ vim_highlight.ctermbg,
+          \ vim_highlight.guifg,
+          \ vim_highlight.guibg,
+          \ )
+    for col in vim_highlight.range
+      call s:add_highlight_at(a:bufnr, a:lnum - 1, col, vim_highlight.group_name)
+    endfor
+  endfor
 endfunction
 
 let &cpoptions = s:save_cpo

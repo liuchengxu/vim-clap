@@ -437,6 +437,10 @@ impl Vim {
         }
     }
 
+    pub async fn getbufline(&self, bufnr: usize, lnum: usize, end: usize) -> Result<Vec<String>> {
+        self.call("getbufline", json!([bufnr, lnum, end])).await
+    }
+
     pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
         self.call("getbufoneline", json!(["", lnum])).await
     }

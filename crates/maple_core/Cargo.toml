@@ -35,6 +35,7 @@ tracing = "0.1"
 
 dumb_analyzer = { path = "../dumb_analyzer" }
 filter = { path = "../filter" }
+highlighter = { path = "../highlighter" }
 icon = { path = "../icon" }
 matcher = { path = "../matcher" }
 pattern = { path = "../pattern" }

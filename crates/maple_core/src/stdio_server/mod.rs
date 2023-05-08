@@ -279,6 +279,37 @@ impl Client {
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
                 }
             }
+            "syntax-highlight-on" => {
+                use highlighter::SyntaxHighlighter;
+
+                let lnum = self.vim.line("w0").await?;
+                let end = self.vim.line("w$").await?;
+                let bufnr = self.vim.current_bufnr().await?;
+                let lines = self.vim.getbufline(bufnr, lnum, end).await?;
+
+                let fpath = self.vim.current_buffer_path().await?;
+                let extension = std::path::Path::new(&fpath)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap();
+
+                let syntax_highlighter = SyntaxHighlighter::new();
+
+                let syntax = syntax_highlighter
+                    .syntax_set
+                    .find_syntax_by_extension(extension)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Can not find syntax for extension {extension}")
+                    })?;
+
+                for (idx, line) in lines.iter().enumerate() {
+                    let vim_highlights = syntax_highlighter.get_vim_highlights(syntax, line)?;
+                    self.vim.exec(
+                        "clap#highlighter#highlight_line",
+                        serde_json::json!([bufnr, lnum + idx, vim_highlights]),
+                    )?;
+                }
+            }
             _ => return Err(anyhow!("Unknown notification: {notification:?}")),
         }
 
