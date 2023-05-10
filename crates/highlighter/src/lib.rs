@@ -81,7 +81,10 @@ pub struct TokenHighlight {
     pub guibg: String,
     pub group_name: String,
     /// Token range in bytes.
-    pub range: Vec<usize>,
+    /// Start of (byte-indexed) column range to highlight.
+    pub col_start: usize,
+    /// Length of bytes to highlight.
+    pub length: usize,
 }
 
 #[derive(Debug)]
@@ -162,7 +165,8 @@ impl SyntaxHighlighter {
                         guifg: hex_guifg,
                         guibg: hex_guibg,
                         group_name,
-                        range: byte_indices,
+                        col_start: byte_indices[0],
+                        length: byte_indices.len(),
                     })
                 }
             })
