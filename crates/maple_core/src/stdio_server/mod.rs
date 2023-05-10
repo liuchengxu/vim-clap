@@ -279,7 +279,7 @@ impl Client {
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
                 }
             }
-            "syntax-highlight-on" => {
+            "syntax-on" => {
                 use highlighter::SyntaxHighlighter;
 
                 let lnum = self.vim.line("w0").await?;
@@ -303,10 +303,10 @@ impl Client {
                     })?;
 
                 for (idx, line) in lines.iter().enumerate() {
-                    let vim_highlights = syntax_highlighter.get_vim_highlights(syntax, line)?;
+                    let line_highlights = syntax_highlighter.get_line_highlights(syntax, line)?;
                     self.vim.exec(
                         "clap#highlighter#highlight_line",
-                        serde_json::json!([bufnr, lnum + idx, vim_highlights]),
+                        serde_json::json!([bufnr, lnum + idx, line_highlights]),
                     )?;
                 }
             }

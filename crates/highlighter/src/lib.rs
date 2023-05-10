@@ -1,9 +1,13 @@
+mod assets;
+mod lazy_theme_set;
+
+use self::lazy_theme_set::LazyThemeSet;
 use anyhow::Result;
 use colorsys::Rgb;
 use rgb2ansi256::rgb_to_ansi256;
 use std::ops::Range;
 use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style, ThemeSet};
+use syntect::highlighting::{FontStyle, Style, ThemeSet};
 use syntect::parsing::{SyntaxReference, SyntaxSet};
 
 /// Vim highlight arguments.
@@ -11,14 +15,23 @@ use syntect::parsing::{SyntaxReference, SyntaxSet};
 /// `:h highlight-args`.
 #[derive(Debug)]
 pub struct HighlightArgs {
+    /// `:h attr-list`
+    pub cterm: AttrList,
     pub ctermfg: u8,
     pub ctermbg: u8,
+    pub gui: AttrList,
     pub guifg: Rgb,
     pub guibg: Rgb,
 }
 
 impl HighlightArgs {
     pub fn from_style(style: &Style) -> Self {
+        let cterm = match style.font_style {
+            FontStyle::BOLD => AttrList::Bold,
+            FontStyle::UNDERLINE => AttrList::Underline,
+            FontStyle::ITALIC => AttrList::Italic,
+            _ => AttrList::None,
+        };
         let guifg = Rgb::from(&(
             style.foreground.r as f32,
             style.foreground.g as f32,
@@ -28,28 +41,42 @@ impl HighlightArgs {
 
         let ctermfg = rgb_to_ansi256(style.foreground.r, style.foreground.g, style.foreground.b);
 
+        let gui = cterm.clone();
         let guibg = Rgb::from(&(
             style.background.r as f32,
             style.background.g as f32,
             style.background.b as f32,
             style.background.a as f32,
         ));
-
         let ctermbg = rgb_to_ansi256(style.background.r, style.background.g, style.background.b);
 
         Self {
+            cterm,
             ctermfg,
             ctermbg,
+            gui,
             guifg,
             guibg,
         }
     }
 }
 
+/// `:h attr-list`
+#[derive(Clone, Debug, Default, serde::Serialize)]
+pub enum AttrList {
+    Bold,
+    Underline,
+    Italic,
+    #[default]
+    None,
+}
+
 #[derive(Debug, serde::Serialize)]
-pub struct VimHighlights {
+pub struct TokenHighlight {
+    pub cterm: AttrList,
     pub ctermfg: u8,
     pub ctermbg: u8,
+    pub gui: AttrList,
     pub guifg: String,
     pub guibg: String,
     pub group_name: String,
@@ -70,20 +97,43 @@ pub struct SyntaxHighlighter {
     pub theme_set: ThemeSet,
 }
 
+fn get_serialized_integrated_syntaxset() -> &'static [u8] {
+    include_bytes!("../../../assets/syntaxes.bin")
+}
+
+fn get_integrated_themeset() -> LazyThemeSet {
+    from_binary(include_bytes!("../../../assets/themes.bin"))
+}
+
+fn from_binary<T: serde::de::DeserializeOwned>(v: &[u8]) -> T {
+    asset_from_contents(v, "n/a")
+        .expect("data integrated in binary is never faulty, but make sure `compressed` is in sync!")
+}
+
+fn asset_from_contents<T: serde::de::DeserializeOwned>(
+    contents: &[u8],
+    description: &str,
+) -> Result<T> {
+    bincode::deserialize_from(contents)
+        .map_err(|_| anyhow::anyhow!("Could not parse {description}"))
+}
+
 impl SyntaxHighlighter {
     // Load these once at the start of your program
     pub fn new() -> Self {
         Self {
-            syntax_set: SyntaxSet::load_defaults_newlines(),
-            theme_set: ThemeSet::load_defaults(),
+            syntax_set: syntect::dumps::from_binary(crate::assets::DEFAULT_SYNTAXSET),
+            theme_set: syntect::dumps::from_binary(crate::assets::DEFAULT_THEMESET),
+            // syntax_set: SyntaxSet::load_defaults_newlines(),
+            // theme_set: ThemeSet::load_defaults(),
         }
     }
 
-    pub fn get_vim_highlights(
+    pub fn get_line_highlights(
         &self,
         syntax: &SyntaxReference,
         line: &str,
-    ) -> Result<Vec<VimHighlights>> {
+    ) -> Result<Vec<TokenHighlight>> {
         let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (dark)"]);
 
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &self.syntax_set)?;
@@ -104,9 +154,11 @@ impl SyntaxHighlighter {
                     let hex_guibg = highlight_args.guibg.to_hex_string();
                     let group_name: String =
                         format!("ClapHighlighter_{}_{}", &hex_guifg[1..], &hex_guifg[1..]);
-                    Some(VimHighlights {
+                    Some(TokenHighlight {
+                        cterm: highlight_args.cterm,
                         ctermfg: highlight_args.ctermfg,
                         ctermbg: highlight_args.ctermbg,
+                        gui: highlight_args.gui,
                         guifg: hex_guifg,
                         guibg: hex_guibg,
                         group_name,

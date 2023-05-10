@@ -106,32 +106,37 @@ function! clap#highlighter#add_highlights(hl_lines) abort
   endtry
 endfunction
 
-function! s:create_highlight_group(group_name, ctermfg, ctermbg, guifg, guibg) abort
+function! s:try_create_token_highlight_group(group_name, cterm, ctermfg, ctermbg, gui, guifg, guibg) abort
   if !hlexists(a:group_name)
     execute printf(
-          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s gui=None cterm=None',
+          \ 'hi %s ctermfg=%s guifg=%s ctermbg=%s guibg=%s cterm=%s gui=%s',
           \ a:group_name,
           \ a:ctermfg,
           \ a:guifg,
           \ 'None',
           \ 'None',
+          \ a:cterm,
+          \ a:gui,
           \ )
           " \ a:ctermbg,
           " \ a:guibg,
   endif
 endfunction
 
-function! clap#highlighter#highlight_line(bufnr, lnum, vim_highlights) abort
-  for vim_highlight in a:vim_highlights
-    call s:create_highlight_group(
-          \ vim_highlight.group_name,
-          \ vim_highlight.ctermfg,
-          \ vim_highlight.ctermbg,
-          \ vim_highlight.guifg,
-          \ vim_highlight.guibg,
+" lnum is 1-based.
+function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
+  for token_highlight in a:token_highlights
+    call s:try_create_token_highlight_group(
+          \ token_highlight.group_name,
+          \ token_highlight.cterm,
+          \ token_highlight.ctermfg,
+          \ token_highlight.ctermbg,
+          \ token_highlight.gui,
+          \ token_highlight.guifg,
+          \ token_highlight.guibg,
           \ )
-    for col in vim_highlight.range
-      call s:add_highlight_at(a:bufnr, a:lnum - 1, col, vim_highlight.group_name)
+    for col in token_highlight.range
+      call s:add_highlight_at(a:bufnr, a:lnum - 1, col, token_highlight.group_name)
     endfor
   endfor
 endfunction
