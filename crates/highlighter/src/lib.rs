@@ -5,9 +5,10 @@ use anyhow::Result;
 use colorsys::Rgb;
 use rgb2ansi256::rgb_to_ansi256;
 use std::ops::Range;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{FontStyle, Style, ThemeSet};
-use syntect::parsing::{SyntaxReference, SyntaxSet};
+use syntect::highlighting::{
+    FontStyle, HighlightIterator, HighlightState, Highlighter, Style, Theme, ThemeSet,
+};
+use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
 
 /// Vim highlight arguments.
 ///
@@ -24,7 +25,7 @@ pub struct HighlightArgs {
 }
 
 impl HighlightArgs {
-    pub fn from_style(style: &Style) -> Self {
+    pub fn from_style(style: Style) -> Self {
         let cterm = match style.font_style {
             FontStyle::BOLD => AttrList::Bold,
             FontStyle::UNDERLINE => AttrList::Underline,
@@ -108,27 +109,36 @@ impl Default for SyntaxHighlighter {
     }
 }
 
-impl SyntaxHighlighter {
-    // Load these once at the start of your program
-    pub fn new() -> Self {
+// Replication of [`syntect::HighlightLines`] in order to reduce one allocation
+pub struct LineHighlighter<'a> {
+    highlighter: Highlighter<'a>,
+    parse_state: ParseState,
+    highlight_state: HighlightState,
+}
+
+impl<'a> LineHighlighter<'a> {
+    pub fn new(syntax: &SyntaxReference, theme: &'a Theme) -> Self {
+        let highlighter = Highlighter::new(theme);
+        let highlight_state = HighlightState::new(&highlighter, ScopeStack::new());
         Self {
-            syntax_set: syntect::dumps::from_binary(crate::assets::DEFAULT_SYNTAXSET),
-            theme_set: syntect::dumps::from_binary(crate::assets::DEFAULT_THEMESET),
+            highlighter,
+            parse_state: ParseState::new(syntax),
+            highlight_state,
         }
     }
 
-    pub fn get_token_highlights_in_line(
-        &self,
-        syntax: &SyntaxReference,
-        line: &str,
-    ) -> Result<Vec<TokenHighlight>> {
-        let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (dark)"]);
-
-        let ranges: Vec<(Style, &str)> = h.highlight_line(line, &self.syntax_set)?;
+    /// Highlights a line of a file
+    pub fn highlight_line<'b>(
+        &mut self,
+        line: &'b str,
+        syntax_set: &SyntaxSet,
+    ) -> Result<Vec<TokenHighlight>, syntect::Error> {
+        let ops = self.parse_state.parse_line(line, syntax_set)?;
+        let iter =
+            HighlightIterator::new(&mut self.highlight_state, &ops[..], line, &self.highlighter);
 
         let mut offset = 0;
-        let vim_highlights = ranges
-            .iter()
+        let token_highlights = iter
             .filter_map(|(style, text)| {
                 let chars_count = text.chars().count();
                 offset += chars_count;
@@ -157,14 +167,40 @@ impl SyntaxHighlighter {
             })
             .collect::<Vec<_>>();
 
-        Ok(vim_highlights)
+        Ok(token_highlights)
+    }
+}
+
+impl SyntaxHighlighter {
+    // Load these once at the start of your program
+    pub fn new() -> Self {
+        Self {
+            syntax_set: syntect::dumps::from_binary(crate::assets::DEFAULT_SYNTAXSET),
+            theme_set: syntect::dumps::from_binary(crate::assets::DEFAULT_THEMESET),
+        }
+    }
+
+    pub fn get_token_highlights_in_line(
+        &self,
+        syntax: &SyntaxReference,
+        line: &str,
+        theme: &str,
+    ) -> Result<Vec<TokenHighlight>> {
+        let theme = self.theme_set.themes.get(theme).unwrap_or_else(|| {
+            self.theme_set
+                .themes
+                .get("Solarized (dark)")
+                .expect("Solarized (dark) must exist")
+        });
+        Ok(LineHighlighter::new(syntax, theme).highlight_line(line, &self.syntax_set)?)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {
         let syntax = self.syntax_set.find_syntax_by_extension(extension).unwrap();
 
         // let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (light)"]);
-        let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (dark)"]);
+        let mut h =
+            syntect::easy::HighlightLines::new(syntax, &self.theme_set.themes["Solarized (dark)"]);
 
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &self.syntax_set).unwrap();
 
@@ -175,7 +211,7 @@ impl SyntaxHighlighter {
 
         let mut offset = 0;
         ranges
-            .iter()
+            .into_iter()
             .filter_map(|(style, text)| {
                 let chars_count = text.chars().count();
                 offset += chars_count;

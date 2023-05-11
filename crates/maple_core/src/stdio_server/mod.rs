@@ -294,6 +294,10 @@ impl Client {
                     .unwrap();
 
                 let syntax_highlighter = SyntaxHighlighter::new();
+                tracing::debug!(
+                    "=========== themes: {:?}",
+                    syntax_highlighter.theme_set.themes.keys()
+                );
 
                 let syntax = syntax_highlighter
                     .syntax_set
@@ -307,7 +311,11 @@ impl Client {
                     .iter()
                     .enumerate()
                     .filter_map(|(idx, line)| {
-                        match syntax_highlighter.get_token_highlights_in_line(syntax, line) {
+                        match syntax_highlighter.get_token_highlights_in_line(
+                            syntax,
+                            line,
+                            "gruvbox-dark",
+                        ) {
                             Ok(token_highlights) => Some((lnum + idx, token_highlights)),
                             Err(err) => {
                                 tracing::error!(line, ?err, "Error at fetching line highlight");
