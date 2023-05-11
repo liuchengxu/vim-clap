@@ -1,7 +1,6 @@
 mod assets;
 mod lazy_theme_set;
 
-use self::lazy_theme_set::LazyThemeSet;
 use anyhow::Result;
 use colorsys::Rgb;
 use rgb2ansi256::rgb_to_ansi256;
@@ -88,7 +87,7 @@ pub struct TokenHighlight {
 }
 
 #[derive(Debug)]
-pub struct HighlightToken {
+pub struct TokenHighlighterForTerminal {
     pub highlight_args: HighlightArgs,
     /// Token range in chars.
     pub range: Range<usize>,
@@ -100,25 +99,13 @@ pub struct SyntaxHighlighter {
     pub theme_set: ThemeSet,
 }
 
-fn get_serialized_integrated_syntaxset() -> &'static [u8] {
-    include_bytes!("../../../assets/syntaxes.bin")
-}
-
-fn get_integrated_themeset() -> LazyThemeSet {
-    from_binary(include_bytes!("../../../assets/themes.bin"))
-}
-
-fn from_binary<T: serde::de::DeserializeOwned>(v: &[u8]) -> T {
-    asset_from_contents(v, "n/a")
-        .expect("data integrated in binary is never faulty, but make sure `compressed` is in sync!")
-}
-
-fn asset_from_contents<T: serde::de::DeserializeOwned>(
-    contents: &[u8],
-    description: &str,
-) -> Result<T> {
-    bincode::deserialize_from(contents)
-        .map_err(|_| anyhow::anyhow!("Could not parse {description}"))
+impl Default for SyntaxHighlighter {
+    fn default() -> Self {
+        Self {
+            syntax_set: SyntaxSet::load_defaults_newlines(),
+            theme_set: ThemeSet::load_defaults(),
+        }
+    }
 }
 
 impl SyntaxHighlighter {
@@ -127,12 +114,10 @@ impl SyntaxHighlighter {
         Self {
             syntax_set: syntect::dumps::from_binary(crate::assets::DEFAULT_SYNTAXSET),
             theme_set: syntect::dumps::from_binary(crate::assets::DEFAULT_THEMESET),
-            // syntax_set: SyntaxSet::load_defaults_newlines(),
-            // theme_set: ThemeSet::load_defaults(),
         }
     }
 
-    pub fn get_line_highlights(
+    pub fn get_token_highlights_in_line(
         &self,
         syntax: &SyntaxReference,
         line: &str,
@@ -175,7 +160,7 @@ impl SyntaxHighlighter {
         Ok(vim_highlights)
     }
 
-    pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<HighlightToken> {
+    pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {
         let syntax = self.syntax_set.find_syntax_by_extension(extension).unwrap();
 
         // let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (light)"]);
@@ -197,7 +182,7 @@ impl SyntaxHighlighter {
                 if text.trim().is_empty() {
                     None
                 } else {
-                    Some(HighlightToken {
+                    Some(TokenHighlighterForTerminal {
                         highlight_args: HighlightArgs::from_style(style),
                         range: (offset - chars_count..offset),
                     })

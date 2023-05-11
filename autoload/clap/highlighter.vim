@@ -123,6 +123,8 @@ function! s:try_create_token_highlight_group(group_name, cterm, ctermfg, ctermbg
   endif
 endfunction
 
+" Highlight all the tokens at a specific line.
+"
 " lnum is 1-based.
 function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
   for token_highlight in a:token_highlights
@@ -136,6 +138,13 @@ function! clap#highlighter#highlight_line(bufnr, lnum, token_highlights) abort
           \ token_highlight.guibg,
           \ )
     call s:add_highlight_at(a:bufnr, a:lnum - 1, token_highlight.col_start, token_highlight.length, token_highlight.group_name)
+  endfor
+endfunction
+
+" Highlight a list of lines.
+function! clap#highlighter#highlight_lines(bufnr, line_highlights) abort
+  for [lnum, line_highlight] in a:line_highlights
+    call clap#highlighter#highlight_line(a:bufnr, lnum, line_highlight)
   endfor
 endfunction
 

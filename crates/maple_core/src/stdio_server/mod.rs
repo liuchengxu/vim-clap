@@ -302,13 +302,26 @@ impl Client {
                         anyhow::anyhow!("Can not find syntax for extension {extension}")
                     })?;
 
-                for (idx, line) in lines.iter().enumerate() {
-                    let line_highlights = syntax_highlighter.get_line_highlights(syntax, line)?;
-                    self.vim.exec(
-                        "clap#highlighter#highlight_line",
-                        serde_json::json!([bufnr, lnum + idx, line_highlights]),
-                    )?;
-                }
+                let now = std::time::Instant::now();
+                let line_highlights = lines
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, line)| {
+                        match syntax_highlighter.get_token_highlights_in_line(syntax, line) {
+                            Ok(token_highlights) => Some((lnum + idx, token_highlights)),
+                            Err(err) => {
+                                tracing::error!(line, ?err, "Error at fetching line highlight");
+                                None
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                self.vim.exec(
+                    "clap#highlighter#highlight_lines",
+                    serde_json::json!([bufnr, line_highlights]),
+                )?;
+
+                tracing::debug!("Lines highlight elapsed: {:?}ms", now.elapsed().as_millis());
             }
             _ => return Err(anyhow!("Unknown notification: {notification:?}")),
         }
