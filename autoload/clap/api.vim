@@ -126,6 +126,10 @@ function! s:api.curbufline(lnum) abort
   return get(getbufline(bufnr(''), a:lnum), 0, v:null)
 endfunction
 
+function! s:api.current_window_line_range() abort
+  return [win_getid(), line('w0'), line('w$')]
+endfunction
+
 function! s:api.append_and_write(lnum, text) abort
   call append(a:lnum, a:text)
   silent noautocmd write

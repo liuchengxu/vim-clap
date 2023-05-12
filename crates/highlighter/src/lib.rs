@@ -1,5 +1,4 @@
 mod assets;
-mod lazy_theme_set;
 
 use anyhow::Result;
 use colorsys::Rgb;
@@ -109,14 +108,15 @@ impl Default for SyntaxHighlighter {
     }
 }
 
-// Replication of [`syntect::HighlightLines`] in order to reduce one allocation
-pub struct LineHighlighter<'a> {
+/// Replication of [`syntect::HighlightLines`] in order to reduce one allocation in
+/// [`Self::highlight_line`].
+pub struct HighlightEngine<'a> {
     highlighter: Highlighter<'a>,
     parse_state: ParseState,
     highlight_state: HighlightState,
 }
 
-impl<'a> LineHighlighter<'a> {
+impl<'a> HighlightEngine<'a> {
     pub fn new(syntax: &SyntaxReference, theme: &'a Theme) -> Self {
         let highlighter = Highlighter::new(theme);
         let highlight_state = HighlightState::new(&highlighter, ScopeStack::new());
@@ -186,13 +186,17 @@ impl SyntaxHighlighter {
         line: &str,
         theme: &str,
     ) -> Result<Vec<TokenHighlight>> {
-        let theme = self.theme_set.themes.get(theme).unwrap_or_else(|| {
-            self.theme_set
-                .themes
-                .get("Solarized (dark)")
-                .expect("Solarized (dark) must exist")
-        });
-        Ok(LineHighlighter::new(syntax, theme).highlight_line(line, &self.syntax_set)?)
+        let theme = match self.theme_set.themes.get(theme) {
+            Some(v) => v,
+            None => {
+                const DEFAULT_THEME: &str = "Solarized (dark)";
+                self.theme_set
+                    .themes
+                    .get(DEFAULT_THEME)
+                    .ok_or_else(|| anyhow::anyhow!("Default theme {DEFAULT_THEME} not found"))?
+            }
+        };
+        Ok(HighlightEngine::new(syntax, theme).highlight_line(line, &self.syntax_set)?)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {
