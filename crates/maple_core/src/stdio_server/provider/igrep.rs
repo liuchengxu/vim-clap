@@ -76,13 +76,28 @@ impl Grepper {
 struct Explorer {
     printer: Printer,
     current_dir: PathBuf,
-    dir_entries: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
+    dir_entries_cache: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
     current_lines: Vec<String>,
     icon_enabled: bool,
     winwidth: usize,
 }
 
 impl Explorer {
+    async fn new(ctx: &Context) -> Result<Self> {
+        let current_dir = ctx.cwd.to_path_buf();
+        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
+        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
+        Ok(Self {
+            printer,
+            current_dir,
+            dir_entries_cache: HashMap::new(),
+            current_lines: Vec::new(),
+            icon_enabled,
+            winwidth,
+        })
+    }
+
     async fn init(&mut self, ctx: &Context) -> Result<()> {
         let cwd = &ctx.cwd;
 
@@ -103,7 +118,7 @@ impl Explorer {
             self.current_lines = entries.clone();
         }
 
-        self.dir_entries.insert(
+        self.dir_entries_cache.insert(
             cwd.to_path_buf(),
             entries
                 .into_iter()
@@ -119,7 +134,7 @@ impl Explorer {
         Ok(())
     }
 
-    // Without the icon.
+    // Strip the leading filer icon.
     async fn current_line(&self, ctx: &Context) -> Result<String> {
         let curline = ctx.vim.display_getcurline().await?;
         let curline = if self.icon_enabled {
@@ -180,9 +195,11 @@ impl Explorer {
     /// Display the file explorer.
     fn display_dir_entries(&self, ctx: &Context) -> Result<Vec<String>> {
         let current_items = self
-            .dir_entries
+            .dir_entries_cache
             .get(&self.current_dir)
-            .ok_or_else(|| anyhow::anyhow!("Directory entries not found"))?;
+            .ok_or_else(|| {
+                anyhow::anyhow!("Entries for {} not loaded", self.current_dir.display())
+            })?;
 
         let processed = current_items.len();
 
@@ -209,7 +226,12 @@ impl Explorer {
         }
 
         let result = json!({
-            "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added, "display_syntax": "clap_filer"
+            "lines": &lines,
+            "indices": indices,
+            "matched": 0,
+            "processed": processed,
+            "icon_added": icon_added,
+            "display_syntax": "clap_filer",
         });
 
         ctx.vim
@@ -271,7 +293,9 @@ impl Explorer {
 
     fn goto_dir(&mut self, dir: PathBuf, ctx: &Context) -> Result<()> {
         self.current_dir = dir.clone();
-        self.load_dir(dir, ctx)?;
+        if let Err(err) = self.read_entries_if_not_in_cache(dir) {
+            ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
+        }
         ctx.vim.exec("input_set", [""])?;
         ctx.vim.exec(
             "clap#file_explorer#set_prompt",
@@ -287,18 +311,16 @@ impl Explorer {
             None => return Ok(()),
         };
         self.current_dir = parent_dir.to_path_buf();
-        self.load_dir(self.current_dir.clone(), ctx)
+        if let Err(err) = self.read_entries_if_not_in_cache(self.current_dir.clone()) {
+            ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
+        }
+
+        Ok(())
     }
 
-    fn load_dir(&mut self, target_dir: PathBuf, ctx: &Context) -> Result<()> {
-        if let Entry::Vacant(v) = self.dir_entries.entry(target_dir) {
-            let entries = match read_dir_entries(&self.current_dir, ctx.env.icon.enabled(), None) {
-                Ok(entries) => entries,
-                Err(err) => {
-                    ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
-                    return Ok(());
-                }
-            };
+    fn read_entries_if_not_in_cache(&mut self, target_dir: PathBuf) -> Result<()> {
+        if let Entry::Vacant(v) = self.dir_entries_cache.entry(target_dir) {
+            let entries = read_dir_entries(&self.current_dir, self.icon_enabled, None)?;
 
             v.insert(
                 entries
@@ -334,19 +356,8 @@ pub struct IgrepProvider {
 
 impl IgrepProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        let current_dir = ctx.cwd.to_path_buf();
-        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
-        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
-        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
         Ok(Self {
-            explorer: Explorer {
-                printer,
-                current_dir,
-                dir_entries: HashMap::new(),
-                current_lines: Vec::new(),
-                icon_enabled,
-                winwidth,
-            },
+            explorer: Explorer::new(ctx).await?,
             grepper: Grepper::new(),
             mode: Mode::FileExplorer,
         })
