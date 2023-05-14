@@ -297,8 +297,7 @@ impl IgrepProvider {
             let entries = match read_dir_entries(&self.current_dir, ctx.env.icon.enabled(), None) {
                 Ok(entries) => entries,
                 Err(err) => {
-                    ctx.vim
-                        .exec("clap#provider#igrep#handle_error", [err.to_string()])?;
+                    ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
                     return Ok(());
                 }
             };
@@ -360,8 +359,7 @@ impl ClapProvider for IgrepProvider {
             Ok(entries) => entries,
             Err(err) => {
                 tracing::error!(?cwd, "Failed to read directory entries");
-                ctx.vim
-                    .exec("clap#provider#igrep#handle_error", [err.to_string()])?;
+                ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
                 return Ok(());
             }
         };

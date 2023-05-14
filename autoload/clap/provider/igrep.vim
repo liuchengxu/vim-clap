@@ -8,13 +8,7 @@ set cpoptions&vim
 
 let s:igrep = {}
 
-let s:PATH_SEPERATOR = has('win32') && !(exists('+shellslash') && &shellslash) ? '\' : '/'
-let s:DIRECTORY_IS_EMPTY = (g:clap_enable_icon ? '  ' : '').'<Empty directory>'
 let s:CREATE_FILE = ' [Create new file]'
-
-function! clap#provider#igrep#handle_error(error) abort
-  call g:clap.preview.show([a:error])
-endfunction
 
 function! s:get_entry_by_line(line) abort
   let curline = a:line
