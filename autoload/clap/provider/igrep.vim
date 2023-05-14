@@ -10,10 +10,6 @@ let s:igrep = {}
 
 let s:CREATE_FILE = ' [Create new file]'
 
-function! clap#provider#igrep#sink(entry) abort
-  call clap#handler#sink_with({ -> execute('edit '.fnameescape(a:entry))})
-endfunction
-
 function! s:igrep.on_move_async() abort
   if stridx(g:clap.display.getcurline(), s:CREATE_FILE) > -1
     call g:clap.preview.hide()

@@ -17,40 +17,106 @@ use std::sync::Arc;
 use types::{ClapItem, Query};
 
 #[derive(Debug)]
-enum Mode {
-    FileExplorer,
-    FileSearch,
+struct Grepper {
+    searcher_control: Option<SearcherControl>,
 }
 
-/// Grep in an interactive way.
+impl Grepper {
+    fn new() -> Self {
+        Self {
+            searcher_control: None,
+        }
+    }
+
+    fn kill_last_searcher(&mut self) {
+        if let Some(control) = self.searcher_control.take() {
+            tokio::task::spawn_blocking(move || {
+                control.kill();
+            });
+        }
+    }
+
+    fn grep(&mut self, query: String, path: PathBuf, ctx: &Context) {
+        if let Some(control) = self.searcher_control.take() {
+            tokio::task::spawn_blocking(move || {
+                control.kill();
+            });
+        }
+
+        let matcher = ctx
+            .matcher_builder()
+            .match_scope(MatchScope::Full) // Force using MatchScope::Full.
+            .build(Query::from(&query));
+
+        let new_control = {
+            let stop_signal = Arc::new(AtomicBool::new(false));
+
+            let mut search_context = ctx.search_context(stop_signal.clone());
+            search_context.paths = vec![path];
+            let join_handle = tokio::spawn(async move {
+                crate::searcher::grep::search(query, matcher, search_context).await
+            });
+
+            SearcherControl {
+                stop_signal,
+                join_handle,
+            }
+        };
+
+        self.searcher_control.replace(new_control);
+
+        let _ = ctx.vim.exec(
+            "setbufvar",
+            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_grep"]),
+        );
+    }
+}
+
 #[derive(Debug)]
-pub struct IgrepProvider {
+struct Explorer {
     printer: Printer,
     current_dir: PathBuf,
     dir_entries: HashMap<PathBuf, Vec<Arc<dyn ClapItem>>>,
     current_lines: Vec<String>,
-    searcher_control: Option<SearcherControl>,
     icon_enabled: bool,
     winwidth: usize,
-    mode: Mode,
 }
 
-impl IgrepProvider {
-    pub async fn new(ctx: &Context) -> Result<Self> {
-        let current_dir = ctx.cwd.to_path_buf();
-        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
-        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
-        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
-        Ok(Self {
-            printer,
-            current_dir,
-            dir_entries: HashMap::new(),
-            current_lines: Vec::new(),
-            searcher_control: None,
-            winwidth,
-            icon_enabled,
-            mode: Mode::FileExplorer,
-        })
+impl Explorer {
+    async fn init(&mut self, ctx: &Context) -> Result<()> {
+        let cwd = &ctx.cwd;
+
+        let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {
+            Ok(entries) => entries,
+            Err(err) => {
+                tracing::error!(?cwd, "Failed to read directory entries");
+                ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
+                return Ok(());
+            }
+        };
+
+        let query: String = ctx.vim.input_get().await?;
+        if query.is_empty() {
+            let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
+            ctx.vim
+                .exec("clap#file_explorer#handle_on_initialize", response)?;
+            self.current_lines = entries.clone();
+        }
+
+        self.dir_entries.insert(
+            cwd.to_path_buf(),
+            entries
+                .into_iter()
+                .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
+                .collect(),
+        );
+
+        ctx.vim.exec(
+            "setbufvar",
+            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_filer"]),
+        )?;
+
+        Ok(())
     }
 
     // Without the icon.
@@ -64,135 +130,55 @@ impl IgrepProvider {
         Ok(curline)
     }
 
-    async fn on_tab(&mut self, ctx: &mut Context) -> Result<()> {
-        let input = ctx.vim.input_get().await?;
-        if input.is_empty() {
-            let curline = self.current_line(ctx).await?;
-            let target_dir = self.current_dir.join(curline);
-
-            if target_dir.is_dir() {
-                self.goto_dir(target_dir, ctx)?;
-                self.preview_entry_for_file_listing(ctx).await?;
-            } else if target_dir.is_file() {
-                let preview_target = PreviewTarget::File(target_dir);
-                self.update_preview_for_file_listing(preview_target, ctx)
-                    .await?;
-            }
-        } else {
-            ctx.vim.bare_exec("clap#selection#toggle")?;
-        }
-
-        Ok(())
-    }
-
-    async fn on_backspace(&mut self, ctx: &mut Context) -> Result<()> {
-        if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
-        }
-
-        let mut input: String = if ctx.env.is_nvim {
-            ctx.vim.input_get().await?
-        } else {
-            ctx.vim
-                .eval("g:__clap_popup_input_before_backspace_applied")
-                .await?
-        };
-
-        if input.is_empty() {
-            self.goto_parent(ctx)?;
-            ctx.vim.exec(
-                "clap#file_explorer#set_prompt",
-                serde_json::json!([&self.current_dir, self.winwidth]),
-            )?;
-            self.current_lines = self.list_files(ctx)?;
-            self.preview_entry_for_file_listing(ctx).await?;
-        } else {
-            input.pop();
-            ctx.vim.exec("input_set", [&input])?;
-
-            if input.is_empty() {
-                self.current_lines = self.list_files(ctx)?;
-            } else {
-                self.grep_files(input, ctx);
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
-        match self.mode {
-            Mode::FileExplorer => {
-                let curline = self.current_line(ctx).await?;
-                let target_dir = self.current_dir.join(curline);
-                if target_dir.is_dir() {
-                    self.goto_dir(target_dir, ctx)?;
-                } else if target_dir.is_file() {
-                    ctx.vim.exec("execute", ["stopinsert"])?;
-                    ctx.vim.exec("clap#provider#igrep#sink", [target_dir])?;
-                } else {
-                    let input = ctx.vim.input_get().await?;
-                    let target_file = self.current_dir.join(input);
-                    ctx.vim
-                        .exec("clap#file_explorer#handle_special_entries", [target_file])?;
-                }
-            }
-            Mode::FileSearch => {
-                let curline = ctx.vim.display_getcurline().await?;
-                let grep_line = self.current_dir.join(curline);
-                let (fpath, lnum, col, _line_content) = grep_line
-                    .to_str()
-                    .and_then(pattern::extract_grep_position)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("Can not extract grep position: {}", grep_line.display())
-                    })?;
-                if !std::path::Path::new(fpath).is_file() {
-                    ctx.vim.echo_info(format!("{fpath} is not a file"))?;
-                    return Ok(());
-                }
-                ctx.vim.exec(
-                    "clap#handler#sink_with",
-                    serde_json::json!(["clap#sink#open_file", fpath, lnum, col]),
-                )?;
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn preview_entry_for_file_listing(&self, ctx: &mut Context) -> Result<()> {
+    async fn expand_dir_or_preview(&mut self, ctx: &mut Context) -> Result<()> {
         let curline = self.current_line(ctx).await?;
         let target_dir = self.current_dir.join(curline);
-        let preview_target = if target_dir.is_dir() {
-            PreviewTarget::Directory(target_dir)
-        } else {
-            PreviewTarget::File(target_dir)
-        };
 
-        self.update_preview_for_file_listing(preview_target, ctx)
-            .await
+        if target_dir.is_dir() {
+            self.goto_dir(target_dir, ctx)?;
+            self.preview_current_line(ctx).await?;
+        } else if target_dir.is_file() {
+            let preview_target = PreviewTarget::File(target_dir);
+            self.update_preview_with_target(preview_target, ctx).await?;
+        }
+        Ok(())
     }
 
-    async fn preview_entry_for_file_grepping(&self, ctx: &mut Context) -> Result<()> {
-        let curline = ctx.vim.display_getcurline().await?;
-        if let Some((fpath, lnum, _col, _cache_line)) = extract_grep_position(&curline) {
-            let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
-            let path = self.current_dir.join(fpath);
+    async fn goto_parent(&mut self, ctx: &mut Context) -> Result<()> {
+        self.load_parent(ctx)?;
+        ctx.vim.exec(
+            "clap#file_explorer#set_prompt",
+            serde_json::json!([&self.current_dir, self.winwidth]),
+        )?;
+        self.current_lines = self.display_dir_entries(ctx)?;
+        self.preview_current_line(ctx).await?;
+        Ok(())
+    }
 
-            let preview_target = PreviewTarget::LineInFile {
-                path,
-                line_number: lnum,
-            };
-
-            ctx.update_preview(Some(preview_target)).await?;
+    async fn apply_sink(&mut self, ctx: &Context) -> Result<()> {
+        let curline = self.current_line(ctx).await?;
+        let target_dir = self.current_dir.join(curline);
+        if target_dir.is_dir() {
+            self.goto_dir(target_dir, ctx)?;
+        } else if target_dir.is_file() {
+            ctx.vim.exec("execute", ["stopinsert"])?;
+            ctx.vim.exec("clap#file_explorer#sink", [target_dir])?;
+        } else {
+            let input = ctx.vim.input_get().await?;
+            let target_file = self.current_dir.join(input);
+            ctx.vim
+                .exec("clap#file_explorer#handle_special_entries", [target_file])?;
         }
+        Ok(())
+    }
+
+    fn show_dir_entries(&mut self, ctx: &Context) -> Result<()> {
+        self.current_lines = self.display_dir_entries(ctx)?;
         Ok(())
     }
 
     /// Display the file explorer.
-    fn list_files(&self, ctx: &Context) -> Result<Vec<String>> {
+    fn display_dir_entries(&self, ctx: &Context) -> Result<Vec<String>> {
         let current_items = self
             .dir_entries
             .get(&self.current_dir)
@@ -223,7 +209,7 @@ impl IgrepProvider {
         }
 
         let result = json!({
-            "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added,
+            "lines": &lines, "indices": indices, "matched": 0, "processed": processed, "icon_added": icon_added, "display_syntax": "clap_filer"
         });
 
         ctx.vim
@@ -232,7 +218,19 @@ impl IgrepProvider {
         Ok(lines)
     }
 
-    async fn update_preview_for_file_listing(
+    async fn preview_current_line(&self, ctx: &mut Context) -> Result<()> {
+        let curline = self.current_line(ctx).await?;
+        let target_dir = self.current_dir.join(curline);
+        let preview_target = if target_dir.is_dir() {
+            PreviewTarget::Directory(target_dir)
+        } else {
+            PreviewTarget::File(target_dir)
+        };
+
+        self.update_preview_with_target(preview_target, ctx).await
+    }
+
+    async fn update_preview_with_target(
         &self,
         preview_target: PreviewTarget,
         ctx: &mut Context,
@@ -252,7 +250,7 @@ impl IgrepProvider {
 
                 let maybe_syntax = preview_impl.preview_target.path().and_then(|path| {
                     if path.is_dir() {
-                        Some("clap_grep")
+                        Some("clap_filer")
                     } else if path.is_file() {
                         preview_syntax(path)
                     } else {
@@ -279,11 +277,11 @@ impl IgrepProvider {
             "clap#file_explorer#set_prompt",
             serde_json::json!([&self.current_dir, self.winwidth]),
         )?;
-        self.current_lines = self.list_files(ctx)?;
+        self.current_lines = self.display_dir_entries(ctx)?;
         Ok(())
     }
 
-    fn goto_parent(&mut self, ctx: &Context) -> Result<()> {
+    fn load_parent(&mut self, ctx: &Context) -> Result<()> {
         let parent_dir = match self.current_dir.parent() {
             Some(parent) => parent,
             None => return Ok(()),
@@ -318,69 +316,130 @@ impl IgrepProvider {
 
         Ok(())
     }
+}
 
-    fn grep_files(&mut self, query: String, ctx: &Context) {
-        if let Some(control) = self.searcher_control.take() {
-            tokio::task::spawn_blocking(move || {
-                control.kill();
-            });
+#[derive(Debug)]
+enum Mode {
+    FileExplorer,
+    FileSearcher,
+}
+
+/// Grep in an interactive way.
+#[derive(Debug)]
+pub struct IgrepProvider {
+    explorer: Explorer,
+    grepper: Grepper,
+    mode: Mode,
+}
+
+impl IgrepProvider {
+    pub async fn new(ctx: &Context) -> Result<Self> {
+        let current_dir = ctx.cwd.to_path_buf();
+        let printer = Printer::new(ctx.env.display_winwidth, icon::Icon::Null);
+        let icon_enabled = ctx.vim.get_var_bool("clap_enable_icon").await?;
+        let winwidth = ctx.vim.winwidth(ctx.env.display.winid).await?;
+        Ok(Self {
+            explorer: Explorer {
+                printer,
+                current_dir,
+                dir_entries: HashMap::new(),
+                current_lines: Vec::new(),
+                icon_enabled,
+                winwidth,
+            },
+            grepper: Grepper::new(),
+            mode: Mode::FileExplorer,
+        })
+    }
+
+    async fn on_tab(&mut self, ctx: &mut Context) -> Result<()> {
+        let input = ctx.vim.input_get().await?;
+        if input.is_empty() {
+            self.explorer.expand_dir_or_preview(ctx).await?;
+        } else {
+            ctx.vim.bare_exec("clap#selection#toggle")?;
         }
 
-        let matcher = ctx
-            .matcher_builder()
-            .match_scope(MatchScope::Full) // Force using MatchScope::Full.
-            .build(Query::from(&query));
+        Ok(())
+    }
 
-        let new_control = {
-            let stop_signal = Arc::new(AtomicBool::new(false));
+    async fn on_backspace(&mut self, ctx: &mut Context) -> Result<()> {
+        self.grepper.kill_last_searcher();
 
-            let mut search_context = ctx.search_context(stop_signal.clone());
-            search_context.paths = vec![self.current_dir.clone()];
-            let join_handle = tokio::spawn(async move {
-                crate::searcher::grep::search(query, matcher, search_context).await
-            });
-
-            SearcherControl {
-                stop_signal,
-                join_handle,
-            }
+        let mut input: String = if ctx.env.is_nvim {
+            ctx.vim.input_get().await?
+        } else {
+            ctx.vim
+                .eval("g:__clap_popup_input_before_backspace_applied")
+                .await?
         };
 
-        self.searcher_control.replace(new_control);
+        if input.is_empty() {
+            self.explorer.goto_parent(ctx).await?;
+        } else {
+            input.pop();
+            ctx.vim.exec("input_set", [&input])?;
+
+            if input.is_empty() {
+                self.explorer.show_dir_entries(ctx)?;
+            } else {
+                self.grepper
+                    .grep(input, self.explorer.current_dir.clone(), ctx)
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
+        match self.mode {
+            Mode::FileExplorer => {
+                self.explorer.apply_sink(ctx).await?;
+            }
+            Mode::FileSearcher => {
+                let curline = ctx.vim.display_getcurline().await?;
+                let grep_line = self.explorer.current_dir.join(curline);
+                let (fpath, lnum, col, _line_content) = grep_line
+                    .to_str()
+                    .and_then(pattern::extract_grep_position)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Can not extract grep position: {}", grep_line.display())
+                    })?;
+                if !std::path::Path::new(fpath).is_file() {
+                    ctx.vim.echo_info(format!("{fpath} is not a file"))?;
+                    return Ok(());
+                }
+                ctx.vim.exec(
+                    "clap#handler#sink_with",
+                    serde_json::json!(["clap#sink#open_file", fpath, lnum, col]),
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn preview_grep_line(&self, ctx: &mut Context) -> Result<()> {
+        let curline = ctx.vim.display_getcurline().await?;
+        if let Some((fpath, lnum, _col, _cache_line)) = extract_grep_position(&curline) {
+            let fpath = fpath.strip_prefix("./").unwrap_or(fpath);
+            let path = self.explorer.current_dir.join(fpath);
+
+            let preview_target = PreviewTarget::LineInFile {
+                path,
+                line_number: lnum,
+            };
+
+            ctx.update_preview(Some(preview_target)).await?;
+        }
+        Ok(())
     }
 }
 
 #[async_trait::async_trait]
 impl ClapProvider for IgrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
-        let cwd = &ctx.cwd;
-
-        let entries = match read_dir_entries(cwd, ctx.env.icon.enabled(), None) {
-            Ok(entries) => entries,
-            Err(err) => {
-                tracing::error!(?cwd, "Failed to read directory entries");
-                ctx.vim.exec("show_lines_in_preview", [err.to_string()])?;
-                return Ok(());
-            }
-        };
-
-        let query: String = ctx.vim.input_get().await?;
-        if query.is_empty() {
-            let response = json!({ "entries": &entries, "dir": cwd, "total": entries.len() });
-            ctx.vim
-                .exec("clap#file_explorer#handle_on_initialize", response)?;
-            self.current_lines = entries.clone();
-        }
-
-        self.dir_entries.insert(
-            cwd.to_path_buf(),
-            entries
-                .into_iter()
-                .map(|line| Arc::new(FilerItem(line)) as Arc<dyn ClapItem>)
-                .collect(),
-        );
-
-        Ok(())
+        self.explorer.init(ctx).await
     }
 
     async fn on_move(&mut self, ctx: &mut Context) -> Result<()> {
@@ -389,9 +448,9 @@ impl ClapProvider for IgrepProvider {
         }
         let query: String = ctx.vim.input_get().await?;
         if query.is_empty() {
-            self.preview_entry_for_file_listing(ctx).await
+            self.explorer.preview_current_line(ctx).await
         } else {
-            self.preview_entry_for_file_grepping(ctx).await
+            self.preview_grep_line(ctx).await
         }
     }
 
@@ -400,10 +459,11 @@ impl ClapProvider for IgrepProvider {
 
         if query.is_empty() {
             self.mode = Mode::FileExplorer;
-            self.current_lines = self.list_files(ctx)?;
+            self.explorer.show_dir_entries(ctx)?;
         } else {
-            self.mode = Mode::FileSearch;
-            self.grep_files(query, ctx);
+            self.mode = Mode::FileSearcher;
+            self.grepper
+                .grep(query, self.explorer.current_dir.clone(), ctx);
         }
 
         Ok(())

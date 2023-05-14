@@ -100,6 +100,10 @@ function! clap#file_explorer#handle_on_initialize(result) abort
   call g:clap#display_win.shrink_if_undersize()
 endfunction
 
+function! clap#file_explorer#sink(entry) abort
+  call clap#handler#sink_with({ -> execute('edit '.fnameescape(a:entry))})
+endfunction
+
 function! clap#file_explorer#set_prompt(current_dir, winwidth) abort
   let current_dir = a:current_dir[-1:] ==# s:PATH_SEPERATOR ? a:current_dir : a:current_dir.s:PATH_SEPERATOR
   let cwd = getcwd()
