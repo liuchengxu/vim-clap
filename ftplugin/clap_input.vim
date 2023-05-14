@@ -45,7 +45,7 @@ cnoremap <silent> <buffer> q :<c-u>call clap#handler#exit()<CR>:echo<CR>
 
 inoremap <silent> <buffer> <expr> <C-E> col('.')>strlen(getline('.'))<bar><bar>pumvisible()?"\<Lt>C-E>":"\<Lt>End>"
 
-inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#relaunch_providers()<CR>
+inoremap <silent> <buffer> <C-l> <Esc>:call clap#handler#handle_mapping("\<C-l\>")<CR>
 
 " Use this way when we need stopinsert inside the handler.
 inoremap <silent> <buffer> <C-c> <Esc>:<c-u>call clap#handler#exit()<CR>
@@ -80,7 +80,7 @@ endif
 
 nnoremap <silent> <buffer> <Esc>     :<c-u>call clap#handler#exit()<CR>
 
-nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#relaunch_providers()<CR>
+nnoremap <silent> <buffer> <C-l>     :<c-u>call clap#handler#handle_mapping("\<C-l\>")<CR>
 
 nnoremap <silent> <buffer> <C-c>     :<c-u>call clap#handler#exit()<CR>
 nnoremap <silent> <buffer> <C-g>     :<c-u>call clap#handler#exit()<CR>

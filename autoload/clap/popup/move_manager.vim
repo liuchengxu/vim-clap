@@ -75,7 +75,7 @@ function! s:move_manager.ctrl_f(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_l(_winid) abort
-  call clap#handler#relaunch_providers()
+  call clap#handler#handle_mapping("\<C-l\>")
 endfunction
 
 function! s:move_manager.ctrl_n(_winwid) abort

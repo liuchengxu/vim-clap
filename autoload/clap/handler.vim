@@ -7,7 +7,7 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:old_input = ''
 
-function! clap#handler#relaunch_providers() abort
+function! s:relaunch_providers() abort
   call clap#handler#exit()
   call timer_start(10, { -> clap#for('providers') })
   call g:clap.input.set('')
@@ -15,7 +15,7 @@ endfunction
 
 function! clap#handler#relaunch_is_ok(cur_input) abort
   if a:cur_input ==# g:clap_providers_relaunch_code
-    call clap#handler#relaunch_providers()
+    call s:relaunch_providers()
     return v:true
   endif
   return v:false
@@ -93,10 +93,10 @@ endfunction
 
 " Similiar to s:provider_sink() but using a custom Sink function and without
 " handling the no matches case.
-function! clap#handler#sink_with(Fn, ...) abort
+function! clap#handler#sink_with(SinkFn, ...) abort
   call s:internal_exit()
   try
-    call call(a:Fn, a:000)
+    call call(a:SinkFn, a:000)
   catch
     call clap#helper#echo_error('clap#handler#sink_with: '.v:exception.', throwpoint:'.v:throwpoint)
   finally
@@ -131,6 +131,7 @@ let s:default_mappings = {
       \ "<CR>": function('s:provider_sink'),
       \ "<Tab>": function('clap#selection#toggle'),
       \ "<A-U>": function('s:noop'),
+      \ "<C-l>": function('s:relaunch_providers'),
       \ }
 
 function! clap#handler#handle_mapping(mapping) abort
