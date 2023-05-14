@@ -93,10 +93,10 @@ endfunction
 
 " Similiar to s:provider_sink() but using a custom Sink function and without
 " handling the no matches case.
-function! clap#handler#sink_with(Fn) abort
+function! clap#handler#sink_with(Fn, ...) abort
   call s:internal_exit()
   try
-    call a:Fn()
+    call call(a:Fn, a:000)
   catch
     call clap#helper#echo_error('clap#handler#sink_with: '.v:exception.', throwpoint:'.v:throwpoint)
   finally

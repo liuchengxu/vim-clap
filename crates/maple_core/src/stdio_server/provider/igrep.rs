@@ -144,7 +144,7 @@ impl IgrepProvider {
                 let grep_line = self.current_dir.join(curline);
                 let (fpath, lnum, col, _line_content) = grep_line
                     .to_str()
-                    .and_then(|line| pattern::extract_grep_position(line))
+                    .and_then(pattern::extract_grep_position)
                     .ok_or_else(|| {
                         anyhow::anyhow!("Can not extract grep position: {}", grep_line.display())
                     })?;
@@ -152,10 +152,10 @@ impl IgrepProvider {
                     ctx.vim.echo_info(format!("{fpath} is not a file"))?;
                     return Ok(());
                 }
-                ctx.vim.bare_exec("clap#selection#reset")?;
-                ctx.vim.bare_exec("clap#exit")?;
-                ctx.vim
-                    .exec("clap#sink#open_file", serde_json::json!([fpath, lnum, col]))?;
+                ctx.vim.exec(
+                    "clap#handler#sink_with",
+                    serde_json::json!(["clap#sink#open_file", fpath, lnum, col]),
+                )?;
             }
         }
 
