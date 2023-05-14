@@ -16,6 +16,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::{ClapItem, Query};
 
+#[derive(Debug)]
+enum Mode {
+    FileExplorer,
+    FileSearch,
+}
+
 /// Grep in an interactive way.
 #[derive(Debug)]
 pub struct IgrepProvider {
@@ -26,6 +32,7 @@ pub struct IgrepProvider {
     searcher_control: Option<SearcherControl>,
     icon_enabled: bool,
     winwidth: usize,
+    mode: Mode,
 }
 
 impl IgrepProvider {
@@ -42,6 +49,7 @@ impl IgrepProvider {
             searcher_control: None,
             winwidth,
             icon_enabled,
+            mode: Mode::FileExplorer,
         })
     }
 
@@ -115,19 +123,40 @@ impl IgrepProvider {
     }
 
     async fn on_carriage_return(&mut self, ctx: &Context) -> Result<()> {
-        let curline = self.current_line(ctx).await?;
-        let target_dir = self.current_dir.join(curline);
-
-        if target_dir.is_dir() {
-            self.goto_dir(target_dir, ctx)?;
-        } else if target_dir.is_file() {
-            ctx.vim.exec("execute", ["stopinsert"])?;
-            ctx.vim.exec("clap#provider#igrep#sink", [target_dir])?;
-        } else {
-            let input = ctx.vim.input_get().await?;
-            let target_file = self.current_dir.join(input);
-            ctx.vim
-                .exec("clap#file_explorer#handle_special_entries", [target_file])?;
+        match self.mode {
+            Mode::FileExplorer => {
+                let curline = self.current_line(ctx).await?;
+                let target_dir = self.current_dir.join(curline);
+                if target_dir.is_dir() {
+                    self.goto_dir(target_dir, ctx)?;
+                } else if target_dir.is_file() {
+                    ctx.vim.exec("execute", ["stopinsert"])?;
+                    ctx.vim.exec("clap#provider#igrep#sink", [target_dir])?;
+                } else {
+                    let input = ctx.vim.input_get().await?;
+                    let target_file = self.current_dir.join(input);
+                    ctx.vim
+                        .exec("clap#file_explorer#handle_special_entries", [target_file])?;
+                }
+            }
+            Mode::FileSearch => {
+                let curline = ctx.vim.display_getcurline().await?;
+                let grep_line = self.current_dir.join(curline);
+                let (fpath, lnum, col, _line_content) = grep_line
+                    .to_str()
+                    .and_then(|line| pattern::extract_grep_position(line))
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Can not extract grep position: {}", grep_line.display())
+                    })?;
+                if !std::path::Path::new(fpath).is_file() {
+                    ctx.vim.echo_info(format!("{fpath} is not a file"))?;
+                    return Ok(());
+                }
+                ctx.vim.bare_exec("clap#selection#reset")?;
+                ctx.vim.bare_exec("clap#exit")?;
+                ctx.vim
+                    .exec("clap#sink#open_file", serde_json::json!([fpath, lnum, col]))?;
+            }
         }
 
         Ok(())
@@ -372,8 +401,10 @@ impl ClapProvider for IgrepProvider {
         let query: String = ctx.vim.input_get().await?;
 
         if query.is_empty() {
+            self.mode = Mode::FileExplorer;
             self.current_lines = self.list_files(ctx)?;
         } else {
+            self.mode = Mode::FileSearch;
             self.grep_files(query, ctx);
         }
 

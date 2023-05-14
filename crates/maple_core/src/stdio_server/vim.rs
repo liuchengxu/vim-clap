@@ -420,8 +420,8 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     //    General helpers
     /////////////////////////////////////////////////////////////////
-    pub fn echo_info(&self, msg: &str) -> Result<()> {
-        self.exec("clap#helper#echo_info", json!([msg]))
+    pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
+        self.exec("clap#helper#echo_info", json!([msg.as_ref()]))
     }
 
     pub async fn current_winid(&self) -> Result<usize> {
