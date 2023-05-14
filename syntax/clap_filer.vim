@@ -9,4 +9,5 @@ syntax match ClapFilerNew /\v^.*\[Create new file\].*$/
 hi default link ClapFile TNormal
 hi default link ClapFilerNew Question
 
-call clap#provider#filer#hi_empty_dir()
+syntax match ClapEmptyDirectory /^.*<Empty directory>/
+hi default link ClapEmptyDirectory WarningMsg

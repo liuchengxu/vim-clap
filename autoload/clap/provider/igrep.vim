@@ -10,19 +10,6 @@ let s:igrep = {}
 
 let s:CREATE_FILE = ' [Create new file]'
 
-function! s:get_entry_by_line(line) abort
-  let curline = a:line
-  if g:clap_enable_icon
-    let curline = curline[4:]
-  endif
-  let curline = substitute(curline, '\V' . s:CREATE_FILE, '', '')
-  return clap#file_explorer#join(s:current_dir, curline)
-endfunction
-
-function! s:igrep_sink(selected) abort
-  execute 'edit' fnameescape(s:get_entry_by_line(a:selected))
-endfunction
-
 function! clap#provider#igrep#sink(entry) abort
   call clap#handler#sink_with({ -> execute('edit '.fnameescape(a:entry))})
 endfunction
@@ -35,27 +22,21 @@ function! s:igrep.on_move_async() abort
   call clap#client#notify_provider('on_move')
 endfunction
 
-function! s:igrep.on_no_matches(input) abort
-  execute 'edit' clap#file_explorer#join(s:current_dir, a:input)
-endfunction
-
 function! s:start_rpc_service() abort
-  let s:winwidth = winwidth(g:clap.display.winid)
-  let s:current_dir = clap#file_explorer#init_current_dir()
-  call clap#file_explorer#set_prompt(s:current_dir, s:winwidth)
-  call clap#client#notify_on_init({'cwd': s:current_dir})
+  let current_dir = clap#file_explorer#init_current_dir()
+  call clap#file_explorer#set_prompt(current_dir, winwidth(g:clap.display.winid))
+  call clap#client#notify_on_init({'cwd': current_dir})
 endfunction
 
 let s:igrep.init = function('s:start_rpc_service')
-let s:igrep.sink = function('s:igrep_sink')
 let s:igrep.icon = 'File'
 let s:igrep.syntax = 'clap_grep'
 let s:igrep.source_type = g:__t_rpc
 let s:igrep.on_typed = { -> clap#client#notify_provider('on_typed') }
 let s:igrep.mappings = {
-      \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<CR>": { ->  clap#client#notify_provider('cr') },
       \ "<BS>": { -> clap#client#notify_provider('backspace') },
+      \ "<Tab>": { ->  clap#client#notify_provider('tab') },
       \ "<A-U>": { -> clap#client#notify_provider('backspace') },
       \ }
 let g:clap#provider#igrep# = s:igrep
