@@ -126,6 +126,7 @@ function! s:on_backspace() abort
   call nvim_feedkeys("\<BS>", 'n', v:true)
 endfunction
 
+" vint: -ProhibitUnnecessaryDoubleQuote
 let s:default_mappings = {
       \ "<BS>": function('s:on_backspace'),
       \ "<CR>": function('s:provider_sink'),
