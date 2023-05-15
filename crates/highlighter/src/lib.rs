@@ -5,7 +5,7 @@ use colorsys::Rgb;
 use rgb2ansi256::rgb_to_ansi256;
 use std::ops::Range;
 use syntect::highlighting::{
-    FontStyle, HighlightIterator, HighlightState, Highlighter, Style, Theme, ThemeSet,
+    Color, FontStyle, HighlightIterator, HighlightState, Highlighter, Style, Theme, ThemeSet,
 };
 use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
 
@@ -132,6 +132,7 @@ impl<'a> HighlightEngine<'a> {
         &mut self,
         line: &'b str,
         syntax_set: &SyntaxSet,
+        maybe_normal_fg: Option<Color>,
     ) -> Result<Vec<TokenHighlight>, syntect::Error> {
         let ops = self.parse_state.parse_line(line, syntax_set)?;
         let iter =
@@ -142,7 +143,13 @@ impl<'a> HighlightEngine<'a> {
             .filter_map(|(style, text)| {
                 let chars_count = text.chars().count();
                 offset += chars_count;
-                if text.trim().is_empty() {
+
+                // A lot of tokens use the Normal highlight, which is done by vim syntax highlight itself.
+                let is_normal = maybe_normal_fg
+                    .map(|fg| fg == style.foreground)
+                    .unwrap_or(false);
+
+                if text.trim().is_empty() || is_normal {
                     None
                 } else {
                     let char_indices = (offset - chars_count..offset).collect::<Vec<_>>();
@@ -180,6 +187,28 @@ impl SyntaxHighlighter {
         }
     }
 
+    pub fn normal_highlight_for(&self, theme: &str) -> Option<(String, u8)> {
+        if let Some(normal_fg_color) = self
+            .theme_set
+            .themes
+            .get(theme)
+            .and_then(|theme| theme.settings.foreground)
+        {
+            let guifg = Rgb::from(&(
+                normal_fg_color.r as f32,
+                normal_fg_color.g as f32,
+                normal_fg_color.b as f32,
+                normal_fg_color.a as f32,
+            ));
+
+            let ctermfg = rgb_to_ansi256(normal_fg_color.r, normal_fg_color.g, normal_fg_color.b);
+
+            Some((guifg.to_hex_string(), ctermfg))
+        } else {
+            None
+        }
+    }
+
     pub fn get_token_highlights_in_line(
         &self,
         syntax: &SyntaxReference,
@@ -196,7 +225,12 @@ impl SyntaxHighlighter {
                     .ok_or_else(|| anyhow::anyhow!("Default theme {DEFAULT_THEME} not found"))?
             }
         };
-        Ok(HighlightEngine::new(syntax, theme).highlight_line(line, &self.syntax_set)?)
+        let maybe_normal_fg = theme.settings.foreground;
+        Ok(HighlightEngine::new(syntax, theme).highlight_line(
+            line,
+            &self.syntax_set,
+            maybe_normal_fg,
+        )?)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {

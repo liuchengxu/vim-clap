@@ -309,8 +309,8 @@ impl Vim {
         self.call("expand", json![string.as_ref()]).await
     }
 
-    pub async fn eval<R: DeserializeOwned>(&self, s: &str) -> Result<R> {
-        self.call("eval", json!([s])).await
+    pub async fn eval<R: DeserializeOwned>(&self, s: impl AsRef<str>) -> Result<R> {
+        self.call("eval", json!([s.as_ref()])).await
     }
 
     pub async fn fnamemodify(&self, fname: &str, mods: &str) -> Result<String> {

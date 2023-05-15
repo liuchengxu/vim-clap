@@ -288,15 +288,19 @@ impl Client {
                 let lines = self.vim.getbufline(bufnr, lnum, end).await?;
 
                 let fpath = self.vim.current_buffer_path().await?;
-                let extension = std::path::Path::new(&fpath)
+                let Some(extension) = std::path::Path::new(&fpath)
                     .extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap();
+                    .and_then(|e| e.to_str()) else {
+                        return Ok(())
+                    };
 
                 let syntax_highlighter = SyntaxHighlighter::new();
                 tracing::debug!(
-                    "=========== themes: {:?}",
-                    syntax_highlighter.theme_set.themes.keys()
+                    "=========== themes: {:?}, fg: {:?}",
+                    syntax_highlighter.theme_set.themes.keys(),
+                    syntax_highlighter.theme_set.themes["Coldark-Dark"]
+                        .settings
+                        .foreground
                 );
 
                 let syntax = syntax_highlighter
@@ -306,16 +310,21 @@ impl Client {
                         anyhow::anyhow!("Can not find syntax for extension {extension}")
                     })?;
 
+                const THEME: &str = "Coldark-Dark";
+
+                if let Some((guifg, ctermfg)) = syntax_highlighter.normal_highlight_for(THEME) {
+                    self.vim.exec(
+                        "execute",
+                        format!("hi! Normal guifg={guifg} ctermfg={ctermfg}"),
+                    )?;
+                }
+
                 let now = std::time::Instant::now();
                 let line_highlights = lines
                     .iter()
                     .enumerate()
                     .filter_map(|(idx, line)| {
-                        match syntax_highlighter.get_token_highlights_in_line(
-                            syntax,
-                            line,
-                            "gruvbox-dark",
-                        ) {
+                        match syntax_highlighter.get_token_highlights_in_line(syntax, line, THEME) {
                             Ok(token_highlights) => Some((lnum + idx, token_highlights)),
                             Err(err) => {
                                 tracing::error!(line, ?err, "Error at fetching line highlight");

@@ -838,6 +838,7 @@ dependencies = [
  "rgb2ansi256",
  "serde",
  "syntect",
+ "tracing",
  "utils",
 ]
 
