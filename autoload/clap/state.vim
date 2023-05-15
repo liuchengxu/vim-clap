@@ -57,6 +57,10 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
     let g:__clap_icon_added_by_maple = decoded.icon_added
   endif
 
+  if has_key(decoded, 'display_syntax')
+    call setbufvar(g:clap.display.bufnr, '&syntax', decoded.display_syntax)
+  endif
+
   if a:ensure_sign_exists
     call clap#sign#ensure_exists()
   endif

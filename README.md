@@ -150,7 +150,9 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap files`                           | Files                                                  | **[maple][maple]**                                                      |
 | `Clap filer`                           | Ivy-like file explorer                                 | **[maple][maple]**                                                      |
 | `Clap grep`**<sup>+</sup>**            | Grep using fuzzy matcher                               | **[maple][maple]**                                                      |
+| `Clap igrep`                           | A combo of `filer` and `grep`                          | **[maple][maple]**                                                      |
 | `Clap tags`                            | Tags in the current buffer                             | **[maple][maple]**/**[vista.vim][vista.vim]**                           |
+| `Clap tagfiles`                        | Search existing `tagfiles`                             | **[maple][maple]**/**[vista.vim][vista.vim]**                           |
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** (`+json`) |
 | `Clap recent_files`                    | Persistent ordered history of recent files             | **[maple][maple]**                                                      |
 

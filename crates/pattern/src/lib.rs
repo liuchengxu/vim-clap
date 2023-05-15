@@ -55,7 +55,7 @@ pub fn extract_grep_pattern(line: &str) -> Option<(&str, usize)> {
         .map(|mat| (&line[mat.end()..], mat.end()))
 }
 
-/// Returns a tuple of (fpath, lnum, col).
+/// Returns a tuple of (fpath, lnum, col, line_content).
 pub fn extract_grep_position(line: &str) -> Option<(&str, usize, usize, &str)> {
     let cap = GREP_POS.captures(line)?;
     let fpath = cap.get(1).map(|x| x.as_str())?;

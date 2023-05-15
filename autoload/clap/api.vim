@@ -131,6 +131,14 @@ function! s:api.append_and_write(lnum, text) abort
   silent noautocmd write
 endfunction
 
+function! s:api.show_lines_in_preview(lines) abort
+  if type(a:lines) is v:t_string
+    call g:clap.preview.show([a:lines])
+  else
+    call g:clap.preview.show(a:lines)
+  endif
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

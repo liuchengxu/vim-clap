@@ -7,15 +7,15 @@ set cpoptions&vim
 let s:is_nvim = has('nvim')
 let s:old_input = ''
 
-function! clap#handler#relaunch_providers() abort
+function! s:relaunch_providers() abort
   call clap#handler#exit()
   call timer_start(10, { -> clap#for('providers') })
   call g:clap.input.set('')
 endfunction
 
-function! clap#handler#relaunch_is_ok() abort
-  if g:clap.input.get() ==# g:clap_providers_relaunch_code
-    call clap#handler#relaunch_providers()
+function! clap#handler#relaunch_is_ok(cur_input) abort
+  if a:cur_input ==# g:clap_providers_relaunch_code
+    call s:relaunch_providers()
     return v:true
   endif
   return v:false
@@ -28,13 +28,14 @@ function! clap#handler#on_typed() abort
     return
   endif
 
-  if clap#handler#relaunch_is_ok()
+  let l:cur_input = g:clap.input.get()
+
+  if clap#handler#relaunch_is_ok(l:cur_input)
     return
   endif
 
   " This check is necessary for now, but it might be removed if the underlying
   " logic can be revisited why removing it breaks the sink behavior.
-  let l:cur_input = g:clap.input.get()
   if s:old_input == l:cur_input
     return
   endif
@@ -46,7 +47,7 @@ endfunction
 function! s:handle_no_matches() abort
   if has_key(g:clap.provider._(), 'on_no_matches')
     let input = g:clap.input.get()
-    call clap#handler#internal_exit()
+    call s:internal_exit()
     call g:clap.provider._().on_no_matches(input)
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
@@ -55,7 +56,7 @@ function! s:handle_no_matches() abort
   endif
 endfunction
 
-function! clap#handler#sink() abort
+function! s:provider_sink() abort
   " This could be more robust by checking the exact matches count, but this should also be enough.
   if empty(g:clap.display.getcurline())
         \ || g:clap.display.get_lines() == [g:clap_no_matches_msg]
@@ -67,7 +68,7 @@ function! clap#handler#sink() abort
 
   let preserved_selections = clap#sign#preserved_selections()
 
-  call clap#handler#internal_exit()
+  call s:internal_exit()
 
   try
     " Handle the preserved selections specially.
@@ -83,70 +84,62 @@ function! clap#handler#sink() abort
 
     call Sink(sink_args)
   catch
-    call clap#helper#echo_error('clap#handler#sink: '.v:exception.', throwpoint:'.v:throwpoint)
+    call clap#helper#echo_error('s:provider_sink: '.v:exception.', throwpoint:'.v:throwpoint)
   finally
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
   endtry
 endfunction
 
-" Similiar to clap#handler#sink() but using a custom Sink function and without
+" Similiar to s:provider_sink() but using a custom Sink function and without
 " handling the no matches case.
-function! clap#handler#sink_with(Fn) abort
-  call clap#handler#internal_exit()
+function! clap#handler#sink_with(SinkFn, ...) abort
+  call s:internal_exit()
   try
-    call a:Fn()
+    call call(a:SinkFn, a:000)
   catch
-    call clap#helper#echo_error('clap#handler#sink: '.v:exception.', throwpoint:'.v:throwpoint)
+    call clap#helper#echo_error('clap#handler#sink_with: '.v:exception.', throwpoint:'.v:throwpoint)
   finally
     call g:clap.provider.on_exit()
     silent doautocmd <nomodeline> User ClapOnExit
   endtry
 endfunction
 
-" clap#handler#exit() = clap#handler#internal_exit() + external on_exit hook
-function! clap#handler#exit() abort
-  call clap#handler#internal_exit()
-  call g:clap.provider.on_exit()
-  let s:old_input = ''
-  silent doautocmd <nomodeline> User ClapOnExit
-endfunction
-
-function! clap#handler#internal_exit() abort
+function! s:internal_exit() abort
   call clap#selection#reset()
   call clap#exit()
 endfunction
 
-function! clap#handler#back_action() abort
-  if has_key(g:clap.provider._(), 'back_action')
-    call g:clap.provider._().back_action()
-    return ''
-  endif
-  return ''
+" clap#handler#exit() = s:internal_exit() + external on_exit hook
+function! clap#handler#exit() abort
+  call s:internal_exit()
+  call g:clap.provider.on_exit()
+  silent doautocmd <nomodeline> User ClapOnExit
+  let s:old_input = ''
 endfunction
 
-function! clap#handler#cr_action() abort
-  if has_key(g:clap.provider._(), 'cr_action')
-    call g:clap.provider._().cr_action()
-    return ''
-  endif
-  call clap#handler#sink()
-  return ''
+function! s:noop() abort
 endfunction
 
-function! clap#handler#tab_action() abort
-  if has_key(g:clap.provider._(), 'tab_action')
-    call g:clap.provider._().tab_action()
-    return ''
-  endif
-  return clap#selection#toggle()
+" Neovim only, BS handler of vim is in popup/move_manager.vim
+function! s:on_backspace() abort
+  call nvim_feedkeys("\<BS>", 'n', v:true)
 endfunction
 
-function! clap#handler#bs_action() abort
-  if has_key(g:clap.provider._(), 'bs_action')
-    call g:clap.provider._().bs_action()
+" vint: -ProhibitUnnecessaryDoubleQuote
+let s:default_mappings = {
+      \ "<BS>": function('s:on_backspace'),
+      \ "<CR>": function('s:provider_sink'),
+      \ "<Tab>": function('clap#selection#toggle'),
+      \ "<A-U>": function('s:noop'),
+      \ "<C-l>": function('s:relaunch_providers'),
+      \ }
+
+function! clap#handler#handle_mapping(mapping) abort
+  if has_key(get(g:clap.provider._(), 'mappings', {}), a:mapping)
+    call g:clap.provider._().mappings[a:mapping]()
   else
-    call nvim_feedkeys("\<BS>", 'n', v:true)
+    call s:default_mappings[a:mapping]()
   endif
   return ''
 endfunction

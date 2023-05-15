@@ -75,7 +75,7 @@ function! s:move_manager.ctrl_f(_winid) abort
 endfunction
 
 function! s:move_manager.ctrl_l(_winid) abort
-  call clap#handler#relaunch_providers()
+  call clap#handler#handle_mapping("\<C-l\>")
 endfunction
 
 function! s:move_manager.ctrl_n(_winwid) abort
@@ -125,9 +125,9 @@ function! s:move_manager.bs(_winid) abort
   " Rust backend needs to react against the value before UI changed.
   let g:__clap_popup_input_before_backspace_applied = before_bs
   call s:backspace()
-  if has_key(g:clap.provider._(), 'bs_action')
+  if has_key(get(g:clap.provider._(), 'mappings', {}), "<BS>")
     call s:mock_input()
-    call g:clap.provider._().bs_action()
+    call g:clap.provider._().mappings["<BS>"]()
   else
     call s:trigger_on_typed()
   endif
@@ -192,9 +192,9 @@ let s:move_manager["\<Down>"] = s:move_manager["\<C-J>"]
 let s:move_manager["\<Home>"] = s:move_manager.ctrl_a
 let s:move_manager["\<Left>"] = s:move_manager.ctrl_b
 let s:move_manager["\<Right>"] = s:move_manager.ctrl_f
-let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#tab_action()') }
-let s:move_manager["\<CR>"] = { _winid -> clap#handler#cr_action() }
-let s:move_manager["\<A-u>"] = { _winid -> clap#handler#back_action() }
+let s:move_manager["\<Tab>"] = { winid -> win_execute(winid, 'noautocmd call clap#handler#handle_mapping("\<Tab\>")') }
+let s:move_manager["\<CR>"] = { _winid -> clap#handler#handle_mapping("\<CR\>") }
+let s:move_manager["\<A-U>"] = { _winid -> clap#handler#handle_mapping("\<A-U\>") }
 let s:move_manager["\<S-TAB>"] = { _winid -> clap#action#invoke() }
 let s:move_manager["\<S-Up>"] = s:move_manager.shift_up
 let s:move_manager["\<S-Down>"] = s:move_manager.shift_down
@@ -249,7 +249,7 @@ function! s:apply_input(_timer) abort
 endfunction
 
 function! s:apply_input_with_delay() abort
-  if clap#handler#relaunch_is_ok()
+  if clap#handler#relaunch_is_ok(s:input)
     return
   endif
   if s:input_timer != -1
