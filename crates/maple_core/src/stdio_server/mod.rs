@@ -9,7 +9,7 @@ mod vim;
 
 pub use self::input::InputHistory;
 use self::input::{Event, PluginEvent, ProviderEvent};
-use self::plugin::{ClapPlugin, CursorWordHighlighter};
+use self::plugin::{ClapPlugin, CursorWordHighlighter, SyntaxHighlighter};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
 use self::state::State;
@@ -77,6 +77,7 @@ pub async fn start() {
 #[derive(Clone)]
 struct Client {
     vim: Vim,
+    syntax_highlighter: Arc<SyntaxHighlighter>,
     state_mutex: Arc<Mutex<State>>,
     service_manager_mutex: Arc<Mutex<ServiceManager>>,
 }
@@ -90,8 +91,10 @@ impl Client {
                 Box::new(CursorWordHighlighter::new(vim.clone())) as Box<dyn ClapPlugin>
             );
         }
+        let syntax_highlighter = Arc::new(SyntaxHighlighter::new(vim.clone()));
         Self {
             vim,
+            syntax_highlighter,
             state_mutex: Arc::new(Mutex::new(state)),
             service_manager_mutex: Arc::new(Mutex::new(service_manager)),
         }
@@ -279,67 +282,7 @@ impl Client {
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
                 }
             }
-            "syntax-on" => {
-                use highlighter::SyntaxHighlighter;
-
-                let lnum = self.vim.line("w0").await?;
-                let end = self.vim.line("w$").await?;
-                let bufnr = self.vim.current_bufnr().await?;
-                let lines = self.vim.getbufline(bufnr, lnum, end).await?;
-
-                let fpath = self.vim.current_buffer_path().await?;
-                let Some(extension) = std::path::Path::new(&fpath)
-                    .extension()
-                    .and_then(|e| e.to_str()) else {
-                        return Ok(())
-                    };
-
-                let syntax_highlighter = SyntaxHighlighter::new();
-                tracing::debug!(
-                    "=========== themes: {:?}, fg: {:?}",
-                    syntax_highlighter.theme_set.themes.keys(),
-                    syntax_highlighter.theme_set.themes["Coldark-Dark"]
-                        .settings
-                        .foreground
-                );
-
-                let syntax = syntax_highlighter
-                    .syntax_set
-                    .find_syntax_by_extension(extension)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("Can not find syntax for extension {extension}")
-                    })?;
-
-                const THEME: &str = "Coldark-Dark";
-
-                if let Some((guifg, ctermfg)) = syntax_highlighter.normal_highlight_for(THEME) {
-                    self.vim.exec(
-                        "execute",
-                        format!("hi! Normal guifg={guifg} ctermfg={ctermfg}"),
-                    )?;
-                }
-
-                let now = std::time::Instant::now();
-                let line_highlights = lines
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, line)| {
-                        match syntax_highlighter.get_token_highlights_in_line(syntax, line, THEME) {
-                            Ok(token_highlights) => Some((lnum + idx, token_highlights)),
-                            Err(err) => {
-                                tracing::error!(line, ?err, "Error at fetching line highlight");
-                                None
-                            }
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                self.vim.exec(
-                    "clap#highlighter#highlight_lines",
-                    serde_json::json!([bufnr, line_highlights]),
-                )?;
-
-                tracing::debug!("Lines highlight elapsed: {:?}ms", now.elapsed().as_millis());
-            }
+            "syntax-on" => self.syntax_highlighter.highlight_visual_lines().await?,
             _ => return Err(anyhow!("Unknown notification: {notification:?}")),
         }
 

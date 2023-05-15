@@ -179,7 +179,9 @@ impl<'a> HighlightEngine<'a> {
 }
 
 impl SyntaxHighlighter {
-    // Load these once at the start of your program
+    /// Constructs a new instance of [`SyntaxHighlighter`].
+    ///
+    /// Should be called only once at the start of program.
     pub fn new() -> Self {
         Self {
             syntax_set: syntect::dumps::from_binary(crate::assets::DEFAULT_SYNTAXSET),
