@@ -5,37 +5,39 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let s:req_id = get(s:, 'req_id', 0)
-let s:handlers = get(s:, 'handlers', {})
+let s:callbacks = get(s:, 'callbacks', {})
 let s:session_id = get(s:, 'session_id', 0)
 
-function! clap#client#handle(msg) abort
-  let decoded = json_decode(a:msg)
+function! clap#client#handle(encoded_response) abort
+  let response = json_decode(a:encoded_response)
 
-  if has_key(decoded, 'deprecated_method')
-    call call(decoded.deprecated_method, [decoded])
+  " Deprecated
+  if has_key(response, 'deprecated_method')
+    call call(response.deprecated_method, [response])
     return
   endif
 
-  " Handle the request from Rust backend.
-  if has_key(decoded, 'method')
-    let params = get(decoded, 'params', [])
+  " Handle the request initiated from Rust backend.
+  if has_key(response, 'method')
     try
-      let result = clap#api#call(decoded.method, params)
-      if has_key(decoded, 'id')
-        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'result': result }))
+      " NOTE: This request must not block Vim.
+      let result = clap#api#call(response.method, get(response, 'params', []))
+      if has_key(response, 'id')
+        call clap#job#daemon#send_message(json_encode({ 'id': response.id, 'result': result }))
       endif
     catch
       call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
-      if has_key(decoded, 'id')
-        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'error': {'code': -32603, 'message': string(v:exception) }}))
+      if has_key(response, 'id')
+        call clap#job#daemon#send_message(json_encode({ 'id': response.id, 'error': {'code': -32603, 'message': v:exception }}))
       endif
     endtry
     return
   endif
 
-  if has_key(decoded, 'id') && has_key(s:handlers, decoded.id)
-    let Handler = remove(s:handlers, decoded.id)
-    call Handler(get(decoded, 'result', v:null), get(decoded, 'error', v:null))
+  " Handle the response of request initiated from Vim.
+  if has_key(response, 'id') && has_key(s:callbacks, response.id)
+    let Callback = remove(s:callbacks, response.id)
+    call Callback(get(response, 'result', v:null), get(response, 'error', v:null))
     return
   endif
 endfunction
@@ -80,7 +82,7 @@ endfunction
 function! clap#client#request_async(method, callback, ...) abort
   call s:request_async(a:method, get(a:000, 0, v:null))
   if a:callback isnot v:null
-    let s:handlers[s:req_id] = a:callback
+    let s:callbacks[s:req_id] = a:callback
   endif
 endfunction
 

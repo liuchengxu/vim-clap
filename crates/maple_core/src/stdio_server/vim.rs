@@ -431,8 +431,8 @@ impl Vim {
     /// Returns the number of first and last line visible in current window.
     ///
     /// [winid, line_start, line_end], 1-based.
-    pub async fn current_window_line_range(&self) -> Result<(usize, usize, usize)> {
-        self.bare_call("current_window_line_range").await
+    pub async fn current_visual_line_range(&self) -> Result<(usize, usize, usize)> {
+        self.bare_call("current_visual_line_range").await
     }
 
     pub async fn current_bufnr(&self) -> Result<usize> {

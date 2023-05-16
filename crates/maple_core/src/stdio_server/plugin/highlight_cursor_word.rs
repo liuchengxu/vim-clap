@@ -167,7 +167,7 @@ impl CursorWordHighlighter {
         }
 
         // Lines in view.
-        let (winid, line_start, line_end) = self.vim.current_window_line_range().await?;
+        let (winid, line_start, line_end) = self.vim.current_visual_line_range().await?;
 
         if let Ok(Some(word_highlights)) =
             find_word_highlights(source_file, line_start, line_end, curlnum, col, cword)
