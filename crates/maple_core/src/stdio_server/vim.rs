@@ -187,7 +187,7 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
         }
 
         let _ = self.vim.exec(
-            "clap#state#process_progress",
+            "clap#state#update_progress",
             json!([total_matched, total_processed]),
         );
     }
@@ -202,8 +202,8 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
             return;
         }
         let _ = self.vim.exec(
-            "clap#state#process_progress_full",
-            json!([display_lines, total_matched, total_processed]),
+            "clap#state#update_progress_full",
+            json!([total_matched, total_processed, display_lines]),
         );
     }
 
@@ -217,8 +217,8 @@ impl ProgressUpdate<DisplayLines> for VimProgressor {
             return;
         }
         let _ = self.vim.exec(
-            "clap#state#process_progress_full",
-            json!([display_lines, total_matched, total_processed]),
+            "clap#state#update_progress_full",
+            json!([total_matched, total_processed, display_lines]),
         );
     }
 }

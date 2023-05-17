@@ -14,6 +14,7 @@ impl SyntaxHighlighter {
         Self { vim }
     }
 
+    // TODO: this may be inaccurate, e.g., the lines are part of a bigger block of comments.
     pub async fn highlight_visual_lines(&self) -> anyhow::Result<()> {
         let lnum = self.vim.line("w0").await?;
         let end = self.vim.line("w$").await?;
@@ -44,7 +45,7 @@ impl SyntaxHighlighter {
 
         const THEME: &str = "Coldark-Dark";
 
-        if let Some((guifg, ctermfg)) = highlighter.normal_highlight_for(THEME) {
+        if let Some((guifg, ctermfg)) = highlighter.get_normal_highlight(THEME) {
             self.vim.exec(
                 "execute",
                 format!("hi! Normal guifg={guifg} ctermfg={ctermfg}"),

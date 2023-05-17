@@ -39,7 +39,7 @@ if has('nvim')
 
     function! s:set_matches_count() abort
       let matches_count = s:loaded_size + s:dropped_size
-      call clap#state#refresh_matches_count(matches_count)
+      call clap#legacy#state#refresh_matches_count(matches_count)
     endfunction
   else
     function! s:handle_cache(to_cache) abort
@@ -48,7 +48,7 @@ if has('nvim')
 
     function! s:set_matches_count() abort
       let matches_count = s:loaded_size + len(g:clap.display.cache)
-      call clap#state#refresh_matches_count(matches_count)
+      call clap#legacy#state#refresh_matches_count(matches_count)
     endfunction
   endif
 
@@ -163,7 +163,7 @@ else
       let matches_count = g:clap.display.line_count()
     endif
 
-    call clap#state#refresh_matches_count(matches_count)
+    call clap#legacy#state#refresh_matches_count(matches_count)
   endfunction
 
   function! s:post_check() abort

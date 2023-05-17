@@ -4,13 +4,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" NOTE: some local variable without explicit l:, e.g., count,
-" may run into some erratic read-only error.
-function! clap#state#refresh_matches_count(cnt) abort
-  call clap#indicator#update_matched(a:cnt)
-  call clap#sign#reset_to_first_line()
-endfunction
-
 function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abort
   if !g:clap.display.win_is_valid()
     return
@@ -74,11 +67,11 @@ function! clap#state#process_filter_message(decoded_msg, ensure_sign_exists) abo
   endif
 endfunction
 
-function! clap#state#process_progress(matched, processed) abort
+function! clap#state#update_progress(matched, processed) abort
   call clap#indicator#update(a:matched, a:processed)
 endfunction
 
-function! clap#state#process_progress_full(display_lines, matched, processed) abort
+function! clap#state#update_progress_full(matched, processed, display_lines) abort
   if !g:clap.display.win_is_valid()
     return
   endif

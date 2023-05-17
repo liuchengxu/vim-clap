@@ -189,7 +189,7 @@ impl SyntaxHighlighter {
         }
     }
 
-    pub fn normal_highlight_for(&self, theme: &str) -> Option<(String, u8)> {
+    pub fn get_normal_highlight(&self, theme: &str) -> Option<(String, u8)> {
         if let Some(normal_fg_color) = self
             .theme_set
             .themes
