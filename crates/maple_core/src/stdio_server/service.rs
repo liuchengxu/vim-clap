@@ -292,7 +292,7 @@ impl PluginSession {
                         notification_timer.as_mut().reset(Instant::now() + NEVER);
 
                         if let Some(autocmd) = pending_autocmd.take() {
-                            if let Err(err) = self.plugin.on_autocmd(autocmd).await {
+                            if let Err(err) = self.plugin.handle_event(PluginEvent::Autocmd(autocmd)).await {
                                 tracing::error!(?err, "Failed at process {autocmd:?}");
                             }
                         }

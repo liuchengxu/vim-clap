@@ -1,4 +1,4 @@
-use crate::stdio_server::input::Autocmd;
+use crate::stdio_server::input::{Autocmd, PluginEvent};
 use crate::stdio_server::plugin::ClapPlugin;
 use crate::stdio_server::vim::Vim;
 use anyhow::Result;
@@ -204,15 +204,18 @@ impl CursorWordHighlighter {
 
 #[async_trait::async_trait]
 impl ClapPlugin for CursorWordHighlighter {
-    async fn on_autocmd(&mut self, autocmd: Autocmd) -> Result<()> {
-        match autocmd {
-            Autocmd::CursorMoved => self.highlight_symbol_under_cursor().await,
-            Autocmd::InsertEnter => {
-                if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take() {
-                    self.vim.matchdelete_batch(match_ids, winid).await?;
+    async fn handle_event(&mut self, event: PluginEvent) -> Result<()> {
+        match event {
+            PluginEvent::Autocmd(autocmd) => match autocmd {
+                Autocmd::CursorMoved => self.highlight_symbol_under_cursor().await,
+                Autocmd::InsertEnter => {
+                    if let Some(WinHighlights { winid, match_ids }) = self.cursor_highlights.take()
+                    {
+                        self.vim.matchdelete_batch(match_ids, winid).await?;
+                    }
+                    Ok(())
                 }
-                Ok(())
-            }
+            },
         }
     }
 }
