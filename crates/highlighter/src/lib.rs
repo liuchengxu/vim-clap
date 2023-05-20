@@ -9,6 +9,16 @@ use syntect::highlighting::{
 };
 use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
 
+/// `:h attr-list`
+#[derive(Clone, Debug, Default, serde::Serialize)]
+pub enum AttrList {
+    Bold,
+    Underline,
+    Italic,
+    #[default]
+    None,
+}
+
 /// Vim highlight arguments.
 ///
 /// `:h highlight-args`.
@@ -60,16 +70,6 @@ impl HighlightArgs {
     }
 }
 
-/// `:h attr-list`
-#[derive(Clone, Debug, Default, serde::Serialize)]
-pub enum AttrList {
-    Bold,
-    Underline,
-    Italic,
-    #[default]
-    None,
-}
-
 #[derive(Debug, serde::Serialize)]
 pub struct TokenHighlight {
     pub cterm: AttrList,
@@ -80,17 +80,11 @@ pub struct TokenHighlight {
     pub guibg: String,
     pub group_name: String,
     /// Token range in bytes.
+    ///
     /// Start of (byte-indexed) column range to highlight.
     pub col_start: usize,
     /// Length of bytes to highlight.
     pub length: usize,
-}
-
-#[derive(Debug)]
-pub struct TokenHighlighterForTerminal {
-    pub highlight_args: HighlightArgs,
-    /// Token range in chars.
-    pub range: Range<usize>,
 }
 
 #[derive(Debug)]
@@ -108,7 +102,7 @@ impl Default for SyntaxHighlighter {
     }
 }
 
-/// Replication of [`syntect::HighlightLines`] in order to reduce one allocation in
+/// Replicate [`syntect::HighlightLines`] in order to reduce one allocation in
 /// [`Self::highlight_line`].
 pub struct HighlightEngine<'a> {
     highlighter: Highlighter<'a>,
@@ -128,11 +122,11 @@ impl<'a> HighlightEngine<'a> {
     }
 
     /// Highlights a line of a file
-    pub fn highlight_line<'b>(
+    pub fn highlight_line(
         &mut self,
-        line: &'b str,
+        line: &str,
         syntax_set: &SyntaxSet,
-        maybe_normal_fg: Option<Color>,
+        maybe_normal_foreground: Option<Color>,
     ) -> Result<Vec<TokenHighlight>, syntect::Error> {
         let ops = self.parse_state.parse_line(line, syntax_set)?;
         let iter =
@@ -145,7 +139,7 @@ impl<'a> HighlightEngine<'a> {
                 offset += chars_count;
 
                 // A lot of tokens use the Normal highlight, which is done by vim syntax highlight itself.
-                let is_normal = maybe_normal_fg
+                let is_normal = maybe_normal_foreground
                     .map(|fg| fg == style.foreground)
                     .unwrap_or(false);
 
@@ -176,6 +170,13 @@ impl<'a> HighlightEngine<'a> {
 
         Ok(token_highlights)
     }
+}
+
+#[derive(Debug)]
+pub struct TokenHighlighterForTerminal {
+    pub highlight_args: HighlightArgs,
+    /// Token range in chars.
+    pub range: Range<usize>,
 }
 
 impl SyntaxHighlighter {
@@ -227,27 +228,20 @@ impl SyntaxHighlighter {
                     .ok_or_else(|| anyhow::anyhow!("Default theme {DEFAULT_THEME} not found"))?
             }
         };
-        let maybe_normal_fg = theme.settings.foreground;
         Ok(HighlightEngine::new(syntax, theme).highlight_line(
             line,
             &self.syntax_set,
-            maybe_normal_fg,
+            theme.settings.foreground,
         )?)
     }
 
     pub fn highlight_line(&self, extension: &str, line: &str) -> Vec<TokenHighlighterForTerminal> {
         let syntax = self.syntax_set.find_syntax_by_extension(extension).unwrap();
 
-        // let mut h = HighlightLines::new(syntax, &self.theme_set.themes["Solarized (light)"]);
         let mut h =
             syntect::easy::HighlightLines::new(syntax, &self.theme_set.themes["Solarized (dark)"]);
 
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &self.syntax_set).unwrap();
-
-        // let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
-
-        // println!("\n{}", line);
-        // println!("{}", escaped);
 
         let mut offset = 0;
         ranges

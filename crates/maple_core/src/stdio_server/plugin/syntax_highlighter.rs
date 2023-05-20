@@ -45,6 +45,8 @@ impl SyntaxHighlighter {
 
         const THEME: &str = "Coldark-Dark";
 
+        // TODO: This influences the Normal highlight of vim syntax theme that is different from
+        // the sublime text syntax theme here.
         if let Some((guifg, ctermfg)) = highlighter.get_normal_highlight(THEME) {
             self.vim.exec(
                 "execute",
