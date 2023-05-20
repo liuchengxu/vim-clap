@@ -8,8 +8,17 @@ pub struct MethodCall {
     pub id: u64,
     pub method: String,
     pub params: Params,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub session_id: Option<u64>,
+}
+
+impl MethodCall {
+    pub fn session_id(&self) -> Option<u64> {
+        match self.params {
+            Params::None | Params::Array(_) => None,
+            Params::Map(ref map) => map
+                .get("session_id")
+                .and_then(|v| serde_json::from_value::<u64>(v.clone()).ok()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -17,8 +26,17 @@ pub struct MethodCall {
 pub struct Notification {
     pub method: String,
     pub params: Params,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub session_id: Option<u64>,
+}
+
+impl Notification {
+    pub fn session_id(&self) -> Option<u64> {
+        match self.params {
+            Params::None | Params::Array(_) => None,
+            Params::Map(ref map) => map
+                .get("session_id")
+                .and_then(|v| serde_json::from_value::<u64>(v.clone()).ok()),
+        }
+    }
 }
 
 /// Request message actively sent from the Vim side.

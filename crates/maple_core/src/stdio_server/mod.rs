@@ -147,11 +147,11 @@ impl Client {
 
                     if let Some(notification) = pending_notification.take() {
                         let last_session_id = notification
-                            .session_id
+                            .session_id()
                             .unwrap_or_default()
                             .saturating_sub(1);
                         self.service_manager_mutex.lock().try_exit(last_session_id);
-                        let session_id = notification.session_id;
+                        let session_id = notification.session_id();
                         if let Err(err) = self.do_process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
                         }
@@ -162,7 +162,7 @@ impl Client {
     }
 
     fn process_notification(&self, notification: Notification) {
-        if let Some(session_id) = notification.session_id {
+        if let Some(session_id) = notification.session_id() {
             if self.service_manager_mutex.lock().exists(session_id) {
                 let client = self.clone();
 
@@ -186,7 +186,7 @@ impl Client {
     async fn do_process_notification(&self, notification: Notification) -> Result<()> {
         let provider_session_id = || {
             notification
-                .session_id
+                .session_id()
                 .ok_or_else(|| anyhow!("Notification must contain `session_id` field"))
         };
 
@@ -194,13 +194,12 @@ impl Client {
             Event::Provider(provider_event) => match provider_event {
                 ProviderEvent::NewSession => {
                     let provider_id = self.vim.provider_id().await?;
+                    let session_id = provider_session_id()?;
                     let ctx = Context::new(notification.params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;
-                    self.service_manager_mutex.lock().new_provider(
-                        provider_session_id()?,
-                        provider,
-                        ctx,
-                    );
+                    self.service_manager_mutex
+                        .lock()
+                        .new_provider(session_id, provider, ctx);
                 }
                 ProviderEvent::Exit => {
                     self.service_manager_mutex
@@ -321,7 +320,7 @@ impl Client {
 
             // Deprecated but not remove them for now.
             "on_move" => {
-                if let Some(session_id) = msg.session_id {
+                if let Some(session_id) = msg.session_id() {
                     self.service_manager_mutex
                         .lock()
                         .notify_provider(session_id, ProviderEvent::OnMove);

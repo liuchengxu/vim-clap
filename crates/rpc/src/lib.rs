@@ -133,7 +133,6 @@ impl RpcClient {
             // call(method, args) where args expects a List in Vim, hence convert the params
             // to List unconditionally.
             params: to_array_or_none(params)?,
-            session_id: None,
         };
         let (tx, rx) = oneshot::channel();
         self.output_reader_tx.send((id, tx))?;
@@ -154,7 +153,6 @@ impl RpcClient {
             // call(method, args) where args expects a List in Vim, hence convert the params
             // to List unconditionally.
             params: to_array_or_none(params)?,
-            session_id: None,
         };
 
         self.output_writer_tx

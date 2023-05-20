@@ -42,12 +42,14 @@ function! clap#client#handle(encoded_response) abort
   endif
 endfunction
 
+" params must be Dict.
 function! s:notify_provider(method, params) abort
   if clap#job#daemon#is_running()
+    let params = a:params
+    let params['session_id'] = s:session_id
     call clap#job#daemon#send_message(json_encode({
           \ 'method': a:method,
           \ 'params': a:params,
-          \ 'session_id': s:session_id,
           \ }))
   endif
 endfunction
@@ -65,8 +67,8 @@ endfunction
 
 " Recommended API
 " Optional argument: params: v:null, List, Dict
-function! clap#client#notify_provider(method, ...) abort
-  call s:notify_provider(a:method, get(a:000, 0, v:null))
+function! clap#client#notify_provider(method) abort
+  call s:notify_provider(a:method, {})
 endfunction
 
 function! clap#client#notify(method, ...) abort
@@ -118,7 +120,7 @@ function! clap#client#notify_recent_file() abort
     return
   endif
   let file = expand(expand('<afile>:p'))
-  call s:notify_provider('note_recent_files', [file])
+  call clap#client#notify('note_recent_files', [file])
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -129,7 +131,9 @@ function! clap#client#call_preview_file(extra) abort
 endfunction
 
 " One optional argument: Dict, extra params
-function! clap#client#call_on_move(method, callback, ...) abort
+"
+" callback is unused as it's already handled by Rust backend.
+function! clap#client#call_on_move(method, _callback, ...) abort
   let curline = g:clap.display.getcurline()
   if empty(curline)
     return
@@ -138,7 +142,6 @@ function! clap#client#call_on_move(method, callback, ...) abort
   if a:0 > 0
     call extend(params, a:1)
   endif
-  " on_move callback is unused as it's already handled by Rust backend.
   call s:notify_provider(a:method, params)
 endfunction
 
