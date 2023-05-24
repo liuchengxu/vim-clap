@@ -45,6 +45,10 @@ endfunction
 " params must be Dict.
 function! s:notify_provider(method, params) abort
   if clap#job#daemon#is_running()
+    if type(a:params) != v:t_dict
+      call clap#helper#echo_error('params must be Dict')
+      return
+    endif
     let params = a:params
     let params['session_id'] = s:session_id
     call clap#job#daemon#send_message(json_encode({
@@ -66,7 +70,6 @@ function! s:request_async(method, params) abort
 endfunction
 
 " Recommended API
-" Optional argument: params: v:null, List, Dict
 function! clap#client#notify_provider(method) abort
   call s:notify_provider(a:method, {})
 endfunction
