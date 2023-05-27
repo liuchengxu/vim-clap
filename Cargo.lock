@@ -1086,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "maple"
-version = "0.1.43"
+version = "0.1.44"
 dependencies = [
  "built",
  "chrono",
