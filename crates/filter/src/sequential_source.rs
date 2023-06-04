@@ -39,19 +39,19 @@ pub fn filter_sequential<I: Iterator<Item = Arc<dyn ClapItem>>>(
             std::io::stdin()
                 .lock()
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
         ),
         SequentialSource::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
         ),
         SequentialSource::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .map(|line| Arc::new(SourceItem::from(line)) as Arc<dyn ClapItem>),
         ),
     };

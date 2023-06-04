@@ -296,7 +296,7 @@ where
             // The line stream can contain invalid UTF-8 data.
             std::io::BufReader::new(reader)
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .par_bridge()
                 .for_each(|line: String| {
                     let processed = processed_count.fetch_add(1, Ordering::SeqCst);
@@ -382,7 +382,7 @@ where
     // The line stream can contain invalid UTF-8 data.
     let res = std::io::BufReader::new(read)
         .lines()
-        .filter_map(Result::ok)
+        .map_while(Result::ok)
         .par_bridge()
         .try_for_each(|line: String| {
             if stop_signal.load(Ordering::SeqCst) {
