@@ -7,6 +7,6 @@ fn main() {
     let outdir = env::var("OUT_DIR").unwrap();
     let outfile = format!("{}/compiled_at.txt", outdir);
 
-    let mut fh = fs::File::create(&outfile).expect("Failed to create compiled_at.txt");
+    let mut fh = fs::File::create(outfile).expect("Failed to create compiled_at.txt");
     write!(fh, r#""{}""#, chrono::Local::now()).ok();
 }

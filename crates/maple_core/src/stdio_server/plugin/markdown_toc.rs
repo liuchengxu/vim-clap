@@ -176,7 +176,7 @@ pub fn find_toc_range(input_file: impl AsRef<Path>) -> std::io::Result<Option<(u
     let mut start = 0;
 
     for (idx, line) in utils::read_lines(input_file)?
-        .filter_map(Result::ok)
+        .map_while(Result::ok)
         .enumerate()
     {
         let line = line.trim();
