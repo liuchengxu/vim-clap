@@ -351,10 +351,10 @@ pub async fn search(query: String, cwd: PathBuf, matcher: Matcher, search_contex
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        ?query,
-        total_matched,
         total_processed,
-        "Searching is completed in {elapsed:?}ms"
+        total_matched,
+        ?query,
+        "Searching is complete in {elapsed:?}ms"
     );
 }
 
