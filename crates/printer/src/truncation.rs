@@ -176,12 +176,12 @@ pub fn truncate_grep_results(
                             };
 
                             let mut indices = indices;
-                            let file_name_end = UnicodeDots::CHAR_LEN + 1 + file_name.len();
+                            // let file_name_end = UnicodeDots::CHAR_LEN + 1 + file_name.len();
                             indices.iter_mut().for_each(|x| {
                                 *x += offset;
-                                if *x <= file_name_end {
-                                    *x -= 1;
-                                }
+                                // if *x <= file_name_end {
+                                    // *x -= 1;
+                                // }
                             });
                             // TODO: truncate the invisible text and indices caused by the inserted
                             // file name.

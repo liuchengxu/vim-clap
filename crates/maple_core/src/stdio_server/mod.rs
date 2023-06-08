@@ -40,6 +40,9 @@ async fn initialize(vim: Vim) -> Result<()> {
     let ext_map = initialize_syntax_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
 
+    const ACTIONS: &[&str] = &["open-config", "generate-toc", "update-toc", "delete-toc"];
+    vim.set_var("g:clap_actions", json![ACTIONS])?;
+
     tracing::debug!("Client initialized successfully");
 
     Ok(())
@@ -243,7 +246,7 @@ impl Client {
                 let file = self.vim.current_buffer_path().await?;
                 let shiftwidth = self
                     .vim
-                    .call("getbufvar", serde_json::json!(["", "&shiftwidth"]))
+                    .call("getbufvar", json!(["", "&shiftwidth"]))
                     .await?;
                 let mut toc = plugin::generate_toc(file, curlnum, shiftwidth)?;
                 let prev_line = self.vim.curbufline(curlnum - 1).await?;
@@ -251,7 +254,7 @@ impl Client {
                     toc.push_front(Default::default());
                 }
                 self.vim
-                    .exec("append_and_write", serde_json::json!([curlnum - 1, toc]))?;
+                    .exec("append_and_write", json!([curlnum - 1, toc]))?;
             }
             "update-toc" => {
                 let file = self.vim.current_buffer_path().await?;
@@ -259,26 +262,21 @@ impl Client {
                 if let Some((start, end)) = plugin::find_toc_range(&file)? {
                     let shiftwidth = self
                         .vim
-                        .call("getbufvar", serde_json::json!(["", "&shiftwidth"]))
+                        .call("getbufvar", json!(["", "&shiftwidth"]))
                         .await?;
                     // TODO: skip update if the new doc is the same as the old one.
                     let new_toc = plugin::generate_toc(file, start + 1, shiftwidth)?;
-                    self.vim.exec(
-                        "deletebufline",
-                        serde_json::json!([bufnr, start + 1, end + 1]),
-                    )?;
                     self.vim
-                        .exec("append_and_write", serde_json::json!([start, new_toc]))?;
+                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
+                    self.vim.exec("append_and_write", json!([start, new_toc]))?;
                 }
             }
             "delete-toc" => {
                 let file = self.vim.current_buffer_path().await?;
                 let bufnr = self.vim.current_bufnr().await?;
                 if let Some((start, end)) = plugin::find_toc_range(file)? {
-                    self.vim.exec(
-                        "deletebufline",
-                        serde_json::json!([bufnr, start + 1, end + 1]),
-                    )?;
+                    self.vim
+                        .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;
                 }
             }
             _ => return Err(anyhow!("Unknown notification: {notification:?}")),
