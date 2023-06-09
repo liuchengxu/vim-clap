@@ -1,3 +1,5 @@
+use std::io::IsTerminal;
+
 use crate::app::Args;
 use anyhow::{anyhow, Result};
 use clap::Parser;
@@ -50,6 +52,7 @@ impl Rpc {
                 .with_max_level(max_level)
                 .with_line_number(true)
                 .with_writer(non_blocking)
+                .with_ansi(std::io::stdout().is_terminal())
                 .finish();
 
             tracing::subscriber::set_global_default(subscriber)?;

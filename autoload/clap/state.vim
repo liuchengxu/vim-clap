@@ -219,6 +219,7 @@ function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abo
   endif
   let g:__clap_icon_added_by_maple = a:icon_added
   call clap#sign#ensure_exists()
+  call g:clap.display.clear_highlight()
   call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
 endfunction

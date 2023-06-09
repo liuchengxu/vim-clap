@@ -129,7 +129,7 @@ impl Filter {
             if let Ok(file) = std::fs::File::open(recent_files) {
                 let lines: Vec<String> = std::io::BufReader::new(file)
                     .lines()
-                    .filter_map(|x| x.ok())
+                    .map_while(Result::ok)
                     .collect();
                 bonuses.push(Bonus::RecentFiles(lines.into()));
             }

@@ -198,6 +198,9 @@ mod tests {
 
           [matcher]
           tiebreak = "score,-begin,-end,-length"
+
+          [plugin.highlight-cursor-word]
+          enable = true
 "#;
         let user_config: Config = toml::from_str(toml_content).unwrap();
         println!("{user_config:?}");

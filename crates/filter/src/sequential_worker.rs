@@ -347,19 +347,19 @@ pub fn dyn_run<I: Iterator<Item = Arc<dyn ClapItem>>>(
             std::io::stdin()
                 .lock()
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
         SequentialSource::File(path) => Box::new(
             std::io::BufReader::new(std::fs::File::open(path)?)
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
         SequentialSource::Exec(exec) => Box::new(
             std::io::BufReader::new(exec.stream_stdout()?)
                 .lines()
-                .filter_map(Result::ok)
+                .map_while(Result::ok)
                 .filter_map(|line| to_clap_item(matcher.match_scope(), line)),
         ),
     };

@@ -114,12 +114,8 @@ impl StoppableSearchImpl {
                     entry.path(),
                     sinks::Lossy(|line_number, line| {
                         if line.is_empty() {
-                            if let Err(err) = sender.send(SearcherMessage::ProcessedOne) {
-                                tracing::debug!("SearcherMessage sender is dropped: {err:?}");
-                                return Ok(false);
-                            } else {
-                                return Ok(true);
-                            }
+                            // Discontinue if the sender has been dropped.
+                            return Ok(sender.send(SearcherMessage::ProcessedOne).is_ok());
                         }
 
                         let path = entry
@@ -145,12 +141,8 @@ impl StoppableSearchImpl {
                             SearcherMessage::ProcessedOne
                         };
 
-                        if let Err(err) = sender.send(searcher_message) {
-                            tracing::debug!("SearcherMessage sender is dropped: {err:?}");
-                            Ok(false)
-                        } else {
-                            Ok(true)
-                        }
+                        // Discontinue if the sender has been dropped.
+                        Ok(sender.send(searcher_message).is_ok())
                     }),
                 );
 
@@ -351,9 +343,9 @@ pub async fn search(query: String, matcher: Matcher, search_context: SearchConte
     progressor.on_finished(display_lines, total_matched, total_processed);
 
     tracing::debug!(
-        ?query,
-        total_matched,
         total_processed,
-        "Searching is completed in {elapsed:?}ms"
+        total_matched,
+        ?query,
+        "Searching is complete in {elapsed:?}ms"
     );
 }
