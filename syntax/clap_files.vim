@@ -1,4 +1,5 @@
-hi TNormal ctermfg=249 ctermbg=NONE guifg=#b2b2b2 guibg=NONE
-execute 'syntax match ClapFile' '/^.*/' 'contains='.join(clap#icon#add_head_hl_groups(), ',')
+syntax match ClapFileName /\v(\/|\s)\zs(\w|[-.])+(\.\w+)?$/ contained
+execute 'syntax region ClapFilePath' 'start=/^\s*\S/ end=/(\w|[-.])+(\.\w\+)?$/' 'contains='.join(clap#icon#add_head_hl_groups(), ',').',ClapFileName'
 
-hi default link ClapFile TNormal
+highlight default link ClapFilePath Normal
+highlight default link ClapFileName Special
