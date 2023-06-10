@@ -129,3 +129,9 @@ nnoremap <silent> <buffer> <S-Down> :<c-u>call clap#client#notify_provider('shif
 
 inoremap <silent> <buffer> <S-Up>   <C-R>=<SID>Notify('shift-up')<CR>
 inoremap <silent> <buffer> <S-Down> <C-R>=<SID>Notify('shift-down')<CR>
+
+nnoremap <silent> <buffer> <S-ScrollWheelUp>   :<c-u>call clap#client#notify_provider('shift-up')<CR>
+nnoremap <silent> <buffer> <S-ScrollWheelDown> :<c-u>call clap#client#notify_provider('shift-down')<CR>
+
+inoremap <silent> <buffer> <S-ScrollWheelUp>   <C-R>=<SID>Notify('shift-up')<CR>
+inoremap <silent> <buffer> <S-ScrollWheelDown> <C-R>=<SID>Notify('shift-down')<CR>
