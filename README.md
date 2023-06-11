@@ -257,7 +257,7 @@ See `:help clap-options` for more information.
 
 - [x] Use `:q` to exit.
 
-See `:help clap-keybindings` for more information.
+See `:help clap-keybindings` for more information. Note that the [keybindings are not consistent](https://github.com/liuchengxu/vim-clap/issues/864) due to discrepancies between Vim/Neovim and different providers.
 
 ### Execute some code during the process
 
