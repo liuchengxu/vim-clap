@@ -151,15 +151,14 @@ Note the `*` in the spinner, it tells you are using the cache, use `g:clap_forer
 | `Clap filer`                           | Ivy-like file explorer                                 | **[maple][maple]**                                                      |
 | `Clap grep`**<sup>+</sup>**            | Grep using fuzzy matcher                               | **[maple][maple]**                                                      |
 | `Clap igrep`                           | A combo of `filer` and `grep`                          | **[maple][maple]**                                                      |
-| `Clap tags`                            | Tags in the current buffer                             | **[maple][maple]**/**[vista.vim][vista.vim]**                           |
-| `Clap tagfiles`                        | Search existing `tagfiles`                             | **[maple][maple]**/**[vista.vim][vista.vim]**                           |
+| `Clap tags`                            | Tags in the current buffer                             | **[maple][maple]**                                     |
+| `Clap tagfiles`                        | Search existing `tagfiles`                             | **[maple][maple]**                                                      |
 | `Clap proj_tags`                       | Tags in the current project                            | **[maple][maple]** and **[universal-ctags][universal-ctags]** (`+json`) |
 | `Clap recent_files`                    | Persistent ordered history of recent files             | **[maple][maple]**                                                      |
 
 [fd]: https://github.com/sharkdp/fd
 [rg]: https://github.com/BurntSushi/ripgrep
 [git]: https://github.com/git/git
-[vista.vim]: https://github.com/liuchengxu/vista.vim
 [maple]: https://github.com/liuchengxu/vim-clap/blob/master/INSTALL.md#maple-binary
 [universal-ctags]: https://github.com/universal-ctags/ctags
 
@@ -258,7 +257,7 @@ See `:help clap-options` for more information.
 
 - [x] Use `:q` to exit.
 
-See `:help clap-keybindings` for more information.
+See `:help clap-keybindings` for more information. Note that the [keybindings are not consistent](https://github.com/liuchengxu/vim-clap/issues/864) due to discrepancies between Vim/Neovim and different providers.
 
 ### Execute some code during the process
 
