@@ -215,7 +215,6 @@ function! clap#state#update_on_empty_query(lines, truncated_map, icon_added) abo
   call g:clap.display.clear_highlight()
   call clap#indicator#update_matched(0)
   call clap#preview#update_with_delay()
-  call g:clap.display.clear_highlight()
 endfunction
 
 function! clap#state#set_input(new) abort
