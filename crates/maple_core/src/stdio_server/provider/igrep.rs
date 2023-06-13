@@ -65,10 +65,9 @@ impl Grepper {
 
         self.searcher_control.replace(new_control);
 
-        let _ = ctx.vim.exec(
-            "setbufvar",
-            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_grep"]),
-        );
+        let _ = ctx
+            .vim
+            .setbufvar(ctx.env.display.bufnr, "&syntax", "clap_grep");
     }
 }
 
@@ -126,10 +125,8 @@ impl Explorer {
                 .collect(),
         );
 
-        ctx.vim.exec(
-            "setbufvar",
-            serde_json::json!([ctx.env.display.bufnr, "&syntax", "clap_filer"]),
-        )?;
+        ctx.vim
+            .setbufvar(ctx.env.display.bufnr, "&syntax", "clap_filer")?;
 
         Ok(())
     }

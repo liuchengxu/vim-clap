@@ -18,7 +18,7 @@ impl SyntaxHighlighter {
     pub async fn highlight_visual_lines(&self) -> anyhow::Result<()> {
         let lnum = self.vim.line("w0").await?;
         let end = self.vim.line("w$").await?;
-        let bufnr = self.vim.current_bufnr().await?;
+        let bufnr = self.vim.bufnr("").await?;
         let lines = self.vim.getbufline(bufnr, lnum, end).await?;
 
         let fpath = self.vim.current_buffer_path().await?;

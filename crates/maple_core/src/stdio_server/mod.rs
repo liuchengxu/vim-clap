@@ -40,7 +40,13 @@ async fn initialize(vim: Vim) -> Result<()> {
     let ext_map = initialize_syntax_map(&output);
     vim.exec("clap#ext#set", json![ext_map])?;
 
-    const ACTIONS: &[&str] = &["open-config", "generate-toc", "update-toc", "delete-toc"];
+    const ACTIONS: &[&str] = &[
+        "open-config",
+        "generate-toc",
+        "update-toc",
+        "delete-toc",
+        "syntax-on",
+    ];
     vim.set_var("g:clap_actions", json![ACTIONS])?;
 
     tracing::debug!("Client initialized successfully");
@@ -260,7 +266,7 @@ impl Client {
             }
             "update-toc" => {
                 let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
+                let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = plugin::find_toc_range(&file)? {
                     let shiftwidth = self
                         .vim
@@ -275,7 +281,7 @@ impl Client {
             }
             "delete-toc" => {
                 let file = self.vim.current_buffer_path().await?;
-                let bufnr = self.vim.current_bufnr().await?;
+                let bufnr = self.vim.bufnr("").await?;
                 if let Some((start, end)) = plugin::find_toc_range(file)? {
                     self.vim
                         .exec("deletebufline", json!([bufnr, start + 1, end + 1]))?;

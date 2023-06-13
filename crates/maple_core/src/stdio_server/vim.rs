@@ -329,6 +329,15 @@ impl Vim {
         self.call("getpos", json![expr]).await
     }
 
+    pub fn setbufvar(
+        &self,
+        buf: impl Serialize,
+        varname: impl Serialize,
+        val: impl Serialize,
+    ) -> Result<()> {
+        self.exec("setbufvar", json!([buf, varname, val]))
+    }
+
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
         let width: i32 = self.call("winwidth", json![winid]).await?;
         if width < 0 {
@@ -424,8 +433,17 @@ impl Vim {
         self.exec("clap#helper#echo_info", json!([msg.as_ref()]))
     }
 
-    pub async fn current_winid(&self) -> Result<usize> {
-        self.bare_call("win_getid").await
+    /// When `win` is None use the current window, otherwise the window number with `win`.
+    /// When `tab` is None use the current tab, otherwise the tab with number `tab`.
+    pub async fn win_getid(&self, win: Option<usize>, tab: Option<usize>) -> Result<usize> {
+        let args = match (win, tab) {
+            (Some(win), Some(tab)) => json!([win, tab]),
+            (Some(win), None) => json!([win]),
+            (None, None) => json!([]),
+            (None, Some(_)) => return Err(anyhow!("Invalid args for win_getid")),
+        };
+
+        self.call("win_getid", args).await
     }
 
     /// Returns the number of first and last line visible in current window.
@@ -437,6 +455,15 @@ impl Vim {
 
     pub async fn current_bufnr(&self) -> Result<usize> {
         let bufnr: i32 = self.call("bufnr", json![""]).await?;
+        if bufnr < 0 {
+            Err(anyhow!("bufnr doesn't exist"))
+        } else {
+            Ok(bufnr as usize)
+        }
+    }
+
+    pub async fn bufnr(&self, buf: impl Serialize) -> Result<usize> {
+        let bufnr: i32 = self.call("bufnr", json![buf]).await?;
         if bufnr < 0 {
             Err(anyhow!("bufnr doesn't exist"))
         } else {
