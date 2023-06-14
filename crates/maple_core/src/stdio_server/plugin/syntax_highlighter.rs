@@ -2,7 +2,7 @@ use crate::stdio_server::vim::Vim;
 use once_cell::sync::Lazy;
 
 static HIGHLIGHTER: Lazy<highlighter::SyntaxHighlighter> =
-    Lazy::new(|| highlighter::SyntaxHighlighter::new());
+    Lazy::new(highlighter::SyntaxHighlighter::new);
 
 #[derive(Debug)]
 pub struct SyntaxHighlighter {

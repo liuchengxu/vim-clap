@@ -297,8 +297,8 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     //    builtin-function-list
     /////////////////////////////////////////////////////////////////
-    pub async fn bufname(&self, bufnr: usize) -> Result<String> {
-        self.call("bufname", json!([bufnr])).await
+    pub async fn bufname(&self, buf: impl Serialize) -> Result<String> {
+        self.call("bufname", json!([buf])).await
     }
 
     pub async fn col(&self, expr: &str) -> Result<usize> {
@@ -332,10 +332,10 @@ impl Vim {
     pub fn setbufvar(
         &self,
         buf: impl Serialize,
-        varname: impl Serialize,
+        varname: impl AsRef<str>,
         val: impl Serialize,
     ) -> Result<()> {
-        self.exec("setbufvar", json!([buf, varname, val]))
+        self.exec("setbufvar", json!([buf, varname.as_ref(), val]))
     }
 
     pub async fn winwidth(&self, winid: usize) -> Result<usize> {
@@ -453,15 +453,6 @@ impl Vim {
         self.bare_call("current_visual_line_range").await
     }
 
-    pub async fn current_bufnr(&self) -> Result<usize> {
-        let bufnr: i32 = self.call("bufnr", json![""]).await?;
-        if bufnr < 0 {
-            Err(anyhow!("bufnr doesn't exist"))
-        } else {
-            Ok(bufnr as usize)
-        }
-    }
-
     pub async fn bufnr(&self, buf: impl Serialize) -> Result<usize> {
         let bufnr: i32 = self.call("bufnr", json![buf]).await?;
         if bufnr < 0 {
@@ -475,8 +466,8 @@ impl Vim {
         self.call("getbufline", json!([bufnr, lnum, end])).await
     }
 
-    pub async fn getcurbufline(&self, lnum: usize) -> Result<String> {
-        self.call("getbufoneline", json!(["", lnum])).await
+    pub async fn getbufoneline(&self, buf: impl Serialize, lnum: usize) -> Result<String> {
+        self.call("getbufoneline", json!([buf, lnum])).await
     }
 
     pub async fn get_var_bool(&self, var: &str) -> Result<bool> {
