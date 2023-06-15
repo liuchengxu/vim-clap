@@ -28,6 +28,7 @@ if clap#maple#is_available()
   endfunction
 
   let s:help_tags.source_type = g:__t_rpc
+  let s:help_tags.syntax = 'clap_help_tags'
   let s:help_tags.on_move_async = function('clap#impl#on_move#async')
 else
 

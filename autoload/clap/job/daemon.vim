@@ -68,21 +68,24 @@ if has('nvim')
         return
       endif
       call clap#helper#echo_error('on_event:'.string(a:data))
-      " call s:log_error(a:data)
+      call s:log_error(a:data)
     endif
   endfunction
 
   function! s:start_service_job(cmd) abort
     call clap#job#daemon#stop()
-    let s:job_id = jobstart(a:cmd, {
-          \ 'on_exit': function('s:on_event'),
-          \ 'on_stdout': function('s:on_event'),
-          \ 'on_stderr': function('s:on_event'),
-          \ })
+    " let s:job_id = jobstart(a:cmd, {
+          " \ 'on_stderr': function('s:on_event'),
+          " \ 'on_exit': function('s:on_event'),
+          " \ 'on_stdout': function('s:on_event'),
+          " \ })
+    let g:job_id = jobstart(a:cmd, { 'rpc': v:true })
+    echom 'cmd:'.string(a:cmd).', job_id:'.g:job_id
   endfunction
 
   function! clap#job#daemon#send_message(msg) abort
-    call chansend(s:job_id, a:msg."\n")
+    call rpcnotify(g:job_id, "insert-mode", "Changed")
+    " call chansend(s:job_id, a:msg."\n")
   endfunction
 else
 
@@ -135,7 +138,11 @@ endfunction
 
 function! clap#job#daemon#start() abort
   let s:MessageHandler = function('clap#client#handle')
-  call s:start_service_job(clap#maple#build_cmd('rpc'))
+  if has('nvim')
+    call s:start_service_job(clap#maple#build_cmd('rpc', '--neovim'))
+  else
+    call s:start_service_job(clap#maple#build_cmd('rpc'))
+  endif
 endfunction
 
 let &cpoptions = s:save_cpo

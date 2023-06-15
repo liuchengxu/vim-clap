@@ -153,10 +153,19 @@ function! s:into_qf_item(line, pattern) abort
   return {'filename': fpath, 'lnum': linenr, 'col': column, 'text': text}
 endfunction
 
+function! clap#provider#live_grep#parse_line(line) abort
+  let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):'
+  let matched = s:strip_icon_and_match(a:line, pattern)
+  let [fpath, linenr, column, text] = [matched[1], str2nr(matched[2]), str2nr(matched[3]), matched[4]]
+  return [fpath, linenr, column]
+endfunction
+
 function! s:grep_sink_star(lines) abort
   call s:grep_exit()
   let pattern = '\(.\{-}\):\(\d\+\):\(\d\+\):\(.*\)'
-  call clap#sink#open_quickfix(map(a:lines, 's:into_qf_item(v:val, pattern)'))
+  let entries = map(a:lines, 's:into_qf_item(v:val, pattern)')
+  " call clap#sink#open_quickfix(entries)
+  call clap#sink#open_results(entries)
 endfunction
 
 function! s:apply_grep(_timer) abort

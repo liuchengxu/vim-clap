@@ -1,7 +1,4 @@
-pub mod neovim_rpc;
-mod types;
-
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::io::{BufRead, Write};
@@ -10,7 +7,7 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
 
-pub use self::types::{
+pub use crate::types::{
     Call, Error, ErrorCode, Failure, MethodCall, Notification, Output, Params, RawMessage, Success,
 };
 
@@ -69,7 +66,7 @@ impl From<std::io::Error> for RpcError {
 }
 
 #[derive(Serialize, Debug)]
-pub struct RpcClient {
+pub struct NeovimRpcClient {
     /// Id of request to Vim created from the Rust side.
     #[serde(skip_serializing)]
     id: AtomicU64,
@@ -81,8 +78,8 @@ pub struct RpcClient {
     output_reader_tx: UnboundedSender<(u64, oneshot::Sender<Output>)>,
 }
 
-impl RpcClient {
-    /// Creates a new instance of [`RpcClient`].
+impl NeovimRpcClient {
+    /// Creates a new instance of [`NeovimRpcClient`].
     ///
     /// # Arguments
     ///
@@ -98,6 +95,8 @@ impl RpcClient {
             UnboundedSender<(u64, oneshot::Sender<Output>)>,
             _,
         ) = unbounded_channel();
+
+        tracing::debug!("=========== Spawning reader task");
 
         // A blocking task is necessary!
         tokio::task::spawn_blocking(move || {
@@ -142,7 +141,7 @@ impl RpcClient {
         match rx.await? {
             Output::Success(ok) => Ok(serde_json::from_value(ok.result)?),
             Output::Failure(err) => Err(RpcError::Request(format!(
-                "RpcClient request error: {err:?}"
+                "NeovimRpcClient request error: {err:?}"
             ))),
         }
     }
@@ -189,52 +188,165 @@ impl RpcClient {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RpcRequest {
+    #[serde(rename = "msgid")]
+    id: u64,
+    method: String,
+    params: Vec<rmpv::Value>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RpcResponse {
+    #[serde(rename = "msgid")]
+    id: i64,
+    error: rmpv::Value,
+    result: rmpv::Value,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RpcNotification {
+    method: String,
+    params: Vec<rmpv::Value>,
+}
+
+/// Message pass through the stdio channel.
+///
+/// RawMessage are composed of [`Call`] and the response message
+/// to a call initiated on Rust side.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum RpcMessage {
+    Request(RpcRequest),
+    Response(RpcResponse),
+    Notification(RpcNotification),
+}
+
+fn parse_rpc_message(value: rmpv::Value) -> Option<RpcMessage> {
+    use rmpv::Value;
+
+    let mut args = match value {
+        Value::Array(args) => args.into_iter(),
+        _ => return None,
+    };
+
+    const REQUEST_TYPE: u64 = 0;
+    const RESPONSE_TYPE: u64 = 0;
+    const NOTIFICATION_TYPE: u64 = 0;
+
+    if let Some(msg_ty) = args.next().and_then(|v| v.as_u64()) {
+        match msg_ty {
+            REQUEST_TYPE => {
+                let Some(id) = args.next().and_then(|v| v.as_u64()) else {
+                    return None;
+                };
+
+                let Some(method) = args
+                                .next()
+                                .and_then(|v| match v {
+                                    Value::String(s) => String::from_utf8(s.into_bytes()).ok(),
+                                    _ => None,
+                                }) else {
+                                    return None;
+                                };
+
+                let Some(params) = args
+                                .next()
+                                .and_then(|v| match v {
+                                    Value::Array(v) => Some(v),
+                                    _ => None,
+                                }) else {
+                                    return None;
+                                };
+
+                let rpc_msg = RpcMessage::Request(RpcRequest { id, method, params });
+
+                Some(rpc_msg)
+            }
+            RESPONSE_TYPE => {
+                let Some(id) = args.next().and_then(|v| v.as_i64()) else {
+                    return None;
+                };
+                let Some(error) = args.next() else { return None; };
+                let Some(result) = args.next() else { return None; };
+
+                let rpc_msg = RpcMessage::Response(RpcResponse { id, error, result });
+
+                Some(rpc_msg)
+            }
+            NOTIFICATION_TYPE => {
+                let Some(method)= args
+                                .next()
+                                .and_then(|v| match v {
+                                    Value::String(s) => String::from_utf8(s.into_bytes()).ok(),
+                                    _ => None,
+                                }) else {
+                                    return None;
+                                };
+
+                let Some(params) = args
+                                .next()
+                                .and_then(|v| match v {
+                                    Value::Array(v) => Some(v),
+                                    _ => None,
+                                }) else {
+                                    return None;
+                                };
+
+                let rpc_msg = RpcMessage::Notification(RpcNotification { method, params });
+
+                Some(rpc_msg)
+            }
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
 /// Keep reading and processing the line from stdin.
 fn loop_read(
-    reader: impl BufRead,
+    mut reader: impl BufRead,
     mut output_reader_rx: UnboundedReceiver<(u64, oneshot::Sender<Output>)>,
     sink: &UnboundedSender<Call>,
 ) -> Result<(), RpcError> {
     let mut pending_outputs = HashMap::new();
 
-    let mut reader = reader;
-    loop {
-        let mut line = String::new();
-        match reader.read_line(&mut line) {
-            Ok(number) => {
-                if number > 0 {
-                    match serde_json::from_str::<RawMessage>(line.trim()) {
-                        Ok(raw_message) => match raw_message {
-                            RawMessage::MethodCall(method_call) => {
-                                sink.send(Call::MethodCall(method_call))?;
-                            }
-                            RawMessage::Notification(notification) => {
-                                sink.send(Call::Notification(notification))?;
-                            }
-                            RawMessage::Output(output) => {
-                                while let Ok((id, tx)) = output_reader_rx.try_recv() {
-                                    pending_outputs.insert(id, tx);
-                                }
+    // Read the response from stdout
+    let mut buf = bytes::BytesMut::with_capacity(4096);
 
-                                if let Some(tx) = pending_outputs.remove(output.id()) {
-                                    tx.send(output).map_err(|output| {
-                                        tracing::debug!("Failed to send output: {output:?}");
-                                        RpcError::SendOutput(output)
-                                    })?;
-                                }
-                            }
-                        },
-                        Err(err) => {
-                            tracing::error!(error = ?err, ?line, "Invalid raw Vim message");
-                        }
+    loop {
+        buf.resize(4096, 0);
+        let n = reader.read(&mut buf)?;
+        if n == 0 {
+            break;
+        }
+        buf.truncate(n);
+        let value = rmpv::decode::value::read_value(&mut &buf[..]).unwrap();
+        tracing::debug!("============ message_value: {:?}", value);
+
+        if let Some(rpc_msg) = parse_rpc_message(value) {
+            tracing::debug!("============ decoded: {rpc_msg:?}");
+            match rpc_msg {
+                RpcMessage::Request(request) => {}
+                RpcMessage::Notification(notification) => {}
+                RpcMessage::Response(response) => {
+                    while let Ok((id, tx)) = output_reader_rx.try_recv() {
+                        pending_outputs.insert(id, tx);
                     }
-                } else {
-                    println!("EOF reached");
+
+                    // if let Some(tx) = pending_outputs.remove(response.id)) {
+                    // tx.send(output).map_err(|output| {
+                    // tracing::debug!("Failed to send output: {output:?}");
+                    // RpcError::SendOutput(output)
+                    // })?;
+                    // }
                 }
             }
-            Err(error) => println!("Failed to read_line, error: {error}"),
         }
     }
+
+    Ok(())
 }
 
 /// Keep writing the response from Rust backend to Vim via stdout.

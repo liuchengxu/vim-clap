@@ -80,6 +80,35 @@ pub async fn start() {
     session_client.loop_call(call_rx).await;
 }
 
+pub async fn start_neovim() {
+    let (call_tx, call_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    let rpc_client = Arc::new(rpc::neovim_rpc::NeovimRpcClient::new(
+        BufReader::new(std::io::stdin()),
+        BufWriter::new(std::io::stdout()),
+        call_tx.clone(),
+    ));
+
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+
+    // let vim = Vim::new(rpc_client.clone());
+
+    // tokio::spawn({
+    // let vim = vim.clone();
+    // async move {
+    // if let Err(e) = initialize(vim).await {
+    // tracing::error!(error = ?e, "Failed to initialize Client")
+    // }
+    // }
+    // });
+
+    // let state = State::new(call_tx, rpc_client);
+    // let session_client = Client::new(state, vim);
+    // session_client.loop_call(call_rx).await;
+}
+
 #[derive(Clone)]
 struct Client {
     vim: Vim,

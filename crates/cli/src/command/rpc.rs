@@ -6,7 +6,10 @@ use clap::Parser;
 
 /// Starts a RPC service using stdio.
 #[derive(Parser, Debug, Clone)]
-pub struct Rpc;
+pub struct Rpc {
+    #[clap(long, value_parser)]
+    neovim: bool,
+}
 
 impl Rpc {
     pub async fn run(&self, args: Args) -> Result<()> {
@@ -57,9 +60,17 @@ impl Rpc {
 
             tracing::subscriber::set_global_default(subscriber)?;
 
-            maple_core::stdio_server::start().await;
+            if self.neovim {
+                maple_core::stdio_server::start_neovim().await;
+            } else {
+                maple_core::stdio_server::start().await;
+            }
         } else {
-            maple_core::stdio_server::start().await;
+            if self.neovim {
+                maple_core::stdio_server::start_neovim().await;
+            } else {
+                maple_core::stdio_server::start().await;
+            }
         }
 
         Ok(())
