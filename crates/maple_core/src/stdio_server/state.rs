@@ -1,5 +1,5 @@
 use crate::stdio_server::vim::Vim;
-use rpc::{Call, RpcClient};
+use rpc::{RpcClient, VimRpcMessage};
 use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
@@ -8,7 +8,7 @@ use tokio::sync::mpsc::UnboundedSender;
 #[derive(Serialize)]
 pub struct State {
     #[serde(skip_serializing)]
-    pub tx: UnboundedSender<Call>,
+    pub tx: UnboundedSender<VimRpcMessage>,
 
     #[serde(skip_serializing)]
     pub vim: Vim,
@@ -18,7 +18,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(tx: UnboundedSender<Call>, client: Arc<RpcClient>) -> Self {
+    pub fn new(tx: UnboundedSender<VimRpcMessage>, client: Arc<RpcClient>) -> Self {
         Self {
             tx,
             vim: Vim::new(client),

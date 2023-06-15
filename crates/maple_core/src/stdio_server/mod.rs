@@ -17,7 +17,7 @@ use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
-use rpc::{Call, MethodCall, Notification, RpcClient};
+use rpc::{RpcClient, RpcNotification, RpcRequest, VimRpcMessage};
 use serde_json::{json, Value};
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
@@ -100,7 +100,7 @@ impl Client {
     /// Entry of the bridge between Vim and Rust.
     ///
     /// Handle the message actively initiated from Vim.
-    async fn loop_call(self, mut rx: UnboundedReceiver<Call>) {
+    async fn loop_call(self, mut rx: UnboundedReceiver<VimRpcMessage>) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -117,7 +117,8 @@ impl Client {
                     match maybe_call {
                         Some(call) => {
                             match call {
-                                Call::Notification(notification) => {
+                                VimRpcMessage::Request(rpc_request) => self.process_request(rpc_request),
+                                VimRpcMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
                                     match Event::from_method(&notification.method) {
@@ -132,7 +133,6 @@ impl Client {
                                         _ => self.process_notification(notification),
                                     }
                                 }
-                                Call::MethodCall(method_call) => self.process_method_call(method_call),
                             }
                         }
                         None => break, // channel has closed.
@@ -158,7 +158,7 @@ impl Client {
         }
     }
 
-    fn process_notification(&self, notification: Notification) {
+    fn process_notification(&self, notification: RpcNotification) {
         if let Some(session_id) = notification.session_id {
             if self.service_manager_mutex.lock().exists(session_id) {
                 let client = self.clone();
@@ -180,7 +180,7 @@ impl Client {
     }
 
     /// Actually process a Vim notification message.
-    async fn do_process_notification(&self, notification: Notification) -> Result<()> {
+    async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
         let provider_session_id = || {
             notification
                 .session_id
@@ -226,7 +226,7 @@ impl Client {
         Ok(())
     }
 
-    async fn handle_action(&self, notification: Notification, action: String) -> Result<()> {
+    async fn handle_action(&self, notification: RpcNotification, action: String) -> Result<()> {
         match action.as_str() {
             "note_recent_files" => {
                 let bufnr: Vec<usize> = notification.params.parse()?;
@@ -285,13 +285,14 @@ impl Client {
         Ok(())
     }
 
-    fn process_method_call(&self, method_call: MethodCall) {
+    /// Process [`RpcRequest`] initiated from Vim.
+    fn process_request(&self, rpc_request: RpcRequest) {
         let client = self.clone();
 
         tokio::spawn(async move {
-            let id = method_call.id;
+            let id = rpc_request.id;
 
-            match client.do_process_method_call(method_call).await {
+            match client.do_process_request(rpc_request).await {
                 Ok(Some(result)) => {
                     // Send back the result of method call.
                     let state = client.state_mutex.lock();
@@ -301,15 +302,14 @@ impl Client {
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    tracing::error!(?err, "Error at processing Vim MethodCall");
+                    tracing::error!(?err, "Error at processing Vim RpcRequest");
                 }
             }
         });
     }
 
-    /// Process a Vim method call message.
-    async fn do_process_method_call(&self, method_call: MethodCall) -> Result<Option<Value>> {
-        let msg = method_call;
+    async fn do_process_request(&self, rpc_request: RpcRequest) -> Result<Option<Value>> {
+        let msg = rpc_request;
 
         let value = match msg.method.as_str() {
             "preview/file" => Some(handler::messages::preview_file(msg).await?),

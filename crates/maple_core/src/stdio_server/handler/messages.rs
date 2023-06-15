@@ -1,6 +1,6 @@
 use crate::datastore::RECENT_FILES_IN_MEMORY;
 use anyhow::{anyhow, Result};
-use rpc::MethodCall;
+use rpc::RpcRequest;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -18,7 +18,7 @@ pub fn note_recent_file(file_path: String) -> Result<()> {
     Ok(())
 }
 
-pub async fn preview_file(msg: MethodCall) -> Result<Value> {
+pub async fn preview_file(msg: RpcRequest) -> Result<Value> {
     let msg_id = msg.id;
 
     #[derive(Deserialize)]
@@ -55,7 +55,7 @@ pub async fn preview_file(msg: MethodCall) -> Result<Value> {
     Ok(value)
 }
 
-pub async fn preview_quickfix(msg: MethodCall) -> Result<Value> {
+pub async fn preview_quickfix(msg: RpcRequest) -> Result<Value> {
     use crate::previewer::{preview_file, preview_file_at};
     use std::path::PathBuf;
 

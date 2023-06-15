@@ -4,7 +4,7 @@ use serde_json::Value;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct MethodCall {
+pub struct RpcRequest {
     pub id: u64,
     pub method: String,
     pub params: Params,
@@ -14,50 +14,52 @@ pub struct MethodCall {
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct Notification {
+pub struct RpcNotification {
     pub method: String,
     pub params: Params,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_id: Option<u64>,
 }
 
-/// Request message actively sent from the Vim side.
+/// RPC message originated from Vim.
 ///
 /// Message sent via `clap#client#notify` or `clap#client#request_async`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum Call {
-    MethodCall(MethodCall),
-    Notification(Notification),
+pub enum VimRpcMessage {
+    Request(RpcRequest),
+    Notification(RpcNotification),
 }
 
 /// Message pass through the stdio channel.
 ///
-/// RawMessage are composed of [`Call`] and the response message
+/// RawMessage are composed of [`VimRpcMessage`] and the response message
 /// to a call initiated on Rust side.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum RawMessage {
-    MethodCall(MethodCall),
-    Notification(Notification),
-    /// Response of a message requested from Rust.
-    Output(Output),
+pub enum RpcMessage {
+    /// RPC request initiated from Vim.
+    Request(RpcRequest),
+    /// RPC notification initiated from Vim.
+    Notification(RpcNotification),
+    /// Response of a request initiated from Rust.
+    Response(RpcResponse),
 }
 
-impl RawMessage {
+impl RpcMessage {
     pub fn kind(&self) -> &str {
         match self {
-            Self::MethodCall(_) => "MethodCall",
+            Self::Request(_) => "Request",
             Self::Notification(_) => "Notification",
-            Self::Output(_) => "Output",
+            Self::Response(_) => "Response",
         }
     }
 
     pub fn method(&self) -> Option<&str> {
         match self {
-            Self::MethodCall(method_call) => Some(&method_call.method),
+            Self::Request(rpc_request) => Some(&rpc_request.method),
             Self::Notification(notification) => Some(&notification.method),
-            Self::Output(_) => None,
+            Self::Response(_) => None,
         }
     }
 }
@@ -246,18 +248,19 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
 /// Represents output - failure or success
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
-pub enum Output {
+pub enum RpcResponse {
     /// Success
     Success(Success),
     /// Failure
     Failure(Failure),
 }
 
-impl Output {
+impl RpcResponse {
     /// Get the correlation id.
     pub fn id(&self) -> &Id {
         match self {
