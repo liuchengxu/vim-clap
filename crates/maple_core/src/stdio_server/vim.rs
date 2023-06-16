@@ -284,13 +284,13 @@ impl Vim {
     }
 
     /// Send back the result with specified id.
-    pub fn send(
+    pub fn send_response(
         &self,
         id: u64,
         output_result: Result<impl Serialize, rpc::RpcError>,
     ) -> Result<()> {
         self.rpc_client
-            .output(id, output_result)
+            .send_response(id, output_result)
             .map_err(|e| anyhow!("RpcError: {e:?}"))
     }
 

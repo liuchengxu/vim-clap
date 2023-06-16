@@ -26,15 +26,12 @@ pub struct RpcNotification {
 /// Message sent via `clap#client#notify` or `clap#client#request_async`.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum VimRpcMessage {
+pub enum VimMessage {
     Request(RpcRequest),
     Notification(RpcNotification),
 }
 
-/// Message pass through the stdio channel.
-///
-/// RawMessage are composed of [`VimRpcMessage`] and the response message
-/// to a call initiated on Rust side.
+/// Message type through the stdio channel.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum RpcMessage {

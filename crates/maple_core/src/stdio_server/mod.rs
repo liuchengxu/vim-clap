@@ -4,7 +4,6 @@ mod job;
 mod plugin;
 mod provider;
 mod service;
-mod state;
 mod vim;
 
 pub use self::input::InputHistory;
@@ -12,12 +11,11 @@ use self::input::{Event, PluginEvent, ProviderEvent};
 use self::plugin::{ClapPlugin, CursorWordHighlighter};
 use self::provider::{create_provider, Context};
 use self::service::ServiceManager;
-use self::state::State;
 use self::vim::initialize_syntax_map;
 pub use self::vim::{Vim, VimProgressor};
 use anyhow::{anyhow, Result};
 use parking_lot::Mutex;
-use rpc::{RpcClient, RpcNotification, RpcRequest, VimRpcMessage};
+use rpc::{RpcClient, RpcNotification, RpcRequest, VimMessage};
 use serde_json::{json, Value};
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
@@ -50,15 +48,16 @@ async fn initialize(vim: Vim) -> Result<()> {
 
 /// Starts and keep running the server on top of stdio.
 pub async fn start() {
-    let (call_tx, call_rx) = tokio::sync::mpsc::unbounded_channel();
+    // TODO: setup test framework using vim_message_sender.
+    let (vim_message_sender, vim_message_receiver) = tokio::sync::mpsc::unbounded_channel();
 
     let rpc_client = Arc::new(RpcClient::new(
         BufReader::new(std::io::stdin()),
         BufWriter::new(std::io::stdout()),
-        call_tx.clone(),
+        vim_message_sender.clone(),
     ));
 
-    let vim = Vim::new(rpc_client.clone());
+    let vim = Vim::new(rpc_client);
 
     tokio::spawn({
         let vim = vim.clone();
@@ -69,21 +68,18 @@ pub async fn start() {
         }
     });
 
-    let state = State::new(call_tx, rpc_client);
-    let session_client = Client::new(state, vim);
-    session_client.loop_call(call_rx).await;
+    Client::new(vim).run(vim_message_receiver).await;
 }
 
 #[derive(Clone)]
 struct Client {
     vim: Vim,
-    state_mutex: Arc<Mutex<State>>,
     service_manager_mutex: Arc<Mutex<ServiceManager>>,
 }
 
 impl Client {
     /// Creates a new instnace of [`Client`].
-    fn new(state: State, vim: Vim) -> Self {
+    fn new(vim: Vim) -> Self {
         let mut service_manager = ServiceManager::default();
         if crate::config::config().plugin.highlight_cursor_word.enable {
             service_manager.new_plugin(
@@ -92,15 +88,14 @@ impl Client {
         }
         Self {
             vim,
-            state_mutex: Arc::new(Mutex::new(state)),
             service_manager_mutex: Arc::new(Mutex::new(service_manager)),
         }
     }
 
     /// Entry of the bridge between Vim and Rust.
     ///
-    /// Handle the message actively initiated from Vim.
-    async fn loop_call(self, mut rx: UnboundedReceiver<VimRpcMessage>) {
+    /// Handle the messages actively initiated from Vim.
+    async fn run(self, mut rx: UnboundedReceiver<VimMessage>) {
         // If the debounce timer isn't active, it will be set to expire "never",
         // which is actually just 1 year in the future.
         const NEVER: Duration = Duration::from_secs(365 * 24 * 60 * 60);
@@ -117,8 +112,8 @@ impl Client {
                     match maybe_call {
                         Some(call) => {
                             match call {
-                                VimRpcMessage::Request(rpc_request) => self.process_request(rpc_request),
-                                VimRpcMessage::Notification(notification) => {
+                                VimMessage::Request(rpc_request) => self.process_request(rpc_request),
+                                VimMessage::Notification(notification) => {
                                     // Avoid spawn too frequently if user opens and
                                     // closes the provider frequently in a very short time.
                                     match Event::from_method(&notification.method) {
@@ -295,14 +290,13 @@ impl Client {
             match client.do_process_request(rpc_request).await {
                 Ok(Some(result)) => {
                     // Send back the result of method call.
-                    let state = client.state_mutex.lock();
-                    if let Err(err) = state.vim.send(id, Ok(result)) {
-                        tracing::debug!(?err, "Failed to send the output result");
+                    if let Err(err) = client.vim.send_response(id, Ok(result)) {
+                        tracing::debug!(id, ?err, "Failed to send the output result");
                     }
                 }
                 Ok(None) => {}
                 Err(err) => {
-                    tracing::error!(?err, "Error at processing Vim RpcRequest");
+                    tracing::error!(id, ?err, "Error at processing Vim RpcRequest");
                 }
             }
         });
@@ -326,7 +320,7 @@ impl Client {
             }
 
             _ => Some(json!({
-                "error": format!("Unknown method call: {}", msg.method)
+                "error": format!("Unknown request: {}", msg.method)
             })),
         };
 

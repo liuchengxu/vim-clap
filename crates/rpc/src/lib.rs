@@ -11,13 +11,13 @@ use tokio::sync::oneshot;
 
 pub use self::types::{
     Error, ErrorCode, Failure, Params, RpcMessage, RpcNotification, RpcRequest, RpcResponse,
-    Success, VimRpcMessage,
+    Success, VimMessage,
 };
 
 #[derive(Debug)]
 pub enum RpcError {
     SendRawMessage(SendError<RpcMessage>),
-    SendCall(SendError<VimRpcMessage>),
+    SendCall(SendError<VimMessage>),
     SendRequest(SendError<(u64, oneshot::Sender<RpcResponse>)>),
     SendResponse(RpcResponse),
     OneshotRecv(tokio::sync::oneshot::error::RecvError),
@@ -32,8 +32,8 @@ impl From<SendError<RpcMessage>> for RpcError {
     }
 }
 
-impl From<SendError<VimRpcMessage>> for RpcError {
-    fn from(e: SendError<VimRpcMessage>) -> Self {
+impl From<SendError<VimMessage>> for RpcError {
+    fn from(e: SendError<VimMessage>) -> Self {
         Self::SendCall(e)
     }
 }
@@ -75,10 +75,10 @@ pub struct RpcClient {
     id: AtomicU64,
     /// Sender for sending message from Rust to Vim.
     #[serde(skip_serializing)]
-    output_writer_tx: UnboundedSender<RpcMessage>,
+    writer_sender: UnboundedSender<RpcMessage>,
     /// Sender for passing the Vim response of request initiated from Rust.
     #[serde(skip_serializing)]
-    output_reader_tx: UnboundedSender<(u64, oneshot::Sender<RpcResponse>)>,
+    response_sender_tx: UnboundedSender<(u64, oneshot::Sender<RpcResponse>)>,
 }
 
 impl RpcClient {
@@ -91,33 +91,33 @@ impl RpcClient {
     pub fn new(
         reader: impl BufRead + Send + 'static,
         writer: impl Write + Send + 'static,
-        sink: UnboundedSender<VimRpcMessage>,
+        sink: UnboundedSender<VimMessage>,
     ) -> Self {
-        // Channel for passing through the response from Vim and the request to Vim.
-        let (output_reader_tx, output_reader_rx): (
+        // Channel for passing through the response from Vim to Vim.
+        let (response_sender_tx, response_sender_rx): (
             UnboundedSender<(u64, oneshot::Sender<RpcResponse>)>,
             _,
         ) = unbounded_channel();
 
         // A blocking task is necessary!
         tokio::task::spawn_blocking(move || {
-            if let Err(error) = loop_read(reader, output_reader_rx, &sink) {
+            if let Err(error) = loop_read(reader, response_sender_rx, &sink) {
                 tracing::error!(?error, "Thread stdio-reader exited");
             }
         });
 
-        let (output_writer_tx, output_writer_rx) = unbounded_channel();
+        let (writer_sender, io_writer_receiver) = unbounded_channel();
         // No blocking task.
         tokio::spawn(async move {
-            if let Err(error) = loop_write(writer, output_writer_rx).await {
+            if let Err(error) = loop_write(writer, io_writer_receiver).await {
                 tracing::error!(?error, "Thread stdio-writer exited");
             }
         });
 
         Self {
             id: Default::default(),
-            output_reader_tx,
-            output_writer_tx,
+            response_sender_tx,
+            writer_sender,
         }
     }
 
@@ -136,11 +136,11 @@ impl RpcClient {
             params: to_array_or_none(params)?,
             session_id: None,
         };
-        let (tx, rx) = oneshot::channel();
-        self.output_reader_tx.send((id, tx))?;
-        self.output_writer_tx
-            .send(RpcMessage::Request(rpc_request))?;
-        match rx.await? {
+        let (request_result_tx, request_result_rx) = oneshot::channel();
+        // Request result will be sent back in a RpcResponse message.
+        self.response_sender_tx.send((id, request_result_tx))?;
+        self.writer_sender.send(RpcMessage::Request(rpc_request))?;
+        match request_result_rx.await? {
             RpcResponse::Success(ok) => Ok(serde_json::from_value(ok.result)?),
             RpcResponse::Failure(err) => Err(RpcError::Request(format!(
                 "RpcClient request error: {err:?}"
@@ -158,19 +158,19 @@ impl RpcClient {
             session_id: None,
         };
 
-        self.output_writer_tx
+        self.writer_sender
             .send(RpcMessage::Notification(notification))?;
 
         Ok(())
     }
 
-    /// Sends the response from Rust to Vim.
-    pub fn output(
+    /// Sends the response of request initiated from Vim.
+    pub fn send_response(
         &self,
         id: u64,
         output_result: Result<impl Serialize, RpcError>,
     ) -> Result<(), RpcError> {
-        let output = match output_result {
+        let rpc_response = match output_result {
             Ok(ok) => RpcResponse::Success(Success {
                 id,
                 result: serde_json::to_value(ok)?,
@@ -185,7 +185,8 @@ impl RpcClient {
             }),
         };
 
-        self.output_writer_tx.send(RpcMessage::Response(output))?;
+        self.writer_sender
+            .send(RpcMessage::Response(rpc_response))?;
 
         Ok(())
     }
@@ -193,33 +194,35 @@ impl RpcClient {
 
 /// Keep reading and processing the line from stdin.
 fn loop_read(
-    reader: impl BufRead,
-    mut output_reader_rx: UnboundedReceiver<(u64, oneshot::Sender<RpcResponse>)>,
-    sink: &UnboundedSender<VimRpcMessage>,
+    mut reader: impl BufRead,
+    mut response_sender_rx: UnboundedReceiver<(u64, oneshot::Sender<RpcResponse>)>,
+    sink: &UnboundedSender<VimMessage>,
 ) -> Result<(), RpcError> {
-    let mut pending_responses = HashMap::new();
+    let mut pending_response_senders = HashMap::new();
 
-    let mut reader = reader;
     loop {
         let mut line = String::new();
         match reader.read_line(&mut line) {
             Ok(number) => {
                 if number > 0 {
                     match serde_json::from_str::<RpcMessage>(line.trim()) {
-                        Ok(raw_message) => match raw_message {
+                        Ok(rpc_message) => match rpc_message {
                             RpcMessage::Request(rpc_request) => {
-                                sink.send(VimRpcMessage::Request(rpc_request))?;
+                                sink.send(VimMessage::Request(rpc_request))?;
                             }
                             RpcMessage::Notification(notification) => {
-                                sink.send(VimRpcMessage::Notification(notification))?;
+                                sink.send(VimMessage::Notification(notification))?;
                             }
                             RpcMessage::Response(response) => {
-                                while let Ok((id, tx)) = output_reader_rx.try_recv() {
-                                    pending_responses.insert(id, tx);
+                                while let Ok((id, response_sender)) = response_sender_rx.try_recv()
+                                {
+                                    pending_response_senders.insert(id, response_sender);
                                 }
 
-                                if let Some(tx) = pending_responses.remove(response.id()) {
-                                    tx.send(response).map_err(|response| {
+                                if let Some(response_sender) =
+                                    pending_response_senders.remove(response.id())
+                                {
+                                    response_sender.send(response).map_err(|response| {
                                         tracing::debug!("Failed to send response: {response:?}");
                                         RpcError::SendResponse(response)
                                     })?;
@@ -241,12 +244,10 @@ fn loop_read(
 
 /// Keep writing the response from Rust backend to Vim via stdout.
 async fn loop_write(
-    writer: impl Write,
-    mut rx: UnboundedReceiver<RpcMessage>,
+    mut writer: impl Write,
+    mut io_writer_receiver: UnboundedReceiver<RpcMessage>,
 ) -> Result<(), RpcError> {
-    let mut writer = writer;
-
-    while let Some(msg) = rx.recv().await {
+    while let Some(msg) = io_writer_receiver.recv().await {
         let s = serde_json::to_string(&msg)?;
         if s.len() < 100 {
             tracing::trace!(?msg, "=> Vim");
