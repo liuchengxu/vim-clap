@@ -8,8 +8,6 @@ pub struct RpcRequest {
     pub id: u64,
     pub method: String,
     pub params: Params,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub session_id: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -17,8 +15,15 @@ pub struct RpcRequest {
 pub struct RpcNotification {
     pub method: String,
     pub params: Params,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub session_id: Option<u64>,
+}
+
+impl RpcNotification {
+    pub fn session_id(&self) -> Option<u64> {
+        match self.params {
+            Params::None | Params::Array(_) => None,
+            Params::Map(ref map) => map.get("session_id").and_then(|v| v.as_u64()),
+        }
+    }
 }
 
 /// RPC message originated from Vim.
@@ -41,24 +46,6 @@ pub enum RpcMessage {
     Notification(RpcNotification),
     /// Response of a request initiated from Rust.
     Response(RpcResponse),
-}
-
-impl RpcMessage {
-    pub fn kind(&self) -> &str {
-        match self {
-            Self::Request(_) => "Request",
-            Self::Notification(_) => "Notification",
-            Self::Response(_) => "Response",
-        }
-    }
-
-    pub fn method(&self) -> Option<&str> {
-        match self {
-            Self::Request(rpc_request) => Some(&rpc_request.method),
-            Self::Notification(notification) => Some(&notification.method),
-            Self::Response(_) => None,
-        }
-    }
 }
 
 type Id = u64;

@@ -93,7 +93,7 @@ impl RpcClient {
         writer: impl Write + Send + 'static,
         sink: UnboundedSender<VimMessage>,
     ) -> Self {
-        // Channel for passing through the response from Vim to Vim.
+        // Channel for passing through the response from Vim to Rust.
         let (response_sender_tx, response_sender_rx): (
             UnboundedSender<(u64, oneshot::Sender<RpcResponse>)>,
             _,
@@ -134,7 +134,6 @@ impl RpcClient {
             // call(method, args) where args expects a List in Vim, hence convert the params
             // to List unconditionally.
             params: to_array_or_none(params)?,
-            session_id: None,
         };
         let (request_result_tx, request_result_rx) = oneshot::channel();
         // Request result will be sent back in a RpcResponse message.
@@ -155,7 +154,6 @@ impl RpcClient {
             // call(method, args) where args expects a List in Vim, hence convert the params
             // to List unconditionally.
             params: to_array_or_none(params)?,
-            session_id: None,
         };
 
         self.writer_sender
@@ -249,11 +247,28 @@ async fn loop_write(
 ) -> Result<(), RpcError> {
     while let Some(msg) = io_writer_receiver.recv().await {
         let s = serde_json::to_string(&msg)?;
-        if s.len() < 100 {
+
+        if s.len() < 128 {
             tracing::trace!(?msg, "=> Vim");
         } else {
-            tracing::trace!(msg_size = ?s.len(), msg_kind = msg.kind(), method = ?msg.method(), "=> Vim");
+            let msg_size = s.len();
+            match msg {
+                RpcMessage::Request(request) => {
+                    tracing::trace!(method = request.method, msg_size, "=> Vim Request")
+                }
+                RpcMessage::Response(response) => {
+                    tracing::trace!(id = response.id(), msg_size, "=> Vim Response")
+                }
+                RpcMessage::Notification(notification) => {
+                    tracing::trace!(
+                        method = notification.method,
+                        msg_size,
+                        "=> Vim Notification"
+                    )
+                }
+            }
         }
+
         // Use different convention for two reasons,
         // 1. If using '\r\ncontent', nvim will receive output as `\r` + `content`, while vim
         // receives `content`.

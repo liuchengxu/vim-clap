@@ -42,10 +42,11 @@ endfunction
 
 function! s:notify_provider(method, params) abort
   if clap#job#daemon#is_running()
+    let params = a:params
+    let params['session_id'] = s:session_id
     call clap#job#daemon#send_message(json_encode({
           \ 'method': a:method,
-          \ 'params': a:params,
-          \ 'session_id': s:session_id,
+          \ 'params': params,
           \ }))
   endif
 endfunction
@@ -64,7 +65,7 @@ endfunction
 " Recommended API
 " Optional argument: params: v:null, List, Dict
 function! clap#client#notify_provider(method, ...) abort
-  call s:notify_provider(a:method, get(a:000, 0, v:null))
+  call s:notify_provider(a:method, get(a:000, 0, {}))
 endfunction
 
 function! clap#client#notify(method, ...) abort
@@ -109,14 +110,6 @@ function! clap#client#notify_on_init(...) abort
     call extend(params, a:1)
   endif
   call s:notify_provider('new_session', params)
-endfunction
-
-function! clap#client#notify_recent_file() abort
-  if &buftype ==# 'nofile'
-    return
-  endif
-  let file = expand(expand('<afile>:p'))
-  call s:notify_provider('note_recent_files', [file])
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

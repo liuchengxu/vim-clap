@@ -139,11 +139,11 @@ impl Client {
 
                     if let Some(notification) = pending_notification.take() {
                         let last_session_id = notification
-                            .session_id
+                            .session_id()
                             .unwrap_or_default()
                             .saturating_sub(1);
                         self.service_manager_mutex.lock().try_exit(last_session_id);
-                        let session_id = notification.session_id;
+                        let session_id = notification.session_id();
                         if let Err(err) = self.do_process_notification(notification).await {
                             tracing::error!(?session_id, ?err, "Error at processing Vim Notification");
                         }
@@ -154,7 +154,7 @@ impl Client {
     }
 
     fn process_notification(&self, notification: RpcNotification) {
-        if let Some(session_id) = notification.session_id {
+        if let Some(session_id) = notification.session_id() {
             if self.service_manager_mutex.lock().exists(session_id) {
                 let client = self.clone();
 
@@ -176,39 +176,43 @@ impl Client {
 
     /// Actually process a Vim notification message.
     async fn do_process_notification(&self, notification: RpcNotification) -> Result<()> {
-        let provider_session_id = || {
-            notification
-                .session_id
-                .ok_or_else(|| anyhow!("Notification must contain `session_id` field"))
-        };
-
         match Event::from_method(&notification.method) {
             Event::Provider(provider_event) => match provider_event {
                 ProviderEvent::NewSession => {
                     let provider_id = self.vim.provider_id().await?;
+                    let session_id = notification
+                        .session_id()
+                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     let ctx = Context::new(notification.params, self.vim.clone()).await?;
                     let provider = create_provider(&provider_id, &ctx).await?;
-                    self.service_manager_mutex.lock().new_provider(
-                        provider_session_id()?,
-                        provider,
-                        ctx,
-                    );
+                    self.service_manager_mutex
+                        .lock()
+                        .new_provider(session_id, provider, ctx);
                 }
                 ProviderEvent::Exit => {
+                    let session_id = notification
+                        .session_id()
+                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
-                        .notify_provider_exit(provider_session_id()?);
+                        .notify_provider_exit(session_id);
                 }
                 to_send => {
+                    let session_id = notification
+                        .session_id()
+                        .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                     self.service_manager_mutex
                         .lock()
-                        .notify_provider(provider_session_id()?, to_send);
+                        .notify_provider(session_id, to_send);
                 }
             },
             Event::Key(key_event) => {
+                let session_id = notification
+                    .session_id()
+                    .ok_or_else(|| anyhow!("`session_id` not found in Params"))?;
                 self.service_manager_mutex
                     .lock()
-                    .notify_provider(provider_session_id()?, ProviderEvent::Key(key_event));
+                    .notify_provider(session_id, ProviderEvent::Key(key_event));
             }
             Event::Autocmd(autocmd) => {
                 self.service_manager_mutex
@@ -308,17 +312,6 @@ impl Client {
         let value = match msg.method.as_str() {
             "preview/file" => Some(handler::messages::preview_file(msg).await?),
             "quickfix" => Some(handler::messages::preview_quickfix(msg).await?),
-
-            // Deprecated but not remove them for now.
-            "on_move" => {
-                if let Some(session_id) = msg.session_id {
-                    self.service_manager_mutex
-                        .lock()
-                        .notify_provider(session_id, ProviderEvent::OnMove);
-                }
-                None
-            }
-
             _ => Some(json!({
                 "error": format!("Unknown request: {}", msg.method)
             })),
