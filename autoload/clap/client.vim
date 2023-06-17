@@ -22,12 +22,12 @@ function! clap#client#handle(msg) abort
     try
       let result = clap#api#call(decoded.method, params)
       if has_key(decoded, 'id')
-        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'result': result }))
+        call clap#rpc#send_ok_response(decoded.id, result)
       endif
     catch
       call clap#helper#echo_error(v:exception.', throwpoint:'.v:throwpoint)
       if has_key(decoded, 'id')
-        call clap#job#daemon#send_message(json_encode({ 'id': decoded.id, 'error': {'code': -32603, 'message': string(v:exception) }}))
+        call clap#rpc#send_error_response(decoded.id, v:exception)
       endif
     endtry
     return
@@ -44,21 +44,14 @@ function! s:notify_provider(method, params) abort
   if clap#job#daemon#is_running()
     let params = a:params
     let params['session_id'] = s:session_id
-    call clap#job#daemon#send_message(json_encode({
-          \ 'method': a:method,
-          \ 'params': params,
-          \ }))
+    call clap#rpc#notify(a:method, params)
   endif
 endfunction
 
 function! s:request_async(method, params) abort
   if clap#job#daemon#is_running()
     let s:req_id += 1
-    call clap#job#daemon#send_message(json_encode({
-          \ 'id': s:req_id,
-          \ 'method': a:method,
-          \ 'params': a:params,
-          \ }))
+    call clap#rpc#request(s:req_id, a:method, a:params)
   endif
 endfunction
 
@@ -70,10 +63,7 @@ endfunction
 
 function! clap#client#notify(method, ...) abort
   if clap#job#daemon#is_running()
-    call clap#job#daemon#send_message(json_encode({
-          \ 'method': a:method,
-          \ 'params': get(a:000, 0, v:null),
-          \ }))
+    call clap#rpc#notify(a:method, get(a:000, 0, v:null))
   endif
 endfunction
 
@@ -83,10 +73,6 @@ function! clap#client#request_async(method, callback, ...) abort
   if a:callback isnot v:null
     let s:handlers[s:req_id] = a:callback
   endif
-endfunction
-
-function! clap#client#request(method, ...) abort
-  call s:request_async(a:method, get(a:000, 0, v:null))
 endfunction
 
 function! clap#client#notify_on_init(...) abort

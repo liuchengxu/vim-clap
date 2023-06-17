@@ -81,7 +81,7 @@ if has('nvim')
           \ })
   endfunction
 
-  function! clap#job#daemon#send_message(msg) abort
+  function! clap#job#daemon#send_raw(msg) abort
     call chansend(s:job_id, a:msg."\n")
   endfunction
 else
@@ -117,7 +117,7 @@ else
     call clap#job#track(s:job_id, s:job)
   endfunction
 
-  function! clap#job#daemon#send_message(msg) abort
+  function! clap#job#daemon#send_raw(msg) abort
     call ch_sendraw(s:job, a:msg."\n")
   endfunction
 endif
