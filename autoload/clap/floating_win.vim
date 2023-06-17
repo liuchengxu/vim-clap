@@ -32,7 +32,7 @@ let s:preview_bufnr = nvim_create_buf(v:false, v:true)
 let s:indicator_bufnr = nvim_create_buf(v:false, v:true)
 let g:__clap_indicator_bufnr = s:indicator_bufnr
 
-let s:scrollbar_buf = nvim_create_buf(v:false, v:true)
+let s:preview_scrollbar_buf = nvim_create_buf(v:false, v:true)
 
 let s:exists_deoplete = exists('*deoplete#custom#buffer_option')
 
@@ -382,18 +382,29 @@ function! s:create_preview_win(height) abort
   let g:clap#floating_win#preview.bufnr = s:preview_bufnr
 endfunction
 
-function! clap#floating_win#show_scrollbar(top_position, length) abort
-  if exists('s:scrollbar_winid') && nvim_win_is_valid(s:scrollbar_winid)
-    let config = nvim_win_get_config(s:scrollbar_winid)
+function! clap#floating_win#show_preview_scrollbar(top_position, length) abort
+  if exists('s:preview_scrollbar_winid') && nvim_win_is_valid(s:preview_scrollbar_winid)
+    let config = nvim_win_get_config(s:preview_scrollbar_winid)
     let config.row = nvim_win_get_config(s:preview_winid).row + a:top_position
     let config.height = a:length
-    call nvim_win_set_config(s:scrollbar_winid, config)
+    call nvim_win_set_config(s:preview_scrollbar_winid, config)
+    call s:update_preview_scrollbar_buf(a:length)
   else
-    call s:create_scrollbar_win(a:top_position, a:length)
+    call s:create_preview_scrollbar_win(a:top_position, a:length)
   endif
 endfunction
 
-function! s:create_scrollbar_win(top_position, length) abort
+function! s:update_preview_scrollbar_buf(length) abort
+  let lines = []
+  let length = a:length
+  while length >= 0
+    call add(lines, '│')
+    let length -= 1
+  endwhile
+  call clap#util#nvim_buf_set_lines(s:preview_scrollbar_buf, lines)
+endfunction
+
+function! s:create_preview_scrollbar_win(top_position, length) abort
   if !exists('s:preview_winid') || !nvim_win_is_valid(s:preview_winid)
     return
   endif
@@ -413,15 +424,21 @@ function! s:create_scrollbar_win(top_position, length) abort
 
   let config.style = 'minimal'
   let config.zindex = 1000
-  unlet config.title
-  unlet config.title_pos
-
-  if !nvim_buf_is_valid(s:scrollbar_buf)
-    let s:scrollbar_buf = nvim_create_buf(v:false, v:true)
+  if has_key(config, 'title')
+    unlet config.title
   endif
-  silent let s:scrollbar_winid = nvim_open_win(s:scrollbar_buf, v:false, config)
+  if has_key(config, 'title_pos')
+    unlet config.title_pos
+  endif
 
-  call setwinvar(s:scrollbar_winid, '&winhl', s:scrollbar_winhl)
+  if !nvim_buf_is_valid(s:preview_scrollbar_buf)
+    let s:preview_scrollbar_buf = nvim_create_buf(v:false, v:true)
+  endif
+  silent let s:preview_scrollbar_winid = nvim_open_win(s:preview_scrollbar_buf, v:false, config)
+
+  call setwinvar(s:preview_scrollbar_winid, '&winhl', s:scrollbar_winhl)
+
+  call s:update_preview_scrollbar_buf(a:length)
 endfunction
 
 function! s:max_preview_size() abort
@@ -574,8 +591,8 @@ function! clap#floating_win#close() abort
   call s:win_close(g:clap.input.winid)
   call s:win_close(g:clap.spinner.winid)
   call s:win_close(s:indicator_winid)
-  if exists('s:scrollbar_winid')
-    call s:win_close(s:scrollbar_winid)
+  if exists('s:preview_scrollbar_winid')
+    call s:win_close(s:preview_scrollbar_winid)
   endif
 
   " I don't know why, but this could be related to the cursor move in grep.vim
