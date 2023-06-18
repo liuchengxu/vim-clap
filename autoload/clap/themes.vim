@@ -208,7 +208,6 @@ function! clap#themes#init() abort
   hi default link ClapMatches        Search
   hi default link ClapNoMatchesFound ErrorMsg
   hi default link ClapPopupCursor    Type
-  hi default link ClapScrollbar      IncSearch
 
   if exists('g:clap_theme')
     " If anything is wrong, just use the default theme.
