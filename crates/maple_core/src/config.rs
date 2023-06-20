@@ -80,6 +80,21 @@ impl MatcherConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// Specifies how many items will be displayed in the results window.
+    pub display_limit: Option<usize>,
+}
+
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self {
+            display_limit: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct LogConfig {
     pub log_file: Option<String>,
     pub max_level: String,
@@ -133,13 +148,13 @@ pub struct PluginConfig {
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct IgnoreConfig {
     /// Whether to ignore the comment line when it's possible.
-    pub comment_line: bool,
+    pub ignore_comments: bool,
     /// Only include the results from the files being tracked by git if in a git repo.
     pub git_tracked_only: bool,
     /// Ignore the results from the files whose file name matches this pattern.
-    pub file_name_pattern: Vec<String>,
+    pub ignore_file_name_pattern: Vec<String>,
     /// Ignore the results from the files whose file path matches this pattern.
-    pub file_path_pattern: Vec<String>,
+    pub ignore_file_path_pattern: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -183,6 +198,9 @@ pub struct Config {
 
     /// Matcher configuration.
     pub matcher: MatcherConfig,
+
+    /// Picker configuration.
+    pub picker: PickerConfig,
 
     /// Plugin configuration.
     pub plugin: PluginConfig,

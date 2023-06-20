@@ -357,6 +357,7 @@ impl Context {
         self.env.matcher_builder.clone().build(query.into())
     }
 
+    /// Constructs a [`SearchContext`] for the searching worker.
     pub fn search_context(&self, stop_signal: Arc<AtomicBool>) -> SearchContext {
         SearchContext {
             icon: self.env.icon,

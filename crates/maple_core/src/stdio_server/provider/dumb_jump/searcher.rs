@@ -178,7 +178,7 @@ fn filter_usages(
 ) -> Vec<AddressableUsage> {
     let IgnoreConfig {
         git_tracked_only,
-        file_path_pattern,
+        ignore_file_path_pattern,
         ..
     } = crate::config::config().ignore_config("dumb_jump", cwd);
 
@@ -201,7 +201,7 @@ fn filter_usages(
 
     // Ignore the results from the file whose path contains `test`
     addressable_usages.retain(|usage| {
-        !file_path_pattern
+        !ignore_file_path_pattern
             .iter()
             .any(|ignore_pattern| usage.path.contains(ignore_pattern))
     });
