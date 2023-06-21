@@ -1,26 +1,40 @@
 use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
+use clap::Parser;
 use matcher::{Bonus, MatchScope};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
 
+#[derive(Debug, Parser, PartialEq, Eq, Default)]
+struct FilesArgs {
+    #[clap(long)]
+    hidden: bool,
+    #[clap(long)]
+    name_only: bool,
+}
+
 #[derive(Debug)]
 pub struct FilesProvider {
-    hidden: bool,
-    name_only: bool,
+    args: FilesArgs,
     searcher_control: Option<SearcherControl>,
 }
 
 impl FilesProvider {
     pub async fn new(ctx: &Context) -> Result<Self> {
-        let provider_args = ctx.vim.provider_args().await?;
-        let hidden = provider_args.iter().any(|s| s == "--hidden");
-        let name_only = ctx.vim.files_name_only().await?;
+        let raw_args = ctx.vim.provider_raw_args().await?;
+        let args =
+            FilesArgs::try_parse_from(std::iter::once("".to_string()).chain(raw_args.into_iter()))
+                .map_err(|err| {
+                    let _ = ctx.vim.echo_warn(format!(
+                        "using default {:?} due to {err}",
+                        FilesArgs::default()
+                    ));
+                })
+                .unwrap_or_default();
         Ok(Self {
-            hidden,
-            name_only,
+            args,
             searcher_control: None,
         })
     }
@@ -38,7 +52,7 @@ impl FilesProvider {
         let recent_files_bonus = Bonus::RecentFiles(recent_files.into());
         let matcher = ctx
             .matcher_builder()
-            .match_scope(if self.name_only {
+            .match_scope(if self.args.name_only {
                 MatchScope::FileName
             } else {
                 MatchScope::Full
@@ -52,7 +66,7 @@ impl FilesProvider {
             let join_handle = {
                 let search_context = ctx.search_context(stop_signal.clone());
                 let vim = ctx.vim.clone();
-                let hidden = self.hidden;
+                let hidden = self.args.hidden;
                 tokio::spawn(async move {
                     let _ = vim.bare_exec("clap#spinner#set_busy");
                     crate::searcher::files::search(query, hidden, matcher, search_context).await;
@@ -98,5 +112,37 @@ impl ClapProvider for FilesProvider {
             tokio::task::spawn_blocking(move || control.kill());
         }
         ctx.signify_terminated(session_id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_files_args() {
+        assert_eq!(
+            FilesArgs::parse_from(["", "--hidden", "--name-only"]),
+            FilesArgs {
+                hidden: true,
+                name_only: true
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--hidden"]),
+            FilesArgs {
+                hidden: true,
+                name_only: false
+            }
+        );
+
+        assert_eq!(
+            FilesArgs::parse_from(["", "--name-only"]),
+            FilesArgs {
+                hidden: false,
+                name_only: true
+            }
+        );
     }
 }

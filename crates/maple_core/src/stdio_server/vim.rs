@@ -400,11 +400,6 @@ impl Vim {
         self.bare_call("context_query_or_input").await
     }
 
-    pub async fn files_name_only(&self) -> Result<bool> {
-        let context: HashMap<String, Value> = self.eval("g:clap.context").await?;
-        Ok(context.contains_key("name-only"))
-    }
-
     pub async fn current_buffer_path(&self) -> Result<String> {
         self.bare_call("current_buffer_path").await
     }
@@ -422,6 +417,10 @@ impl Vim {
     /////////////////////////////////////////////////////////////////
     pub fn echo_info(&self, msg: impl AsRef<str>) -> Result<()> {
         self.exec("clap#helper#echo_info", json!([msg.as_ref()]))
+    }
+
+    pub fn echo_warn(&self, msg: impl AsRef<str>) -> Result<()> {
+        self.exec("clap#helper#echo_warn", json!([msg.as_ref()]))
     }
 
     pub async fn current_winid(&self) -> Result<usize> {
