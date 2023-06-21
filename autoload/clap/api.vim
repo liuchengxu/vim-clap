@@ -139,6 +139,16 @@ function! s:api.show_lines_in_preview(lines) abort
   endif
 endfunction
 
+function! s:api.set_initial_query(query) abort
+  if s:is_nvim
+    call feedkeys(a:query)
+  else
+    call g:clap.input.set(a:query)
+    " Move the cursor to the end.
+    call feedkeys("\<C-E>", 'xt')
+  endif
+endfunction
+
 function! clap#api#call(method, args) abort
   " Catch all the exceptions
   try

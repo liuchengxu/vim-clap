@@ -1,10 +1,20 @@
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
+use clap::Parser;
 use matcher::MatchScope;
+use serde_json::json;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use types::Query;
+
+#[derive(Debug, Parser, PartialEq, Eq, Default)]
+struct GrepArgs {
+    #[clap(long)]
+    query: String,
+    #[clap(long)]
+    path: Vec<PathBuf>,
+}
 
 #[derive(Debug)]
 pub struct GrepProvider {
@@ -59,14 +69,26 @@ impl GrepProvider {
 impl ClapProvider for GrepProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let raw_args = ctx.vim.provider_raw_args().await?;
-        for args in &raw_args {
-            let abs_path = ctx.vim.fnamemodify(args, ":p").await?;
-            let abs_path = PathBuf::from(abs_path);
-            if abs_path.is_absolute() {
-                self.paths.push(abs_path);
-            }
-        }
-        let query = ctx.vim.context_query_or_input().await?;
+        let GrepArgs { query, path } =
+            GrepArgs::try_parse_from(std::iter::once(String::from("")).chain(raw_args.into_iter()))
+                .map_err(|err| {
+                    let _ = ctx.vim.echo_warn(format!(
+                        "using default {:?} due to {err}",
+                        GrepArgs::default()
+                    ));
+                })
+                .unwrap_or_default();
+        let query = if query.is_empty() {
+            ctx.vim.input_get().await?
+        } else {
+            let query = match query.as_str() {
+                "@visual" => ctx.vim.bare_call("clap#util#get_visual_selection").await?,
+                _ => ctx.vim.call("clap#util#expand", json!([query])).await?,
+            };
+            ctx.vim.call("set_initial_query", json!([query])).await?;
+            query
+        };
+        self.paths.extend(path);
         if !query.is_empty() {
             self.process_query(query, ctx);
         }
@@ -90,5 +112,37 @@ impl ClapProvider for GrepProvider {
             tokio::task::spawn_blocking(move || control.kill());
         }
         ctx.signify_terminated(session_id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_files_args() {
+        assert_eq!(
+            GrepArgs::parse_from(["", "--query=@visual", "--path=~/.vim/plugged/vim-clap"]),
+            GrepArgs {
+                query: String::from("@visual"),
+                path: vec![PathBuf::from("~/.vim/plugged/vim-clap")]
+            }
+        );
+
+        assert_eq!(
+            GrepArgs::parse_from(["", "--query=@visual"]),
+            GrepArgs {
+                query: String::from("@visual"),
+                path: vec![]
+            }
+        );
+
+        assert_eq!(
+            GrepArgs::parse_from([""]),
+            GrepArgs {
+                query: String::default(),
+                path: vec![]
+            }
+        );
     }
 }
