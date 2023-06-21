@@ -6,40 +6,6 @@ set cpoptions&vim
 
 let s:files = {}
 
-let s:default_opts = {
-      \ 'fd': '--type f',
-      \ 'rg': '--files',
-      \ 'git': 'ls-tree -r --name-only HEAD',
-      \ 'find': '. -type f',
-      \ }
-let s:options = filter(['fd', 'rg', 'git', 'find'], 'executable(v:val)')
-
-if empty(s:options)
-  let s:default_finder = v:null
-  let s:default_source = ['No usable tools found for the files provider']
-else
-  let s:default_finder = s:options[0]
-  let s:default_source = join([s:default_finder, s:default_opts[s:default_finder]], ' ')
-endif
-
-function! s:files.source() abort
-  call clap#rooter#try_set_cwd()
-
-  if has_key(g:clap.context, 'name-only')
-    let g:__clap_match_scope_enum = 'FileName'
-  endif
-
-  if has_key(g:clap.context, 'finder')
-    let finder = g:clap.context.finder
-    return finder.' '.join(g:clap.provider.args, ' ')
-  elseif get(g:clap.provider, 'args', []) == ['--hidden']
-    if s:default_finder ==# 'fd' || s:default_finder ==# 'rg'
-      return join([s:default_finder, s:default_opts[s:default_finder], '--hidden'], ' ')
-    endif
-  endif
-  return s:default_source
-endfunction
-
 function! s:into_filename(line) abort
   if g:clap_enable_icon && clap#maple#is_available()
     return a:line[4:]

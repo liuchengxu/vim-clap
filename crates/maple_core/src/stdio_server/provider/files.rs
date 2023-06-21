@@ -1,4 +1,3 @@
-use crate::stdio_server::handler::initialize_provider;
 use crate::stdio_server::provider::{ClapProvider, Context, SearcherControl};
 use anyhow::Result;
 use clap::Parser;
@@ -88,11 +87,8 @@ impl FilesProvider {
 impl ClapProvider for FilesProvider {
     async fn on_initialize(&mut self, ctx: &mut Context) -> Result<()> {
         let query = ctx.vim.context_query_or_input().await?;
-        if !query.is_empty() {
-            self.process_query(query, ctx);
-        } else {
-            initialize_provider(ctx).await?;
-        }
+        // All files will be collected if query is empty
+        self.process_query(query, ctx);
         Ok(())
     }
 

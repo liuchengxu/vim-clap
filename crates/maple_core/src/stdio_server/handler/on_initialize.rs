@@ -95,14 +95,6 @@ async fn initialize_provider_source(ctx: &Context) -> Result<ProviderSource> {
         match value {
             // Source is a String: g:__t_string, g:__t_func_string
             Value::String(command) => {
-                // Always try recreating the source.
-                if ctx.provider_id() == "files" {
-                    let mut tokio_cmd = crate::process::tokio::TokioCommand::new(command);
-                    tokio_cmd.current_dir(&ctx.cwd);
-                    let lines = tokio_cmd.lines().await?;
-                    return Ok(to_small_provider_source(lines));
-                }
-
                 let shell_cmd = ShellCommand::new(command, ctx.cwd.to_path_buf());
                 let cache_file = shell_cmd.cache_file_path()?;
 
