@@ -59,12 +59,6 @@ if has('nvim')
     call g:clap#floating_win#spinner.shrink()
   endfunction
 
-  function! clap#spinner#set_raw(text) abort
-    let s:current_prompt = a:text
-    call setbufline(g:clap.spinner.bufnr, 1, s:current_prompt)
-    call g:clap#floating_win#spinner.shrink()
-  endfunction
-
   function! s:set_spinner() abort
     let s:current_prompt = s:generate_prompt()
     call clap#spinner#set(s:current_prompt)
@@ -72,12 +66,6 @@ if has('nvim')
 else
   function! clap#spinner#set(text) abort
     let s:current_prompt = s:fill_in_placeholders(a:text)
-    call popup_settext(g:clap_spinner_winid, s:current_prompt)
-    call clap#popup#shrink_spinner()
-  endfunction
-
-  function! clap#spinner#set_raw(text) abort
-    let s:current_prompt = a:text
     call popup_settext(g:clap_spinner_winid, s:current_prompt)
     call clap#popup#shrink_spinner()
   endfunction
